@@ -12,6 +12,44 @@ import { supabase } from './supabase'
 
 const ICONIFY = 'https://api.iconify.design'
 
+// ─── DE→EN Übersetzung der Suchbegriffe ──────────────────────────────────────
+// Iconify- und Pexels-Schlagworte sind englisch. Damit die deutsche Suche trifft,
+// übersetzen wir den Begriff vor der Abfrage ins Englische (MyMemory-Frei-API,
+// kein Key, CORS-fähig). Ergebnis wird gecacht; bei Fehler/Timeout → Original.
+const _trCache = new Map()
+const ASCII_RE = /^[\x00-\x7F]*$/
+// Häufige deutsche Funktionswörter → wenn vorhanden, sicher deutsch (auch ohne Umlaute).
+const DE_HINT_RE = /\b(und|oder|der|die|das|ein|eine|mit|für|ohne|haus|baum|hund|katze|büro|frau|mann|kind|geld|auto|herz|stern|pfeil|sonne|wolke|blume|vogel|essen|trinken|arbeit|menschen|leute|geschäft|sitzung|besprechung)\b/i
+
+function looksGerman(s) {
+  // Nicht-ASCII (ä/ö/ü/ß) ODER deutsches Funktionswort → übersetzen.
+  return !ASCII_RE.test(s) || DE_HINT_RE.test(s)
+}
+
+export async function translateToEnglish(text) {
+  const q = String(text || '').trim()
+  if (!q) return q
+  if (!looksGerman(q)) return q          // schon englisch/neutral → unverändert
+  if (_trCache.has(q)) return _trCache.get(q)
+  try {
+    const ctrl = new AbortController()
+    const t = setTimeout(() => ctrl.abort(), 4000)
+    const url = `https://api.mymemory.translated.net/get?q=${encodeURIComponent(q)}&langpair=de|en`
+    const resp = await fetch(url, { signal: ctrl.signal })
+    clearTimeout(t)
+    if (!resp.ok) { _trCache.set(q, q); return q }
+    const data = await resp.json()
+    const tr = String(data?.responseData?.translatedText || '').trim()
+    // Plausibilität: nicht leer, nicht offensichtlicher Fehlertext.
+    const out = (tr && !/please|invalid|mymemory|warning/i.test(tr)) ? tr.toLowerCase() : q
+    _trCache.set(q, out)
+    return out
+  } catch (_e) {
+    _trCache.set(q, q)
+    return q
+  }
+}
+
 // ─── Kuratierte Default-Icons (mdi-Prefix) für den Erst-Zustand ──────────────
 const DEFAULT_ICON_NAMES = [
   'home', 'account', 'magnify', 'heart', 'star', 'check', 'close', 'arrow-right',
@@ -44,8 +82,9 @@ const DEFAULT_GRAPHICS = DEFAULT_GRAPHIC_NAMES.map(n => `twemoji:${n}`)
 // ─── Icon-Suche (Iconify) ────────────────────────────────────────────────────
 // Liefert ein Array von Icon-IDs wie "mdi:home". Bei leerer Query → Default-Set.
 export async function searchIcons(query, limit = 60) {
-  const q = String(query || '').trim()
-  if (!q) return DEFAULT_ICONS.slice(0, limit)
+  const raw = String(query || '').trim()
+  if (!raw) return DEFAULT_ICONS.slice(0, limit)
+  const q = await translateToEnglish(raw)
   try {
     const url = `${ICONIFY}/search?query=${encodeURIComponent(q)}&limit=${encodeURIComponent(limit)}`
     const resp = await fetch(url)
@@ -63,8 +102,9 @@ export async function searchIcons(query, limit = 60) {
 // keine zuverlässig CORS-fähige, freie Illustrations-Such-API gibt. Später durch
 // einen lizenzierten Illustrations-Anbieter austauschbar (gleiche Rückgabe-Form).
 export async function searchGraphics(query, limit = 60) {
-  const q = String(query || '').trim()
-  if (!q) return DEFAULT_GRAPHICS.slice(0, limit)
+  const raw = String(query || '').trim()
+  if (!raw) return DEFAULT_GRAPHICS.slice(0, limit)
+  const q = await translateToEnglish(raw)
   try {
     // Iconify unterstützt einen "prefixes"-Parameter; wir filtern zusätzlich
     // client-seitig auf die Allow-List, falls der Server lockerer filtert.
@@ -114,7 +154,8 @@ export async function iconToDataUrl(id, color) {
 // Rückgabe: { photos, total, page, missingKey?, error? }
 export async function searchPhotos({ query, page = 1, perPage = 30, orientation } = {}) {
   try {
-    const body = { query: String(query || ''), page, perPage }
+    const q = await translateToEnglish(String(query || ''))
+    const body = { query: q, page, perPage }
     if (orientation) body.orientation = orientation
     const { data, error } = await supabase.functions.invoke('stock-photos', { body })
     if (error) {

@@ -185,6 +185,10 @@ export default function DesignerCanvas({ visual, teamId, onSaved, onReplaceVisua
   const [showExport, setShowExport] = useState(false)
   const [exporting, setExporting] = useState(false)
 
+  // ─── Rechtsklick-Kontextmenü ───────────────────────────────────────────────
+  // { x, y, objId|null } in Container-Pixeln (relativ zur Canvas-Fläche).
+  const [ctxMenu, setCtxMenu] = useState(null)
+
   // ─── Canva-Stil: linke Werkzeug-Schiene + Panel ────────────────────────────
   // activeTool: null | 'templates' | 'elements' | 'text' | 'uploads' | 'brand' | 'ai' | 'filter'
   const [activeTool, setActiveTool] = useState(null)
@@ -197,7 +201,6 @@ export default function DesignerCanvas({ visual, teamId, onSaved, onReplaceVisua
   const [brandLoading, setBrandLoading] = useState(false)
 
   // ─── Runde 2: rechte Spalte (Ebenen + Eigenschaften) ──────────────────────
-  const [showRightPanel, setShowRightPanel] = useState(true)   // rechte Spalte ein/aus
   const [renamingId, setRenamingId] = useState(null)           // Ebene wird gerade umbenannt
   const layerDragRef = useRef(null)                            // {id} während Drag-Reorder im Ebenen-Panel
   const [layerDragOverId, setLayerDragOverId] = useState(null) // Drop-Ziel-Hervorhebung
@@ -485,6 +488,53 @@ export default function DesignerCanvas({ visual, teamId, onSaved, onReplaceVisua
       tr.getLayer()?.batchDraw()
     } catch (_e) { /* noop */ }
   }, [selectedIds, objects, editingTextId, cropMode, aiMode])
+
+  // ─── Rechtsklick: Kontextmenü öffnen ───────────────────────────────────────
+  // Wir hängen den Konva-'contextmenu'-Handler an die Stage. Klick auf ein Objekt
+  // wählt es (falls nötig) aus und zeigt Objekt-Aktionen; Klick auf leere Fläche
+  // zeigt 'Einfügen'/'Alles auswählen'. Position relativ zur Canvas-Fläche.
+  useEffect(() => {
+    const stage = stageRef.current
+    if (!stage) return
+    const handler = (e) => {
+      try {
+        e.evt.preventDefault()
+        if (cropMode || aiMode) return
+        const cont = containerRef.current
+        const rect = cont ? cont.getBoundingClientRect() : { left: 0, top: 0 }
+        const x = (e.evt.clientX || 0) - rect.left
+        const y = (e.evt.clientY || 0) - rect.top
+        const tgtId = e.target && e.target.attrs ? e.target.attrs.id : null
+        const onEmpty = e.target === stage || tgtId === '__bg__' || tgtId === '__bgfill__' || !tgtId
+        if (onEmpty) {
+          setCtxMenu({ x, y, objId: null })
+        } else {
+          const obj = objects.find(o => o.id === tgtId)
+          if (!obj) { setCtxMenu({ x, y, objId: null }); return }
+          // Objekt auswählen, falls nicht bereits Teil der Selektion.
+          setSelectedIds(prev => prev.includes(tgtId) ? prev : [tgtId])
+          setCtxMenu({ x, y, objId: tgtId })
+        }
+      } catch (_e) { /* noop */ }
+    }
+    stage.on('contextmenu', handler)
+    return () => { try { stage.off('contextmenu', handler) } catch (_e) {} }
+  }, [objects, cropMode, aiMode])
+
+  // Kontextmenü schließen bei Esc / Scroll / Fenster-Resize.
+  useEffect(() => {
+    if (!ctxMenu) return
+    const close = () => setCtxMenu(null)
+    const onKey = (e) => { if (e.key === 'Escape') setCtxMenu(null) }
+    window.addEventListener('scroll', close, true)
+    window.addEventListener('resize', close)
+    window.addEventListener('keydown', onKey)
+    return () => {
+      window.removeEventListener('scroll', close, true)
+      window.removeEventListener('resize', close)
+      window.removeEventListener('keydown', onKey)
+    }
+  }, [ctxMenu])
 
   // ─── Bild-Objekte: HTMLImageElement nachladen (z.B. nach Restore) ───────────
   useEffect(() => {
@@ -1925,26 +1975,33 @@ export default function DesignerCanvas({ visual, teamId, onSaved, onReplaceVisua
       {/* Versteckter file-input für Bild-Upload */}
       <input ref={fileInputRef} type="file" accept="image/*" style={{ display: 'none' }}
         onChange={(e) => { const f = e.target.files?.[0]; onPickImageFile(f); e.target.value = '' }} />
-      {/* Globale Werkzeugleiste (nur globale Aktionen: Undo/Redo, Zoom, Speichern, Export) */}
-      <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: 6, padding: '10px 12px', borderBottom: '1px solid var(--border,#E9ECF2)', background: 'var(--surface,#fff)', flexShrink: 0 }}>
-        <ToolBtn onClick={undo} title="Rückgängig (Cmd/Ctrl+Z)"><Undo2 size={15} strokeWidth={1.9} /></ToolBtn>
-        <ToolBtn onClick={redo} title="Wiederholen (Cmd/Ctrl+Shift+Z)"><Redo2 size={15} strokeWidth={1.9} /></ToolBtn>
+      {/* Tier 1 — globale Werkzeugleiste: links Undo/Redo + Zoom, rechts Format/Export/Speichern */}
+      <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: 8, padding: '9px 12px', borderBottom: '1px solid var(--border,#E9ECF2)', background: 'var(--surface,#fff)', flexShrink: 0 }}>
+        {/* Undo / Redo */}
+        <div style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}>
+          <ToolBtn onClick={undo} title="Rückgängig (Cmd/Ctrl+Z)"><Undo2 size={15} strokeWidth={1.9} /></ToolBtn>
+          <ToolBtn onClick={redo} title="Wiederholen (Cmd/Ctrl+Shift+Z)"><Redo2 size={15} strokeWidth={1.9} /></ToolBtn>
+        </div>
         <Divider />
-        <ToolBtn onClick={zoomOut} title="Verkleinern"><ZoomOut size={15} strokeWidth={1.9} /></ToolBtn>
-        <button onClick={zoom100} title="100 %"
-          style={{ minWidth: 52, height: 32, padding: '0 6px', borderRadius: 8, border: '1px solid var(--border,#E9ECF2)', background: 'var(--surface,#fff)', color: 'var(--text-primary)', fontSize: 12, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit' }}>
-          {zoomPct}%
-        </button>
-        <ToolBtn onClick={zoomIn} title="Vergrößern"><ZoomIn size={15} strokeWidth={1.9} /></ToolBtn>
-        <ToolBtn onClick={zoomFit} title="Einpassen"><Maximize2 size={15} strokeWidth={1.9} /></ToolBtn>
-        <Divider />
-        <FormatMenu onPick={applyFormatPreset} />
+        {/* Zoom als kompaktes Segment */}
+        <div style={{ display: 'inline-flex', alignItems: 'center', gap: 2, padding: 2, borderRadius: 10, border: '1px solid var(--border,#E9ECF2)', background: 'var(--page-bg,#F7F8FA)' }}>
+          <ToolBtn onClick={zoomOut} title="Verkleinern"><ZoomOut size={15} strokeWidth={1.9} /></ToolBtn>
+          <button onClick={zoom100} title="Auf 100 %"
+            style={{ minWidth: 50, height: 30, padding: '0 6px', borderRadius: 8, border: 'none', background: 'transparent', color: 'var(--text-primary)', fontSize: 12, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit' }}>
+            {zoomPct}%
+          </button>
+          <ToolBtn onClick={zoomIn} title="Vergrößern"><ZoomIn size={15} strokeWidth={1.9} /></ToolBtn>
+          <ToolBtn onClick={zoomFit} title="Einpassen"><Maximize2 size={15} strokeWidth={1.9} /></ToolBtn>
+        </div>
+
         <div style={{ flex: 1 }} />
+
         {savedMsg && <span style={{ fontSize: 12, fontWeight: 600, color: savedMsg.startsWith('Fehler') || savedMsg.startsWith('Download-Fehler') ? '#b91c1c' : '#15803d' }}>{savedMsg}</span>}
-        <ToolBtn onClick={() => setShowRightPanel(s => !s)} active={showRightPanel} title="Ebenen & Eigenschaften"><Layers size={15} strokeWidth={1.9} /></ToolBtn>
+        <FormatMenu onPick={applyFormatPreset} />
         <ToolBtn onClick={() => setShowExport(true)} active={showExport} title="Exportieren (PNG / JPG / PDF)"><Download size={15} strokeWidth={1.9} /></ToolBtn>
+        <Divider />
         <button onClick={handleSave} disabled={saving}
-          style={{ display: 'inline-flex', alignItems: 'center', gap: 6, height: 32, padding: '0 14px', borderRadius: 8, border: 'none', background: P, color: '#fff', fontSize: 12.5, fontWeight: 700, cursor: saving ? 'wait' : 'pointer', fontFamily: 'inherit' }}>
+          style={{ display: 'inline-flex', alignItems: 'center', gap: 6, height: 32, padding: '0 16px', borderRadius: 9, border: 'none', background: P, color: '#fff', fontSize: 12.5, fontWeight: 700, cursor: saving ? 'wait' : 'pointer', fontFamily: 'inherit', boxShadow: '0 1px 2px rgba(16,24,40,0.10)' }}>
           {saving ? <Loader2 size={14} className="lk-spin" /> : <Save size={14} strokeWidth={2} />}Speichern
         </button>
       </div>
@@ -1955,15 +2012,18 @@ export default function DesignerCanvas({ visual, teamId, onSaved, onReplaceVisua
       )}
 
       {/* Kontext-Leiste: Selektion / Filter / Crop / AI */}
-      {selected && !cropMode && !aiActive && (
+      {selected && selectedIds.length === 1 && !cropMode && !aiActive && (
         <ContextBar selected={selected} updateObject={updateObject}
           commitHistoryOnce={commitHistoryOnce} endInteraction={endInteraction}
-          reorder={reorder} deleteSelected={deleteSelected} fonts={allFonts} />
+          reorder={reorder} deleteSelected={deleteSelected} duplicateSelected={duplicateSelected}
+          fonts={allFonts} selectedIds={selectedIds}
+          alignObjects={alignObjects} distributeObjects={distributeObjects} />
       )}
       {selectedIds.length > 1 && !cropMode && !aiActive && (
         <MultiBar count={selectedIds.length} onDuplicate={duplicateSelected} onDelete={deleteSelected}
           updateOpacity={(v) => { const ids = new Set(selectedIds); setObjects(prev => prev.map(o => ids.has(o.id) ? { ...o, opacity: v } : o)) }}
-          commitHistoryOnce={commitHistoryOnce} endInteraction={endInteraction} />
+          commitHistoryOnce={commitHistoryOnce} endInteraction={endInteraction}
+          alignObjects={alignObjects} distributeObjects={distributeObjects} />
       )}
       {cropMode && (
         <div style={barStyle}>
@@ -2034,6 +2094,11 @@ export default function DesignerCanvas({ visual, teamId, onSaved, onReplaceVisua
           filters={filters} setFilters={setFilters}
           commitHistoryOnce={commitHistoryOnce} endInteraction={endInteraction}
           filterScope={(selected && selected.type === 'image') ? 'einzeln' : 'alle'}
+          // Ebenen
+          objects={objects} selectedIds={selectedIds} setSelectedIds={setSelectedIds}
+          reorderObjects={reorderObjects} toggleLayerFlag={toggleLayerFlag}
+          renameLayer={renameLayer} renamingId={renamingId} setRenamingId={setRenamingId}
+          layerDragRef={layerDragRef} layerDragOverId={layerDragOverId} setLayerDragOverId={setLayerDragOverId}
         />
       )}
 
@@ -2136,6 +2201,25 @@ export default function DesignerCanvas({ visual, teamId, onSaved, onReplaceVisua
           </div>
         )}
 
+        {/* Rechtsklick-Kontextmenü */}
+        {ctxMenu && (
+          <ContextMenu
+            ctx={ctxMenu}
+            obj={ctxMenu.objId ? objects.find(o => o.id === ctxMenu.objId) : null}
+            hasClipboard={(clipboardRef.current || []).length > 0}
+            containerW={containerW}
+            onClose={() => setCtxMenu(null)}
+            onReorder={(dir) => { reorder(dir); setCtxMenu(null) }}
+            onDuplicate={() => { duplicateSelected(); setCtxMenu(null) }}
+            onToggleLock={(id) => { toggleLayerFlag(id, 'locked'); setCtxMenu(null) }}
+            onToggleHidden={(id) => { toggleLayerFlag(id, 'hidden'); setCtxMenu(null) }}
+            onRename={(id) => { setSelectedIds([id]); setActiveTool('layers'); setRenamingId(id); setCtxMenu(null) }}
+            onDelete={() => { deleteSelected(); setCtxMenu(null) }}
+            onPaste={() => { pasteClipboard(); setCtxMenu(null) }}
+            onSelectAll={() => { setSelectedIds(objects.map(o => o.id)); setCtxMenu(null) }}
+          />
+        )}
+
         {/* Zoom-Steuerung (unten rechts) */}
         {!loading && (
           <div style={{
@@ -2155,41 +2239,8 @@ export default function DesignerCanvas({ visual, teamId, onSaved, onReplaceVisua
           </div>
         )}
 
-        {/* Ein-/Ausklappen der rechten Spalte */}
-        {!loading && !showRightPanel && (
-          <button onClick={() => setShowRightPanel(true)} title="Ebenen & Eigenschaften"
-            style={{ position: 'absolute', right: 14, top: 14, zIndex: 70, width: 34, height: 34, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', borderRadius: 9, border: '1px solid var(--border,#E9ECF2)', background: 'var(--surface,#fff)', color: 'var(--text-muted,#475467)', cursor: 'pointer', boxShadow: '0 4px 16px rgba(16,24,40,0.12)' }}>
-            <Layers size={16} strokeWidth={1.9} />
-          </button>
-        )}
       </div>
 
-      {/* Rechte Spalte: Eigenschaften (oben) + Ebenen (darunter) */}
-      {!loading && showRightPanel && (
-        <RightPanel
-          objects={objects}
-          selectedIds={selectedIds}
-          selected={selected}
-          stageSize={stageSize}
-          baseCrop={baseCrop}
-          bgColor={bgColor}
-          setSelectedIds={setSelectedIds}
-          updateObject={updateObject}
-          commitHistoryOnce={commitHistoryOnce}
-          endInteraction={endInteraction}
-          reorderObjects={reorderObjects}
-          toggleLayerFlag={toggleLayerFlag}
-          renameLayer={renameLayer}
-          renamingId={renamingId}
-          setRenamingId={setRenamingId}
-          layerDragRef={layerDragRef}
-          layerDragOverId={layerDragOverId}
-          setLayerDragOverId={setLayerDragOverId}
-          alignObjects={alignObjects}
-          distributeObjects={distributeObjects}
-          onClose={() => setShowRightPanel(false)}
-        />
-      )}
       </div>
     </div>
   )
@@ -2210,206 +2261,6 @@ function rpLabel(o) {
   if (o?.type === 'text') return (o.text || 'Text').slice(0, 22) || 'Text'
   return LAYER_META[o?.type]?.label || 'Ebene'
 }
-function RpSection({ title, children }) {
-  return (
-    <div style={{ padding: '10px 12px', borderBottom: '1px solid var(--border)' }}>
-      <div style={{ fontSize: 10.5, fontWeight: 700, letterSpacing: '0.06em', textTransform: 'uppercase', color: 'var(--text-muted)', marginBottom: 8 }}>{title}</div>
-      {children}
-    </div>
-  )
-}
-function RpNum({ label, value, onChange, onCommit, step = 1, min, max }) {
-  return (
-    <label style={{ display: 'flex', flexDirection: 'column', gap: 3, flex: 1, minWidth: 0 }}>
-      <span style={{ fontSize: 10, color: 'var(--text-muted)' }}>{label}</span>
-      <input type="number" value={Math.round((Number(value) || 0) * 100) / 100} step={step} min={min} max={max}
-        onMouseDown={onCommit} onFocus={onCommit}
-        onChange={e => onChange(parseFloat(e.target.value))}
-        style={{ width: '100%', padding: '5px 7px', borderRadius: 7, border: '1px solid var(--border)', fontSize: 12, fontFamily: 'inherit', outline: 'none', boxSizing: 'border-box' }} />
-    </label>
-  )
-}
-function RpColor({ label, value, onChange, onCommit }) {
-  return (
-    <label style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8, fontSize: 11.5, color: 'var(--text-primary)' }}>
-      <span>{label}</span>
-      <input type="color" value={toHexColor(value)} onMouseDown={onCommit} onChange={e => onChange(e.target.value)}
-        style={{ width: 30, height: 24, padding: 0, border: '1px solid var(--border)', borderRadius: 6, background: 'none', cursor: 'pointer' }} />
-    </label>
-  )
-}
-function toHexColor(c) {
-  if (typeof c !== 'string') return '#000000'
-  if (c.startsWith('#')) return c.length === 7 ? c : '#000000'
-  const m = c.match(/rgba?\(([^)]+)\)/)
-  if (m) {
-    const [r, g, b] = m[1].split(',').map(s => parseInt(s.trim(), 10))
-    if ([r, g, b].every(n => !isNaN(n))) return '#' + [r, g, b].map(n => n.toString(16).padStart(2, '0')).join('')
-  }
-  return '#000000'
-}
-function AlignBtn({ Icon, title, onClick, disabled }) {
-  return (
-    <button onClick={onClick} disabled={disabled} title={title}
-      style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '6px 0', borderRadius: 7, border: '1px solid var(--border)', background: '#fff', cursor: disabled ? 'default' : 'pointer', opacity: disabled ? 0.4 : 1 }}>
-      <Icon size={15} strokeWidth={1.9} />
-    </button>
-  )
-}
-
-function RightPanel({
-  objects, selectedIds, selected, stageSize, baseCrop, bgColor,
-  setSelectedIds, updateObject, commitHistoryOnce, endInteraction,
-  reorderObjects, toggleLayerFlag, renameLayer, renamingId, setRenamingId,
-  layerDragRef, layerDragOverId, setLayerDragOverId, alignObjects, distributeObjects, onClose,
-}) {
-  const P = 'var(--wl-primary, rgb(49,90,231))'
-  const multi = (selectedIds || []).length > 1
-  const o = selected
-  const commit = () => { try { commitHistoryOnce && commitHistoryOnce() } catch (_e) {} }
-  const set = (patch) => { commit(); updateObject(o.id, patch, false) }
-  const layers = [...(objects || [])].reverse()  // oberste Ebene oben
-
-  return (
-    <div style={{ width: 248, flexShrink: 0, borderLeft: '1px solid var(--border)', background: 'var(--surface, #fff)', display: 'flex', flexDirection: 'column', height: '100%', overflow: 'hidden' }}>
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '9px 12px', borderBottom: '1px solid var(--border)' }}>
-        <span style={{ fontSize: 12.5, fontWeight: 700, color: 'var(--text-primary)' }}>Design</span>
-        <button onClick={onClose} title="Panel schließen" style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-muted)', display: 'flex' }}><X size={16} /></button>
-      </div>
-
-      <div style={{ flex: 1, overflowY: 'auto' }}>
-        {/* Ausrichten / Verteilen */}
-        {(selectedIds || []).length >= 1 && (
-          <RpSection title="Ausrichten">
-            <div style={{ display: 'flex', gap: 5, marginBottom: 5 }}>
-              <AlignBtn Icon={AlignStartVertical} title="Links" onClick={() => alignObjects('left')} />
-              <AlignBtn Icon={AlignCenterVertical} title="Horizontal zentrieren" onClick={() => alignObjects('hcenter')} />
-              <AlignBtn Icon={AlignEndVertical} title="Rechts" onClick={() => alignObjects('right')} />
-              <AlignBtn Icon={AlignStartHorizontal} title="Oben" onClick={() => alignObjects('top')} />
-              <AlignBtn Icon={AlignCenterHorizontal} title="Vertikal zentrieren" onClick={() => alignObjects('vcenter')} />
-              <AlignBtn Icon={AlignEndHorizontal} title="Unten" onClick={() => alignObjects('bottom')} />
-            </div>
-            <div style={{ display: 'flex', gap: 5 }}>
-              <AlignBtn Icon={AlignHorizontalDistributeCenter} title="Horizontal verteilen (≥3)" onClick={() => distributeObjects('h')} disabled={(selectedIds || []).length < 3} />
-              <AlignBtn Icon={AlignVerticalDistributeCenter} title="Vertikal verteilen (≥3)" onClick={() => distributeObjects('v')} disabled={(selectedIds || []).length < 3} />
-            </div>
-          </RpSection>
-        )}
-
-        {/* Eigenschaften (genau 1 Objekt) */}
-        {o && !multi && (
-          <RpSection title="Eigenschaften">
-            <div style={{ display: 'flex', gap: 6, marginBottom: 8 }}>
-              <RpNum label="X" value={o.x} onCommit={commit} onChange={v => set({ x: v })} />
-              <RpNum label="Y" value={o.y} onCommit={commit} onChange={v => set({ y: v })} />
-            </div>
-            {(o.type === 'rect' || o.type === 'image') && (
-              <div style={{ display: 'flex', gap: 6, marginBottom: 8 }}>
-                <RpNum label="Breite" value={o.width} min={1} onCommit={commit} onChange={v => set({ width: Math.max(1, v) })} />
-                <RpNum label="Höhe" value={o.height} min={1} onCommit={commit} onChange={v => set({ height: Math.max(1, v) })} />
-              </div>
-            )}
-            {o.type === 'ellipse' && (
-              <div style={{ display: 'flex', gap: 6, marginBottom: 8 }}>
-                <RpNum label="Radius X" value={o.radiusX} min={1} onCommit={commit} onChange={v => set({ radiusX: Math.max(1, v) })} />
-                <RpNum label="Radius Y" value={o.radiusY} min={1} onCommit={commit} onChange={v => set({ radiusY: Math.max(1, v) })} />
-              </div>
-            )}
-            <div style={{ display: 'flex', gap: 6, marginBottom: 8 }}>
-              <RpNum label="Drehung°" value={o.rotation} onCommit={commit} onChange={v => set({ rotation: v })} />
-              {o.type === 'text' && <RpNum label="Größe" value={o.fontSize} min={4} onCommit={commit} onChange={v => set({ fontSize: Math.max(4, v) })} />}
-            </div>
-            {/* Deckkraft */}
-            <label style={{ display: 'block', marginBottom: 8 }}>
-              <span style={{ fontSize: 10, color: 'var(--text-muted)' }}>Deckkraft {Math.round((o.opacity == null ? 1 : o.opacity) * 100)}%</span>
-              <input type="range" min={0} max={1} step={0.01} value={o.opacity == null ? 1 : o.opacity}
-                onMouseDown={commit} onChange={e => set({ opacity: parseFloat(e.target.value) })}
-                style={{ width: '100%', accentColor: P }} />
-            </label>
-            {/* Farben */}
-            {('fill' in o) && <div style={{ marginBottom: 7 }}><RpColor label="Füllung" value={o.fill} onCommit={commit} onChange={v => set({ fill: v })} /></div>}
-            {(o.type === 'rect' || o.type === 'ellipse' || o.type === 'line' || o.type === 'arrow') && (
-              <>
-                <div style={{ marginBottom: 7 }}><RpColor label="Rand" value={o.stroke || '#ffffff'} onCommit={commit} onChange={v => set({ stroke: v })} /></div>
-                <div style={{ marginBottom: 8 }}><RpNum label="Randstärke" value={o.strokeWidth || 0} min={0} onCommit={commit} onChange={v => set({ strokeWidth: Math.max(0, v) })} /></div>
-              </>
-            )}
-            {o.type === 'rect' && <div style={{ marginBottom: 8 }}><RpNum label="Eckenradius" value={o.cornerRadius || 0} min={0} onCommit={commit} onChange={v => set({ cornerRadius: Math.max(0, v) })} /></div>}
-            {/* Text-Feinheiten */}
-            {o.type === 'text' && (
-              <>
-                <div style={{ display: 'flex', gap: 6, marginBottom: 8 }}>
-                  <RpNum label="Zeilenhöhe" value={o.lineHeight || 1.2} step={0.05} min={0.5} onCommit={commit} onChange={v => set({ lineHeight: v })} />
-                  <RpNum label="Laufweite" value={o.letterSpacing || 0} step={0.5} onCommit={commit} onChange={v => set({ letterSpacing: v })} />
-                </div>
-                <button onClick={() => set({ textDecoration: o.textDecoration === 'underline' ? '' : 'underline' })}
-                  style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '5px 10px', borderRadius: 7, border: '1px solid var(--border)', background: o.textDecoration === 'underline' ? P : '#fff', color: o.textDecoration === 'underline' ? '#fff' : 'var(--text-primary)', cursor: 'pointer', fontSize: 12, marginBottom: 8 }}>
-                  <Underline size={14} /> Unterstrichen
-                </button>
-              </>
-            )}
-            {/* Schatten */}
-            <button onClick={() => set(o.shadowBlur ? { shadowBlur: 0 } : { shadowBlur: 12, shadowColor: 'rgba(0,0,0,0.35)', shadowOffsetX: 0, shadowOffsetY: 4 })}
-              style={{ width: '100%', padding: '6px 10px', borderRadius: 7, border: '1px solid var(--border)', background: o.shadowBlur ? P : '#fff', color: o.shadowBlur ? '#fff' : 'var(--text-primary)', cursor: 'pointer', fontSize: 12 }}>
-              Schatten {o.shadowBlur ? 'an' : 'aus'}
-            </button>
-          </RpSection>
-        )}
-        {multi && (
-          <RpSection title="Auswahl">
-            <div style={{ fontSize: 12, color: 'var(--text-muted)' }}>{selectedIds.length} Objekte ausgewählt. Ausrichten/Verteilen oben.</div>
-          </RpSection>
-        )}
-
-        {/* Ebenen */}
-        <div style={{ padding: '10px 12px' }}>
-          <div style={{ fontSize: 10.5, fontWeight: 700, letterSpacing: '0.06em', textTransform: 'uppercase', color: 'var(--text-muted)', marginBottom: 8, display: 'flex', alignItems: 'center', gap: 6 }}><Layers size={12} /> Ebenen</div>
-          {layers.length === 0 && <div style={{ fontSize: 11.5, color: 'var(--text-muted)' }}>Noch keine Objekte. Füge Text, Formen oder Bilder hinzu.</div>}
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
-            {layers.map(layer => {
-              const isSel = (selectedIds || []).includes(layer.id)
-              const Meta = LAYER_META[layer.type] || LAYER_META.rect
-              const Icon = Meta.Icon
-              const dragOver = layerDragOverId === layer.id
-              return (
-                <div key={layer.id}
-                  draggable
-                  onDragStart={() => { if (layerDragRef) layerDragRef.current = layer.id }}
-                  onDragOver={(e) => { e.preventDefault(); setLayerDragOverId && setLayerDragOverId(layer.id) }}
-                  onDragLeave={() => setLayerDragOverId && setLayerDragOverId(null)}
-                  onDrop={(e) => { e.preventDefault(); const d = layerDragRef && layerDragRef.current; if (d && d !== layer.id) reorderObjects(d, layer.id, false); setLayerDragOverId && setLayerDragOverId(null); if (layerDragRef) layerDragRef.current = null }}
-                  onClick={() => setSelectedIds([layer.id])}
-                  style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '5px 6px', borderRadius: 7, cursor: 'pointer',
-                    background: isSel ? 'color-mix(in srgb, var(--wl-primary, rgb(49,90,231)) 12%, transparent)' : 'transparent',
-                    border: dragOver ? `1px dashed ${P}` : '1px solid transparent', opacity: layer.hidden ? 0.5 : 1 }}>
-                  <GripVertical size={13} color="var(--text-muted)" style={{ cursor: 'grab', flexShrink: 0 }} />
-                  <Icon size={13} color={isSel ? P : 'var(--text-muted)'} style={{ flexShrink: 0 }} />
-                  {renamingId === layer.id ? (
-                    <input autoFocus defaultValue={rpLabel(layer)}
-                      onBlur={(e) => renameLayer(layer.id, e.target.value.trim() || rpLabel(layer))}
-                      onKeyDown={(e) => { if (e.key === 'Enter') e.target.blur(); if (e.key === 'Escape') { setRenamingId(null) } }}
-                      onClick={e => e.stopPropagation()}
-                      style={{ flex: 1, minWidth: 0, fontSize: 12, padding: '2px 5px', border: '1px solid var(--border)', borderRadius: 5, fontFamily: 'inherit', outline: 'none' }} />
-                  ) : (
-                    <span onDoubleClick={(e) => { e.stopPropagation(); setRenamingId(layer.id) }}
-                      style={{ flex: 1, minWidth: 0, fontSize: 12, color: 'var(--text-primary)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{rpLabel(layer)}</span>
-                  )}
-                  <button onClick={(e) => { e.stopPropagation(); toggleLayerFlag(layer.id, 'hidden') }} title={layer.hidden ? 'Einblenden' : 'Ausblenden'} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-muted)', display: 'flex', padding: 1 }}>
-                    {layer.hidden ? <EyeOff size={13} /> : <Eye size={13} />}
-                  </button>
-                  <button onClick={(e) => { e.stopPropagation(); toggleLayerFlag(layer.id, 'locked') }} title={layer.locked ? 'Entsperren' : 'Sperren'} style={{ background: 'none', border: 'none', cursor: 'pointer', color: layer.locked ? P : 'var(--text-muted)', display: 'flex', padding: 1 }}>
-                    {layer.locked ? <Lock size={13} /> : <Unlock size={13} />}
-                  </button>
-                </div>
-              )
-            })}
-          </div>
-        </div>
-      </div>
-    </div>
-  )
-}
-
 // ─── Fehlertexte freundlich machen (Google-503 etc.) ────────────────────────
 function humanizeFnError(fnErr) {
   const msg = fnErr?.message || ''
@@ -2466,6 +2317,67 @@ function MenuItem({ children, onClick }) {
 }
 
 
+// ─── Rechtsklick-Kontextmenü ────────────────────────────────────────────────
+// HTML-Overlay, absolut in der Canvas-Fläche positioniert. Kippt nahe der Kante
+// nach links/oben, schließt bei Klick außerhalb (Backdrop) / Esc / Scroll.
+function ContextMenuItem({ children, onClick, danger }) {
+  return (
+    <button onClick={onClick}
+      style={{ display: 'flex', alignItems: 'center', gap: 9, width: '100%', textAlign: 'left',
+        padding: '7px 12px', border: 'none', background: 'transparent', cursor: 'pointer',
+        fontSize: 12.5, fontWeight: 600, fontFamily: 'inherit',
+        color: danger ? '#b91c1c' : 'var(--text-primary)', borderRadius: 7 }}
+      onMouseEnter={e => e.currentTarget.style.background = danger ? 'rgba(185,28,28,0.08)' : 'rgba(49,90,231,0.07)'}
+      onMouseLeave={e => e.currentTarget.style.background = 'transparent'}>
+      {children}
+    </button>
+  )
+}
+function ContextMenuSep() {
+  return <div style={{ height: 1, background: 'var(--border,#E9ECF2)', margin: '5px 8px' }} />
+}
+function ContextMenu({ ctx, obj, hasClipboard, containerW, onClose, onReorder, onDuplicate, onToggleLock, onToggleHidden, onRename, onDelete, onPaste, onSelectAll }) {
+  const MENU_W = 224
+  const estH = obj ? 332 : 96
+  // Kanten-Kippung: wenn rechts/unten kein Platz, nach links/oben öffnen.
+  const flipX = ctx.x + MENU_W + 8 > (containerW || 9999)
+  const left = flipX ? Math.max(4, ctx.x - MENU_W) : ctx.x
+  const top = ctx.y
+  const ic = { size: 15, strokeWidth: 1.9 }
+  return (
+    <>
+      {/* Backdrop fängt Außen-Klicks (auch Rechtsklick) → schließen */}
+      <div onMouseDown={onClose} onContextMenu={(e) => { e.preventDefault(); onClose() }}
+        style={{ position: 'absolute', inset: 0, zIndex: 110 }} />
+      <div style={{ position: 'absolute', left, top, zIndex: 111, width: MENU_W, maxHeight: estH,
+        background: 'var(--surface,#fff)', border: '1px solid var(--border,#E9ECF2)', borderRadius: 12,
+        boxShadow: '0 12px 36px rgba(16,24,40,0.20)', padding: 6 }}
+        onContextMenu={(e) => e.preventDefault()}>
+        {obj ? (
+          <>
+            <ContextMenuItem onClick={() => onReorder('top')}><BringToFront {...ic} />Nach vorne</ContextMenuItem>
+            <ContextMenuItem onClick={() => onReorder('up')}><ChevronUp {...ic} strokeWidth={2} />Eine Ebene nach vorne</ContextMenuItem>
+            <ContextMenuItem onClick={() => onReorder('down')}><ChevronDown {...ic} strokeWidth={2} />Eine Ebene nach hinten</ContextMenuItem>
+            <ContextMenuItem onClick={() => onReorder('bottom')}><SendToBack {...ic} />Nach hinten</ContextMenuItem>
+            <ContextMenuSep />
+            <ContextMenuItem onClick={onDuplicate}><Copy {...ic} />Duplizieren <span style={{ marginLeft: 'auto', fontSize: 11, color: 'var(--text-muted)' }}>Strg+D</span></ContextMenuItem>
+            <ContextMenuItem onClick={() => onToggleLock(obj.id)}>{obj.locked ? <Unlock {...ic} /> : <Lock {...ic} />}{obj.locked ? 'Entsperren' : 'Sperren'}</ContextMenuItem>
+            <ContextMenuItem onClick={() => onToggleHidden(obj.id)}>{obj.hidden ? <Eye {...ic} /> : <EyeOff {...ic} />}{obj.hidden ? 'Einblenden' : 'Ausblenden'}</ContextMenuItem>
+            <ContextMenuItem onClick={() => onRename(obj.id)}><Type {...ic} />Umbenennen</ContextMenuItem>
+            <ContextMenuSep />
+            <ContextMenuItem danger onClick={onDelete}><Trash2 {...ic} />Löschen</ContextMenuItem>
+          </>
+        ) : (
+          <>
+            <ContextMenuItem onClick={onPaste} ><Copy {...ic} />{hasClipboard ? 'Einfügen' : 'Einfügen (leer)'}</ContextMenuItem>
+            <ContextMenuItem onClick={onSelectAll}><LayoutTemplate {...ic} />Alles auswählen</ContextMenuItem>
+          </>
+        )}
+      </div>
+    </>
+  )
+}
+
 // ─── Export-Dialog (PNG / JPG / PDF) ────────────────────────────────────────
 function ExportModal({ onExport, exporting, onClose }) {
   const [format, setFormat] = useState('png')
@@ -2513,21 +2425,35 @@ function ExportModal({ onExport, exporting, onClose }) {
   )
 }
 
-function ContextBar({ selected, updateObject, reorder, deleteSelected, commitHistoryOnce, endInteraction, fonts }) {
+// Kontextuelle Eigenschaften-Leiste (Tier 2) — ersetzt die alte rechte Spalte.
+// Vereint Text-/Form-Formatierung mit numerischen Eigenschaften (X/Y/Größe/
+// Drehung/Deckkraft), Ausrichten/Verteilen sowie Ebenen-/Duplizieren-/Löschen-
+// Aktionen in EINER sauberen, umbrechenden Leiste.
+function ContextBar({
+  selected, updateObject, reorder, deleteSelected, duplicateSelected,
+  commitHistoryOnce, endInteraction, fonts,
+  selectedIds, alignObjects, distributeObjects,
+}) {
   const FONT_LIST = (fonts && fonts.length) ? fonts : FONTS
-  const isText = selected.type === 'text'
-  const hasFill = ['text', 'rect', 'ellipse', 'sticker'].includes(selected.type)
-  const hasStroke = ['rect', 'ellipse', 'line', 'arrow', 'sticker'].includes(selected.type)
-  const fontStyle = selected.fontStyle || 'normal'
+  const o = selected
+  const isText = o.type === 'text'
+  const hasFill = ['text', 'rect', 'ellipse', 'sticker'].includes(o.type)
+  const hasStroke = ['rect', 'ellipse', 'line', 'arrow', 'sticker'].includes(o.type)
+  const hasWH = (o.type === 'rect' || o.type === 'image')
+  const isEllipse = o.type === 'ellipse'
+  const fontStyle = o.fontStyle || 'normal'
   const isBold = fontStyle.includes('bold')
   const isItalic = fontStyle.includes('italic')
-  // B6: diskrete Aktion → 1 History-Eintrag, dann ohne weiteres pushHistory anwenden.
-  const setOnce = (patch) => { commitHistoryOnce(); updateObject(selected.id, patch, false); endInteraction() }
-  // B6: kontinuierliche Eingabe (Slider/Color/Number) → History EINMAL beim Start
-  // (onMouseDown/onFocus), während des Ziehens NUR updateObject(false).
+  const isUnderline = o.textDecoration === 'underline'
+  const selCount = (selectedIds || []).length
+
+  // diskrete Aktion → 1 History-Eintrag
+  const setOnce = (patch) => { commitHistoryOnce(); updateObject(o.id, patch, false); endInteraction() }
+  // kontinuierliche Eingabe → History EINMAL beim Start, dann live
   const startEdit = () => commitHistoryOnce()
-  const liveEdit = (patch) => updateObject(selected.id, patch, false)
-  const opacityPct = Math.round((selected.opacity == null ? 1 : selected.opacity) * 100)
+  const liveEdit = (patch) => updateObject(o.id, patch, false)
+  const opacityPct = Math.round((o.opacity == null ? 1 : o.opacity) * 100)
+
   function setStyleFlag(flag) {
     let parts = []
     let b = isBold, i = isItalic
@@ -2536,32 +2462,49 @@ function ContextBar({ selected, updateObject, reorder, deleteSelected, commitHis
     if (b) parts.push('bold'); if (i) parts.push('italic')
     setOnce({ fontStyle: parts.join(' ') || 'normal' })
   }
+
+  // Kompakte Zahlen-Eingabe (X/Y/B/H/Drehung)
+  const numField = (label, value, onCommitVal, opts = {}) => (
+    <label style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }} title={label}>
+      <span style={{ fontSize: 10.5, color: 'var(--text-muted)' }}>{label}</span>
+      <input type="number" value={Math.round((Number(value) || 0) * 100) / 100}
+        step={opts.step || 1} min={opts.min}
+        onMouseDown={startEdit} onFocus={startEdit} onBlur={endInteraction}
+        onChange={e => onCommitVal(parseFloat(e.target.value))}
+        style={{ width: opts.w || 56, height: 30, padding: '0 6px', borderRadius: 8, border: '1px solid var(--border)', fontSize: 12, fontFamily: 'inherit', outline: 'none', boxSizing: 'border-box' }} />
+    </label>
+  )
+
   return (
-    <div style={{ ...barStyle, flexWrap: 'wrap' }}>
+    <div style={{ ...barStyle, flexWrap: 'wrap', gap: 7 }}>
+      {/* ── Text-Formatierung ── */}
       {isText && (
         <>
-          <select value={selected.fontFamily || 'Inter'} onChange={e => setOnce({ fontFamily: e.target.value })}
-            style={selStyle}>
+          <select value={o.fontFamily || 'Inter'} onChange={e => setOnce({ fontFamily: e.target.value })} style={{ ...selStyle, minWidth: 116 }}>
             {FONT_LIST.map(f => <option key={f} value={f}>{f}</option>)}
           </select>
-          <input type="number" min={6} max={400} value={Math.round(selected.fontSize || 44)}
+          <input type="number" min={6} max={400} value={Math.round(o.fontSize || 44)}
             onFocus={startEdit} onMouseDown={startEdit} onBlur={endInteraction}
             onChange={e => liveEdit({ fontSize: parseInt(e.target.value, 10) || 44 })}
-            style={{ ...selStyle, width: 64 }} title="Schriftgröße" />
+            style={{ ...selStyle, width: 60 }} title="Schriftgröße" />
           <ToolBtn onClick={() => setStyleFlag('bold')} active={isBold} title="Fett"><Bold size={14} strokeWidth={2.2} /></ToolBtn>
           <ToolBtn onClick={() => setStyleFlag('italic')} active={isItalic} title="Kursiv"><Italic size={14} strokeWidth={2.2} /></ToolBtn>
-          <select value={selected.align || 'left'} onChange={e => setOnce({ align: e.target.value })} style={selStyle} title="Ausrichtung">
+          <ToolBtn onClick={() => setOnce({ textDecoration: isUnderline ? '' : 'underline' })} active={isUnderline} title="Unterstrichen"><Underline size={14} strokeWidth={2.2} /></ToolBtn>
+          <select value={o.align || 'left'} onChange={e => setOnce({ align: e.target.value })} style={selStyle} title="Textausrichtung">
             <option value="left">Links</option><option value="center">Zentriert</option><option value="right">Rechts</option>
           </select>
-          <select value={selected.effect || 'none'} onChange={e => setOnce({ effect: e.target.value })} style={selStyle} title="Texteffekt">
+          <select value={o.effect || 'none'} onChange={e => setOnce({ effect: e.target.value })} style={selStyle} title="Texteffekt">
             {TEXT_EFFECTS.map(ef => <option key={ef.id} value={ef.id}>{ef.label}</option>)}
           </select>
+          <Divider />
         </>
       )}
+
+      {/* ── Füllung / Rand / Eckenradius / Schatten ── */}
       {hasFill && (
         <label style={lblStyle} title="Füllfarbe">
           <span style={{ fontSize: 11, color: 'var(--text-muted)' }}>Füllung</span>
-          <input type="color" value={toHex(selected.fill)} onMouseDown={startEdit} onFocus={startEdit}
+          <input type="color" value={toHex(o.fill)} onMouseDown={startEdit} onFocus={startEdit}
             onChange={e => liveEdit({ fill: e.target.value })} onBlur={endInteraction} style={colorStyle} />
         </label>
       )}
@@ -2569,48 +2512,96 @@ function ContextBar({ selected, updateObject, reorder, deleteSelected, commitHis
         <>
           <label style={lblStyle} title="Randfarbe">
             <span style={{ fontSize: 11, color: 'var(--text-muted)' }}>Rand</span>
-            <input type="color" value={toHex(selected.stroke || '#ffffff')} onMouseDown={startEdit} onFocus={startEdit}
+            <input type="color" value={toHex(o.stroke || '#ffffff')} onMouseDown={startEdit} onFocus={startEdit}
               onChange={e => liveEdit({ stroke: e.target.value })} onBlur={endInteraction} style={colorStyle} />
           </label>
-          <input type="number" min={0} max={60} value={selected.strokeWidth || 0}
-            onFocus={startEdit} onMouseDown={startEdit} onBlur={endInteraction}
-            onChange={e => liveEdit({ strokeWidth: parseInt(e.target.value, 10) || 0 })}
-            style={{ ...selStyle, width: 56 }} title="Randstärke" />
+          {numField('Stärke', o.strokeWidth || 0, v => setOnce({ strokeWidth: Math.max(0, v || 0) }), { min: 0, w: 50 })}
         </>
       )}
-      {/* Deckkraft (alle Objekt-Typen) */}
+      {o.type === 'rect' && numField('Ecken', o.cornerRadius || 0, v => setOnce({ cornerRadius: Math.max(0, v || 0) }), { min: 0, w: 50 })}
+      {(hasFill || hasStroke) && (
+        <ToolBtn onClick={() => setOnce(o.shadowBlur ? { shadowBlur: 0 } : { shadowBlur: 12, shadowColor: 'rgba(0,0,0,0.35)', shadowOffsetX: 0, shadowOffsetY: 4 })} active={!!o.shadowBlur} title={o.shadowBlur ? 'Schatten aus' : 'Schatten an'}>
+            <Sliders size={14} strokeWidth={1.9} />
+        </ToolBtn>
+      )}
+
+      {/* ── Text-Feinheiten ── */}
+      {isText && (
+        <>
+          {numField('Zeilenh.', o.lineHeight || 1.2, v => setOnce({ lineHeight: v || 1.2 }), { step: 0.05, min: 0.5, w: 52 })}
+          {numField('Laufw.', o.letterSpacing || 0, v => setOnce({ letterSpacing: v || 0 }), { step: 0.5, w: 50 })}
+        </>
+      )}
+
+      <Divider />
+
+      {/* ── Position / Größe / Drehung ── */}
+      {numField('X', o.x, v => setOnce({ x: v || 0 }))}
+      {numField('Y', o.y, v => setOnce({ y: v || 0 }))}
+      {hasWH && numField('B', o.width, v => setOnce({ width: Math.max(1, v || 1) }), { min: 1 })}
+      {hasWH && numField('H', o.height, v => setOnce({ height: Math.max(1, v || 1) }), { min: 1 })}
+      {isEllipse && numField('rX', o.radiusX, v => setOnce({ radiusX: Math.max(1, v || 1) }), { min: 1 })}
+      {isEllipse && numField('rY', o.radiusY, v => setOnce({ radiusY: Math.max(1, v || 1) }), { min: 1 })}
+      {numField('Drehung°', o.rotation, v => setOnce({ rotation: v || 0 }), { w: 60 })}
+
+      {/* ── Deckkraft ── */}
       <label style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: 11, color: 'var(--text-muted)' }} title="Deckkraft">
         Deckkraft
         <input type="range" min={0} max={100} step={1} value={opacityPct}
-          onMouseDown={startEdit} onChange={e => liveEdit({ opacity: (parseInt(e.target.value, 10) || 0) / 100 })} style={{ width: 90 }} />
+          onMouseDown={startEdit} onChange={e => liveEdit({ opacity: (parseInt(e.target.value, 10) || 0) / 100 })} onMouseUp={endInteraction} style={{ width: 80, accentColor: P }} />
         <span style={{ width: 30, textAlign: 'right' }}>{opacityPct}%</span>
       </label>
+
       <Divider />
-      <ToolBtn onClick={() => reorder('top')} title="Nach ganz vorne (vor Motiv)"><BringToFront size={14} strokeWidth={1.9} /></ToolBtn>
+
+      {/* ── Ausrichten / Verteilen ── */}
+      <ToolBtn onClick={() => alignObjects('left')} title="Links ausrichten"><AlignStartVertical size={14} strokeWidth={1.9} /></ToolBtn>
+      <ToolBtn onClick={() => alignObjects('hcenter')} title="Horizontal zentrieren"><AlignCenterVertical size={14} strokeWidth={1.9} /></ToolBtn>
+      <ToolBtn onClick={() => alignObjects('right')} title="Rechts ausrichten"><AlignEndVertical size={14} strokeWidth={1.9} /></ToolBtn>
+      <ToolBtn onClick={() => alignObjects('top')} title="Oben ausrichten"><AlignStartHorizontal size={14} strokeWidth={1.9} /></ToolBtn>
+      <ToolBtn onClick={() => alignObjects('vcenter')} title="Vertikal zentrieren"><AlignCenterHorizontal size={14} strokeWidth={1.9} /></ToolBtn>
+      <ToolBtn onClick={() => alignObjects('bottom')} title="Unten ausrichten"><AlignEndHorizontal size={14} strokeWidth={1.9} /></ToolBtn>
+      {selCount >= 3 && <ToolBtn onClick={() => distributeObjects('h')} title="Horizontal verteilen"><AlignHorizontalDistributeCenter size={14} strokeWidth={1.9} /></ToolBtn>}
+      {selCount >= 3 && <ToolBtn onClick={() => distributeObjects('v')} title="Vertikal verteilen"><AlignVerticalDistributeCenter size={14} strokeWidth={1.9} /></ToolBtn>}
+
+      <Divider />
+
+      {/* ── Ebene / Duplizieren / Löschen ── */}
+      <ToolBtn onClick={() => reorder('top')} title="Nach ganz vorne"><BringToFront size={14} strokeWidth={1.9} /></ToolBtn>
       <ToolBtn onClick={() => reorder('up')} title="Eine Ebene nach vorne"><ChevronUp size={14} strokeWidth={2} /></ToolBtn>
       <ToolBtn onClick={() => reorder('down')} title="Eine Ebene nach hinten"><ChevronDown size={14} strokeWidth={2} /></ToolBtn>
-      <ToolBtn onClick={() => reorder('bottom')} title="Nach ganz hinten (hinter Motiv)"><SendToBack size={14} strokeWidth={1.9} /></ToolBtn>
+      <ToolBtn onClick={() => reorder('bottom')} title="Nach ganz hinten"><SendToBack size={14} strokeWidth={1.9} /></ToolBtn>
       <div style={{ flex: 1 }} />
+      <ToolBtn onClick={duplicateSelected} title="Duplizieren (Strg+D)"><Copy size={14} strokeWidth={1.9} /></ToolBtn>
       <ToolBtn onClick={deleteSelected} title="Löschen (Entf)"><Trash2 size={14} strokeWidth={1.9} /></ToolBtn>
     </div>
   )
 }
 
 // Leiste bei Mehrfach-Auswahl: gemeinsame Aktionen (Duplizieren, Deckkraft, Löschen).
-function MultiBar({ count, onDuplicate, onDelete, updateOpacity, commitHistoryOnce, endInteraction }) {
+function MultiBar({ count, onDuplicate, onDelete, updateOpacity, commitHistoryOnce, endInteraction, alignObjects, distributeObjects }) {
   return (
-    <div style={{ ...barStyle, flexWrap: 'wrap' }}>
-      <span style={{ fontSize: 12, fontWeight: 600, color: 'var(--text-primary)' }}>{count} Objekte ausgewählt</span>
+    <div style={{ ...barStyle, flexWrap: 'wrap', gap: 7 }}>
+      <span style={{ fontSize: 12, fontWeight: 700, color: 'var(--text-primary)' }}>{count} Objekte ausgewählt</span>
+      <Divider />
+      {/* Ausrichten / Verteilen relativ zur Auswahl */}
+      <ToolBtn onClick={() => alignObjects('left')} title="Links ausrichten"><AlignStartVertical size={14} strokeWidth={1.9} /></ToolBtn>
+      <ToolBtn onClick={() => alignObjects('hcenter')} title="Horizontal zentrieren"><AlignCenterVertical size={14} strokeWidth={1.9} /></ToolBtn>
+      <ToolBtn onClick={() => alignObjects('right')} title="Rechts ausrichten"><AlignEndVertical size={14} strokeWidth={1.9} /></ToolBtn>
+      <ToolBtn onClick={() => alignObjects('top')} title="Oben ausrichten"><AlignStartHorizontal size={14} strokeWidth={1.9} /></ToolBtn>
+      <ToolBtn onClick={() => alignObjects('vcenter')} title="Vertikal zentrieren"><AlignCenterHorizontal size={14} strokeWidth={1.9} /></ToolBtn>
+      <ToolBtn onClick={() => alignObjects('bottom')} title="Unten ausrichten"><AlignEndHorizontal size={14} strokeWidth={1.9} /></ToolBtn>
+      {count >= 3 && <ToolBtn onClick={() => distributeObjects('h')} title="Horizontal verteilen"><AlignHorizontalDistributeCenter size={14} strokeWidth={1.9} /></ToolBtn>}
+      {count >= 3 && <ToolBtn onClick={() => distributeObjects('v')} title="Vertikal verteilen"><AlignVerticalDistributeCenter size={14} strokeWidth={1.9} /></ToolBtn>}
       <Divider />
       <label style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: 11, color: 'var(--text-muted)' }} title="Deckkraft (alle)">
         Deckkraft
         <input type="range" min={0} max={100} step={1} defaultValue={100}
           onMouseDown={commitHistoryOnce} onChange={e => updateOpacity((parseInt(e.target.value, 10) || 0) / 100)}
-          onMouseUp={endInteraction} style={{ width: 110 }} />
+          onMouseUp={endInteraction} style={{ width: 100, accentColor: P }} />
       </label>
-      <Divider />
-      <SmallBtn onClick={onDuplicate}>Duplizieren</SmallBtn>
       <div style={{ flex: 1 }} />
+      <ToolBtn onClick={onDuplicate} title="Duplizieren (Strg+D)"><Copy size={14} strokeWidth={1.9} /></ToolBtn>
       <ToolBtn onClick={onDelete} title="Auswahl löschen (Entf)"><Trash2 size={14} strokeWidth={1.9} /></ToolBtn>
     </div>
   )
@@ -2625,7 +2616,7 @@ function FormatMenu({ onPick }) {
       {open && (
         <>
           <div onClick={() => setOpen(false)} style={{ position: 'fixed', inset: 0, zIndex: 80 }} />
-          <div style={{ position: 'absolute', top: 'calc(100% + 6px)', left: 0, zIndex: 81, background: '#fff', border: '1px solid var(--border)', borderRadius: 10, boxShadow: '0 10px 30px rgba(0,0,0,.12)', padding: 8, width: 260 }}>
+          <div style={{ position: 'absolute', top: 'calc(100% + 6px)', right: 0, zIndex: 81, background: '#fff', border: '1px solid var(--border)', borderRadius: 10, boxShadow: '0 10px 30px rgba(0,0,0,.12)', padding: 8, width: 260 }}>
             {FORMAT_PRESETS.map(p => (
               <MenuItem key={p.id} onClick={() => { onPick(p); setOpen(false) }}>{p.label}</MenuItem>
             ))}
@@ -2666,30 +2657,44 @@ function toHex(c) {
 // ════════════════════════════════════════════════════════════════════════════
 // CANVA-STIL: linke Werkzeug-Schiene + Panel
 // ════════════════════════════════════════════════════════════════════════════
+// Werkzeuge der linken Schiene, in sinnvolle Gruppen unterteilt:
+//   1) Erstellen: Vorlagen / Elemente / Text / Uploads
+//   2) Marke
+//   3) Bearbeiten: KI / Filter / Ebenen
+// Ein 'divider'-Eintrag erzeugt eine dezente Trennlinie zwischen den Gruppen.
 const RAIL_TOOLS = [
   { id: 'templates', label: 'Vorlagen', Icon: LayoutTemplate },
   { id: 'elements',  label: 'Elemente', Icon: StarIcon },
   { id: 'text',      label: 'Text',     Icon: Type },
   { id: 'uploads',   label: 'Uploads',  Icon: Upload },
+  { id: 'div1', divider: true },
   { id: 'brand',     label: 'Marke',    Icon: Palette },
+  { id: 'div2', divider: true },
   { id: 'ai',        label: 'KI',       Icon: Wand2 },
   { id: 'filter',    label: 'Filter',   Icon: Sliders },
+  { id: 'layers',    label: 'Ebenen',   Icon: Layers },
 ]
 
 function ToolRail({ active, onSelect }) {
   return (
-    <div style={{ width: 74, flexShrink: 0, borderRight: '1px solid var(--border)', background: 'var(--surface,#fff)',
-      display: 'flex', flexDirection: 'column', alignItems: 'stretch', gap: 2, padding: '8px 6px', overflowY: 'auto' }}>
+    <div style={{ width: 76, flexShrink: 0, borderRight: '1px solid var(--border)', background: 'var(--surface,#fff)',
+      display: 'flex', flexDirection: 'column', alignItems: 'stretch', gap: 3, padding: '10px 8px', overflowY: 'auto' }}>
       {RAIL_TOOLS.map(t => {
+        if (t.divider) {
+          return <div key={t.id} style={{ height: 1, background: 'var(--border,#E9ECF2)', margin: '5px 6px' }} />
+        }
         const on = active === t.id
         return (
           <button key={t.id} onClick={() => onSelect(t.id)} title={t.label}
-            style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 3, padding: '8px 2px',
-              borderRadius: 9, border: 'none', cursor: 'pointer', fontFamily: 'inherit',
-              background: on ? 'rgba(49,90,231,0.10)' : 'transparent',
-              color: on ? P : 'var(--text-muted,#475467)' }}>
-            <t.Icon size={19} strokeWidth={1.9} />
-            <span style={{ fontSize: 10, fontWeight: on ? 700 : 600 }}>{t.label}</span>
+            style={{ position: 'relative', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4, padding: '9px 2px',
+              borderRadius: 11, border: 'none', cursor: 'pointer', fontFamily: 'inherit', transition: 'background .12s',
+              background: on ? 'color-mix(in srgb, var(--wl-primary, rgb(49,90,231)) 13%, transparent)' : 'transparent',
+              color: on ? P : 'var(--text-muted,#475467)' }}
+            onMouseEnter={e => { if (!on) e.currentTarget.style.background = 'rgba(16,24,40,0.04)' }}
+            onMouseLeave={e => { if (!on) e.currentTarget.style.background = 'transparent' }}>
+            {on && <span style={{ position: 'absolute', left: 0, top: 8, bottom: 8, width: 3, borderRadius: 3, background: P }} />}
+            <t.Icon size={20} strokeWidth={on ? 2.1 : 1.9} />
+            <span style={{ fontSize: 10, fontWeight: on ? 700 : 600, letterSpacing: '0.01em' }}>{t.label}</span>
           </button>
         )
       })}
@@ -2949,7 +2954,7 @@ function TemplateThumb({ tpl }) {
 // ─── Panel-Rahmen (docked sidebar oder Overlay-Popup) ───────────────────────
 function ToolPanel(props) {
   const { docked, tool, onClose } = props
-  const titleMap = { templates: 'Vorlagen', elements: 'Elemente', text: 'Text', uploads: 'Uploads', brand: 'Marke', ai: 'KI-Werkzeuge', filter: 'Filter' }
+  const titleMap = { templates: 'Vorlagen', elements: 'Elemente', text: 'Text', uploads: 'Uploads', brand: 'Marke', ai: 'KI-Werkzeuge', filter: 'Filter', layers: 'Ebenen' }
   const frame = docked
     ? { width: 300, flexShrink: 0, borderRight: '1px solid var(--border)', background: 'var(--surface,#fff)', display: 'flex', flexDirection: 'column', height: '100%', overflow: 'hidden' }
     : { position: 'absolute', left: 8, top: 8, bottom: 8, zIndex: 90, width: 300, maxWidth: 'calc(100% - 16px)', borderRadius: 12,
@@ -2969,6 +2974,7 @@ function ToolPanel(props) {
         {tool === 'brand' && <BrandPanelBody {...props} />}
         {tool === 'ai' && <AiPanelBody {...props} />}
         {tool === 'filter' && <FilterPanelBody {...props} />}
+        {tool === 'layers' && <LayersPanelBody {...props} />}
       </div>
     </div>
   )
@@ -3227,6 +3233,66 @@ function FilterPanelBody({ filters, setFilters, commitHistoryOnce, endInteractio
       </div>
       <div style={{ marginTop: 14 }}>
         <PanelBtn full onClick={() => { commitHistoryOnce(); setFilters({ brightness: 0, contrast: 0, saturation: 0, blur: 0, grayscale: 0 }); endInteraction() }}>Filter zurücksetzen</PanelBtn>
+      </div>
+    </div>
+  )
+}
+
+// ─── Panel: Ebenen ──────────────────────────────────────────────────────────
+// Ersetzt den früheren EBENEN-Abschnitt der rechten Spalte. Gleiche Logik:
+// Auswahl, Drag-Reorder (reorderObjects), Auge/Schloss (toggleLayerFlag),
+// Umbenennen (renameLayer / renamingId).
+function LayersPanelBody({
+  objects, selectedIds, setSelectedIds, reorderObjects, toggleLayerFlag,
+  renameLayer, renamingId, setRenamingId, layerDragRef, layerDragOverId, setLayerDragOverId,
+}) {
+  const layers = [...(objects || [])].reverse()  // oberste Ebene oben
+  return (
+    <div>
+      <div style={{ fontSize: 11.5, color: 'var(--text-muted)', marginBottom: 10 }}>
+        Reihenfolge per Ziehen ändern. Auge = Ein-/Ausblenden, Schloss = Sperren, Doppelklick = Umbenennen.
+      </div>
+      {layers.length === 0 && (
+        <div style={{ fontSize: 12, color: 'var(--text-muted)', padding: '14px 0' }}>Noch keine Objekte. Füge Text, Formen oder Bilder hinzu.</div>
+      )}
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+        {layers.map(layer => {
+          const isSel = (selectedIds || []).includes(layer.id)
+          const Meta = LAYER_META[layer.type] || LAYER_META.rect
+          const Icon = Meta.Icon
+          const dragOver = layerDragOverId === layer.id
+          return (
+            <div key={layer.id}
+              draggable
+              onDragStart={() => { if (layerDragRef) layerDragRef.current = layer.id }}
+              onDragOver={(e) => { e.preventDefault(); setLayerDragOverId && setLayerDragOverId(layer.id) }}
+              onDragLeave={() => setLayerDragOverId && setLayerDragOverId(null)}
+              onDrop={(e) => { e.preventDefault(); const d = layerDragRef && layerDragRef.current; if (d && d !== layer.id) reorderObjects(d, layer.id, false); setLayerDragOverId && setLayerDragOverId(null); if (layerDragRef) layerDragRef.current = null }}
+              onClick={() => setSelectedIds([layer.id])}
+              style={{ display: 'flex', alignItems: 'center', gap: 7, padding: '7px 8px', borderRadius: 9, cursor: 'pointer',
+                background: isSel ? 'color-mix(in srgb, var(--wl-primary, rgb(49,90,231)) 12%, transparent)' : '#fff',
+                border: dragOver ? `1px dashed ${P}` : '1px solid var(--border)', opacity: layer.hidden ? 0.5 : 1 }}>
+              <GripVertical size={14} color="var(--text-muted)" style={{ cursor: 'grab', flexShrink: 0 }} />
+              <Icon size={14} color={isSel ? P : 'var(--text-muted)'} style={{ flexShrink: 0 }} />
+              {renamingId === layer.id ? (
+                <input autoFocus defaultValue={rpLabel(layer)}
+                  onBlur={(e) => renameLayer(layer.id, e.target.value.trim() || rpLabel(layer))}
+                  onKeyDown={(e) => { if (e.key === 'Enter') e.target.blur(); if (e.key === 'Escape') { setRenamingId(null) } }}
+                  onClick={e => e.stopPropagation()}
+                  style={{ flex: 1, minWidth: 0, fontSize: 12, padding: '3px 6px', border: '1px solid var(--border)', borderRadius: 6, fontFamily: 'inherit', outline: 'none' }} />
+              ) : (
+                <span onDoubleClick={(e) => { e.stopPropagation(); setRenamingId(layer.id) }}
+                  style={{ flex: 1, minWidth: 0, fontSize: 12.5, color: 'var(--text-primary)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{rpLabel(layer)}</span>
+              )}
+              <button onClick={(e) => { e.stopPropagation(); toggleLayerFlag(layer.id, 'hidden') }} title={layer.hidden ? 'Einblenden' : 'Ausblenden'} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-muted)', display: 'flex', padding: 1 }}>
+                {layer.hidden ? <EyeOff size={14} /> : <Eye size={14} />}
+              </button>
+              <button onClick={(e) => { e.stopPropagation(); toggleLayerFlag(layer.id, 'locked') }} title={layer.locked ? 'Entsperren' : 'Sperren'} style={{ background: 'none', border: 'none', cursor: 'pointer', color: layer.locked ? P : 'var(--text-muted)', display: 'flex', padding: 1 }}>
+                {layer.locked ? <Lock size={14} /> : <Unlock size={14} />}
+              </button>
+            </div>
+          )
+        })}
       </div>
     </div>
   )

@@ -11,7 +11,7 @@
 //   - Beim ersten Send im Clean-Modus → Sidebar klappt automatisch auf
 
 import React, { useState, useEffect, useRef } from 'react'
-import { Pencil, Pin, BookOpen, Target, Send, Loader2, Globe, Plus, FileText, ChevronLeft, ChevronRight, X, Mic, Square, Image as ImageIcon, Download, Sparkles, Wand2, FilePlus2, Brush } from 'lucide-react'
+import { Pencil, Pin, BookOpen, Target, Send, Loader2, Globe, Plus, FileText, ChevronLeft, ChevronRight, X, Mic, Square, Image as ImageIcon, Download, Sparkles, Wand2, FilePlus2, Brush, Maximize2, Minimize2 } from 'lucide-react'
 import { useVoiceInput } from '../hooks/useVoiceInput'
 import CompanyMultiSelect from '../components/CompanyMultiSelect'
 import AudienceSelect from '../components/AudienceSelect'
@@ -709,7 +709,7 @@ export default function ContentStudio({ session }) {
       )}
 
       {/* Main */}
-      <main style={{ flex: (editorOpen && paneView === 'suite') ? '0 0 0%' : '1 1 0', minWidth:0, display: (editorOpen && paneView === 'suite') ? 'none' : 'flex', flexDirection:'column', overflow:'hidden', position:'relative' }}>
+      <main style={{ flex: '1 1 0', minWidth:0, display:'flex', flexDirection:'column', overflow:'hidden', position:'relative', transition:'flex-basis 0.34s cubic-bezier(0.45,0,0.15,1)' }}>
         {/* Floating Sidebar-Toggle wenn zu */}
         {!sidebarOpen && (
           <button onClick={() => setSidebarOpen(true)} title="Sidebar öffnen"
@@ -815,6 +815,11 @@ export default function ContentStudio({ session }) {
               })}
             </div>
             <div style={{ flex:1 }}/>
+            <button onClick={() => setPaneView(v => v === 'suite' ? 'split' : 'suite')}
+              title={paneView === 'suite' ? 'Zurück zum Splitscreen' : 'Vollbild'}
+              style={{ width:30, height:30, borderRadius:8, border:'1px solid var(--border)', background:'#fff', cursor:'pointer', color:'var(--text-muted)', display:'inline-flex', alignItems:'center', justifyContent:'center' }}>
+              {paneView === 'suite' ? <Minimize2 size={15}/> : <Maximize2 size={15}/>}
+            </button>
             <button onClick={() => { setEditorOpen(false); setPaneView('split') }} title="Schließen"
               style={{ width:30, height:30, borderRadius:8, border:'1px solid var(--border)', background:'#fff', cursor:'pointer', color:'var(--text-muted)', display:'inline-flex', alignItems:'center', justifyContent:'center' }}>
               <X size={16}/>
@@ -872,8 +877,8 @@ export default function ContentStudio({ session }) {
       )})()}
 
       {/* Drei Fullscreen-Zustände: Chat ⇄ Split ⇄ Suite, plus Editor ein-/ausklappen */}
-      <div style={{ position:'absolute', top:'50%', right: !editorOpen ? '0' : (paneView === 'suite' ? '100%' : '52%'), transform:'translateY(-50%)', zIndex:30,
-          transition:'right 0.34s cubic-bezier(0.45,0,0.15,1)', display:'flex', flexDirection:'column', gap:4 }}>
+      <div style={{ position:'absolute', top:'50%', right: !editorOpen ? '0' : '52%', transform:'translateY(-50%)', zIndex:30,
+          transition:'right 0.34s cubic-bezier(0.45,0,0.15,1)', display: (editorOpen && paneView === 'suite') ? 'none' : 'flex', flexDirection:'column', gap:4 }}>
         {!editorOpen ? (
           <button onClick={() => {
               setEditorOpen(true); setPaneView('split'); setSidebarOpen(false)
