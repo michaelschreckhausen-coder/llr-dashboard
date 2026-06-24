@@ -27,6 +27,32 @@ const SUPABASE_ANON_KEY    = Deno.env.get("SUPABASE_ANON_KEY")!;
 const SUPABASE_SERVICE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
 
 const DEFAULT_MODEL = "claude-sonnet-4-6";  // Aligned mit src/components/ModelSelector.jsx
+
+// ─── Guardrail: schreibende/außenwirksame Tools brauchen explizite Bestätigung ──
+// Diese Tools werden im Loop NICHT autonom ausgeführt, sondern als pending_action
+// ans Frontend zurückgegeben. Ausführung erst nach User-Klick via confirmed_action.
+// (remember_/forget_preference sind interne Lern-Config → kein Bestätigungszwang.)
+const WRITE_TOOLS = new Set<string>([
+  'create_lead', 'create_task', 'create_deal',
+  'update_lead', 'update_deal', 'update_organization',
+  'add_brand_memory', 'report_problem',
+]);
+
+function summarizeAction(name: string, input: Record<string, unknown>): string {
+  const i = input || {};
+  const s = (v: unknown) => (typeof v === 'string' ? v : '');
+  switch (name) {
+    case 'create_lead': return `Kontakt anlegen: ${[s(i.first_name), s(i.last_name)].filter(Boolean).join(' ') || '—'}${i.company ? ` (${s(i.company)})` : ''}`;
+    case 'update_lead': return `Kontakt aktualisieren${i.status ? ` → Status ${s(i.status)}` : ''}${i.lead_score != null ? ` · Score ${i.lead_score}` : ''}`;
+    case 'create_task': return `Aufgabe anlegen: ${s(i.title) || '—'}${i.due_date ? ` (fällig ${s(i.due_date)})` : ''}`;
+    case 'create_deal': return `Deal anlegen: ${s(i.title) || '—'}${i.value != null ? ` · ${i.value} €` : ''}${i.stage ? ` · ${s(i.stage)}` : ''}`;
+    case 'update_deal': return `Deal aktualisieren${i.stage ? ` → ${s(i.stage)}` : ''}${i.value != null ? ` · ${i.value} €` : ''}`;
+    case 'update_organization': return `Unternehmen aktualisieren`;
+    case 'add_brand_memory': return `Brand-Notiz speichern: ${s(i.content).slice(0, 80) || '—'}`;
+    case 'report_problem': return `Support-Ticket erstellen: ${s(i.summary).slice(0, 80) || '—'}`;
+    default: return `Aktion: ${name}`;
+  }
+}
 const EMBEDDING_MODEL = "text-embedding-3-small";  // 1536 dims, OpenAI
 const MAX_ITERATIONS = 6;
 const MEMORY_TOP_K = 4;            // User-Memory Top-K
@@ -1247,6 +1273,38 @@ ${JSON.stringify(context, null, 2)}`;
       return json({ briefing_text: text, context, briefing_date: today });
     }
 
+    // ─── Confirmed write execution (Guardrail-Freigabe) ──────────────
+    // Frontend ruft nach User-Klick „Übernehmen" mit confirmed_action. Es wird
+    // GENAU dieses bestätigte Tool ausgeführt (RLS-scoped als der User) + auditiert.
+    // Kein LLM-Call, kein Credit-Gate (Tools sind kostenlos).
+    if (body.confirmed_action && typeof body.confirmed_action === 'object') {
+      const ca = body.confirmed_action as { name?: string; input?: Record<string, unknown> };
+      const caName = String(ca.name || '');
+      if (!WRITE_TOOLS.has(caName)) {
+        return json({ error: 'Unbekannte oder nicht bestätigungspflichtige Aktion.' }, 400);
+      }
+      const caInput = (ca.input && typeof ca.input === 'object') ? ca.input as Record<string, unknown> : {};
+      const result = await executeTool(caName, caInput, supabase, ctx);
+      // Audit (service-role; darf den Flow nie blocken)
+      try {
+        await adminForCredits.from('leadly_action_audit').insert({
+          user_id: userId, team_id: teamId, account_id: caller.account_id,
+          tool_name: caName, tool_input: caInput, result,
+          ok: !!(result as { ok?: boolean }).ok, confirmed: true,
+        });
+      } catch (_e) { /* audit non-blocking */ }
+      const ok = !!(result as { ok?: boolean }).ok;
+      const okMsg = ok ? 'Erledigt.' : ('Das hat nicht geklappt: ' + ((result as { error?: string }).error || 'unbekannter Fehler') + '.');
+      return json({
+        reply: { role: 'assistant', content: okMsg, tool_calls: null },
+        tool_results: [{ tool_use_id: 'confirmed-' + caName, name: caName, output: result }],
+        executed: true,
+        model: DEFAULT_MODEL,
+        finish_reason: 'confirmed',
+        iterations: 0,
+      });
+    }
+
     // ─── Mode: chat (Tool-Use-Loop) ──────────────────────────────────
     const incoming = Array.isArray(body.messages) ? body.messages : [];
     // Defensive: nur valide user/assistant-text-Messages durchreichen.
@@ -1404,6 +1462,32 @@ ${JSON.stringify(context, null, 2)}`;
 
       if (toolUses.length === 0 || lastFinish !== 'tool_use') {
         break; // Final assistant message
+      }
+
+      // ─── Guardrail: WRITE-Tools NIE autonom ausführen ──────────────
+      // Will das Modell ein schreibendes/außenwirksames Tool nutzen, führen wir
+      // es NICHT aus, sondern geben es als pending_action zur Bestätigung zurück.
+      // (Lese-Tools in derselben Runde werden dann ebenfalls nicht ausgeführt —
+      //  selten; der Loop endet hier. Der orphan tool_use im persistierten Verlauf
+      //  wird beim nächsten Replay ohnehin verworfen, s. Filter oben.)
+      const writeUses = toolUses.filter(tu => WRITE_TOOLS.has(tu.name));
+      if (writeUses.length > 0) {
+        const preamble = lastAssistantBlocks
+          .filter((b: { type: string }) => b.type === 'text')
+          .map((b: { text: string }) => b.text).join('\n').trim();
+        return json({
+          reply: { role: 'assistant', content: preamble || null, tool_calls: null },
+          pending_actions: writeUses.map(tu => ({
+            tool_use_id: tu.id, name: tu.name, input: tu.input || {},
+            summary: summarizeAction(tu.name, tu.input || {}),
+          })),
+          requires_confirmation: true,
+          tool_results: [],
+          model: DEFAULT_MODEL,
+          finish_reason: 'pending_confirmation',
+          iterations: iter,
+          learning_scope: learningScope,
+        });
       }
 
       // Assistant-Turn ans Message-Array hängen

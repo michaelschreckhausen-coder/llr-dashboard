@@ -465,6 +465,31 @@ export default function LeadlyPanel({ leadly, onClose, embedded = false, hideHea
         </div>
       )}
 
+      {Array.isArray(leadly.pendingActions) && leadly.pendingActions.length > 0 && (
+        <div style={{ borderTop: '1px solid #FDE68A', background: '#FFFBEB', padding: '10px 12px', display: 'flex', flexDirection: 'column', gap: 8 }}>
+          <div style={{ fontSize: 11, fontWeight: 700, color: '#92400E', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
+            Bestätigung nötig
+          </div>
+          {leadly.pendingActions.map((a) => (
+            <div key={a.tool_use_id} style={{ background: '#fff', border: '1px solid #FDE68A', borderRadius: 10, padding: '10px 12px' }}>
+              <div style={{ fontSize: 13, fontWeight: 600, color: '#1F2937', marginBottom: 8 }}>Soll ich das tun? — {a.summary}</div>
+              <div style={{ display: 'flex', gap: 8 }}>
+                <button type="button" disabled={leadly.isSending}
+                  onClick={() => leadly.confirmAction(a)}
+                  style={{ padding: '7px 14px', borderRadius: 8, border: 'none', background: PRIMARY, color: '#fff', fontSize: 12, fontWeight: 700, cursor: leadly.isSending ? 'wait' : 'pointer', opacity: leadly.isSending ? 0.6 : 1 }}>
+                  Übernehmen
+                </button>
+                <button type="button" disabled={leadly.isSending}
+                  onClick={() => leadly.dismissActions()}
+                  style={{ padding: '7px 14px', borderRadius: 8, border: '1px solid #E4E7EC', background: '#fff', color: '#6B7280', fontSize: 12, fontWeight: 600, cursor: 'pointer' }}>
+                  Verwerfen
+                </button>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+
       <form onSubmit={handleSubmit} style={inputBarStyle}>
         <input
           ref={fileInputRef}

@@ -33,6 +33,8 @@ export function useLeadly({ autoOpenLatest = true } = {}) {
   const [isLoadingConversations, setIsLoadingConversations] = useState(true);
   const [messages, setMessages] = useState([]);
   const [isSending, setIsSending] = useState(false);
+  // Guardrail: vom EF zurückgegebene, bestätigungspflichtige Schreib-Aktionen.
+  const [pendingActions, setPendingActions] = useState([]);
   const [briefing, setBriefing] = useState(null);
   const [briefingReadLocal, setBriefingReadLocal] = useState(false);
   const mountedRef = useRef(true);
@@ -119,12 +121,14 @@ export function useLeadly({ autoOpenLatest = true } = {}) {
   const selectConversation = useCallback((id) => {
     setActiveConversationId(id);
     setMessages([]);
+    setPendingActions([]);
   }, []);
 
   // Neuer Chat: noch nicht persistiert (wird beim ersten Senden angelegt)
   const newConversation = useCallback(() => {
     setActiveConversationId(null);
     setMessages([]);
+    setPendingActions([]);
   }, []);
 
   const deleteConversation = useCallback(async (id) => {
@@ -170,6 +174,7 @@ export function useLeadly({ autoOpenLatest = true } = {}) {
     const atts = Array.isArray(attachments) ? attachments.filter(a => a && a.base64 && a.type) : [];
     if (!uid || (!trimmed && atts.length === 0)) return;
     setIsSending(true);
+    setPendingActions([]); // neue Eingabe verwirft offene Vorschläge
     const effectiveText = trimmed || 'Bitte sieh dir meinen Anhang an.';
 
     // Chat sicherstellen (lazy anlegen)
@@ -245,6 +250,11 @@ export function useLeadly({ autoOpenLatest = true } = {}) {
         return [...withoutOpt, ...additions];
       });
 
+      // Guardrail: bestätigungspflichtige Schreib-Aktionen anzeigen (nicht ausgeführt).
+      if (data.requires_confirmation && Array.isArray(data.pending_actions) && data.pending_actions.length) {
+        setPendingActions(data.pending_actions.map(a => ({ ...a, conversation_id: convId })));
+      }
+
       // Chat-Reihenfolge aktualisieren (updated_at) + Liste neu sortieren
       await supabase.from('assistant_conversations').update({ updated_at: new Date().toISOString() }).eq('id', convId);
       refreshConversations();
@@ -260,6 +270,57 @@ export function useLeadly({ autoOpenLatest = true } = {}) {
     }
   }, [uid, activeTeamId, messages, refreshConversations]);
 
+  // confirmAction: führt eine zuvor vorgeschlagene Schreib-Aktion nach User-Freigabe aus.
+  const confirmAction = useCallback(async (action) => {
+    if (!uid || !action || !action.name) return;
+    const convId = action.conversation_id || activeConvRef.current;
+    setIsSending(true);
+    try {
+      const { data, error } = await supabase.functions.invoke('leadly', {
+        body: { mode: 'chat', confirmed_action: { name: action.name, input: action.input || {} }, team_id: activeTeamId || null },
+      });
+      if (error) throw error;
+      setPendingActions(prev => prev.filter(a => a.tool_use_id !== action.tool_use_id));
+      if (convId) {
+        const savedTools = [];
+        for (const tr of (data.tool_results || [])) {
+          const { data: savedTr } = await supabase.from('assistant_messages').insert({
+            user_id: uid, team_id: activeTeamId || null, conversation_id: convId,
+            role: 'tool', content: tr.name, tool_use_id: tr.tool_use_id, tool_result: tr.output,
+          }).select(MSG_COLS).single();
+          if (savedTr) savedTools.push(savedTr);
+        }
+        let savedAssistant = null;
+        if (data.reply) {
+          const { data: sa } = await supabase.from('assistant_messages').insert({
+            user_id: uid, team_id: activeTeamId || null, conversation_id: convId,
+            role: 'assistant', content: data.reply.content || null,
+            metadata: { model: data.model, finish_reason: data.finish_reason, confirmed: true },
+          }).select(MSG_COLS).single();
+          savedAssistant = sa;
+        }
+        setMessages(prev => {
+          const have = new Set(prev.map(m => m.id));
+          const add = [...savedTools, ...(savedAssistant ? [savedAssistant] : [])].filter(m => m && !have.has(m.id));
+          return [...prev, ...add];
+        });
+        await supabase.from('assistant_conversations').update({ updated_at: new Date().toISOString() }).eq('id', convId);
+        refreshConversations();
+      }
+    } catch (e) {
+      console.warn('[useLeadly] confirmAction failed:', e?.message || e);
+      setMessages(prev => ([...prev, {
+        id: `err-${Date.now()}`, role: 'assistant',
+        content: 'Die Aktion konnte nicht ausgeführt werden. Versuch es bitte nochmal.',
+        metadata: { error: e?.message || 'unknown' }, created_at: new Date().toISOString(),
+      }]));
+    } finally {
+      setIsSending(false);
+    }
+  }, [uid, activeTeamId, refreshConversations]);
+
+  const dismissActions = useCallback(() => setPendingActions([]), []);
+
   // clearHistory: startet einen neuen Chat (nicht destruktiv — alte Chats bleiben)
   const clearHistory = useCallback(() => { newConversation(); }, [newConversation]);
 
@@ -273,6 +334,7 @@ export function useLeadly({ autoOpenLatest = true } = {}) {
     conversations, activeConversationId, isLoadingConversations,
     selectConversation, newConversation, deleteConversation,
     messages, isSending, sendMessage, clearHistory,
+    pendingActions, confirmAction, dismissActions,
     briefing, fetchBriefing, markBriefingRead, unreadCount,
-  }), [uid, conversations, activeConversationId, isLoadingConversations, selectConversation, newConversation, deleteConversation, messages, isSending, sendMessage, clearHistory, briefing, fetchBriefing, markBriefingRead, unreadCount]);
+  }), [uid, conversations, activeConversationId, isLoadingConversations, selectConversation, newConversation, deleteConversation, messages, isSending, sendMessage, clearHistory, pendingActions, confirmAction, dismissActions, briefing, fetchBriefing, markBriefingRead, unreadCount]);
 }
