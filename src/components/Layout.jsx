@@ -112,6 +112,9 @@ function getNav(t) {
   { to: '/leads',           icon: IcUsers,    label: 'Kontakte' },
   { to: '/leads/imports',   icon: IcUsers,    label: 'Import-Historie', indent: true },
   { to: '/deals',           icon: IcBarChart, label: t('nav.deals') },
+  // Aus Sponsoring in CRM verschoben; Per-Item-Gating ans Sponsoring-Addon gebunden.
+  { to: '/sponsoring/angebote',  icon: IcDoc,    label: 'Angebote',  module: 'sponsoring' },
+  { to: '/sponsoring/vertraege', icon: IcShield, label: 'Verträge',  module: 'sponsoring' },
   { to: '/reports',         icon: IcBarChart, label: t('nav.salesReporting') },
 
   // Projektumsetzung temporär ausgeblendet (2026-06-01 — kommt später zurück)
@@ -146,9 +149,7 @@ function getNav(t) {
   { to: '/sponsoring',                 icon: IcRocket,        label: 'Übersicht' },
   { to: '/sponsoring/kampagnen',       icon: IcRocket,        label: 'Kampagnen' },
   { to: '/sponsoring/branchenanalyse', icon: IcTarget,        label: 'Branchenanalyse' },
-  { to: '/sponsoring/angebote',        icon: IcDoc,           label: 'Angebote' },
   { to: '/sponsoring/mockup',          icon: IcSparkles,      label: 'Mockup-Studio' },
-  { to: '/sponsoring/vertraege',       icon: IcShield,        label: 'Verträge' },
   { to: '/sponsoring/aktivierung',     icon: IcZap,           label: 'Aktivierung' },
   { to: '/sponsoring/ziele',           icon: IcStar,          label: 'Ziele (SOLL)' },
   { to: '/sponsoring/reporting',       icon: IcBarChart,      label: 'Reporting' },
