@@ -105,7 +105,6 @@ function getNav(t) {
   { to: '/company-brand',   icon: IcCompanyBrand, label: 'Company Brand' },
   { to: '/zielgruppen',     icon: IcTarget,   label: t('nav.zielgruppen') },
   { to: '/branding/strike2-personas', icon: IcTarget, label: 'Strike2 Zielgruppen', module: 'strike2_zielgruppen_plus' },
-  { to: '/wissensdatenbank', icon: IcCloud,   label: t('nav.wissensdatenbank') },
   { to: '/ki-sichtbarkeit', icon: IcSparkles, label: 'KI-Sichtbarkeit', addonSlug: 'auralis' },
 
   { divider: true, label: t('nav.sales'), tourId: 'nav-sales' },
@@ -130,6 +129,15 @@ function getNav(t) {
   { to: '/visuals',         icon: IcImage,    label: 'Visuals' },
   { to: '/media',           icon: IcBarChart, label: 'Medien' },
 
+  // "Wissen" — gemischte Herkunft: Wissensdatenbank (branding-Modul) + Ligen/Pakete
+  // (sponsoring-Addon). BEWUSST KEIN Eintrag in SIDEBAR_DIVIDER_TO_MODULE → Gating
+  // läuft per-Item über item.module; die Section verschwindet via Hide-empty-Divider
+  // (Layout-Filter unten), sobald 0 Items sichtbar sind. Routen unverändert.
+  { divider: true, label: 'Wissen', tourId: 'nav-wissen' },
+  { to: '/wissensdatenbank',  icon: IcCloud,  label: t('nav.wissensdatenbank'), module: 'branding' },
+  { to: '/sponsoring/ligen',  icon: IcShield, label: 'Ligen',  module: 'sponsoring' },
+  { to: '/sponsoring/pakete', icon: IcPuzzle, label: 'Pakete', module: 'sponsoring' },
+
   // Sponsoring OS — Addon-Section. Divider-Label MUSS 'Sponsoring' sein, damit
   // SIDEBAR_DIVIDER_TO_MODULE die Section ohne sponsoring-Modul ausblendet.
   { divider: true, label: 'Sponsoring', tourId: 'nav-sponsoring' },
@@ -137,8 +145,6 @@ function getNav(t) {
   { to: '/sponsoring/kampagnen',       icon: IcRocket,        label: 'Kampagnen' },
   { to: '/sponsoring/branchenanalyse', icon: IcTarget,        label: 'Branchenanalyse' },
   { to: '/sponsoring/rechte',          icon: IcGrid,          label: 'Rechte & Inventar' },
-  { to: '/sponsoring/ligen',           icon: IcShield,        label: 'Ligen' },
-  { to: '/sponsoring/pakete',          icon: IcPuzzle,        label: 'Pakete' },
   { to: '/sponsoring/angebote',        icon: IcDoc,           label: 'Angebote' },
   { to: '/sponsoring/mockup',          icon: IcSparkles,      label: 'Mockup-Studio' },
   { to: '/sponsoring/vertraege',       icon: IcShield,        label: 'Verträge' },
