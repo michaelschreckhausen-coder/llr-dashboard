@@ -48,6 +48,21 @@ export async function getVisual(id) {
   return supabase.from('visuals').select('*').eq('id', id).maybeSingle()
 }
 
+// Medien-Bibliothek: alle Bilder des Teams (brand-scoped, neueste zuerst) — für den
+// Medien-Tab im Designer. RLS scoped zusätzlich über visuals.team_id.
+export async function listTeamVisuals({ teamId, brandVoiceId, limit = 80 } = {}) {
+  let q = supabase
+    .from('visuals')
+    .select('id, title, storage_path, thumbnail_path, created_at')
+    .order('created_at', { ascending: false })
+    .limit(limit)
+  if (brandVoiceId) q = q.eq('brand_voice_id', brandVoiceId)
+  else if (teamId) q = q.eq('team_id', teamId)
+  const { data, error } = await q
+  if (error) return { data: [] }
+  return { data: (data || []).filter(v => v.storage_path) }
+}
+
 // patch: { title?, design_json?, storage_path?, thumbnail_path?, prompt? }
 export async function updateVisual(id, patch) {
   return supabase.from('visuals').update(patch).eq('id', id).select().single()

@@ -38,7 +38,7 @@ import {
   AlignHorizontalDistributeCenter, AlignVerticalDistributeCenter,
 } from 'lucide-react'
 import { supabase } from '../../lib/supabase'
-import { visualDataUrl, uploadDesignRender, updateVisual, getVisual } from '../../lib/contentVisuals'
+import { visualDataUrl, uploadDesignRender, updateVisual, getVisual, listTeamVisuals, signedVisualUrl } from '../../lib/contentVisuals'
 import { splitModelValue, DEFAULT_IMAGE_MODEL } from '../../lib/imageModels'
 import { DESIGN_TEMPLATES } from '../../lib/designTemplates'
 import { DESIGN_ASSETS, ASSET_CATEGORIES } from '../../lib/designAssets'
@@ -54,6 +54,66 @@ const PRGB = 'rgb(49,90,231)'
 // Akzentfarbe für den "Verzerren"-Modus (nach Doppelklick): klar abgesetzt von der
 // primären Auswahl-Farbe, damit der freie Transform-Modus sofort erkennbar ist.
 const DISTORT_RGB = 'rgb(245,158,11)'
+
+// ─── Bildfilter (Canva-Stil) ────────────────────────────────────────────────
+// Vollständiger Satz neutraler Default-Werte. Wird an allen Lade-/Reset-Stellen
+// gespreadet, damit ältere Designs ohne neue Felder sauber hydrieren.
+const EMPTY_FILTERS = {
+  brightness: 0, contrast: 0, saturation: 0, hue: 0, blur: 0,
+  warmth: 0, tint: 0, enhance: 0, noise: 0, pixelate: 0,
+  grayscale: 0, sepia: 0, invert: 0, vignette: 0,
+}
+const _clamp255 = (v) => (v < 0 ? 0 : v > 255 ? 255 : v)
+// Custom-Konva-Filter — lesen ihre Stärke aus Node-Attributen (in der Apply-Logik gesetzt).
+function WarmthFilter(imageData) {
+  const amt = this.getAttr('fWarmth') || 0
+  if (!amt) return
+  const d = imageData.data
+  for (let i = 0; i < d.length; i += 4) { d[i] = _clamp255(d[i] + amt); d[i + 2] = _clamp255(d[i + 2] - amt) }
+}
+function TintFilter(imageData) {
+  const amt = this.getAttr('fTint') || 0
+  if (!amt) return
+  const d = imageData.data
+  // positiv → grün, negativ → magenta
+  for (let i = 0; i < d.length; i += 4) { d[i + 1] = _clamp255(d[i + 1] + amt) }
+}
+function SepiaFilter(imageData) {
+  if (!this.getAttr('fSepia')) return
+  const d = imageData.data
+  for (let i = 0; i < d.length; i += 4) {
+    const r = d[i], g = d[i + 1], b = d[i + 2]
+    d[i] = _clamp255(0.393 * r + 0.769 * g + 0.189 * b)
+    d[i + 1] = _clamp255(0.349 * r + 0.686 * g + 0.168 * b)
+    d[i + 2] = _clamp255(0.272 * r + 0.534 * g + 0.131 * b)
+  }
+}
+function VignetteFilter(imageData) {
+  const amt = this.getAttr('fVignette') || 0
+  if (!amt) return
+  const w = imageData.width, h = imageData.height, d = imageData.data
+  const cx = w / 2, cy = h / 2, maxD = Math.sqrt(cx * cx + cy * cy)
+  for (let y = 0; y < h; y++) {
+    for (let x = 0; x < w; x++) {
+      const dist = Math.sqrt((x - cx) * (x - cx) + (y - cy) * (y - cy)) / maxD
+      const f = 1 - amt * Math.max(0, (dist - 0.45) * 1.8)
+      if (f >= 1) continue
+      const i = (y * w + x) * 4
+      d[i] *= f; d[i + 1] *= f; d[i + 2] *= f
+    }
+  }
+}
+// Ein-Klick-Looks (setzen mehrere Werte gleichzeitig).
+const FILTER_PRESETS = [
+  { id: 'original', label: 'Original', f: {} },
+  { id: 'vivid',    label: 'Lebendig', f: { saturation: 1.1, contrast: 16, enhance: 0.3 } },
+  { id: 'warm',     label: 'Warm',     f: { warmth: 28, saturation: 0.4 } },
+  { id: 'cool',     label: 'Kühl',     f: { warmth: -26, saturation: 0.2 } },
+  { id: 'matt',     label: 'Matt',     f: { contrast: -18, brightness: 0.06, saturation: -0.4 } },
+  { id: 'vintage',  label: 'Vintage',  f: { sepia: 1, contrast: -6, vignette: 0.4, saturation: -0.3 } },
+  { id: 'sw',       label: 'S/W',      f: { grayscale: 1, contrast: 12 } },
+  { id: 'sepia',    label: 'Sepia',    f: { sepia: 1 } },
+]
 
 // Gängige Web-Fonts (inkl. der bereits genutzten Inter/Georgia/Caveat).
 const FONTS = [
@@ -173,7 +233,7 @@ export default function DesignerCanvas({ visual, teamId, onSaved, onReplaceVisua
   const [bgColor, setBgColor] = useState(null)        // null = kein Farbgrund (Bild-Modus)
 
   // Bild-Filter (auf Bild-Objekt[e])
-  const [filters, setFilters] = useState({ brightness: 0, contrast: 0, saturation: 0, blur: 0, grayscale: 0 })
+  const [filters, setFilters] = useState({ ...EMPTY_FILTERS })
 
   // Crop-Modus
   const [cropMode, setCropMode] = useState(false)
@@ -211,6 +271,10 @@ export default function DesignerCanvas({ visual, teamId, onSaved, onReplaceVisua
   const [brandData, setBrandData] = useState(null)         // { palette, logos:[{path,url}], fonts:[{family,...}] }
   const [brandFontFamilies, setBrandFontFamilies] = useState([])
   const [brandLoading, setBrandLoading] = useState(false)
+  // Medien-Bibliothek (Team-Bilder, brand-scoped) für den Medien-Tab
+  const [mediaLib, setMediaLib] = useState([])             // [{ id, url, storage_path }]
+  const [mediaLoading, setMediaLoading] = useState(false)
+  const mediaLoadedRef = useRef(false)
 
   // ─── Runde 2: rechte Spalte (Ebenen + Eigenschaften) ──────────────────────
   const [renamingId, setRenamingId] = useState(null)           // Ebene wird gerade umbenannt
@@ -260,7 +324,7 @@ export default function DesignerCanvas({ visual, teamId, onSaved, onReplaceVisua
               setStageSize({ width: w, height: h })
               setBaseCrop(null)
               setObjects(Array.isArray(dj.objects) ? dj.objects : [])
-              setFilters({ brightness:0, contrast:0, saturation:0, blur:0, grayscale:0, ...(dj.filters || {}) })
+              setFilters({ ...EMPTY_FILTERS, ...(dj.filters || {}) })
               resetMaskCanvas(w, h)
               historyRef.current = []; futureRef.current = []
             } catch (_e) { /* noop */ }
@@ -305,7 +369,7 @@ export default function DesignerCanvas({ visual, teamId, onSaved, onReplaceVisua
                 primaryImageIdRef.current = p?.id || null
               }
               setObjects(objs)
-              if (dj2.filters) setFilters({ brightness:0, contrast:0, saturation:0, blur:0, grayscale:0, ...dj2.filters })
+              if (dj2.filters) setFilters({ ...EMPTY_FILTERS, ...dj2.filters })
               if (dj2.baseCrop) setBaseCrop(dj2.baseCrop)
               setBgColor(dj2.bgColor || '#ffffff')
               setStageSize({ width: stW, height: stH })
@@ -321,7 +385,7 @@ export default function DesignerCanvas({ visual, teamId, onSaved, onReplaceVisua
               x: 0, y: 0, width: w, height: h, rotation: 0, opacity: 1 }])
             setBgColor('#ffffff')
             setStageSize({ width: w, height: h })
-            setFilters({ brightness:0, contrast:0, saturation:0, blur:0, grayscale:0 })
+            setFilters({ ...EMPTY_FILTERS })
           }
           resetMaskCanvas(w, h)
           historyRef.current = []
@@ -522,14 +586,31 @@ export default function DesignerCanvas({ visual, teamId, onSaved, onReplaceVisua
           const active = []
           if (filters.brightness) active.push(Konva.Filters.Brighten)
           if (filters.contrast) active.push(Konva.Filters.Contrast)
-          if (filters.saturation || filters.grayscale) active.push(Konva.Filters.HSL)
+          if (filters.saturation || filters.hue || filters.grayscale) active.push(Konva.Filters.HSL)
           if (filters.grayscale) active.push(Konva.Filters.Grayscale)
+          if (filters.enhance) active.push(Konva.Filters.Enhance)
+          if (filters.warmth) active.push(WarmthFilter)
+          if (filters.tint) active.push(TintFilter)
+          if (filters.sepia) active.push(SepiaFilter)
+          if (filters.invert) active.push(Konva.Filters.Invert)
+          if (filters.noise) active.push(Konva.Filters.Noise)
           if (filters.blur) active.push(Konva.Filters.Blur)
+          if (filters.pixelate) active.push(Konva.Filters.Pixelate)
+          if (filters.vignette) active.push(VignetteFilter)
           node.filters(active)
           node.brightness(filters.brightness || 0)
           node.contrast(filters.contrast || 0)
           node.saturation(filters.saturation || 0)
+          node.hue(filters.hue || 0)
+          node.enhance(filters.enhance || 0)
+          node.noise(filters.noise || 0)
           node.blurRadius(filters.blur || 0)
+          node.pixelSize(Math.max(1, Math.round(filters.pixelate || 1)))
+          // Custom-Filter-Stärken als Node-Attribute durchreichen.
+          node.setAttr('fWarmth', filters.warmth || 0)
+          node.setAttr('fTint', filters.tint || 0)
+          node.setAttr('fSepia', filters.sepia ? 1 : 0)
+          node.setAttr('fVignette', filters.vignette || 0)
           if (active.length) { node.cache() } else { node.clearCache() }
         } else {
           node.filters([]); node.clearCache()
@@ -651,7 +732,7 @@ export default function DesignerCanvas({ visual, teamId, onSaved, onReplaceVisua
   const applyState = (st) => {
     skipHistoryRef.current = true
     setObjects(st.objects || [])
-    setFilters({ brightness:0, contrast:0, saturation:0, blur:0, grayscale:0, ...(st.filters || {}) })
+    setFilters({ ...EMPTY_FILTERS, ...(st.filters || {}) })
     setBaseCrop(st.baseCrop || null)
     if (st.bgColor !== undefined) setBgColor(st.bgColor)
     if (st.stageSize) setStageSize(st.stageSize)
@@ -831,36 +912,64 @@ export default function DesignerCanvas({ visual, teamId, onSaved, onReplaceVisua
     return objects.find(o => o.type === 'image') || null
   }, [selected, objects])
 
-  // ─── Brand-Identität laden (Farben, Logos, Schriften) ──────────────────────
+  // ─── Brand-Identität (Markenkits) laden ─────────────────────────────────────
+  // Company Brand → nur das EIGENE Kit (Farben, Logos, Schriften).
+  // Personal Brand → die Kits ALLER Company-Brands des Teams (untereinander).
   useEffect(() => {
     let cancelled = false
-    const bvId = activeBrandVoice?.id
+    const bv = activeBrandVoice
+    const bvId = bv?.id
     if (!bvId) { setBrandData(null); setBrandFontFamilies([]); return }
     setBrandLoading(true)
+    const isCompany = bv?.account_type === 'company_page'
+    const signLogos = async (logoPaths) => {
+      const logos = []
+      for (const p of (Array.isArray(logoPaths) ? logoPaths : [])) {
+        try {
+          const { data: s } = await supabase.storage.from('visuals').createSignedUrl(p, 60 * 60 * 24)
+          if (s?.signedUrl) logos.push({ path: p, url: s.signedUrl })
+        } catch (_e) {}
+      }
+      return logos
+    }
+    const kitFromRow = async (row) => ({
+      id: row.id,
+      name: row.name || 'Marke',
+      palette: Array.isArray(row?.visual_color_palette) ? row.visual_color_palette : [],
+      logos: await signLogos(row?.logo_paths),
+      fonts: Array.isArray(row?.font_assets) ? row.font_assets : [],
+    })
     ;(async () => {
       try {
-        const { data: row } = await supabase
-          .from('brand_voices')
-          .select('logo_paths, ci_image_paths, font_assets, visual_color_palette')
-          .eq('id', bvId).maybeSingle()
-        if (cancelled) return
-        const palette = Array.isArray(row?.visual_color_palette) ? row.visual_color_palette
-          : (Array.isArray(activeBrandVoice?.visual_color_palette) ? activeBrandVoice.visual_color_palette : [])
-        const logoPaths = Array.isArray(row?.logo_paths) ? row.logo_paths : []
-        // Logos liegen im 'visuals'-Bucket (signierte URLs, wie in Media.jsx).
-        const logos = []
-        for (const p of logoPaths) {
-          try {
-            const { data: s } = await supabase.storage.from('visuals').createSignedUrl(p, 60 * 60 * 24)
-            if (s?.signedUrl) logos.push({ path: p, url: s.signedUrl })
-          } catch (_e) {}
+        if (isCompany) {
+          const { data: row } = await supabase.from('brand_voices')
+            .select('name, logo_paths, ci_image_paths, font_assets, visual_color_palette')
+            .eq('id', bvId).maybeSingle()
+          if (cancelled) return
+          const kit = await kitFromRow({ ...(row || {}), id: bvId })
+          if (cancelled) return
+          setBrandData({ palette: kit.palette, logos: kit.logos, fonts: kit.fonts })
+          let families = []
+          try { families = await loadBrandFonts(kit.fonts) } catch (_e) {}
+          if (!cancelled) setBrandFontFamilies(families || [])
+        } else {
+          // Personal Brand → alle Company-Brands des Teams
+          let q = supabase.from('brand_voices')
+            .select('id, name, logo_paths, font_assets, visual_color_palette, account_type, team_id')
+            .eq('account_type', 'company_page')
+            .order('name', { ascending: true })
+          if (teamId) q = q.eq('team_id', teamId)
+          const { data: rows } = await q
+          if (cancelled) return
+          const companies = []
+          for (const r of (rows || [])) { companies.push(await kitFromRow(r)) }
+          if (cancelled) return
+          setBrandData({ companies })
+          const allFonts = companies.flatMap(c => c.fonts || [])
+          let families = []
+          try { families = await loadBrandFonts(allFonts) } catch (_e) {}
+          if (!cancelled) setBrandFontFamilies(families || [])
         }
-        const fonts = Array.isArray(row?.font_assets) ? row.font_assets : []
-        let families = []
-        try { families = await loadBrandFonts(fonts) } catch (_e) {}
-        if (cancelled) return
-        setBrandData({ palette, logos, fonts })
-        setBrandFontFamilies(families || [])
       } catch (_e) {
         if (!cancelled) { setBrandData(null); setBrandFontFamilies([]) }
       } finally {
@@ -869,7 +978,32 @@ export default function DesignerCanvas({ visual, teamId, onSaved, onReplaceVisua
     })()
     return () => { cancelled = true }
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [activeBrandVoice?.id])
+  }, [activeBrandVoice?.id, activeBrandVoice?.account_type, teamId])
+
+  // ─── Medien-Bibliothek laden (beim Öffnen des Medien-Tabs) ──────────────────
+  useEffect(() => {
+    if (activeTool !== 'uploads') return
+    if (mediaLoadedRef.current) return
+    mediaLoadedRef.current = true
+    let cancelled = false
+    setMediaLoading(true)
+    ;(async () => {
+      try {
+        const { data } = await listTeamVisuals({ teamId, brandVoiceId: activeBrandVoice?.id, limit: 80 })
+        const withUrls = []
+        for (const v of (data || [])) {
+          const url = await signedVisualUrl(v.storage_path, 3600)
+          if (url) withUrls.push({ id: v.id, url, storage_path: v.storage_path })
+        }
+        if (!cancelled) setMediaLib(withUrls)
+      } catch (_e) { if (!cancelled) setMediaLib([]) }
+      finally { if (!cancelled) setMediaLoading(false) }
+    })()
+    return () => { cancelled = true }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activeTool, activeBrandVoice?.id, teamId])
+  // Bei Brand-Wechsel Medien-Bibliothek invalidieren.
+  useEffect(() => { mediaLoadedRef.current = false; setMediaLib([]) }, [activeBrandVoice?.id])
 
   // Stage-Center in Bühnenkoordinaten (zum Platzieren neuer Objekte)
   const center = () => {
@@ -953,6 +1087,15 @@ export default function DesignerCanvas({ visual, teamId, onSaved, onReplaceVisua
     }
     img.onerror = () => setSavedMsg('Bild konnte nicht geladen werden.')
     img.src = dataUrl
+  }
+  // Bild aus der Medien-Bibliothek (Storage-Pfad) als Objekt einfügen.
+  async function insertMediaFromPath(storagePath) {
+    if (!storagePath) return
+    try {
+      const dataUrl = await visualDataUrl(storagePath)
+      if (dataUrl) addImageFromDataUrl(dataUrl)
+      else setSavedMsg('Medium konnte nicht geladen werden.')
+    } catch (_e) { setSavedMsg('Medium konnte nicht geladen werden.') }
   }
   function onPickImageFile(file) {
     if (!file) return
@@ -1064,7 +1207,7 @@ export default function DesignerCanvas({ visual, teamId, onSaved, onReplaceVisua
       setBgColor(tpl.background || '#ffffff')
       setStageSize({ width: w, height: h })
       setBaseCrop(null)
-      setFilters({ brightness:0, contrast:0, saturation:0, blur:0, grayscale:0 })
+      setFilters({ ...EMPTY_FILTERS })
       setObjects(tplObjs)
       resetMaskCanvas(w, h)
     }
@@ -2527,9 +2670,11 @@ export default function DesignerCanvas({ visual, teamId, onSaved, onReplaceVisua
           onInsertMedia={(dataUrl) => addImageFromDataUrl(dataUrl)}
           // Text
           onAddText={addText} onAddTextPreset={addTextPreset}
-          // Uploads
+          // Uploads / Medien
           onTriggerUpload={triggerImageUpload} uploadThumbs={uploadThumbs}
           onInsertUpload={(url) => addImageFromDataUrl(url)}
+          mediaLib={mediaLib} mediaLoading={mediaLoading}
+          onInsertMediaItem={(storagePath) => insertMediaFromPath(storagePath)}
           // Marke
           brandData={brandData} brandLoading={brandLoading}
           onApplyBrandColor={applyBrandColor} onInsertBrandLogo={insertBrandLogo} onApplyBrandFont={applyBrandFont}
@@ -3135,7 +3280,7 @@ function toHex(c) {
 const RAIL_TOOLS = [
   { id: 'elements',  label: 'Elemente', Icon: StarIcon },
   { id: 'text',      label: 'Text',     Icon: Type },
-  { id: 'uploads',   label: 'Uploads',  Icon: Upload },
+  { id: 'uploads',   label: 'Medien',   Icon: ImageIcon },
   { id: 'div1', divider: true },
   { id: 'brand',     label: 'Marke',    Icon: Palette },
   { id: 'div2', divider: true },
@@ -3423,7 +3568,7 @@ function TemplateThumb({ tpl }) {
 // ─── Panel-Rahmen (docked sidebar oder Overlay-Popup) ───────────────────────
 function ToolPanel(props) {
   const { docked, tool, onClose } = props
-  const titleMap = { templates: 'Vorlagen', elements: 'Elemente', text: 'Text', uploads: 'Uploads', brand: 'Marke', ai: 'KI-Werkzeuge', filter: 'Filter', layers: 'Ebenen' }
+  const titleMap = { templates: 'Vorlagen', elements: 'Elemente', text: 'Text', uploads: 'Medien', brand: 'Marke', ai: 'KI-Werkzeuge', filter: 'Filter', layers: 'Ebenen' }
   const frame = docked
     ? { width: 300, flexShrink: 0, borderRight: '1px solid var(--border)', background: 'var(--surface,#fff)', display: 'flex', flexDirection: 'column', height: '100%', overflow: 'hidden' }
     : { position: 'absolute', left: 8, top: 8, bottom: 8, zIndex: 90, width: 300, maxWidth: 'calc(100% - 16px)', borderRadius: 12,
@@ -3553,7 +3698,7 @@ function TextPanelBody({ onAddText, onAddTextPreset }) {
 const textStyleBtn = { display: 'flex', alignItems: 'center', width: '100%', padding: '10px 12px', borderRadius: 9, border: '1px solid var(--border)', background: '#fff', cursor: 'pointer', color: 'var(--text-primary)', fontFamily: 'inherit', textAlign: 'left' }
 
 // ─── Panel: Uploads ─────────────────────────────────────────────────────────
-function UploadsPanelBody({ onTriggerUpload, uploadThumbs, onInsertUpload }) {
+function UploadsPanelBody({ onTriggerUpload, uploadThumbs, onInsertUpload, mediaLib, mediaLoading, onInsertMediaItem }) {
   return (
     <div>
       <PanelBtn full primary onClick={onTriggerUpload}><Upload size={15} strokeWidth={1.9} />Bild hochladen</PanelBtn>
@@ -3561,7 +3706,7 @@ function UploadsPanelBody({ onTriggerUpload, uploadThumbs, onInsertUpload }) {
       {(uploadThumbs || []).length > 0 && (
         <>
           <PanelLabel>Diese Sitzung</PanelLabel>
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 8 }}>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 8, marginBottom: 14 }}>
             {uploadThumbs.map((u, i) => (
               <button key={i} onClick={() => onInsertUpload(u)} title="Einfügen"
                 style={{ height: 64, borderRadius: 8, border: '1px solid var(--border)', background: `#f4f6fa center/cover no-repeat url(${u})`, cursor: 'pointer' }} />
@@ -3569,18 +3714,25 @@ function UploadsPanelBody({ onTriggerUpload, uploadThumbs, onInsertUpload }) {
           </div>
         </>
       )}
+      <PanelLabel>Medien-Bibliothek</PanelLabel>
+      {mediaLoading ? (
+        <MediaSpinner label="Medien werden geladen…" />
+      ) : ((mediaLib || []).length === 0 ? (
+        <MediaEmpty label="Noch keine Bilder in dieser Marke. Erzeuge welche im Chat oder lade sie hoch." />
+      ) : (
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 8 }}>
+          {mediaLib.map((m) => (
+            <button key={m.id} onClick={() => onInsertMediaItem(m.storage_path)} title="Einfügen"
+              style={{ height: 64, borderRadius: 8, border: '1px solid var(--border)', background: `#f4f6fa center/cover no-repeat url(${m.url})`, cursor: 'pointer' }} />
+          ))}
+        </div>
+      ))}
     </div>
   )
 }
 
 // ─── Panel: Marke ───────────────────────────────────────────────────────────
-function BrandPanelBody({ brandData, brandLoading, onApplyBrandColor, onInsertBrandLogo, onApplyBrandFont, hasSelection }) {
-  if (brandLoading) return <div style={{ fontSize: 12, color: 'var(--text-muted)' }}>Marken-Identität wird geladen…</div>
-  const palette = brandData?.palette || []
-  const logos = brandData?.logos || []
-  const fonts = brandData?.fonts || []
-  const empty = !palette.length && !logos.length && !fonts.length
-  if (empty) return <div style={{ fontSize: 12, color: 'var(--text-muted)' }}>Für diese Marke ist noch keine visuelle Identität hinterlegt (Farben, Logos, Schriften). Du kannst sie im Branding-Bereich pflegen.</div>
+function BrandKit({ palette, logos, fonts, onApplyBrandColor, onInsertBrandLogo, onApplyBrandFont, hasSelection }) {
   return (
     <div>
       {palette.length > 0 && (
@@ -3621,6 +3773,36 @@ function BrandPanelBody({ brandData, brandLoading, onApplyBrandColor, onInsertBr
       )}
     </div>
   )
+}
+
+// ─── Panel: Marke ───────────────────────────────────────────────────────────
+// Company Brand → ein Kit. Personal Brand → die Kits aller Company-Brands des Teams.
+function BrandPanelBody({ brandData, brandLoading, onApplyBrandColor, onInsertBrandLogo, onApplyBrandFont, hasSelection }) {
+  if (brandLoading) return <div style={{ fontSize: 12, color: 'var(--text-muted)' }}>Markenkits werden geladen…</div>
+  const handlers = { onApplyBrandColor, onInsertBrandLogo, onApplyBrandFont, hasSelection }
+  // Personal-Brand-Ansicht: mehrere Company-Kits untereinander.
+  if (brandData && Array.isArray(brandData.companies)) {
+    const companies = brandData.companies.filter(c => (c.palette?.length || c.logos?.length || c.fonts?.length))
+    if (!companies.length) return <div style={{ fontSize: 12, color: 'var(--text-muted)' }}>Für die Unternehmen in diesem Team ist noch keine visuelle Identität hinterlegt. Du kannst sie im Branding-Bereich der jeweiligen Company Brand pflegen.</div>
+    return (
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 18 }}>
+        {companies.map(c => (
+          <div key={c.id}>
+            <div style={{ fontSize: 12.5, fontWeight: 800, color: 'var(--text-primary)', marginBottom: 8 }}>{c.name}</div>
+            <BrandKit palette={c.palette || []} logos={c.logos || []} fonts={c.fonts || []} {...handlers} />
+          </div>
+        ))}
+      </div>
+    )
+  }
+  // Company-Brand-Ansicht: ein eigenes Kit.
+  const palette = brandData?.palette || []
+  const logos = brandData?.logos || []
+  const fonts = brandData?.fonts || []
+  if (!palette.length && !logos.length && !fonts.length) {
+    return <div style={{ fontSize: 12, color: 'var(--text-muted)' }}>Für diese Marke ist noch keine visuelle Identität hinterlegt (Farben, Logos, Schriften). Du kannst sie im Branding-Bereich pflegen.</div>
+  }
+  return <BrandKit palette={palette} logos={logos} fonts={fonts} {...handlers} />
 }
 
 // ─── Panel: KI ──────────────────────────────────────────────────────────────
@@ -3686,22 +3868,56 @@ function AiPanelBody({
 // ─── Panel: Filter ──────────────────────────────────────────────────────────
 function FilterPanelBody({ filters, setFilters, commitHistoryOnce, endInteraction, filterScope }) {
   const set = (k, v) => setFilters({ ...filters, [k]: v })
+  const applyPreset = (f) => { commitHistoryOnce(); setFilters({ ...EMPTY_FILTERS, ...f }); endInteraction() }
+  const toggle = (k) => { commitHistoryOnce(); set(k, filters[k] ? 0 : 1); endInteraction() }
+  const Toggle = ({ k, label }) => (
+    <button onClick={() => toggle(k)}
+      style={{ flex: 1, height: 32, borderRadius: 8, cursor: 'pointer', fontFamily: 'inherit', fontSize: 12, fontWeight: 600,
+        border: '1px solid ' + (filters[k] ? P : 'var(--border,#E9ECF2)'),
+        background: filters[k] ? 'rgba(49,90,231,0.08)' : 'var(--surface,#fff)',
+        color: filters[k] ? P : 'var(--text-muted,#475467)' }}>{label}</button>
+  )
   return (
     <div>
-      <div style={{ fontSize: 11.5, color: 'var(--text-muted)', marginBottom: 12 }}>
+      <div style={{ fontSize: 11.5, color: 'var(--text-muted)', marginBottom: 10 }}>
         Filter gelten {filterScope === 'einzeln' ? 'für das ausgewählte Bild.' : 'für alle Bild-Ebenen (nichts ausgewählt).'}
       </div>
-      <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
-        <Slider label="Helligkeit" min={-0.6} max={0.6} step={0.02} value={filters.brightness} onStart={commitHistoryOnce} onEnd={endInteraction} onChange={v => set('brightness', v)} />
+
+      <PanelLabel>Looks</PanelLabel>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: 6, marginBottom: 16 }}>
+        {FILTER_PRESETS.map(p => (
+          <button key={p.id} onClick={() => applyPreset(p.f)}
+            style={{ height: 30, borderRadius: 8, border: '1px solid var(--border,#E9ECF2)', background: 'var(--surface,#fff)',
+              color: 'var(--text-primary)', fontSize: 11.5, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit' }}>
+            {p.label}
+          </button>
+        ))}
+      </div>
+
+      <PanelLabel>Anpassen</PanelLabel>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 13 }}>
+        <Slider label="Belichtung" min={-0.6} max={0.6} step={0.02} value={filters.brightness} onStart={commitHistoryOnce} onEnd={endInteraction} onChange={v => set('brightness', v)} />
         <Slider label="Kontrast" min={-60} max={60} step={2} value={filters.contrast} onStart={commitHistoryOnce} onEnd={endInteraction} onChange={v => set('contrast', v)} />
         <Slider label="Sättigung" min={-2} max={4} step={0.1} value={filters.saturation} onStart={commitHistoryOnce} onEnd={endInteraction} onChange={v => set('saturation', v)} />
+        <Slider label="Wärme" min={-60} max={60} step={2} value={filters.warmth} onStart={commitHistoryOnce} onEnd={endInteraction} onChange={v => set('warmth', v)} />
+        <Slider label="Farbton" min={0} max={359} step={1} value={filters.hue} onStart={commitHistoryOnce} onEnd={endInteraction} onChange={v => set('hue', v)} />
+        <Slider label="Tönung" min={-60} max={60} step={2} value={filters.tint} onStart={commitHistoryOnce} onEnd={endInteraction} onChange={v => set('tint', v)} />
+        <Slider label="Schärfe" min={0} max={1} step={0.05} value={filters.enhance} onStart={commitHistoryOnce} onEnd={endInteraction} onChange={v => set('enhance', v)} />
         <Slider label="Weichzeichnen" min={0} max={30} step={1} value={filters.blur} onStart={commitHistoryOnce} onEnd={endInteraction} onChange={v => set('blur', v)} />
-        <label style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: 12, color: 'var(--text-muted)' }}>
-          <input type="checkbox" checked={!!filters.grayscale} onChange={e => { commitHistoryOnce(); set('grayscale', e.target.checked ? 1 : 0); endInteraction() }} />Graustufen
-        </label>
+        <Slider label="Körnung" min={0} max={1} step={0.02} value={filters.noise} onStart={commitHistoryOnce} onEnd={endInteraction} onChange={v => set('noise', v)} />
+        <Slider label="Vignette" min={0} max={1} step={0.05} value={filters.vignette} onStart={commitHistoryOnce} onEnd={endInteraction} onChange={v => set('vignette', v)} />
+        <Slider label="Verpixeln" min={0} max={24} step={1} value={filters.pixelate} onStart={commitHistoryOnce} onEnd={endInteraction} onChange={v => set('pixelate', v)} />
       </div>
-      <div style={{ marginTop: 14 }}>
-        <PanelBtn full onClick={() => { commitHistoryOnce(); setFilters({ brightness: 0, contrast: 0, saturation: 0, blur: 0, grayscale: 0 }); endInteraction() }}>Filter zurücksetzen</PanelBtn>
+
+      <PanelLabel>Effekte</PanelLabel>
+      <div style={{ display: 'flex', gap: 6 }}>
+        <Toggle k="grayscale" label="S/W" />
+        <Toggle k="sepia" label="Sepia" />
+        <Toggle k="invert" label="Invertieren" />
+      </div>
+
+      <div style={{ marginTop: 16 }}>
+        <PanelBtn full onClick={() => { commitHistoryOnce(); setFilters({ ...EMPTY_FILTERS }); endInteraction() }}>Alle Filter zurücksetzen</PanelBtn>
       </div>
     </div>
   )
