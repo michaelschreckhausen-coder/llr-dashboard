@@ -1827,6 +1827,29 @@ export default function DesignerCanvas({ visual, teamId, onSaved, onReplaceVisua
     try { layer.destroyChildren(); layer.batchDraw() } catch (_e) {}
   }
 
+  // Live-Grad-Anzeige während des Drehens: ein kleines Badge direkt unter dem
+  // (rotierten) Element auf dem Guide-Layer — kein React-Re-Render, daher flüssig.
+  function drawRotationBadge(node) {
+    const layer = guideLayerRef.current
+    if (!layer || !node) return
+    try {
+      layer.destroyChildren()
+      const box = node.getClientRect({ relativeTo: node.getStage() })
+      const deg = Math.round((((node.rotation() || 0) % 360) + 360) % 360)
+      const cx = box.x + box.width / 2
+      const by = box.y + box.height + 12 / effScale
+      const label = new Konva.Label({ x: cx, y: by, listening: false })
+      label.add(new Konva.Tag({ fill: 'rgba(17,24,39,0.92)', cornerRadius: 5 / effScale }))
+      label.add(new Konva.Text({
+        text: deg + '°', fontSize: 13 / effScale, fontStyle: '700',
+        fill: '#fff', padding: 6 / effScale, fontFamily: 'inherit',
+      }))
+      label.offsetX(label.getWidth() / 2)
+      layer.add(label)
+      layer.batchDraw()
+    } catch (_e) {}
+  }
+
   // Liefert die Stage-lokalen Bounding-Boxen ALLER nicht-übersprungenen, sichtbaren
   // Objekte (für Gleichabstands-Erkennung). Stage-lokal = inkl. -off-Versatz.
   function otherObjBounds(skipIds) {
@@ -2245,6 +2268,11 @@ export default function DesignerCanvas({ visual, teamId, onSaved, onReplaceVisua
       },
       onTransformStart: () => pushHistory(),
       onTransform: (e) => {
+        const node = e.target
+        let anchor = ''
+        try { anchor = trRef.current?.getActiveAnchor() || '' } catch (_e) {}
+        // Drehen: nur das Live-Grad-Badge zeichnen (kein Kanten-Snap-Overhead) → flüssig.
+        if (anchor === 'rotater') { drawRotationBadge(node); return }
         // Smart-Guides auch beim Skalieren: aktive Kante(n) snappen + Hilfslinien zeigen.
         // Im proportionalen Modus (Nicht-Text, kein Verzerren) wird das achsenweise
         // Kanten-Snapping übersprungen, da es sonst das Seitenverhältnis verzerren würde.
@@ -2252,9 +2280,6 @@ export default function DesignerCanvas({ visual, teamId, onSaved, onReplaceVisua
         const singleSel = selectedIds.length === 1 && selectedIds[0] === o.id
         const proportional = singleSel && !isText && distortId !== o.id
         if (proportional) return
-        const node = e.target
-        let anchor = ''
-        try { anchor = trRef.current?.getActiveAnchor() || '' } catch (_e) {}
         applyResizeSnap(node, anchor, [o.id])
       },
       onTransformEnd: (e) => {
@@ -2562,8 +2587,8 @@ export default function DesignerCanvas({ visual, teamId, onSaved, onReplaceVisua
                   anchorCornerRadius={distortActive ? 1 : 6}
                   borderStroke={distortActive ? DISTORT_RGB : PRGB}
                   borderStrokeWidth={distortActive ? 2 : 1.5}
-                  rotationSnaps={[0, 15, 30, 45, 60, 75, 90, 105, 120, 135, 150, 165, 180, 195, 210, 225, 240, 255, 270, 285, 300, 315, 330, 345]}
-                  rotationSnapTolerance={7}
+                  rotationSnaps={[0, 45, 90, 135, 180, 225, 270, 315]}
+                  rotationSnapTolerance={4}
                   boundBoxFunc={(oldBox, newBox) => {
                     if (newBox.width < 8 || newBox.height < 8) return oldBox
                     // Proportional-Modus: Seitenkanten (middle-*) würden in Konva sonst
