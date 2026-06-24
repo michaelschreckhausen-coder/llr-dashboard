@@ -241,8 +241,9 @@ export default function Visuals({ session, kindFilter = null, embedded = false }
 
   // ─── Render ───────────────────────────────────────────────────────────────
   return (
-    <div style={{ width:'100%', maxWidth:1100, margin:'0 auto', padding:'24px 16px 40px' }}>
-      {/* Header */}
+    <div style={embedded ? { width:'100%' } : { width:'100%', maxWidth:1100, margin:'0 auto', padding:'24px 16px 40px' }}>
+      {/* Header — in der Bibliothek (embedded) ausgeblendet, da die Seite ihren eigenen Titel hat */}
+      {!embedded && (
       <div style={{ marginBottom:22, display:'flex', alignItems:'flex-start', justifyContent:'space-between', gap:16, flexWrap:'wrap' }}>
         <div>
           <div style={{ fontSize:20, color:'#30A0D0', fontFamily:'"Caveat", cursive', fontWeight:600, marginBottom:6 }}>Content · Visuals</div>
@@ -256,6 +257,7 @@ export default function Visuals({ session, kindFilter = null, embedded = false }
           <Sparkles size={15} strokeWidth={1.9}/>Neues Bild erstellen
         </button>
       </div>
+      )}
 
       {/* Linked-Post-Banner (Closed-Loop mit Redaktionsplan) */}
       {linkedPostId && linkedPost && (

@@ -43,7 +43,7 @@ export default function Bibliothek({ session }) {
       <div>
         {tab === 'designs' && <Visuals session={session} kindFilter="design" embedded />}
         {tab === 'medien' && <Visuals session={session} kindFilter="image" embedded />}
-        {tab === 'dokumente' && <Documents />}
+        {tab === 'dokumente' && <Documents embedded />}
       </div>
     </div>
   )
