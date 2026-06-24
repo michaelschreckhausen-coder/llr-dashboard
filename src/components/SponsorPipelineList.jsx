@@ -26,7 +26,7 @@ export default function SponsorPipelineList({ onOpen }) {
     setLoading(true); setError(null)
     // Cross-Schema-sicher: KEIN PostgREST-Embed, sondern Client-Join über organization_id.
     const [{ data: ext, error: e }, { data: orgData, error: oErr }, { data: st, error: stErr }] = await Promise.all([
-      sp().from('sponsor_profiles').select('*').eq('team_id', activeTeamId)
+      sp().from('sponsor_profiles').select('*').eq('team_id', activeTeamId).eq('is_sponsor', true)
         .order('fit_score', { ascending: false, nullsFirst: false }).order('created_at', { ascending: false }),
       supabase.from('organizations').select('id, name, industry_slug').eq('team_id', activeTeamId),
       sp().from('sales_cycle_stages').select('*').eq('team_id', activeTeamId).order('stage'),

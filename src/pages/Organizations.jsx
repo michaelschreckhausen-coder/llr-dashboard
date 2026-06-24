@@ -296,6 +296,24 @@ export default function Organizations({ session }) {
   const [filter,     setFilter]     = useState('all')
   const [ownerFilter, setOwnerFilter] = useState(null) // null = alle
   const [search,     setSearch]     = useState('')
+  const [selected,   setSelected]   = useState(() => new Set()) // org-ids für Sponsor-Bulk
+  const [bulkMarking, setBulkMarking] = useState(false)
+
+  const toggleSelect = (orgId) => setSelected(prev => {
+    const next = new Set(prev)
+    next.has(orgId) ? next.delete(orgId) : next.add(orgId)
+    return next
+  })
+  // Bulk Sponsor-Markierung — RPC setzt je Org einzeln (kein .in()-Bulk).
+  async function bulkMarkSponsor(isSponsor) {
+    const ids = [...selected]
+    if (ids.length === 0) return
+    setBulkMarking(true)
+    const { error } = await supabase.rpc('mark_sponsors', { p_org_ids: ids, p_is_sponsor: isSponsor })
+    setBulkMarking(false)
+    if (error) { alert('Markierung fehlgeschlagen: ' + error.message); return }
+    setSelected(new Set())
+  }
 
   useEffect(() => { loadIndustries() }, [])
   useEffect(() => { loadOrgs() }, [activeTeamId])
@@ -438,6 +456,18 @@ export default function Organizations({ session }) {
         </div>
       </div>
 
+      {/* Sponsor-Bulk-Action-Bar (addon-gegated, bei Auswahl) */}
+      {sponsoringActive && selected.size > 0 && filter !== 'sponsoren' && (
+        <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 14, padding: '10px 14px', borderRadius: 12, background: 'rgba(49,90,231,0.06)', border: '1px solid ' + PRIMARY + '33' }}>
+          <span style={{ fontSize: 13, fontWeight: 700, color: PRIMARY }}>{selected.size} ausgewählt</span>
+          <button onClick={() => bulkMarkSponsor(true)} disabled={bulkMarking}
+            style={{ padding: '7px 14px', borderRadius: 9, border: 'none', background: PRIMARY, color: '#fff', fontSize: 12, fontWeight: 700, cursor: bulkMarking ? 'wait' : 'pointer', opacity: bulkMarking ? 0.6 : 1 }}>★ Als Sponsor markieren</button>
+          <button onClick={() => bulkMarkSponsor(false)} disabled={bulkMarking}
+            style={{ padding: '7px 14px', borderRadius: 9, border: '1px solid #E4E7EC', background: 'var(--surface)', color: '#6B7280', fontSize: 12, fontWeight: 700, cursor: bulkMarking ? 'wait' : 'pointer', opacity: bulkMarking ? 0.6 : 1 }}>Sponsor entfernen</button>
+          <button onClick={() => setSelected(new Set())} style={{ marginLeft: 'auto', padding: '7px 12px', borderRadius: 9, border: 'none', background: 'transparent', color: '#6B7280', fontSize: 12, fontWeight: 600, cursor: 'pointer' }}>Auswahl aufheben</button>
+        </div>
+      )}
+
       {/* Liste */}
       {filter === 'sponsoren' && sponsoringActive ? (
         <SponsorPipelineList />
@@ -460,6 +490,12 @@ export default function Organizations({ session }) {
                 style={{ background: 'var(--surface)', border: '1.5px solid #E4E7EC', borderRadius: 13, padding: '14px 16px', cursor: 'pointer', transition: 'all 0.15s', display: 'flex', alignItems: 'center', gap: 14 }}
                 onMouseEnter={e => e.currentTarget.style.borderColor = '#C7D2FE'}
                 onMouseLeave={e => e.currentTarget.style.borderColor = '#E4E7EC'}>
+                {sponsoringActive && (
+                  <input type="checkbox" checked={selected.has(o.id)}
+                    onClick={e => e.stopPropagation()} onChange={() => toggleSelect(o.id)}
+                    title="Für Sponsor-Markierung auswählen"
+                    style={{ width: 17, height: 17, accentColor: PRIMARY, cursor: 'pointer', flexShrink: 0 }} />
+                )}
                 <div style={{ width: 40, height: 40, borderRadius: 10, background: 'rgba(49,90,231,0.08)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 20, flexShrink: 0 }}>
                   🏢
                 </div>
