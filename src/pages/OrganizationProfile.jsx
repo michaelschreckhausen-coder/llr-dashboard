@@ -60,6 +60,7 @@ export default function OrganizationProfile({ session }) {
   const location = useLocation()
   const { activeTeamId } = useTeam()
   const { hasModule } = useEntitlements()
+  const sponsoringActive = hasModule('sponsoring')
   const uid = session?.user?.id
 
   const [org,        setOrg]        = useState(null)
@@ -85,10 +86,19 @@ export default function OrganizationProfile({ session }) {
   const [extSaving,     setExtSaving]     = useState(false)
   const [extScoring,    setExtScoring]    = useState(false)
   const [extMarking,    setExtMarking]    = useState(false)
+  // Sponsor-Flag tab-übergreifend (read-only, ohne Lazy-Anlage der Extension) für den Header-Toggle
+  const [isSponsor,     setIsSponsor]     = useState(false)
   const [cycleStages,   setCycleStages]   = useState([])
   const [extForm,       setExtForm]       = useState({})
 
   useEffect(() => { load() }, [id])
+
+  // Sponsor-Flag für den tab-übergreifenden Header-Toggle laden (nur bei aktivem Addon)
+  useEffect(() => {
+    if (!sponsoringActive) { setIsSponsor(false); return }
+    loadSponsorFlag()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [id, sponsoringActive])
 
   // Team-Members für Owner-Picker (2-step Query — PostgREST-Embed
   // profile:profiles(...) failed silent auf Hetzner, siehe Top-Fallstrick #14)
@@ -172,6 +182,7 @@ export default function OrganizationProfile({ session }) {
       const row = Array.isArray(data) ? data[0] : data
       setExt(row || null)
       setExtForm(row || {})
+      setIsSponsor(!!row?.is_sponsor)
     } catch (e) {
       setExtError(e.message || String(e))
       setExt(null)
@@ -197,12 +208,22 @@ export default function OrganizationProfile({ session }) {
     if (!error) loadCycleStages()
   }
 
+  // Sponsor-Flag tab-übergreifend lesen — read-only, legt KEINE Extension an (nur das
+  // Öffnen des Sponsoring-Tabs / explizites Markieren erzeugt die Row).
+  async function loadSponsorFlag() {
+    const { data, error } = await supabase.schema('sponsoring').from('sponsor_profiles')
+      .select('is_sponsor').eq('organization_id', id).maybeSingle()
+    if (error) return // Header-Flag ist unkritisch — leise scheitern
+    setIsSponsor(!!data?.is_sponsor)
+  }
+
   // Explizite Sponsor-Markierung (taucht erst dann in der Sponsoren-Lens auf).
   async function toggleSponsor(next) {
     setExtMarking(true)
     const { error } = await supabase.rpc('mark_sponsor', { p_organization_id: id, p_is_sponsor: next })
     setExtMarking(false)
-    if (error) { setExtError(error.message); return }
+    if (error) { setExtError(error.message); alert('Markierung fehlgeschlagen: ' + error.message); return }
+    setIsSponsor(next)
     setExt(e => e ? { ...e, is_sponsor: next } : e)
     setExtForm(f => ({ ...f, is_sponsor: next }))
   }
@@ -345,7 +366,13 @@ export default function OrganizationProfile({ session }) {
             ) : '🏢'}
           </div>
           <div style={{ flex: 1, minWidth: 0 }}>
-            <h1 style={{ fontSize: 24, fontWeight: 800, color: 'var(--text-primary, #111827)', margin: 0, marginBottom: 4 }}>{org.name}</h1>
+            <div style={{ display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: 10, marginBottom: 4 }}>
+              <h1 style={{ fontSize: 24, fontWeight: 800, color: 'var(--text-primary, #111827)', margin: 0 }}>{org.name}</h1>
+              {sponsoringActive && isSponsor && (
+                <span title="Als Sponsor markiert — erscheint in der Sponsoren-Lens"
+                  style={{ display: 'inline-flex', alignItems: 'center', gap: 4, padding: '3px 10px', borderRadius: 99, background: '#ECFDF5', border: '1px solid #A7F3D0', color: '#065F46', fontSize: 12, fontWeight: 700, whiteSpace: 'nowrap' }}>★ Sponsor</span>
+              )}
+            </div>
             <div style={{ display: 'flex', flexWrap: 'wrap', gap: 10, fontSize: 12, color: '#6B7280' }}>
               {industryLabel && <span>{industryLabel}</span>}
               {org.city && <span>{org.city}{org.country ? `, ${org.country}` : ''}</span>}
@@ -355,6 +382,13 @@ export default function OrganizationProfile({ session }) {
             </div>
           </div>
           <div style={{ display: 'flex', gap: 8 }}>
+            {!editing && sponsoringActive && (
+              <button onClick={() => toggleSponsor(!isSponsor)} disabled={extMarking}
+                title={isSponsor ? 'Aus der Sponsoren-Lens entfernen' : 'Als Sponsor markieren — erscheint in der Sponsoren-Lens'}
+                style={{ padding: '7px 14px', borderRadius: 9, border: isSponsor ? '1px solid #E4E7EC' : 'none', background: isSponsor ? 'var(--surface)' : PRIMARY, color: isSponsor ? '#6B7280' : '#fff', fontSize: 12, fontWeight: 700, cursor: extMarking ? 'wait' : 'pointer', opacity: extMarking ? 0.6 : 1, whiteSpace: 'nowrap' }}>
+                {extMarking ? '…' : (isSponsor ? 'Kein Sponsor mehr' : '★ Als Sponsor markieren')}
+              </button>
+            )}
             {!editing && <button onClick={() => setEditing(true)} style={{ padding: '7px 14px', borderRadius: 9, border: '1px solid #E4E7EC', background: 'var(--surface)', fontSize: 12, fontWeight: 700, cursor: 'pointer', color: '#374151' }}>Bearbeiten</button>}
             {editing && (
               <>
@@ -673,16 +707,6 @@ export default function OrganizationProfile({ session }) {
           <div style={{ padding: 40, textAlign: 'center', color: '#9CA3AF' }}>Kein Sponsoring-Profil verfügbar.</div>
         ) : (
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
-            {/* Explizite Sponsor-Markierung — nur markierte Unternehmen erscheinen in der Sponsoren-Lens */}
-            <div style={{ gridColumn: '1 / -1', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, padding: '12px 16px', borderRadius: 12, border: '1px solid ' + (ext.is_sponsor ? '#A7F3D0' : '#E4E7EC'), background: ext.is_sponsor ? '#ECFDF5' : 'var(--surface-muted, #F8FAFC)' }}>
-              <div style={{ fontSize: 13, fontWeight: 600, color: ext.is_sponsor ? '#065F46' : '#6B7280' }}>
-                {ext.is_sponsor ? '★ Als Sponsor markiert — erscheint in der Sponsoren-Lens' : 'Noch nicht als Sponsor markiert — taucht nicht in der Sponsoren-Lens auf'}
-              </div>
-              <button onClick={() => toggleSponsor(!ext.is_sponsor)} disabled={extMarking}
-                style={{ padding: '8px 14px', borderRadius: 9, border: ext.is_sponsor ? '1px solid #E4E7EC' : 'none', background: ext.is_sponsor ? 'var(--surface)' : PRIMARY, color: ext.is_sponsor ? '#6B7280' : '#fff', fontSize: 12, fontWeight: 700, cursor: extMarking ? 'wait' : 'pointer', opacity: extMarking ? 0.6 : 1, whiteSpace: 'nowrap' }}>
-                {extMarking ? '…' : (ext.is_sponsor ? 'Kein Sponsor mehr' : 'Als Sponsor markieren')}
-              </button>
-            </div>
             <Section title="KI-Fit-Score">
               <div style={{ display: 'flex', alignItems: 'center', gap: 16, marginBottom: 12 }}>
                 <div style={{ fontSize: 36, fontWeight: 800, color: typeof ext.fit_score === 'number' ? PRIMARY : '#D1D5DB', lineHeight: 1 }}>
