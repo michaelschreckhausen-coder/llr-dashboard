@@ -17,6 +17,7 @@ import { useNavigate } from 'react-router-dom';
 import { supabase } from '../lib/supabase';
 import { colors, radii, shadows, space, motion, typography } from '../theme';
 import { useDashboardData } from '../hooks/useDashboardData';
+import { useLeadly } from '../hooks/useLeadly';
 import { TASK_SOURCES } from '../lib/taskSources';
 import TaskSourceIcon from '../components/TaskSourceIcon';
 import { Brain } from 'lucide-react';
@@ -68,10 +69,48 @@ const card = {
   cursor: 'pointer',
 };
 
+// ─── Leadly-Vorschläge: Task-Quelle → Prozessbereich (4 Bereiche) ─────────
+const SUGGESTION_AREAS = {
+  lead_followup:       { key: 'follow-up', label: 'Follow-up', color: '#0369A1', bg: '#F0F9FF' },
+  deal_followup:       { key: 'deal',      label: 'Deal',      color: '#7C3AED', bg: '#F5F3FF' },
+  lead_task:           { key: 'aufgabe',   label: 'Aufgabe',   color: '#B45309', bg: '#FFFBEB' },
+  pm_task:             { key: 'aufgabe',   label: 'Aufgabe',   color: '#B45309', bg: '#FFFBEB' },
+  stale_lead:          { key: 'kontakt',   label: 'Kontakt',   color: '#047857', bg: '#ECFDF5' },
+  linkedin_unanswered: { key: 'kontakt',   label: 'Kontakt',   color: '#047857', bg: '#ECFDF5' },
+};
+
+function suggestionReason(t) {
+  if (!t.due_date) return '';
+  const today = new Date().toISOString().split('T')[0];
+  if (t.due_date < today) {
+    const days = Math.round((new Date(today) - new Date(t.due_date)) / 86400000);
+    return `überfällig seit ${days} Tag${days === 1 ? '' : 'en'}`;
+  }
+  if (t.due_date === today) return 'heute fällig';
+  return '';
+}
+
+// Prompt, der beim "Übernehmen" an Leadly geht. Entwurf/lesend → Leadly antwortet
+// direkt; schreibend → Leadly schlägt vor + Bestätigungs-Guardrail greift.
+function suggestionPrompt(t) {
+  const who = t.related?.leadName ? `${t.related.leadName}${t.related.company ? ` (${t.related.company})` : ''}` : null;
+  switch (t.source) {
+    case 'lead_followup':       return `Entwirf ein Follow-up für ${who || 'diesen Kontakt'}. Der Kontakt ist fällig — halte es kurz und konkret.`;
+    case 'deal_followup':       return `Was ist der nächste sinnvolle Schritt für den Deal „${t.title}"? Mach mir einen konkreten Vorschlag.`;
+    case 'lead_task':
+    case 'pm_task':             return `Hilf mir, diese Aufgabe abzuarbeiten: „${t.title}". Schlag konkrete nächste Schritte vor.`;
+    case 'stale_lead':          return `Der Kontakt ${who || 'dieser Lead'} ist seit einer Weile inaktiv. Wie reaktiviere/anreichere ich ihn am besten?`;
+    case 'linkedin_unanswered': return `Entwirf eine Antwort auf die offene LinkedIn-Nachricht von ${who || 'diesem Kontakt'}.`;
+    default:                    return `Hilf mir mit: „${t.title}".`;
+  }
+}
+
 // ─── Hauptkomponente ─────────────────────────────────────────────────────
 export default function Dashboard({ session }) {
   const nav = useNavigate();
   const data = useDashboardData({ session });
+  const leadly = useLeadly({ autoOpenLatest: false });
+  useEffect(() => { leadly.fetchBriefing?.(); }, [leadly.fetchBriefing]);
 
   // Affiliate-Discovery-Banner: nur wenn (noch) kein Affiliate + nicht dismissed.
   const [affBanner, setAffBanner] = useState(false);
@@ -108,6 +147,21 @@ export default function Dashboard({ session }) {
   const hasHot = hotLeads.length > 0;
   const hotLeadsTop = hotLeads.slice(0, 4);
 
+  // Leadly-Vorschläge: Tages-Aufgaben → 4 Prozessbereiche (Follow-up/Kontakt/Deal/Aufgabe).
+  const suggestions = dayTasks
+    .filter(t => SUGGESTION_AREAS[t.source])
+    .slice(0, 5)
+    .map((t, i) => ({
+      id: t.id || `${t.source}-${i}`,
+      area: SUGGESTION_AREAS[t.source],
+      title: t.title,
+      reason: suggestionReason(t),
+      href: t.href,
+      prompt: suggestionPrompt(t),
+    }));
+  const briefingText = leadly.briefing?.briefing_text || '';
+  const askLeadly = (text) => window.dispatchEvent(new CustomEvent('leadly:prompt', { detail: { text } }));
+
   return (
     <div>
       {affBanner && (
@@ -130,27 +184,68 @@ export default function Dashboard({ session }) {
           {now.toLocaleDateString('de-DE', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })}
         </div>
         <div style={{
-          fontSize: 'clamp(34px, 4.5vw, 48px)',
-          fontWeight: 600, letterSpacing: '-0.035em', lineHeight: 1.05,
+          fontSize: 'clamp(28px, 3.6vw, 40px)',
+          fontWeight: 600, letterSpacing: '-0.03em', lineHeight: 1.08,
           color: colors.ink,
         }}>
-          Hallo {firstName || 'dort'} —<br/>
-          das ist dein <span className="highlight-word">Tag</span>.
+          Hallo {firstName || 'dort'} — <span className="highlight-word">Leadly</span> hat
+          deinen Tag durchgesehen.
         </div>
-        <div style={{ fontSize: 14, color: colors.inkMuted, marginTop: space[3] }}>
-          {leads.length} {leads.length === 1 ? 'Kontakt' : 'Kontakte'}
-          {' · '}
-          {activeDeals.length} {activeDeals.length === 1 ? 'Deal aktiv' : 'Deals aktiv'}
-          {' · '}
-          {totalOverdue} überfällig
-          {' · '}
-          {todayTasks.length} heute fällig
-          {' · '}
-          <button onClick={() => nav('/aufgaben')}
-            style={{ background: 'transparent', border: 'none', color: colors.primary, cursor: 'pointer', fontSize: 14, fontWeight: 500, padding: 0, textDecoration: 'underline', textUnderlineOffset: 2 }}>
-            alle Aufgaben →
-          </button>
+
+        {/* Leadly-Briefing: Status-Synthese */}
+        <div style={{
+          marginTop: space[4], background: colors.white, border: `1px solid ${colors.border}`,
+          borderRadius: radii.lg, padding: '16px 20px',
+        }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}>
+            <span style={{ width: 22, height: 22, borderRadius: '50%', background: 'linear-gradient(135deg, #1E3A8A, #3B82F6)', color: '#fff', fontSize: 12, fontWeight: 700, display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }}>L</span>
+            <span style={{ fontSize: 12, fontWeight: 700, color: colors.inkMuted, textTransform: 'uppercase', letterSpacing: '0.05em' }}>Leadly-Briefing</span>
+          </div>
+          <div style={{ fontSize: 15, color: colors.ink, lineHeight: 1.6, whiteSpace: 'pre-wrap' }}>
+            {briefingText || 'Leadly schaut sich deinen Tag an …'}
+          </div>
+          <div style={{ fontSize: 13, color: colors.inkMuted, marginTop: space[3] }}>
+            {leads.length} {leads.length === 1 ? 'Kontakt' : 'Kontakte'}
+            {' · '}{activeDeals.length} {activeDeals.length === 1 ? 'Deal aktiv' : 'Deals aktiv'}
+            {' · '}{totalOverdue} überfällig
+            {' · '}{todayTasks.length} heute fällig
+            {' · '}
+            <button onClick={() => nav('/aufgaben')}
+              style={{ background: 'transparent', border: 'none', color: colors.primary, cursor: 'pointer', fontSize: 13, fontWeight: 500, padding: 0, textDecoration: 'underline', textUnderlineOffset: 2 }}>
+              alle Aufgaben →
+            </button>
+          </div>
         </div>
+
+        {/* Leadly-Vorschläge — übernehmbare Aktionen in den 4 Bereichen */}
+        {suggestions.length > 0 && (
+          <div style={{ marginTop: space[5] }}>
+            <div style={{ fontSize: 12, fontWeight: 700, color: colors.inkMuted, textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: space[3] }}>
+              Leadly schlägt vor
+            </div>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: space[3] }}>
+              {suggestions.map((s) => (
+                <div key={s.id} style={{ background: colors.white, border: `1px solid ${colors.border}`, borderRadius: radii.lg, padding: '14px 16px', display: 'flex', flexDirection: 'column', gap: 8 }}>
+                  <span style={{ alignSelf: 'flex-start', fontSize: 10, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.04em', color: s.area.color, background: s.area.bg, padding: '2px 8px', borderRadius: radii.pill }}>{s.area.label}</span>
+                  <div style={{ fontSize: 14, fontWeight: 600, color: colors.ink, lineHeight: 1.35 }}>{s.title}</div>
+                  {s.reason && <div style={{ fontSize: 12, color: colors.inkMuted }}>{s.reason}</div>}
+                  <div style={{ display: 'flex', gap: 8, marginTop: 'auto', paddingTop: 4 }}>
+                    <button onClick={() => askLeadly(s.prompt)}
+                      style={{ padding: '7px 14px', borderRadius: 8, border: 'none', background: colors.primary, color: '#fff', fontSize: 12, fontWeight: 700, cursor: 'pointer' }}>
+                      Übernehmen
+                    </button>
+                    {s.href && (
+                      <button onClick={() => nav(s.href)}
+                        style={{ padding: '7px 12px', borderRadius: 8, border: `1px solid ${colors.border}`, background: colors.white, color: colors.inkMuted, fontSize: 12, fontWeight: 600, cursor: 'pointer' }}>
+                        Öffnen
+                      </button>
+                    )}
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
       </div>
 
       {/* Timeline */}

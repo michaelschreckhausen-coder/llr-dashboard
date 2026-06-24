@@ -62,7 +62,6 @@ import Register      from './pages/Register'
 import AdminDocs     from './pages/AdminDocs'
 import AdminTenants  from './pages/AdminTenants'
 import AdminPlans    from './pages/AdminPlans'
-import Assistant     from './pages/Assistant'
 import Changelog     from './pages/Changelog'
 import SponsoringHome from './pages/sponsoring/SponsoringHome'
 import Rechte         from './pages/sponsoring/Rechte'
@@ -368,7 +367,8 @@ export default function App() {
             {/* <Route path="/admin/whitelabel" element={role === 'admin' ? <WhiteLabel /> : role === null ? <div style={{padding:48,textAlign:'center',color:'#94A3B8'}}>Lädt…</div> : <Navigate to="/" replace />} /> */}
             {/* <Route path="/admin/tenants"    element={role === 'admin' ? <AdminTenants session={session} /> : role === null ? <div style={{padding:48,textAlign:'center',color:'#94A3B8'}}>Lädt…</div> : <Navigate to="/" replace />} /> */}
             {/* <Route path="/admin/plans"      element={role === 'admin' ? <AdminPlans /> : role === null ? <div style={{padding:48,textAlign:'center',color:'#94A3B8'}}>Lädt…</div> : <Navigate to="/" replace />} /> */}
-            <Route path="/assistant" element={<Assistant session={session} />} />
+            {/* Assistent-Seite retired (Phase 1) — Leadly-Bubble ist die Assistenz-Surface. */}
+            <Route path="/assistant" element={<Navigate to="/dashboard" replace />} />
             <Route path="/changelog" element={<Changelog />} />
             {/* Phase 5A: Admin routes disabled — migration to admin.leadesk.de. See docs/architecture/PHASE_5_*.md */}
             {/* <Route path="/admin-docs" element={role === 'admin' ? <AdminDocs /> : role === null ? <div style={{padding:48,textAlign:'center',color:'#94A3B8'}}>Lädt…</div> : <Navigate to="/" replace />} /> */}

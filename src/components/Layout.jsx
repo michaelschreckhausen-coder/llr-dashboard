@@ -97,7 +97,7 @@ import { isFlagEnabled } from '../lib/featureFlags'
 function getNav(t) {
   return [
   { to: '/dashboard',       icon: IcHome,     label: t('nav.home'), tourId: 'nav-dashboard' },
-  { to: '/assistant',       icon: IcAssistant, label: t('nav.assistant') },
+  // Assistent-Nav retired (Phase 1) — Leadly lebt in der Bubble + im Dashboard-Briefing.
   { to: '/aufgaben',        icon: IcKanban,   label: t('nav.aufgaben') },
 
   { divider: true, label: t('nav.branding'), tourId: 'nav-branding' },
