@@ -720,7 +720,7 @@ export default function ContentStudio({ session }) {
           opacity: (editorOpen && paneView === 'suite') ? 0 : 1,
           pointerEvents: (editorOpen && paneView === 'suite') ? 'none' : 'auto',
           display:'flex', flexDirection:'column', position:'relative',
-          transition:'flex-basis 0.34s cubic-bezier(0.45,0,0.15,1), opacity 0.26s ease' }}>
+          transition:'opacity 0.2s ease' }}>
         {/* Floating Sidebar-Toggle wenn zu */}
         {!sidebarOpen && (
           <button onClick={() => setSidebarOpen(true)} title="Sidebar öffnen"
@@ -806,7 +806,7 @@ export default function ContentStudio({ session }) {
       {(() => {
         const basis = !editorOpen ? '0%' : (paneView === 'suite' ? '100%' : '52%')
         return (
-      <section data-tour-id="cs-doc-pane" style={{ display:'flex', flexDirection:'column', flexGrow:0, flexShrink:0, flexBasis: basis, minWidth:0, overflow:'hidden', borderLeft: editorOpen ? '1px solid var(--border,#E9ECF2)' : 'none', background:'var(--page-bg, #F7F8FA)', transition:'flex-basis 0.34s cubic-bezier(0.45,0,0.15,1)' }}>
+      <section data-tour-id="cs-doc-pane" style={{ display:'flex', flexDirection:'column', flexGrow:0, flexShrink:0, flexBasis: basis, minWidth:0, overflow:'hidden', borderLeft: editorOpen ? '1px solid var(--border,#E9ECF2)' : 'none', background:'var(--page-bg, #F7F8FA)' }}>
         {editorOpen && (
           <div style={{ display:'flex', alignItems:'center', gap:8, padding:'8px 12px', borderBottom:'1px solid var(--border,#E9ECF2)', background:'var(--surface,#fff)', flexShrink:0 }}>
             {/* Segment-Umschalter Dokument ⇄ Designer */}

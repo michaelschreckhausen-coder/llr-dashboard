@@ -328,17 +328,23 @@ export default function DesignerCanvas({ visual, teamId, onSaved, onReplaceVisua
 
   // ─── Anzeige-Skalierung an Container anpassen ──────────────────────────────
   useEffect(() => {
-    function measure() {
+    let raf = 0
+    function apply() {
       const el = containerRef.current
       if (!el) return
       const w = el.clientWidth || 700
-      setContainerW(w)
+      // Nur bei spürbarer Änderung aktualisieren → verhindert ResizeObserver-
+      // Rückkopplungsschleifen (Zittern) durch Sub-Pixel-/Scrollbar-Oszillation.
+      setContainerW(prev => Math.abs(prev - w) > 2 ? w : prev)
     }
-    measure()
-    const ro = typeof ResizeObserver !== 'undefined' ? new ResizeObserver(measure) : null
+    // Messung in den nächsten Frame verschieben: bricht die synchrone
+    // RO→setState→Layout→RO-Schleife auf (Chrome "ResizeObserver loop").
+    function schedule() { cancelAnimationFrame(raf); raf = requestAnimationFrame(apply) }
+    apply()
+    const ro = typeof ResizeObserver !== 'undefined' ? new ResizeObserver(schedule) : null
     if (ro && containerRef.current) ro.observe(containerRef.current)
-    window.addEventListener('resize', measure)
-    return () => { if (ro) ro.disconnect(); window.removeEventListener('resize', measure) }
+    window.addEventListener('resize', schedule)
+    return () => { cancelAnimationFrame(raf); if (ro) ro.disconnect(); window.removeEventListener('resize', schedule) }
   }, [])
 
   useEffect(() => {
