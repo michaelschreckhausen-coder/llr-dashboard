@@ -662,7 +662,7 @@ export default function DesignerCanvas({ visual, teamId, onSaved, onReplaceVisua
           const sid = selectedIds[0]
           // Konva-State erst nach dem React-Re-Render aktuell → im nächsten Tick lesen.
           requestAnimationFrame(() => {
-            const snap = snapAfterNudge(sid)
+            const snap = snapAfterNudge(sid, dx, dy)
             if (snap.dx || snap.dy) {
               // Delta auf den AKTUELLEN (post-nudge) State anwenden, nicht auf die
               // veraltete Closure — sonst geht der Nudge-Versatz verloren.
@@ -1743,6 +1743,10 @@ export default function DesignerCanvas({ visual, teamId, onSaved, onReplaceVisua
   // Toleranz wird daher durch effScale geteilt (≈6px Bildschirm).
   const SNAP_PX = 6
   const guideTimerRef = useRef(null)
+  // Hysterese für Pfeiltasten-Snap: die zuletzt getroffene Linie je Achse wird
+  // „ignoriert", solange das Objekt in ihrer Toleranzzone bleibt → einmal andocken,
+  // danach mit weiteren Pfeil-Drücken frei darüber hinaus (kein Kleben).
+  const nudgeIgnoreRef = useRef({ x: null, y: null })
 
   // Liefert für die aktuelle Bühne die Snap-Linien (in Bühnenkoordinaten ohne off).
   // skipIds: IDs, die NICHT als Snap-Quelle dienen (das/die bewegte(n) Objekt(e)).
@@ -2098,24 +2102,41 @@ export default function DesignerCanvas({ visual, teamId, onSaved, onReplaceVisua
   // Stage-lokale Box des Objekts via Konva-Node, sucht Kanten/Mitte-Snap und liefert
   // die Korrektur { dx, dy } in DESIGN-Koordinaten zurück + zeichnet die Hilfslinien.
   // Engere Toleranz (SNAP_PX/2), damit wiederholtes Drücken NICHT an einer Linie klebt.
-  function snapAfterNudge(id) {
+  function snapAfterNudge(id, dx = 0, dy = 0) {
     const out = { dx: 0, dy: 0 }
     try {
       const node = stageRef.current?.findOne('#' + id)
       if (!node) return out
       if ((node.rotation() || 0) !== 0) return out
-      const tol = (SNAP_PX / 2) / effScale
+      const tol = SNAP_PX / effScale
       const { vertical, horizontal } = collectGuideLines([id])
       const box = node.getClientRect({ relativeTo: node.getStage() })
       const bx = box.x, by = box.y, bw = box.width, bh = box.height
-      const objV = [bx, bx + bw / 2, bx + bw]
-      const objH = [by, by + bh / 2, by + bh]
-      let bestV = null, bestH = null
-      for (const v of objV) for (const g of vertical) { const d = Math.abs(v - g); if (d < tol && (!bestV || d < bestV.d)) bestV = { delta: g - v, line: g, d } }
-      for (const h of objH) for (const g of horizontal) { const d = Math.abs(h - g); if (d < tol && (!bestH || d < bestH.d)) bestH = { delta: g - h, line: g, d } }
       const drawnV = [], drawnH = []
-      if (bestV) { out.dx = bestV.delta; drawnV.push(bestV.line) }
-      if (bestH) { out.dy = bestH.delta; drawnH.push(bestH.line) }
+      // Nur die tatsächlich bewegte Achse snappen (Pfeil bewegt genau eine Achse).
+      if (dx !== 0) {
+        const edges = [bx, bx + bw / 2, bx + bw]
+        let best = null
+        for (const e of edges) for (const g of vertical) { const d = Math.abs(e - g); if (d < tol && (!best || d < best.d)) best = { line: g, delta: g - e, d } }
+        if (best) {
+          // Schon an dieser Linie angedockt/in der Zone? → frei weiter (kein Snap).
+          if (nudgeIgnoreRef.current.x !== best.line) { out.dx = best.delta; drawnV.push(best.line) }
+          nudgeIgnoreRef.current.x = best.line
+        } else {
+          nudgeIgnoreRef.current.x = null   // Zone verlassen → wieder snap-bar
+        }
+      }
+      if (dy !== 0) {
+        const edges = [by, by + bh / 2, by + bh]
+        let best = null
+        for (const e of edges) for (const g of horizontal) { const d = Math.abs(e - g); if (d < tol && (!best || d < best.d)) best = { line: g, delta: g - e, d } }
+        if (best) {
+          if (nudgeIgnoreRef.current.y !== best.line) { out.dy = best.delta; drawnH.push(best.line) }
+          nudgeIgnoreRef.current.y = best.line
+        } else {
+          nudgeIgnoreRef.current.y = null
+        }
+      }
       if (drawnV.length || drawnH.length) {
         drawGuides(drawnV, drawnH)
         // Transiente Hilfslinien nach kurzer Zeit wieder ausblenden.
