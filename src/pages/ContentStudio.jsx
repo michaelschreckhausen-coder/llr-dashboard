@@ -807,27 +807,6 @@ export default function ContentStudio({ session }) {
         const basis = !editorOpen ? '0%' : (paneView === 'suite' ? '100%' : '52%')
         return (
       <section data-tour-id="cs-doc-pane" style={{ display:'flex', flexDirection:'column', flexGrow:0, flexShrink:0, flexBasis: basis, minWidth:0, overflow:'hidden', borderLeft: editorOpen ? '1px solid var(--border,#E9ECF2)' : 'none', background:'var(--page-bg, #F7F8FA)' }}>
-        {editorOpen && (
-          <div style={{ display:'flex', alignItems:'center', gap:8, padding:'8px 12px', borderBottom:'1px solid var(--border,#E9ECF2)', background:'var(--surface,#fff)', flexShrink:0 }}>
-            {/* Segment-Umschalter Dokument ⇄ Designer */}
-            <div style={{ display:'inline-flex', background:'#F1F5F9', borderRadius:10, padding:3, gap:2 }}>
-              {[
-                { id:'doc', label:'Dokument', Icon: FileText },
-                { id:'design', label:'Designer', Icon: Brush },
-              ].map(s => {
-                const on = splitMode === s.id
-                return (
-                  <button key={s.id} onClick={() => setSplitMode(s.id)}
-                    style={{ display:'inline-flex', alignItems:'center', gap:6, padding:'6px 12px', borderRadius:8, border:'none', cursor:'pointer', fontSize:12.5, fontWeight:700, fontFamily:'inherit',
-                      background: on ? 'var(--surface,#fff)' : 'transparent', color: on ? P : '#64748B', boxShadow: on ? '0 1px 3px rgba(0,0,0,0.08)' : 'none' }}>
-                    <s.Icon size={14} strokeWidth={1.9}/>{s.label}
-                  </button>
-                )
-              })}
-            </div>
-            <div style={{ flex:1 }}/>
-          </div>
-        )}
         <div style={{ display:'flex', flex:1, minHeight:0 }}>
           {splitMode === 'design' ? (
             <>
@@ -893,29 +872,45 @@ export default function ContentStudio({ session }) {
           style={{ ...edgeBtn, position:'absolute', top:'50%', right:8, transform:'translateY(-50%)' }}>
           <ChevronLeft size={18} strokeWidth={2}/>
         </button>
-      ) : paneView === 'suite' ? (
-        /* VOLLBILD: genau EIN Button am LINKEN Rand (gleicher Stil wie der rechte
-           Aufklapp-Button), in der Lücke vor der Werkzeugleiste → keine Überlappung.
-           Klick → zurück zum Split. */
-        <button onClick={() => setPaneView('split')} title="Splitscreen"
-          style={{ ...edgeBtn, position:'absolute', top:'50%', left:16, transform:'translateY(-50%)', zIndex:50 }}>
-          <ChevronRight size={18} strokeWidth={2}/>
-        </button>
       ) : (
-        /* SPLIT: Segment-Bedienelement am Strich — links vergrößern, rechts verkleinern */
-        <div style={{ position:'absolute', top:'50%', zIndex:40, display:'flex', alignItems:'center', overflow:'hidden',
-            borderRadius:10, border:'1px solid var(--border,#E9ECF2)', background:'var(--surface,#fff)', boxShadow:'0 2px 8px rgba(16,24,40,0.10)',
-            right:'52%', transform:'translate(50%,-50%)' }}>
-          {/* linke Hälfte: vergrößern (Split → Vollbild) */}
-          <button onClick={() => setPaneView('suite')} title="Vollbild" style={segBtn}>
-            <ChevronLeft size={18} strokeWidth={2}/>
-          </button>
-          <div style={{ width:1, alignSelf:'stretch', background:'var(--border,#E9ECF2)' }}/>
-          {/* rechte Hälfte: verkleinern (Editor einklappen) */}
-          <button onClick={() => { setEditorOpen(false); setPaneView('split') }}
-            title="Editor einklappen" style={segBtn}>
-            <ChevronRight size={18} strokeWidth={2}/>
-          </button>
+        /* Editor offen: vertikale Gruppe an der LINKEN Seite des Trennstrichs (Split)
+           bzw. am linken Rand (Vollbild). Oben: Dokument/Designer-Wechsler (gestapelt,
+           nur Icons). Darunter: Split/Vollbild-Steuerung. */
+        <div style={{ position:'absolute', top:'50%', zIndex:50, transform:'translateY(-50%)',
+            display:'flex', flexDirection:'column', alignItems:'center', gap:8,
+            ...(paneView === 'suite' ? { left:16 } : { right:'52%' }) }}>
+          {/* Dokument/Designer — gestapelt, nur Icons */}
+          <div style={{ display:'flex', flexDirection:'column', overflow:'hidden', borderRadius:10,
+              border:'1px solid var(--border,#E9ECF2)', background:'var(--surface,#fff)', boxShadow:'0 2px 8px rgba(16,24,40,0.10)' }}>
+            <button onClick={() => setSplitMode('doc')} title="Dokument"
+              style={{ ...segBtn, height:34, color: splitMode === 'doc' ? 'var(--wl-primary, rgb(49,90,231))' : 'var(--text-muted)',
+                background: splitMode === 'doc' ? 'rgba(49,90,231,0.10)' : 'transparent' }}>
+              <FileText size={16} strokeWidth={1.9}/>
+            </button>
+            <div style={{ height:1, background:'var(--border,#E9ECF2)' }}/>
+            <button onClick={() => setSplitMode('design')} title="Designer"
+              style={{ ...segBtn, height:34, color: splitMode === 'design' ? 'var(--wl-primary, rgb(49,90,231))' : 'var(--text-muted)',
+                background: splitMode === 'design' ? 'rgba(49,90,231,0.10)' : 'transparent' }}>
+              <Brush size={16} strokeWidth={1.9}/>
+            </button>
+          </div>
+          {/* Split/Vollbild-Steuerung */}
+          {paneView === 'suite' ? (
+            <button onClick={() => setPaneView('split')} title="Splitscreen" style={edgeBtn}>
+              <ChevronRight size={18} strokeWidth={2}/>
+            </button>
+          ) : (
+            <div style={{ display:'flex', alignItems:'center', overflow:'hidden', borderRadius:10,
+                border:'1px solid var(--border,#E9ECF2)', background:'var(--surface,#fff)', boxShadow:'0 2px 8px rgba(16,24,40,0.10)' }}>
+              <button onClick={() => setPaneView('suite')} title="Vollbild" style={segBtn}>
+                <ChevronLeft size={18} strokeWidth={2}/>
+              </button>
+              <div style={{ width:1, alignSelf:'stretch', background:'var(--border,#E9ECF2)' }}/>
+              <button onClick={() => { setEditorOpen(false); setPaneView('split') }} title="Editor einklappen" style={segBtn}>
+                <ChevronRight size={18} strokeWidth={2}/>
+              </button>
+            </div>
+          )}
         </div>
       )}
     </div>
