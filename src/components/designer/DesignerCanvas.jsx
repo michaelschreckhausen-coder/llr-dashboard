@@ -2385,6 +2385,9 @@ export default function DesignerCanvas({ visual, teamId, onSaved, onReplaceVisua
                   rotationSnapTolerance={7}
                   boundBoxFunc={(oldBox, newBox) => (newBox.width < 8 || newBox.height < 8) ? oldBox : newBox} />
               </Layer>
+              {/* Smart-Guides-Layer — IMMER oben, fängt keine Pointer. Hier zeichnet
+                 drawGuides() die transienten Hilfslinien/Abstandsmarker. */}
+              <Layer ref={guideLayerRef} listening={false} />
             </Stage>
 
             {/* Masken-Overlay (über der Stage; fängt Pointer nur im KI-Modus) */}
