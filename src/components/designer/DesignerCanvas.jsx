@@ -1740,7 +1740,7 @@ export default function DesignerCanvas({ visual, teamId, onSaved, onReplaceVisua
     const horizontal = [0, ch / 2, ch]    // y-Linien
     // Rand-/Margin-Guides (wie Canva): ein kleiner, konsistenter Innenabstand vom
     // Canvas-Rand. ~4% der kürzeren Seite, geklemmt auf 12..80px (Bühneneinheiten).
-    const M = Math.max(12, Math.min(80, Math.round(Math.min(cw, ch) * 0.04)))
+    const M = Math.max(28, Math.min(140, Math.round(Math.min(cw, ch) * 0.06)))
     vertical.push(M, cw - M)
     horizontal.push(M, ch - M)
     try {
@@ -1834,9 +1834,9 @@ export default function DesignerCanvas({ visual, teamId, onSaved, onReplaceVisua
     try {
       const tol = SNAP_PX / effScale
       const box = node.getClientRect({ relativeTo: node.getStage() })
-      const s = effScale
-      let bx = box.x / s, by = box.y / s
-      const bw = box.width / s, bh = box.height / s
+      // getClientRect({relativeTo: stage}) liefert STAGE-LOKALE (unskalierte) Koordinaten.
+      let bx = box.x, by = box.y
+      const bw = box.width, bh = box.height
       const others = otherObjBounds(skipIds)
       if (!others.length) return res
       const cx = bx + bw / 2, cy = by + bh / 2
@@ -1986,9 +1986,8 @@ export default function DesignerCanvas({ visual, teamId, onSaved, onReplaceVisua
       const { vertical, horizontal } = collectGuideLines(skipIds)
       // Bounding-Box der Node in Stage-lokalen Koordinaten.
       const box = node.getClientRect({ relativeTo: node.getStage() })
-      const sx = effScale, sy = effScale
-      // getClientRect liefert in PIXELN (skaliert) → zurück auf Stage-lokal teilen.
-      const bx = box.x / sx, by = box.y / sy, bw = box.width / sx, bh = box.height / sy
+      // getClientRect({relativeTo: stage}) liefert bereits STAGE-LOKALE (unskalierte) Koordinaten.
+      const bx = box.x, by = box.y, bw = box.width, bh = box.height
       // Kandidaten-Punkte des bewegten Objekts (links/mitte/rechts, oben/mitte/unten).
       const objV = [bx, bx + bw / 2, bx + bw]
       const objH = [by, by + bh / 2, by + bh]
@@ -2083,8 +2082,8 @@ export default function DesignerCanvas({ visual, teamId, onSaved, onReplaceVisua
           const { vertical, horizontal } = collectGuideLines([o.id])
           const tol = SNAP_PX / effScale
           const box = node.getClientRect({ relativeTo: node.getStage() })
-          const sx = effScale
-          const bx = box.x / sx, by = box.y / sx, bw = box.width / sx, bh = box.height / sx
+          // getClientRect({relativeTo: stage}) liefert STAGE-LOKALE (unskalierte) Koordinaten.
+          const bx = box.x, by = box.y, bw = box.width, bh = box.height
           const objV = [bx, bx + bw / 2, bx + bw]
           const objH = [by, by + bh / 2, by + bh]
           const drawnV = [], drawnH = []
