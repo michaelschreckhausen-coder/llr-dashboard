@@ -654,6 +654,22 @@ export default function DesignerCanvas({ visual, teamId, onSaved, onReplaceVisua
         else if (e.key === 'ArrowLeft') dx = -step
         else if (e.key === 'ArrowRight') dx = step
         nudgeSelected(dx, dy)
+        // Bei EINZEL-Auswahl: nach dem Nudge prüfen, ob eine Kante/Mitte nah an einer
+        // Guide-Linie liegt → kleine Snap-Korrektur + transiente Hilfslinie. Enge
+        // Toleranz (SNAP_PX/2) verhindert „Kleben“: ein weiterer Schritt entfernt das
+        // Objekt wieder, da der Nudge selbst es aus der Snap-Zone heraus bewegt.
+        if (selectedIds.length === 1) {
+          const sid = selectedIds[0]
+          // Konva-State erst nach dem React-Re-Render aktuell → im nächsten Tick lesen.
+          requestAnimationFrame(() => {
+            const snap = snapAfterNudge(sid)
+            if (snap.dx || snap.dy) {
+              // Delta auf den AKTUELLEN (post-nudge) State anwenden, nicht auf die
+              // veraltete Closure — sonst geht der Nudge-Versatz verloren.
+              setObjects(prev => prev.map(o => o.id === sid ? { ...o, x: (o.x || 0) + snap.dx, y: (o.y || 0) + snap.dy } : o))
+            }
+          })
+        }
         return
       }
       // Leertaste → Pan-Modus aktivieren (Cursor: grab)
@@ -2019,6 +2035,97 @@ export default function DesignerCanvas({ visual, teamId, onSaved, onReplaceVisua
     } catch (_e) { /* Snapping darf nie crashen */ }
   }
 
+  // Snapping während des SKALIERENS einer Node über den Transformer. Die AKTIV
+  // bewegten Kanten (je nach Anker) snappen an Guide-Linien; die gegenüberliegende
+  // (Anker-)Kante bleibt fix. Wir berechnen die gewünschte Stage-lokale Box und
+  // setzen scaleX/scaleY + x/y entsprechend. Rotierte Nodes werden übersprungen.
+  function applyResizeSnap(node, anchor, skipIds) {
+    if (!node) return
+    try {
+      // Bei Rotation würde die einfache Box-Mathematik falsch werden → kein Snap.
+      if ((node.rotation() || 0) !== 0) { clearGuides(); return }
+      const a = anchor || ''
+      const leftActive = a.includes('left')
+      const rightActive = a.includes('right')
+      const topActive = a.includes('top')
+      const bottomActive = a.includes('bottom')
+      // 'middle-*'/'top-center'/'bottom-center' bewegen nur eine Achse — passt automatisch
+      // (left/right bzw. top/bottom-Flags decken das ab; 'center' ohne Kante = inaktiv).
+      const tol = SNAP_PX / effScale
+      const { vertical, horizontal } = collectGuideLines(skipIds)
+      const box = node.getClientRect({ relativeTo: node.getStage() })
+      // getClientRect({relativeTo: stage}) liefert STAGE-LOKALE (unskalierte) Koordinaten.
+      let bx = box.x, by = box.y, bw = box.width, bh = box.height
+      const drawnV = [], drawnH = []
+
+      // ── Aktive vertikale Kante(n) snappen ──────────────────────────────────
+      // Linke Kante bewegt → rechte (bx+bw) bleibt fix. Umgekehrt für rechts.
+      if (leftActive && !rightActive) {
+        let best = null
+        for (const g of vertical) { const d = Math.abs(bx - g); if (d < tol && (!best || d < best.d)) best = { g, d } }
+        if (best) { const fixedRight = bx + bw; bx = best.g; bw = Math.max(1, fixedRight - bx); drawnV.push(best.g) }
+      } else if (rightActive && !leftActive) {
+        let best = null
+        const edge = bx + bw
+        for (const g of vertical) { const d = Math.abs(edge - g); if (d < tol && (!best || d < best.d)) best = { g, d } }
+        if (best) { bw = Math.max(1, best.g - bx); drawnV.push(best.g) }
+      }
+
+      // ── Aktive horizontale Kante(n) snappen ────────────────────────────────
+      if (topActive && !bottomActive) {
+        let best = null
+        for (const g of horizontal) { const d = Math.abs(by - g); if (d < tol && (!best || d < best.d)) best = { g, d } }
+        if (best) { const fixedBottom = by + bh; by = best.g; bh = Math.max(1, fixedBottom - by); drawnH.push(best.g) }
+      } else if (bottomActive && !topActive) {
+        let best = null
+        const edge = by + bh
+        for (const g of horizontal) { const d = Math.abs(edge - g); if (d < tol && (!best || d < best.d)) best = { g, d } }
+        if (best) { bh = Math.max(1, best.g - by); drawnH.push(best.g) }
+      }
+
+      // Gewünschte Box auf die Node anwenden. node.width()/height() sind die
+      // ungeskalierten Eigenmaße; scaleX/scaleY = Zielbreite/Eigenbreite.
+      if (drawnV.length || drawnH.length) {
+        const nw = node.width() || 1, nh = node.height() || 1
+        if (drawnV.length) { node.scaleX(bw / nw); node.x(bx) }
+        if (drawnH.length) { node.scaleY(bh / nh); node.y(by) }
+      }
+      drawGuides(drawnV, drawnH)
+    } catch (_e) { /* Resize-Snap darf nie crashen */ }
+  }
+
+  // Snapping nach einem Pfeiltasten-Nudge (kein Live-Node-Drag). Liest die aktuelle
+  // Stage-lokale Box des Objekts via Konva-Node, sucht Kanten/Mitte-Snap und liefert
+  // die Korrektur { dx, dy } in DESIGN-Koordinaten zurück + zeichnet die Hilfslinien.
+  // Engere Toleranz (SNAP_PX/2), damit wiederholtes Drücken NICHT an einer Linie klebt.
+  function snapAfterNudge(id) {
+    const out = { dx: 0, dy: 0 }
+    try {
+      const node = stageRef.current?.findOne('#' + id)
+      if (!node) return out
+      if ((node.rotation() || 0) !== 0) return out
+      const tol = (SNAP_PX / 2) / effScale
+      const { vertical, horizontal } = collectGuideLines([id])
+      const box = node.getClientRect({ relativeTo: node.getStage() })
+      const bx = box.x, by = box.y, bw = box.width, bh = box.height
+      const objV = [bx, bx + bw / 2, bx + bw]
+      const objH = [by, by + bh / 2, by + bh]
+      let bestV = null, bestH = null
+      for (const v of objV) for (const g of vertical) { const d = Math.abs(v - g); if (d < tol && (!bestV || d < bestV.d)) bestV = { delta: g - v, line: g, d } }
+      for (const h of objH) for (const g of horizontal) { const d = Math.abs(h - g); if (d < tol && (!bestH || d < bestH.d)) bestH = { delta: g - h, line: g, d } }
+      const drawnV = [], drawnH = []
+      if (bestV) { out.dx = bestV.delta; drawnV.push(bestV.line) }
+      if (bestH) { out.dy = bestH.delta; drawnH.push(bestH.line) }
+      if (drawnV.length || drawnH.length) {
+        drawGuides(drawnV, drawnH)
+        // Transiente Hilfslinien nach kurzer Zeit wieder ausblenden.
+        if (guideTimerRef.current) { clearTimeout(guideTimerRef.current); guideTimerRef.current = null }
+        guideTimerRef.current = setTimeout(() => { clearGuides(); guideTimerRef.current = null }, 700)
+      }
+    } catch (_e) { /* Nudge-Snap darf nie crashen */ }
+    return out
+  }
+
   // ─── Render-Helfer für Konva-Objekte ───────────────────────────────────────
   const off = { x: baseCrop ? baseCrop.x : 0, y: baseCrop ? baseCrop.y : 0 }
 
@@ -2076,21 +2183,11 @@ export default function DesignerCanvas({ visual, teamId, onSaved, onReplaceVisua
       },
       onTransformStart: () => pushHistory(),
       onTransform: (e) => {
-        // Smart-Guides auch beim Skalieren zeigen (Snap der Bounding-Box-Kanten).
+        // Smart-Guides auch beim Skalieren: aktive Kante(n) snappen + Hilfslinien zeigen.
         const node = e.target
-        try {
-          const { vertical, horizontal } = collectGuideLines([o.id])
-          const tol = SNAP_PX / effScale
-          const box = node.getClientRect({ relativeTo: node.getStage() })
-          // getClientRect({relativeTo: stage}) liefert STAGE-LOKALE (unskalierte) Koordinaten.
-          const bx = box.x, by = box.y, bw = box.width, bh = box.height
-          const objV = [bx, bx + bw / 2, bx + bw]
-          const objH = [by, by + bh / 2, by + bh]
-          const drawnV = [], drawnH = []
-          for (const v of objV) for (const g of vertical) if (Math.abs(v - g) < tol) { drawnV.push(g); break }
-          for (const h of objH) for (const g of horizontal) if (Math.abs(h - g) < tol) { drawnH.push(g); break }
-          drawGuides(drawnV, drawnH)
-        } catch (_e) {}
+        let anchor = ''
+        try { anchor = trRef.current?.getActiveAnchor() || '' } catch (_e) {}
+        applyResizeSnap(node, anchor, [o.id])
       },
       onTransformEnd: (e) => {
         clearGuides()
