@@ -299,6 +299,18 @@ export default function DesignerCanvas({ visual, teamId, onSaved, onReplaceVisua
   // Aktuelles Crop-Fenster des Basisbildes (nicht-destruktiv über Konva crop())
   const [baseCrop, setBaseCrop] = useState(null)      // {x,y,width,height} in Bild-Pixeln
 
+  // ─── Mehrseiten-Designs (design_json v2) ────────────────────────────────────
+  // Ein Design hat 1..n Seiten (gleiches Format). Die AKTIVE Seite wird in den
+  // Live-States (objects/filters/baseCrop/bgColor/stageSize) bearbeitet; alle Seiten
+  // (inkl. einer Kopie der aktiven) liegen in `pages`. Refs halten den aktuellen Stand
+  // für Serialisierung in Autosave/Speichern/Seitenwechsel.
+  const [pages, setPages] = useState([])              // [{ id, objects, filters, baseCrop, bgColor, stage, primaryImageId }]
+  const [activePageIdx, setActivePageIdx] = useState(0)
+  const pagesRef = useRef([])
+  const activeIdxRef = useRef(0)
+  useEffect(() => { pagesRef.current = pages }, [pages])
+  useEffect(() => { activeIdxRef.current = activePageIdx }, [activePageIdx])
+
   // ─── Basisbild laden (DataURL → kein CORS-Taint beim Export) ───────────────
   useEffect(() => {
     let cancelled = false
@@ -314,6 +326,25 @@ export default function DesignerCanvas({ visual, teamId, onSaved, onReplaceVisua
         // Kein Bildpfad? → bild-loses Design aus design_json rendern, statt abzubrechen.
         const dj = visual?.design_json
         const hasDesign = dj && typeof dj === 'object'
+        // v2-Design (mehrseitig): Seiten direkt laden, keine Storage-Bild-Logik nötig.
+        if (hasDesign && dj.version === 2 && Array.isArray(dj.pages) && dj.pages.length) {
+          const pgs = dj.pages.map(p => ({
+            id: p.id || nextId(),
+            objects: Array.isArray(p.objects) ? p.objects : [],
+            filters: { ...EMPTY_FILTERS, ...(p.filters || {}) },
+            baseCrop: p.baseCrop || null,
+            bgColor: p.bgColor || '#ffffff',
+            stage: p.stage || { width: 1080, height: 1080 },
+            primaryImageId: p.primaryImageId || null,
+          }))
+          const idx = Math.min(Math.max(0, dj.activePageIndex || 0), pgs.length - 1)
+          setBgImage(null)
+          setPages(pgs)
+          setActivePageIdx(idx)
+          hydrateFromPage(pgs[idx])
+          setLoading(false)
+          return
+        }
         if (!inlineDataUrl && !visual?.storage_path) {
           if (hasDesign) {
             try {
@@ -323,10 +354,14 @@ export default function DesignerCanvas({ visual, teamId, onSaved, onReplaceVisua
               setBgColor(dj.bgColor || '#ffffff')
               setStageSize({ width: w, height: h })
               setBaseCrop(null)
-              setObjects(Array.isArray(dj.objects) ? dj.objects : [])
-              setFilters({ ...EMPTY_FILTERS, ...(dj.filters || {}) })
+              const objs0 = Array.isArray(dj.objects) ? dj.objects : []
+              const flt0 = { ...EMPTY_FILTERS, ...(dj.filters || {}) }
+              setObjects(objs0)
+              setFilters(flt0)
               resetMaskCanvas(w, h)
               historyRef.current = []; futureRef.current = []
+              setPages([{ id: nextId(), objects: objs0, filters: flt0, baseCrop: null, bgColor: dj.bgColor || '#ffffff', stage: { width: w, height: h }, primaryImageId: null }])
+              setActivePageIdx(0)
             } catch (_e) { /* noop */ }
             setLoading(false)
             return
@@ -368,11 +403,14 @@ export default function DesignerCanvas({ visual, teamId, onSaved, onReplaceVisua
                 const p = objs.find(o => o.type === 'image' && o.__primary)
                 primaryImageIdRef.current = p?.id || null
               }
+              const flt = { ...EMPTY_FILTERS, ...(dj2.filters || {}) }
               setObjects(objs)
-              if (dj2.filters) setFilters({ ...EMPTY_FILTERS, ...dj2.filters })
+              setFilters(flt)
               if (dj2.baseCrop) setBaseCrop(dj2.baseCrop)
               setBgColor(dj2.bgColor || '#ffffff')
               setStageSize({ width: stW, height: stH })
+              setPages([{ id: nextId(), objects: objs, filters: flt, baseCrop: dj2.baseCrop || null, bgColor: dj2.bgColor || '#ffffff', stage: { width: stW, height: stH }, primaryImageId: primaryImageIdRef.current || null }])
+              setActivePageIdx(0)
               restored = true
             }
           } catch (_e) { /* fallback: frisches Whiteboard */ }
@@ -381,11 +419,14 @@ export default function DesignerCanvas({ visual, teamId, onSaved, onReplaceVisua
             const pid = nextId()
             primaryImageIdRef.current = pid
             setImgCache(prev => ({ ...prev, [dataUrl]: img }))
-            setObjects([{ id: pid, type: 'image', __primary: true, src: dataUrl,
-              x: 0, y: 0, width: w, height: h, rotation: 0, opacity: 1 }])
+            const objs0 = [{ id: pid, type: 'image', __primary: true, src: dataUrl,
+              x: 0, y: 0, width: w, height: h, rotation: 0, opacity: 1 }]
+            setObjects(objs0)
             setBgColor('#ffffff')
             setStageSize({ width: w, height: h })
             setFilters({ ...EMPTY_FILTERS })
+            setPages([{ id: nextId(), objects: objs0, filters: { ...EMPTY_FILTERS }, baseCrop: null, bgColor: '#ffffff', stage: { width: w, height: h }, primaryImageId: pid }])
+            setActivePageIdx(0)
           }
           resetMaskCanvas(w, h)
           historyRef.current = []
@@ -401,6 +442,78 @@ export default function DesignerCanvas({ visual, teamId, onSaved, onReplaceVisua
     return () => { cancelled = true }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [visual?.id, visual?.storage_path])
+
+  // ─── Mehrseiten-Helfer ──────────────────────────────────────────────────────
+  const currentStage = () => ({ width: stageSize.width, height: stageSize.height })
+  function snapshotActivePage() {
+    return { objects, filters, baseCrop, bgColor, stage: currentStage(), primaryImageId: primaryImageIdRef.current || null }
+  }
+  // Alle Seiten mit der aktiven Seite frisch hineinserialisiert.
+  function withCommittedPages() {
+    const arr = (pagesRef.current && pagesRef.current.length) ? pagesRef.current.map(p => ({ ...p })) : []
+    const idx = activeIdxRef.current
+    const snap = { id: (arr[idx] && arr[idx].id) || nextId(), ...snapshotActivePage() }
+    if (arr.length) arr[idx] = snap; else arr.push(snap)
+    return arr
+  }
+  function buildDesignJson() {
+    return { version: 2, pages: withCommittedPages(), activePageIndex: activeIdxRef.current }
+  }
+  function hydrateFromPage(p) {
+    if (!p) return
+    setObjects(Array.isArray(p.objects) ? p.objects : [])
+    setFilters({ ...EMPTY_FILTERS, ...(p.filters || {}) })
+    setBaseCrop(p.baseCrop || null)
+    setBgColor(p.bgColor || '#ffffff')
+    setStageSize(p.stage || { width: 1080, height: 1080 })
+    primaryImageIdRef.current = p.primaryImageId || null
+    historyRef.current = []; futureRef.current = []
+    setSelectedIds([]); setDistortId(null)
+    try { resetMaskCanvas((p.stage && p.stage.width) || 1080, (p.stage && p.stage.height) || 1080) } catch (_e) {}
+  }
+  function switchToPage(idx) {
+    if (idx === activeIdxRef.current) return
+    const arr = withCommittedPages()
+    if (!arr[idx]) return
+    setPages(arr); setActivePageIdx(idx); hydrateFromPage(arr[idx])
+  }
+  function addPage() {
+    const arr = withCommittedPages()
+    const blank = { id: nextId(), objects: [], filters: { ...EMPTY_FILTERS }, baseCrop: null, bgColor: '#ffffff', stage: currentStage(), primaryImageId: null }
+    arr.push(blank)
+    setPages(arr); setActivePageIdx(arr.length - 1); hydrateFromPage(blank)
+  }
+  function duplicatePage(idx) {
+    const arr = withCommittedPages()
+    const src = arr[idx]; if (!src) return
+    const copy = JSON.parse(JSON.stringify(src))
+    copy.id = nextId()
+    copy.objects = (copy.objects || []).map(o => ({ ...o, id: nextId(), __primary: false }))
+    copy.primaryImageId = null
+    arr.splice(idx + 1, 0, copy)
+    setPages(arr); setActivePageIdx(idx + 1); hydrateFromPage(copy)
+  }
+  function deletePage(idx) {
+    if ((pagesRef.current || []).length <= 1) return
+    const arr = withCommittedPages()
+    arr.splice(idx, 1)
+    const newIdx = Math.max(0, Math.min(idx, arr.length - 1))
+    setPages(arr); setActivePageIdx(newIdx); hydrateFromPage(arr[newIdx])
+  }
+  function movePage(idx, dir) {
+    const arr = withCommittedPages()
+    const j = idx + dir
+    if (j < 0 || j >= arr.length) return
+    const curId = arr[activeIdxRef.current]?.id
+    const [it] = arr.splice(idx, 1); arr.splice(j, 0, it)
+    const newActive = arr.findIndex(p => p.id === curId)
+    setPages(arr); setActivePageIdx(newActive >= 0 ? newActive : 0)
+  }
+  // Initialisiert pages aus dem aktuellen Live-Stand (für v1/Frisch-Import als 1 Seite).
+  function initSinglePage(extra) {
+    const pg = { id: nextId(), ...snapshotActivePage(), ...(extra || {}) }
+    setPages([pg]); setActivePageIdx(0)
+  }
 
   // ─── Autospeichern (Echtzeit) ──────────────────────────────────────────────
   // Jede Änderung am Design wird debounced als design_json gespeichert (ohne den
@@ -422,7 +535,7 @@ export default function DesignerCanvas({ visual, teamId, onSaved, onReplaceVisua
     if (autosaveTimerRef.current) clearTimeout(autosaveTimerRef.current)
     autosaveTimerRef.current = setTimeout(async () => {
       try {
-        const design_json = { version: 1, objects, filters, baseCrop, bgColor, stage: { width: stageSize.width, height: stageSize.height } }
+        const design_json = buildDesignJson()
         await updateVisual(visual.id, { design_json })
         setSavedMsg('Automatisch gespeichert')
       } catch (_e) { /* Autosave darf nie stören */ }
@@ -1187,6 +1300,8 @@ export default function DesignerCanvas({ visual, teamId, onSaved, onReplaceVisua
     if (!bgColor) setBgColor('#ffffff')
     setSelectedIds([])
     resetMaskCanvas(preset.w, preset.h)
+    // Ein Format pro Design: Format-Änderung gilt für ALLE Seiten.
+    setPages(prev => prev.map(p => ({ ...p, stage: { width: preset.w, height: preset.h } })))
   }
 
   // ─── Vorlagen anwenden (Start-Layout) ──────────────────────────────────────
@@ -1745,7 +1860,7 @@ export default function DesignerCanvas({ visual, teamId, onSaved, onReplaceVisua
       const blob = await renderBlob(2)
       const { path, error: upErr } = await uploadDesignRender(teamId, visual.id, blob)
       if (upErr || !path) throw new Error(upErr?.message || 'Upload fehlgeschlagen')
-      const design_json = { version: 1, objects, filters, baseCrop, bgColor, stage: { width: stageSize.width, height: stageSize.height } }
+      const design_json = buildDesignJson()
       const { data: updated, error: updErr } = await updateVisual(visual.id, { design_json, storage_path: path })
       if (updErr) throw new Error(updErr.message)
       setSavedMsg('Gespeichert ✓')
@@ -2857,6 +2972,67 @@ export default function DesignerCanvas({ visual, teamId, onSaved, onReplaceVisua
       </div>
 
       </div>
+
+      {/* Seiten-Strip (Mehrseiten-Design) */}
+      <PageStrip
+        pages={pages}
+        activeIdx={activePageIdx}
+        onSwitch={switchToPage}
+        onAdd={addPage}
+        onDuplicate={duplicatePage}
+        onDelete={deletePage}
+      />
+    </div>
+  )
+}
+
+// ─── Seiten-Strip (Canva-artig, unten) ──────────────────────────────────────
+const _miniBtn = { width: 20, height: 20, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', border: 'none', background: 'transparent', cursor: 'pointer', color: 'var(--text-muted)', padding: 0, borderRadius: 5 }
+function PageThumb({ page, active }) {
+  const W = 64
+  const sw = page.stage?.width || 1080, sh = page.stage?.height || 1080
+  const H = Math.max(36, Math.round(W * sh / sw))
+  const sc = W / sw
+  const off = page.baseCrop || { x: 0, y: 0 }
+  return (
+    <div style={{ position: 'relative', width: W, height: H, background: page.bgColor || '#fff', borderRadius: 6, overflow: 'hidden',
+      border: '2px solid ' + (active ? P : 'var(--border,#E9ECF2)'), boxShadow: active ? '0 0 0 2px color-mix(in srgb, var(--wl-primary, rgb(49,90,231)) 25%, transparent)' : 'none' }}>
+      {(page.objects || []).map((o, i) => {
+        if (o.hidden) return null
+        const x = ((o.x || 0) - (off.x || 0)) * sc, y = ((o.y || 0) - (off.y || 0)) * sc
+        if (o.type === 'image' && o.src) return <img key={i} src={o.src} alt="" style={{ position: 'absolute', left: x, top: y, width: (o.width || 0) * sc, height: (o.height || 0) * sc, objectFit: 'fill' }} />
+        if (o.type === 'text') return <div key={i} style={{ position: 'absolute', left: x, top: y, width: (o.width || 300) * sc, color: o.fill || '#111', fontSize: Math.max(4, (o.fontSize || 40) * sc), lineHeight: 1.1, overflow: 'hidden', fontWeight: (o.fontStyle || '').includes('bold') ? 700 : 400 }}>{(o.text || '').slice(0, 36)}</div>
+        if (o.type === 'rect') return <div key={i} style={{ position: 'absolute', left: x, top: y, width: (o.width || 0) * sc, height: (o.height || 0) * sc, background: o.fill || 'transparent', borderRadius: (o.cornerRadius || 0) * sc }} />
+        if (o.type === 'ellipse') return <div key={i} style={{ position: 'absolute', left: ((o.x || 0) - (off.x || 0) - (o.radiusX || 0)) * sc, top: ((o.y || 0) - (off.y || 0) - (o.radiusY || 0)) * sc, width: (o.radiusX || 0) * 2 * sc, height: (o.radiusY || 0) * 2 * sc, background: o.fill || 'transparent', borderRadius: '50%' }} />
+        return null
+      })}
+    </div>
+  )
+}
+function PageStrip({ pages, activeIdx, onSwitch, onAdd, onDuplicate, onDelete }) {
+  if (!pages || pages.length === 0) return null
+  return (
+    <div style={{ display: 'flex', alignItems: 'flex-start', gap: 12, padding: '8px 12px', borderTop: '1px solid var(--border,#E9ECF2)', background: 'var(--surface,#fff)', overflowX: 'auto', flexShrink: 0 }}>
+      {pages.map((p, i) => (
+        <div key={p.id || i} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 3, flexShrink: 0 }}>
+          <button onClick={() => onSwitch(i)} title={`Seite ${i + 1}`} style={{ padding: 0, border: 'none', background: 'transparent', cursor: 'pointer' }}>
+            <PageThumb page={p} active={i === activeIdx} />
+          </button>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 2, height: 20 }}>
+            <span style={{ fontSize: 10, fontWeight: 700, color: i === activeIdx ? P : 'var(--text-muted)', minWidth: 12, textAlign: 'center' }}>{i + 1}</span>
+            {i === activeIdx && (
+              <>
+                <button onClick={() => onDuplicate(i)} title="Seite duplizieren" style={_miniBtn}><Copy size={12} strokeWidth={1.9} /></button>
+                {pages.length > 1 && <button onClick={() => onDelete(i)} title="Seite löschen" style={_miniBtn}><Trash2 size={12} strokeWidth={1.9} /></button>}
+              </>
+            )}
+          </div>
+        </div>
+      ))}
+      <button onClick={onAdd} title="Seite hinzufügen"
+        style={{ width: 64, height: 64, flexShrink: 0, borderRadius: 6, border: '1px dashed var(--border,#E9ECF2)', background: 'var(--page-bg,#F7F8FA)', cursor: 'pointer', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', color: 'var(--text-muted)' }}>
+        <PlusIcon size={18} />
+      </button>
     </div>
   )
 }
