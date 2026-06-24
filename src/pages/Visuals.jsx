@@ -22,7 +22,7 @@ import { useBrandVoice } from '../context/BrandVoiceContext'
 const P = 'var(--wl-primary, rgb(49,90,231))'
 
 // ─── Hauptkomponente ────────────────────────────────────────────────────────
-export default function Visuals({ session }) {
+export default function Visuals({ session, kindFilter = null, embedded = false }) {
   const navigate = useNavigate()
   const [searchParams] = useSearchParams()
   const { activeTeamId } = useTeam()
@@ -75,8 +75,13 @@ export default function Visuals({ session }) {
     const _sharedBv = await sharedBrandVoiceIds(activeTeamId)
     let q = scopeContentByTeamOrSharedBV(supabase.from('visuals').select('*'), activeTeamId, _sharedBv)
       .eq('is_archived', false)
-      .neq('model', 'upload')
-      .or('media_type.is.null,media_type.eq.image')
+    if (kindFilter) {
+      // Bibliothek: exakt nach Art filtern (Designs bzw. alle Bild-Medien inkl. Uploads).
+      q = q.eq('kind', kindFilter)
+    } else {
+      q = q.neq('model', 'upload').or('media_type.is.null,media_type.eq.image')
+    }
+    q = q
       .order('is_favorite', { ascending: false })
       .order('created_at',  { ascending: false })
       .limit(100)

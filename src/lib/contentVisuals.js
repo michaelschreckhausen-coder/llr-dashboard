@@ -14,7 +14,7 @@ export async function listVisualsForChat(chatId) {
   if (!chatId) return { data: [] }
   const { data, error } = await supabase
     .from('visual_chats')
-    .select('last_opened_at, visuals!inner(id, title, prompt, aspect_ratio, model, storage_path, thumbnail_path, design_json, parent_visual_id, created_at)')
+    .select('last_opened_at, visuals!inner(id, title, prompt, aspect_ratio, model, storage_path, thumbnail_path, design_json, parent_visual_id, created_at, kind)')
     .eq('chat_id', chatId)
     .order('last_opened_at', { ascending: false })
   if (error) return { data: [], error }

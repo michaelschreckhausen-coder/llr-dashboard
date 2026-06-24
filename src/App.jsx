@@ -48,6 +48,7 @@ import ICP           from './pages/ICP'
 import ContentStudio      from './pages/ContentStudio'
 import Visuals            from './pages/Visuals'
 import Media              from './pages/Media'
+import Bibliothek         from './pages/Bibliothek'
 import Redaktionsplan    from './pages/Redaktionsplan'
 import GettingStarted  from './pages/GettingStarted'
 import Documents      from './pages/Documents'
@@ -345,6 +346,11 @@ export default function App() {
             <Route path="/media" element={
               <ModuleGuard module="content">
                 <Media session={session} />
+              </ModuleGuard>
+            } />
+            <Route path="/bibliothek" element={
+              <ModuleGuard module="content">
+                <Bibliothek session={session} />
               </ModuleGuard>
             } />
             <Route path="/settings" element={<Navigate to="/settings/profil" replace />} />

@@ -24,7 +24,7 @@ import DocumentEditorPane from '../components/DocumentEditorPane'
 import { listDocumentsForChat, listDocuments, addDocumentToChat } from '../lib/contentDocuments'
 import DesignerPane from '../components/designer/DesignerPane'
 import { IMAGE_MODELS, DEFAULT_IMAGE_MODEL, splitModelValue, imageModelLabel, ASPECT_PRESETS, DEFAULT_ASPECT } from '../lib/imageModels'
-import { listVisualsForChat, linkVisualToChat, getVisual, signedVisualUrl, downloadVisualBlob } from '../lib/contentVisuals'
+import { listVisualsForChat, linkVisualToChat, getVisual, signedVisualUrl, downloadVisualBlob, visualDataUrl, uploadImageBlob } from '../lib/contentVisuals'
 
 const P = 'var(--wl-primary, rgb(49,90,231))'
 const ACCENT = '#30A0D0'
@@ -447,18 +447,78 @@ export default function ContentStudio({ session }) {
   // Letztes Bild im Chat (für Folge-Edit-Logik) — chatVisuals ist nach Aktualität sortiert.
   function lastChatVisual() { return chatVisuals && chatVisuals.length ? chatVisuals[0] : null }
 
-  // Designer mit einem Bild öffnen (Splitscreen, Design-Modus).
+  // Aus einem Bild ein neues Design erstellen (Bild = Seite 1). Bilder bleiben Bilder
+  // (in den Medien); erst beim "In Design einfügen" entsteht ein mehrseitiges Design.
+  async function createDesignFromImage(v) {
+    try {
+      const dataUrl = await visualDataUrl(v.storage_path)
+      if (!dataUrl) return null
+      const dims = await new Promise(res => {
+        const im = new Image()
+        im.onload = () => res({ w: im.naturalWidth || 1080, h: im.naturalHeight || 1080 })
+        im.onerror = () => res({ w: 1080, h: 1080 })
+        im.src = dataUrl
+      })
+      const rid = () => Math.random().toString(36).slice(2, 10)
+      const pid = 'o' + rid()
+      const page = {
+        id: 'p' + rid(),
+        objects: [{ id: pid, type: 'image', __primary: true, src: dataUrl, x: 0, y: 0, width: dims.w, height: dims.h, rotation: 0, opacity: 1 }],
+        filters: {}, baseCrop: null, bgColor: '#ffffff', stage: { width: dims.w, height: dims.h }, primaryImageId: pid,
+      }
+      const design_json = { version: 2, pages: [page], activePageIndex: 0 }
+      let userId = null
+      try { const { data } = await supabase.auth.getUser(); userId = data?.user?.id || null } catch (_e) {}
+      const { data: row, error } = await supabase.from('visuals').insert({
+        user_id: userId, team_id: activeTeamId, brand_voice_id: activeBrandVoice?.id || v.brand_voice_id || null,
+        kind: 'design', media_type: 'image', title: v.title || 'Design', aspect_ratio: v.aspect_ratio || '1:1',
+        prompt: v.prompt || 'Design', storage_path: v.storage_path, design_json,
+      }).select().single()
+      if (error) return null
+      return row
+    } catch (_e) { return null }
+  }
+
+  // Designer öffnen. Ein Bild wird zuerst in ein neues Design verpackt; ein Design
+  // wird direkt geöffnet.
   async function openVisualInDesigner(visualOrId, { assignToChat = true } = {}) {
     let v = visualOrId
     if (typeof visualOrId === 'string') { const { data } = await getVisual(visualOrId); v = data }
     if (!v) return
-    if (assignToChat && activeChatId) { try { await linkVisualToChat(v.id, activeChatId) } catch (_e) {} ; loadChatVisuals(activeChatId) }
-    setActiveVisual(v)
+    let design = v
+    if (v.kind !== 'design') {
+      design = await createDesignFromImage(v)
+      if (!design) { setError('Design konnte nicht erstellt werden.'); return }
+    }
+    if (assignToChat && activeChatId) { try { await linkVisualToChat(design.id, activeChatId) } catch (_e) {} ; loadChatVisuals(activeChatId) }
+    setActiveVisual(design)
     setSplitMode('design')
     setSidebarOpen(false)
-    // Ansicht NICHT zurücksetzen, wenn der Editor schon offen ist (z.B. Bildwahl
-    // aus der Rail im Vollbild soll im Vollbild bleiben). Nur beim Erst-Öffnen → Split.
     if (!editorOpen) { setEditorOpen(true); setPaneView('split') }
+  }
+
+  // Leeres Design anlegen + öffnen (für "Neues Design" in der Rail).
+  async function createEmptyDesign() {
+    try {
+      const rid = () => Math.random().toString(36).slice(2, 10)
+      const page = { id: 'p' + rid(), objects: [], filters: {}, baseCrop: null, bgColor: '#ffffff', stage: { width: 1080, height: 1080 }, primaryImageId: null }
+      const design_json = { version: 2, pages: [page], activePageIndex: 0 }
+      let userId = null
+      try { const { data } = await supabase.auth.getUser(); userId = data?.user?.id || null } catch (_e) {}
+      // Platzhalter-Render (1x1 weiß) als storage_path (NOT NULL) — wird beim Speichern ersetzt.
+      const blob = await (await fetch('data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==')).blob()
+      const up = await uploadImageBlob(activeTeamId, blob)
+      if (up.error || !up.path) { setError('Design konnte nicht erstellt werden.'); return }
+      const { data: row, error } = await supabase.from('visuals').insert({
+        user_id: userId, team_id: activeTeamId, brand_voice_id: activeBrandVoice?.id || null,
+        kind: 'design', media_type: 'image', title: 'Neues Design', aspect_ratio: '1:1',
+        prompt: 'Design', storage_path: up.path, design_json,
+      }).select().single()
+      if (error || !row) { setError('Design konnte nicht erstellt werden.'); return }
+      if (activeChatId) { try { await linkVisualToChat(row.id, activeChatId) } catch (_e) {} ; loadChatVisuals(activeChatId) }
+      setActiveVisual(row); setSplitMode('design'); setSidebarOpen(false)
+      if (!editorOpen) { setEditorOpen(true); setPaneView('split') }
+    } catch (_e) { setError('Design konnte nicht erstellt werden.') }
   }
 
   // ?visual=<id> aus URL (z.B. aus der Galerie): Bild laden + Designer öffnen.
@@ -895,9 +955,9 @@ export default function ContentStudio({ session }) {
                 />
               </div>
               {activeChatId && (
-                <VisualRail visuals={chatVisuals} activeVisualId={activeVisual?.id}
+                <VisualRail visuals={chatVisuals.filter(v => v.kind === 'design')} activeVisualId={activeVisual?.id}
                   onSelect={(v) => openVisualInDesigner(v, { assignToChat:false })}
-                  onNew={() => { setVisualMode(true); setForceNewImage(true); setEditorOpen(false); setPaneView('split') }} />
+                  onNew={() => createEmptyDesign()} />
               )}
             </>
           ) : (
@@ -1587,14 +1647,14 @@ function VisualRail({ visuals = [], activeVisualId, onSelect = () => {}, onNew =
   return (
     <aside style={{ width:56, flexShrink:0, borderLeft:'1px solid var(--border,#E9ECF2)', background:'var(--page-bg, #F7F8FA)',
                     display:'flex', flexDirection:'column', alignItems:'center', gap:7, padding:'14px 0', overflowY:'auto' }}>
-      <div title="Bilder in diesem Chat" style={{ fontSize:8.5, fontWeight:800, color:'var(--text-soft,#98a2b3)', textTransform:'uppercase', letterSpacing:'0.03em', textAlign:'center', lineHeight:1.1, paddingBottom:2 }}>Bilder</div>
+      <div title="Designs in diesem Chat" style={{ fontSize:8.5, fontWeight:800, color:'var(--text-soft,#98a2b3)', textTransform:'uppercase', letterSpacing:'0.03em', textAlign:'center', lineHeight:1.1, paddingBottom:2 }}>Designs</div>
       {visuals.length === 0 && (
         <div style={{ fontSize:9, color:'var(--text-soft,#98a2b3)', textAlign:'center', padding:'0 4px', lineHeight:1.3 }}>noch keine</div>
       )}
       {visuals.map((v) => {
         const active = v.id === activeVisualId
         return (
-          <button key={v.id} onClick={() => onSelect(v)} title={v.title || v.prompt || 'Bild'}
+          <button key={v.id} onClick={() => onSelect(v)} title={v.title || v.prompt || 'Design'}
             style={{ position:'relative', width:42, height:42, borderRadius:9, flexShrink:0, cursor:'pointer', overflow:'hidden', padding:0,
               border:'2px solid ' + (active ? P : 'var(--border,#E9ECF2)'),
               background:'#fff', boxShadow: active ? '0 1px 3px rgba(49,90,231,0.25)' : 'none' }}>
@@ -1604,7 +1664,7 @@ function VisualRail({ visuals = [], activeVisualId, onSelect = () => {}, onNew =
           </button>
         )
       })}
-      <button onClick={onNew} title="Neues Bild im Chat erstellen"
+      <button onClick={onNew} title="Neues Design erstellen"
         style={{ width:42, height:42, borderRadius:9, flexShrink:0, cursor:'pointer', border:'1px dashed var(--border,#D7DCE5)', background:'transparent',
           color:'var(--text-muted,#667085)', display:'flex', alignItems:'center', justifyContent:'center' }}>
         <Plus size={16} strokeWidth={2}/>

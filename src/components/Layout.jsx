@@ -128,9 +128,7 @@ function getNav(t) {
   { divider: true, label: t('nav.content'), tourId: 'nav-content' },
   { to: '/redaktionsplan',  icon: IcCalPen,   label: t('nav.redaktionsplan') },
   { to: '/content-studio',  icon: IcStar,     label: 'Content-Werkstatt' },
-  { to: '/dokumente',       icon: IcDoc,      label: 'Dokumente' },
-  { to: '/visuals',         icon: IcImage,    label: 'Visuals' },
-  { to: '/media',           icon: IcBarChart, label: 'Medien' },
+  { to: '/bibliothek',      icon: IcImage,    label: 'Bibliothek' },
 
   // "Wissen" — gemischte Herkunft: Wissensdatenbank (branding-Modul) + Ligen/Pakete
   // (sponsoring-Addon). BEWUSST KEIN Eintrag in SIDEBAR_DIVIDER_TO_MODULE → Gating
@@ -362,7 +360,7 @@ export default function Layout({ session, role, onLogout, children }) {
   const { brandVoices: _bvAll } = useBrandVoice()
   const [showContentIntro, setShowContentIntro] = useState(false)
   const [introManual, setIntroManual] = useState(false)
-  const _isContentRoute = ['/redaktionsplan','/content-studio','/visuals','/media','/dokumente'].some(r => location.pathname === r || location.pathname.startsWith(r + '/'))
+  const _isContentRoute = ['/redaktionsplan','/content-studio','/bibliothek','/visuals','/media','/dokumente'].some(r => location.pathname === r || location.pathname.startsWith(r + '/'))
   useEffect(() => {
     if (false) setShowContentIntro(true) // abgelöst durch Content-Bereichstour (AREA_TOURS.content)
   }, [onbLoading, contentIntroSeen, _isContentRoute, (_bvAll||[]).length])
@@ -642,7 +640,7 @@ export default function Layout({ session, role, onLogout, children }) {
     '/ki-sichtbarkeit': 'KI-Sichtbarkeit',
     '/icp': 'Zielgruppen (ICP)',
     '/linkedin-connect': 'LinkedIn Cloud',
-    '/content-studio': 'Content Studio', '/redaktionsplan': 'Redaktionsplan', '/dokumente': 'Dokumente',
+    '/content-studio': 'Content Studio', '/redaktionsplan': 'Redaktionsplan', '/dokumente': 'Dokumente', '/bibliothek': 'Bibliothek',
     '/settings/team': 'Team',
     '/settings': 'Einstellungen',
     '/profile': 'Mein Profil',
@@ -1312,7 +1310,7 @@ function isBrandVoiceContext(pathname) {
   // BV-Switcher sichtbar in LinkedIn-Bereich + Content-Bereich
   const bvRoutes = [
     '/profiltexte', '/vernetzungen', '/messages', '/automatisierung',
-    '/redaktionsplan', '/content-studio', '/visuals', '/dokumente', '/media', '/content-reporting',
+    '/redaktionsplan', '/content-studio', '/bibliothek', '/visuals', '/dokumente', '/media', '/content-reporting',
   ]
   return bvRoutes.some(r => pathname === r || pathname.startsWith(r + '/'))
 }
