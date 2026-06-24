@@ -11,7 +11,7 @@
 //   - Beim ersten Send im Clean-Modus → Sidebar klappt automatisch auf
 
 import React, { useState, useEffect, useRef } from 'react'
-import { Pencil, Pin, BookOpen, Target, Send, Loader2, Globe, Plus, FileText, ChevronLeft, ChevronRight, Minimize2, X, Mic, Square, Image as ImageIcon, Download, Sparkles, Wand2, FilePlus2, Brush } from 'lucide-react'
+import { Pencil, Pin, BookOpen, Target, Send, Loader2, Globe, Plus, FileText, ChevronLeft, ChevronRight, X, Mic, Square, Image as ImageIcon, Download, Sparkles, Wand2, FilePlus2, Brush } from 'lucide-react'
 import { useVoiceInput } from '../hooks/useVoiceInput'
 import CompanyMultiSelect from '../components/CompanyMultiSelect'
 import AudienceSelect from '../components/AudienceSelect'
@@ -894,11 +894,12 @@ export default function ContentStudio({ session }) {
           <ChevronLeft size={18} strokeWidth={2}/>
         </button>
       ) : paneView === 'suite' ? (
-        /* VOLLBILD: genau EIN Button, am freien RECHTEN Rand (überlappt nichts).
+        /* VOLLBILD: genau EIN Button am LINKEN Rand (gleicher Stil wie der rechte
+           Aufklapp-Button), in der Lücke vor der Werkzeugleiste → keine Überlappung.
            Klick → zurück zum Split. */
-        <button onClick={() => setPaneView('split')} title="Vollbild verlassen (Splitscreen)"
-          style={{ ...edgeBtn, position:'absolute', top:'50%', right:10, transform:'translateY(-50%)', zIndex:40 }}>
-          <Minimize2 size={16} strokeWidth={2}/>
+        <button onClick={() => setPaneView('split')} title="Splitscreen"
+          style={{ ...edgeBtn, position:'absolute', top:'50%', left:16, transform:'translateY(-50%)', zIndex:50 }}>
+          <ChevronRight size={18} strokeWidth={2}/>
         </button>
       ) : (
         /* SPLIT: Segment-Bedienelement am Strich — links vergrößern, rechts verkleinern */
