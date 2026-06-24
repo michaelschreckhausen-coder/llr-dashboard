@@ -32,7 +32,10 @@ import {
   Trash2, Undo2, Redo2, Save, Download, BringToFront, SendToBack, Crop, Wand2,
   Bold, Italic, Sliders, Loader2, X, ChevronUp, ChevronDown, Brush, Lasso,
   Eraser, Image as ImageIcon, LayoutTemplate, Copy, ZoomIn, ZoomOut, Maximize2,
-  Upload, Frame,
+  Upload, Frame, Eye, EyeOff, Lock, Unlock, Layers, GripVertical, Underline,
+  AlignStartVertical, AlignCenterVertical, AlignEndVertical,
+  AlignStartHorizontal, AlignCenterHorizontal, AlignEndHorizontal,
+  AlignHorizontalDistributeCenter, AlignVerticalDistributeCenter,
 } from 'lucide-react'
 import { supabase } from '../../lib/supabase'
 import { visualDataUrl, uploadDesignRender, updateVisual, getVisual } from '../../lib/contentVisuals'
@@ -159,6 +162,7 @@ const ZOOM_MAX = 8
 export default function DesignerCanvas({ visual, teamId, onSaved, onReplaceVisual }) {
   const stageRef = useRef(null)
   const layerRef = useRef(null)
+  const guideLayerRef = useRef(null)              // Smart-Guides (Hilfslinien) Layer
   const trRef = useRef(null)
   const containerRef = useRef(null)
   const textareaRef = useRef(null)
@@ -221,6 +225,12 @@ export default function DesignerCanvas({ visual, teamId, onSaved, onReplaceVisua
 
   // Vorlagen-Panel
   const [showTemplates, setShowTemplates] = useState(false)
+
+  // ─── Runde 2: rechte Spalte (Ebenen + Eigenschaften) ──────────────────────
+  const [showRightPanel, setShowRightPanel] = useState(true)   // rechte Spalte ein/aus
+  const [renamingId, setRenamingId] = useState(null)           // Ebene wird gerade umbenannt
+  const layerDragRef = useRef(null)                            // {id} während Drag-Reorder im Ebenen-Panel
+  const [layerDragOverId, setLayerDragOverId] = useState(null) // Drop-Ziel-Hervorhebung
 
   // Masken-Canvas (volle Bild-Auflösung) + sichtbares Overlay-Canvas (Anzeige-Auflösung)
   const maskCanvasRef = useRef(null)                  // HTMLCanvasElement (Bild-Pixel, weiß=Maske)
@@ -804,6 +814,113 @@ export default function DesignerCanvas({ visual, teamId, onSaved, onReplaceVisua
       else if (dir === 'down') arr.splice(Math.max(idx - 1, 0), 0, it)
       return arr
     })
+  }
+
+  // ─── Ebenen-Panel: Reorder per Drag, Sichtbarkeit/Sperre, Umbenennen ───────
+  // Verschiebt das Objekt mit dragId an die Array-Position von targetId. Das
+  // objects-Array ist von hinten (unten) nach vorne (oben) sortiert; das Panel
+  // zeigt es umgekehrt, daher arbeiten wir hier auf den realen Array-Indizes.
+  function reorderObjects(dragId, targetId, placeAfter) {
+    if (!dragId || dragId === targetId) return
+    pushHistory()
+    setObjects(prev => {
+      const arr = [...prev]
+      const from = arr.findIndex(o => o.id === dragId)
+      if (from < 0) return prev
+      const [it] = arr.splice(from, 1)
+      let to = arr.findIndex(o => o.id === targetId)
+      if (to < 0) { arr.push(it); return arr }
+      if (placeAfter) to += 1
+      arr.splice(to, 0, it)
+      return arr
+    })
+  }
+  function toggleLayerFlag(id, flag) {
+    pushHistory()
+    setObjects(prev => prev.map(o => o.id === id ? { ...o, [flag]: !o[flag] } : o))
+    if (flag === 'locked' || flag === 'hidden') {
+      // gesperrte/ausgeblendete Ebene aus der Auswahl nehmen
+      setSelectedIds(prev => prev.filter(x => x !== id))
+    }
+  }
+  function renameLayer(id, name) {
+    commitHistoryOnce()
+    updateObject(id, { name: name }, false)
+    endInteraction()
+    setRenamingId(null)
+  }
+
+  // ─── Ausrichten / Verteilen ─────────────────────────────────────────────────
+  // Bei genau 1 Objekt: relativ zur Canvas. Bei mehreren: relativ zur Auswahl-Box.
+  // edge: 'left'|'hcenter'|'right'|'top'|'vcenter'|'bottom'
+  function alignObjects(edge) {
+    const ids = selectedIds
+    if (!ids.length) return
+    pushHistory()
+    const cw = baseCrop?.width || stageSize.width
+    const ch = baseCrop?.height || stageSize.height
+    const offX = baseCrop ? baseCrop.x : 0
+    const offY = baseCrop ? baseCrop.y : 0
+    // Referenz-Rechteck (in Bühnenkoordinaten inkl. off).
+    let refL, refT, refR, refB
+    if (ids.length === 1) {
+      refL = offX; refT = offY; refR = offX + cw; refB = offY + ch
+    } else {
+      const bs = ids.map(id => objBounds(objects.find(o => o.id === id))).filter(Boolean)
+      refL = Math.min(...bs.map(b => b.x))
+      refT = Math.min(...bs.map(b => b.y))
+      refR = Math.max(...bs.map(b => b.x + b.w))
+      refB = Math.max(...bs.map(b => b.y + b.h))
+    }
+    skipHistoryRef.current = true
+    setObjects(prev => prev.map(o => {
+      if (!ids.includes(o.id)) return o
+      const b = objBounds(o)
+      let dx = 0, dy = 0
+      if (edge === 'left') dx = refL - b.x
+      else if (edge === 'right') dx = refR - (b.x + b.w)
+      else if (edge === 'hcenter') dx = (refL + refR) / 2 - (b.x + b.w / 2)
+      else if (edge === 'top') dy = refT - b.y
+      else if (edge === 'bottom') dy = refB - (b.y + b.h)
+      else if (edge === 'vcenter') dy = (refT + refB) / 2 - (b.y + b.h / 2)
+      return moveObjectBy(o, dx, dy)
+    }))
+    setTimeout(() => { skipHistoryRef.current = false }, 0)
+  }
+  // Verteilt ≥3 selektierte Objekte mit gleichen Abständen (axis: 'h' | 'v').
+  function distributeObjects(axis) {
+    const ids = selectedIds
+    if (ids.length < 3) return
+    pushHistory()
+    const items = ids.map(id => ({ o: objects.find(o => o.id === id), b: objBounds(objects.find(o => o.id === id)) }))
+      .filter(it => it.o && it.b)
+    if (items.length < 3) return
+    const isH = axis === 'h'
+    // Nach Mittelpunkt sortieren
+    items.sort((a, b) => (isH ? (a.b.x + a.b.w / 2) - (b.b.x + b.b.w / 2) : (a.b.y + a.b.h / 2) - (b.b.y + b.b.h / 2)))
+    const first = items[0], last = items[items.length - 1]
+    const firstCenter = isH ? first.b.x + first.b.w / 2 : first.b.y + first.b.h / 2
+    const lastCenter = isH ? last.b.x + last.b.w / 2 : last.b.y + last.b.h / 2
+    const step = (lastCenter - firstCenter) / (items.length - 1)
+    const targets = new Map()
+    items.forEach((it, i) => {
+      const desiredCenter = firstCenter + step * i
+      const curCenter = isH ? it.b.x + it.b.w / 2 : it.b.y + it.b.h / 2
+      const d = desiredCenter - curCenter
+      targets.set(it.o.id, isH ? { dx: d, dy: 0 } : { dx: 0, dy: d })
+    })
+    skipHistoryRef.current = true
+    setObjects(prev => prev.map(o => {
+      const t = targets.get(o.id)
+      return t ? moveObjectBy(o, t.dx, t.dy) : o
+    }))
+    setTimeout(() => { skipHistoryRef.current = false }, 0)
+  }
+  // Verschiebt ein Objekt typ-korrekt um (dx,dy). Ellipsen haben x/y als Mittelpunkt,
+  // Linien/Pfeile/Sticker nutzen x/y als Anker — in allen Fällen reicht x/y += d.
+  function moveObjectBy(o, dx, dy) {
+    if (!dx && !dy) return o
+    return { ...o, x: (o.x || 0) + dx, y: (o.y || 0) + dy }
   }
 
   // ─── Inline-Text-Edit (Textarea-Overlay) ──────────────────────────────────
@@ -1420,6 +1537,101 @@ export default function DesignerCanvas({ visual, teamId, onSaved, onReplaceVisua
     }
   }
 
+  // ─── Smart-Guides / Snapping ────────────────────────────────────────────────
+  // Gängiges react-konva-Pattern: Beim Ziehen/Skalieren werden Snap-Linien aus der
+  // Canvas (Kanten + Mitte) sowie aus den ANDEREN Objekten (Kanten + Mittelachsen)
+  // gebildet. Liegt eine Kante/Mitte des bewegten Objekts näher als die Toleranz an
+  // einer Linie, "schnappt" das Objekt darauf; die getroffene Linie wird als pinke/
+  // Primary-Hilfslinie auf dem Guide-Layer gezeichnet. Beim Drag-Ende leeren wir den
+  // Guide-Layer wieder. Alle Berechnungen in BÜHNEN-Koordinaten (vor effScale), die
+  // Toleranz wird daher durch effScale geteilt (≈6px Bildschirm).
+  const SNAP_PX = 6
+  const guideTimerRef = useRef(null)
+
+  // Liefert für die aktuelle Bühne die Snap-Linien (in Bühnenkoordinaten ohne off).
+  // skipIds: IDs, die NICHT als Snap-Quelle dienen (das/die bewegte(n) Objekt(e)).
+  function collectGuideLines(skipIds) {
+    const skip = new Set(skipIds || [])
+    const cw = baseCrop?.width || stageSize.width
+    const ch = baseCrop?.height || stageSize.height
+    // Canvas: linker/rechter/oberer/unterer Rand + Mitte (jeweils relativ zur Bühne,
+    // ohne off — Stage-lokale 0..cw/0..ch).
+    const vertical = [0, cw / 2, cw]      // x-Linien
+    const horizontal = [0, ch / 2, ch]    // y-Linien
+    try {
+      for (const o of objects) {
+        if (skip.has(o.id) || o.hidden) continue
+        const b = objBounds(o)
+        // objBounds liefert Bühnenkoordinaten INKL. off-Versatz; auf Stage-lokal bringen.
+        const bx = b.x - off.x, by = b.y - off.y
+        vertical.push(bx, bx + b.w / 2, bx + b.w)
+        horizontal.push(by, by + b.h / 2, by + b.h)
+      }
+    } catch (_e) {}
+    return { vertical, horizontal }
+  }
+
+  // Zeichnet die getroffenen Hilfslinien auf den Guide-Layer (Stage-lokal, da der
+  // Layer mit effScale skaliert ist).
+  function drawGuides(vLines, hLines) {
+    const layer = guideLayerRef.current
+    if (!layer) return
+    try {
+      layer.destroyChildren()
+      const cw = baseCrop?.width || stageSize.width
+      const ch = baseCrop?.height || stageSize.height
+      const sw = 1 / effScale
+      for (const x of vLines) {
+        layer.add(new Konva.Line({ points: [x, -4 / effScale, x, ch + 4 / effScale], stroke: PRGB, strokeWidth: sw, dash: [4 / effScale, 4 / effScale], listening: false }))
+      }
+      for (const y of hLines) {
+        layer.add(new Konva.Line({ points: [-4 / effScale, y, cw + 4 / effScale, y], stroke: PRGB, strokeWidth: sw, dash: [4 / effScale, 4 / effScale], listening: false }))
+      }
+      layer.batchDraw()
+    } catch (_e) {}
+  }
+  function clearGuides() {
+    const layer = guideLayerRef.current
+    if (!layer) return
+    try { layer.destroyChildren(); layer.batchDraw() } catch (_e) {}
+  }
+
+  // Snapping während des Drags einer einzelnen Node. Verschiebt die Node-Position so,
+  // dass eine ihrer Snap-Kanten/Mitten an einer Guide-Linie ausgerichtet wird, und
+  // zeichnet die Treffer als Hilfslinien.
+  function applyDragSnap(node, skipIds) {
+    if (!node) return
+    try {
+      const tol = SNAP_PX / effScale
+      const { vertical, horizontal } = collectGuideLines(skipIds)
+      // Bounding-Box der Node in Stage-lokalen Koordinaten.
+      const box = node.getClientRect({ relativeTo: node.getStage() })
+      const sx = effScale, sy = effScale
+      // getClientRect liefert in PIXELN (skaliert) → zurück auf Stage-lokal teilen.
+      const bx = box.x / sx, by = box.y / sy, bw = box.width / sx, bh = box.height / sy
+      // Kandidaten-Punkte des bewegten Objekts (links/mitte/rechts, oben/mitte/unten).
+      const objV = [bx, bx + bw / 2, bx + bw]
+      const objH = [by, by + bh / 2, by + bh]
+      let bestV = null, bestH = null
+      for (let i = 0; i < objV.length; i++) {
+        for (const g of vertical) {
+          const diff = Math.abs(objV[i] - g)
+          if (diff < tol && (!bestV || diff < bestV.diff)) bestV = { line: g, delta: g - objV[i], diff }
+        }
+      }
+      for (let i = 0; i < objH.length; i++) {
+        for (const g of horizontal) {
+          const diff = Math.abs(objH[i] - g)
+          if (diff < tol && (!bestH || diff < bestH.diff)) bestH = { line: g, delta: g - objH[i], diff }
+        }
+      }
+      const drawnV = [], drawnH = []
+      if (bestV) { node.x(node.x() + bestV.delta); drawnV.push(bestV.line) }
+      if (bestH) { node.y(node.y() + bestH.delta); drawnH.push(bestH.line) }
+      drawGuides(drawnV, drawnH)
+    } catch (_e) { /* Snapping darf nie crashen */ }
+  }
+
   // ─── Render-Helfer für Konva-Objekte ───────────────────────────────────────
   const off = { x: baseCrop ? baseCrop.x : 0, y: baseCrop ? baseCrop.y : 0 }
 
@@ -1436,9 +1648,13 @@ export default function DesignerCanvas({ visual, teamId, onSaved, onReplaceVisua
   }
 
   function renderObject(o) {
+    if (o.hidden) return null   // ausgeblendete Ebene: nicht rendern
+    const locked = !!o.locked
     const base = {
       id: o.id,
-      draggable: !cropMode && !aiMode && !editingTextId && !spaceActive,
+      // Gesperrte Ebenen: nicht ziehbar, nicht selektierbar (listening aus).
+      draggable: !locked && !cropMode && !aiMode && !editingTextId && !spaceActive,
+      listening: !locked && !spaceActive,
       x: (o.x ?? 0) - off.x,
       y: (o.y ?? 0) - off.y,
       rotation: o.rotation || 0,
@@ -1446,7 +1662,14 @@ export default function DesignerCanvas({ visual, teamId, onSaved, onReplaceVisua
       onClick: (e) => selectFromClick(o.id, e),
       onTap: (e) => selectFromClick(o.id, e),
       onDragStart: () => pushHistory(),
+      // Smart-Guides: während des Ziehens snappen + Hilfslinien zeigen.
+      onDragMove: (e) => {
+        const node = e.target
+        const ids = selectedIds.includes(o.id) && selectedIds.length > 1 ? selectedIds : [o.id]
+        applyDragSnap(node, ids)
+      },
       onDragEnd: (e) => {
+        clearGuides()
         // Bei Gruppen-Drag bewegt der Transformer mehrere Nodes — jede Node hier
         // einzeln in ihren Objekt-State zurückschreiben.
         const dxNode = e.target
@@ -1465,12 +1688,48 @@ export default function DesignerCanvas({ visual, teamId, onSaved, onReplaceVisua
         }
       },
       onTransformStart: () => pushHistory(),
+      onTransform: (e) => {
+        // Smart-Guides auch beim Skalieren zeigen (Snap der Bounding-Box-Kanten).
+        const node = e.target
+        try {
+          const { vertical, horizontal } = collectGuideLines([o.id])
+          const tol = SNAP_PX / effScale
+          const box = node.getClientRect({ relativeTo: node.getStage() })
+          const sx = effScale
+          const bx = box.x / sx, by = box.y / sx, bw = box.width / sx, bh = box.height / sx
+          const objV = [bx, bx + bw / 2, bx + bw]
+          const objH = [by, by + bh / 2, by + bh]
+          const drawnV = [], drawnH = []
+          for (const v of objV) for (const g of vertical) if (Math.abs(v - g) < tol) { drawnV.push(g); break }
+          for (const h of objH) for (const g of horizontal) if (Math.abs(h - g) < tol) { drawnH.push(g); break }
+          drawGuides(drawnV, drawnH)
+        } catch (_e) {}
+      },
       onTransformEnd: (e) => {
+        clearGuides()
         const node = e.target
         const patch = { rotation: node.rotation(), x: node.x() + off.x, y: node.y() + off.y }
         if (o.type === 'text') {
-          patch.width = Math.max(20, (node.width() * node.scaleX()))
-          patch.fontSize = Math.max(6, (o.fontSize || 44) * node.scaleY())
+          // B2: ECKEN → proportional (fontSize folgt dem gleichmäßigen Scale),
+          // SEITEN (middle-left/right) → nur Breite (Umbruch). Der aktive Anker liefert
+          // den zuverlässigsten Hinweis; Fallback über den Achsen-Vergleich.
+          const scx = node.scaleX(), scy = node.scaleY()
+          let anchor = ''
+          try { anchor = trRef.current?.getActiveAnchor() || '' } catch (_e) {}
+          const isSideAnchor = anchor === 'middle-left' || anchor === 'middle-right'
+          const isTopBottom = anchor === 'top-center' || anchor === 'bottom-center'
+          if (isSideAnchor) {
+            // nur Breite ändern, fontSize bleibt
+            patch.width = Math.max(20, (node.width() * scx))
+          } else if (isTopBottom) {
+            // vertikales Ziehen am Text: fontSize folgt scaleY
+            patch.fontSize = Math.max(6, (o.fontSize || 44) * scy)
+          } else {
+            // Eck-Anker (oder unbekannt) → proportional: fontSize + Breite gemeinsam.
+            const s = scx
+            patch.fontSize = Math.max(6, (o.fontSize || 44) * s)
+            patch.width = Math.max(20, (node.width() * s))
+          }
           node.scaleX(1); node.scaleY(1)
         } else if (o.type === 'rect') {
           patch.width = Math.max(4, node.width() * node.scaleX())
@@ -1635,6 +1894,8 @@ export default function DesignerCanvas({ visual, teamId, onSaved, onReplaceVisua
         </div>
       )}
 
+      {/* Arbeitsbereich: Canvas (links) + rechte Spalte (Ebenen/Eigenschaften) */}
+      <div style={{ flex: 1, minHeight: 0, display: 'flex', position: 'relative' }}>
       {/* Canvas-Bereich */}
       <div
         ref={containerRef}
@@ -1769,6 +2030,42 @@ export default function DesignerCanvas({ visual, teamId, onSaved, onReplaceVisua
             <ToolBtn onClick={zoomFit} title="Einpassen"><Maximize2 size={15} strokeWidth={1.9} /></ToolBtn>
           </div>
         )}
+
+        {/* Ein-/Ausklappen der rechten Spalte */}
+        {!loading && !showRightPanel && (
+          <button onClick={() => setShowRightPanel(true)} title="Ebenen & Eigenschaften"
+            style={{ position: 'absolute', right: 14, top: 14, zIndex: 70, width: 34, height: 34, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', borderRadius: 9, border: '1px solid var(--border,#E9ECF2)', background: 'var(--surface,#fff)', color: 'var(--text-muted,#475467)', cursor: 'pointer', boxShadow: '0 4px 16px rgba(16,24,40,0.12)' }}>
+            <Layers size={16} strokeWidth={1.9} />
+          </button>
+        )}
+      </div>
+
+      {/* Rechte Spalte: Eigenschaften (oben) + Ebenen (darunter) */}
+      {!loading && showRightPanel && (
+        <RightPanel
+          objects={objects}
+          selectedIds={selectedIds}
+          selected={selected}
+          stageSize={stageSize}
+          baseCrop={baseCrop}
+          bgColor={bgColor}
+          setSelectedIds={setSelectedIds}
+          updateObject={updateObject}
+          commitHistoryOnce={commitHistoryOnce}
+          endInteraction={endInteraction}
+          reorderObjects={reorderObjects}
+          toggleLayerFlag={toggleLayerFlag}
+          renameLayer={renameLayer}
+          renamingId={renamingId}
+          setRenamingId={setRenamingId}
+          layerDragRef={layerDragRef}
+          layerDragOverId={layerDragOverId}
+          setLayerDragOverId={setLayerDragOverId}
+          alignObjects={alignObjects}
+          distributeObjects={distributeObjects}
+          onClose={() => setShowRightPanel(false)}
+        />
+      )}
       </div>
     </div>
   )
