@@ -61,6 +61,7 @@ function IcHeart()    { return <SvgIcon><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 
 function IcGrid()     { return <SvgIcon><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></SvgIcon> }
 function IcBarChart() { return <SvgIcon><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></SvgIcon> }
 function IcStar()     { return <SvgIcon><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></SvgIcon> }
+function IcGift()     { return <SvgIcon><rect x="3" y="8" width="18" height="4" rx="1"/><path d="M12 8v13"/><path d="M19 12v7a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2v-7"/><path d="M7.5 8a2.5 2.5 0 0 1 0-5C11 3 12 8 12 8s1-5 4.5-5a2.5 2.5 0 0 1 0 5"/></SvgIcon> }
 function IcImage()    { return <SvgIcon><rect x="3" y="3" width="18" height="18" rx="2" ry="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></SvgIcon> }
 function IcDoc()      { return <SvgIcon><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></SvgIcon> }
 function IcMail()     { return <SvgIcon><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></SvgIcon> }
@@ -98,6 +99,8 @@ function getNav(t) {
   return [
   { to: '/dashboard',       icon: IcHome,     label: t('nav.home'), tourId: 'nav-dashboard' },
   { to: '/assistant',       icon: IcAssistant, label: t('nav.assistant') },
+  // Externer Link (neuer Tab) — kein interner Router-Pfad, immer sichtbar.
+  { href: 'https://www.leadesk.de/affiliate-programm', icon: IcGift, label: 'Affiliate-Programm' },
   { to: '/aufgaben',        icon: IcKanban,   label: t('nav.aufgaben') },
 
   { divider: true, label: t('nav.branding'), tourId: 'nav-branding' },
@@ -189,11 +192,10 @@ function getActiveSectionLabel(nav, pathname) {
 // ─── NavItem ──────────────────────────────────────────────────────────────────
 function NavItem({ item, indent, inSection, collapsed }) {
   const loc = useLocation()
-  const isActive = loc.pathname === item.to || loc.pathname.startsWith(item.to + '/')
+  // Externe Links (item.href) haben keinen aktiven Zustand.
+  const isActive = !item.href && (loc.pathname === item.to || loc.pathname.startsWith(item.to + '/'))
 
-  return (
-    <NavLink to={item.to} style={{ textDecoration:'none' }} title={collapsed ? item.label : undefined}>
-      {({ isActive: navActive }) => (
+  const row = (
         <div data-tour-id={item.tourId || (item.to ? 'navlink:' + item.to : undefined)} style={{
           display: 'flex',
           alignItems: 'center',
@@ -224,7 +226,20 @@ function NavItem({ item, indent, inSection, collapsed }) {
             </span>
           )}
         </div>
-      )}
+  )
+
+  if (item.href) {
+    return (
+      <a href={item.href} target="_blank" rel="noopener noreferrer"
+         style={{ textDecoration:'none' }} title={collapsed ? item.label : undefined}>
+        {row}
+      </a>
+    )
+  }
+
+  return (
+    <NavLink to={item.to} style={{ textDecoration:'none' }} title={collapsed ? item.label : undefined}>
+      {() => row}
     </NavLink>
   )
 }
