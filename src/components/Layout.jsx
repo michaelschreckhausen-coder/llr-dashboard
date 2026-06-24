@@ -161,6 +161,30 @@ function getNav(t) {
   ]
 }
 
+// ─── Aktive Section bestimmen ────────────────────────────────────────────────
+// Die aktive/aufgeklappte Section folgt dem Nav-ITEM, das den pathname am
+// spezifischsten matcht (längster passender `to`), NICHT einem URL-Präfix.
+// Sonst fängt z.B. die Sponsoring-"Übersicht" (to:'/sponsoring') auch
+// /sponsoring/ligen via startsWith und würde die Section "Wissen" verdrängen,
+// obwohl Ligen/Pakete als Nav-Items in "Wissen" leben.
+function getActiveSectionLabel(nav, pathname) {
+  let curLabel = null
+  let bestLen = -1
+  let bestLabel = null
+  const consider = (to) => {
+    if (!to) return
+    if (pathname === to || pathname.startsWith(to + '/')) {
+      if (to.length > bestLen) { bestLen = to.length; bestLabel = curLabel }
+    }
+  }
+  for (const item of nav) {
+    if (item.divider) { curLabel = item.label; continue }
+    consider(item.to)
+    if (item.subSection && Array.isArray(item.items)) item.items.forEach(s => consider(s.to))
+  }
+  return bestLabel
+}
+
 // ─── NavItem ──────────────────────────────────────────────────────────────────
 function NavItem({ item, indent, inSection, collapsed }) {
   const loc = useLocation()
@@ -235,19 +259,17 @@ function SubSection({ item, location }) {
 }
 
 // ─── NavSection (Accordion, collapsed: flat mit Divider) ─────────────────────
-function NavSection({ label, items, isAdmin, location, collapsed, isOpen, onOpen, onToggle, tourId }) {
-  // Auto-open wenn ein Kind aktiv ist
-  const hasActive = items.some(it => {
-    if (it.to) return location.pathname === it.to || location.pathname.startsWith(it.to + '/')
-    if (it.subSection) return it.items.some(sub => location.pathname === sub.to || location.pathname.startsWith(sub.to + '/'))
-    return false
-  })
+function NavSection({ label, items, isAdmin, location, collapsed, isOpen, onOpen, onToggle, tourId, autoActive }) {
   const open = isOpen
 
-  // Wenn Route wechselt und ein Kind aktiv wird → aufklappen
+  // Auto-open: NUR die Section, die den pathname am spezifischsten matcht
+  // (autoActive wird zentral im Parent via getActiveSectionLabel bestimmt) — nicht
+  // jede Section, deren Item-Präfix zufällig passt. Sonst öffnet /sponsoring/ligen
+  // (Item in "Wissen") auch die Sponsoring-Section (to:'/sponsoring' matcht per
+  // startsWith) und verdrängt "Wissen".
   useEffect(() => {
-    if (hasActive) onOpen()
-  }, [location.pathname])
+    if (autoActive) onOpen()
+  }, [location.pathname, autoActive])
 
   const visibleItems = items.filter(it => !it.adminOnly || isAdmin)
   if (visibleItems.length === 0) return null
@@ -450,6 +472,8 @@ export default function Layout({ session, role, onLogout, children }) {
   const { t } = useTranslation()
   const { language, setLanguage } = useLanguage()
   const NAV = getNav(t)
+  // Aktive Section folgt dem spezifischsten Nav-Item, nicht dem URL-Präfix.
+  const activeSecLabel = getActiveSectionLabel(NAV, location.pathname)
   const { hasModule, hasPermission, loading: entitlementsLoading, data: entData } = useEntitlements()
   // Sidebar-Gating B3: Addons mit leerem activates_modules (z.B. auralis →
   // KI-Sichtbarkeit) sind nicht in entitlements.modules → Slug-Gate via useAddons.
@@ -829,6 +853,7 @@ export default function Layout({ session, role, onLogout, children }) {
                       isAdmin={isAdmin}
                       location={location}
                       collapsed={isCollapsed}
+                      autoActive={activeSecLabel === sec.label}
                       isOpen={openSection === sec.label}
                       onOpen={() => setOpenSection(sec.label)}
                       onToggle={() => setOpenSection(prev => prev === sec.label ? null : sec.label)}
