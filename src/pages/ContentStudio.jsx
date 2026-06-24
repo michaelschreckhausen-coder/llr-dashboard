@@ -709,7 +709,7 @@ export default function ContentStudio({ session }) {
       )}
 
       {/* Main */}
-      <main style={{ flex: '1 1 0', minWidth:0, display:'flex', flexDirection:'column', overflow:'hidden', position:'relative', transition:'flex-basis 0.34s cubic-bezier(0.45,0,0.15,1)' }}>
+      <main style={{ flex: (editorOpen && paneView === 'suite') ? '0 0 0%' : '1 1 0', minWidth:0, display: (editorOpen && paneView === 'suite') ? 'none' : 'flex', flexDirection:'column', overflow:'hidden', position:'relative' }}>
         {/* Floating Sidebar-Toggle wenn zu */}
         {!sidebarOpen && (
           <button onClick={() => setSidebarOpen(true)} title="Sidebar öffnen"
