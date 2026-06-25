@@ -21,10 +21,10 @@ import { sharedEntityIds, scopeByTeamOrShared } from '../lib/teamShares'
 import { useTeam } from '../context/TeamContext'
 import { useBrandVoice } from '../context/BrandVoiceContext'
 import DocumentEditorPane from '../components/DocumentEditorPane'
-import { listDocumentsForChat, listDocuments, addDocumentToChat } from '../lib/contentDocuments'
+import { listDocumentsForChat, listDocuments, addDocumentToChat, listChatsForDocument } from '../lib/contentDocuments'
 import DesignerPane from '../components/designer/DesignerPane'
 import { IMAGE_MODELS, DEFAULT_IMAGE_MODEL, splitModelValue, imageModelLabel, ASPECT_PRESETS, DEFAULT_ASPECT } from '../lib/imageModels'
-import { listVisualsForChat, linkVisualToChat, getVisual, signedVisualUrl, downloadVisualBlob, visualDataUrl, uploadImageBlob } from '../lib/contentVisuals'
+import { listVisualsForChat, linkVisualToChat, getVisual, signedVisualUrl, downloadVisualBlob, visualDataUrl, uploadImageBlob, listTeamVisuals, listChatsForVisual } from '../lib/contentVisuals'
 
 const P = 'var(--wl-primary, rgb(49,90,231))'
 const ACCENT = '#30A0D0'
@@ -186,6 +186,17 @@ export default function ContentStudio({ session }) {
   const [activeVisual, setActiveVisual] = useState(null)
   const visualParamHandledRef = useRef(false)
 
+  // "Öffnen"-Picker für leeres Dokument/Design: zuerst Element wählen, dann Chat.
+  const [openPicker, setOpenPicker] = useState(null)   // { type:'design'|'doc' } | null
+  const [pickerStep, setPickerStep] = useState('item') // 'item' | 'chat'
+  const [pickerItems, setPickerItems] = useState([])
+  const [pickerItem, setPickerItem] = useState(null)
+  const [pickerLoading, setPickerLoading] = useState(false)
+  const [pickerChats, setPickerChats] = useState([])
+  const [pickerShowOther, setPickerShowOther] = useState(false)
+  const [pickerBrandChats, setPickerBrandChats] = useState([])
+  const [pickerSearch, setPickerSearch] = useState('')
+
   useEffect(() => { if (docParam) { setEditorOpen(true); setSidebarOpen(false); setSplitMode('doc') } }, [docParam])
 
   // ─── Brand-Wechsel: Content-Werkstatt komplett zurücksetzen ─────────────────
@@ -229,7 +240,11 @@ export default function ContentStudio({ session }) {
     try { sess = JSON.parse(localStorage.getItem(SESSION_KEY) || 'null') } catch { sess = null }
     if (!sess || sess.brandId !== bid) return
     ;(async () => {
-      try { if (sess.chatId) await openChat(sess.chatId) } catch (_e) {}
+      // Dokumente/Designs gehören IMMER zu einem Chat (gleiche Zuordnungslogik).
+      // Ohne zugeordneten Chat wird KEIN Dokument/Design wiederhergestellt → leerer
+      // Chat startet immer mit leerem Dokument UND leerem Designer.
+      if (!sess.chatId) return
+      try { await openChat(sess.chatId) } catch (_e) {}
       if (sess.editorOpen && sess.splitMode === 'design' && sess.visualId) {
         try {
           const { data: v } = await getVisual(sess.visualId)
@@ -519,6 +534,56 @@ export default function ContentStudio({ session }) {
       setActiveVisual(row); setSplitMode('design'); setSidebarOpen(false)
       if (!editorOpen) { setEditorOpen(true); setPaneView('split') }
     } catch (_e) { setError('Design konnte nicht erstellt werden.') }
+  }
+
+  // ─── "Öffnen"-Picker (leeres Dokument/Design): Element wählen → Chat wählen ──
+  async function startOpenPicker(type) {
+    setOpenPicker({ type }); setPickerStep('item'); setPickerItem(null)
+    setPickerChats([]); setPickerShowOther(false); setPickerBrandChats([]); setPickerSearch('')
+    setPickerItems([]); setPickerLoading(true)
+    try {
+      if (type === 'design') {
+        const { data } = await listTeamVisuals({ teamId: activeTeamId, brandVoiceId: activeBrandVoice?.id, kind: 'design', limit: 100 })
+        const withUrls = await Promise.all((data || []).map(async (v) => ({ ...v, signed_url: await signedVisualUrl(v.storage_path, 3600) })))
+        setPickerItems(withUrls)
+      } else {
+        const { data } = await listDocuments(activeTeamId, activeBrandVoice?.id)
+        setPickerItems(data || [])
+      }
+    } catch (_e) { setPickerItems([]) }
+    finally { setPickerLoading(false) }
+  }
+  async function pickerSelectItem(item) {
+    setPickerItem(item); setPickerStep('chat'); setPickerShowOther(false); setPickerSearch(''); setPickerLoading(true)
+    try {
+      const { data } = openPicker?.type === 'design' ? await listChatsForVisual(item.id) : await listChatsForDocument(item.id)
+      setPickerChats(data || [])
+    } catch (_e) { setPickerChats([]) }
+    finally { setPickerLoading(false) }
+  }
+  async function pickerOpenWith(chatId) {
+    if (!pickerItem || !openPicker) return
+    const isDesign = openPicker.type === 'design'
+    try {
+      if (isDesign) await linkVisualToChat(pickerItem.id, chatId)
+      else await addDocumentToChat(pickerItem.id, chatId)
+    } catch (_e) {}
+    const key = isDesign ? 'visual' : 'doc'
+    setOpenPicker(null)
+    navigate(`/content-studio?chat_id=${chatId}&${key}=${pickerItem.id}`)
+  }
+  function pickerOpenWithout() {
+    if (!pickerItem || !openPicker) return
+    const key = openPicker.type === 'design' ? 'visual' : 'doc'
+    setOpenPicker(null)
+    navigate(`/content-studio?${key}=${pickerItem.id}`)
+  }
+  async function pickerLoadBrandChats() {
+    setPickerShowOther(true)
+    const { data } = await supabase.from('content_chats')
+      .select('id, title, updated_at').eq('brand_voice_id', activeBrandVoice?.id)
+      .order('updated_at', { ascending: false }).limit(100)
+    setPickerBrandChats(data || [])
   }
 
   // ?visual=<id> aus URL (z.B. aus der Galerie): Bild laden + Designer öffnen.
@@ -939,6 +1004,9 @@ export default function ContentStudio({ session }) {
           {splitMode === 'design' ? (
             <>
               <div style={{ flex:1, minWidth:0, height:'100%' }}>
+                {!activeVisual ? (
+                  <EmptyOpenPane type="design" onOpen={() => startOpenPicker('design')} onNew={() => createEmptyDesign()} />
+                ) : (
                 <DesignerPane
                   visual={activeVisual}
                   teamId={activeTeamId}
@@ -953,6 +1021,7 @@ export default function ContentStudio({ session }) {
                     loadChatVisuals(activeChatId)
                   }}
                 />
+                )}
               </div>
               {activeChatId && (
                 <VisualRail visuals={chatVisuals.filter(v => v.kind === 'design')} activeVisualId={activeVisual?.id}
@@ -963,6 +1032,9 @@ export default function ContentStudio({ session }) {
           ) : (
             <>
               <div style={{ flex:1, minWidth:0, height:'100%' }}>
+                {!docParam && !demoRailDocs ? (
+                  <EmptyOpenPane type="doc" onOpen={() => startOpenPicker('doc')} onNew={openNewDoc} />
+                ) : (
                 <DocumentEditorPane
                   ref={editorRef}
                   docId={docParam}
@@ -983,6 +1055,7 @@ export default function ContentStudio({ session }) {
                   onNewDocument={openNewDoc}
                   onClose={() => setEditorOpen(false)}
                 />
+                )}
               </div>
               {(demoRailDocs || (activeChatId && chatDocs.length > 0)) && (
                 <DocTabsRail docs={demoRailDocs || chatDocs} activeDocId={demoRailDocs ? 'tour-doc-1' : docParam} chatId={activeChatId} teamId={activeTeamId} brandVoiceId={activeBrandVoice?.id} onSelect={demoRailDocs ? () => {} : selectDoc} onNew={demoRailDocs ? () => {} : openNewDoc} onAddExisting={demoRailDocs ? () => {} : addExistingDoc} />
@@ -1050,6 +1123,103 @@ export default function ContentStudio({ session }) {
             </div>
           )}
         </>
+      )}
+
+      {/* "Öffnen"-Picker: zuerst Dokument/Design wählen, dann Chat (oder ohne) */}
+      {openPicker && (
+        <div onClick={() => setOpenPicker(null)} style={{ position:'fixed', inset:0, background:'rgba(15,23,42,0.45)', backdropFilter:'blur(2px)', zIndex:500, display:'flex', alignItems:'flex-start', justifyContent:'center', paddingTop:'10vh' }}>
+          <div onClick={e => e.stopPropagation()} style={{ width:520, maxWidth:'94vw', maxHeight:'78vh', display:'flex', flexDirection:'column', background:'#fff', borderRadius:14, border:'1px solid var(--border)', boxShadow:'0 20px 60px rgba(16,24,40,0.28)', overflow:'hidden', textAlign:'left' }}>
+            <div style={{ display:'flex', alignItems:'flex-start', justifyContent:'space-between', gap:10, padding:'16px 16px 8px' }}>
+              <div style={{ minWidth:0 }}>
+                <div style={{ fontSize:15, fontWeight:800, color:'var(--text-primary)' }}>
+                  {pickerStep === 'item'
+                    ? (openPicker.type === 'design' ? 'Welches Design öffnen?' : 'Welches Dokument öffnen?')
+                    : 'Mit welchem Chat öffnen?'}
+                </div>
+                {pickerStep === 'chat' && <div style={{ fontSize:12.5, color:'var(--text-muted)', marginTop:3, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{pickerItem?.title || (openPicker.type === 'design' ? 'Design' : 'Dokument')}</div>}
+              </div>
+              <button onClick={() => setOpenPicker(null)} style={{ border:'none', background:'transparent', cursor:'pointer', color:'var(--text-muted)', padding:4, display:'inline-flex', flexShrink:0 }}><X size={18}/></button>
+            </div>
+            <div style={{ flex:1, overflowY:'auto', padding:'8px 14px 14px' }}>
+              {pickerLoading ? (
+                <div style={{ padding:18, fontSize:12.5, color:'var(--text-muted)', textAlign:'center' }}>Lädt…</div>
+              ) : pickerStep === 'item' ? (
+                pickerItems.length === 0 ? (
+                  <div style={{ padding:'8px 4px 14px', fontSize:12.5, color:'var(--text-muted)', lineHeight:1.5 }}>
+                    {openPicker.type === 'design' ? 'Noch keine Designs für diese Brand.' : 'Noch keine Dokumente für diese Brand.'}
+                  </div>
+                ) : openPicker.type === 'design' ? (
+                  <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fill, minmax(120px,1fr))', gap:10 }}>
+                    {pickerItems.map(it => (
+                      <button key={it.id} onClick={() => pickerSelectItem(it)} title={it.title || 'Design'}
+                        style={{ display:'flex', flexDirection:'column', gap:5, padding:0, border:'1px solid var(--border,#E9ECF2)', borderRadius:10, background:'#fff', cursor:'pointer', fontFamily:'inherit', overflow:'hidden', textAlign:'left' }}>
+                        <div style={{ width:'100%', aspectRatio:'1 / 1', background:'#f4f6fa center/cover no-repeat' + (it.signed_url ? ` url(${it.signed_url})` : '') }}/>
+                        <div style={{ padding:'7px 9px 9px', fontSize:12, fontWeight:600, color:'var(--text-primary)', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{it.title || 'Design'}</div>
+                      </button>
+                    ))}
+                  </div>
+                ) : (
+                  <div style={{ display:'flex', flexDirection:'column', gap:4 }}>
+                    {pickerItems.map(it => (
+                      <button key={it.id} onClick={() => pickerSelectItem(it)}
+                        style={{ width:'100%', textAlign:'left', display:'flex', alignItems:'center', gap:10, padding:'10px 10px', borderRadius:9, border:'none', background:'transparent', cursor:'pointer', fontFamily:'inherit' }}
+                        onMouseEnter={e => e.currentTarget.style.background='#F4F6FA'} onMouseLeave={e => e.currentTarget.style.background='transparent'}>
+                        <span style={{ width:30, height:30, borderRadius:8, flexShrink:0, display:'flex', alignItems:'center', justifyContent:'center', background:'rgba(49,90,231,0.07)', color:'var(--wl-primary, rgb(49,90,231))' }}><FileText size={15} strokeWidth={1.9}/></span>
+                        <span style={{ minWidth:0, flex:1, fontSize:13, fontWeight:600, color:'var(--text-primary)', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{it.title || 'Unbenanntes Dokument'}</span>
+                      </button>
+                    ))}
+                  </div>
+                )
+              ) : (
+                <>
+                  {pickerChats.length > 0 && !pickerShowOther && (
+                    <>
+                      <button onClick={() => pickerOpenWith(pickerChats[0].id)}
+                        style={{ width:'100%', display:'flex', alignItems:'center', gap:8, padding:'11px 12px', borderRadius:10, border:'none', background:'var(--wl-primary, rgb(49,90,231))', color:'#fff', fontSize:13, fontWeight:700, cursor:'pointer', fontFamily:'inherit', marginBottom:10 }}>
+                        <MessageSquare size={15} strokeWidth={2}/><span style={{ minWidth:0, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>Letzter Chat · {pickerChats[0].title || 'Chat'}</span>
+                      </button>
+                      <div style={{ fontSize:10.5, fontWeight:700, color:'var(--text-soft,#98a2b3)', textTransform:'uppercase', letterSpacing:'0.06em', padding:'2px 2px 6px' }}>Zugeordnete Chats</div>
+                      {pickerChats.map(c => (
+                        <button key={c.id} onClick={() => pickerOpenWith(c.id)}
+                          style={{ width:'100%', textAlign:'left', display:'flex', alignItems:'center', gap:10, padding:'9px 10px', borderRadius:9, border:'none', background:'transparent', cursor:'pointer', fontFamily:'inherit' }}
+                          onMouseEnter={e => e.currentTarget.style.background='#F4F6FA'} onMouseLeave={e => e.currentTarget.style.background='transparent'}>
+                          <span style={{ width:30, height:30, borderRadius:8, flexShrink:0, display:'flex', alignItems:'center', justifyContent:'center', background:'rgba(49,90,231,0.07)', color:'var(--wl-primary, rgb(49,90,231))' }}><MessageSquare size={15} strokeWidth={1.9}/></span>
+                          <span style={{ minWidth:0, flex:1, fontSize:13, fontWeight:600, color:'var(--text-primary)', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{c.title || 'Unbenannter Chat'}</span>
+                        </button>
+                      ))}
+                    </>
+                  )}
+                  {pickerChats.length === 0 && !pickerShowOther && (
+                    <div style={{ padding:'4px 4px 12px', fontSize:12.5, color:'var(--text-muted)', lineHeight:1.5 }}>Noch keinem Chat zugeordnet.</div>
+                  )}
+                  {pickerShowOther && (
+                    <>
+                      <input value={pickerSearch} onChange={e => setPickerSearch(e.target.value)} placeholder="Chats durchsuchen…" autoFocus
+                        style={{ width:'100%', boxSizing:'border-box', border:'1px solid var(--border)', borderRadius:9, padding:'8px 11px', fontSize:13, outline:'none', fontFamily:'inherit', color:'var(--text-primary)', marginBottom:8 }}/>
+                      {pickerBrandChats.filter(c => { const q=pickerSearch.trim().toLowerCase(); return !q || (c.title||'').toLowerCase().includes(q) }).map(c => (
+                        <button key={c.id} onClick={() => pickerOpenWith(c.id)}
+                          style={{ width:'100%', textAlign:'left', display:'flex', alignItems:'center', gap:10, padding:'9px 10px', borderRadius:9, border:'none', background:'transparent', cursor:'pointer', fontFamily:'inherit' }}
+                          onMouseEnter={e => e.currentTarget.style.background='#F4F6FA'} onMouseLeave={e => e.currentTarget.style.background='transparent'}>
+                          <span style={{ width:30, height:30, borderRadius:8, flexShrink:0, display:'flex', alignItems:'center', justifyContent:'center', background:'rgba(49,90,231,0.07)', color:'var(--wl-primary, rgb(49,90,231))' }}><MessageSquare size={15} strokeWidth={1.9}/></span>
+                          <span style={{ minWidth:0, flex:1, fontSize:13, fontWeight:600, color:'var(--text-primary)', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{c.title || 'Unbenannter Chat'}</span>
+                        </button>
+                      ))}
+                      {pickerBrandChats.length === 0 && <div style={{ padding:12, fontSize:12.5, color:'var(--text-muted)', textAlign:'center' }}>Keine Chats für diese Brand.</div>}
+                    </>
+                  )}
+                  <div style={{ borderTop:'1px solid var(--border)', marginTop:10, paddingTop:10, display:'flex', flexDirection:'column', gap:4 }}>
+                    {!pickerShowOther
+                      ? <button onClick={pickerLoadBrandChats} style={{ width:'100%', textAlign:'left', padding:'9px 10px', borderRadius:9, border:'none', background:'transparent', cursor:'pointer', fontSize:13, fontWeight:600, color:'var(--wl-primary, rgb(49,90,231))', fontFamily:'inherit' }} onMouseEnter={e => e.currentTarget.style.background='rgba(49,90,231,0.07)'} onMouseLeave={e => e.currentTarget.style.background='transparent'}>+ Anderen Chat wählen…</button>
+                      : <button onClick={() => setPickerShowOther(false)} style={{ width:'100%', textAlign:'left', padding:'9px 10px', borderRadius:9, border:'none', background:'transparent', cursor:'pointer', fontSize:13, fontWeight:600, color:'var(--text-muted)', fontFamily:'inherit' }} onMouseEnter={e => e.currentTarget.style.background='#F4F6FA'} onMouseLeave={e => e.currentTarget.style.background='transparent'}>← Zurück</button>
+                    }
+                    <button onClick={pickerOpenWithout} style={{ width:'100%', textAlign:'left', padding:'9px 10px', borderRadius:9, border:'none', background:'transparent', cursor:'pointer', fontSize:13, fontWeight:600, color:'var(--text-muted)', fontFamily:'inherit' }} onMouseEnter={e => e.currentTarget.style.background='#F4F6FA'} onMouseLeave={e => e.currentTarget.style.background='transparent'}>Ohne Chat öffnen</button>
+                    <button onClick={() => { setPickerStep('item'); setPickerItem(null) }} style={{ width:'100%', textAlign:'left', padding:'9px 10px', borderRadius:9, border:'none', background:'transparent', cursor:'pointer', fontSize:12.5, fontWeight:600, color:'var(--text-soft,#98a2b3)', fontFamily:'inherit' }} onMouseEnter={e => e.currentTarget.style.background='#F4F6FA'} onMouseLeave={e => e.currentTarget.style.background='transparent'}>← Anderes {openPicker.type === 'design' ? 'Design' : 'Dokument'} wählen</button>
+                  </div>
+                </>
+              )}
+            </div>
+          </div>
+        </div>
       )}
     </div>
   )
@@ -1639,6 +1809,30 @@ function DocTabsRail({ docs = [], activeDocId, chatId, teamId, brandVoiceId, onS
         </div>
       )}
     </aside>
+  )
+}
+
+// ─── Leerer Pane (kein Dokument/Design offen) → zentral öffnen/neu ───────────
+function EmptyOpenPane({ type, onOpen, onNew }) {
+  const P = 'var(--wl-primary, rgb(49,90,231))'
+  const label = type === 'design' ? 'Design' : 'Dokument'
+  return (
+    <div style={{ height: '100%', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 14, padding: 24, textAlign: 'center' }}>
+      <div style={{ fontSize: 14.5, fontWeight: 800, color: 'var(--text-primary)' }}>Kein {label} geöffnet</div>
+      <div style={{ fontSize: 12.5, color: 'var(--text-muted)', maxWidth: 300, lineHeight: 1.5 }}>
+        Öffne ein bestehendes {label} und ordne es einem Chat zu — oder erstelle ein neues.
+      </div>
+      <div style={{ display: 'flex', gap: 8, marginTop: 2 }}>
+        <button onClick={onOpen}
+          style={{ padding: '10px 16px', borderRadius: 10, border: 'none', background: P, color: '#fff', fontSize: 13, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit', boxShadow: '0 2px 10px rgba(49,90,231,.18)' }}>
+          {label} öffnen
+        </button>
+        <button onClick={onNew}
+          style={{ padding: '10px 16px', borderRadius: 10, border: '1px solid var(--border,#E9ECF2)', background: '#fff', color: 'var(--text-primary)', fontSize: 13, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit' }}>
+          Neues {label}
+        </button>
+      </div>
+    </div>
   )
 }
 
