@@ -951,7 +951,7 @@ export default function ContentStudio({ session }) {
       {/* Main */}
       <main style={{
           flexGrow: (editorOpen && paneView === 'suite') ? 0 : 1,
-          flexShrink: 0,
+          flexShrink: 1,
           flexBasis: !editorOpen ? '100%' : (paneView === 'suite' ? '0%' : '48%'),
           minWidth:0, overflow:'hidden',
           opacity: (editorOpen && paneView === 'suite') ? 0 : 1,
