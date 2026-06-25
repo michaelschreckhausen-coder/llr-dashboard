@@ -1746,8 +1746,9 @@ function MessageBubble({ msg, onAttachToPost, loadExistingPosts, onInsertToDoc, 
         <div style={{ display:'flex', gap:8, flexWrap:'wrap' }}>
           <div style={{ position:'relative' }}>
             <button data-tour-id="cs-insert-doc" onClick={() => { if (hasOpenDoc) setMenuOpen(o => !o); else onInsertToDoc && onInsertToDoc(beitragstext, 'new') }}
-              style={{ padding:'7px 14px', borderRadius:8, border:'none', background:P, color:'#fff', fontSize:12, fontWeight:700, cursor:'pointer' }}>
-              → ins Dokument
+              title="Ins Dokument"
+              style={{ width:34, height:34, padding:0, justifyContent:'center', borderRadius:8, border:'none', background:P, color:'#fff', cursor:'pointer', display:'inline-flex', alignItems:'center' }}>
+              <FileText size={15} strokeWidth={1.9}/>
             </button>
             {menuOpen && hasOpenDoc && (
               <>
@@ -1764,8 +1765,9 @@ function MessageBubble({ msg, onAttachToPost, loadExistingPosts, onInsertToDoc, 
                 const open = !postMenuOpen; setPostMenuOpen(open)
                 if (open && posts === null && loadExistingPosts) { setPostsLoading(true); const r = await loadExistingPosts(); setPosts(r || []); setPostsLoading(false) }
               }}
-              style={{ padding:'7px 14px', borderRadius:8, border:'1.5px solid ' + P, background:'rgba(49,90,231,0.06)', color:P, fontSize:12, fontWeight:700, cursor:'pointer', display:'inline-flex', alignItems:'center', gap:5 }}>
-              In Beitrag übernehmen <span style={{ fontSize:10, opacity:0.7 }}>▾</span>
+              title="In Beitrag übernehmen"
+              style={{ width:34, height:34, padding:0, justifyContent:'center', borderRadius:8, border:'1.5px solid ' + P, background:'rgba(49,90,231,0.06)', color:P, cursor:'pointer', display:'inline-flex', alignItems:'center' }}>
+              <CalendarPlus size={15} strokeWidth={1.9}/>
             </button>
             {postMenuOpen && (
               <>
