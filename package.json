@@ -12,6 +12,7 @@
     "schema-dump:staging": "PROD=0 bash scripts/dump-hetzner-schema.sh"
   },
   "dependencies": {
+    "@huggingface/transformers": "^3.8.1",
     "@sentry/react": "^10.57.0",
     "@supabase/supabase-js": "^2.39.0",
     "@tiptap/extension-highlight": "3.26.0",

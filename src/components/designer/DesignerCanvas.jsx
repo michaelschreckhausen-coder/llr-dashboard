@@ -2137,7 +2137,7 @@ export default function DesignerCanvas({ visual, teamId, onSaved, onReplaceVisua
     // Lokales Inpainting: nur den Crop als Inline-Referenz schicken (kein Vollbild).
     if (opts.inlineRefs && opts.inlineRefs.length) {
       body.referenceImagesInline = opts.inlineRefs
-    } else {
+    } else if (!opts.noReference) {
       body.referenceImagePaths = [visual.storage_path]
     }
     const { data, error: fnErr } = await supabase.functions.invoke('generate-image', { body })
@@ -2376,18 +2376,59 @@ export default function DesignerCanvas({ visual, teamId, onSaved, onReplaceVisua
     if (!activeImageObj()) { setSavedMsg('Hintergrund-KI braucht ein Bild im Design.'); return }
     setBgMenuBusy(true); setSavedMsg('')
     try {
-      const prompt = mode === 'white'
-        ? 'Stelle das Hauptmotiv sauber frei und setze es vor einen reinen, gleichmäßig weißen Hintergrund. Das Hauptmotiv bleibt exakt unverändert (Form, Farbe, Details). Saubere Kanten, kein Schlagschatten.'
-        : mode === 'remove'
-        ? 'Entferne den Hintergrund vollständig. Behalte AUSSCHLIESSLICH das Hauptmotiv, sauber freigestellt auf vollständig transparentem Hintergrund. Füge keinerlei Hintergrund, Farbe, Schatten oder Muster hinzu. Das Hauptmotiv bleibt exakt unverändert, mit sauberen, präzisen Kanten (auch bei Haaren).'
-        : `Ersetze NUR den Hintergrund des Bildes durch: ${(customPrompt || '').trim()}. Das Hauptmotiv im Vordergrund bleibt exakt erhalten (Position, Form, Beleuchtung am Motiv konsistent). Realistische Integration des neuen Hintergrunds.`
-      // Freistellen via OpenAI gpt-image-1 mit echtem transparentem Output (Alpha-PNG).
-      // Gemini liefert kein Alpha & ignoriert Chroma-Key-Vorgaben → unzuverlässig.
-      const aiVisual = mode === 'remove'
-        ? await callGenerateImage(prompt, { model: 'gpt-image-1', background: 'transparent' })
-        : await callGenerateImage(prompt)
-      const aiUrl = await visualDataUrl(aiVisual.storage_path)
-      if (aiUrl) proposeResult(aiUrl, 'bg')   // erst Vorschau
+      // Originalpixel des aktiven Bildes (volle Auflösung)
+      const target = activeImageObj()
+      const origEl = (target?.src && imgCache[target.src]) || bgImage || await loadImageEl(visual.storage_path)
+      const W = origEl.naturalWidth || stageSize.width
+      const H = origEl.naturalHeight || stageSize.height
+      const onProg = (p) => {
+        if (p && p.status === 'progress' && typeof p.progress === 'number' && /\.onnx/i.test(p.file || '')) {
+          setSavedMsg('Freistell-Modell wird geladen … ' + Math.round(p.progress) + '%')
+        }
+      }
+
+      // ── Freistellen / Weiß / Ersetzen: alle per LOKALEM MATTING (MODNet) ──
+      // Das Motiv wird per Alpha-Matte aus den ORIGINAL-Pixeln freigestellt und
+      // bleibt damit pixelgenau erhalten (kein generatives Neu-Malen → kein
+      // „Sims-Effekt"). Wie bei Canva/CapCut. Verarbeitung lokal im Browser.
+      setSavedMsg('Motiv wird freigestellt …')
+      const { removeBackgroundLocal } = await import('../../lib/bgRemoval')
+      const cutoutUrl = await removeBackgroundLocal(origEl, onProg)
+
+      if (mode === 'remove') {
+        setSavedMsg('')
+        proposeResult(cutoutUrl, 'bg')   // transparenter Hintergrund, erst Vorschau
+        return
+      }
+
+      const cutEl = await loadHtmlImage(cutoutUrl)
+      const out = document.createElement('canvas')
+      out.width = W; out.height = H
+      const octx = out.getContext('2d')
+
+      if (mode === 'white') {
+        // Freigestelltes Motiv auf reinem Weiß
+        octx.fillStyle = '#ffffff'; octx.fillRect(0, 0, W, H)
+        octx.drawImage(cutEl, 0, 0, W, H)
+        setSavedMsg('')
+        proposeResult(out.toDataURL('image/png'), 'bg')
+        return
+      }
+
+      // mode === 'replace': neuen Hintergrund generieren (ohne Referenz, damit das
+      // Modell keine Person mitmalt) und das Original-Motiv unverändert davorsetzen.
+      setSavedMsg('Neuer Hintergrund wird erzeugt …')
+      const bgPrompt = `Erzeuge ausschließlich einen Hintergrund / eine Szene als Bildfüllung: ${(customPrompt || '').trim()}. Keine Personen, kein Objekt im Vordergrund, keine Ränder — gleichmäßig als Hintergrund nutzbar, fotorealistisch.`
+      const bgVisual = await callGenerateImage(bgPrompt, { aspectRatio: visual.aspect_ratio || '1:1', noReference: true })
+      const bgEl = await loadImageEl(bgVisual.storage_path)
+      // Hintergrund „cover" einpassen
+      const bw = bgEl.naturalWidth || W, bh = bgEl.naturalHeight || H
+      const scale = Math.max(W / bw, H / bh)
+      const dw = bw * scale, dh = bh * scale
+      octx.drawImage(bgEl, (W - dw) / 2, (H - dh) / 2, dw, dh)
+      octx.drawImage(cutEl, 0, 0, W, H)
+      setSavedMsg('')
+      proposeResult(out.toDataURL('image/png'), 'bg')
     } catch (e) {
       setSavedMsg('Fehler: ' + (e?.message || 'Hintergrund-Bearbeitung fehlgeschlagen'))
     } finally {
