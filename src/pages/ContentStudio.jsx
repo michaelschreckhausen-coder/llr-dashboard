@@ -1481,7 +1481,8 @@ function ChatInput({
         rows={3}
         style={{ width:'100%', padding:'4px 4px 8px', border:'none', fontSize:14, fontFamily:'inherit', resize:'none', outline:'none', background:'transparent', boxSizing:'border-box' }}/>
 
-      {/* Bottom Toolbar — immer EINE Zeile; bei Platzmangel scrollt die linke Gruppe horizontal */}
+      {/* Bottom Toolbar — Zeile 1 einzeilig; Visual-Optionen (Format + Modell) erscheinen in Zeile 2 */}
+      <div style={{ display:'flex', flexDirection:'column', gap:6 }}>
       <div style={{ display:'flex', alignItems:'center', gap:6, justifyContent:'space-between' }}>
         <div style={{ display:'flex', alignItems:'center', gap:6, flexWrap:'nowrap', flex:1, minWidth:0, overflowX:'auto', overflowY:'hidden', paddingBottom:2 }}>
           {/* Plus-Button: Datei + Wissen */}
@@ -1521,12 +1522,12 @@ function ChatInput({
             )}
           </div>
 
-          {/* Für Zielgruppe */}
-          <span data-tour-id="cs-audience-select" style={{ display:'inline-flex' }}><AudienceSelect audiences={audiences} value={selectedAudienceId} onChange={setSelectedAudienceId} /></span>
+          {/* Für Zielgruppe (Icon) */}
+          <span data-tour-id="cs-audience-select" style={{ display:'inline-flex', flexShrink:0 }}><AudienceSelect audiences={audiences} value={selectedAudienceId} onChange={setSelectedAudienceId} iconOnly /></span>
 
-          {/* Company Brand (Ambassador) — nur bei Personal-Brand-Kontext */}
+          {/* Company Brand (Ambassador, Icon) — nur bei Personal-Brand-Kontext */}
           {showCompanyPicker && companyVoices.length > 0 && (
-            <span data-tour-id="cs-company-select" style={{ display:'inline-flex' }}><CompanyMultiSelect companies={companyVoices} value={selectedCompanyVoiceIds} onChange={setSelectedCompanyVoiceIds} buttonStyle={{ height:34, padding:'0 12px', borderRadius:9, boxSizing:'border-box', fontWeight:600 }} /></span>
+            <span data-tour-id="cs-company-select" style={{ display:'inline-flex', flexShrink:0 }}><CompanyMultiSelect companies={companyVoices} value={selectedCompanyVoiceIds} onChange={setSelectedCompanyVoiceIds} iconOnly /></span>
           )}
 
           {/* Web-Suche */}
@@ -1535,30 +1536,11 @@ function ChatInput({
             <Globe size={16} strokeWidth={1.75}/>
           </button>
 
-          {/* Visual-Modus: Bild im Chat erstellen */}
+          {/* Visual-Modus: Bild im Chat erstellen (Format + Modell erscheinen in Zeile 2) */}
           <button data-tour-id="cs-visual" onClick={() => setVisualMode(v => !v)} title="Bild im Chat erstellen"
             style={{ ...IconBtn(visualMode), width:34, padding:0, justifyContent:'center', gap:0 }}>
             <ImageIcon size={16} strokeWidth={1.75}/>
           </button>
-          {visualMode && (
-            <>
-              <select value={imageModel} onChange={e => setImageModel(e.target.value)} title="Bildmodell"
-                style={{ height:34, padding:'0 8px', borderRadius:9, border:'1.5px solid var(--border)', background:'#fff', color:'var(--text-primary)', fontSize:12, fontWeight:600, fontFamily:'inherit', cursor:'pointer', outline:'none', maxWidth:170 }}>
-                {IMAGE_MODELS.map(m => <option key={m.value} value={m.value}>{m.label}</option>)}
-              </select>
-              <select value={imageAspect} onChange={e => setImageAspect(e.target.value)} title="Seitenverhältnis"
-                style={{ height:34, padding:'0 8px', borderRadius:9, border:'1.5px solid var(--border)', background:'#fff', color:'var(--text-primary)', fontSize:12, fontWeight:600, fontFamily:'inherit', cursor:'pointer', outline:'none' }}
-                disabled={hasChatVisuals && !forceNewImage}>
-                {ASPECT_PRESETS.map(a => <option key={a.value} value={a.value}>{a.label}</option>)}
-              </select>
-              {hasChatVisuals && (
-                <button onClick={() => setForceNewImage(v => !v)} title={forceNewImage ? 'Neues, unabhängiges Bild' : 'Folge-Bearbeitung des letzten Bildes'}
-                  style={{ ...IconBtn(forceNewImage), width:34, padding:0, justifyContent:'center', gap:0 }}>
-                  <FilePlus2 size={16} strokeWidth={1.75}/>
-                </button>
-              )}
-            </>
-          )}
           {/* Editor-Kontext (nur wenn Dokument-Editor offen) */}
           {editorOpen && (
             <button onClick={() => setUseEditorContext(v => !v)} title="Dokument-Inhalt als zusätzlichen Kontext für die KI nutzen"
@@ -1589,6 +1571,28 @@ function ChatInput({
             {sending ? <Loader2 size={14} className='lk-spin'/> : <Send size={14} strokeWidth={1.75}/>}
           </button>
         </div>
+      </div>
+
+      {/* Zeile 2 — Bild-Optionen (nur im Visual-Modus): Modell + Format + „Neues Bild" */}
+      {visualMode && (
+        <div style={{ display:'flex', alignItems:'center', gap:6, flexWrap:'wrap' }}>
+          <select value={imageModel} onChange={e => setImageModel(e.target.value)} title="Bildmodell"
+            style={{ height:32, padding:'0 8px', borderRadius:9, border:'1.5px solid var(--border)', background:'#fff', color:'var(--text-primary)', fontSize:12, fontWeight:600, fontFamily:'inherit', cursor:'pointer', outline:'none', maxWidth:200 }}>
+            {IMAGE_MODELS.map(m => <option key={m.value} value={m.value}>{m.label}</option>)}
+          </select>
+          <select value={imageAspect} onChange={e => setImageAspect(e.target.value)} title="Format / Seitenverhältnis"
+            style={{ height:32, padding:'0 8px', borderRadius:9, border:'1.5px solid var(--border)', background:'#fff', color:'var(--text-primary)', fontSize:12, fontWeight:600, fontFamily:'inherit', cursor:'pointer', outline:'none' }}
+            disabled={hasChatVisuals && !forceNewImage}>
+            {ASPECT_PRESETS.map(a => <option key={a.value} value={a.value}>{a.label}</option>)}
+          </select>
+          {hasChatVisuals && (
+            <button onClick={() => setForceNewImage(v => !v)} title={forceNewImage ? 'Neues, unabhängiges Bild' : 'Folge-Bearbeitung des letzten Bildes'}
+              style={{ ...IconBtn(forceNewImage), height:32, padding:'0 10px', gap:6 }}>
+              <FilePlus2 size={14} strokeWidth={1.75}/>Neues Bild
+            </button>
+          )}
+        </div>
+      )}
       </div>
     </div>
   )
