@@ -251,6 +251,8 @@ export default function DesignerCanvas({ visual, teamId, onSaved, onReplaceVisua
   const [aiBusy, setAiBusy] = useState(false)
   const [aiError, setAiError] = useState('')
   const [hasMask, setHasMask] = useState(false)
+  // KI-Vorschau vor dem Übernehmen: { url, objId, kind } | null
+  const [aiPreview, setAiPreview] = useState(null)
 
   // Hintergrund-Menü
   const [bgMenuBusy, setBgMenuBusy] = useState(false)
@@ -1354,8 +1356,7 @@ export default function DesignerCanvas({ visual, teamId, onSaved, onReplaceVisua
       const prompt = `Bearbeite das Referenzbild gemäß dieser Anweisung: ${text}. Behalte Bildstil, Beleuchtung und Perspektive konsistent, fotorealistisch.`
       const aiVisual = await callGenerateImage(prompt)
       const aiUrl = await visualDataUrl(aiVisual.storage_path)
-      if (aiUrl) await writeResultToActiveImage(aiUrl)
-      setAiCommand('')
+      if (aiUrl) proposeResult(aiUrl, 'free')   // erst Vorschau
     } catch (e) {
       setAiError(e?.message || 'KI-Bearbeitung fehlgeschlagen.')
     } finally {
@@ -2171,6 +2172,28 @@ export default function DesignerCanvas({ visual, teamId, onSaved, onReplaceVisua
     updateObject(target.id, { src: dataUrl })
   }
 
+  // ─── KI-Vorschau: Ergebnis erst zeigen, dann Übernehmen/Verwerfen ───────────
+  // kind: 'mask' | 'free' | 'bg' — steuert das Aufräumen beim Übernehmen.
+  function proposeResult(dataUrl, kind = 'free') {
+    const target = activeImageObj()
+    setAiPreview({ url: dataUrl, objId: target?.id || null, kind })
+  }
+  async function applyPreview() {
+    if (!aiPreview) return
+    const { url, objId, kind } = aiPreview
+    try {
+      const im = await loadHtmlImage(url)
+      setImgCache(prev => ({ ...prev, [url]: im }))
+      if (objId) updateObject(objId, { src: url })
+    } catch (_e) {}
+    setAiPreview(null)
+    // Aufräumen je nach Werkzeug
+    if (kind === 'mask') { clearMask(); setAiMode(null); setAiPrompt('') }
+    if (kind === 'free') setAiCommand('')
+    if (kind === 'bg') { clearMask(); setAiMode(null) }
+  }
+  function discardPreview() { setAiPreview(null) }
+
   // Bounding-Box der Maske in BILD-Pixeln (origEl-Auflösung). Scannt Alpha>0.
   function computeMaskBBox(W, H) {
     const m = maskCanvasRef.current
@@ -2248,8 +2271,7 @@ export default function DesignerCanvas({ visual, teamId, onSaved, onReplaceVisua
       // 7) Nur innerhalb der (weichen) Maske übernehmen — Rest bleibt 1:1 Original
       const blob = await compositeMaskedResult(origEl, placed)
       const resultUrl = await blobToDataUrl(blob)
-      setAiMode(null); setAiPrompt(''); clearMask()
-      await writeResultToActiveImage(resultUrl)
+      proposeResult(resultUrl, 'mask')   // erst Vorschau, dann Übernehmen/Verwerfen
     } catch (e) {
       setAiError(e?.message || 'KI-Bearbeitung fehlgeschlagen. Das Bild bleibt unverändert.')
     } finally {
@@ -2314,8 +2336,7 @@ export default function DesignerCanvas({ visual, teamId, onSaved, onReplaceVisua
         : `Ersetze NUR den Hintergrund des Bildes durch: ${(customPrompt || '').trim()}. Das Hauptmotiv im Vordergrund bleibt exakt erhalten (Position, Form, Beleuchtung am Motiv konsistent). Realistische Integration des neuen Hintergrunds.`
       const aiVisual = await callGenerateImage(prompt)
       const aiUrl = await visualDataUrl(aiVisual.storage_path)
-      setAiMode(null); clearMask()
-      if (aiUrl) await writeResultToActiveImage(aiUrl)
+      if (aiUrl) proposeResult(aiUrl, 'bg')   // erst Vorschau
     } catch (e) {
       setSavedMsg('Fehler: ' + (e?.message || 'Hintergrund-Bearbeitung fehlgeschlagen'))
     } finally {
@@ -3331,9 +3352,29 @@ export default function DesignerCanvas({ visual, teamId, onSaved, onReplaceVisua
             {/* KI-Busy-Overlay */}
             {aiBusy && (
               <div style={{ position: 'absolute', inset: 0, zIndex: 60, background: 'rgba(255,255,255,0.6)', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, color: 'var(--text-primary)', fontSize: 13, fontWeight: 600 }}>
-                <Loader2 size={18} className="lk-spin" />KI bearbeitet den markierten Bereich…
+                <Loader2 size={18} className="lk-spin" />KI arbeitet…
               </div>
             )}
+
+            {/* KI-Vorschau: Ergebnis exakt über dem Bild-Objekt einblenden */}
+            {aiPreview && (() => {
+              const po = objects.find(o => o.id === aiPreview.objId)
+              if (!po) return null
+              return (
+                <img src={aiPreview.url} alt="KI-Vorschau" draggable={false}
+                  style={{
+                    position: 'absolute',
+                    top: (po.y - off.y) * effScale,
+                    left: (po.x - off.x) * effScale,
+                    width: (po.width || stageSize.width) * effScale * (po.scaleX || 1),
+                    height: (po.height || stageSize.height) * effScale * (po.scaleY || 1),
+                    transform: po.rotation ? `rotate(${po.rotation}deg)` : undefined,
+                    transformOrigin: 'top left',
+                    objectFit: 'fill', zIndex: 58, pointerEvents: 'none',
+                    boxShadow: '0 0 0 2px ' + P + ', 0 6px 24px rgba(16,24,40,0.25)',
+                  }} />
+              )
+            })()}
 
             {/* Inline-Text-Edit Overlay */}
             {editingTextId && (
@@ -3364,6 +3405,27 @@ export default function DesignerCanvas({ visual, teamId, onSaved, onReplaceVisua
             onPaste={() => { pasteClipboard(); setCtxMenu(null) }}
             onSelectAll={() => { setSelectedIds(objects.map(o => o.id)); setCtxMenu(null) }}
           />
+        )}
+
+        {/* KI-Vorschau-Bestätigung — schwebend unten mittig */}
+        {aiPreview && (
+          <div style={{
+            position: 'absolute', bottom: 16, left: '50%', transform: 'translateX(-50%)', zIndex: 30,
+            display: 'flex', alignItems: 'center', gap: 8, padding: '8px 10px 8px 14px',
+            borderRadius: 12, background: 'var(--surface,#fff)', border: '1px solid var(--border,#E9ECF2)',
+            boxShadow: '0 6px 24px rgba(16,24,40,0.20)',
+          }}>
+            <span style={{ fontSize: 12.5, fontWeight: 800, color: P }}>KI-Vorschau</span>
+            <span style={{ fontSize: 12, color: 'var(--text-muted)' }}>Gefällt's dir?</span>
+            <button onClick={discardPreview}
+              style={{ height: 32, padding: '0 14px', borderRadius: 9, border: '1px solid var(--border,#E9ECF2)', background: 'var(--surface,#fff)', color: 'var(--text-primary)', fontSize: 12.5, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit' }}>
+              Verwerfen
+            </button>
+            <button onClick={applyPreview}
+              style={{ height: 32, padding: '0 16px', borderRadius: 9, border: 'none', background: P, color: '#fff', fontSize: 12.5, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit' }}>
+              Übernehmen
+            </button>
+          </div>
         )}
 
         {/* Zoom-Steuerung — schwebend unten rechts */}
