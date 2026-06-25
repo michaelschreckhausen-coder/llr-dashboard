@@ -3431,6 +3431,9 @@ export default function DesignerCanvas({ visual, teamId, onSaved, onReplaceVisua
                     transform: po.rotation ? `rotate(${po.rotation}deg)` : undefined,
                     transformOrigin: 'top left',
                     objectFit: 'fill', zIndex: 58, pointerEvents: 'none',
+                    // Seitenfarbe hinterlegen, damit transparente Ergebnisse in der Vorschau
+                    // korrekt aussehen (nicht das alte Bild durchscheint).
+                    background: bgColor || '#ffffff',
                     boxShadow: '0 0 0 2px ' + P + ', 0 6px 24px rgba(16,24,40,0.25)',
                   }} />
               )
