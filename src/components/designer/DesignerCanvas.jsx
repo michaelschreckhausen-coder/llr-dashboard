@@ -2331,27 +2331,38 @@ export default function DesignerCanvas({ visual, teamId, onSaved, onReplaceVisua
     return await res.blob()
   }
 
-  // Chroma-Key: ein vom Modell erzeugter Magenta-Hintergrund (RGB 255,0,255) wird
-  // client-seitig zu echter Alpha-Transparenz gekeyt. Nötig, weil Gemini KEIN echtes
-  // Alpha-PNG liefert (es malt sonst ein Karomuster ins Bild).
-  async function chromaKeyMagentaToAlpha(imgEl) {
+  // Chroma-Key zu echter Alpha-Transparenz. Gemini liefert KEIN Alpha-PNG, daher
+  // generieren wir einen Greenscreen und keyen client-seitig. ADAPTIV: die echte
+  // Hintergrundfarbe wird aus den 4 Bildecken gesampelt (Median) — so funktioniert
+  // es auch, wenn das KI-„Grün" leicht ungleichmäßig/texturiert ausfällt. Gekeyt
+  // wird nach Farbabstand (weiche Kante), plus Grün-Despill an den Rändern.
+  async function chromaKeyToAlpha(imgEl) {
     const w = imgEl.naturalWidth || stageSize.width
     const h = imgEl.naturalHeight || stageSize.height
     const c = document.createElement('canvas'); c.width = w; c.height = h
-    const ctx = c.getContext('2d')
+    const ctx = c.getContext('2d', { willReadFrequently: true })
     ctx.drawImage(imgEl, 0, 0, w, h)
     const id = ctx.getImageData(0, 0, w, h); const d = id.data
+    // 1) Hintergrundfarbe aus Eck-Patches schätzen (Median je Kanal)
+    const patch = Math.max(6, Math.round(Math.min(w, h) * 0.05))
+    const rs = [], gs = [], bs = []
+    const collect = (x0, y0) => {
+      for (let y = y0; y < y0 + patch && y < h; y++) for (let x = x0; x < x0 + patch && x < w; x++) {
+        const i = (y * w + x) * 4; rs.push(d[i]); gs.push(d[i + 1]); bs.push(d[i + 2])
+      }
+    }
+    collect(0, 0); collect(w - patch, 0); collect(0, h - patch); collect(w - patch, h - patch)
+    const median = (arr) => { const a = arr.slice().sort((p, q) => p - q); return a[Math.floor(a.length / 2)] || 0 }
+    const bg = [median(rs), median(gs), median(bs)]
+    // 2) Keyen nach Farbabstand zur gesampelten BG-Farbe
+    const INNER = 70, OUTER = 150     // <INNER voll transparent, >OUTER voll deckend
     for (let i = 0; i < d.length; i += 4) {
       const r = d[i], g = d[i + 1], b = d[i + 2]
-      const minRB = Math.min(r, b)
-      const key = minRB - g            // groß = stark magenta (R&B hoch, G niedrig)
-      if (key > 35 && r > 80 && b > 80) {
-        // weiche Kante: key>=95 voll transparent, 35..95 Übergang
-        const alpha = key >= 95 ? 0 : Math.max(0, Math.min(1, (95 - key) / 60))
-        d[i + 3] = Math.round(alpha * 255)
-        // Despill: Magenta-Saum an Rändern entfernen (R/B Richtung G drücken)
-        if (alpha > 0) { d[i] = Math.round(g + (r - g) * 0.4); d[i + 2] = Math.round(g + (b - g) * 0.4) }
-      }
+      const dist = Math.sqrt((r - bg[0]) ** 2 + (g - bg[1]) ** 2 + (b - bg[2]) ** 2)
+      let a = dist <= INNER ? 0 : dist >= OUTER ? 1 : (dist - INNER) / (OUTER - INNER)
+      // Grün-Despill: wo Grün beide anderen Kanäle übersteigt, auf deren Max ziehen
+      if (a > 0) { const mx = Math.max(r, b); if (g > mx) d[i + 1] = mx }
+      d[i + 3] = Math.round((d[i + 3] / 255) * a * 255)
     }
     ctx.putImageData(id, 0, 0)
     return c.toDataURL('image/png')
@@ -2366,13 +2377,13 @@ export default function DesignerCanvas({ visual, teamId, onSaved, onReplaceVisua
       const prompt = mode === 'white'
         ? 'Stelle das Hauptmotiv sauber frei und setze es vor einen reinen, gleichmäßig weißen Hintergrund. Das Hauptmotiv bleibt exakt unverändert (Form, Farbe, Details). Saubere Kanten, kein Schlagschatten.'
         : mode === 'remove'
-        ? 'Platziere das exakt freigestellte Hauptmotiv vor einem absolut gleichmäßigen, vollflächigen Hintergrund in reinem, kräftigem Magenta (RGB 255, 0, 255). Der GESAMTE Bereich hinter dem Motiv MUSS dieses Magenta sein — keine Schatten, keine Verläufe, kein Weiß, keine anderen Farben und KEIN Karomuster. Das Motiv selbst bleibt exakt unverändert und enthält selbst kein Magenta. Saubere, präzise Kanten, auch bei Haaren.'
+        ? 'Platziere das exakt freigestellte Hauptmotiv vor einem absolut gleichmäßigen, vollflächigen Chroma-Key-Hintergrund in reinem, kräftigem Grün (RGB 0, 255, 0 / Greenscreen). Der GESAMTE Bereich hinter dem Motiv MUSS dieses Grün sein — keine Schatten, keine Verläufe, kein Weiß, keine anderen Farben und KEIN Karomuster. Das Motiv selbst bleibt exakt unverändert und enthält selbst KEIN Grün. Saubere, präzise Kanten, auch bei Haaren.'
         : `Ersetze NUR den Hintergrund des Bildes durch: ${(customPrompt || '').trim()}. Das Hauptmotiv im Vordergrund bleibt exakt erhalten (Position, Form, Beleuchtung am Motiv konsistent). Realistische Integration des neuen Hintergrunds.`
       const aiVisual = await callGenerateImage(prompt)
       let aiUrl = await visualDataUrl(aiVisual.storage_path)
-      // Magenta-Hintergrund → echte Transparenz keyen (Gemini kann kein Alpha-PNG)
+      // Greenscreen → echte Transparenz keyen (Gemini kann kein Alpha-PNG)
       if (aiUrl && mode === 'remove') {
-        try { const el = await loadHtmlImage(aiUrl); aiUrl = await chromaKeyMagentaToAlpha(el) } catch (_e) {}
+        try { const el = await loadHtmlImage(aiUrl); aiUrl = await chromaKeyToAlpha(el) } catch (_e) {}
       }
       if (aiUrl) proposeResult(aiUrl, 'bg')   // erst Vorschau
     } catch (e) {
