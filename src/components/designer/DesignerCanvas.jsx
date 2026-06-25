@@ -3007,6 +3007,7 @@ export default function DesignerCanvas({ visual, teamId, onSaved, onReplaceVisua
   const dockPanel = rootW >= 960
   // Schriftliste inkl. Brand-Fonts (für ContextBar-Dropdown).
   const allFonts = [...FONTS, ...brandFontFamilies.filter(f => !FONTS.includes(f))]
+  const brandColors = extractBrandColors(brandData)
   // Transform-Modus der aktuellen Einzel-Auswahl bestimmen.
   //   • Text                → unverändertes Verhalten (keepRatio=false, eigene Logik)
   //   • Nicht-Text, normal   → proportional (keepRatio=true, Verzerren gesperrt)
@@ -3187,7 +3188,7 @@ export default function DesignerCanvas({ visual, teamId, onSaved, onReplaceVisua
           commitHistoryOnce={commitHistoryOnce} endInteraction={endInteraction}
           reorder={reorder} deleteSelected={deleteSelected} duplicateSelected={duplicateSelected}
           onFlip={flipSelected}
-          fonts={allFonts} selectedIds={selectedIds}
+          fonts={allFonts} selectedIds={selectedIds} brandColors={brandColors}
           alignObjects={alignObjects} distributeObjects={distributeObjects} />
       )}
       {selectedIds.length > 1 && !cropMode && !aiActive && (
@@ -3202,15 +3203,8 @@ export default function DesignerCanvas({ visual, teamId, onSaved, onReplaceVisua
         <div style={barStyle}>
           <span style={{ fontSize: 12.5, fontWeight: 700, color: 'var(--text-primary)' }}>Seite</span>
           <span style={{ fontSize: 12, color: 'var(--text-muted)' }}>Hintergrundfarbe</span>
-          <label style={{ display: 'inline-flex', alignItems: 'center', cursor: 'pointer' }} title="Eigene Farbe">
-            <input type="color" value={bgColor || '#ffffff'}
-              onChange={e => { commitHistoryOnce && commitHistoryOnce(); setBgColor(e.target.value); endInteraction && endInteraction() }}
-              style={{ width: 30, height: 30, padding: 0, border: '1px solid var(--border,#E9ECF2)', borderRadius: 8, cursor: 'pointer', background: 'none' }} />
-          </label>
-          {['#ffffff', '#0B1F3A', '#F2F4F7', '#000000', PRGB].map(c => (
-            <button key={c} title={c} onClick={() => { commitHistoryOnce && commitHistoryOnce(); setBgColor(c); endInteraction && endInteraction() }}
-              style={{ width: 24, height: 24, borderRadius: 6, cursor: 'pointer', background: c, border: '1px solid ' + ((bgColor || '#ffffff').toLowerCase() === c.toLowerCase() ? P : 'var(--border,#E9ECF2)'), boxShadow: (bgColor || '#ffffff').toLowerCase() === c.toLowerCase() ? '0 0 0 2px color-mix(in srgb, var(--wl-primary, rgb(49,90,231)) 30%, transparent)' : 'none' }} />
-          ))}
+          <ColorPopover value={bgColor || '#ffffff'} brandColors={brandColors} title="Seiten-Hintergrundfarbe"
+            onStart={commitHistoryOnce} onChange={(hex) => setBgColor(hex)} onEnd={endInteraction} />
           <span style={{ marginLeft: 'auto', fontSize: 11, color: 'var(--text-soft,#98a2b3)' }}>Klick auf ein Element, um es zu bearbeiten</span>
         </div>
       )}
@@ -3753,7 +3747,7 @@ function ExportModal({ onExport, exporting, onClose }) {
 function ContextBar({
   selected, updateObject, reorder, deleteSelected, duplicateSelected,
   commitHistoryOnce, endInteraction, fonts, onFlip,
-  selectedIds, alignObjects, distributeObjects,
+  selectedIds, alignObjects, distributeObjects, brandColors = [],
 }) {
   const FONT_LIST = (fonts && fonts.length) ? fonts : FONTS
   const o = selected
@@ -3825,16 +3819,16 @@ function ContextBar({
       {hasFill && (
         <label style={lblStyle} title="Füllfarbe">
           <span style={{ fontSize: 11, color: 'var(--text-muted)' }}>Füllung</span>
-          <input type="color" value={toHex(o.fill)} onMouseDown={startEdit} onFocus={startEdit}
-            onChange={e => liveEdit({ fill: e.target.value })} onBlur={endInteraction} style={colorStyle} />
+          <ColorPopover value={o.fill} brandColors={brandColors} title="Füllfarbe"
+            onStart={startEdit} onChange={(hex) => liveEdit({ fill: hex })} onEnd={endInteraction} />
         </label>
       )}
       {hasStroke && (
         <>
           <label style={lblStyle} title="Randfarbe">
             <span style={{ fontSize: 11, color: 'var(--text-muted)' }}>Rand</span>
-            <input type="color" value={toHex(o.stroke || '#ffffff')} onMouseDown={startEdit} onFocus={startEdit}
-              onChange={e => liveEdit({ stroke: e.target.value })} onBlur={endInteraction} style={colorStyle} />
+            <ColorPopover value={o.stroke || '#ffffff'} brandColors={brandColors} title="Randfarbe"
+              onStart={startEdit} onChange={(hex) => liveEdit({ stroke: hex })} onEnd={endInteraction} />
           </label>
           {numField('Stärke', o.strokeWidth || 0, v => setOnce({ strokeWidth: Math.max(0, v || 0) }), { min: 0, w: 50 })}
         </>
@@ -3978,6 +3972,80 @@ function toHex(c) {
     return '#' + h(m[1]) + h(m[2]) + h(m[3])
   }
   return '#ffffff'
+}
+
+// Marken-Schriften aus brandData ziehen (Company- ODER Personal-Brand-Form).
+function extractBrandFonts(brandData) {
+  if (!brandData) return []
+  const src = Array.isArray(brandData.companies)
+    ? brandData.companies.flatMap(c => c.fonts || [])
+    : (brandData.fonts || [])
+  const out = []; const seen = new Set()
+  for (const f of src) { const fam = f?.family || f?.name; if (fam && !seen.has(fam)) { seen.add(fam); out.push(fam) } }
+  return out
+}
+// Marken-Farben aus brandData ziehen (flach, dedupliziert).
+function extractBrandColors(brandData) {
+  if (!brandData) return []
+  const src = Array.isArray(brandData.companies)
+    ? brandData.companies.flatMap(c => c.palette || [])
+    : (brandData.palette || [])
+  return [...new Set(src.filter(Boolean))].slice(0, 18)
+}
+
+// ─── Schöne Farbauswahl (Swatch-Button + Popover mit Marken- & Standardfarben) ─
+const STD_SWATCHES = [
+  '#000000', '#475467', '#98A2B3', '#D0D5DD', '#FFFFFF',
+  '#B91C1C', '#EF4444', '#F97316', '#F59E0B', '#FACC15',
+  '#16A34A', '#22C55E', '#10B981', '#06B6D4', '#3B82F6',
+  '#1D4ED8', '#6366F1', '#8B5CF6', '#D946EF', '#EC4899',
+]
+function ColorSwatch({ c, current, onPick }) {
+  const on = toHex(current).toLowerCase() === toHex(c).toLowerCase()
+  return (
+    <button type="button" onClick={() => onPick(c)} title={c}
+      style={{ width: 24, height: 24, borderRadius: 6, cursor: 'pointer', background: c,
+        border: '1px solid ' + (c.toLowerCase() === '#ffffff' ? 'var(--border,#E9ECF2)' : 'rgba(0,0,0,0.10)'),
+        boxShadow: on ? '0 0 0 2px var(--surface,#fff), 0 0 0 4px ' + P : 'none', outline: 'none' }} />
+  )
+}
+function ColorPopover({ value, onChange, onStart, onEnd, brandColors = [], title = 'Farbe', size = 30 }) {
+  const [open, setOpen] = React.useState(false)
+  const ref = React.useRef(null)
+  React.useEffect(() => {
+    function onDoc(e) { if (ref.current && !ref.current.contains(e.target)) setOpen(false) }
+    if (open) document.addEventListener('mousedown', onDoc)
+    return () => document.removeEventListener('mousedown', onDoc)
+  }, [open])
+  const cur = toHex(value || '#ffffff')
+  const pick = (hex) => { onStart && onStart(); onChange(hex); onEnd && onEnd() }
+  const swGrid = { display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gap: 7, marginBottom: 4 }
+  const swLabel = { fontSize: 10.5, fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em', margin: '8px 2px 7px' }
+  return (
+    <div ref={ref} style={{ position: 'relative', display: 'inline-flex' }}>
+      <button type="button" title={title} onClick={() => setOpen(o => !o)}
+        style={{ width: size, height: size, borderRadius: 8, border: '1px solid var(--border,#E9ECF2)', background: cur, cursor: 'pointer', padding: 0, boxShadow: 'inset 0 0 0 2px var(--surface,#fff)' }} />
+      {open && (
+        <div style={{ position: 'absolute', zIndex: 130, bottom: 'calc(100% + 8px)', left: 0, width: 214, background: 'var(--surface,#fff)', border: '1px solid var(--border,#E9ECF2)', borderRadius: 12, boxShadow: '0 16px 44px rgba(16,24,40,0.20)', padding: 12 }}>
+          {brandColors.length > 0 && (
+            <>
+              <div style={{ ...swLabel, marginTop: 0 }}>Markenfarben</div>
+              <div style={swGrid}>{brandColors.map((c, i) => <ColorSwatch key={'b' + i} c={c} current={cur} onPick={pick} />)}</div>
+            </>
+          )}
+          <div style={{ ...swLabel, marginTop: brandColors.length ? 10 : 0 }}>Standardfarben</div>
+          <div style={swGrid}>{STD_SWATCHES.map((c, i) => <ColorSwatch key={i} c={c} current={cur} onPick={pick} />)}</div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 10, paddingTop: 10, borderTop: '1px solid var(--border,#E9ECF2)' }}>
+            <label style={{ position: 'relative', width: 30, height: 30, borderRadius: 7, overflow: 'hidden', border: '1px solid var(--border,#E9ECF2)', cursor: 'pointer', flexShrink: 0 }} title="Eigene Farbe">
+              <input type="color" value={cur} onChange={e => { onStart && onStart(); onChange(e.target.value) }} onBlur={() => onEnd && onEnd()}
+                style={{ position: 'absolute', inset: '-6px', width: '150%', height: '150%', border: 'none', padding: 0, cursor: 'pointer', background: 'none' }} />
+            </label>
+            <span style={{ fontSize: 12.5, fontWeight: 600, color: 'var(--text-primary)', fontVariantNumeric: 'tabular-nums', textTransform: 'uppercase' }}>{cur}</span>
+          </div>
+        </div>
+      )}
+    </div>
+  )
 }
 
 // ════════════════════════════════════════════════════════════════════════════
@@ -4392,21 +4460,54 @@ function ElementsPanelBody({ elementTab, setElementTab, onAddRect, onAddEllipse,
 }
 
 // ─── Panel: Text ────────────────────────────────────────────────────────────
-function TextPanelBody({ onAddText, onAddTextPreset }) {
+function TextPanelBody({ onAddText, onAddTextPreset, brandData, onApplyBrandFont }) {
+  const brandFonts = extractBrandFonts(brandData)
+  const presetCard = (sub, sample, size, weight) => (
+    <button onClick={() => onAddTextPreset(sub)} style={presetBtn} title={`${sample} hinzufügen`}
+      onMouseEnter={e => { e.currentTarget.style.borderColor = P; e.currentTarget.style.background = 'rgba(49,90,231,0.04)' }}
+      onMouseLeave={e => { e.currentTarget.style.borderColor = 'var(--border,#E9ECF2)'; e.currentTarget.style.background = 'var(--surface,#fff)' }}>
+      <span style={{ fontSize: size, fontWeight: weight, color: 'var(--text-primary)', lineHeight: 1.1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{sample}</span>
+      <PlusIcon size={15} strokeWidth={2} style={{ color: 'var(--text-soft,#98a2b3)', flexShrink: 0 }} />
+    </button>
+  )
   return (
     <div>
       <PanelBtn full primary onClick={onAddText}><PlusIcon size={15} strokeWidth={2} />Textfeld hinzufügen</PanelBtn>
-      <PanelLabel>Textstile</PanelLabel>
-      <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-        <button onClick={() => onAddTextPreset('heading')} style={textStyleBtn}><span style={{ fontSize: 20, fontWeight: 800 }}>Überschrift</span></button>
-        <button onClick={() => onAddTextPreset('subheading')} style={textStyleBtn}><span style={{ fontSize: 15, fontWeight: 700 }}>Unterüberschrift</span></button>
-        <button onClick={() => onAddTextPreset('body')} style={textStyleBtn}><span style={{ fontSize: 12.5, fontWeight: 400 }}>Fließtext</span></button>
+      <div style={{ fontSize: 11, color: 'var(--text-muted)', margin: '8px 0 2px', lineHeight: 1.45 }}>
+        Schrift, Größe, Farbe und Ausrichtung erscheinen oben in der Leiste, sobald ein Textfeld ausgewählt ist.
       </div>
-      <div style={{ fontSize: 10.5, color: 'var(--text-muted)', marginTop: 8 }}>Bei ausgewähltem Text wird dessen Stil gesetzt.</div>
+
+      <PanelLabel>Schnell hinzufügen</PanelLabel>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+        {presetCard('heading', 'Überschrift', 22, 800)}
+        {presetCard('subheading', 'Unterüberschrift', 15, 700)}
+        {presetCard('body', 'Fließtext', 13, 400)}
+      </div>
+
+      {brandFonts.length > 0 && (
+        <>
+          <PanelLabel>Marken-Schriften</PanelLabel>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+            {brandFonts.map((fam, i) => (
+              <button key={i} onClick={() => onApplyBrandFont(fam)} title={`Text in „${fam}" hinzufügen`}
+                style={{ ...presetBtn, fontFamily: fam }}
+                onMouseEnter={e => { e.currentTarget.style.borderColor = P; e.currentTarget.style.background = 'rgba(49,90,231,0.04)' }}
+                onMouseLeave={e => { e.currentTarget.style.borderColor = 'var(--border,#E9ECF2)'; e.currentTarget.style.background = 'var(--surface,#fff)' }}>
+                <span style={{ fontSize: 16, color: 'var(--text-primary)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{fam}</span>
+                <PlusIcon size={15} strokeWidth={2} style={{ color: 'var(--text-soft,#98a2b3)', flexShrink: 0 }} />
+              </button>
+            ))}
+          </div>
+          <div style={{ fontSize: 10.5, color: 'var(--text-soft,#98a2b3)', marginTop: 8, lineHeight: 1.4 }}>
+            Bei ausgewähltem Text wird die Schrift direkt übernommen.
+          </div>
+        </>
+      )}
     </div>
   )
 }
 const textStyleBtn = { display: 'flex', alignItems: 'center', width: '100%', padding: '10px 12px', borderRadius: 9, border: '1px solid var(--border)', background: '#fff', cursor: 'pointer', color: 'var(--text-primary)', fontFamily: 'inherit', textAlign: 'left' }
+const presetBtn = { display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8, width: '100%', padding: '12px 14px', borderRadius: 10, border: '1px solid var(--border,#E9ECF2)', background: 'var(--surface,#fff)', cursor: 'pointer', color: 'var(--text-primary)', fontFamily: 'inherit', textAlign: 'left', transition: 'border-color .12s, background .12s' }
 
 // ─── Panel: Uploads ─────────────────────────────────────────────────────────
 function UploadsPanelBody({ onTriggerUpload, uploadThumbs, onInsertUpload, mediaLib, mediaLoading, onInsertMediaItem }) {
