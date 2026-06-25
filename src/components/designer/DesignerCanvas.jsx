@@ -33,7 +33,7 @@ import {
   Bold, Italic, Sliders, Loader2, X, ChevronUp, ChevronDown, Brush, Lasso,
   Eraser, Image as ImageIcon, LayoutTemplate, Copy, ZoomIn, ZoomOut, Maximize2,
   Upload, Frame, Eye, EyeOff, Lock, Unlock, Layers, GripVertical, Underline,
-  FlipHorizontal2, FlipVertical2, Scaling, Send, FileText, Search,
+  FlipHorizontal2, FlipVertical2, Scaling, Send, CalendarPlus, FileText, Search,
   AlignStartVertical, AlignCenterVertical, AlignEndVertical,
   AlignStartHorizontal, AlignCenterHorizontal, AlignEndHorizontal,
   AlignHorizontalDistributeCenter, AlignVerticalDistributeCenter,
@@ -3095,7 +3095,7 @@ export default function DesignerCanvas({ visual, teamId, onSaved, onReplaceVisua
         {savedMsg && <span style={{ flexShrink: 0, fontSize: 11.5, fontWeight: 600, maxWidth: 130, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', color: savedMsg.startsWith('Fehler') || savedMsg.startsWith('Download-Fehler') ? '#b91c1c' : '#15803d' }}>{savedMsg}</span>}
         <button onClick={() => openPagesAction('post')} title="In Beitrag — Seiten zu einem Beitrag hinzufügen"
           style={{ flexShrink: 0, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', width: 34, height: 32, borderRadius: 9, border: '1px solid var(--border,#E9ECF2)', background: 'var(--surface,#fff)', color: 'var(--text-primary)', cursor: 'pointer', fontFamily: 'inherit' }}>
-          <Send size={15} strokeWidth={1.9} />
+          <CalendarPlus size={15} strokeWidth={1.9} />
         </button>
         <button onClick={() => openPagesAction('download')} title="Herunterladen (PDF / PNG / JPG)"
           style={{ flexShrink: 0, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', width: 34, height: 32, borderRadius: 9, border: '1px solid var(--border,#E9ECF2)', background: 'var(--surface,#fff)', color: 'var(--text-primary)', cursor: 'pointer', fontFamily: 'inherit' }}>

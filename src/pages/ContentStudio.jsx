@@ -11,7 +11,7 @@
 //   - Beim ersten Send im Clean-Modus → Sidebar klappt automatisch auf
 
 import React, { useState, useEffect, useRef } from 'react'
-import { Pencil, Pin, BookOpen, Target, Send, Loader2, Globe, Plus, FileText, ChevronLeft, ChevronRight, X, Mic, Square, Image as ImageIcon, Download, Sparkles, Wand2, FilePlus2, Brush, MessageSquare } from 'lucide-react'
+import { Pencil, Pin, BookOpen, Target, Send, Loader2, Globe, Plus, FileText, ChevronLeft, ChevronRight, X, Mic, Square, Image as ImageIcon, Download, Sparkles, Wand2, FilePlus2, Brush, MessageSquare, CalendarPlus } from 'lucide-react'
 import { useVoiceInput } from '../hooks/useVoiceInput'
 import CompanyMultiSelect from '../components/CompanyMultiSelect'
 import AudienceSelect from '../components/AudienceSelect'
@@ -1688,7 +1688,7 @@ function ImageBubble({ meta, onOpenInDesigner, onDownloadVisual, onImageToPost, 
         <div style={{ position:'relative' }}>
           <button onClick={openPostMenu} disabled={busy} title={done ? 'Zum Beitrag hinzugefügt ✓' : 'In Beitrag'}
             style={{ width:34, height:34, padding:0, justifyContent:'center', borderRadius:8, border:'1.5px solid '+(done?'#15803d':P), background:done?'rgba(21,128,61,0.10)':'rgba(49,90,231,0.06)', color:done?'#15803d':P, cursor:busy?'default':'pointer', display:'inline-flex', alignItems:'center' }}>
-            {busy ? <Loader2 size={15} className="lk-spin"/> : <Send size={15} strokeWidth={1.9}/>}
+            {busy ? <Loader2 size={15} className="lk-spin"/> : <CalendarPlus size={15} strokeWidth={1.9}/>}
           </button>
           {postMenuOpen && (
             <div style={{ position:'absolute', bottom:'calc(100% + 6px)', left:0, zIndex:40, width:260, maxHeight:280, overflowY:'auto', background:'var(--surface,#fff)', border:'1px solid var(--border,#E9ECF2)', borderRadius:10, boxShadow:'0 12px 32px rgba(16,24,40,0.16)', padding:6 }}>
