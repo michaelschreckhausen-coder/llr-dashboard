@@ -11,7 +11,7 @@
 //   - Beim ersten Send im Clean-Modus → Sidebar klappt automatisch auf
 
 import React, { useState, useEffect, useRef } from 'react'
-import { Pencil, Pin, BookOpen, Target, Send, Loader2, Globe, Plus, FileText, ChevronLeft, ChevronRight, X, Mic, Square, Image as ImageIcon, Download, Sparkles, Wand2, FilePlus2, Brush } from 'lucide-react'
+import { Pencil, Pin, BookOpen, Target, Send, Loader2, Globe, Plus, FileText, ChevronLeft, ChevronRight, X, Mic, Square, Image as ImageIcon, Download, Sparkles, Wand2, FilePlus2, Brush, MessageSquare } from 'lucide-react'
 import { useVoiceInput } from '../hooks/useVoiceInput'
 import CompanyMultiSelect from '../components/CompanyMultiSelect'
 import AudienceSelect from '../components/AudienceSelect'
