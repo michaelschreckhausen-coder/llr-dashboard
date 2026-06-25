@@ -3034,17 +3034,17 @@ export default function DesignerCanvas({ visual, teamId, onSaved, onReplaceVisua
           style={{ flex: 1, minWidth: 40, border: 'none', outline: 'none', background: 'transparent', fontSize: 17, fontWeight: 800, letterSpacing: '-0.01em', color: 'var(--text-primary,#101828)', fontFamily: 'inherit', textOverflow: 'ellipsis', whiteSpace: 'nowrap', overflow: 'hidden' }} />
 
         {savedMsg && <span style={{ flexShrink: 0, fontSize: 11.5, fontWeight: 600, maxWidth: 130, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', color: savedMsg.startsWith('Fehler') || savedMsg.startsWith('Download-Fehler') ? '#b91c1c' : '#15803d' }}>{savedMsg}</span>}
-        <button onClick={() => openPagesAction('post')} title="Seiten zu einem Beitrag hinzufügen"
-          style={{ flexShrink: 0, display: 'inline-flex', alignItems: 'center', gap: 5, height: 32, padding: '0 10px', borderRadius: 9, border: '1px solid var(--border,#E9ECF2)', background: 'var(--surface,#fff)', color: 'var(--text-primary)', fontSize: 12.5, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit', whiteSpace: 'nowrap' }}>
-          <Send size={14} strokeWidth={1.9} />In Beitrag
+        <button onClick={() => openPagesAction('post')} title="In Beitrag — Seiten zu einem Beitrag hinzufügen"
+          style={{ flexShrink: 0, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', width: 34, height: 32, borderRadius: 9, border: '1px solid var(--border,#E9ECF2)', background: 'var(--surface,#fff)', color: 'var(--text-primary)', cursor: 'pointer', fontFamily: 'inherit' }}>
+          <Send size={15} strokeWidth={1.9} />
         </button>
-        <button onClick={() => openPagesAction('download')} title="Seiten herunterladen (PDF / PNG / JPG)"
-          style={{ flexShrink: 0, display: 'inline-flex', alignItems: 'center', gap: 5, height: 32, padding: '0 10px', borderRadius: 9, border: '1px solid var(--border,#E9ECF2)', background: 'var(--surface,#fff)', color: 'var(--text-primary)', fontSize: 12.5, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit', whiteSpace: 'nowrap' }}>
-          <Download size={14} strokeWidth={1.9} />Download
+        <button onClick={() => openPagesAction('download')} title="Herunterladen (PDF / PNG / JPG)"
+          style={{ flexShrink: 0, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', width: 34, height: 32, borderRadius: 9, border: '1px solid var(--border,#E9ECF2)', background: 'var(--surface,#fff)', color: 'var(--text-primary)', cursor: 'pointer', fontFamily: 'inherit' }}>
+          <Download size={15} strokeWidth={1.9} />
         </button>
-        <button onClick={handleSave} disabled={saving}
-          style={{ flexShrink: 0, display: 'inline-flex', alignItems: 'center', gap: 5, height: 32, padding: '0 12px', borderRadius: 9, border: 'none', background: P, color: '#fff', fontSize: 12.5, fontWeight: 700, cursor: saving ? 'wait' : 'pointer', fontFamily: 'inherit', boxShadow: '0 1px 2px rgba(16,24,40,0.10)', whiteSpace: 'nowrap' }}>
-          {saving ? <Loader2 size={14} className="lk-spin" /> : <Save size={14} strokeWidth={2} />}Speichern
+        <button onClick={handleSave} disabled={saving} title="Speichern"
+          style={{ flexShrink: 0, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', width: 34, height: 32, borderRadius: 9, border: 'none', background: P, color: '#fff', cursor: saving ? 'wait' : 'pointer', fontFamily: 'inherit', boxShadow: '0 1px 2px rgba(16,24,40,0.10)' }}>
+          {saving ? <Loader2 size={15} className="lk-spin" /> : <Save size={15} strokeWidth={2} />}
         </button>
       </div>
 

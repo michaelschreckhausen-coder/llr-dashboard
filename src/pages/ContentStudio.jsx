@@ -1531,14 +1531,14 @@ function ChatInput({
 
           {/* Web-Suche */}
           <button data-tour-id="cs-websearch" onClick={() => setUseWebSearch(v => !v)} title="Web-Suche aktivieren"
-            style={IconBtn(useWebSearch)}>
-            <span style={{display:"inline-flex",alignItems:"center",gap:6}}><Globe size={13} strokeWidth={1.75}/>Web-Suche</span>
+            style={{ ...IconBtn(useWebSearch), width:34, padding:0, justifyContent:'center', gap:0 }}>
+            <Globe size={16} strokeWidth={1.75}/>
           </button>
 
           {/* Visual-Modus: Bild im Chat erstellen */}
           <button data-tour-id="cs-visual" onClick={() => setVisualMode(v => !v)} title="Bild im Chat erstellen"
-            style={IconBtn(visualMode)}>
-            <span style={{display:"inline-flex",alignItems:"center",gap:6}}><ImageIcon size={13} strokeWidth={1.75}/>Visual</span>
+            style={{ ...IconBtn(visualMode), width:34, padding:0, justifyContent:'center', gap:0 }}>
+            <ImageIcon size={16} strokeWidth={1.75}/>
           </button>
           {visualMode && (
             <>
@@ -1553,8 +1553,8 @@ function ChatInput({
               </select>
               {hasChatVisuals && (
                 <button onClick={() => setForceNewImage(v => !v)} title={forceNewImage ? 'Neues, unabhängiges Bild' : 'Folge-Bearbeitung des letzten Bildes'}
-                  style={IconBtn(forceNewImage)}>
-                  <span style={{display:"inline-flex",alignItems:"center",gap:6}}><FilePlus2 size={13} strokeWidth={1.75}/>Neues Bild</span>
+                  style={{ ...IconBtn(forceNewImage), width:34, padding:0, justifyContent:'center', gap:0 }}>
+                  <FilePlus2 size={16} strokeWidth={1.75}/>
                 </button>
               )}
             </>
@@ -1562,8 +1562,8 @@ function ChatInput({
           {/* Editor-Kontext (nur wenn Dokument-Editor offen) */}
           {editorOpen && (
             <button onClick={() => setUseEditorContext(v => !v)} title="Dokument-Inhalt als zusätzlichen Kontext für die KI nutzen"
-              style={IconBtn(useEditorContext)}>
-              <span style={{display:"inline-flex",alignItems:"center",gap:6}}><FileText size={13} strokeWidth={1.75}/>Editor-Kontext</span>
+              style={{ ...IconBtn(useEditorContext), width:34, padding:0, justifyContent:'center', gap:0 }}>
+              <FileText size={16} strokeWidth={1.75}/>
             </button>
           )}
         </div>
@@ -1666,14 +1666,14 @@ function ImageBubble({ meta, onOpenInDesigner, onDownloadVisual, onImageToPost, 
         )}
       </div>
       <div style={{ display:'flex', gap:8, flexWrap:'wrap', alignItems:'center' }}>
-        <button onClick={() => onOpenInDesigner && onOpenInDesigner(meta)}
-          style={{ padding:'7px 14px', borderRadius:8, border:'none', background:P, color:'#fff', fontSize:12, fontWeight:700, cursor:'pointer', display:'inline-flex', alignItems:'center', gap:5 }}>
-          <Brush size={13} strokeWidth={1.9}/>→ in den Designer
+        <button onClick={() => onOpenInDesigner && onOpenInDesigner(meta)} title="In den Designer öffnen"
+          style={{ width:34, height:34, padding:0, justifyContent:'center', borderRadius:8, border:'none', background:P, color:'#fff', cursor:'pointer', display:'inline-flex', alignItems:'center' }}>
+          <Brush size={15} strokeWidth={1.9}/>
         </button>
         <div style={{ position:'relative' }}>
-          <button onClick={openPostMenu} disabled={busy}
-            style={{ padding:'7px 14px', borderRadius:8, border:'1.5px solid '+P, background:'rgba(49,90,231,0.06)', color:P, fontSize:12, fontWeight:700, cursor:busy?'default':'pointer', display:'inline-flex', alignItems:'center', gap:5 }}>
-            <Send size={13} strokeWidth={1.9}/>{done ? 'Zugeordnet ✓' : (busy ? '…' : 'In Beitrag')}
+          <button onClick={openPostMenu} disabled={busy} title={done ? 'Zum Beitrag hinzugefügt ✓' : 'In Beitrag'}
+            style={{ width:34, height:34, padding:0, justifyContent:'center', borderRadius:8, border:'1.5px solid '+(done?'#15803d':P), background:done?'rgba(21,128,61,0.10)':'rgba(49,90,231,0.06)', color:done?'#15803d':P, cursor:busy?'default':'pointer', display:'inline-flex', alignItems:'center' }}>
+            {busy ? <Loader2 size={15} className="lk-spin"/> : <Send size={15} strokeWidth={1.9}/>}
           </button>
           {postMenuOpen && (
             <div style={{ position:'absolute', bottom:'calc(100% + 6px)', left:0, zIndex:40, width:260, maxHeight:280, overflowY:'auto', background:'var(--surface,#fff)', border:'1px solid var(--border,#E9ECF2)', borderRadius:10, boxShadow:'0 12px 32px rgba(16,24,40,0.16)', padding:6 }}>
@@ -1690,9 +1690,9 @@ function ImageBubble({ meta, onOpenInDesigner, onDownloadVisual, onImageToPost, 
             </div>
           )}
         </div>
-        <button onClick={() => onDownloadVisual && onDownloadVisual(meta)}
-          style={{ padding:'7px 14px', borderRadius:8, border:'1.5px solid '+P, background:'rgba(49,90,231,0.06)', color:P, fontSize:12, fontWeight:700, cursor:'pointer', display:'inline-flex', alignItems:'center', gap:5 }}>
-          <Download size={13} strokeWidth={1.9}/>Herunterladen
+        <button onClick={() => onDownloadVisual && onDownloadVisual(meta)} title="Herunterladen"
+          style={{ width:34, height:34, padding:0, justifyContent:'center', borderRadius:8, border:'1.5px solid '+P, background:'rgba(49,90,231,0.06)', color:P, cursor:'pointer', display:'inline-flex', alignItems:'center' }}>
+          <Download size={15} strokeWidth={1.9}/>
         </button>
       </div>
     </div>
