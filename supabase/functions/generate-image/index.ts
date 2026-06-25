@@ -132,6 +132,7 @@ async function generateWithOpenAI(
   quality: string,
   apiKey: string,
   referenceImagesB64: { mimeType: string; data: string }[] = [],
+  background: string | null = null,
 ): Promise<{ base64: string; mimeType: string } | { error: string }> {
   const size = OPENAI_SIZE_MAP[aspectRatio] || "1024x1024";
 
@@ -143,6 +144,8 @@ async function generateWithOpenAI(
     fd.append("size", size);
     fd.append("quality", quality);
     fd.append("n", "1");
+    // Echte Transparenz (Freistellen): background=transparent + PNG-Output.
+    if (background) { fd.append("background", background); fd.append("output_format", "png"); }
     // input_fidelity: 'high' damit OpenAI Identity/Style stärker preserved.
     // ABER: gpt-image-1-mini unterstützt input_fidelity nicht (nur gpt-image-1 Standard/Premium).
     if (model !== "gpt-image-1-mini") {
@@ -423,7 +426,7 @@ Deno.serve(async (req) => {
     if (provider === "openai") {
       const openaiKey = Deno.env.get("OPENAI_API_KEY");
       if (!openaiKey) return json({ error: "OPENAI_API_KEY fehlt im Server-Env" }, 500);
-      imgResult = await generateWithOpenAI(resolvedPrompt, aspectRatio, model, quality, openaiKey, referenceImagesB64);
+      imgResult = await generateWithOpenAI(resolvedPrompt, aspectRatio, model, quality, openaiKey, referenceImagesB64, (body?.background as string) || null);
     } else {
       // Google ist Default für gemini-* Modelle. Pro: bis zu 3 Versuche (fängt
       // transiente 503 ab, ohne das Wall-Clock-Budget zu sprengen).

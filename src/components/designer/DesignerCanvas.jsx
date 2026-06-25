@@ -2124,7 +2124,8 @@ export default function DesignerCanvas({ visual, teamId, onSaved, onReplaceVisua
 
   // ─── Hilfsfunktion: generate-image aufrufen, neuen Visual-Datensatz holen ───
   async function callGenerateImage(prompt, opts = {}) {
-    const { model, quality } = splitModelValue(DEFAULT_IMAGE_MODEL)
+    let { model, quality } = splitModelValue(DEFAULT_IMAGE_MODEL)
+    if (opts.model) { model = opts.model; quality = opts.quality || 'high' }   // z.B. gpt-image-1 fürs Freistellen
     const body = {
       prompt,
       aspectRatio: opts.aspectRatio || visual.aspect_ratio || '1:1',
@@ -2132,6 +2133,7 @@ export default function DesignerCanvas({ visual, teamId, onSaved, onReplaceVisua
       model, quality,
       parentVisualId: visual.id,
     }
+    if (opts.background) body.background = opts.background   // 'transparent' → echtes Alpha-PNG (OpenAI)
     // Lokales Inpainting: nur den Crop als Inline-Referenz schicken (kein Vollbild).
     if (opts.inlineRefs && opts.inlineRefs.length) {
       body.referenceImagesInline = opts.inlineRefs
@@ -2377,14 +2379,14 @@ export default function DesignerCanvas({ visual, teamId, onSaved, onReplaceVisua
       const prompt = mode === 'white'
         ? 'Stelle das Hauptmotiv sauber frei und setze es vor einen reinen, gleichmäßig weißen Hintergrund. Das Hauptmotiv bleibt exakt unverändert (Form, Farbe, Details). Saubere Kanten, kein Schlagschatten.'
         : mode === 'remove'
-        ? 'Platziere das exakt freigestellte Hauptmotiv vor einem absolut gleichmäßigen, vollflächigen Chroma-Key-Hintergrund in reinem, kräftigem Grün (RGB 0, 255, 0 / Greenscreen). Der GESAMTE Bereich hinter dem Motiv MUSS dieses Grün sein — keine Schatten, keine Verläufe, kein Weiß, keine anderen Farben und KEIN Karomuster. Das Motiv selbst bleibt exakt unverändert und enthält selbst KEIN Grün. Saubere, präzise Kanten, auch bei Haaren.'
+        ? 'Entferne den Hintergrund vollständig. Behalte AUSSCHLIESSLICH das Hauptmotiv, sauber freigestellt auf vollständig transparentem Hintergrund. Füge keinerlei Hintergrund, Farbe, Schatten oder Muster hinzu. Das Hauptmotiv bleibt exakt unverändert, mit sauberen, präzisen Kanten (auch bei Haaren).'
         : `Ersetze NUR den Hintergrund des Bildes durch: ${(customPrompt || '').trim()}. Das Hauptmotiv im Vordergrund bleibt exakt erhalten (Position, Form, Beleuchtung am Motiv konsistent). Realistische Integration des neuen Hintergrunds.`
-      const aiVisual = await callGenerateImage(prompt)
-      let aiUrl = await visualDataUrl(aiVisual.storage_path)
-      // Greenscreen → echte Transparenz keyen (Gemini kann kein Alpha-PNG)
-      if (aiUrl && mode === 'remove') {
-        try { const el = await loadHtmlImage(aiUrl); aiUrl = await chromaKeyToAlpha(el) } catch (_e) {}
-      }
+      // Freistellen via OpenAI gpt-image-1 mit echtem transparentem Output (Alpha-PNG).
+      // Gemini liefert kein Alpha & ignoriert Chroma-Key-Vorgaben → unzuverlässig.
+      const aiVisual = mode === 'remove'
+        ? await callGenerateImage(prompt, { model: 'gpt-image-1', background: 'transparent' })
+        : await callGenerateImage(prompt)
+      const aiUrl = await visualDataUrl(aiVisual.storage_path)
       if (aiUrl) proposeResult(aiUrl, 'bg')   // erst Vorschau
     } catch (e) {
       setSavedMsg('Fehler: ' + (e?.message || 'Hintergrund-Bearbeitung fehlgeschlagen'))
