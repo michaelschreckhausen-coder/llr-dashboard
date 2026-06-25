@@ -33,6 +33,7 @@ import {
   Bold, Italic, Sliders, Loader2, X, ChevronUp, ChevronDown, Brush, Lasso,
   Eraser, Image as ImageIcon, LayoutTemplate, Copy, ZoomIn, ZoomOut, Maximize2,
   Upload, Frame, Eye, EyeOff, Lock, Unlock, Layers, GripVertical, Underline,
+  FlipHorizontal2, FlipVertical2, Scaling, Send, FileText, Search,
   AlignStartVertical, AlignCenterVertical, AlignEndVertical,
   AlignStartHorizontal, AlignCenterHorizontal, AlignEndHorizontal,
   AlignHorizontalDistributeCenter, AlignVerticalDistributeCenter,
@@ -256,11 +257,29 @@ export default function DesignerCanvas({ visual, teamId, onSaved, onReplaceVisua
 
   const [showExport, setShowExport] = useState(false)
   const [exporting, setExporting] = useState(false)
-  // Seiten-Export/Speichern-Dialog (Mehrseiten)
-  const [showPages, setShowPages] = useState(false)
-  const [pageSel, setPageSel] = useState({})          // { [idx]: true }
-  const [pagesBusy, setPagesBusy] = useState('')      // '' | 'export' | 'media' | 'post'
+  // Design-Name (Titel) — editierbar in der Kopfleiste, erscheint in der Bibliothek
+  const [designName, setDesignName] = useState(visual?.title || '')
+  const nameSaveRef = useRef(null)
+  const aiNamedRef = useRef(false)
+  useEffect(() => { setDesignName(visual?.title || ''); aiNamedRef.current = false }, [visual?.id])
+  function commitName(v) {
+    setDesignName(v)
+    if (nameSaveRef.current) clearTimeout(nameSaveRef.current)
+    nameSaveRef.current = setTimeout(async () => {
+      if (!visual?.id) return
+      try { const { data } = await updateVisual(visual.id, { title: v }); onSaved && onSaved(data || { ...visual, title: v }) } catch (_e) {}
+    }, 600)
+  }
+  // Seiten-Aktion (In Beitrag / Download) — Mehrseiten-Auswahl + Folge-Schritt
+  const [pagesAction, setPagesAction] = useState(null)  // 'post' | 'download' | null
+  const [pagesStep, setPagesStep] = useState('pages')   // 'format' | 'pages' | 'post'
+  const [pageSel, setPageSel] = useState({})            // { [idx]: true }
+  const [pagesBusy, setPagesBusy] = useState(false)
   const [pagesMsg, setPagesMsg] = useState('')
+  const [dlFormat, setDlFormat] = useState('pdf')       // 'pdf' | 'png' | 'jpg'
+  const [postList, setPostList] = useState([])
+  const [postLoading, setPostLoading] = useState(false)
+  const [postSearch, setPostSearch] = useState('')
 
   // ─── Rechtsklick-Kontextmenü ───────────────────────────────────────────────
   // { x, y, objId|null } in Container-Pixeln (relativ zur Canvas-Fläche).
@@ -447,6 +466,28 @@ export default function DesignerCanvas({ visual, teamId, onSaved, onReplaceVisua
     return () => { cancelled = true }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [visual?.id, visual?.storage_path])
+
+  // ─── KI-Namensgenerierung (einmal pro Design ohne richtigen Namen) ──────────
+  useEffect(() => {
+    if (aiNamedRef.current || loading) return
+    if (visual?.kind !== 'design' || !visual?.id) return
+    const t = (visual?.title || '').trim()
+    if (t && t !== 'Design' && t !== 'Neues Design') { aiNamedRef.current = true; return }
+    aiNamedRef.current = true
+    ;(async () => {
+      try {
+        const firstText = (objects.find(o => o.type === 'text' && (o.text || '').trim())?.text || '').slice(0, 200)
+        const topic = firstText || visual?.prompt || 'Social-Media-Design'
+        const { data } = await supabase.functions.invoke('generate', { body: { model: 'claude-haiku-4-5', prompt: `Gib NUR einen kurzen, prägnanten Design-Namen (max. 4 Wörter, Deutsch, ohne Anführungszeichen, keine Erklärung) für ein Social-Media-Design zu folgendem Inhalt zurück:\n\n${topic}` } })
+        let name = String(data?.text || data?.content || data?.output || '').trim().replace(/^["'\s]+|["'\s.]+$/g, '').split('\n')[0].slice(0, 60)
+        if (name) {
+          setDesignName(name)
+          try { const { data: up } = await updateVisual(visual.id, { title: name }); onSaved && onSaved(up || { ...visual, title: name }) } catch (_e) {}
+        }
+      } catch (_e) {}
+    })()
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [loading, visual?.id])
 
   // ─── Mehrseiten-Helfer ──────────────────────────────────────────────────────
   const currentStage = () => ({ width: stageSize.width, height: stageSize.height })
@@ -997,6 +1038,35 @@ export default function DesignerCanvas({ visual, teamId, onSaved, onReplaceVisua
     const clones = cloneObjects(selectedIds)
     setObjects(prev => [...prev, ...clones])
     setSelectedIds(clones.map(c => c.id))
+  }
+  // Spiegeln (horizontal/vertikal). Bilder/Icons: Pixel werden gespiegelt (robust,
+  // überlebt Transforms). Andere Objekte: flipX/flipY-Flag (Scale-Sign im Render).
+  function flipSelected(axis) {
+    if (!selectedIds.length) return
+    pushHistory()
+    const ids = new Set(selectedIds)
+    objects.filter(o => ids.has(o.id)).forEach(o => {
+      if (o.type === 'image' && o.src && imgCache[o.src]) {
+        try {
+          const el = imgCache[o.src]
+          const cw = el.naturalWidth || el.width || o.width || 100
+          const ch = el.naturalHeight || el.height || o.height || 100
+          const c = document.createElement('canvas'); c.width = cw; c.height = ch
+          const ctx = c.getContext('2d')
+          ctx.translate(axis === 'x' ? cw : 0, axis === 'y' ? ch : 0)
+          ctx.scale(axis === 'x' ? -1 : 1, axis === 'y' ? -1 : 1)
+          ctx.drawImage(el, 0, 0)
+          const url = c.toDataURL('image/png')
+          const img = new window.Image()
+          img.onload = () => setImgCache(prev => ({ ...prev, [url]: img }))
+          img.src = url
+          updateObject(o.id, { src: url }, false)
+        } catch (_e) {}
+      } else {
+        const key = axis === 'x' ? 'flipX' : 'flipY'
+        updateObject(o.id, { [key]: !o[key] }, false)
+      }
+    })
   }
   function copySelected() {
     if (!selectedIds.length) return
@@ -1924,7 +1994,7 @@ export default function DesignerCanvas({ visual, teamId, onSaved, onReplaceVisua
   }
   const _sleep = (ms) => new Promise(r => setTimeout(r, ms))
   // Rendert die angegebenen Seiten nacheinander zu PNG-Blobs (über die Live-Stage).
-  async function renderSelectedPages(indices, { pixelRatio = 2 } = {}) {
+  async function renderSelectedPages(indices, { pixelRatio = 2, mimeType = 'image/png' } = {}) {
     const arr = withCommittedPages()
     const original = activeIdxRef.current
     const out = []
@@ -1933,7 +2003,7 @@ export default function DesignerCanvas({ visual, teamId, onSaved, onReplaceVisua
       await _preloadSrcs((pg.objects || []).filter(o => o.type === 'image' && o.src).map(o => o.src))
       switchToPage(idx)
       await _sleep(480)
-      try { const blob = await renderBlobOpts({ pixelRatio, mimeType: 'image/png' }); out.push({ idx, blob }) } catch (_e) {}
+      try { const blob = await renderBlobOpts({ pixelRatio, mimeType }); out.push({ idx, blob }) } catch (_e) {}
     }
     switchToPage(original)
     await _sleep(150)
@@ -1944,45 +2014,105 @@ export default function DesignerCanvas({ visual, teamId, onSaved, onReplaceVisua
     const sel = Object.keys(pageSel).filter(k => pageSel[k]).map(Number).filter(i => i >= 0 && i < total)
     return sel.length ? sel.sort((a, b) => a - b) : Array.from({ length: total }, (_, i) => i)
   }
-  async function exportSelectedPages() {
-    setPagesBusy('export'); setPagesMsg('')
-    try {
-      const rendered = await renderSelectedPages(selectedPageIndices())
-      for (const { idx, blob } of rendered) {
-        const url = URL.createObjectURL(blob)
-        const a = document.createElement('a'); a.href = url; a.download = `leadesk-${visual?.id || 'design'}-seite-${idx + 1}.png`
-        document.body.appendChild(a); a.click(); document.body.removeChild(a)
-        await _sleep(120); URL.revokeObjectURL(url)
-      }
-      setPagesMsg('Exportiert ✓')
-    } catch (e) { setPagesMsg('Export-Fehler: ' + (e?.message || '')) }
-    finally { setPagesBusy('') }
+  // Seiten-Auswahl-Helfer (Master „Alle Seiten" / Schnellwahl „Aktuelle Seite")
+  const allPagesSelected = () => pages.length > 0 && pages.every((_, i) => pageSel[i])
+  function toggleAllPages() {
+    if (allPagesSelected()) setPageSel({})
+    else { const a = {}; pages.forEach((_, i) => { a[i] = true }); setPageSel(a) }
   }
-  async function savePagesAsImages(linkToPost = false) {
-    setPagesBusy(linkToPost ? 'post' : 'media'); setPagesMsg('')
+  function selectCurrentPageOnly() { setPageSel({ [activePageIdx]: true }) }
+  function togglePageSel(i) { setPageSel(s => ({ ...s, [i]: !s[i] })) }
+
+  function openPagesAction(mode) {
+    setPageSel({ [activeIdxRef.current]: true })   // Standard: aktuelle Seite
+    setPagesMsg(''); setPostSearch(''); setPagesAction(mode)
+    setPagesStep(mode === 'download' ? 'format' : 'pages')
+  }
+  async function loadPostsForPicker() {
+    setPostLoading(true)
+    try {
+      let q = supabase.from('content_posts').select('id, title, updated_at').eq('team_id', teamId).order('updated_at', { ascending: false }).limit(100)
+      if (activeBrandVoice?.id) q = q.eq('brand_voice_id', activeBrandVoice.id)
+      const { data } = await q
+      setPostList(data || [])
+    } catch (_e) { setPostList([]) } finally { setPostLoading(false) }
+  }
+  // Seiten als Bilder zu einem Beitrag (bestehend oder neu) hinzufügen.
+  async function executePost(target) {   // target: postId | 'new'
+    if (pagesBusy) return
+    const indices = selectedPageIndices()
+    if (!indices.length) return
+    setPagesBusy(true); setPagesMsg('')
     try {
       let userId = null
       try { const { data } = await supabase.auth.getUser(); userId = data?.user?.id || null } catch (_e) {}
-      const rendered = await renderSelectedPages(selectedPageIndices())
-      const created = []
+      let postId = target
+      if (target === 'new') {
+        const { data: post, error } = await supabase.from('content_posts').insert({
+          user_id: userId, team_id: teamId, brand_voice_id: activeBrandVoice?.id || visual?.brand_voice_id || null,
+          title: (designName || visual?.title || 'Design').slice(0, 120), content: '', platform: 'linkedin', status: 'draft',
+        }).select().single()
+        if (error || !post) throw new Error(error?.message || 'Beitrag konnte nicht erstellt werden')
+        postId = post.id
+      }
+      const rendered = await renderSelectedPages(indices)
+      let n = 0
       for (const { idx, blob } of rendered) {
-        const up = await uploadImageBlob(teamId, blob)
-        if (up.error || !up.path) continue
+        const up = await uploadImageBlob(teamId, blob); if (up.error || !up.path) continue
         const { data: row } = await createImageVisual({
           teamId, userId, brandVoiceId: activeBrandVoice?.id || visual?.brand_voice_id,
-          title: `${visual?.title || 'Design'} — Seite ${idx + 1}`,
-          aspectRatio: visual?.aspect_ratio || '1:1', storagePath: up.path,
+          title: `${designName || visual?.title || 'Design'} — Seite ${idx + 1}`,
+          aspectRatio: visual?.aspect_ratio || '1:1', storagePath: up.path, postId,
         })
-        if (row) created.push(row)
+        if (row) n++
       }
-      if (linkToPost && onPagesToPost) { try { await onPagesToPost(created) } catch (_e) {} }
-      setPagesMsg(created.length ? (linkToPost ? `${created.length} Seite(n) zum Beitrag ✓` : `${created.length} in Medien gespeichert ✓`) : 'Nichts gespeichert')
+      setPagesAction(null)
+      setSavedMsg(n ? `${n} Seite(n) zum Beitrag hinzugefügt ✓` : 'Nichts hinzugefügt')
+      setTimeout(() => setSavedMsg(''), 3000)
     } catch (e) { setPagesMsg('Fehler: ' + (e?.message || '')) }
-    finally { setPagesBusy('') }
+    finally { setPagesBusy(false) }
   }
-  function openPagesDialog() {
-    const all = {}; (pagesRef.current || []).forEach((_, i) => { all[i] = true })
-    setPageSel(all); setPagesMsg(''); setShowPages(true)
+  // Ausgewählte Seiten herunterladen: PDF (zusammengeführt) bzw. PNG/JPG (einzeln/ZIP).
+  async function executeDownload() {
+    if (pagesBusy) return
+    const indices = selectedPageIndices()
+    if (!indices.length) return
+    setPagesBusy(true); setPagesMsg('')
+    try {
+      const base = (designName || visual?.title || 'design').replace(/[^\w\-]+/g, '_').slice(0, 40) || 'design'
+      const mime = dlFormat === 'jpg' ? 'image/jpeg' : 'image/png'
+      const rendered = await renderSelectedPages(indices, { pixelRatio: 2, mimeType: dlFormat === 'pdf' ? 'image/png' : mime })
+      if (dlFormat === 'pdf') {
+        const { jsPDF } = await import('jspdf')
+        let pdf = null
+        for (const { idx, blob } of rendered) {
+          const dataUrl = await blobToDataUrl(blob)
+          const pg = pagesRef.current[idx] || {}
+          const w = (pg.stage && pg.stage.width) || stageSize.width
+          const h = (pg.stage && pg.stage.height) || stageSize.height
+          const orient = w >= h ? 'landscape' : 'portrait'
+          if (!pdf) pdf = new jsPDF({ orientation: orient, unit: 'px', format: [w, h] })
+          else pdf.addPage([w, h], orient)
+          pdf.addImage(dataUrl, 'PNG', 0, 0, w, h)
+        }
+        if (pdf) pdf.save(`${base}.pdf`)
+      } else if (rendered.length === 1) {
+        const url = URL.createObjectURL(rendered[0].blob)
+        const a = document.createElement('a'); a.href = url; a.download = `${base}-seite-${rendered[0].idx + 1}.${dlFormat}`
+        document.body.appendChild(a); a.click(); document.body.removeChild(a); setTimeout(() => URL.revokeObjectURL(url), 1500)
+      } else {
+        const JSZip = (await import('jszip')).default
+        const zip = new JSZip()
+        for (const { idx, blob } of rendered) zip.file(`${base}-seite-${idx + 1}.${dlFormat}`, blob)
+        const content = await zip.generateAsync({ type: 'blob' })
+        const url = URL.createObjectURL(content)
+        const a = document.createElement('a'); a.href = url; a.download = `${base}.zip`
+        document.body.appendChild(a); a.click(); document.body.removeChild(a); setTimeout(() => URL.revokeObjectURL(url), 1500)
+      }
+      setPagesAction(null)
+      setSavedMsg('Heruntergeladen ✓'); setTimeout(() => setSavedMsg(''), 2500)
+    } catch (e) { setPagesMsg('Download-Fehler: ' + (e?.message || '')) }
+    finally { setPagesBusy(false) }
   }
 
   // ─── Hilfsfunktion: generate-image aufrufen, neuen Visual-Datensatz holen ───
@@ -2717,11 +2847,11 @@ export default function DesignerCanvas({ visual, teamId, onSaved, onReplaceVisua
       case 'ellipse':
         return <Ellipse key={o.id} {...base} radiusX={o.radiusX} radiusY={o.radiusY} fill={o.fill} stroke={o.stroke} strokeWidth={o.strokeWidth || 0} />
       case 'line':
-        return <Line key={o.id} {...base} points={o.points} stroke={o.stroke} strokeWidth={o.strokeWidth || 6} lineCap="round" scaleX={o.scaleX || 1} scaleY={o.scaleY || 1} />
+        return <Line key={o.id} {...base} points={o.points} stroke={o.stroke} strokeWidth={o.strokeWidth || 6} lineCap="round" scaleX={(o.flipX ? -1 : 1) * (o.scaleX || 1)} scaleY={(o.flipY ? -1 : 1) * (o.scaleY || 1)} />
       case 'arrow':
-        return <Arrow key={o.id} {...base} points={o.points} stroke={o.stroke} fill={o.fill} strokeWidth={o.strokeWidth || 6} pointerLength={o.pointerLength || 18} pointerWidth={o.pointerWidth || 18} scaleX={o.scaleX || 1} scaleY={o.scaleY || 1} />
+        return <Arrow key={o.id} {...base} points={o.points} stroke={o.stroke} fill={o.fill} strokeWidth={o.strokeWidth || 6} pointerLength={o.pointerLength || 18} pointerWidth={o.pointerWidth || 18} scaleX={(o.flipX ? -1 : 1) * (o.scaleX || 1)} scaleY={(o.flipY ? -1 : 1) * (o.scaleY || 1)} />
       case 'sticker':
-        return <Path key={o.id} {...base} data={o.d} fill={o.fill} stroke={o.stroke} strokeWidth={o.strokeWidth || 0} scaleX={o.scaleX || 1} scaleY={o.scaleY || 1} />
+        return <Path key={o.id} {...base} data={o.d} fill={o.fill} stroke={o.stroke} strokeWidth={o.strokeWidth || 0} scaleX={(o.flipX ? -1 : 1) * (o.scaleX || 1)} scaleY={(o.flipY ? -1 : 1) * (o.scaleY || 1)} />
       case 'image': {
         const el = imgCache[o.src]
         if (!el) return null   // wird nachgeladen (Effekt), dann re-render
@@ -2787,15 +2917,21 @@ export default function DesignerCanvas({ visual, teamId, onSaved, onReplaceVisua
           <ToolBtn onClick={zoomIn} title="Vergrößern"><ZoomIn size={15} strokeWidth={1.9} /></ToolBtn>
           <ToolBtn onClick={zoomFit} title="Einpassen"><Maximize2 size={15} strokeWidth={1.9} /></ToolBtn>
         </div>
+        {/* Format/Größe (links) + Design-Name */}
+        <FormatMenu onPick={applyFormatPreset} />
+        <input value={designName} onChange={e => commitName(e.target.value)} placeholder="Design benennen…" title="Design-Name"
+          style={{ height: 32, width: 190, maxWidth: '30vw', padding: '0 10px', borderRadius: 9, border: '1px solid var(--border,#E9ECF2)', background: 'var(--page-bg,#F7F8FA)', color: 'var(--text-primary)', fontSize: 12.5, fontWeight: 600, fontFamily: 'inherit', outline: 'none' }} />
 
         <div style={{ flex: 1 }} />
 
         {savedMsg && <span style={{ fontSize: 12, fontWeight: 600, color: savedMsg.startsWith('Fehler') || savedMsg.startsWith('Download-Fehler') ? '#b91c1c' : '#15803d' }}>{savedMsg}</span>}
-        <FormatMenu onPick={applyFormatPreset} />
-        <ToolBtn onClick={() => setShowExport(true)} active={showExport} title="Aktuelle Seite exportieren (PNG / JPG / PDF)"><Download size={15} strokeWidth={1.9} /></ToolBtn>
-        <button onClick={openPagesDialog} title="Seiten exportieren / als Bild speichern / zu Beitrag"
-          style={{ height: 32, padding: '0 10px', borderRadius: 9, border: '1px solid var(--border,#E9ECF2)', background: 'var(--surface,#fff)', color: 'var(--text-primary)', fontSize: 12, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit' }}>
-          Seiten
+        <button onClick={() => openPagesAction('post')} title="Seiten zu einem Beitrag hinzufügen"
+          style={{ display: 'inline-flex', alignItems: 'center', gap: 6, height: 32, padding: '0 12px', borderRadius: 9, border: '1px solid var(--border,#E9ECF2)', background: 'var(--surface,#fff)', color: 'var(--text-primary)', fontSize: 12.5, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit' }}>
+          <Send size={14} strokeWidth={1.9} />In Beitrag
+        </button>
+        <button onClick={() => openPagesAction('download')} title="Seiten herunterladen (PDF / PNG / JPG)"
+          style={{ display: 'inline-flex', alignItems: 'center', gap: 6, height: 32, padding: '0 12px', borderRadius: 9, border: '1px solid var(--border,#E9ECF2)', background: 'var(--surface,#fff)', color: 'var(--text-primary)', fontSize: 12.5, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit' }}>
+          <Download size={14} strokeWidth={1.9} />Download
         </button>
         <Divider />
         <button onClick={handleSave} disabled={saving}
@@ -2810,47 +2946,139 @@ export default function DesignerCanvas({ visual, teamId, onSaved, onReplaceVisua
       )}
 
       {/* Seiten-Dialog: Auswahl welche Seiten exportieren / als Bild speichern / zu Beitrag */}
-      {showPages && (
-        <div onMouseDown={() => !pagesBusy && setShowPages(false)}
-          style={{ position: 'fixed', inset: 0, zIndex: 120, background: 'rgba(16,24,40,0.45)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-          <div onMouseDown={e => e.stopPropagation()}
-            style={{ width: 540, maxWidth: '92vw', maxHeight: '86vh', overflow: 'auto', background: 'var(--surface,#fff)', borderRadius: 14, padding: 18, boxShadow: '0 20px 60px rgba(16,24,40,0.3)' }}>
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
-              <span style={{ fontSize: 15, fontWeight: 800, color: 'var(--text-primary)' }}>Seiten exportieren / speichern</span>
-              <button onClick={() => !pagesBusy && setShowPages(false)} style={{ border: 'none', background: 'none', cursor: 'pointer', color: 'var(--text-muted)', display: 'flex' }}><X size={18} /></button>
+      {pagesAction && (() => {
+        const selCount = selectedPageIndices().length
+        const titleTxt = pagesAction === 'post' ? 'In Beitrag' : 'Herunterladen'
+        // Wiederverwendbarer Seiten-Auswahl-Block (Master „Alle" + „Aktuelle" + Liste)
+        const PageSelector = (
+          <>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '8px 10px', borderRadius: 10, background: 'var(--surface-muted,#F5F7FB)', marginBottom: 8 }}>
+              <label style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer', fontSize: 13, fontWeight: 700, color: 'var(--text-primary)' }}>
+                <input type="checkbox" checked={allPagesSelected()} onChange={toggleAllPages} style={{ width: 16, height: 16, accentColor: P, cursor: 'pointer' }} />
+                Alle Seiten
+              </label>
+              <span style={{ width: 1, height: 18, background: 'var(--border,#E9ECF2)' }} />
+              <button onClick={selectCurrentPageOnly}
+                style={{ border: '1px solid var(--border,#E9ECF2)', background: '#fff', borderRadius: 8, padding: '4px 10px', fontSize: 12, fontWeight: 700, color: 'var(--text-primary)', cursor: 'pointer' }}>
+                Nur aktuelle Seite
+              </button>
+              <span style={{ marginLeft: 'auto', fontSize: 12, color: 'var(--text-muted)', fontWeight: 600 }}>{selCount} ausgewählt</span>
             </div>
-            <div style={{ fontSize: 12, color: 'var(--text-muted)', marginBottom: 10 }}>Wähle die Seiten, die du als einzelne Bilder exportieren, in den Medien speichern oder zu einem Beitrag hinzufügen möchtest.</div>
-            <div style={{ display: 'flex', gap: 8, marginBottom: 10 }}>
-              <SmallBtn onClick={() => { const all = {}; pages.forEach((_, i) => { all[i] = true }); setPageSel(all) }}>Alle</SmallBtn>
-              <SmallBtn onClick={() => setPageSel({})}>Keine</SmallBtn>
-            </div>
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(96px,1fr))', gap: 10, marginBottom: 16 }}>
+            <div style={{ maxHeight: 280, overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: 6, paddingRight: 2, marginBottom: 14 }}>
               {pages.map((p, i) => {
                 const on = !!pageSel[i]
                 return (
-                  <button key={p.id || i} onClick={() => setPageSel(s => ({ ...s, [i]: !s[i] }))}
-                    style={{ border: '2px solid ' + (on ? P : 'var(--border,#E9ECF2)'), borderRadius: 10, padding: 6, background: on ? 'rgba(49,90,231,0.06)' : '#fff', cursor: 'pointer', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4 }}>
+                  <label key={p.id || i}
+                    style={{ display: 'flex', alignItems: 'center', gap: 10, padding: 6, borderRadius: 10, cursor: 'pointer', border: '1.5px solid ' + (on ? P : 'var(--border,#E9ECF2)'), background: on ? 'rgba(49,90,231,0.05)' : '#fff' }}>
+                    <input type="checkbox" checked={on} onChange={() => togglePageSel(i)} style={{ width: 16, height: 16, accentColor: P, cursor: 'pointer' }} />
                     <PageThumb page={p} active={on} />
-                    <span style={{ fontSize: 11, fontWeight: 700, color: on ? P : 'var(--text-muted)' }}>Seite {i + 1}</span>
-                  </button>
+                    <span style={{ fontSize: 13, fontWeight: 700, color: on ? P : 'var(--text-primary)' }}>Seite {i + 1}</span>
+                  </label>
                 )
               })}
             </div>
-            {pagesMsg && <div style={{ fontSize: 12, fontWeight: 600, marginBottom: 10, color: pagesMsg.includes('Fehler') ? '#b91c1c' : '#15803d' }}>{pagesMsg}</div>}
-            <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-              <PanelBtn primary disabled={!!pagesBusy} onClick={exportSelectedPages}>{pagesBusy === 'export' ? 'Exportiere…' : 'Als PNG exportieren'}</PanelBtn>
-              <PanelBtn disabled={!!pagesBusy} onClick={() => savePagesAsImages(false)}>{pagesBusy === 'media' ? 'Speichere…' : 'In Medien speichern'}</PanelBtn>
-              {onPagesToPost && <PanelBtn disabled={!!pagesBusy} onClick={() => savePagesAsImages(true)}>{pagesBusy === 'post' ? '…' : 'Zu Beitrag hinzufügen'}</PanelBtn>}
+          </>
+        )
+        return (
+          <div onMouseDown={() => !pagesBusy && setPagesAction(null)}
+            style={{ position: 'fixed', inset: 0, zIndex: 120, background: 'rgba(16,24,40,0.45)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+            <div onMouseDown={e => e.stopPropagation()}
+              style={{ width: 480, maxWidth: '92vw', maxHeight: '86vh', overflow: 'auto', background: 'var(--surface,#fff)', borderRadius: 14, padding: 18, boxShadow: '0 20px 60px rgba(16,24,40,0.3)' }}>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 14 }}>
+                <span style={{ fontSize: 15, fontWeight: 800, color: 'var(--text-primary)' }}>{titleTxt}</span>
+                <button onClick={() => !pagesBusy && setPagesAction(null)} style={{ border: 'none', background: 'none', cursor: 'pointer', color: 'var(--text-muted)', display: 'flex' }}><X size={18} /></button>
+              </div>
+
+              {/* DOWNLOAD: Schritt 1 — Format */}
+              {pagesAction === 'download' && pagesStep === 'format' && (
+                <>
+                  <div style={{ fontSize: 12, color: 'var(--text-muted)', marginBottom: 12 }}>Welches Dateiformat möchtest du herunterladen?</div>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginBottom: 16 }}>
+                    {[['pdf', 'PDF', 'Alle Seiten in einer Datei'], ['png', 'PNG', 'Verlustfrei · mehrere Seiten als ZIP'], ['jpg', 'JPG', 'Kleiner · mehrere Seiten als ZIP']].map(([val, lbl, desc]) => (
+                      <button key={val} onClick={() => setDlFormat(val)}
+                        style={{ display: 'flex', alignItems: 'center', gap: 12, textAlign: 'left', padding: '10px 12px', borderRadius: 10, cursor: 'pointer', border: '1.5px solid ' + (dlFormat === val ? P : 'var(--border,#E9ECF2)'), background: dlFormat === val ? 'rgba(49,90,231,0.05)' : '#fff' }}>
+                        <span style={{ width: 18, height: 18, borderRadius: '50%', border: '2px solid ' + (dlFormat === val ? P : 'var(--border,#C9CFDB)'), display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                          {dlFormat === val && <span style={{ width: 9, height: 9, borderRadius: '50%', background: P }} />}
+                        </span>
+                        <span style={{ display: 'flex', flexDirection: 'column' }}>
+                          <span style={{ fontSize: 14, fontWeight: 800, color: 'var(--text-primary)' }}>{lbl}</span>
+                          <span style={{ fontSize: 11.5, color: 'var(--text-muted)' }}>{desc}</span>
+                        </span>
+                      </button>
+                    ))}
+                  </div>
+                  <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
+                    <PanelBtn primary onClick={() => setPagesStep('pages')}>Weiter</PanelBtn>
+                  </div>
+                </>
+              )}
+
+              {/* DOWNLOAD & POST: Schritt — Seitenauswahl */}
+              {pagesStep === 'pages' && (
+                <>
+                  <div style={{ fontSize: 12, color: 'var(--text-muted)', marginBottom: 10 }}>
+                    {pagesAction === 'post' ? 'Wähle die Seiten, die als Bilder zum Beitrag hinzugefügt werden.' : 'Wähle die Seiten, die du herunterladen möchtest.'}
+                  </div>
+                  {PageSelector}
+                  {pagesMsg && <div style={{ fontSize: 12, fontWeight: 600, marginBottom: 10, color: pagesMsg.includes('Fehler') ? '#b91c1c' : '#15803d' }}>{pagesMsg}</div>}
+                  <div style={{ display: 'flex', justifyContent: 'space-between', gap: 8 }}>
+                    {pagesAction === 'download'
+                      ? <SmallBtn onClick={() => setPagesStep('format')}>Zurück</SmallBtn>
+                      : <span />}
+                    {pagesAction === 'download'
+                      ? <PanelBtn primary disabled={pagesBusy || !selCount} onClick={executeDownload}>{pagesBusy ? 'Erstelle…' : `Herunterladen (${dlFormat.toUpperCase()})`}</PanelBtn>
+                      : <PanelBtn primary disabled={pagesBusy || !selCount} onClick={() => { setPagesStep('post'); loadPostsForPicker() }}>Weiter</PanelBtn>}
+                  </div>
+                </>
+              )}
+
+              {/* POST: Schritt — Beitrag wählen / neu */}
+              {pagesAction === 'post' && pagesStep === 'post' && (
+                <>
+                  <div style={{ fontSize: 12, color: 'var(--text-muted)', marginBottom: 10 }}>{selCount} Seite(n) zu welchem Beitrag hinzufügen?</div>
+                  <button onClick={() => executePost('new')} disabled={pagesBusy}
+                    style={{ display: 'flex', alignItems: 'center', gap: 10, width: '100%', padding: '11px 12px', borderRadius: 10, cursor: pagesBusy ? 'default' : 'pointer', border: '1.5px solid ' + P, background: 'rgba(49,90,231,0.05)', marginBottom: 12 }}>
+                    <PlusIcon size={18} color={P} />
+                    <span style={{ display: 'flex', flexDirection: 'column', textAlign: 'left' }}>
+                      <span style={{ fontSize: 14, fontWeight: 800, color: P }}>Neuen Beitrag erstellen</span>
+                      <span style={{ fontSize: 11.5, color: 'var(--text-muted)' }}>„{designName || visual?.title || 'Design'}"</span>
+                    </span>
+                  </button>
+                  <div style={{ position: 'relative', marginBottom: 8 }}>
+                    <Search size={15} style={{ position: 'absolute', left: 10, top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)' }} />
+                    <input value={postSearch} onChange={e => setPostSearch(e.target.value)} placeholder="Bestehenden Beitrag suchen…"
+                      style={{ width: '100%', boxSizing: 'border-box', padding: '8px 10px 8px 32px', borderRadius: 9, border: '1px solid var(--border,#E9ECF2)', fontSize: 13, outline: 'none' }} />
+                  </div>
+                  <div style={{ maxHeight: 240, overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: 4, marginBottom: 12 }}>
+                    {postLoading && <div style={{ fontSize: 12, color: 'var(--text-muted)', padding: 8 }}>Lade Beiträge…</div>}
+                    {!postLoading && postList.filter(p => !postSearch || (p.title || '').toLowerCase().includes(postSearch.toLowerCase())).length === 0 &&
+                      <div style={{ fontSize: 12, color: 'var(--text-muted)', padding: 8 }}>Keine Beiträge gefunden.</div>}
+                    {!postLoading && postList.filter(p => !postSearch || (p.title || '').toLowerCase().includes(postSearch.toLowerCase())).map(p => (
+                      <button key={p.id} onClick={() => executePost(p.id)} disabled={pagesBusy}
+                        style={{ display: 'flex', alignItems: 'center', gap: 10, textAlign: 'left', padding: '9px 10px', borderRadius: 9, cursor: pagesBusy ? 'default' : 'pointer', border: '1px solid var(--border,#E9ECF2)', background: '#fff' }}>
+                        <FileText size={15} color="var(--text-muted)" />
+                        <span style={{ fontSize: 13, fontWeight: 600, color: 'var(--text-primary)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{p.title || 'Ohne Titel'}</span>
+                      </button>
+                    ))}
+                  </div>
+                  {pagesMsg && <div style={{ fontSize: 12, fontWeight: 600, marginBottom: 10, color: pagesMsg.includes('Fehler') ? '#b91c1c' : '#15803d' }}>{pagesMsg}</div>}
+                  <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                    <SmallBtn onClick={() => setPagesStep('pages')}>Zurück</SmallBtn>
+                    {pagesBusy && <span style={{ fontSize: 12, color: 'var(--text-muted)', alignSelf: 'center' }}>Füge hinzu…</span>}
+                  </div>
+                </>
+              )}
             </div>
           </div>
-        </div>
-      )}
+        )
+      })()}
 
       {/* Kontext-Leiste: Selektion / Filter / Crop / AI */}
       {selected && selectedIds.length === 1 && !cropMode && !aiActive && (
         <ContextBar selected={selected} updateObject={updateObject}
           commitHistoryOnce={commitHistoryOnce} endInteraction={endInteraction}
           reorder={reorder} deleteSelected={deleteSelected} duplicateSelected={duplicateSelected}
+          onFlip={flipSelected}
           fonts={allFonts} selectedIds={selectedIds}
           alignObjects={alignObjects} distributeObjects={distributeObjects} />
       )}
@@ -2858,6 +3086,7 @@ export default function DesignerCanvas({ visual, teamId, onSaved, onReplaceVisua
         <MultiBar count={selectedIds.length} onDuplicate={duplicateSelected} onDelete={deleteSelected}
           updateOpacity={(v) => { const ids = new Set(selectedIds); setObjects(prev => prev.map(o => ids.has(o.id) ? { ...o, opacity: v } : o)) }}
           commitHistoryOnce={commitHistoryOnce} endInteraction={endInteraction}
+          onFlip={flipSelected}
           alignObjects={alignObjects} distributeObjects={distributeObjects} />
       )}
       {cropMode && (
@@ -3340,7 +3569,7 @@ function ExportModal({ onExport, exporting, onClose }) {
 // Aktionen in EINER sauberen, umbrechenden Leiste.
 function ContextBar({
   selected, updateObject, reorder, deleteSelected, duplicateSelected,
-  commitHistoryOnce, endInteraction, fonts,
+  commitHistoryOnce, endInteraction, fonts, onFlip,
   selectedIds, alignObjects, distributeObjects,
 }) {
   const FONT_LIST = (fonts && fonts.length) ? fonts : FONTS
@@ -3480,6 +3709,9 @@ function ContextBar({
       <ToolBtn onClick={() => reorder('up')} title="Eine Ebene nach vorne"><ChevronUp size={14} strokeWidth={2} /></ToolBtn>
       <ToolBtn onClick={() => reorder('down')} title="Eine Ebene nach hinten"><ChevronDown size={14} strokeWidth={2} /></ToolBtn>
       <ToolBtn onClick={() => reorder('bottom')} title="Nach ganz hinten"><SendToBack size={14} strokeWidth={1.9} /></ToolBtn>
+      {onFlip && <Divider />}
+      {onFlip && <ToolBtn onClick={() => onFlip('x')} title="Horizontal spiegeln"><FlipHorizontal2 size={14} strokeWidth={1.9} /></ToolBtn>}
+      {onFlip && <ToolBtn onClick={() => onFlip('y')} title="Vertikal spiegeln"><FlipVertical2 size={14} strokeWidth={1.9} /></ToolBtn>}
       <div style={{ flex: 1 }} />
       <ToolBtn onClick={duplicateSelected} title="Duplizieren (Strg+D)"><Copy size={14} strokeWidth={1.9} /></ToolBtn>
       <ToolBtn onClick={deleteSelected} title="Löschen (Entf)"><Trash2 size={14} strokeWidth={1.9} /></ToolBtn>
@@ -3488,7 +3720,7 @@ function ContextBar({
 }
 
 // Leiste bei Mehrfach-Auswahl: gemeinsame Aktionen (Duplizieren, Deckkraft, Löschen).
-function MultiBar({ count, onDuplicate, onDelete, updateOpacity, commitHistoryOnce, endInteraction, alignObjects, distributeObjects }) {
+function MultiBar({ count, onDuplicate, onDelete, updateOpacity, commitHistoryOnce, endInteraction, alignObjects, distributeObjects, onFlip }) {
   return (
     <div style={{ ...barStyle, flexWrap: 'wrap', gap: 7 }}>
       <span style={{ fontSize: 12, fontWeight: 700, color: 'var(--text-primary)' }}>{count} Objekte ausgewählt</span>
@@ -3509,6 +3741,8 @@ function MultiBar({ count, onDuplicate, onDelete, updateOpacity, commitHistoryOn
           onMouseDown={commitHistoryOnce} onChange={e => updateOpacity((parseInt(e.target.value, 10) || 0) / 100)}
           onMouseUp={endInteraction} style={{ width: 100, accentColor: P }} />
       </label>
+      {onFlip && <ToolBtn onClick={() => onFlip('x')} title="Horizontal spiegeln"><FlipHorizontal2 size={14} strokeWidth={1.9} /></ToolBtn>}
+      {onFlip && <ToolBtn onClick={() => onFlip('y')} title="Vertikal spiegeln"><FlipVertical2 size={14} strokeWidth={1.9} /></ToolBtn>}
       <div style={{ flex: 1 }} />
       <ToolBtn onClick={onDuplicate} title="Duplizieren (Strg+D)"><Copy size={14} strokeWidth={1.9} /></ToolBtn>
       <ToolBtn onClick={onDelete} title="Auswahl löschen (Entf)"><Trash2 size={14} strokeWidth={1.9} /></ToolBtn>
@@ -3521,11 +3755,11 @@ function FormatMenu({ onPick }) {
   const [open, setOpen] = useState(false)
   return (
     <div style={{ position: 'relative' }}>
-      <ToolBtn onClick={() => setOpen(o => !o)} active={open} title="Format / Größe"><Frame size={15} strokeWidth={1.9} /></ToolBtn>
+      <ToolBtn onClick={() => setOpen(o => !o)} active={open} title="Format / Größe"><Scaling size={15} strokeWidth={1.9} /></ToolBtn>
       {open && (
         <>
           <div onClick={() => setOpen(false)} style={{ position: 'fixed', inset: 0, zIndex: 80 }} />
-          <div style={{ position: 'absolute', top: 'calc(100% + 6px)', right: 0, zIndex: 81, background: '#fff', border: '1px solid var(--border)', borderRadius: 10, boxShadow: '0 10px 30px rgba(0,0,0,.12)', padding: 8, width: 260 }}>
+          <div style={{ position: 'absolute', top: 'calc(100% + 6px)', left: 0, zIndex: 81, background: '#fff', border: '1px solid var(--border)', borderRadius: 10, boxShadow: '0 10px 30px rgba(0,0,0,.12)', padding: 8, width: 260 }}>
             {FORMAT_PRESETS.map(p => (
               <MenuItem key={p.id} onClick={() => { onPick(p); setOpen(false) }}>{p.label}</MenuItem>
             ))}

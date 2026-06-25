@@ -21,6 +21,7 @@
     "@tiptap/starter-kit": "^3.26.0",
     "i18next": "^26.0.5",
     "jspdf": "^4.2.1",
+    "jszip": "^3.10.1",
     "konva": "^9.3.22",
     "lucide-react": "^1.14.0",
     "react": "^18.2.0",
