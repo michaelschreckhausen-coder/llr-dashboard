@@ -2116,18 +2116,22 @@ export default function DesignerCanvas({ visual, teamId, onSaved, onReplaceVisua
   }
 
   // ─── Hilfsfunktion: generate-image aufrufen, neuen Visual-Datensatz holen ───
-  async function callGenerateImage(prompt) {
+  async function callGenerateImage(prompt, opts = {}) {
     const { model, quality } = splitModelValue(DEFAULT_IMAGE_MODEL)
-    const { data, error: fnErr } = await supabase.functions.invoke('generate-image', {
-      body: {
-        prompt,
-        aspectRatio: visual.aspect_ratio || '1:1',
-        variants: 1,
-        model, quality,
-        referenceImagePaths: [visual.storage_path],
-        parentVisualId: visual.id,
-      },
-    })
+    const body = {
+      prompt,
+      aspectRatio: opts.aspectRatio || visual.aspect_ratio || '1:1',
+      variants: 1,
+      model, quality,
+      parentVisualId: visual.id,
+    }
+    // Lokales Inpainting: nur den Crop als Inline-Referenz schicken (kein Vollbild).
+    if (opts.inlineRefs && opts.inlineRefs.length) {
+      body.referenceImagesInline = opts.inlineRefs
+    } else {
+      body.referenceImagePaths = [visual.storage_path]
+    }
+    const { data, error: fnErr } = await supabase.functions.invoke('generate-image', { body })
     if (fnErr) throw new Error(humanizeFnError(fnErr))
     if (data?.error) throw new Error(humanizeProviderError(data.error))
     const nv = (data?.visuals || [])[0]
@@ -2167,24 +2171,82 @@ export default function DesignerCanvas({ visual, teamId, onSaved, onReplaceVisua
     updateObject(target.id, { src: dataUrl })
   }
 
-  // ─── KI-Masken-Edit (Compositing) ──────────────────────────────────────────
+  // Bounding-Box der Maske in BILD-Pixeln (origEl-Auflösung). Scannt Alpha>0.
+  function computeMaskBBox(W, H) {
+    const m = maskCanvasRef.current
+    if (!m) return null
+    const mw = m.width, mh = m.height
+    let data
+    try { data = m.getContext('2d').getImageData(0, 0, mw, mh).data } catch (_e) { return null }
+    let minX = mw, minY = mh, maxX = -1, maxY = -1
+    for (let y = 0; y < mh; y++) {
+      const row = y * mw
+      for (let x = 0; x < mw; x++) {
+        if (data[(row + x) * 4 + 3] > 10) {
+          if (x < minX) minX = x; if (x > maxX) maxX = x
+          if (y < minY) minY = y; if (y > maxY) maxY = y
+        }
+      }
+    }
+    if (maxX < 0) return null
+    const sx = W / mw, sy = H / mh
+    const x = Math.max(0, Math.floor(minX * sx))
+    const y = Math.max(0, Math.floor(minY * sy))
+    const w = Math.max(1, Math.ceil((maxX - minX + 1) * sx))
+    const h = Math.max(1, Math.ceil((maxY - minY + 1) * sy))
+    return { x, y, w, h }
+  }
+
+  // ─── KI-Masken-Edit: LOKALES INPAINTING (Crop → editieren → feathered Composite) ──
+  // Photoshop-Prinzip: das Modell sieht NUR den markierten Bereich + großzügigen
+  // Kontext-Rand (für Beleuchtung/Perspektive/Textur), regeneriert lokal in hoher
+  // Auflösung, und der editierte Crop wird ausschließlich innerhalb der weichen Maske
+  // zurückkomponiert. Der Rest des Bildes bleibt pixelgenau erhalten.
   async function runMaskedAiEdit(rawPrompt) {
     if (!visual?.storage_path) { setAiError('Kein Basisbild.'); return }
-    if (!activeImageObj()) { setAiError('KI-Werkzeuge brauchen ein Bild im Design — füge erst ein Bild hinzu.'); return }
+    const target = activeImageObj()
+    if (!target) { setAiError('KI-Werkzeuge brauchen ein Bild im Design — füge erst ein Bild hinzu.'); return }
     if (!hasMask) { setAiError('Bitte zuerst einen Bereich markieren (Pinsel, Lasso oder Rechteck).'); return }
-    if (!rawPrompt.trim()) { setAiError('Bitte beschreibe die gewünschte Änderung.'); return }
+    const isHeal = aiMode === 'heal'
+    if (!isHeal && !rawPrompt.trim()) { setAiError('Bitte beschreibe die gewünschte Änderung.'); return }
     setAiBusy(true); setAiError('')
     try {
-      const prompt = `Bearbeite das Referenzbild. ${rawPrompt.trim()} Behalte Bildstil, Beleuchtung und Perspektive konsistent, fotorealistisch.`
-      // 1) KI-Vollbild holen
-      const aiVisual = await callGenerateImage(prompt)
-      // 2) Original (aktives Bild-Objekt) + KI-Bild als Elemente laden
-      const target = activeImageObj()
+      // 1) Original-Bild in voller Auflösung
       const origEl = (target?.src && imgCache[target.src]) || bgImage || await loadImageEl(visual.storage_path)
-      const aiEl = await loadImageEl(aiVisual.storage_path)
-      // 3) Compositing: nur Maske aus dem KI-Bild übernehmen
-      const blob = await compositeMaskedResult(origEl, aiEl)
-      // 4) Ergebnis als DataURL ins aktive Bild-Objekt zurückschreiben (kein Remount)
+      const W = origEl.naturalWidth || stageSize.width
+      const H = origEl.naturalHeight || stageSize.height
+      // 2) Masken-Bbox + großzügiger Kontext-Rand, auf Bildgrenzen geklemmt
+      const bbox = computeMaskBBox(W, H)
+      if (!bbox) { setAiError('Maske ist leer.'); setAiBusy(false); return }
+      const pad = Math.round(Math.max(bbox.w, bbox.h) * 0.6 + Math.min(W, H) * 0.04)
+      const bx = Math.max(0, bbox.x - pad)
+      const by = Math.max(0, bbox.y - pad)
+      const bw = Math.min(W - bx, bbox.w + pad * 2)
+      const bh = Math.min(H - by, bbox.h + pad * 2)
+      // 3) Crop ausschneiden (für Modell-Effizienz auf max ~1280px Kante begrenzen)
+      const MAXC = 1280
+      const cropScale = Math.min(1, MAXC / Math.max(bw, bh))
+      const cw = Math.max(8, Math.round(bw * cropScale))
+      const ch = Math.max(8, Math.round(bh * cropScale))
+      const cropCanvas = document.createElement('canvas')
+      cropCanvas.width = cw; cropCanvas.height = ch
+      cropCanvas.getContext('2d').drawImage(origEl, bx, by, bw, bh, 0, 0, cw, ch)
+      const cropB64 = cropCanvas.toDataURL('image/png').split(',')[1]
+      // 4) Eng gefasster Prompt (Photoshop-Stil: nur ändern was nötig, Rest erhalten)
+      const prompt = isHeal
+        ? 'Entferne das vom Nutzer gemeinte Objekt/Element in diesem Bildausschnitt vollständig und rekonstruiere realistisch den Hintergrund, der dahinter liegen würde. Übernimm Textur, Muster, Farben, Beleuchtung, Schatten und Perspektive exakt aus der direkten Umgebung, sodass keinerlei Spur des entfernten Objekts bleibt. Ändere sonst nichts. Fotorealistisch und nahtlos.'
+        : `Bearbeite diesen Bildausschnitt: ${rawPrompt.trim()}. Behalte den übrigen Bildinhalt, die Komposition, Beleuchtung, Schattenrichtung, Farbstimmung, Filmkorn, Schärfe und Perspektive exakt bei, sodass sich die Änderung absolut nahtlos und fotorealistisch in das umgebende Bild einfügt. Keine sichtbaren Kanten.`
+      // 5) Nur den Crop ans Modell (inline) — kein Vollbild, kein BV-Ref
+      const aiVisual = await callGenerateImage(prompt, { inlineRefs: [{ mimeType: 'image/png', data: cropB64 }] })
+      const aiCropEl = await loadImageEl(aiVisual.storage_path)
+      // 6) Editierten Crop exakt an die Box-Position in ein Voll-Canvas setzen
+      const placed = document.createElement('canvas')
+      placed.width = W; placed.height = H
+      placed.getContext('2d').drawImage(
+        aiCropEl, 0, 0, aiCropEl.naturalWidth || cw, aiCropEl.naturalHeight || ch, bx, by, bw, bh
+      )
+      // 7) Nur innerhalb der (weichen) Maske übernehmen — Rest bleibt 1:1 Original
+      const blob = await compositeMaskedResult(origEl, placed)
       const resultUrl = await blobToDataUrl(blob)
       setAiMode(null); setAiPrompt(''); clearMask()
       await writeResultToActiveImage(resultUrl)

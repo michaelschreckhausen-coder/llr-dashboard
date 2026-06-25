@@ -375,6 +375,15 @@ Deno.serve(async (req) => {
     referenceImagesB64.push({ mimeType: mime, data: b64 });
   }
 
+  // Inline-Referenzbilder (base64, ohne Storage-Umweg) — z.B. ein Bild-Crop fürs
+  // lokale KI-Inpainting im Designer. Werden ans Modell als Referenz angehängt.
+  const inlineRefs: any[] = Array.isArray(body?.referenceImagesInline) ? body.referenceImagesInline : [];
+  for (const r of inlineRefs) {
+    if (r && typeof r.data === "string" && r.data.length) {
+      referenceImagesB64.push({ mimeType: (r.mimeType || "image/png"), data: r.data });
+    }
+  }
+
   const resolvedPrompt = buildResolvedPrompt(prompt, brandVoice, aspectRatio, companyVoices);
 
   // Provider-spezifische Generierung — pro Variante einzeln aufrufen
