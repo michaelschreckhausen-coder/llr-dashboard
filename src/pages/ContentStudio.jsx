@@ -1699,7 +1699,7 @@ function ImageBubble({ meta, onOpenInDesigner, onDownloadVisual, onImageToPost, 
   )
 }
 
-function MessageBubble({ msg, onAttachToPost, loadExistingPosts, onInsertToDoc, linkedPostId, hasOpenDoc = false, onOpenInDesigner, onDownloadVisual, signedVisualUrlFn }) {
+function MessageBubble({ msg, onAttachToPost, loadExistingPosts, onInsertToDoc, linkedPostId, hasOpenDoc = false, onOpenInDesigner, onDownloadVisual, onImageToPost, signedVisualUrlFn }) {
   const isUser = msg.role === 'user'
   const [menuOpen, setMenuOpen] = useState(false)
   const [postMenuOpen, setPostMenuOpen] = useState(false)
