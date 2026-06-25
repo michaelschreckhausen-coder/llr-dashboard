@@ -799,7 +799,7 @@ function PostModal({ post, onClose, onSave, onDelete, session, activeTeamId, mem
                 <div style={{ position:'absolute', bottom:30, left:'50%', transform:'translateX(-50%)', pointerEvents:'none', display:'flex', flexDirection:'column', alignItems:'center', gap:8, padding:'12px 16px', background:'rgba(255,255,255,0.95)', borderRadius:14, boxShadow:'0 4px 18px rgba(15,23,42,0.08)', maxWidth:'88%' }}>
                   <button type="button" onClick={() => jumpToTextStudio('auto')}
                     style={{ pointerEvents:'auto', padding:'10px 18px', borderRadius:9, border:'none', background:'var(--wl-primary, rgb(49,90,231))', color:'#fff', fontSize:13, fontWeight:700, cursor:'pointer', display:'inline-flex', alignItems:'center', gap:6, boxShadow:'0 2px 10px rgba(49,90,231,.25)', whiteSpace:'nowrap' }}>
-                    <span style={{display:'inline-flex',alignItems:'center',gap:6}}><Sparkles size={13}/>In Textwerkstatt schreiben →</span>
+                    <span style={{display:'inline-flex',alignItems:'center',gap:6}}><Sparkles size={13}/>In Content-Werkstatt schreiben →</span>
                   </button>
                   <div style={{ fontSize:11, color:'var(--text-muted)', textAlign:'center', lineHeight:1.4 }}>
                     oder direkt hier tippen
@@ -809,7 +809,7 @@ function PostModal({ post, onClose, onSave, onDelete, session, activeTeamId, mem
                 /* Has-Text: nur Text-verbessern-Button oben rechts im Textfeld */
                 <div style={{ position:'absolute', top:8, right:10, display:'flex', gap:6, zIndex:2 }}>
                   <button type="button" onClick={() => jumpToTextStudio('improve')}
-                    title="Text in der Textwerkstatt verbessern"
+                    title="Text in der Content-Werkstatt verbessern"
                     style={{ padding:'5px 10px', borderRadius:7, border:'1.5px solid rgba(49,90,231,0.25)', background:'rgba(49,90,231,0.06)', color:'var(--wl-primary, rgb(49,90,231))', fontSize:11, fontWeight:700, cursor:'pointer', display:'inline-flex', alignItems:'center', gap:4, whiteSpace:'nowrap' }}>
                     <span style={{display:'inline-flex',alignItems:'center',gap:6}}><Wand2 size={13}/>Text verbessern</span>
                   </button>
