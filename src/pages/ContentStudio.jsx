@@ -360,6 +360,7 @@ export default function ContentStudio({ session }) {
   useEffect(() => {
     const cId = searchParams.get('chat_id')
     const pId = searchParams.get('post_id')
+    const genImage = searchParams.get('gen') === 'image'
     if (cId) {
       // Wenn die URL-Aenderung aus sendMessage kommt (neu erstellter Chat dessen
       // ID wir gerade gesetzt haben), NICHT openChat triggern — sonst ueberschreibt
@@ -368,28 +369,32 @@ export default function ContentStudio({ session }) {
       if (cId !== activeChatId) openChat(cId)
       return
     }
-    if (pId) { handlePostIdFlow(pId); return }
+    if (pId) { handlePostIdFlow(pId, genImage); return }
     // Kein Param → leerer Clean-State
     setActiveChatId(null); setActiveChat(null); setMessages([]); setLinkedPost(null)
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [searchParams, activeBrandVoice?.id])
 
-  async function handlePostIdFlow(postId) {
+  async function handlePostIdFlow(postId, genImage = false) {
     const { data: post } = await supabase.from('content_posts')
       .select('id, title, content, brand_voice_id, text_werkstatt_chat_id, company_voice_ids, company_voice_id')
       .eq('id', postId).maybeSingle()
     if (!post) return
     setLinkedPost(post)
+    if (genImage) setVisualMode(true)
     // Wenn schon ein Chat existiert → öffne ihn (Sidebar geht auf für Chat-View)
     if (post.text_werkstatt_chat_id) {
       setSidebarOpen(true)
       openChat(post.text_werkstatt_chat_id)
+      if (genImage) setInput('Erstelle ein passendes Bild zu diesem Beitrag.')
       return
     }
     // Sonst: Clean-View mit Standard-Input — Company-Auswahl vom Beitrag übernehmen
     setActiveChatId(null); setActiveChat(null); setMessages([])
     setSelectedCompanyVoiceIds(post.company_voice_ids || (post.company_voice_id ? [post.company_voice_id] : []))
-    if ((post.content || '').trim()) {
+    if (genImage) {
+      setInput('Erstelle ein passendes Bild zu diesem Beitrag.')
+    } else if ((post.content || '').trim()) {
       setInput('Bitte verbessere den Text des angehängten Beitrags.')
     } else {
       setInput('Bitte schreibe einen Text für den angehängten Beitrag.')
@@ -746,11 +751,17 @@ export default function ContentStudio({ session }) {
     // Folge-Edit-Logik: letztes Bild im Chat als Referenz, außer „Neues Bild" aktiv
     const prevVisual = !forceNewImage ? lastChatVisual() : null
     const { model, quality } = splitModelValue(imageModel)
+    // Mit Redaktionsplan-Beitrag verknüpft → Beitragstext als Bild-Kontext mitgeben
+    // (nur Erstgenerierung, nicht bei iterativen Edits auf ein bestehendes Bild).
+    let promptForGen = prompt
+    if (!prevVisual && linkedPost?.content && linkedPost.content.trim()) {
+      promptForGen = `Erstelle ein Bild, das visuell zu diesem LinkedIn-Beitrag passt.\nBeitrag-Titel: "${linkedPost.title || ''}"\nBeitrag-Text:\n${linkedPost.content.trim()}\n\nKonkreter Bildwunsch: ${prompt}`
+    }
 
     try {
       const { data, error: fnErr } = await supabase.functions.invoke('generate-image', {
         body: {
-          prompt,
+          prompt: promptForGen,
           model, quality,
           aspectRatio: prevVisual?.aspect_ratio || imageAspect,
           variants: 1,
