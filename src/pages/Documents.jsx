@@ -138,10 +138,12 @@ export default function Documents({ embedded = false }) {
           </p>
         </div>
         )}
+        {!embedded && (
         <button onClick={handleNew} disabled={creating}
           style={{ padding:'9px 16px', borderRadius:9, border:'none', background: creating ? '#94A3B8' : P, color:'#fff', fontSize:13, fontWeight:700, cursor: creating ? 'wait' : 'pointer', whiteSpace:'nowrap', boxShadow: creating ? 'none' : '0 2px 10px rgba(49,90,231,.18)' }}>
           {creating ? 'Lege an…' : 'Neues Dokument'}
         </button>
+        )}
       </div>
 
       {loading ? (

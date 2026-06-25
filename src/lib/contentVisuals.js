@@ -50,12 +50,13 @@ export async function getVisual(id) {
 
 // Medien-Bibliothek: alle Bilder des Teams (brand-scoped, neueste zuerst) — für den
 // Medien-Tab im Designer. RLS scoped zusätzlich über visuals.team_id.
-export async function listTeamVisuals({ teamId, brandVoiceId, limit = 80 } = {}) {
+export async function listTeamVisuals({ teamId, brandVoiceId, kind = null, limit = 80 } = {}) {
   let q = supabase
     .from('visuals')
-    .select('id, title, storage_path, thumbnail_path, created_at')
+    .select('id, title, prompt, storage_path, thumbnail_path, created_at, kind, aspect_ratio')
     .order('created_at', { ascending: false })
     .limit(limit)
+  if (kind) q = q.eq('kind', kind)
   if (brandVoiceId) q = q.eq('brand_voice_id', brandVoiceId)
   else if (teamId) q = q.eq('team_id', teamId)
   const { data, error } = await q
