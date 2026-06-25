@@ -2969,20 +2969,10 @@ export default function DesignerCanvas({ visual, teamId, onSaved, onReplaceVisua
           <ToolBtn onClick={redo} title="Wiederholen (Cmd/Ctrl+Shift+Z)"><Redo2 size={15} strokeWidth={1.9} /></ToolBtn>
         </div>
         <Divider />
-        {/* Zoom als kompaktes Segment */}
-        <div style={{ display: 'inline-flex', alignItems: 'center', gap: 2, padding: 2, borderRadius: 10, border: '1px solid var(--border,#E9ECF2)', background: 'var(--page-bg,#F7F8FA)' }}>
-          <ToolBtn onClick={zoomOut} title="Verkleinern"><ZoomOut size={15} strokeWidth={1.9} /></ToolBtn>
-          <button onClick={zoom100} title="Auf 100 %"
-            style={{ minWidth: 50, height: 30, padding: '0 6px', borderRadius: 8, border: 'none', background: 'transparent', color: 'var(--text-primary)', fontSize: 12, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit' }}>
-            {zoomPct}%
-          </button>
-          <ToolBtn onClick={zoomIn} title="Vergrößern"><ZoomIn size={15} strokeWidth={1.9} /></ToolBtn>
-          <ToolBtn onClick={zoomFit} title="Einpassen"><Maximize2 size={15} strokeWidth={1.9} /></ToolBtn>
-        </div>
-        {/* Format/Größe (links) + Design-Name */}
+        {/* Format/Größe (links) + Design-Name (randlos, wie Dokument-Titel) */}
         <FormatMenu onPick={applyFormatPreset} />
-        <input value={designName} onChange={e => commitName(e.target.value)} placeholder="Design benennen…" title="Design-Name"
-          style={{ height: 32, width: 190, maxWidth: '30vw', padding: '0 10px', borderRadius: 9, border: '1px solid var(--border,#E9ECF2)', background: 'var(--page-bg,#F7F8FA)', color: 'var(--text-primary)', fontSize: 12.5, fontWeight: 600, fontFamily: 'inherit', outline: 'none' }} />
+        <input value={designName} onChange={e => commitName(e.target.value)} placeholder="Unbenanntes Design" title={designName || 'Unbenanntes Design'}
+          style={{ minWidth: 0, width: 240, maxWidth: '32vw', border: 'none', outline: 'none', background: 'transparent', fontSize: 18, fontWeight: 800, letterSpacing: '-0.01em', color: 'var(--text-primary,#101828)', fontFamily: 'inherit', textOverflow: 'ellipsis', whiteSpace: 'nowrap', overflow: 'hidden' }} />
 
         <div style={{ flex: 1 }} />
 
@@ -3376,7 +3366,23 @@ export default function DesignerCanvas({ visual, teamId, onSaved, onReplaceVisua
           />
         )}
 
-        {/* Zoom-Steuerung unten rechts entfernt — Zoom ist oben links in der Kopfleiste. */}
+        {/* Zoom-Steuerung — schwebend unten rechts */}
+        {!loading && (
+          <div style={{
+            position: 'absolute', bottom: 16, right: 16, zIndex: 20,
+            display: 'inline-flex', alignItems: 'center', gap: 2, padding: 3,
+            borderRadius: 11, border: '1px solid var(--border,#E9ECF2)', background: 'var(--surface,#fff)',
+            boxShadow: '0 4px 16px rgba(16,24,40,0.14)',
+          }}>
+            <ToolBtn onClick={zoomOut} title="Verkleinern"><ZoomOut size={15} strokeWidth={1.9} /></ToolBtn>
+            <button onClick={zoom100} title="Auf 100 %"
+              style={{ minWidth: 48, height: 30, padding: '0 6px', borderRadius: 8, border: 'none', background: 'transparent', color: 'var(--text-primary)', fontSize: 12, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit' }}>
+              {zoomPct}%
+            </button>
+            <ToolBtn onClick={zoomIn} title="Vergrößern"><ZoomIn size={15} strokeWidth={1.9} /></ToolBtn>
+            <ToolBtn onClick={zoomFit} title="Einpassen"><Maximize2 size={15} strokeWidth={1.9} /></ToolBtn>
+          </div>
+        )}
 
       </div>
 
