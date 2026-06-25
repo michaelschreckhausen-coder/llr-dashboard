@@ -1484,7 +1484,7 @@ function ChatInput({
       {/* Bottom Toolbar — Zeile 1 einzeilig; Visual-Optionen (Format + Modell) erscheinen in Zeile 2 */}
       <div style={{ display:'flex', flexDirection:'column', gap:6 }}>
       <div style={{ display:'flex', alignItems:'center', gap:6, justifyContent:'space-between' }}>
-        <div style={{ display:'flex', alignItems:'center', gap:6, flexWrap:'nowrap', flex:1, minWidth:0, overflowX:'auto', overflowY:'hidden', paddingBottom:2 }}>
+        <div style={{ display:'flex', alignItems:'center', gap:6, flexWrap:'nowrap', flex:1, minWidth:0, overflow:'visible' }}>
           {/* Plus-Button: Datei + Wissen */}
           <div style={{ position:'relative', flexShrink:0 }}>
             <button onClick={() => setPlusOpen(o => !o)} title="Datei oder Wissen hinzufügen"
