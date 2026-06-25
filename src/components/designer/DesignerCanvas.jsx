@@ -2331,6 +2331,32 @@ export default function DesignerCanvas({ visual, teamId, onSaved, onReplaceVisua
     return await res.blob()
   }
 
+  // Chroma-Key: ein vom Modell erzeugter Magenta-Hintergrund (RGB 255,0,255) wird
+  // client-seitig zu echter Alpha-Transparenz gekeyt. Nötig, weil Gemini KEIN echtes
+  // Alpha-PNG liefert (es malt sonst ein Karomuster ins Bild).
+  async function chromaKeyMagentaToAlpha(imgEl) {
+    const w = imgEl.naturalWidth || stageSize.width
+    const h = imgEl.naturalHeight || stageSize.height
+    const c = document.createElement('canvas'); c.width = w; c.height = h
+    const ctx = c.getContext('2d')
+    ctx.drawImage(imgEl, 0, 0, w, h)
+    const id = ctx.getImageData(0, 0, w, h); const d = id.data
+    for (let i = 0; i < d.length; i += 4) {
+      const r = d[i], g = d[i + 1], b = d[i + 2]
+      const minRB = Math.min(r, b)
+      const key = minRB - g            // groß = stark magenta (R&B hoch, G niedrig)
+      if (key > 35 && r > 80 && b > 80) {
+        // weiche Kante: key>=95 voll transparent, 35..95 Übergang
+        const alpha = key >= 95 ? 0 : Math.max(0, Math.min(1, (95 - key) / 60))
+        d[i + 3] = Math.round(alpha * 255)
+        // Despill: Magenta-Saum an Rändern entfernen (R/B Richtung G drücken)
+        if (alpha > 0) { d[i] = Math.round(g + (r - g) * 0.4); d[i + 2] = Math.round(g + (b - g) * 0.4) }
+      }
+    }
+    ctx.putImageData(id, 0, 0)
+    return c.toDataURL('image/png')
+  }
+
   // ─── Hintergrund-Werkzeuge (volles KI-Vollbild, kein Compositing) ──────────
   async function runBackgroundReplace(mode, customPrompt) {
     if (!visual?.storage_path) { setAiError('Kein Basisbild.'); return }
@@ -2340,10 +2366,14 @@ export default function DesignerCanvas({ visual, teamId, onSaved, onReplaceVisua
       const prompt = mode === 'white'
         ? 'Stelle das Hauptmotiv sauber frei und setze es vor einen reinen, gleichmäßig weißen Hintergrund. Das Hauptmotiv bleibt exakt unverändert (Form, Farbe, Details). Saubere Kanten, kein Schlagschatten.'
         : mode === 'remove'
-        ? 'Entferne den Hintergrund vollständig und gib NUR das exakt freigestellte Hauptmotiv auf einem komplett transparenten Hintergrund zurück — als PNG mit echter Alpha-Transparenz. Hinter dem Motiv darf KEIN Weiß, keine Farbe, kein Muster und kein Schatten sein, nur Transparenz. Saubere, präzise Kanten (auch bei Haaren/Konturen). Das Hauptmotiv selbst bleibt exakt unverändert.'
+        ? 'Platziere das exakt freigestellte Hauptmotiv vor einem absolut gleichmäßigen, vollflächigen Hintergrund in reinem, kräftigem Magenta (RGB 255, 0, 255). Der GESAMTE Bereich hinter dem Motiv MUSS dieses Magenta sein — keine Schatten, keine Verläufe, kein Weiß, keine anderen Farben und KEIN Karomuster. Das Motiv selbst bleibt exakt unverändert und enthält selbst kein Magenta. Saubere, präzise Kanten, auch bei Haaren.'
         : `Ersetze NUR den Hintergrund des Bildes durch: ${(customPrompt || '').trim()}. Das Hauptmotiv im Vordergrund bleibt exakt erhalten (Position, Form, Beleuchtung am Motiv konsistent). Realistische Integration des neuen Hintergrunds.`
       const aiVisual = await callGenerateImage(prompt)
-      const aiUrl = await visualDataUrl(aiVisual.storage_path)
+      let aiUrl = await visualDataUrl(aiVisual.storage_path)
+      // Magenta-Hintergrund → echte Transparenz keyen (Gemini kann kein Alpha-PNG)
+      if (aiUrl && mode === 'remove') {
+        try { const el = await loadHtmlImage(aiUrl); aiUrl = await chromaKeyMagentaToAlpha(el) } catch (_e) {}
+      }
       if (aiUrl) proposeResult(aiUrl, 'bg')   // erst Vorschau
     } catch (e) {
       setSavedMsg('Fehler: ' + (e?.message || 'Hintergrund-Bearbeitung fehlgeschlagen'))
