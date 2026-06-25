@@ -4011,22 +4011,29 @@ function ColorSwatch({ c, current, onPick }) {
 }
 function ColorPopover({ value, onChange, onStart, onEnd, brandColors = [], title = 'Farbe', size = 30 }) {
   const [open, setOpen] = React.useState(false)
+  const [openUp, setOpenUp] = React.useState(true)
   const ref = React.useRef(null)
+  const btnRef = React.useRef(null)
   React.useEffect(() => {
     function onDoc(e) { if (ref.current && !ref.current.contains(e.target)) setOpen(false) }
     if (open) document.addEventListener('mousedown', onDoc)
     return () => document.removeEventListener('mousedown', onDoc)
   }, [open])
+  const toggle = () => {
+    const willOpen = !open
+    if (willOpen && btnRef.current) { const r = btnRef.current.getBoundingClientRect(); setOpenUp(r.top > window.innerHeight * 0.5) }
+    setOpen(willOpen)
+  }
   const cur = toHex(value || '#ffffff')
   const pick = (hex) => { onStart && onStart(); onChange(hex); onEnd && onEnd() }
   const swGrid = { display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gap: 7, marginBottom: 4 }
   const swLabel = { fontSize: 10.5, fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em', margin: '8px 2px 7px' }
   return (
     <div ref={ref} style={{ position: 'relative', display: 'inline-flex' }}>
-      <button type="button" title={title} onClick={() => setOpen(o => !o)}
+      <button ref={btnRef} type="button" title={title} onClick={toggle}
         style={{ width: size, height: size, borderRadius: 8, border: '1px solid var(--border,#E9ECF2)', background: cur, cursor: 'pointer', padding: 0, boxShadow: 'inset 0 0 0 2px var(--surface,#fff)' }} />
       {open && (
-        <div style={{ position: 'absolute', zIndex: 130, bottom: 'calc(100% + 8px)', left: 0, width: 214, background: 'var(--surface,#fff)', border: '1px solid var(--border,#E9ECF2)', borderRadius: 12, boxShadow: '0 16px 44px rgba(16,24,40,0.20)', padding: 12 }}>
+        <div style={{ position: 'absolute', zIndex: 130, ...(openUp ? { bottom: 'calc(100% + 8px)' } : { top: 'calc(100% + 8px)' }), left: 0, width: 214, background: 'var(--surface,#fff)', border: '1px solid var(--border,#E9ECF2)', borderRadius: 12, boxShadow: '0 16px 44px rgba(16,24,40,0.20)', padding: 12 }}>
           {brandColors.length > 0 && (
             <>
               <div style={{ ...swLabel, marginTop: 0 }}>Markenfarben</div>
