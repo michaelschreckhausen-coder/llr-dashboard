@@ -228,6 +228,7 @@ export default function DesignerCanvas({ visual, teamId, onSaved, onReplaceVisua
   const [loading, setLoading] = useState(true)
   const [loadError, setLoadError] = useState('')
   const [saving, setSaving] = useState(false)
+  const [autosaving, setAutosaving] = useState(false)
   const [savedMsg, setSavedMsg] = useState('')
 
   // Hintergrund-Füllfarbe (für Vorlagen ohne Bild)
@@ -273,7 +274,7 @@ export default function DesignerCanvas({ visual, teamId, onSaved, onReplaceVisua
     }, 600)
   }
   // Seiten-Aktion (In Beitrag / Download) — Mehrseiten-Auswahl + Folge-Schritt
-  const [pagesAction, setPagesAction] = useState(null)  // 'post' | 'download' | null
+  const [pagesAction, setPagesAction] = useState(null)  // 'post' | 'download' | 'media' | null
   const [pagesStep, setPagesStep] = useState('pages')   // 'format' | 'pages' | 'post'
   const [pageSel, setPageSel] = useState({})            // { [idx]: true }
   const [pagesBusy, setPagesBusy] = useState(false)
@@ -589,10 +590,12 @@ export default function DesignerCanvas({ visual, teamId, onSaved, onReplaceVisua
     if (autosaveTimerRef.current) clearTimeout(autosaveTimerRef.current)
     autosaveTimerRef.current = setTimeout(async () => {
       try {
+        setAutosaving(true)
         const design_json = buildDesignJson()
         await updateVisual(visual.id, { design_json })
         setSavedMsg('Automatisch gespeichert')
       } catch (_e) { /* Autosave darf nie stören */ }
+      finally { setAutosaving(false) }
     }, 1000)
     return () => { if (autosaveTimerRef.current) clearTimeout(autosaveTimerRef.current) }
   // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -2079,6 +2082,33 @@ export default function DesignerCanvas({ visual, teamId, onSaved, onReplaceVisua
     } catch (e) { setPagesMsg('Fehler: ' + (e?.message || '')) }
     finally { setPagesBusy(false) }
   }
+  // Ausgewählte Seiten als Einzelbilder in den Medien (Bibliothek) speichern.
+  async function executeMedia() {
+    if (pagesBusy) return
+    const indices = selectedPageIndices()
+    if (!indices.length) return
+    setPagesBusy(true); setPagesMsg('')
+    try {
+      let userId = null
+      try { const { data } = await supabase.auth.getUser(); userId = data?.user?.id || null } catch (_e) {}
+      const rendered = await renderSelectedPages(indices)
+      let n = 0
+      for (const { idx, blob } of rendered) {
+        const up = await uploadImageBlob(teamId, blob); if (up.error || !up.path) continue
+        const { data: row } = await createImageVisual({
+          teamId, userId, brandVoiceId: activeBrandVoice?.id || visual?.brand_voice_id,
+          title: `${designName || visual?.title || 'Design'} — Seite ${idx + 1}`,
+          aspectRatio: visual?.aspect_ratio || '1:1', storagePath: up.path,
+        })
+        if (row) n++
+      }
+      setPagesAction(null)
+      setSavedMsg(n ? `${n} Bild(er) in Medien gespeichert ✓` : 'Nichts gespeichert')
+      setTimeout(() => setSavedMsg(''), 3000)
+    } catch (e) { setPagesMsg('Fehler: ' + (e?.message || '')) }
+    finally { setPagesBusy(false) }
+  }
+
   // Ausgewählte Seiten herunterladen: PDF (zusammengeführt) bzw. PNG/JPG (einzeln/ZIP).
   async function executeDownload() {
     if (pagesBusy) return
@@ -3092,7 +3122,12 @@ export default function DesignerCanvas({ visual, teamId, onSaved, onReplaceVisua
         <input value={designName} onChange={e => commitName(e.target.value)} placeholder="Unbenanntes Design" title={designName || 'Unbenanntes Design'}
           style={{ flex: 1, minWidth: 40, border: 'none', outline: 'none', background: 'transparent', fontSize: 17, fontWeight: 800, letterSpacing: '-0.01em', color: 'var(--text-primary,#101828)', fontFamily: 'inherit', textOverflow: 'ellipsis', whiteSpace: 'nowrap', overflow: 'hidden' }} />
 
-        {savedMsg && <span style={{ flexShrink: 0, fontSize: 11.5, fontWeight: 600, maxWidth: 130, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', color: savedMsg.startsWith('Fehler') || savedMsg.startsWith('Download-Fehler') ? '#b91c1c' : '#15803d' }}>{savedMsg}</span>}
+        {(autosaving || savedMsg) && (
+          <span style={{ flexShrink: 0, display: 'inline-flex', alignItems: 'center', gap: 5, fontSize: 11.5, fontWeight: 600, maxWidth: 170, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', color: autosaving ? 'var(--text-muted,#667085)' : (savedMsg.startsWith('Fehler') || savedMsg.startsWith('Download-Fehler') ? '#b91c1c' : '#15803d') }}>
+            {autosaving && <Loader2 size={12} className="lk-spin" />}
+            {autosaving ? 'Speichert…' : savedMsg}
+          </span>
+        )}
         <button onClick={() => openPagesAction('post')} title="In Beitrag — Seiten zu einem Beitrag hinzufügen"
           style={{ flexShrink: 0, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', width: 34, height: 32, borderRadius: 9, border: '1px solid var(--border,#E9ECF2)', background: 'var(--surface,#fff)', color: 'var(--text-primary)', cursor: 'pointer', fontFamily: 'inherit' }}>
           <CalendarPlus size={15} strokeWidth={1.9} />
@@ -3101,9 +3136,9 @@ export default function DesignerCanvas({ visual, teamId, onSaved, onReplaceVisua
           style={{ flexShrink: 0, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', width: 34, height: 32, borderRadius: 9, border: '1px solid var(--border,#E9ECF2)', background: 'var(--surface,#fff)', color: 'var(--text-primary)', cursor: 'pointer', fontFamily: 'inherit' }}>
           <Download size={15} strokeWidth={1.9} />
         </button>
-        <button onClick={handleSave} disabled={saving} title="Speichern"
-          style={{ flexShrink: 0, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', width: 34, height: 32, borderRadius: 9, border: 'none', background: P, color: '#fff', cursor: saving ? 'wait' : 'pointer', fontFamily: 'inherit', boxShadow: '0 1px 2px rgba(16,24,40,0.10)' }}>
-          {saving ? <Loader2 size={15} className="lk-spin" /> : <Save size={15} strokeWidth={2} />}
+        <button onClick={() => openPagesAction('media')} title="Bilder in Medien speichern — einzelne oder mehrere Seiten auswählen"
+          style={{ flexShrink: 0, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', width: 34, height: 32, borderRadius: 9, border: 'none', background: P, color: '#fff', cursor: 'pointer', fontFamily: 'inherit', boxShadow: '0 1px 2px rgba(16,24,40,0.10)' }}>
+          <Save size={15} strokeWidth={2} />
         </button>
       </div>
 
@@ -3115,7 +3150,7 @@ export default function DesignerCanvas({ visual, teamId, onSaved, onReplaceVisua
       {/* Seiten-Dialog: Auswahl welche Seiten exportieren / als Bild speichern / zu Beitrag */}
       {pagesAction && (() => {
         const selCount = selectedPageIndices().length
-        const titleTxt = pagesAction === 'post' ? 'In Beitrag' : 'Herunterladen'
+        const titleTxt = pagesAction === 'post' ? 'In Beitrag' : pagesAction === 'media' ? 'In Medien speichern' : 'Herunterladen'
         // Wiederverwendbarer Seiten-Auswahl-Block (Master „Alle" + „Aktuelle" + Liste)
         const PageSelector = (
           <>
@@ -3184,7 +3219,7 @@ export default function DesignerCanvas({ visual, teamId, onSaved, onReplaceVisua
               {pagesStep === 'pages' && (
                 <>
                   <div style={{ fontSize: 12, color: 'var(--text-muted)', marginBottom: 10 }}>
-                    {pagesAction === 'post' ? 'Wähle die Seiten, die als Bilder zum Beitrag hinzugefügt werden.' : 'Wähle die Seiten, die du herunterladen möchtest.'}
+                    {pagesAction === 'post' ? 'Wähle die Seiten, die als Bilder zum Beitrag hinzugefügt werden.' : pagesAction === 'media' ? 'Wähle die Seiten, die als Bilder in den Medien gespeichert werden.' : 'Wähle die Seiten, die du herunterladen möchtest.'}
                   </div>
                   {PageSelector}
                   {pagesMsg && <div style={{ fontSize: 12, fontWeight: 600, marginBottom: 10, color: pagesMsg.includes('Fehler') ? '#b91c1c' : '#15803d' }}>{pagesMsg}</div>}
@@ -3194,6 +3229,8 @@ export default function DesignerCanvas({ visual, teamId, onSaved, onReplaceVisua
                       : <span />}
                     {pagesAction === 'download'
                       ? <PanelBtn primary disabled={pagesBusy || !selCount} onClick={executeDownload}>{pagesBusy ? 'Erstelle…' : `Herunterladen (${dlFormat.toUpperCase()})`}</PanelBtn>
+                      : pagesAction === 'media'
+                      ? <PanelBtn primary disabled={pagesBusy || !selCount} onClick={executeMedia}>{pagesBusy ? 'Speichert…' : 'In Medien speichern'}</PanelBtn>
                       : <PanelBtn primary disabled={pagesBusy || !selCount} onClick={() => { setPagesStep('post'); loadPostsForPicker() }}>Weiter</PanelBtn>}
                   </div>
                 </>
