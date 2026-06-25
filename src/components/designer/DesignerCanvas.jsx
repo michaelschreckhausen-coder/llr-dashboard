@@ -1362,7 +1362,7 @@ export default function DesignerCanvas({ visual, teamId, onSaved, onReplaceVisua
       const prompt = `Bearbeite das Referenzbild gemäß dieser Anweisung: ${text}. Behalte Bildstil, Beleuchtung und Perspektive konsistent, fotorealistisch.`
       const aiVisual = await callGenerateImage(prompt)
       const aiUrl = await visualDataUrl(aiVisual.storage_path)
-      if (aiUrl) proposeResult(aiUrl, 'free')   // erst Vorschau
+      if (aiUrl) await applyResultDirect(aiUrl, 'free')   // direkt ins Bild
     } catch (e) {
       setAiError(e?.message || 'KI-Bearbeitung fehlgeschlagen.')
     } finally {
@@ -2186,6 +2186,19 @@ export default function DesignerCanvas({ visual, teamId, onSaved, onReplaceVisua
     const target = activeImageObj()
     setAiPreview({ url: dataUrl, objId: target?.id || null, kind })
   }
+  // Ergebnis SOFORT ins Bild schreiben (ohne Vorschau). Wird von allen KI-Tools
+  // außer den Masken-/Bereich-Werkzeugen genutzt — dort bleibt die Vorschau.
+  async function applyResultDirect(dataUrl, kind = 'free') {
+    const target = activeImageObj()
+    const objId = target?.id || null
+    try {
+      const im = await loadHtmlImage(dataUrl)
+      setImgCache(prev => ({ ...prev, [dataUrl]: im }))
+      if (objId) updateObject(objId, { src: dataUrl })
+    } catch (_e) {}
+    if (kind === 'free') setAiCommand('')
+    if (kind === 'bg') { clearMask(); setAiMode(null) }
+  }
   async function applyPreview() {
     if (!aiPreview) return
     const { url, objId, kind } = aiPreview
@@ -2387,7 +2400,7 @@ export default function DesignerCanvas({ visual, teamId, onSaved, onReplaceVisua
         }
       }
 
-      // ── Freistellen / Weiß / Ersetzen: alle per LOKALEM MATTING (MODNet) ──
+      // ── Freistellen / Ersetzen: per LOKALEM MATTING (MODNet) ──
       // Das Motiv wird per Alpha-Matte aus den ORIGINAL-Pixeln freigestellt und
       // bleibt damit pixelgenau erhalten (kein generatives Neu-Malen → kein
       // „Sims-Effekt"). Wie bei Canva/CapCut. Verarbeitung lokal im Browser.
@@ -2397,7 +2410,7 @@ export default function DesignerCanvas({ visual, teamId, onSaved, onReplaceVisua
 
       if (mode === 'remove') {
         setSavedMsg('')
-        proposeResult(cutoutUrl, 'bg')   // transparenter Hintergrund, erst Vorschau
+        await applyResultDirect(cutoutUrl, 'bg')   // transparenter Hintergrund, direkt
         return
       }
 
@@ -2405,15 +2418,6 @@ export default function DesignerCanvas({ visual, teamId, onSaved, onReplaceVisua
       const out = document.createElement('canvas')
       out.width = W; out.height = H
       const octx = out.getContext('2d')
-
-      if (mode === 'white') {
-        // Freigestelltes Motiv auf reinem Weiß
-        octx.fillStyle = '#ffffff'; octx.fillRect(0, 0, W, H)
-        octx.drawImage(cutEl, 0, 0, W, H)
-        setSavedMsg('')
-        proposeResult(out.toDataURL('image/png'), 'bg')
-        return
-      }
 
       // mode === 'replace': neuen Hintergrund generieren (ohne Referenz, damit das
       // Modell keine Person mitmalt) und das Original-Motiv unverändert davorsetzen.
@@ -2428,7 +2432,7 @@ export default function DesignerCanvas({ visual, teamId, onSaved, onReplaceVisua
       octx.drawImage(bgEl, (W - dw) / 2, (H - dh) / 2, dw, dh)
       octx.drawImage(cutEl, 0, 0, W, H)
       setSavedMsg('')
-      proposeResult(out.toDataURL('image/png'), 'bg')
+      await applyResultDirect(out.toDataURL('image/png'), 'bg')
     } catch (e) {
       setSavedMsg('Fehler: ' + (e?.message || 'Hintergrund-Bearbeitung fehlgeschlagen'))
     } finally {
@@ -3325,7 +3329,6 @@ export default function DesignerCanvas({ visual, teamId, onSaved, onReplaceVisua
           hasMask={hasMask}
           onRunMaskEdit={() => aiMode === 'heal' ? runMaskedAiEdit(HEAL_PROMPT) : runMaskedAiEdit(aiPrompt)}
           onRunFreeCommand={() => runFreeAiCommand(aiCommand)}
-          onBgWhite={() => runBackgroundReplace('white')}
           onBgRemove={() => runBackgroundReplace('remove')}
           onBgReplace={(txt) => runBackgroundReplace('replace', txt)}
           onClearMask={clearMask} onInvertMask={invertMask}
@@ -4685,7 +4688,7 @@ function BrandPanelBody({ brandData, brandLoading, onApplyBrandColor, onInsertBr
 function AiPanelBody({
   aiMode, setAiMode, maskTool, setMaskTool, brushSize, setBrushSize, feather, setFeather,
   aiPrompt, setAiPrompt, aiCommand, setAiCommand, aiBusy, aiError, bgMenuBusy, hasMask,
-  onRunMaskEdit, onRunFreeCommand, onBgWhite, onBgRemove, onBgReplace, onClearMask, onInvertMask,
+  onRunMaskEdit, onRunFreeCommand, onBgRemove, onBgReplace, onClearMask, onInvertMask,
   setCropMode, setSelectedId, setAiError,
 }) {
   const [bgText, setBgText] = useState('')
@@ -4732,7 +4735,6 @@ function AiPanelBody({
       <PanelLabel>Hintergrund</PanelLabel>
       <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
         <PanelBtn full disabled={bgMenuBusy} onClick={onBgRemove}>Hintergrund entfernen (transparent)</PanelBtn>
-        <PanelBtn full disabled={bgMenuBusy} onClick={onBgWhite}>Weißer Hintergrund</PanelBtn>
         <input value={bgText} onChange={e => setBgText(e.target.value)} placeholder="Neuer Hintergrund (Beschreibung)…"
           style={{ width: '100%', height: 32, padding: '0 10px', borderRadius: 8, border: '1px solid var(--border)', fontSize: 12.5, outline: 'none', fontFamily: 'inherit', boxSizing: 'border-box' }} />
         <PanelBtn full disabled={bgMenuBusy || !bgText.trim()} onClick={() => { if (bgText.trim()) { onBgReplace(bgText.trim()); setBgText('') } }}>Hintergrund ersetzen</PanelBtn>
