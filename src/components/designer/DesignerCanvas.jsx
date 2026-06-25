@@ -290,6 +290,12 @@ export default function DesignerCanvas({ visual, teamId, onSaved, onReplaceVisua
   // ─── Canva-Stil: linke Werkzeug-Schiene + Panel ────────────────────────────
   // activeTool: null | 'templates' | 'elements' | 'text' | 'uploads' | 'brand' | 'ai' | 'filter'
   const [activeTool, setActiveTool] = useState(null)
+  // Bug-Fix: KI-Masken-Modus IMMER verlassen, sobald man das KI-Werkzeug/Panel wechselt
+  // oder schließt — sonst „klebt" das Auswahl-Overlay und man kommt nicht mehr weg.
+  useEffect(() => {
+    if (activeTool !== 'ai') { setAiMode(null); clearMask(); setAiPreview(null) }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activeTool])
   const [elementTab, setElementTab] = useState('shapes')   // shapes | icons | graphics | images
   const [uploadThumbs, setUploadThumbs] = useState([])     // diese Sitzung hochgeladene DataURLs
   const [aiCommand, setAiCommand] = useState('')           // freier KI-Befehl (mask-free)
@@ -2333,6 +2339,8 @@ export default function DesignerCanvas({ visual, teamId, onSaved, onReplaceVisua
     try {
       const prompt = mode === 'white'
         ? 'Stelle das Hauptmotiv sauber frei und setze es vor einen reinen, gleichmäßig weißen Hintergrund. Das Hauptmotiv bleibt exakt unverändert (Form, Farbe, Details). Saubere Kanten, kein Schlagschatten.'
+        : mode === 'remove'
+        ? 'Entferne den Hintergrund vollständig und gib NUR das exakt freigestellte Hauptmotiv auf einem komplett transparenten Hintergrund zurück — als PNG mit echter Alpha-Transparenz. Hinter dem Motiv darf KEIN Weiß, keine Farbe, kein Muster und kein Schatten sein, nur Transparenz. Saubere, präzise Kanten (auch bei Haaren/Konturen). Das Hauptmotiv selbst bleibt exakt unverändert.'
         : `Ersetze NUR den Hintergrund des Bildes durch: ${(customPrompt || '').trim()}. Das Hauptmotiv im Vordergrund bleibt exakt erhalten (Position, Form, Beleuchtung am Motiv konsistent). Realistische Integration des neuen Hintergrunds.`
       const aiVisual = await callGenerateImage(prompt)
       const aiUrl = await visualDataUrl(aiVisual.storage_path)
@@ -2983,32 +2991,29 @@ export default function DesignerCanvas({ visual, teamId, onSaved, onReplaceVisua
       <input ref={fileInputRef} type="file" accept="image/*" style={{ display: 'none' }}
         onChange={(e) => { const f = e.target.files?.[0]; onPickImageFile(f); e.target.value = '' }} />
       {/* Tier 1 — globale Werkzeugleiste: links Undo/Redo + Zoom, rechts Format/Export/Speichern */}
-      <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: 8, padding: '9px 12px', borderBottom: '1px solid var(--border,#E9ECF2)', background: 'var(--surface,#fff)', flexShrink: 0 }}>
+      <div style={{ display: 'flex', flexWrap: 'nowrap', alignItems: 'center', gap: 6, padding: '9px 10px', borderBottom: '1px solid var(--border,#E9ECF2)', background: 'var(--surface,#fff)', flexShrink: 0, overflow: 'hidden' }}>
         {/* Undo / Redo */}
-        <div style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}>
+        <div style={{ display: 'inline-flex', alignItems: 'center', gap: 2, flexShrink: 0 }}>
           <ToolBtn onClick={undo} title="Rückgängig (Cmd/Ctrl+Z)"><Undo2 size={15} strokeWidth={1.9} /></ToolBtn>
           <ToolBtn onClick={redo} title="Wiederholen (Cmd/Ctrl+Shift+Z)"><Redo2 size={15} strokeWidth={1.9} /></ToolBtn>
         </div>
-        <Divider />
-        {/* Format/Größe (links) + Design-Name (randlos, wie Dokument-Titel) */}
-        <FormatMenu onPick={applyFormatPreset} />
+        <div style={{ flexShrink: 0 }}><Divider /></div>
+        {/* Format/Größe (links) + Design-Name (randlos, wie Dokument-Titel) — Name nimmt Restbreite */}
+        <div style={{ flexShrink: 0 }}><FormatMenu onPick={applyFormatPreset} /></div>
         <input value={designName} onChange={e => commitName(e.target.value)} placeholder="Unbenanntes Design" title={designName || 'Unbenanntes Design'}
-          style={{ minWidth: 0, width: 240, maxWidth: '32vw', border: 'none', outline: 'none', background: 'transparent', fontSize: 18, fontWeight: 800, letterSpacing: '-0.01em', color: 'var(--text-primary,#101828)', fontFamily: 'inherit', textOverflow: 'ellipsis', whiteSpace: 'nowrap', overflow: 'hidden' }} />
+          style={{ flex: 1, minWidth: 40, border: 'none', outline: 'none', background: 'transparent', fontSize: 17, fontWeight: 800, letterSpacing: '-0.01em', color: 'var(--text-primary,#101828)', fontFamily: 'inherit', textOverflow: 'ellipsis', whiteSpace: 'nowrap', overflow: 'hidden' }} />
 
-        <div style={{ flex: 1 }} />
-
-        {savedMsg && <span style={{ fontSize: 12, fontWeight: 600, color: savedMsg.startsWith('Fehler') || savedMsg.startsWith('Download-Fehler') ? '#b91c1c' : '#15803d' }}>{savedMsg}</span>}
+        {savedMsg && <span style={{ flexShrink: 0, fontSize: 11.5, fontWeight: 600, maxWidth: 130, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', color: savedMsg.startsWith('Fehler') || savedMsg.startsWith('Download-Fehler') ? '#b91c1c' : '#15803d' }}>{savedMsg}</span>}
         <button onClick={() => openPagesAction('post')} title="Seiten zu einem Beitrag hinzufügen"
-          style={{ display: 'inline-flex', alignItems: 'center', gap: 6, height: 32, padding: '0 12px', borderRadius: 9, border: '1px solid var(--border,#E9ECF2)', background: 'var(--surface,#fff)', color: 'var(--text-primary)', fontSize: 12.5, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit' }}>
+          style={{ flexShrink: 0, display: 'inline-flex', alignItems: 'center', gap: 5, height: 32, padding: '0 10px', borderRadius: 9, border: '1px solid var(--border,#E9ECF2)', background: 'var(--surface,#fff)', color: 'var(--text-primary)', fontSize: 12.5, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit', whiteSpace: 'nowrap' }}>
           <Send size={14} strokeWidth={1.9} />In Beitrag
         </button>
         <button onClick={() => openPagesAction('download')} title="Seiten herunterladen (PDF / PNG / JPG)"
-          style={{ display: 'inline-flex', alignItems: 'center', gap: 6, height: 32, padding: '0 12px', borderRadius: 9, border: '1px solid var(--border,#E9ECF2)', background: 'var(--surface,#fff)', color: 'var(--text-primary)', fontSize: 12.5, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit' }}>
+          style={{ flexShrink: 0, display: 'inline-flex', alignItems: 'center', gap: 5, height: 32, padding: '0 10px', borderRadius: 9, border: '1px solid var(--border,#E9ECF2)', background: 'var(--surface,#fff)', color: 'var(--text-primary)', fontSize: 12.5, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit', whiteSpace: 'nowrap' }}>
           <Download size={14} strokeWidth={1.9} />Download
         </button>
-        <Divider />
         <button onClick={handleSave} disabled={saving}
-          style={{ display: 'inline-flex', alignItems: 'center', gap: 6, height: 32, padding: '0 16px', borderRadius: 9, border: 'none', background: P, color: '#fff', fontSize: 12.5, fontWeight: 700, cursor: saving ? 'wait' : 'pointer', fontFamily: 'inherit', boxShadow: '0 1px 2px rgba(16,24,40,0.10)' }}>
+          style={{ flexShrink: 0, display: 'inline-flex', alignItems: 'center', gap: 5, height: 32, padding: '0 12px', borderRadius: 9, border: 'none', background: P, color: '#fff', fontSize: 12.5, fontWeight: 700, cursor: saving ? 'wait' : 'pointer', fontFamily: 'inherit', boxShadow: '0 1px 2px rgba(16,24,40,0.10)', whiteSpace: 'nowrap' }}>
           {saving ? <Loader2 size={14} className="lk-spin" /> : <Save size={14} strokeWidth={2} />}Speichern
         </button>
       </div>
@@ -3162,6 +3167,23 @@ export default function DesignerCanvas({ visual, teamId, onSaved, onReplaceVisua
           onFlip={flipSelected}
           alignObjects={alignObjects} distributeObjects={distributeObjects} />
       )}
+      {/* Seite (Hintergrund) — wenn nichts ausgewählt ist: Seitenfarbe ändern */}
+      {selectedIds.length === 0 && !cropMode && !aiActive && !editingTextId && (
+        <div style={barStyle}>
+          <span style={{ fontSize: 12.5, fontWeight: 700, color: 'var(--text-primary)' }}>Seite</span>
+          <span style={{ fontSize: 12, color: 'var(--text-muted)' }}>Hintergrundfarbe</span>
+          <label style={{ display: 'inline-flex', alignItems: 'center', cursor: 'pointer' }} title="Eigene Farbe">
+            <input type="color" value={bgColor || '#ffffff'}
+              onChange={e => { commitHistoryOnce && commitHistoryOnce(); setBgColor(e.target.value); endInteraction && endInteraction() }}
+              style={{ width: 30, height: 30, padding: 0, border: '1px solid var(--border,#E9ECF2)', borderRadius: 8, cursor: 'pointer', background: 'none' }} />
+          </label>
+          {['#ffffff', '#0B1F3A', '#F2F4F7', '#000000', PRGB].map(c => (
+            <button key={c} title={c} onClick={() => { commitHistoryOnce && commitHistoryOnce(); setBgColor(c); endInteraction && endInteraction() }}
+              style={{ width: 24, height: 24, borderRadius: 6, cursor: 'pointer', background: c, border: '1px solid ' + ((bgColor || '#ffffff').toLowerCase() === c.toLowerCase() ? P : 'var(--border,#E9ECF2)'), boxShadow: (bgColor || '#ffffff').toLowerCase() === c.toLowerCase() ? '0 0 0 2px color-mix(in srgb, var(--wl-primary, rgb(49,90,231)) 30%, transparent)' : 'none' }} />
+          ))}
+          <span style={{ marginLeft: 'auto', fontSize: 11, color: 'var(--text-soft,#98a2b3)' }}>Klick auf ein Element, um es zu bearbeiten</span>
+        </div>
+      )}
       {cropMode && (
         <div style={barStyle}>
           <span style={{ fontSize: 12, color: 'var(--text-muted)' }}>Rechteck über den gewünschten Bildausschnitt ziehen.</span>
@@ -3226,6 +3248,7 @@ export default function DesignerCanvas({ visual, teamId, onSaved, onReplaceVisua
           onRunMaskEdit={() => aiMode === 'heal' ? runMaskedAiEdit(HEAL_PROMPT) : runMaskedAiEdit(aiPrompt)}
           onRunFreeCommand={() => runFreeAiCommand(aiCommand)}
           onBgWhite={() => runBackgroundReplace('white')}
+          onBgRemove={() => runBackgroundReplace('remove')}
           onBgReplace={(txt) => runBackgroundReplace('replace', txt)}
           onClearMask={clearMask} onInvertMask={invertMask}
           setCropMode={setCropMode} setSelectedId={setSelectedId} setAiError={setAiError}
@@ -4467,7 +4490,7 @@ function BrandPanelBody({ brandData, brandLoading, onApplyBrandColor, onInsertBr
 function AiPanelBody({
   aiMode, setAiMode, maskTool, setMaskTool, brushSize, setBrushSize, feather, setFeather,
   aiPrompt, setAiPrompt, aiCommand, setAiCommand, aiBusy, aiError, bgMenuBusy, hasMask,
-  onRunMaskEdit, onRunFreeCommand, onBgWhite, onBgReplace, onClearMask, onInvertMask,
+  onRunMaskEdit, onRunFreeCommand, onBgWhite, onBgRemove, onBgReplace, onClearMask, onInvertMask,
   setCropMode, setSelectedId, setAiError,
 }) {
   const [bgText, setBgText] = useState('')
@@ -4513,6 +4536,7 @@ function AiPanelBody({
 
       <PanelLabel>Hintergrund</PanelLabel>
       <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+        <PanelBtn full disabled={bgMenuBusy} onClick={onBgRemove}>Hintergrund entfernen (transparent)</PanelBtn>
         <PanelBtn full disabled={bgMenuBusy} onClick={onBgWhite}>Weißer Hintergrund</PanelBtn>
         <input value={bgText} onChange={e => setBgText(e.target.value)} placeholder="Neuer Hintergrund (Beschreibung)…"
           style={{ width: '100%', height: 32, padding: '0 10px', borderRadius: 8, border: '1px solid var(--border)', fontSize: 12.5, outline: 'none', fontFamily: 'inherit', boxSizing: 'border-box' }} />

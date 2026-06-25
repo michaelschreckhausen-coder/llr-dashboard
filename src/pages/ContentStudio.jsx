@@ -1481,11 +1481,11 @@ function ChatInput({
         rows={3}
         style={{ width:'100%', padding:'4px 4px 8px', border:'none', fontSize:14, fontFamily:'inherit', resize:'none', outline:'none', background:'transparent', boxSizing:'border-box' }}/>
 
-      {/* Bottom Toolbar */}
+      {/* Bottom Toolbar — immer EINE Zeile; bei Platzmangel scrollt die linke Gruppe horizontal */}
       <div style={{ display:'flex', alignItems:'center', gap:6, justifyContent:'space-between' }}>
-        <div style={{ display:'flex', alignItems:'center', gap:6, flexWrap:'wrap' }}>
+        <div style={{ display:'flex', alignItems:'center', gap:6, flexWrap:'nowrap', flex:1, minWidth:0, overflowX:'auto', overflowY:'hidden', paddingBottom:2 }}>
           {/* Plus-Button: Datei + Wissen */}
-          <div style={{ position:'relative' }}>
+          <div style={{ position:'relative', flexShrink:0 }}>
             <button onClick={() => setPlusOpen(o => !o)} title="Datei oder Wissen hinzufügen"
               style={{ ...IconBtn(plusOpen), width:34, padding:0, justifyContent:'center', gap:0 }}>
               <Plus size={16} strokeWidth={2}/>
@@ -1607,7 +1607,7 @@ function IconBtn(active) {
     background: active ? 'rgba(49,90,231,0.06)' : '#fff',
     color: active ? P : 'var(--text-primary)',
     fontSize:12.5, fontWeight:600, cursor:'pointer', whiteSpace:'nowrap', lineHeight:1,
-    display:'inline-flex', alignItems:'center', gap:6, fontFamily:'inherit',
+    display:'inline-flex', alignItems:'center', gap:6, fontFamily:'inherit', flexShrink:0,
   }
 }
 
