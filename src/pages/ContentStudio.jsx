@@ -843,6 +843,39 @@ export default function ContentStudio({ session }) {
     navigate('/redaktionsplan?open=' + targetId)
   }
 
+  // ─── Bild → Beitrag zuordnen (bestehend oder neu) ─────────────────────────
+  // Hängt das Bild als Visual an einen Beitrag (visuals.post_id). Bei fehlender
+  // visual_id (Alt-Nachrichten) wird ein Visual-Datensatz aus dem storage_path angelegt.
+  async function attachImageToPost(meta, postId) {
+    try {
+      let userId = null
+      try { const { data } = await supabase.auth.getUser(); userId = data?.user?.id || null } catch (_e) {}
+      let pid = postId
+      if (postId === '__new__') {
+        if (!activeBrandVoice?.id || !activeTeamId) { setError('Keine aktive Brand Voice / Team'); return false }
+        const title = (meta.prompt || 'Bild').split('\n')[0].slice(0, 80) || 'Neuer Beitrag'
+        const { data: post, error } = await supabase.from('content_posts').insert({
+          user_id: userId, team_id: activeTeamId, brand_voice_id: activeBrandVoice.id,
+          title, content: '', platform: 'linkedin', status: 'draft',
+        }).select().single()
+        if (error || !post) { setError('Beitrag konnte nicht erstellt werden'); return false }
+        pid = post.id
+      }
+      if (meta.visual_id) {
+        const { error } = await supabase.from('visuals').update({ post_id: pid }).eq('id', meta.visual_id)
+        if (error) { setError('Zuordnung fehlgeschlagen: ' + error.message); return false }
+      } else {
+        const { error } = await supabase.from('visuals').insert({
+          user_id: userId, team_id: activeTeamId, brand_voice_id: activeBrandVoice?.id || null,
+          kind: 'image', media_type: 'image', title: (meta.prompt || 'Bild').slice(0, 120),
+          aspect_ratio: '1:1', prompt: meta.prompt || 'Bild', storage_path: meta.storage_path, post_id: pid,
+        })
+        if (error) { setError('Zuordnung fehlgeschlagen: ' + error.message); return false }
+      }
+      return true
+    } catch (_e) { setError('Zuordnung fehlgeschlagen'); return false }
+  }
+
   // ─── Datei-Handling ───────────────────────────────────────────────────────
   async function handleFiles(fileList) {
     const files = Array.from(fileList || [])
@@ -963,8 +996,9 @@ export default function ContentStudio({ session }) {
               if (mode === 'new') editorRef.current?.loadNewDocWithText?.(text)
               else editorRef.current?.insertText?.(text)
             }}
-            onOpenInDesigner={(meta) => openVisualInDesigner(meta.visual_id)}
+            onOpenInDesigner={(meta) => openVisualInDesigner(meta.visual_id || { storage_path: meta.storage_path, prompt: meta.prompt, aspect_ratio: meta.aspect_ratio, kind: 'image' }, { assignToChat: !!activeChatId })}
             onDownloadVisual={(meta) => downloadVisual(meta.storage_path, meta.visual_id)}
+            onImageToPost={attachImageToPost}
             signedVisualUrlFn={signedVisualUrl}
             hasOpenDoc={editorOpen && !!docParam}
             input={input} setInput={setInput}
@@ -1307,7 +1341,7 @@ function CleanView({
 // ─── CHAT VIEW (klassisches Layout) ─────────────────────────────────────────
 function ChatView({
   linkedPost, messages, messagesLoading, sending, messagesEndRef, attachToPost, loadExistingPosts,
-  onInsertToDoc, onOpenInDesigner, onDownloadVisual, signedVisualUrlFn,
+  onInsertToDoc, onOpenInDesigner, onDownloadVisual, onImageToPost, signedVisualUrlFn,
   input, setInput,
   attachments, setAttachments,
   plusOpen, setPlusOpen,
@@ -1341,7 +1375,7 @@ function ChatView({
           {messagesLoading && <div style={{ textAlign:'center', padding:30, fontSize:12, color:'var(--text-muted)' }}>Lade Verlauf…</div>}
           {messages.map(m => (
             <MessageBubble key={m.id} msg={m} onAttachToPost={attachToPost} loadExistingPosts={loadExistingPosts} onInsertToDoc={onInsertToDoc} linkedPostId={linkedPost?.id} hasOpenDoc={hasOpenDoc}
-              onOpenInDesigner={onOpenInDesigner} onDownloadVisual={onDownloadVisual} signedVisualUrlFn={signedVisualUrlFn} />
+              onOpenInDesigner={onOpenInDesigner} onDownloadVisual={onDownloadVisual} onImageToPost={onImageToPost} signedVisualUrlFn={signedVisualUrlFn} />
           ))}
           {/* Loading-Indicator wenn letzter Turn user war */}
           {sending && messages.length > 0 && messages[messages.length - 1]?.role === 'user' && (
@@ -1589,9 +1623,14 @@ function parseImageMessage(msg) {
   return null
 }
 
-function ImageBubble({ meta, onOpenInDesigner, onDownloadVisual, signedVisualUrlFn }) {
+function ImageBubble({ meta, onOpenInDesigner, onDownloadVisual, onImageToPost, loadExistingPosts, signedVisualUrlFn }) {
   const [url, setUrl] = useState(null)
   const [err, setErr] = useState(false)
+  const [postMenuOpen, setPostMenuOpen] = useState(false)
+  const [posts, setPosts] = useState(null)
+  const [postsLoading, setPostsLoading] = useState(false)
+  const [busy, setBusy] = useState(false)
+  const [done, setDone] = useState(false)
   useEffect(() => {
     let cancelled = false
     setUrl(null); setErr(false)
@@ -1601,6 +1640,20 @@ function ImageBubble({ meta, onOpenInDesigner, onDownloadVisual, signedVisualUrl
     })()
     return () => { cancelled = true }
   }, [meta.storage_path])
+  async function openPostMenu() {
+    if (postMenuOpen) { setPostMenuOpen(false); return }
+    setPostMenuOpen(true)
+    if (posts === null && loadExistingPosts) {
+      setPostsLoading(true)
+      try { setPosts(await loadExistingPosts()) } catch { setPosts([]) } finally { setPostsLoading(false) }
+    }
+  }
+  async function pick(postId) {
+    setPostMenuOpen(false); setBusy(true)
+    const ok = onImageToPost ? await onImageToPost(meta, postId) : false
+    setBusy(false)
+    if (ok) { setDone(true); setTimeout(() => setDone(false), 2600) }
+  }
   return (
     <div style={{ display:'flex', flexDirection:'column', alignItems:'flex-start', gap:8 }}>
       <div style={{ padding:8, background:'#fff', border:'1px solid var(--border)', borderRadius:12, maxWidth:360 }}>
@@ -1612,11 +1665,31 @@ function ImageBubble({ meta, onOpenInDesigner, onDownloadVisual, signedVisualUrl
           <div style={{ width:240, height:240, display:'flex', alignItems:'center', justifyContent:'center', color:'var(--text-muted)' }}><Loader2 size={18} className='lk-spin'/></div>
         )}
       </div>
-      <div style={{ display:'flex', gap:8, flexWrap:'wrap' }}>
+      <div style={{ display:'flex', gap:8, flexWrap:'wrap', alignItems:'center' }}>
         <button onClick={() => onOpenInDesigner && onOpenInDesigner(meta)}
           style={{ padding:'7px 14px', borderRadius:8, border:'none', background:P, color:'#fff', fontSize:12, fontWeight:700, cursor:'pointer', display:'inline-flex', alignItems:'center', gap:5 }}>
           <Brush size={13} strokeWidth={1.9}/>→ in den Designer
         </button>
+        <div style={{ position:'relative' }}>
+          <button onClick={openPostMenu} disabled={busy}
+            style={{ padding:'7px 14px', borderRadius:8, border:'1.5px solid '+P, background:'rgba(49,90,231,0.06)', color:P, fontSize:12, fontWeight:700, cursor:busy?'default':'pointer', display:'inline-flex', alignItems:'center', gap:5 }}>
+            <Send size={13} strokeWidth={1.9}/>{done ? 'Zugeordnet ✓' : (busy ? '…' : 'In Beitrag')}
+          </button>
+          {postMenuOpen && (
+            <div style={{ position:'absolute', bottom:'calc(100% + 6px)', left:0, zIndex:40, width:260, maxHeight:280, overflowY:'auto', background:'var(--surface,#fff)', border:'1px solid var(--border,#E9ECF2)', borderRadius:10, boxShadow:'0 12px 32px rgba(16,24,40,0.16)', padding:6 }}>
+              <button onClick={() => pick('__new__')} style={{ ...ibMenuItem, color:P, fontWeight:700 }}>+ Als neuen Beitrag anlegen</button>
+              <div style={{ height:1, background:'var(--border,#E9ECF2)', margin:'4px 0' }} />
+              {postsLoading && <div style={{ padding:'8px 10px', fontSize:12, color:'var(--text-muted)' }}>Lade Beiträge…</div>}
+              {!postsLoading && (posts || []).length === 0 && <div style={{ padding:'8px 10px', fontSize:12, color:'var(--text-muted)' }}>Keine bestehenden Beiträge.</div>}
+              {!postsLoading && (posts || []).map(p => (
+                <button key={p.id} onClick={() => pick(p.id)} title={p.title || '(ohne Titel)'}
+                  style={{ ...ibMenuItem, display:'block', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>
+                  {p.title || '(ohne Titel)'}
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
         <button onClick={() => onDownloadVisual && onDownloadVisual(meta)}
           style={{ padding:'7px 14px', borderRadius:8, border:'1.5px solid '+P, background:'rgba(49,90,231,0.06)', color:P, fontSize:12, fontWeight:700, cursor:'pointer', display:'inline-flex', alignItems:'center', gap:5 }}>
           <Download size={13} strokeWidth={1.9}/>Herunterladen
@@ -1639,7 +1712,7 @@ function MessageBubble({ msg, onAttachToPost, loadExistingPosts, onInsertToDoc, 
   // Bild-Nachricht → eigene Bubble (Vorschau + Designer/Download)
   const imageMeta = !isUser ? parseImageMessage(msg) : null
   if (imageMeta) {
-    return <ImageBubble meta={imageMeta} onOpenInDesigner={onOpenInDesigner} onDownloadVisual={onDownloadVisual} signedVisualUrlFn={signedVisualUrlFn} />
+    return <ImageBubble meta={imageMeta} onOpenInDesigner={onOpenInDesigner} onDownloadVisual={onDownloadVisual} onImageToPost={onImageToPost} loadExistingPosts={loadExistingPosts} signedVisualUrlFn={signedVisualUrlFn} />
   }
 
   return (
