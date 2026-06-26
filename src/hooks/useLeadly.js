@@ -330,6 +330,19 @@ export function useLeadly({ autoOpenLatest = true } = {}) {
 
   const dismissActions = useCallback(() => setPendingActions([]), []);
 
+  // proposeAction: setzt eine strukturierte Schreib-Aktion direkt als pending (Confirm-Karte),
+  // ohne LLM-Umweg — z.B. Dashboard-Aufgaben-Karte „Übernehmen" mit konkreter task_id.
+  const proposeAction = useCallback((action) => {
+    if (!action || !action.name) return;
+    setRevertable(null);
+    setPendingActions([{
+      ...action,
+      tool_use_id: action.tool_use_id || `manual-${Date.now()}`,
+      summary: action.summary || action.name,
+      conversation_id: activeConvRef.current || null,
+    }]);
+  }, []);
+
   // revertLast: macht die zuletzt bestätigte umkehrbare Aktion rückgängig (B2.3).
   const revertLast = useCallback(() => {
     if (!revertable?.audit_id) return;
@@ -349,8 +362,8 @@ export function useLeadly({ autoOpenLatest = true } = {}) {
     conversations, activeConversationId, isLoadingConversations,
     selectConversation, newConversation, deleteConversation,
     messages, isSending, sendMessage, clearHistory,
-    pendingActions, confirmAction, dismissActions,
+    pendingActions, confirmAction, dismissActions, proposeAction,
     revertable, revertLast,
     briefing, fetchBriefing, markBriefingRead, unreadCount,
-  }), [uid, conversations, activeConversationId, isLoadingConversations, selectConversation, newConversation, deleteConversation, messages, isSending, sendMessage, clearHistory, pendingActions, confirmAction, dismissActions, revertable, revertLast, briefing, fetchBriefing, markBriefingRead, unreadCount]);
+  }), [uid, conversations, activeConversationId, isLoadingConversations, selectConversation, newConversation, deleteConversation, messages, isSending, sendMessage, clearHistory, pendingActions, confirmAction, dismissActions, proposeAction, revertable, revertLast, briefing, fetchBriefing, markBriefingRead, unreadCount]);
 }

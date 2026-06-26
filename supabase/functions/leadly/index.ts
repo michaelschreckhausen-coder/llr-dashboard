@@ -188,6 +188,18 @@ const TOOLS = [
     },
   },
   {
+    name: "list_tasks",
+    description: "Listet/sucht editierbare CRM-Aufgaben (lead_tasks) des aktiven Teams, sortiert nach Fälligkeit. Liefert id, title, due_date, status, priority, lead_id. Nutze die id für complete_task/update_task. Damit löst du z.B. „älteste überfällige Aufgabe" zu einer konkreten id auf.",
+    input_schema: {
+      type: "object",
+      properties: {
+        filter: { type: "string", enum: ["overdue", "today", "open", "all"], description: "overdue=überfällig, today=heute fällig, open=alle offenen (Default), all=inkl. erledigte" },
+        query:  { type: "string", description: "Volltext auf den Titel (optional)" },
+        limit:  { type: "number", description: "Max Treffer (default 20, max 50)" },
+      },
+    },
+  },
+  {
     name: "update_lead",
     description: "Aktualisiert einen Lead per ID. Status, Owner, Score, next_followup änderbar.",
     input_schema: {
@@ -838,6 +850,25 @@ async function executeTool(
           const esc = String(input.query).replace(/[%,]/g, '');
           q = q.or(`first_name.ilike.%${esc}%,last_name.ilike.%${esc}%,company.ilike.%${esc}%,email.ilike.%${esc}%`);
         }
+        const { data, error } = await q;
+        if (error) return { ok: false, error: error.message };
+        return { ok: true, data };
+      }
+
+      case "list_tasks": {
+        const limit = Math.min(Number(input.limit) || 20, 50);
+        const filter = typeof input.filter === 'string' ? input.filter : 'open';
+        const today = new Date().toISOString().split('T')[0];
+        let q = supabase
+          .from('lead_tasks')
+          .select('id, title, due_date, status, priority, lead_id')
+          .order('due_date', { ascending: true, nullsFirst: false })
+          .limit(limit);
+        if (ctx.teamId) q = q.eq('team_id', ctx.teamId); // TEAM-ISOLATION
+        if (filter !== 'all') q = q.neq('status', 'done');
+        if (filter === 'overdue')    q = q.lt('due_date', today);
+        else if (filter === 'today') q = q.eq('due_date', today);
+        if (input.query) { const esc = String(input.query).replace(/[%,]/g, ''); q = q.ilike('title', `%${esc}%`); }
         const { data, error } = await q;
         if (error) return { ok: false, error: error.message };
         return { ok: true, data };
@@ -1514,7 +1545,11 @@ ${JSON.stringify(context, null, 2)}`;
       }
     }
     const activeBrand = await loadActiveBrand(adminForCredits, userId);
+    const _nowD = new Date();
+    const _todayISO = _nowD.toISOString().split('T')[0];
+    const _weekday = _nowD.toLocaleDateString('de-DE', { weekday: 'long', timeZone: 'Europe/Berlin' });
     const contextInfo = '## Aktueller Kontext des Users (Ebenen):\n'
+      + '- Heutiges Datum: ' + _todayISO + ' (' + _weekday + '). Relative Fälligkeiten wie „heute", „morgen", „nächste Woche", „in 3 Tagen" IMMER auf Basis dieses Datums als YYYY-MM-DD berechnen — nie nach dem heutigen Datum fragen.\n'
       + '- Team-/Account-Ebene aktiv: geteilte Daten (Kontakte, Deals, Aufgaben, Brands, Zielgruppen, Wissen, Beiträge).\n'
       + (activeBrand
           ? '- Aktive Brand (Brand-Ebene): „' + activeBrand.label + '" (' + activeBrand.typ + '). Der gesamte Content (Text-Werkstatt, Dokumente, Beiträge, Visuals, Memory, SSI, Vernetzungen) bezieht sich auf DIESE Brand. Brand-Memory-Tools nutzen sie als Default.'

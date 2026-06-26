@@ -77,6 +77,20 @@ export default function LeadlyBubble() {
     return () => window.removeEventListener('leadly:prompt', onPrompt);
   }, [leadly]);
 
+  // Strukturierter Handoff: öffnet die Bubble + zeigt direkt die Confirm-Karte
+  // (z.B. Dashboard-Aufgabe „Übernehmen" mit task_id → complete_task).
+  useEffect(() => {
+    const onAction = (e) => {
+      const action = e?.detail;
+      if (!action?.name) return;
+      setOpen(true);
+      leadly.markBriefingRead?.();
+      leadly.proposeAction?.(action);
+    };
+    window.addEventListener('leadly:action', onAction);
+    return () => window.removeEventListener('leadly:action', onAction);
+  }, [leadly]);
+
   if (hidden) return null;
 
   const handleOpen = () => {

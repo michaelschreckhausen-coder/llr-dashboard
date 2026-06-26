@@ -130,7 +130,9 @@ const briefingStyle = {
 const TOOL_LABELS = {
   create_lead: 'Kontakt angelegt', create_task: 'Aufgabe angelegt', create_deal: 'Deal angelegt',
   update_lead: 'Kontakt aktualisiert', update_deal: 'Deal aktualisiert', update_organization: 'Unternehmen aktualisiert',
-  search_leads: 'Kontakte durchsucht', remember_preference: 'Notiz gemerkt', forget_preference: 'Notiz gelöscht',
+  search_leads: 'Kontakte durchsucht', list_tasks: 'Aufgaben abgerufen', complete_task: 'Aufgabe erledigt',
+  update_task: 'Aufgabe aktualisiert', revert_action: 'Rückgängig gemacht',
+  remember_preference: 'Notiz gemerkt', forget_preference: 'Notiz gelöscht',
   get_account_overview: 'Account-Überblick abgerufen', get_brands: 'Brands abgerufen', list_audiences: 'Zielgruppen abgerufen',
   list_knowledge: 'Wissensdatenbank abgerufen', list_posts: 'Beiträge abgerufen', get_ssi: 'SSI abgerufen',
   list_connections: 'Vernetzungen abgerufen', get_brand_memory: 'Brand-Memory gelesen', add_brand_memory: 'Brand-Memory ergänzt',

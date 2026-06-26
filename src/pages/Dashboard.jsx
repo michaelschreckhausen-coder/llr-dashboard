@@ -142,10 +142,17 @@ export default function Dashboard({ session }) {
 
   // Leadly-Vorschläge: je Bereich aus der besten Quelle (Cap je Bereich → kein Überlauf).
   const SUG_CAP = 2;
-  const taskCard = (t, i) => ({
-    id: t.id || `${t.source}-${i}`, area: SUGGESTION_AREAS[t.source],
-    title: t.title, reason: suggestionReason(t), href: t.href, prompt: suggestionPrompt(t),
-  });
+  const taskCard = (t, i) => {
+    const card = {
+      id: t.id || `${t.source}-${i}`, area: SUGGESTION_AREAS[t.source],
+      title: t.title, reason: suggestionReason(t), href: t.href, prompt: suggestionPrompt(t),
+    };
+    // lead_task → strukturierter Handoff mit echter task_id (id ist als "lead_task:<uuid>" geprefixt).
+    if (t.source === 'lead_task' && typeof t.id === 'string' && t.id.startsWith('lead_task:')) {
+      card.action = { name: 'complete_task', input: { task_id: t.id.slice('lead_task:'.length) }, summary: `Aufgabe als erledigt markieren: ${t.title}` };
+    }
+    return card;
+  };
   const followupCards = dayTasks.filter(t => t.source === 'lead_followup').slice(0, SUG_CAP).map(taskCard);
   const kontaktCards = _hot.slice(0, SUG_CAP).map((l, i) => ({
     id: `lead-${l.id || i}`, area: AREA_META.kontakt, title: leadName(l),
@@ -167,6 +174,7 @@ export default function Dashboard({ session }) {
   const suggestions = [...followupCards, ...kontaktCards, ...dealCards, ...aufgabeCards];
   const briefingText = leadly.briefing?.briefing_text || '';
   const askLeadly = (text) => window.dispatchEvent(new CustomEvent('leadly:prompt', { detail: { text } }));
+  const takeAction = (action) => window.dispatchEvent(new CustomEvent('leadly:action', { detail: action }));
 
   // B2.1 — LLM-Priorisierung/Begründung der Vorschläge über die bestehende generate-EF.
   // Rein lesend; bei Fehler/Parse-Problem greift der Regel-Fallback → Dashboard nie leer.
@@ -288,7 +296,7 @@ export default function Dashboard({ session }) {
                   <div style={{ fontSize: 14, fontWeight: 600, color: colors.ink, lineHeight: 1.35 }}>{s.title}</div>
                   {s.reason && <div style={{ fontSize: 12, color: colors.inkMuted }}>{s.reason}</div>}
                   <div style={{ display: 'flex', gap: 8, marginTop: 'auto', paddingTop: 4 }}>
-                    <button onClick={() => askLeadly(s.prompt)}
+                    <button onClick={() => (s.action ? takeAction(s.action) : askLeadly(s.prompt))}
                       style={{ padding: '7px 14px', borderRadius: 8, border: 'none', background: colors.primary, color: '#fff', fontSize: 12, fontWeight: 700, cursor: 'pointer' }}>
                       Übernehmen
                     </button>
