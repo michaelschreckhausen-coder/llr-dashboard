@@ -41,6 +41,8 @@ import { BrandVoiceProvider } from './context/BrandVoiceContext'
 import SettingsMemory  from './pages/SettingsMemory'
 import SettingsExtension from './pages/SettingsExtension'
 import SettingsAffiliate from './pages/SettingsAffiliate'
+import SettingsInstagram from './pages/SettingsInstagram'
+import Instagram         from './pages/Instagram'
 import Pipeline      from './pages/Pipeline'
 import Vernetzungen  from './pages/Vernetzungen'
 import Reports       from './pages/Reports'
@@ -360,6 +362,7 @@ export default function App() {
             <Route path="/settings/extension" element={<SettingsExtension session={session} />} />
             <Route path="/settings/notifications" element={<SettingsNotifications session={session} />} />
             <Route path="/settings/affiliate" element={<SettingsAffiliate session={session} />} />
+            <Route path="/settings/instagram" element={<SettingsInstagram session={session} />} />
               <Route path="/billing" element={<BillingRedirect />} />
             <Route path="/profile"  element={<Profile session={session} />} />
             <Route path="/aufgaben" element={<Aufgaben session={session} />} />
@@ -382,6 +385,9 @@ export default function App() {
             <Route path="/leads/new"      element={<LeadProfile session={session} />} />
             <Route path="/leads/imports"  element={<LeadsImports session={session} />} />
             <Route path="/leads/:id"      element={<LeadDetail session={session} />} />
+
+            {/* Instagram — Addon-Modul, gated über account_addons → modules[]='instagram' */}
+            <Route path="/instagram" element={<ModuleGuard module="instagram"><Instagram /></ModuleGuard>} />
 
             {/* Sponsoring OS — Addon-Modul, gated über account_addons → modules[]='sponsoring' */}
             <Route path="/sponsoring"               element={<ModuleGuard module="sponsoring"><SponsoringHome /></ModuleGuard>} />

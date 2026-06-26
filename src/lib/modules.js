@@ -51,6 +51,14 @@ export const MODULES = {
     color: '#EC4899',
   },
   // Addon-Modul (kein Plan-Modul) — freigeschaltet via account_addons → get_my_entitlements().modules
+  instagram: {
+    key:   'instagram',
+    label: 'Instagram',
+    description: 'Instagram-Analysen und Veröffentlichung aus dem Redaktionsplan',
+    routes: ['/instagram'],
+    color: '#E1306C',
+  },
+  // Addon-Modul (kein Plan-Modul) — freigeschaltet via account_addons → get_my_entitlements().modules
   sponsoring: {
     key:   'sponsoring',
     label: 'Sponsoring OS',
@@ -100,5 +108,6 @@ export const SIDEBAR_DIVIDER_TO_MODULE = {
   'Content':          'content',
   'Projektumsetzung': 'delivery',
   'Reporting':        'reports',
+  'Instagram':        'instagram',
   'Sponsoring':       'sponsoring',
 }

@@ -10,6 +10,7 @@ const TABS = [
   { to: '/settings/memory',        label: 'Memory' },
   { to: '/settings/extension',     label: 'Browser-Extension' },
   { to: '/settings/notifications', label: 'Benachrichtigungen' },
+  { to: '/settings/instagram',     label: 'Instagram' },
   { to: '/settings/affiliate',     label: 'Affiliate' },
 ]
 
