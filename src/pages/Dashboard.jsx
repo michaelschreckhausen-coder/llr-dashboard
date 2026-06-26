@@ -131,18 +131,14 @@ export default function Dashboard({ session }) {
     connectedCount, hasSSI,
   } = data;
 
-  if (isLoading) {
-    return (
-      <div style={{ textAlign: 'center', padding: '80px 0', color: colors.inkSoft, fontSize: 14 }}>
-        Dashboard wird geladen…
-      </div>
-    );
-  }
-
-  const now = new Date();
-  // Tages-Aufgaben aus ALLEN Quellen — Überfällige zuerst, dann Heute
-  const dayTasks = [...overdueTasks, ...todayTasks];
-  const totalOverdue = overdueTasks.length;
+  // ⚠️ ALLE Hooks + abgeleitete Werte VOR jedem early-return — sonst React #310
+  // (bedingte Hook-Anzahl). Quell-Arrays defensiv (|| []), da sie im Loading-State
+  // leer/undefined sein können.
+  const _overdue = overdueTasks || [];
+  const _today = todayTasks || [];
+  const _hot = hotLeads || [];
+  const _deals = activeDeals || [];
+  const dayTasks = [..._overdue, ..._today];
 
   // Leadly-Vorschläge: je Bereich aus der besten Quelle (Cap je Bereich → kein Überlauf).
   const SUG_CAP = 2;
@@ -151,13 +147,13 @@ export default function Dashboard({ session }) {
     title: t.title, reason: suggestionReason(t), href: t.href, prompt: suggestionPrompt(t),
   });
   const followupCards = dayTasks.filter(t => t.source === 'lead_followup').slice(0, SUG_CAP).map(taskCard);
-  const kontaktCards = hotLeads.slice(0, SUG_CAP).map((l, i) => ({
+  const kontaktCards = _hot.slice(0, SUG_CAP).map((l, i) => ({
     id: `lead-${l.id || i}`, area: AREA_META.kontakt, title: leadName(l),
     reason: `Score ${l.hs_score || l.lead_score || 0}${l.company ? ' · ' + l.company : ''}`,
     href: `/leads/${l.id}`,
     prompt: `Was ist der nächste sinnvolle Schritt mit ${leadName(l)}${l.company ? ` (${l.company})` : ''}? Schlag konkret vor — ggf. anreichern.`,
   }));
-  const dealCards = [...activeDeals]
+  const dealCards = [..._deals]
     .sort((a, b) => (a.expected_close_date || '9999').localeCompare(b.expected_close_date || '9999'))
     .slice(0, SUG_CAP).map((d, i) => ({
       id: `deal-${d.id || i}`, area: AREA_META.deal, title: d.title || 'Deal',
@@ -165,7 +161,7 @@ export default function Dashboard({ session }) {
       href: `/deals?open=${d.id}`,
       prompt: `Was ist der nächste Schritt für den Deal „${d.title || 'Deal'}"? Mach mir einen konkreten Vorschlag.`,
     }));
-  const aufgabeCards = overdueTasks
+  const aufgabeCards = _overdue
     .filter(t => t.source === 'lead_task' || t.source === 'pm_task')
     .slice(0, SUG_CAP).map(taskCard);
   const suggestions = [...followupCards, ...kontaktCards, ...dealCards, ...aufgabeCards];
@@ -211,6 +207,18 @@ export default function Dashboard({ session }) {
         .map(s => ({ ...s, reason: aiRank.get(String(s.id))?.grund || s.reason, _prio: aiRank.get(String(s.id))?.prio ?? 99 }))
         .sort((a, b) => a._prio - b._prio)
     : suggestions;
+
+  // ── Ab hier early-return erlaubt (keine Hooks mehr darunter) ──
+  if (isLoading) {
+    return (
+      <div style={{ textAlign: 'center', padding: '80px 0', color: colors.inkSoft, fontSize: 14 }}>
+        Dashboard wird geladen…
+      </div>
+    );
+  }
+
+  const now = new Date();
+  const totalOverdue = _overdue.length;
 
   return (
     <div>
