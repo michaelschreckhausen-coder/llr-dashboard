@@ -105,13 +105,28 @@ async function callLeadly(userToken: string, messages: Array<{ role: string; con
     return { ok: false, status: res.status, error: msg };
   }
   const data = await res.json().catch(() => null);
-  const text = data?.reply?.content;
-  if (typeof text !== "string" || !text.trim()) {
-    // Leadly hat (noch) nur Tool-Calls / leere Antwort → freundlicher Platzhalter,
-    // damit der Avatar nicht stumm bleibt.
-    return { ok: true, text: "Einen Moment — ich kümmere mich darum." };
+  let text = typeof data?.reply?.content === "string" ? data.reply.content.trim() : "";
+
+  // ─── Guardrail-Transparenz im Avatar-Pfad ────────────────────────────
+  // leadly führt Schreib-Tools NIE autonom aus (server-seitiger Guardrail),
+  // sondern liefert requires_confirmation + pending_actions. Die Bridge ruft
+  // NIEMALS confirmed_action — schreibend passiert hier strukturell nichts.
+  // Damit der Avatar nicht fälschlich "erledigt" suggeriert, sprechen wir den
+  // Vorschlag ehrlich aus und verweisen auf die App-Bestätigung.
+  const pending = Array.isArray(data?.pending_actions) ? data.pending_actions : [];
+  const requiresConfirm = data?.requires_confirmation === true || pending.length > 0;
+  if (requiresConfirm) {
+    const summaries = pending.map((p: { summary?: string }) => p?.summary).filter(Boolean).join("; ");
+    const ask = summaries ? `Ich kann das vorbereiten: ${summaries}.` : "";
+    text = [
+      text,
+      ask,
+      "Zum Ausführen bestätige es bitte in der App — über die Sprachsteuerung führe ich nichts Schreibendes ungefragt aus.",
+    ].filter(Boolean).join(" ");
   }
-  return { ok: true, text: text.trim() };
+
+  if (!text) text = "Einen Moment — ich schaue mir das an.";
+  return { ok: true, text };
 }
 
 // Text in kleine Chunks zerlegen (für token-artiges SSE-Streaming → Avatar
