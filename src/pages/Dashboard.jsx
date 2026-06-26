@@ -18,7 +18,7 @@ import { supabase } from '../lib/supabase';
 import { colors, radii, shadows, space, motion, typography } from '../theme';
 import { useDashboardData } from '../hooks/useDashboardData';
 import { useLeadly } from '../hooks/useLeadly';
-import { renderMarkdown } from '../lib/renderMarkdown';
+import LeadlyStage from '../components/leadly/LeadlyStage';
 
 // ─── Helpers ─────────────────────────────────────────────────────────────
 const leadName = (l) => (`${l.first_name || ''} ${l.last_name || ''}`.trim() || l.name || '—');
@@ -241,47 +241,20 @@ export default function Dashboard({ session }) {
             style={{ marginLeft: 'auto', border: 'none', background: 'transparent', color: '#92400E', cursor: 'pointer', fontSize: 15, fontWeight: 700 }} aria-label="Ausblenden">✕</button>
         </div>
       )}
-      {/* Tag-Überschrift */}
+      {/* Leadly-Bühne — Gesicht + gesprochene Essenz + Eingabe (Inkrement 1A) */}
       <div style={{ marginBottom: space[12] }}>
-        <div style={{
-          fontSize: 13, color: colors.inkMuted, fontWeight: 500,
-          marginBottom: space[2],
-        }}>
-          {now.toLocaleDateString('de-DE', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })}
-        </div>
-        <div style={{
-          fontSize: 'clamp(28px, 3.6vw, 40px)',
-          fontWeight: 600, letterSpacing: '-0.03em', lineHeight: 1.08,
-          color: colors.ink,
-        }}>
-          Hallo {firstName || 'dort'} — <span className="highlight-word">Leadly</span> hat
-          deinen Tag durchgesehen.
-        </div>
-
-        {/* Leadly-Briefing: Status-Synthese */}
-        <div style={{
-          marginTop: space[4], background: colors.white, border: `1px solid ${colors.border}`,
-          borderRadius: radii.lg, padding: '16px 20px',
-        }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}>
-            <span style={{ width: 22, height: 22, borderRadius: '50%', background: 'linear-gradient(135deg, #1E3A8A, #3B82F6)', color: '#fff', fontSize: 12, fontWeight: 700, display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }}>L</span>
-            <span style={{ fontSize: 12, fontWeight: 700, color: colors.inkMuted, textTransform: 'uppercase', letterSpacing: '0.05em' }}>Leadly-Briefing</span>
-          </div>
-          <div style={{ fontSize: 15, color: colors.ink, lineHeight: 1.6 }}>
-            {briefingText ? renderMarkdown(briefingText) : 'Leadly schaut sich deinen Tag an …'}
-          </div>
-          <div style={{ fontSize: 13, color: colors.inkMuted, marginTop: space[3] }}>
-            {leads.length} {leads.length === 1 ? 'Kontakt' : 'Kontakte'}
-            {' · '}{activeDeals.length} {activeDeals.length === 1 ? 'Deal aktiv' : 'Deals aktiv'}
-            {' · '}{totalOverdue} überfällig
-            {' · '}{todayTasks.length} heute fällig
-            {' · '}
-            <button onClick={() => nav('/aufgaben')}
-              style={{ background: 'transparent', border: 'none', color: colors.primary, cursor: 'pointer', fontSize: 13, fontWeight: 500, padding: 0, textDecoration: 'underline', textUnderlineOffset: 2 }}>
-              alle Aufgaben →
-            </button>
-          </div>
-        </div>
+        <LeadlyStage
+          firstName={firstName}
+          briefingText={briefingText}
+          isBriefingLoading={!briefingText}
+          stats={{
+            leads: leads.length,
+            activeDeals: activeDeals.length,
+            overdue: totalOverdue,
+            today: todayTasks.length,
+          }}
+          onOpenTasks={() => nav('/aufgaben')}
+        />
 
         {/* Leadly-Vorschläge — übernehmbare Aktionen in den 4 Bereichen */}
         {suggestions.length > 0 && (
