@@ -37,8 +37,15 @@ export function useTextToSpeech() {
   const [muted, setMuted] = useState(() => {
     try { return window.localStorage?.getItem(MUTE_KEY) === '1'; } catch { return false; }
   });
-  const [isSpeaking, setIsSpeaking] = useState(false);
+  const [isSpeaking, _setIsSpeaking] = useState(false);
   const [error, setError] = useState(null);
+
+  // Setzt den State UND feuert ein globales Event, damit andere Surfaces
+  // (z.B. der 3D-Avatar in der Bühne) den Mund synchron zur Wiedergabe bewegen.
+  const setIsSpeaking = (v) => {
+    _setIsSpeaking(v);
+    try { window.dispatchEvent(new CustomEvent('leadly:speaking', { detail: { speaking: !!v } })); } catch { /* ignore */ }
+  };
 
   const audioRef = useRef(null);
   const urlRef = useRef(null);

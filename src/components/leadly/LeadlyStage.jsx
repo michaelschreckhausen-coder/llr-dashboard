@@ -15,11 +15,12 @@
 // Echtzeit-Voice (TTS, sprechende Antwort) = Inkrement 1B.
 // Live-Lip-Sync-Avatar = Phase 2.
 
-import React, { useMemo, useState } from 'react';
+import React, { useMemo, useState, useEffect } from 'react';
 import { Mic, Square, ChevronDown, ChevronUp } from 'lucide-react';
 import { colors, radii, space } from '../../theme';
 import { useVoiceInput } from '../../hooks/useVoiceInput';
 import { renderMarkdown } from '../../lib/renderMarkdown';
+import LeadlyAvatar3D from './LeadlyAvatar3D';
 
 const LEADLY_GRADIENT = 'linear-gradient(135deg, #1E3A8A, #3B82F6)';
 
@@ -28,9 +29,8 @@ const LEADLY_GRADIENT = 'linear-gradient(135deg, #1E3A8A, #3B82F6)';
 const IDLE_VIDEO = '/leadly-idle.mp4';
 const IDLE_POSTER = '/leadly-poster.jpg';
 
-// Avatar-Bühne (das große Gesicht-/Gradient-Feld) vorerst geparkt, bis
-// Asset + Phase-2-DSGVO geklärt sind. Auf true setzen reaktiviert sie.
-const SHOW_STAGE_AVATAR = false;
+// Avatar-Bühne: zeigt den selbstgebauten, EU-only 3D-Kopf (LeadlyAvatar3D).
+const SHOW_STAGE_AVATAR = true;
 
 // ─── Kern-Essenz aus dem Briefing ableiten (client-seitig, fallback-first) ──
 // Markdown wird entschärft, dann die ersten 1–2 Sätze als gesprochene Essenz.
@@ -68,7 +68,13 @@ export default function LeadlyStage({
 }) {
   const [text, setText] = useState('');
   const [showTranscript, setShowTranscript] = useState(false);
-  const [videoOk, setVideoOk] = useState(true);
+  // Avatar-Mund bewegt sich, während Leadly real spricht (1B-TTS feuert leadly:speaking).
+  const [avatarSpeaking, setAvatarSpeaking] = useState(false);
+  useEffect(() => {
+    const on = (e) => setAvatarSpeaking(!!e?.detail?.speaking);
+    window.addEventListener('leadly:speaking', on);
+    return () => window.removeEventListener('leadly:speaking', on);
+  }, []);
 
   const voice = useVoiceInput({
     language: 'de-DE',
@@ -108,30 +114,10 @@ export default function LeadlyStage({
         position: 'relative', aspectRatio: '3 / 4',
         boxShadow: '0 18px 44px rgba(15, 23, 42, 0.18)',
       }}>
-        {videoOk ? (
-          <video
-            src={IDLE_VIDEO}
-            poster={IDLE_POSTER}
-            autoPlay muted loop playsInline
-            onError={() => setVideoOk(false)}
-            style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }}
-          />
-        ) : (
-          // Gradient-Avatar-Fallback bis das Idle-Loop-Video in public/ liegt
-          <div style={{
-            position: 'absolute', inset: 0,
-            display: 'flex', alignItems: 'center', justifyContent: 'center',
-          }}>
-            <div style={{
-              width: 96, height: 96, borderRadius: '50%',
-              background: 'rgba(255,255,255,0.16)',
-              border: '2px solid rgba(255,255,255,0.4)',
-              display: 'flex', alignItems: 'center', justifyContent: 'center',
-              color: '#fff', fontSize: 44, fontWeight: 800, letterSpacing: -2,
-              animation: 'leadly-stage-breathe 3.6s ease-in-out infinite',
-            }}>L</div>
-          </div>
-        )}
+        {/* Selbstgebauter EU-3D-Kopf (Gradient-Hintergrund scheint durch das transparente Canvas) */}
+        <div style={{ position: 'absolute', inset: 0 }}>
+          <LeadlyAvatar3D speaking={avatarSpeaking} />
+        </div>
         {/* Name-Badge unten */}
         <div style={{
           position: 'absolute', left: 12, bottom: 12,

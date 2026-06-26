@@ -31,7 +31,8 @@
     "react-konva": "^18.2.16",
     "react-router-dom": "^6.21.0",
     "react-window": "^1.8.11",
-    "recharts": "^2.10.0"
+    "recharts": "^2.10.0",
+    "three": "^0.160.1"
   },
   "devDependencies": {
     "@types/react": "^18.2.0",
