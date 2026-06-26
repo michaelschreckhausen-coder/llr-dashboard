@@ -15,12 +15,12 @@
 // Echtzeit-Voice (TTS, sprechende Antwort) = Inkrement 1B.
 // Live-Lip-Sync-Avatar = Phase 2.
 
-import React, { useMemo, useState, useEffect } from 'react';
+import React, { useMemo, useState } from 'react';
 import { Mic, Square, ChevronDown, ChevronUp } from 'lucide-react';
 import { colors, radii, space } from '../../theme';
 import { useVoiceInput } from '../../hooks/useVoiceInput';
 import { renderMarkdown } from '../../lib/renderMarkdown';
-import LeadlyAvatar3D from './LeadlyAvatar3D';
+import LeadlyLogoSlot from './LeadlyLogoSlot';
 
 const LEADLY_GRADIENT = 'linear-gradient(135deg, #1E3A8A, #3B82F6)';
 
@@ -29,8 +29,6 @@ const LEADLY_GRADIENT = 'linear-gradient(135deg, #1E3A8A, #3B82F6)';
 const IDLE_VIDEO = '/leadly-idle.mp4';
 const IDLE_POSTER = '/leadly-poster.jpg';
 
-// Avatar-Bühne: zeigt den selbstgebauten, EU-only 3D-Kopf (LeadlyAvatar3D).
-const SHOW_STAGE_AVATAR = true;
 
 // ─── Kern-Essenz aus dem Briefing ableiten (client-seitig, fallback-first) ──
 // Markdown wird entschärft, dann die ersten 1–2 Sätze als gesprochene Essenz.
@@ -68,13 +66,6 @@ export default function LeadlyStage({
 }) {
   const [text, setText] = useState('');
   const [showTranscript, setShowTranscript] = useState(false);
-  // Avatar-Mund bewegt sich, während Leadly real spricht (1B-TTS feuert leadly:speaking).
-  const [avatarSpeaking, setAvatarSpeaking] = useState(false);
-  useEffect(() => {
-    const on = (e) => setAvatarSpeaking(!!e?.detail?.speaking);
-    window.addEventListener('leadly:speaking', on);
-    return () => window.removeEventListener('leadly:speaking', on);
-  }, []);
 
   const voice = useVoiceInput({
     language: 'de-DE',
@@ -105,16 +96,10 @@ export default function LeadlyStage({
       display: 'flex', gap: space[6], alignItems: 'stretch',
       flexWrap: 'wrap', marginBottom: space[8],
     }}>
-      {/* ── Leadlys Gesicht — freigestellt (kein Rahmen/Kasten), ganzer Kopf sichtbar ── */}
-      {SHOW_STAGE_AVATAR && (
-      <div style={{
-        flex: '0 0 150px', minWidth: 120, maxWidth: 170,
-        alignSelf: 'center', aspectRatio: '1 / 1',
-        position: 'relative',
-      }}>
-        <LeadlyAvatar3D speaking={avatarSpeaking} />
+      {/* ── Firmen-Logo-Slot (ersetzt den früheren Avatar) ── */}
+      <div style={{ flex: '0 0 auto', minWidth: 132, maxWidth: 170, alignSelf: 'center' }}>
+        <LeadlyLogoSlot />
       </div>
-      )}
 
       {/* ── Gespräch rechts ── */}
       <div style={{ flex: '1 1 360px', minWidth: 300, display: 'flex', flexDirection: 'column' }}>
@@ -163,46 +148,48 @@ export default function LeadlyStage({
           </div>
         )}
 
-        {/* Eingabeleiste — sprechen oder tippen */}
+        {/* Eingabeleiste — sprechen oder tippen (kompakt) */}
         <form onSubmit={submit} style={{
-          marginTop: space[4],
-          display: 'flex', gap: 8, alignItems: 'flex-end',
-          border: `1.5px solid ${colors.border}`, borderRadius: 14,
-          background: colors.white, padding: '8px 8px 8px 14px',
-          boxShadow: '0 1px 3px rgba(15,23,42,.04)',
+          marginTop: space[3],
+          display: 'flex', gap: 6, alignItems: 'center',
+          border: `1px solid ${colors.border}`, borderRadius: 11,
+          background: colors.white, padding: '4px 4px 4px 12px',
+          boxShadow: '0 1px 2px rgba(15,23,42,.04)',
+          maxWidth: 480,
         }}>
           <textarea
             value={text}
             onChange={(e) => setText(e.target.value)}
             onKeyDown={handleKeyDown}
             placeholder={voice.isRecording
-              ? (voice.mode === 'web' ? (voice.liveTranscript || 'Sprich jetzt…') : 'Nehme auf…')
+              ? ((voice.mode === 'web' || voice.mode === 'azure') ? (voice.liveTranscript || 'Sprich jetzt…') : 'Nehme auf…')
               : 'Sprich mit Leadly oder tippe…'}
             rows={1}
             disabled={voice.isRecording}
             style={{
-              flex: 1, border: 'none', padding: '8px 4px', fontSize: 15,
+              flex: 1, border: 'none', padding: '6px 2px', fontSize: 14,
               fontFamily: 'inherit', resize: 'none', outline: 'none',
-              minHeight: 24, maxHeight: 120, background: 'transparent', color: colors.ink,
+              minHeight: 20, maxHeight: 110, background: 'transparent', color: colors.ink,
             }}
           />
           <button type="button"
             onClick={voice.isRecording ? voice.stop : voice.start}
             title={voice.isRecording ? 'Aufnahme stoppen' : 'Sprach-Eingabe'}
             style={{
-              width: 40, height: 40, borderRadius: 10, border: 'none', flexShrink: 0,
+              width: 32, height: 32, borderRadius: 8, border: 'none', flexShrink: 0,
               background: voice.isRecording ? '#EF4444' : '#F1F5F9',
               color: voice.isRecording ? '#fff' : '#475569',
               cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center',
               animation: voice.isRecording ? 'leadly-pulse 1.2s infinite' : 'none',
             }}>
-            {voice.isRecording ? <Square size={16} /> : <Mic size={18} />}
+            {voice.isRecording ? <Square size={14} /> : <Mic size={16} />}
           </button>
           <button type="submit" disabled={!text.trim()}
             style={{
-              padding: '10px 16px', borderRadius: 10, border: 'none', flexShrink: 0,
+              width: 32, height: 32, borderRadius: 8, border: 'none', flexShrink: 0,
               background: text.trim() ? LEADLY_GRADIENT : '#CBD5E1', color: '#fff',
-              fontSize: 14, fontWeight: 700, cursor: text.trim() ? 'pointer' : 'not-allowed',
+              fontSize: 15, fontWeight: 700, cursor: text.trim() ? 'pointer' : 'not-allowed',
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
             }}>
             ↑
           </button>
