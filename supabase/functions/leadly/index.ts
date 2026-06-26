@@ -189,7 +189,7 @@ const TOOLS = [
   },
   {
     name: "list_tasks",
-    description: "Listet/sucht editierbare CRM-Aufgaben (lead_tasks) des aktiven Teams, sortiert nach Fälligkeit. Liefert id, title, due_date, status, priority, lead_id. Nutze die id für complete_task/update_task. Damit löst du z.B. „älteste überfällige Aufgabe" zu einer konkreten id auf.",
+    description: "Listet/sucht editierbare CRM-Aufgaben (lead_tasks) des aktiven Teams, sortiert nach Fälligkeit. Liefert id, title, due_date, status, priority, lead_id. Nutze die id fuer complete_task/update_task. Damit loest du z.B. die aelteste ueberfaellige Aufgabe zu einer konkreten id auf.",
     input_schema: {
       type: "object",
       properties: {
