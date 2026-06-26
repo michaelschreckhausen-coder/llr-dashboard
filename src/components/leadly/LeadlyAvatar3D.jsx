@@ -28,9 +28,11 @@ export default function LeadlyAvatar3D({ speaking = false }) {
     let H = wrap.clientHeight || 320;
 
     const scene = new THREE.Scene();
-    const camera = new THREE.PerspectiveCamera(32, W / H, 0.1, 100);
-    camera.position.set(0, 0.06, 3.5);
-    camera.lookAt(0, 0, 0);
+    // Kamera weit genug zurück, damit der ganze Kopf mit Rand sichtbar ist
+    // (kein Anschneiden oben/unten) — er steht frei, nicht im Rahmen.
+    const camera = new THREE.PerspectiveCamera(30, W / H, 0.1, 100);
+    camera.position.set(0, 0.04, 4.9);
+    camera.lookAt(0, 0.02, 0);
 
     const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
     renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
@@ -47,7 +49,7 @@ export default function LeadlyAvatar3D({ speaking = false }) {
     const M = (c, r, extra) => new THREE.MeshStandardMaterial({ color: c, roughness: r == null ? 0.6 : r, ...(extra || {}) });
 
     const skull = new THREE.Mesh(new THREE.SphereGeometry(1, 64, 64), M(BRAND, 0.42, { metalness: 0.05 }));
-    skull.scale.set(0.96, 1.06, 0.92); head.add(skull);
+    skull.scale.set(0.99, 1.02, 0.96); head.add(skull);
     const glow = new THREE.Mesh(new THREE.SphereGeometry(0.99, 48, 48), M(0x4d74ff, 0.35, { transparent: true, opacity: 0.35 }));
     glow.scale.set(0.9, 1.0, 0.86); glow.position.z = 0.04; head.add(glow);
 

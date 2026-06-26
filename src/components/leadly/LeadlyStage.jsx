@@ -105,30 +105,14 @@ export default function LeadlyStage({
       display: 'flex', gap: space[6], alignItems: 'stretch',
       flexWrap: 'wrap', marginBottom: space[8],
     }}>
-      {/* ── Bühne links: Leadlys Gesicht (geparkt via SHOW_STAGE_AVATAR) ── */}
+      {/* ── Leadlys Gesicht — freigestellt (kein Rahmen/Kasten), ganzer Kopf sichtbar ── */}
       {SHOW_STAGE_AVATAR && (
       <div style={{
-        flex: '0 0 240px', minWidth: 200, maxWidth: 280,
-        borderRadius: radii.lg, overflow: 'hidden',
-        background: LEADLY_GRADIENT,
-        position: 'relative', aspectRatio: '3 / 4',
-        boxShadow: '0 18px 44px rgba(15, 23, 42, 0.18)',
+        flex: '0 0 150px', minWidth: 120, maxWidth: 170,
+        alignSelf: 'center', aspectRatio: '1 / 1',
+        position: 'relative',
       }}>
-        {/* Selbstgebauter EU-3D-Kopf (Gradient-Hintergrund scheint durch das transparente Canvas) */}
-        <div style={{ position: 'absolute', inset: 0 }}>
-          <LeadlyAvatar3D speaking={avatarSpeaking} />
-        </div>
-        {/* Name-Badge unten */}
-        <div style={{
-          position: 'absolute', left: 12, bottom: 12,
-          display: 'flex', alignItems: 'center', gap: 7,
-          background: 'rgba(15,23,42,0.42)', backdropFilter: 'blur(6px)',
-          borderRadius: radii.pill || 999, padding: '5px 11px 5px 8px',
-          color: '#fff',
-        }}>
-          <span style={{ width: 8, height: 8, borderRadius: '50%', background: '#34D399', boxShadow: '0 0 0 3px rgba(52,211,153,0.25)' }} />
-          <span style={{ fontSize: 12.5, fontWeight: 700 }}>Leadly</span>
-        </div>
+        <LeadlyAvatar3D speaking={avatarSpeaking} />
       </div>
       )}
 
