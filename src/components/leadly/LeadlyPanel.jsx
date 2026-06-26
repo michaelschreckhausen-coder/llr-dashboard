@@ -7,7 +7,8 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useVoiceInput } from '../../hooks/useVoiceInput';
-import { Plus, Mic, Square, FileText, CalendarDays, Sparkles, MessageSquare, Pencil } from 'lucide-react';
+import { useTextToSpeech } from '../../hooks/useTextToSpeech';
+import { Plus, Mic, Square, FileText, CalendarDays, Sparkles, MessageSquare, Pencil, Volume2, VolumeX } from 'lucide-react';
 import { renderMarkdown } from '../../lib/renderMarkdown';
 
 const PANEL_WIDTH = 410;
@@ -275,6 +276,29 @@ export default function LeadlyPanel({ leadly, onClose, embedded = false, hideHea
     },
   });
 
+  // ── TTS: Leadly liest seine Antworten vor (Inkrement 1B) ──
+  // "Jede Antwort sprechen" (mit Mute). Bestehende History/Briefing beim Öffnen
+  // wird NICHT vorgelesen — erst Antworten nach einer eigenen Anfrage (engagedRef).
+  const tts = useTextToSpeech();
+  const lastSpokenRef = useRef(null);
+  const engagedRef = useRef(false);
+  useEffect(() => {
+    if (leadly.isSending) { engagedRef.current = true; return; }
+    const msgs = leadly.messages || [];
+    const last = msgs[msgs.length - 1];
+    if (!engagedRef.current) {
+      // vor der ersten eigenen Anfrage: letzten Assistenten-Eintrag als "gesehen" markieren
+      if (last && last.role === 'assistant') lastSpokenRef.current = last.id || last.content;
+      return;
+    }
+    if (!last || last.role !== 'assistant' || !last.content) return;
+    const key = last.id || last.content;
+    if (lastSpokenRef.current === key) return;
+    lastSpokenRef.current = key;
+    tts.speak(last.content);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [leadly.messages, leadly.isSending]);
+
   // Auto-Scroll to bottom on new messages
   useEffect(() => {
     if (scrollRef.current) {
@@ -341,6 +365,13 @@ export default function LeadlyPanel({ leadly, onClose, embedded = false, hideHea
             <MessageSquare size={16} strokeWidth={1.9} />
           </button>
         )}
+        <button type="button"
+          onClick={tts.toggleMuted}
+          title={tts.muted ? 'Leadly vorlesen einschalten' : 'Leadly stummschalten'}
+          aria-label={tts.muted ? 'Vorlesen einschalten' : 'Stummschalten'}
+          style={{ background: (tts.isSpeaking && !tts.muted) ? 'rgba(255,255,255,0.18)' : 'none', border: 'none', color: '#fff', opacity: tts.muted ? 0.6 : 0.9, cursor: 'pointer', padding: '5px 7px', borderRadius: 7, display: 'inline-flex' }}>
+          {tts.muted ? <VolumeX size={16} strokeWidth={1.9} /> : <Volume2 size={16} strokeWidth={1.9} />}
+        </button>
         <button type="button"
           onClick={() => { leadly.newConversation ? leadly.newConversation() : leadly.clearHistory?.(); }}
           title="Neuer Chat"
