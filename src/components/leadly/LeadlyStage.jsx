@@ -28,6 +28,10 @@ const LEADLY_GRADIENT = 'linear-gradient(135deg, #1E3A8A, #3B82F6)';
 const IDLE_VIDEO = '/leadly-idle.mp4';
 const IDLE_POSTER = '/leadly-poster.jpg';
 
+// Avatar-Bühne (das große Gesicht-/Gradient-Feld) vorerst geparkt, bis
+// Asset + Phase-2-DSGVO geklärt sind. Auf true setzen reaktiviert sie.
+const SHOW_STAGE_AVATAR = false;
+
 // ─── Kern-Essenz aus dem Briefing ableiten (client-seitig, fallback-first) ──
 // Markdown wird entschärft, dann die ersten 1–2 Sätze als gesprochene Essenz.
 function deriveEssence(briefingText) {
@@ -95,7 +99,8 @@ export default function LeadlyStage({
       display: 'flex', gap: space[6], alignItems: 'stretch',
       flexWrap: 'wrap', marginBottom: space[8],
     }}>
-      {/* ── Bühne links: Leadlys Gesicht ── */}
+      {/* ── Bühne links: Leadlys Gesicht (geparkt via SHOW_STAGE_AVATAR) ── */}
+      {SHOW_STAGE_AVATAR && (
       <div style={{
         flex: '0 0 240px', minWidth: 200, maxWidth: 280,
         borderRadius: radii.lg, overflow: 'hidden',
@@ -139,6 +144,7 @@ export default function LeadlyStage({
           <span style={{ fontSize: 12.5, fontWeight: 700 }}>Leadly</span>
         </div>
       </div>
+      )}
 
       {/* ── Gespräch rechts ── */}
       <div style={{ flex: '1 1 360px', minWidth: 300, display: 'flex', flexDirection: 'column' }}>
