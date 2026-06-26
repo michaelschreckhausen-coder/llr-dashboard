@@ -37,7 +37,8 @@ function toPngBlob(file, maxDim = 512) {
   });
 }
 
-export default function LeadlyLogoSlot() {
+export default function LeadlyLogoSlot({ size = 'default' }) {
+  const sm = size === 'sm';
   const { activeTeamId } = useTeam() || {};
   const [logoUrl, setLogoUrl] = useState(null);
   const [uploading, setUploading] = useState(false);
@@ -73,10 +74,44 @@ export default function LeadlyLogoSlot() {
 
   const pick = () => fileRef.current?.click();
 
+  const input = (
+    <input ref={fileRef} type="file" accept="image/png,image/jpeg,image/webp" style={{ display: 'none' }}
+      onChange={(e) => { handleFile(e.target.files?.[0]); e.target.value = ''; }} />
+  );
+
+  // ── Kompakte Variante: kleines, quadratisches Logo (z.B. im Hero-Karten-Header) ──
+  if (sm) {
+    const S = 44;
+    return (
+      <>
+        {input}
+        {logoUrl ? (
+          <button type="button" onClick={pick} title="Logo ändern"
+            style={{ border: 'none', background: 'transparent', cursor: 'pointer', padding: 0, flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+            <img src={logoUrl} alt="Firmenlogo" style={{ width: S, height: S, objectFit: 'contain', display: 'block' }} />
+          </button>
+        ) : (
+          <button type="button" onClick={pick} disabled={uploading || !activeTeamId}
+            title={activeTeamId ? 'Firmenlogo hochladen' : 'Kein aktives Team'}
+            style={{
+              width: S, height: S, borderRadius: radii.md, flexShrink: 0,
+              border: `1.5px dashed ${colors.border}`, background: colors.white,
+              color: colors.inkMuted, cursor: activeTeamId ? 'pointer' : 'not-allowed',
+              display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 0,
+            }}>
+            {uploading
+              ? <Loader2 size={16} style={{ animation: 'leadly-spin 1s linear infinite' }} />
+              : <ImagePlus size={16} />}
+          </button>
+        )}
+        <style>{`@keyframes leadly-spin { to { transform: rotate(360deg); } }`}</style>
+      </>
+    );
+  }
+
   return (
     <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 6 }}>
-      <input ref={fileRef} type="file" accept="image/png,image/jpeg,image/webp" style={{ display: 'none' }}
-        onChange={(e) => { handleFile(e.target.files?.[0]); e.target.value = ''; }} />
+      {input}
 
       {logoUrl ? (
         <button type="button" onClick={pick} title="Logo ändern"

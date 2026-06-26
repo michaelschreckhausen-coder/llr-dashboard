@@ -90,133 +90,126 @@ export default function LeadlyStage({
 
   const now = new Date();
   const { leads = 0, activeDeals = 0, overdue = 0, today = 0 } = stats;
+  const dateLabel = now.toLocaleDateString('de-DE', { weekday: 'short', day: 'numeric', month: 'long' });
 
   return (
     <div style={{
-      display: 'flex', gap: space[6], alignItems: 'stretch',
-      flexWrap: 'wrap', marginBottom: space[8],
+      background: colors.white,
+      border: `1px solid ${colors.border}`,
+      borderRadius: radii.xl || 18,
+      boxShadow: '0 1px 3px rgba(15,23,42,.05)',
+      padding: '20px 22px',
+      marginBottom: space[8],
     }}>
-      {/* ── Firmen-Logo-Slot (ersetzt den früheren Avatar) ── */}
-      <div style={{ flex: '0 0 auto', minWidth: 132, maxWidth: 170, alignSelf: 'center' }}>
-        <LeadlyLogoSlot />
+      {/* ── Kopf: Logo + Begrüßung + Datum ── */}
+      <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: space[4] }}>
+        <LeadlyLogoSlot size="sm" />
+        <div style={{ minWidth: 0 }}>
+          <div style={{ fontSize: 19, fontWeight: 700, letterSpacing: '-0.02em', color: colors.ink, lineHeight: 1.2 }}>
+            Hallo {firstName || 'dort'} 👋
+          </div>
+          <div style={{ fontSize: 12.5, color: colors.inkMuted, marginTop: 1 }}>{dateLabel}</div>
+        </div>
       </div>
 
-      {/* ── Gespräch rechts ── */}
-      <div style={{ flex: '1 1 360px', minWidth: 300, display: 'flex', flexDirection: 'column' }}>
-        <div style={{ fontSize: 13, color: colors.inkMuted, fontWeight: 500, marginBottom: space[1] }}>
-          {now.toLocaleDateString('de-DE', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })}
-        </div>
-        <div style={{
-          fontSize: 'clamp(24px, 3vw, 32px)', fontWeight: 600,
-          letterSpacing: '-0.03em', lineHeight: 1.1, color: colors.ink,
-          marginBottom: space[3],
-        }}>
-          Hallo {firstName || 'dort'} 👋
-        </div>
+      {/* ── Tages-Essenz (Fokus) ── */}
+      <div style={{ fontSize: 18, lineHeight: 1.5, color: colors.ink, fontWeight: 500, maxWidth: '58ch' }}>
+        {isBriefingLoading && !essence
+          ? <span style={{ color: colors.inkMuted }}>Leadly schaut sich deinen Tag an …</span>
+          : (essence || 'Heute liegt nichts Dringendes an — frag mich, womit ich helfen kann.')}
+      </div>
 
-        {/* Gesprochene Kern-Essenz */}
-        <div style={{
-          fontSize: 17, lineHeight: 1.5, color: colors.ink,
-          fontWeight: 500, maxWidth: '54ch',
-        }}>
-          {isBriefingLoading && !essence
-            ? <span style={{ color: colors.inkMuted }}>Leadly schaut sich deinen Tag an …</span>
-            : (essence || 'Heute liegt nichts Dringendes an — frag mich, womit ich helfen kann.')}
-        </div>
+      {/* ── Eingabeleiste — sprechen oder tippen (volle Kartenbreite) ── */}
+      <form onSubmit={submit} style={{
+        marginTop: space[4],
+        display: 'flex', gap: 6, alignItems: 'center',
+        border: `1px solid ${colors.border}`, borderRadius: 12,
+        background: 'var(--page-bg, #F8FAFC)', padding: '5px 5px 5px 14px',
+      }}>
+        <textarea
+          value={text}
+          onChange={(e) => setText(e.target.value)}
+          onKeyDown={handleKeyDown}
+          placeholder={voice.isRecording
+            ? ((voice.mode === 'web' || voice.mode === 'azure') ? (voice.liveTranscript || 'Sprich jetzt…') : 'Nehme auf…')
+            : 'Sprich mit Leadly oder tippe…'}
+          rows={1}
+          disabled={voice.isRecording}
+          style={{
+            flex: 1, border: 'none', padding: '6px 2px', fontSize: 14.5,
+            fontFamily: 'inherit', resize: 'none', outline: 'none',
+            minHeight: 22, maxHeight: 120, background: 'transparent', color: colors.ink,
+          }}
+        />
+        <button type="button"
+          onClick={voice.isRecording ? voice.stop : voice.start}
+          title={voice.isRecording ? 'Aufnahme stoppen' : 'Sprach-Eingabe'}
+          style={{
+            width: 34, height: 34, borderRadius: 9, border: 'none', flexShrink: 0,
+            background: voice.isRecording ? '#EF4444' : colors.white,
+            color: voice.isRecording ? '#fff' : '#475569',
+            boxShadow: voice.isRecording ? 'none' : '0 1px 2px rgba(15,23,42,.06)',
+            cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center',
+            animation: voice.isRecording ? 'leadly-pulse 1.2s infinite' : 'none',
+          }}>
+          {voice.isRecording ? <Square size={14} /> : <Mic size={16} />}
+        </button>
+        <button type="submit" disabled={!text.trim()}
+          style={{
+            width: 34, height: 34, borderRadius: 9, border: 'none', flexShrink: 0,
+            background: text.trim() ? LEADLY_GRADIENT : '#CBD5E1', color: '#fff',
+            fontSize: 15, fontWeight: 700, cursor: text.trim() ? 'pointer' : 'not-allowed',
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+          }}>
+          ↑
+        </button>
+      </form>
+      {voice.error && (
+        <div style={{ marginTop: 6, fontSize: 12, color: colors.danger }}>{voice.error}</div>
+      )}
 
-        {/* Transkript-Toggle (voller Briefing-Text) */}
-        {briefingText && (
-          <div style={{ marginTop: space[3] }}>
-            <button type="button" onClick={() => setShowTranscript(v => !v)}
-              style={{
-                display: 'inline-flex', alignItems: 'center', gap: 4,
-                background: 'transparent', border: 'none', padding: 0,
-                color: colors.primary, fontSize: 13, fontWeight: 600, cursor: 'pointer',
-              }}>
-              {showTranscript ? <ChevronUp size={15} /> : <ChevronDown size={15} />}
-              {showTranscript ? 'Transkript ausblenden' : 'Transkript einblenden'}
-            </button>
-            {showTranscript && (
-              <div style={{
-                marginTop: space[2], background: colors.white,
-                border: `1px solid ${colors.border}`, borderRadius: radii.lg,
-                padding: '14px 18px', fontSize: 14.5, lineHeight: 1.6, color: colors.ink,
-              }}>
-                {renderMarkdown(briefingText)}
-              </div>
-            )}
-          </div>
-        )}
-
-        {/* Eingabeleiste — sprechen oder tippen (kompakt) */}
-        <form onSubmit={submit} style={{
-          marginTop: space[3],
-          display: 'flex', gap: 6, alignItems: 'center',
-          border: `1px solid ${colors.border}`, borderRadius: 11,
-          background: colors.white, padding: '4px 4px 4px 12px',
-          boxShadow: '0 1px 2px rgba(15,23,42,.04)',
-          maxWidth: 480,
-        }}>
-          <textarea
-            value={text}
-            onChange={(e) => setText(e.target.value)}
-            onKeyDown={handleKeyDown}
-            placeholder={voice.isRecording
-              ? ((voice.mode === 'web' || voice.mode === 'azure') ? (voice.liveTranscript || 'Sprich jetzt…') : 'Nehme auf…')
-              : 'Sprich mit Leadly oder tippe…'}
-            rows={1}
-            disabled={voice.isRecording}
-            style={{
-              flex: 1, border: 'none', padding: '6px 2px', fontSize: 14,
-              fontFamily: 'inherit', resize: 'none', outline: 'none',
-              minHeight: 20, maxHeight: 110, background: 'transparent', color: colors.ink,
-            }}
-          />
-          <button type="button"
-            onClick={voice.isRecording ? voice.stop : voice.start}
-            title={voice.isRecording ? 'Aufnahme stoppen' : 'Sprach-Eingabe'}
-            style={{
-              width: 32, height: 32, borderRadius: 8, border: 'none', flexShrink: 0,
-              background: voice.isRecording ? '#EF4444' : '#F1F5F9',
-              color: voice.isRecording ? '#fff' : '#475569',
-              cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center',
-              animation: voice.isRecording ? 'leadly-pulse 1.2s infinite' : 'none',
-            }}>
-            {voice.isRecording ? <Square size={14} /> : <Mic size={16} />}
-          </button>
-          <button type="submit" disabled={!text.trim()}
-            style={{
-              width: 32, height: 32, borderRadius: 8, border: 'none', flexShrink: 0,
-              background: text.trim() ? LEADLY_GRADIENT : '#CBD5E1', color: '#fff',
-              fontSize: 15, fontWeight: 700, cursor: text.trim() ? 'pointer' : 'not-allowed',
-              display: 'flex', alignItems: 'center', justifyContent: 'center',
-            }}>
-            ↑
-          </button>
-        </form>
-        {voice.error && (
-          <div style={{ marginTop: 6, fontSize: 12, color: colors.danger }}>{voice.error}</div>
-        )}
-
-        {/* Schlanke KPI-Zeile */}
-        <div style={{ fontSize: 13, color: colors.inkMuted, marginTop: space[4] }}>
+      {/* ── Fuß: KPI-Zeile links · Transkript-Link rechts ── */}
+      <div style={{
+        display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+        flexWrap: 'wrap', gap: 8, marginTop: space[4],
+        fontSize: 13, color: colors.inkMuted,
+      }}>
+        <div>
           {leads} {leads === 1 ? 'Kontakt' : 'Kontakte'}
-          {' · '}{activeDeals} {activeDeals === 1 ? 'Deal aktiv' : 'Deals aktiv'}
+          {' · '}{activeDeals} {activeDeals === 1 ? 'Deal' : 'Deals'}
           {' · '}{overdue} überfällig
-          {' · '}{today} heute fällig
-          {' · '}
+          {' · '}{today} heute
+          {'  '}
           <button type="button" onClick={onOpenTasks}
-            style={{ background: 'transparent', border: 'none', color: colors.primary, cursor: 'pointer', fontSize: 13, fontWeight: 500, padding: 0, textDecoration: 'underline', textUnderlineOffset: 2 }}>
+            style={{ background: 'transparent', border: 'none', color: colors.primary, cursor: 'pointer', fontSize: 13, fontWeight: 500, padding: 0, marginLeft: 4, textDecoration: 'underline', textUnderlineOffset: 2 }}>
             alle Aufgaben →
           </button>
         </div>
+        {briefingText && (
+          <button type="button" onClick={() => setShowTranscript(v => !v)}
+            style={{
+              display: 'inline-flex', alignItems: 'center', gap: 3,
+              background: 'transparent', border: 'none', padding: 0,
+              color: colors.inkMuted, fontSize: 12.5, fontWeight: 500, cursor: 'pointer',
+            }}>
+            {showTranscript ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
+            {showTranscript ? 'Transkript ausblenden' : 'Transkript'}
+          </button>
+        )}
       </div>
 
+      {/* ── Transkript (voller Briefing-Text), in der Karte aufklappbar ── */}
+      {briefingText && showTranscript && (
+        <div style={{
+          marginTop: space[3], paddingTop: space[3],
+          borderTop: `1px solid ${colors.border}`,
+          fontSize: 14, lineHeight: 1.6, color: colors.ink,
+        }}>
+          {renderMarkdown(briefingText)}
+        </div>
+      )}
+
       <style>{`
-        @keyframes leadly-stage-breathe {
-          0%, 100% { transform: scale(1); opacity: 0.92; }
-          50% { transform: scale(1.05); opacity: 1; }
-        }
         @keyframes leadly-pulse {
           0%, 100% { box-shadow: 0 0 0 0 rgba(239,68,68,0.45); }
           50% { box-shadow: 0 0 0 6px rgba(239,68,68,0); }
