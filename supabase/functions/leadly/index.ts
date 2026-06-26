@@ -36,7 +36,20 @@ const WRITE_TOOLS = new Set<string>([
   'create_lead', 'create_task', 'create_deal',
   'update_lead', 'update_deal', 'update_organization',
   'add_brand_memory', 'report_problem',
+  'complete_task', 'update_task',
+  // revert_action ist NICHT als LLM-Tool definiert (kein Eintrag in TOOLS) — es wird
+  // nur per Frontend-„Rückgängig" über confirmed_action ausgeführt; steht aber in der
+  // Write-Liste, damit der confirmed_action-Pfad es akzeptiert.
+  'revert_action',
 ]);
+// Update-Tools, deren Vorher-Zustand fürs Undo gesichert wird: tool → [tabelle, id-feld]
+const BEFORE_CAPTURE: Record<string, [string, string]> = {
+  update_lead:         ['leads', 'lead_id'],
+  update_deal:         ['deals', 'deal_id'],
+  update_organization: ['organizations', 'organization_id'],
+  complete_task:       ['lead_tasks', 'task_id'],
+  update_task:         ['lead_tasks', 'task_id'],
+};
 
 function summarizeAction(name: string, input: Record<string, unknown>): string {
   const i = input || {};
@@ -45,6 +58,8 @@ function summarizeAction(name: string, input: Record<string, unknown>): string {
     case 'create_lead': return `Kontakt anlegen: ${[s(i.first_name), s(i.last_name)].filter(Boolean).join(' ') || '—'}${i.company ? ` (${s(i.company)})` : ''}`;
     case 'update_lead': return `Kontakt aktualisieren${i.status ? ` → Status ${s(i.status)}` : ''}${i.lead_score != null ? ` · Score ${i.lead_score}` : ''}`;
     case 'create_task': return `Aufgabe anlegen: ${s(i.title) || '—'}${i.due_date ? ` (fällig ${s(i.due_date)})` : ''}`;
+    case 'complete_task': return `Aufgabe als erledigt markieren`;
+    case 'update_task': return `Aufgabe aktualisieren${i.status ? ` → ${s(i.status)}` : ''}${i.due_date ? ` · fällig ${s(i.due_date)}` : ''}${i.priority ? ` · ${s(i.priority)}` : ''}`;
     case 'create_deal': return `Deal anlegen: ${s(i.title) || '—'}${i.value != null ? ` · ${i.value} €` : ''}${i.stage ? ` · ${s(i.stage)}` : ''}`;
     case 'update_deal': return `Deal aktualisieren${i.stage ? ` → ${s(i.stage)}` : ''}${i.value != null ? ` · ${i.value} €` : ''}`;
     case 'update_organization': return `Unternehmen aktualisieren`;
@@ -111,6 +126,33 @@ const TOOLS = [
         description: { type: "string", description: "Beschreibung (optional)" },
       },
       required: ["title"],
+    },
+  },
+  {
+    name: "complete_task",
+    description: "Markiert eine Aufgabe als erledigt (status='done'). Braucht die task_id (z.B. aus search/Listen).",
+    input_schema: {
+      type: "object",
+      properties: {
+        task_id: { type: "string", description: "UUID der Aufgabe" },
+      },
+      required: ["task_id"],
+    },
+  },
+  {
+    name: "update_task",
+    description: "Aktualisiert eine Aufgabe (Fälligkeit, Priorität, Status, Titel, Beschreibung). Braucht die task_id.",
+    input_schema: {
+      type: "object",
+      properties: {
+        task_id:     { type: "string", description: "UUID der Aufgabe" },
+        due_date:    { type: "string", description: "Neue Fälligkeit YYYY-MM-DD" },
+        priority:    { type: "string", enum: ["low", "normal", "high"], description: "Priorität" },
+        status:      { type: "string", enum: ["open", "done"], description: "Status" },
+        title:       { type: "string", description: "Neuer Titel" },
+        description: { type: "string", description: "Neue Beschreibung" },
+      },
+      required: ["task_id"],
     },
   },
   {
@@ -683,6 +725,76 @@ async function executeTool(
           .single();
         if (error) return { ok: false, error: error.message };
         return { ok: true, data };
+      }
+
+      case "complete_task": {
+        if (!input.task_id) return { ok: false, error: 'task_id erforderlich' };
+        const { data, error } = await supabase
+          .from('lead_tasks').update({ status: 'done' }).eq('id', input.task_id)
+          .select('id, title, status').single();
+        if (error) return { ok: false, error: error.message };
+        return { ok: true, data };
+      }
+
+      case "update_task": {
+        if (!input.task_id) return { ok: false, error: 'task_id erforderlich' };
+        // status separat updaten (Top-Fallstrick #1: constrained field nicht bündeln)
+        if (input.status !== undefined) {
+          const { error: se } = await supabase.from('lead_tasks').update({ status: input.status }).eq('id', input.task_id);
+          if (se) return { ok: false, error: se.message };
+        }
+        const patch: Record<string, unknown> = {};
+        if (input.due_date !== undefined)    patch.due_date = input.due_date;
+        if (input.priority !== undefined)    patch.priority = input.priority;
+        if (input.title !== undefined)       patch.title = input.title;
+        if (input.description !== undefined) patch.description = input.description;
+        if (Object.keys(patch).length) {
+          const { error } = await supabase.from('lead_tasks').update(patch).eq('id', input.task_id);
+          if (error) return { ok: false, error: error.message };
+        }
+        const { data } = await supabase.from('lead_tasks')
+          .select('id, title, status, due_date, priority').eq('id', input.task_id).maybeSingle();
+        return { ok: true, data };
+      }
+
+      case "revert_action": {
+        // Undo (B2.3): macht eine zuvor bestätigte create_/update_-Aktion rückgängig.
+        const auditId = input.audit_id;
+        if (!auditId) return { ok: false, error: 'audit_id erforderlich' };
+        const { data: a } = await supabase.from('leadly_action_audit').select('*').eq('id', auditId).maybeSingle();
+        if (!a) return { ok: false, error: 'Audit-Eintrag nicht gefunden' };
+        const tn = a.tool_name as string;
+        const ti = (a.tool_input || {}) as Record<string, unknown>;
+        const res = (a.result || {}) as { data?: { id?: string } };
+        const bef = (a.before || null) as Record<string, unknown> | null;
+        const createMap: Record<string, string> = { create_lead: 'leads', create_task: 'lead_tasks', create_deal: 'deals', add_brand_memory: 'brand_memory' };
+        if (createMap[tn]) {
+          const newId = res?.data?.id;
+          if (!newId) return { ok: false, error: 'Keine ID zum Rückgängigmachen gespeichert' };
+          const { error } = await supabase.from(createMap[tn]).delete().eq('id', newId);
+          if (error) return { ok: false, error: error.message };
+          return { ok: true, data: { reverted: tn, deleted: newId } };
+        }
+        if (BEFORE_CAPTURE[tn]) {
+          if (!bef) return { ok: false, error: 'Kein Vorher-Zustand gespeichert' };
+          const [tbl, idf] = BEFORE_CAPTURE[tn];
+          const idv = ti[idf];
+          if (!idv) return { ok: false, error: 'Keine Ziel-ID' };
+          const patch: Record<string, unknown> = {};
+          for (const k of Object.keys(ti)) { if (k === idf) continue; if (k in bef) patch[k] = bef[k]; }
+          if (tn === 'complete_task' && bef.status !== undefined) patch.status = bef.status;
+          if (Object.keys(patch).length === 0) return { ok: false, error: 'Nichts rückgängig zu machen' };
+          if ('status' in patch) {
+            await supabase.from(tbl).update({ status: patch.status }).eq('id', idv);
+            delete patch.status;
+          }
+          if (Object.keys(patch).length) {
+            const { error } = await supabase.from(tbl).update(patch).eq('id', idv);
+            if (error) return { ok: false, error: error.message };
+          }
+          return { ok: true, data: { reverted: tn, id: idv } };
+        }
+        return { ok: false, error: 'Diese Aktion ist nicht umkehrbar (' + tn + ')' };
       }
 
       case "create_deal": {
@@ -1284,21 +1396,40 @@ ${JSON.stringify(context, null, 2)}`;
         return json({ error: 'Unbekannte oder nicht bestätigungspflichtige Aktion.' }, 400);
       }
       const caInput = (ca.input && typeof ca.input === 'object') ? ca.input as Record<string, unknown> : {};
+
+      // B2.3 — Vorher-Zustand für Undo sichern (nur bei update-/complete-Tools).
+      let beforeState: Record<string, unknown> | null = null;
+      if (BEFORE_CAPTURE[caName]) {
+        const [tbl, idf] = BEFORE_CAPTURE[caName];
+        const idv = caInput[idf];
+        if (idv) {
+          const { data: row } = await supabase.from(tbl).select('*').eq('id', idv).maybeSingle();
+          beforeState = (row as Record<string, unknown>) || null;
+        }
+      }
+
       const result = await executeTool(caName, caInput, supabase, ctx);
-      // Audit (service-role; darf den Flow nie blocken)
+      // Audit (service-role; darf den Flow nie blocken) — Insert mit before-State + id zurück.
+      let auditId: string | null = null;
       try {
-        await adminForCredits.from('leadly_action_audit').insert({
+        const { data: auditRow } = await adminForCredits.from('leadly_action_audit').insert({
           user_id: userId, team_id: teamId, account_id: caller.account_id,
-          tool_name: caName, tool_input: caInput, result,
+          tool_name: caName, tool_input: caInput, result, before: beforeState,
           ok: !!(result as { ok?: boolean }).ok, confirmed: true,
-        });
+        }).select('id').single();
+        auditId = auditRow?.id || null;
       } catch (_e) { /* audit non-blocking */ }
       const ok = !!(result as { ok?: boolean }).ok;
       const okMsg = ok ? 'Erledigt.' : ('Das hat nicht geklappt: ' + ((result as { error?: string }).error || 'unbekannter Fehler') + '.');
+      // Revertierbar, wenn erfolgreich + kein Revert selbst + create/update-Tool.
+      const revertible = ok && caName !== 'revert_action'
+        && (BEFORE_CAPTURE[caName] !== undefined || ['create_lead', 'create_task', 'create_deal', 'add_brand_memory'].includes(caName));
       return json({
         reply: { role: 'assistant', content: okMsg, tool_calls: null },
         tool_results: [{ tool_use_id: 'confirmed-' + caName, name: caName, output: result }],
         executed: true,
+        audit_id: auditId,
+        revertible,
         model: DEFAULT_MODEL,
         finish_reason: 'confirmed',
         iterations: 0,

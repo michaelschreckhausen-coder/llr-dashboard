@@ -35,6 +35,8 @@ export function useLeadly({ autoOpenLatest = true } = {}) {
   const [isSending, setIsSending] = useState(false);
   // Guardrail: vom EF zurückgegebene, bestätigungspflichtige Schreib-Aktionen.
   const [pendingActions, setPendingActions] = useState([]);
+  // B2.3 Undo: letzte umkehrbare, bestätigte Aktion ({ audit_id, label }).
+  const [revertable, setRevertable] = useState(null);
   const [briefing, setBriefing] = useState(null);
   const [briefingReadLocal, setBriefingReadLocal] = useState(false);
   const mountedRef = useRef(true);
@@ -122,6 +124,7 @@ export function useLeadly({ autoOpenLatest = true } = {}) {
     setActiveConversationId(id);
     setMessages([]);
     setPendingActions([]);
+    setRevertable(null);
   }, []);
 
   // Neuer Chat: noch nicht persistiert (wird beim ersten Senden angelegt)
@@ -129,6 +132,7 @@ export function useLeadly({ autoOpenLatest = true } = {}) {
     setActiveConversationId(null);
     setMessages([]);
     setPendingActions([]);
+    setRevertable(null);
   }, []);
 
   const deleteConversation = useCallback(async (id) => {
@@ -175,6 +179,7 @@ export function useLeadly({ autoOpenLatest = true } = {}) {
     if (!uid || (!trimmed && atts.length === 0)) return;
     setIsSending(true);
     setPendingActions([]); // neue Eingabe verwirft offene Vorschläge
+    setRevertable(null);
     const effectiveText = trimmed || 'Bitte sieh dir meinen Anhang an.';
 
     // Chat sicherstellen (lazy anlegen)
@@ -281,6 +286,10 @@ export function useLeadly({ autoOpenLatest = true } = {}) {
       });
       if (error) throw error;
       setPendingActions(prev => prev.filter(a => a.tool_use_id !== action.tool_use_id));
+      // Undo-Affordance: nach erfolgreicher umkehrbarer Aktion merken; ein Revert selbst räumt auf.
+      if (action.name === 'revert_action') setRevertable(null);
+      else if (data?.revertible && data?.audit_id) setRevertable({ audit_id: data.audit_id, label: action.summary || 'Letzte Aktion' });
+      else setRevertable(null);
       if (convId) {
         const savedTools = [];
         for (const tr of (data.tool_results || [])) {
@@ -321,6 +330,12 @@ export function useLeadly({ autoOpenLatest = true } = {}) {
 
   const dismissActions = useCallback(() => setPendingActions([]), []);
 
+  // revertLast: macht die zuletzt bestätigte umkehrbare Aktion rückgängig (B2.3).
+  const revertLast = useCallback(() => {
+    if (!revertable?.audit_id) return;
+    return confirmAction({ name: 'revert_action', input: { audit_id: revertable.audit_id }, summary: 'Rückgängig' });
+  }, [revertable, confirmAction]);
+
   // clearHistory: startet einen neuen Chat (nicht destruktiv — alte Chats bleiben)
   const clearHistory = useCallback(() => { newConversation(); }, [newConversation]);
 
@@ -335,6 +350,7 @@ export function useLeadly({ autoOpenLatest = true } = {}) {
     selectConversation, newConversation, deleteConversation,
     messages, isSending, sendMessage, clearHistory,
     pendingActions, confirmAction, dismissActions,
+    revertable, revertLast,
     briefing, fetchBriefing, markBriefingRead, unreadCount,
-  }), [uid, conversations, activeConversationId, isLoadingConversations, selectConversation, newConversation, deleteConversation, messages, isSending, sendMessage, clearHistory, pendingActions, confirmAction, dismissActions, briefing, fetchBriefing, markBriefingRead, unreadCount]);
+  }), [uid, conversations, activeConversationId, isLoadingConversations, selectConversation, newConversation, deleteConversation, messages, isSending, sendMessage, clearHistory, pendingActions, confirmAction, dismissActions, revertable, revertLast, briefing, fetchBriefing, markBriefingRead, unreadCount]);
 }
