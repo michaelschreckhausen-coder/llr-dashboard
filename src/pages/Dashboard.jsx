@@ -18,7 +18,6 @@ import { supabase } from '../lib/supabase';
 import { colors, radii, shadows, space, motion, typography } from '../theme';
 import { useDashboardData } from '../hooks/useDashboardData';
 import { useLeadly } from '../hooks/useLeadly';
-import LeadlyStage from '../components/leadly/LeadlyStage';
 
 // ─── Helpers ─────────────────────────────────────────────────────────────
 const leadName = (l) => (`${l.first_name || ''} ${l.last_name || ''}`.trim() || l.name || '—');
@@ -241,20 +240,16 @@ export default function Dashboard({ session }) {
             style={{ marginLeft: 'auto', border: 'none', background: 'transparent', color: '#92400E', cursor: 'pointer', fontSize: 15, fontWeight: 700 }} aria-label="Ausblenden">✕</button>
         </div>
       )}
-      {/* Leadly-Bühne — Gesicht + gesprochene Essenz + Eingabe (Inkrement 1A) */}
-      <div style={{ marginBottom: space[12] }}>
-        <LeadlyStage
-          firstName={firstName}
-          briefingText={briefingText}
-          isBriefingLoading={!briefingText}
-          stats={{
-            leads: leads.length,
-            activeDeals: activeDeals.length,
-            overdue: totalOverdue,
-            today: todayTasks.length,
-          }}
-          onOpenTasks={() => nav('/aufgaben')}
-        />
+      {/* Begrüßung — schlicht, ohne Karte */}
+      <div style={{ marginBottom: space[6] }}>
+        <div style={{ fontSize: 13, color: colors.inkMuted, fontWeight: 500, marginBottom: space[1] }}>
+          {now.toLocaleDateString('de-DE', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })}
+        </div>
+        <div style={{ fontSize: 'clamp(24px, 3vw, 32px)', fontWeight: 600, letterSpacing: '-0.03em', lineHeight: 1.1, color: colors.ink }}>
+          Hallo {firstName || 'dort'} 👋
+        </div>
+      </div>
+      <div>
 
         {/* Leadly-Vorschläge — übernehmbare Aktionen in den 4 Bereichen */}
         {suggestions.length > 0 && (
