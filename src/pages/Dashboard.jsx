@@ -172,6 +172,46 @@ export default function Dashboard({ session }) {
   const briefingText = leadly.briefing?.briefing_text || '';
   const askLeadly = (text) => window.dispatchEvent(new CustomEvent('leadly:prompt', { detail: { text } }));
 
+  // B2.1 — LLM-Priorisierung/Begründung der Vorschläge über die bestehende generate-EF.
+  // Rein lesend; bei Fehler/Parse-Problem greift der Regel-Fallback → Dashboard nie leer.
+  const sugSig = suggestions.map(s => s.id).join('|');
+  const [aiRank, setAiRank] = useState(null); // null = noch nicht / Fallback; Map id→{prio,grund}
+  useEffect(() => {
+    if (!sugSig) { setAiRank(null); return; }
+    let cancelled = false;
+    const cacheKey = `leadly_sug_rank_${new Date().toISOString().slice(0, 10)}_${sugSig}`;
+    try { const c = sessionStorage.getItem(cacheKey); if (c) { setAiRank(new Map(JSON.parse(c))); return; } } catch { /* ignore */ }
+    const payload = suggestions.map(s => ({ id: s.id, bereich: s.area.label, titel: s.title, info: s.reason }));
+    const prompt =
+      'Du bist Leadly, ein Sales-Assistent. Hier sind Vorschlags-Kandidaten für heute als JSON:\n'
+      + JSON.stringify(payload)
+      + '\n\nPriorisiere die wichtigsten für den Vertrieb heute. Antworte AUSSCHLIESSLICH mit einem JSON-Array '
+      + '(keine Code-Fences): [{"id":"<id aus der Liste>","prio":<1=höchste Priorität, aufsteigend>,'
+      + '"grund":"<knappe Begründung, max 1 kurzer Satz, Deutsch>"}]. Nutze nur IDs aus der Liste.';
+    supabase.functions.invoke('generate', { body: { type: 'leadly_suggestion_rank', prompt, model: 'claude-haiku-4-5' } })
+      .then(({ data, error }) => {
+        if (cancelled || error || !data?.text) return;
+        const m = String(data.text).match(/\[[\s\S]*\]/);
+        if (!m) return;
+        let arr; try { arr = JSON.parse(m[0]); } catch { return; }
+        if (!Array.isArray(arr) || !arr.length) return;
+        const entries = arr.filter(a => a && a.id != null).map(a => [String(a.id), { prio: Number(a.prio) || 99, grund: typeof a.grund === 'string' ? a.grund : null }]);
+        if (!entries.length) return;
+        try { sessionStorage.setItem(cacheKey, JSON.stringify(entries)); } catch { /* ignore */ }
+        if (!cancelled) setAiRank(new Map(entries));
+      })
+      .catch(() => { /* Fallback bleibt aktiv */ });
+    return () => { cancelled = true; };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [sugSig]);
+
+  // Angezeigte Vorschläge: LLM-Reihenfolge/Begründung wenn vorhanden, sonst Regel-Logik.
+  const displayedSuggestions = aiRank
+    ? suggestions
+        .map(s => ({ ...s, reason: aiRank.get(String(s.id))?.grund || s.reason, _prio: aiRank.get(String(s.id))?.prio ?? 99 }))
+        .sort((a, b) => a._prio - b._prio)
+    : suggestions;
+
   return (
     <div>
       {affBanner && (
@@ -234,7 +274,7 @@ export default function Dashboard({ session }) {
               Leadly schlägt vor
             </div>
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: space[3] }}>
-              {suggestions.map((s) => (
+              {displayedSuggestions.map((s) => (
                 <div key={s.id} style={{ background: colors.white, border: `1px solid ${colors.border}`, borderRadius: radii.lg, padding: '14px 16px', display: 'flex', flexDirection: 'column', gap: 8 }}>
                   <span style={{ alignSelf: 'flex-start', fontSize: 10, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.04em', color: s.area.color, background: s.area.bg, padding: '2px 8px', borderRadius: radii.pill }}>{s.area.label}</span>
                   <div style={{ fontSize: 14, fontWeight: 600, color: colors.ink, lineHeight: 1.35 }}>{s.title}</div>
