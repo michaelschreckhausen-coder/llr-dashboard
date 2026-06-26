@@ -533,7 +533,7 @@ export default function LeadlyPanel({ leadly, onClose, embedded = false, hideHea
             onContextMenu={(e) => { e.preventDefault(); setVoiceMenuOpen(v => !v); }}
             title={voice.isRecording
               ? 'Aufnahme stoppen'
-              : `Sprach-Eingabe (${voice.mode === 'web' ? 'Schnell' : 'Präzise'}) — Rechtsklick für Modus`}
+              : `Sprach-Eingabe (${voice.mode === 'azure' ? 'Azure · EU' : voice.mode === 'web' ? 'Schnell' : 'Whisper'}) — Rechtsklick für Modus`}
             disabled={leadly.isSending}
             style={{
               width: 38, height: 38, borderRadius: 10, border: 'none',
@@ -554,6 +554,17 @@ export default function LeadlyPanel({ leadly, onClose, embedded = false, hideHea
               boxShadow: '0 8px 24px rgba(15,23,42,0.14)',
               padding: 4, minWidth: 200, zIndex: 10,
             }}>
+              <button type="button"
+                onClick={() => { voice.setMode('azure'); setVoiceMenuOpen(false); }}
+                style={{
+                  width: '100%', textAlign: 'left',
+                  padding: '8px 10px', borderRadius: 7, border: 'none',
+                  background: voice.mode === 'azure' ? '#EFF6FF' : 'transparent',
+                  cursor: 'pointer', fontSize: 12.5,
+                }}>
+                <div style={{ fontWeight: 600 }}>Präzise · Azure (EU)</div>
+                <div style={{ fontSize: 11, color: '#6B7280' }}>Bestes Deutsch, EU-Datenresidenz</div>
+              </button>
               <button type="button"
                 onClick={() => { voice.setMode('web'); setVoiceMenuOpen(false); }}
                 disabled={!voice.supportsWeb}

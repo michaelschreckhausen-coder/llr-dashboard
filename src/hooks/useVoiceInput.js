@@ -30,9 +30,11 @@ function getSpeechRecognition() {
 }
 
 export function useVoiceInput({ language = 'de-DE', onFinalTranscript } = {}) {
+  // Default = Azure (EU, bestes Deutsch). Neuer Storage-Key migriert User vom
+  // alten Web-Speech-Default weg; eine bewusste frühere Wahl bleibt erhalten.
   const [mode, setMode] = useState(() => {
-    try { return window.localStorage?.getItem('leadly_voice_mode') || 'web'; }
-    catch { return 'web'; }
+    try { return window.localStorage?.getItem('leadly_voice_mode_v2') || 'azure'; }
+    catch { return 'azure'; }
   });
   const [isRecording, setIsRecording] = useState(false);
   const [liveTranscript, setLiveTranscript] = useState('');
@@ -48,10 +50,12 @@ export function useVoiceInput({ language = 'de-DE', onFinalTranscript } = {}) {
   const streamRef = useRef(null);
   const cancelledRef = useRef(false);
   const startWhisperRef = useRef(null);
+  const azureRecognizerRef = useRef(null);
+  const azureFinalRef = useRef(null);
 
   // Mode persistieren
   useEffect(() => {
-    try { window.localStorage?.setItem('leadly_voice_mode', mode); } catch {}
+    try { window.localStorage?.setItem('leadly_voice_mode_v2', mode); } catch {}
   }, [mode]);
 
   // Cleanup bei Unmount
@@ -59,6 +63,7 @@ export function useVoiceInput({ language = 'de-DE', onFinalTranscript } = {}) {
     try { recognitionRef.current?.abort?.(); } catch {}
     try { mediaRecorderRef.current?.stop?.(); } catch {}
     try { streamRef.current?.getTracks().forEach(t => t.stop()); } catch {}
+    try { azureRecognizerRef.current?.close?.(); } catch {}
   }, []);
 
   // ─── Web Speech ──────────────────────────────────────────────────────
@@ -211,16 +216,87 @@ export function useVoiceInput({ language = 'de-DE', onFinalTranscript } = {}) {
     try { mediaRecorderRef.current?.stop?.(); } catch {}
   }, []);
 
+  // ─── Azure Speech (EU, germanywestcentral) ───────────────────────────
+  // Bestes Deutsch + EU-Datenresidenz. Token von der speech-token-Edge-Function
+  // (Key bleibt serverseitig), SDK wird lazy importiert (schwer). Bei Token-/
+  // Setup-Fehler → Fallback auf Whisper, damit Voice nie ganz ausfällt.
+  const startAzure = useCallback(async () => {
+    setError(null); setLiveTranscript(''); cancelledRef.current = false;
+    let SDK, token, region;
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      const accessToken = session?.access_token;
+      if (!accessToken) throw new Error('not-logged-in');
+      const url = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/speech-token`;
+      const res = await fetch(url, { method: 'POST', headers: { Authorization: `Bearer ${accessToken}` } });
+      if (!res.ok) throw new Error('token-' + res.status);
+      const j = await res.json();
+      token = j.token; region = j.region;
+      SDK = await import('microsoft-cognitiveservices-speech-sdk');
+    } catch {
+      // Token/Setup nicht verfügbar → auf Whisper ausweichen
+      setMode('whisper');
+      if (startWhisperRef.current) startWhisperRef.current();
+      return;
+    }
+    try {
+      const speechConfig = SDK.SpeechConfig.fromAuthorizationToken(token, region);
+      speechConfig.speechRecognitionLanguage = language;
+      const audioConfig = SDK.AudioConfig.fromDefaultMicrophoneInput();
+      const recognizer = new SDK.SpeechRecognizer(speechConfig, audioConfig);
+      azureRecognizerRef.current = recognizer;
+      let finalText = '';
+      azureFinalRef.current = () => finalText;
+      recognizer.recognizing = (_s, e) => {
+        const interim = e?.result?.text || '';
+        setLiveTranscript((finalText + ' ' + interim).trim());
+      };
+      recognizer.recognized = (_s, e) => {
+        if (e?.result?.reason === SDK.ResultReason.RecognizedSpeech && e.result.text) {
+          finalText = (finalText + ' ' + e.result.text).trim();
+          setLiveTranscript(finalText);
+        }
+      };
+      recognizer.canceled = (_s, e) => {
+        if (e?.reason === SDK.CancellationReason.Error) {
+          setError(`Azure-Spracherkennung-Fehler: ${e?.errorDetails || 'unbekannt'}`);
+        }
+      };
+      recognizer.startContinuousRecognitionAsync(
+        () => setIsRecording(true),
+        (err) => { setError(`Azure-Start fehlgeschlagen: ${err}`); setIsRecording(false); },
+      );
+    } catch (e) {
+      setError(`Azure-Setup fehlgeschlagen: ${e?.message || e}`);
+    }
+  }, [language]);
+
+  const stopAzure = useCallback(() => {
+    const rec = azureRecognizerRef.current;
+    if (!rec) { setIsRecording(false); return; }
+    const done = () => {
+      setIsRecording(false);
+      const text = (azureFinalRef.current ? azureFinalRef.current() : '').trim();
+      if (!cancelledRef.current && text) onFinalTranscript?.(text);
+      try { rec.close(); } catch { /* ignore */ }
+      azureRecognizerRef.current = null;
+    };
+    try { rec.stopContinuousRecognitionAsync(done, done); }
+    catch { done(); }
+  }, [onFinalTranscript]);
+
   // ─── Public API ──────────────────────────────────────────────────────
   const start = useCallback(() => {
-    if (mode === 'web') startWeb();
+    if (mode === 'azure') startAzure();
+    else if (mode === 'web') startWeb();
     else startWhisper();
-  }, [mode, startWeb, startWhisper]);
+  }, [mode, startAzure, startWeb, startWhisper]);
 
   const stop = useCallback(() => {
-    if (mode === 'web') stopWeb();
+    if (mode === 'azure') stopAzure();
+    else if (mode === 'web') stopWeb();
     else stopWhisper();
-  }, [mode, stopWeb, stopWhisper]);
+  }, [mode, stopAzure, stopWeb, stopWhisper]);
 
   const cancel = useCallback(() => {
     cancelledRef.current = true;
