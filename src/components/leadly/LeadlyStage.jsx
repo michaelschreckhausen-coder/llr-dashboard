@@ -39,9 +39,15 @@ function deriveEssence(briefingText) {
     .replace(/\s+/g, ' ')
     .trim();
   if (!plain) return '';
-  const sentences = plain.match(/[^.!?]+[.!?]+/g) || [plain];
-  let essence = sentences.slice(0, 2).join(' ').trim();
-  if (essence.length > 240) essence = essence.slice(0, 237).trimEnd() + '…';
+  // Satz-Ende = . ! ? gefolgt von Leerzeichen + Großbuchstabe (oder Text-Ende).
+  // Verhindert Splits an Datums-/Zahlen-Punkten wie "29." oder "z. B.".
+  const parts = plain.split(/(?<=[.!?])\s+(?=[A-ZÄÖÜ])/);
+  let essence = parts.slice(0, 2).join(' ').trim();
+  if (essence.length > 240) {
+    const cut = essence.slice(0, 240);
+    const lastSpace = cut.lastIndexOf(' ');
+    essence = (lastSpace > 180 ? cut.slice(0, lastSpace) : cut).trimEnd() + '…';
+  }
   return essence;
 }
 
