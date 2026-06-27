@@ -132,6 +132,7 @@ async function generateWithOpenAI(
   quality: string,
   apiKey: string,
   referenceImagesB64: { mimeType: string; data: string }[] = [],
+  background: string | null = null,
 ): Promise<{ base64: string; mimeType: string } | { error: string }> {
   const size = OPENAI_SIZE_MAP[aspectRatio] || "1024x1024";
 
@@ -143,6 +144,8 @@ async function generateWithOpenAI(
     fd.append("size", size);
     fd.append("quality", quality);
     fd.append("n", "1");
+    // Echte Transparenz (Freistellen): background=transparent + PNG-Output.
+    if (background) { fd.append("background", background); fd.append("output_format", "png"); }
     // input_fidelity: 'high' damit OpenAI Identity/Style stärker preserved.
     // ABER: gpt-image-1-mini unterstützt input_fidelity nicht (nur gpt-image-1 Standard/Premium).
     if (model !== "gpt-image-1-mini") {
@@ -194,7 +197,8 @@ async function generateWithGoogle(
   model: string,
   apiKey: string,
   referenceImagesB64: { mimeType: string; data: string }[] = [],
-): Promise<{ base64: string; mimeType: string } | { error: string }> {
+  maxAttempts = 3,
+): Promise<{ base64: string; mimeType: string } | { error: string; overloaded?: boolean }> {
   const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`;
   // Bei Reference-Images: explizite Instruktion VOR den Bildern, damit das Modell
   // versteht dass die Bilder als Identity/Style-Anker zu verwenden sind.
@@ -217,27 +221,42 @@ async function generateWithGoogle(
   };
 
   // Retry bei 503 (Modell überlastet) / 429 (Rate-Limit) — Google-Preview-Modelle
-  // (z.B. Nano Banana Pro) sind zeitweise überlastet ("high demand").
+  // (v.a. Nano Banana Pro) liefern zeitweise transiente 503 ("high demand"), sind
+  // aber Sekunden später oft wieder verfügbar. Deshalb ein paar Mal mit kurzem
+  // Backoff wiederholen, bevor (→ overloaded-Flag) der Auto-Fallback auf NB2 greift.
+  // WICHTIG: Gesamtbudget bleibt klein (Edge-Worker hat eine Wall-Clock-Grenze ~60s) —
+  // primärer Aufruf maxAttempts=3, der NB2-Fallback ruft mit maxAttempts=1 (einmalig, schnell).
+  const MAX_ATTEMPTS = Math.max(1, maxAttempts);
+  const BACKOFF_MS = [2000, 2500, 3000, 3000]; // zwischen den Versuchen
   let res: Response | null = null;
   let lastErrText = "";
-  for (let attempt = 0; attempt < 3; attempt++) {
-    res = await fetch(apiUrl, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(reqBody),
-    });
+  for (let attempt = 0; attempt < MAX_ATTEMPTS; attempt++) {
+    try {
+      res = await fetch(apiUrl, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(reqBody),
+      });
+    } catch (netErr) {
+      // Netzwerk-/Verbindungsfehler ebenfalls als transient behandeln
+      lastErrText = String((netErr as Error)?.message || netErr);
+      if (attempt < MAX_ATTEMPTS - 1) { await new Promise((r) => setTimeout(r, BACKOFF_MS[attempt] || 7000)); continue; }
+      return { error: "Das Bildmodell ist gerade nicht erreichbar. Bitte erneut versuchen.", overloaded: true };
+    }
     if (res.ok) break;
     lastErrText = await res.text().catch(() => "");
-    if (res.status === 429 && attempt < 2) {  // nur bei Rate-Limit erneut; 503 (überlastet) sofort melden
-      await new Promise((r) => setTimeout(r, 1500 * (attempt + 1)));
+    // 503 (überlastet) UND 429 (Rate-Limit) sind transient → mit Backoff erneut
+    if ((res.status === 503 || res.status === 429) && attempt < MAX_ATTEMPTS - 1) {
+      await new Promise((r) => setTimeout(r, BACKOFF_MS[attempt] || 7000));
       continue;
     }
     const friendly = res.status === 503
-      ? "Das Bildmodell ist bei Google gerade überlastet (HTTP 503 — high demand). Bitte in 1–2 Minuten erneut versuchen oder ein anderes Modell wählen (z.B. GPT Image oder Nano Banana)."
+      ? "Das Bildmodell ist bei Google anhaltend überlastet (HTTP 503 — high demand). Bitte in 1–2 Minuten erneut versuchen oder ein anderes Modell wählen (z.B. GPT Image oder Nano Banana)."
       : res.status === 429
       ? "Rate-Limit beim Bildmodell erreicht (HTTP 429). Bitte kurz warten und erneut versuchen."
       : `Gemini HTTP ${res.status}: ${lastErrText.slice(0, 300)}`;
-    return res.status === 503 ? { error: friendly, overloaded: true } : { error: friendly };
+    // 503/429 nach allen Versuchen → overloaded (löst NB2-Auto-Fallback aus)
+    return (res.status === 503 || res.status === 429) ? { error: friendly, overloaded: true } : { error: friendly };
   }
   if (!res || !res.ok) {
     return { error: "Das Bildmodell ist gerade nicht verfügbar. Bitte erneut versuchen oder ein anderes Modell wählen." };
@@ -359,6 +378,15 @@ Deno.serve(async (req) => {
     referenceImagesB64.push({ mimeType: mime, data: b64 });
   }
 
+  // Inline-Referenzbilder (base64, ohne Storage-Umweg) — z.B. ein Bild-Crop fürs
+  // lokale KI-Inpainting im Designer. Werden ans Modell als Referenz angehängt.
+  const inlineRefs: any[] = Array.isArray(body?.referenceImagesInline) ? body.referenceImagesInline : [];
+  for (const r of inlineRefs) {
+    if (r && typeof r.data === "string" && r.data.length) {
+      referenceImagesB64.push({ mimeType: (r.mimeType || "image/png"), data: r.data });
+    }
+  }
+
   const resolvedPrompt = buildResolvedPrompt(prompt, brandVoice, aspectRatio, companyVoices);
 
   // Provider-spezifische Generierung — pro Variante einzeln aufrufen
@@ -398,13 +426,15 @@ Deno.serve(async (req) => {
     if (provider === "openai") {
       const openaiKey = Deno.env.get("OPENAI_API_KEY");
       if (!openaiKey) return json({ error: "OPENAI_API_KEY fehlt im Server-Env" }, 500);
-      imgResult = await generateWithOpenAI(resolvedPrompt, aspectRatio, model, quality, openaiKey, referenceImagesB64);
+      imgResult = await generateWithOpenAI(resolvedPrompt, aspectRatio, model, quality, openaiKey, referenceImagesB64, (body?.background as string) || null);
     } else {
-      // Google ist Default für gemini-* Modelle
-      imgResult = await generateWithGoogle(resolvedPrompt, aspectRatio, model, googleKey, referenceImagesB64);
-      // Auto-Fallback: Nano Banana Pro überlastet (503) → mit Nano Banana 2 erneut
+      // Google ist Default für gemini-* Modelle. Pro: bis zu 3 Versuche (fängt
+      // transiente 503 ab, ohne das Wall-Clock-Budget zu sprengen).
+      imgResult = await generateWithGoogle(resolvedPrompt, aspectRatio, model, googleKey, referenceImagesB64, model === PRO_MODEL ? 3 : 2);
+      // Auto-Fallback: Nano Banana Pro nach allen Versuchen noch überlastet → EIN
+      // schneller NB2-Versuch (maxAttempts=1), damit der Nutzer trotzdem ein Bild bekommt.
       if ("error" in imgResult && imgResult.overloaded && model === PRO_MODEL) {
-        const fb = await generateWithGoogle(resolvedPrompt, aspectRatio, NB2_MODEL, googleKey, referenceImagesB64);
+        const fb = await generateWithGoogle(resolvedPrompt, aspectRatio, NB2_MODEL, googleKey, referenceImagesB64, 1);
         if (!("error" in fb)) {
           imgResult = fb;
           usedModel = NB2_MODEL;

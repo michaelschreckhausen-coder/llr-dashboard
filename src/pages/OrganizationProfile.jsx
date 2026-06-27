@@ -4,8 +4,9 @@
 
 import React, { useState, useEffect } from 'react'
 import { supabase } from '../lib/supabase'
-import { useNavigate, useParams, Link } from 'react-router-dom'
+import { useNavigate, useParams, useLocation, Link } from 'react-router-dom'
 import { useTeam } from '../context/TeamContext'
+import { useEntitlements } from '../hooks/useEntitlements'
 import { EMPLOYEE_RANGES, EMPLOYEE_LABEL, REVENUE_RANGES, REVENUE_LABEL } from '../constants/orgLabels'
 
 const PRIMARY = 'var(--wl-primary, rgb(49,90,231))'
@@ -21,6 +22,17 @@ const STAGE_COLORS = {
 }
 
 function fmtEur(v) { if (!v && v !== 0) return '—'; return '€' + Number(v).toLocaleString('de-DE', { minimumFractionDigits: 0 }) }
+
+// Sponsoring-Sales-Status (CHECK-Constraint auf sponsoring.sponsor_profiles.status)
+const SPONSOR_STATUS_OPTIONS = [
+  { value: 'lead',        label: 'Lead' },
+  { value: 'contacted',   label: 'Kontaktiert' },
+  { value: 'qualified',   label: 'Qualifiziert' },
+  { value: 'offer',       label: 'Angebot' },
+  { value: 'negotiation', label: 'Verhandlung' },
+  { value: 'won',         label: 'Gewonnen' },
+  { value: 'lost',        label: 'Verloren' },
+]
 
 // Logo-Auto-Discovery aus Website-URL.
 // Verwendet Google's s2-Favicon-API (sz=128, gratis, kein API-Key,
@@ -45,14 +57,17 @@ function deriveLogoUrl(websiteRaw) {
 export default function OrganizationProfile({ session }) {
   const { id } = useParams()
   const navigate = useNavigate()
+  const location = useLocation()
   const { activeTeamId } = useTeam()
+  const { hasModule } = useEntitlements()
+  const sponsoringActive = hasModule('sponsoring')
   const uid = session?.user?.id
 
   const [org,        setOrg]        = useState(null)
   const [leads,      setLeads]      = useState([])
   const [deals,      setDeals]      = useState([])
   const [industries, setIndustries] = useState([])
-  const [tab,        setTab]        = useState('overview')
+  const [tab,        setTab]        = useState(location.state?.tab || 'overview')
   const [editing,    setEditing]    = useState(false)
   const [editForm,   setEditForm]   = useState({})
   const [saving,     setSaving]     = useState(false)
@@ -64,8 +79,26 @@ export default function OrganizationProfile({ session }) {
   const [addQuery,   setAddQuery]   = useState('')
   const [addMatches, setAddMatches] = useState([])
   const [adding,     setAdding]     = useState(false)
+  // Sponsoring-Tab (Extension sponsoring.sponsor_profiles 1:1 zu organizations)
+  const [ext,           setExt]           = useState(null)
+  const [extLoading,    setExtLoading]    = useState(false)
+  const [extError,      setExtError]      = useState(null)
+  const [extSaving,     setExtSaving]     = useState(false)
+  const [extScoring,    setExtScoring]    = useState(false)
+  const [extMarking,    setExtMarking]    = useState(false)
+  // Sponsor-Flag tab-übergreifend (read-only, ohne Lazy-Anlage der Extension) für den Header-Toggle
+  const [isSponsor,     setIsSponsor]     = useState(false)
+  const [cycleStages,   setCycleStages]   = useState([])
+  const [extForm,       setExtForm]       = useState({})
 
   useEffect(() => { load() }, [id])
+
+  // Sponsor-Flag für den tab-übergreifenden Header-Toggle laden (nur bei aktivem Addon)
+  useEffect(() => {
+    if (!sponsoringActive) { setIsSponsor(false); return }
+    loadSponsorFlag()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [id, sponsoringActive])
 
   // Team-Members für Owner-Picker (2-step Query — PostgREST-Embed
   // profile:profiles(...) failed silent auf Hetzner, siehe Top-Fallstrick #14)
@@ -134,6 +167,104 @@ export default function OrganizationProfile({ session }) {
     if (!error) {
       setAddOpen(false); setAddQuery(''); setAddMatches([])
       load()
+    }
+  }
+
+  // Sponsoring-Extension lazy laden, sobald der Tab aktiv ist.
+  // get_or_create_sponsor_profile legt die Row bei Bedarf an und liefert sie zurück.
+  async function loadSponsorExt() {
+    setExtLoading(true)
+    setExtError(null)
+    try {
+      const { data, error } = await supabase.rpc('get_or_create_sponsor_profile', { p_organization_id: id })
+      if (error) throw error
+      // RPC kann je nach Definition eine Row oder ein Array liefern — defensiv normalisieren
+      const row = Array.isArray(data) ? data[0] : data
+      setExt(row || null)
+      setExtForm(row || {})
+      setIsSponsor(!!row?.is_sponsor)
+    } catch (e) {
+      setExtError(e.message || String(e))
+      setExt(null)
+    } finally {
+      setExtLoading(false)
+    }
+  }
+
+  // Sales-Cycle-Stages des Teams für den cycle_stage-Select.
+  // activeTeamId (Context, sofort verfügbar) statt org?.team_id — sonst leer beim
+  // Deep-Link direkt auf den Sponsoring-Tab (org noch nicht geladen). Gleiche Quelle wie die Lens.
+  const [seedingCycle, setSeedingCycle] = useState(false)
+  async function loadCycleStages() {
+    if (!activeTeamId) { setCycleStages([]); return }
+    const { data } = await supabase.schema('sponsoring').from('sales_cycle_stages')
+      .select('*').eq('team_id', activeTeamId).order('stage')
+    setCycleStages(data || [])
+  }
+  async function seedCycle() {
+    setSeedingCycle(true)
+    const { error } = await supabase.rpc('seed_sponsoring_cycle')
+    setSeedingCycle(false)
+    if (!error) loadCycleStages()
+  }
+
+  // Sponsor-Flag tab-übergreifend lesen — read-only, legt KEINE Extension an (nur das
+  // Öffnen des Sponsoring-Tabs / explizites Markieren erzeugt die Row).
+  async function loadSponsorFlag() {
+    const { data, error } = await supabase.schema('sponsoring').from('sponsor_profiles')
+      .select('is_sponsor').eq('organization_id', id).maybeSingle()
+    if (error) return // Header-Flag ist unkritisch — leise scheitern
+    setIsSponsor(!!data?.is_sponsor)
+  }
+
+  // Explizite Sponsor-Markierung (taucht erst dann in der Sponsoren-Lens auf).
+  async function toggleSponsor(next) {
+    setExtMarking(true)
+    const { error } = await supabase.rpc('mark_sponsor', { p_organization_id: id, p_is_sponsor: next })
+    setExtMarking(false)
+    if (error) { setExtError(error.message); alert('Markierung fehlgeschlagen: ' + error.message); return }
+    setIsSponsor(next)
+    setExt(e => e ? { ...e, is_sponsor: next } : e)
+    setExtForm(f => ({ ...f, is_sponsor: next }))
+  }
+
+  useEffect(() => {
+    if (tab !== 'sponsoring') return
+    loadSponsorExt()
+    loadCycleStages()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [tab, id])
+
+  // status + cycle_stage sind CHECK-Felder → JE EINZELN speichern, nie im Bulk
+  // mit updated_at bündeln (Top-Fallstrick #1).
+  async function saveSponsorField(field, value) {
+    if (!ext?.id) return
+    setExtSaving(true)
+    try {
+      const { error } = await supabase.schema('sponsoring').from('sponsor_profiles')
+        .update({ [field]: value }).eq('id', ext.id)
+      if (error) throw error
+      setExt(e => e ? { ...e, [field]: value } : e)
+    } catch (e) {
+      alert('Speichern fehlgeschlagen: ' + (e.message || e))
+      // bei Fehler Form auf letzten bekannten Wert zurücksetzen
+      setExtForm(f => ({ ...f, [field]: ext[field] }))
+    } finally {
+      setExtSaving(false)
+    }
+  }
+
+  async function scoreSponsor() {
+    if (!ext?.id) return
+    setExtScoring(true)
+    try {
+      const { error } = await supabase.functions.invoke('score-sponsor', { body: { sponsor_profile_id: ext.id } })
+      if (error) throw error
+      await loadSponsorExt()
+    } catch (e) {
+      alert('KI-Score fehlgeschlagen: ' + (e.message || e))
+    } finally {
+      setExtScoring(false)
     }
   }
 
@@ -235,7 +366,13 @@ export default function OrganizationProfile({ session }) {
             ) : '🏢'}
           </div>
           <div style={{ flex: 1, minWidth: 0 }}>
-            <h1 style={{ fontSize: 24, fontWeight: 800, color: 'var(--text-primary, #111827)', margin: 0, marginBottom: 4 }}>{org.name}</h1>
+            <div style={{ display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: 10, marginBottom: 4 }}>
+              <h1 style={{ fontSize: 24, fontWeight: 800, color: 'var(--text-primary, #111827)', margin: 0 }}>{org.name}</h1>
+              {sponsoringActive && isSponsor && (
+                <span title="Als Sponsor markiert — erscheint in der Sponsoren-Lens"
+                  style={{ display: 'inline-flex', alignItems: 'center', gap: 4, padding: '3px 10px', borderRadius: 99, background: '#ECFDF5', border: '1px solid #A7F3D0', color: '#065F46', fontSize: 12, fontWeight: 700, whiteSpace: 'nowrap' }}>★ Sponsor</span>
+              )}
+            </div>
             <div style={{ display: 'flex', flexWrap: 'wrap', gap: 10, fontSize: 12, color: '#6B7280' }}>
               {industryLabel && <span>{industryLabel}</span>}
               {org.city && <span>{org.city}{org.country ? `, ${org.country}` : ''}</span>}
@@ -245,6 +382,13 @@ export default function OrganizationProfile({ session }) {
             </div>
           </div>
           <div style={{ display: 'flex', gap: 8 }}>
+            {!editing && sponsoringActive && (
+              <button onClick={() => toggleSponsor(!isSponsor)} disabled={extMarking}
+                title={isSponsor ? 'Aus der Sponsoren-Lens entfernen' : 'Als Sponsor markieren — erscheint in der Sponsoren-Lens'}
+                style={{ padding: '7px 14px', borderRadius: 9, border: isSponsor ? '1px solid #E4E7EC' : 'none', background: isSponsor ? 'var(--surface)' : PRIMARY, color: isSponsor ? '#6B7280' : '#fff', fontSize: 12, fontWeight: 700, cursor: extMarking ? 'wait' : 'pointer', opacity: extMarking ? 0.6 : 1, whiteSpace: 'nowrap' }}>
+                {extMarking ? '…' : (isSponsor ? 'Kein Sponsor mehr' : '★ Als Sponsor markieren')}
+              </button>
+            )}
             {!editing && <button onClick={() => setEditing(true)} style={{ padding: '7px 14px', borderRadius: 9, border: '1px solid #E4E7EC', background: 'var(--surface)', fontSize: 12, fontWeight: 700, cursor: 'pointer', color: '#374151' }}>Bearbeiten</button>}
             {editing && (
               <>
@@ -282,6 +426,7 @@ export default function OrganizationProfile({ session }) {
           { id: 'overview', label: 'Übersicht' },
           { id: 'contacts', label: `Kontakte (${leads.length})` },
           { id: 'deals',    label: `Deals (${deals.length})` },
+          ...(hasModule('sponsoring') ? [{ id: 'sponsoring', label: 'Sponsoring' }] : []),
         ].map(t => (
           <button key={t.id} onClick={() => setTab(t.id)}
             style={{ padding: '10px 18px', border: 'none', background: 'none', fontSize: 13, fontWeight: 700, cursor: 'pointer',
@@ -545,6 +690,120 @@ export default function OrganizationProfile({ session }) {
                 </div>
               )
             })}
+          </div>
+        )
+      )}
+
+      {/* Sponsoring (Extension sponsoring.sponsor_profiles 1:1 zu organizations) */}
+      {tab === 'sponsoring' && (
+        extLoading ? (
+          <div style={{ padding: 40, textAlign: 'center', color: '#9CA3AF' }}>Lädt…</div>
+        ) : extError ? (
+          <div style={{ padding: 40, textAlign: 'center' }}>
+            <div style={{ fontSize: 13, color: '#DC2626', marginBottom: 12 }}>Sponsoring-Profil konnte nicht geladen werden: {extError}</div>
+            <button onClick={loadSponsorExt} style={{ padding: '8px 16px', borderRadius: 10, border: '1px solid #E4E7EC', background: 'var(--surface)', fontSize: 13, color: PRIMARY, cursor: 'pointer' }}>Erneut versuchen</button>
+          </div>
+        ) : !ext ? (
+          <div style={{ padding: 40, textAlign: 'center', color: '#9CA3AF' }}>Kein Sponsoring-Profil verfügbar.</div>
+        ) : (
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
+            <Section title="KI-Fit-Score">
+              <div style={{ display: 'flex', alignItems: 'center', gap: 16, marginBottom: 12 }}>
+                <div style={{ fontSize: 36, fontWeight: 800, color: typeof ext.fit_score === 'number' ? PRIMARY : '#D1D5DB', lineHeight: 1 }}>
+                  {typeof ext.fit_score === 'number' ? ext.fit_score : '—'}
+                  <span style={{ fontSize: 14, fontWeight: 600, color: '#9CA3AF' }}> / 100</span>
+                </div>
+                <button onClick={scoreSponsor} disabled={extScoring}
+                  style={{ padding: '8px 16px', borderRadius: 9, border: 'none', background: PRIMARY, color: '#fff', fontSize: 12, fontWeight: 700, cursor: extScoring ? 'wait' : 'pointer', opacity: extScoring ? 0.6 : 1 }}>
+                  {extScoring ? '⏳ Berechne…' : 'KI-Score berechnen'}
+                </button>
+              </div>
+              {ext.fit_score_reasoning && (
+                <div style={{ fontSize: 12, color: '#374151', lineHeight: 1.6 }}>
+                  {Array.isArray(ext.fit_score_reasoning) ? (
+                    <ul style={{ margin: 0, paddingLeft: 18 }}>
+                      {ext.fit_score_reasoning.map((r, i) => (
+                        <li key={i} style={{ marginBottom: 4 }}>{typeof r === 'string' ? r : JSON.stringify(r)}</li>
+                      ))}
+                    </ul>
+                  ) : typeof ext.fit_score_reasoning === 'object' ? (
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                      {Object.entries(ext.fit_score_reasoning).map(([k, v]) => (
+                        <div key={k} style={{ display: 'flex', justifyContent: 'space-between', gap: 12 }}>
+                          <span style={{ color: '#6B7280' }}>{k}</span>
+                          <span style={{ color: 'var(--text-primary, #111827)', textAlign: 'right' }}>{typeof v === 'string' ? v : JSON.stringify(v)}</span>
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <div style={{ whiteSpace: 'pre-wrap' }}>{String(ext.fit_score_reasoning)}</div>
+                  )}
+                </div>
+              )}
+            </Section>
+
+            <Section title="Vertriebs-Status">
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+                <Field label="Status">
+                  {/* CHECK-Feld → einzeln speichern */}
+                  <select value={extForm.status || ''} disabled={extSaving}
+                    onChange={e => { const v = e.target.value || null; setExtForm(f => ({...f, status: v})); saveSponsorField('status', v) }}
+                    style={inputS}>
+                    <option value="">— keine Angabe —</option>
+                    {SPONSOR_STATUS_OPTIONS.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
+                  </select>
+                </Field>
+                <Field label="Sales-Cycle-Phase">
+                  {/* CHECK-Feld → einzeln speichern */}
+                  <select value={extForm.cycle_stage ?? ''} disabled={extSaving}
+                    onChange={e => { const v = e.target.value === '' ? null : Number(e.target.value); setExtForm(f => ({...f, cycle_stage: v})); saveSponsorField('cycle_stage', v) }}
+                    style={inputS}>
+                    <option value="">— keine Angabe —</option>
+                    {cycleStages.map(s => (
+                      <option key={s.stage} value={s.stage}>{s.name || s.label || `Phase ${s.stage}`}</option>
+                    ))}
+                  </select>
+                  {cycleStages.length === 0 && (
+                    <button type="button" onClick={seedCycle} disabled={seedingCycle}
+                      style={{ marginTop: 6, padding: '6px 12px', borderRadius: 8, border: '1px solid var(--border)', background: 'var(--surface)', color: PRIMARY, fontSize: 12, fontWeight: 600, cursor: 'pointer', opacity: seedingCycle ? 0.6 : 1 }}>
+                      {seedingCycle ? 'Lege an…' : '+ Standard-Phasen anlegen'}
+                    </button>
+                  )}
+                </Field>
+              </div>
+            </Section>
+
+            <Section title="Bewertung & Budget">
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+                <Field label="Erwarteter Wert (EUR)">
+                  <input type="number" value={extForm.expected_value ?? ''}
+                    onChange={e => setExtForm(f => ({...f, expected_value: e.target.value}))}
+                    onBlur={() => saveSponsorField('expected_value', extForm.expected_value === '' || extForm.expected_value == null ? null : Number(extForm.expected_value))}
+                    style={inputS}/>
+                </Field>
+                <Field label="Umsatzklasse">
+                  <input value={extForm.revenue_class || ''}
+                    onChange={e => setExtForm(f => ({...f, revenue_class: e.target.value}))}
+                    onBlur={() => saveSponsorField('revenue_class', extForm.revenue_class?.trim() || null)}
+                    style={inputS}/>
+                </Field>
+                <Field label="Marketing-Budget-Klasse">
+                  <input value={extForm.marketing_budget_class || ''}
+                    onChange={e => setExtForm(f => ({...f, marketing_budget_class: e.target.value}))}
+                    onBlur={() => saveSponsorField('marketing_budget_class', extForm.marketing_budget_class?.trim() || null)}
+                    style={inputS}/>
+                </Field>
+              </div>
+            </Section>
+
+            <Section title="Sport-Affinität">
+              <Field label="Sport-Affinität">
+                <input value={extForm.sport_affinity || ''}
+                  onChange={e => setExtForm(f => ({...f, sport_affinity: e.target.value}))}
+                  onBlur={() => saveSponsorField('sport_affinity', extForm.sport_affinity?.trim() || null)}
+                  style={inputS}/>
+              </Field>
+            </Section>
           </div>
         )
       )}

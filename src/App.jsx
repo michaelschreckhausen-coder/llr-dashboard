@@ -41,6 +41,8 @@ import { BrandVoiceProvider } from './context/BrandVoiceContext'
 import SettingsMemory  from './pages/SettingsMemory'
 import SettingsExtension from './pages/SettingsExtension'
 import SettingsAffiliate from './pages/SettingsAffiliate'
+import SettingsInstagram from './pages/SettingsInstagram'
+import Instagram         from './pages/Instagram'
 import Pipeline      from './pages/Pipeline'
 import Vernetzungen  from './pages/Vernetzungen'
 import Reports       from './pages/Reports'
@@ -48,6 +50,7 @@ import ICP           from './pages/ICP'
 import ContentStudio      from './pages/ContentStudio'
 import Visuals            from './pages/Visuals'
 import Media              from './pages/Media'
+import Bibliothek         from './pages/Bibliothek'
 import Redaktionsplan    from './pages/Redaktionsplan'
 import GettingStarted  from './pages/GettingStarted'
 import Documents      from './pages/Documents'
@@ -62,10 +65,8 @@ import Register      from './pages/Register'
 import AdminDocs     from './pages/AdminDocs'
 import AdminTenants  from './pages/AdminTenants'
 import AdminPlans    from './pages/AdminPlans'
-import Assistant     from './pages/Assistant'
 import Changelog     from './pages/Changelog'
 import SponsoringHome from './pages/sponsoring/SponsoringHome'
-import Sponsoren      from './pages/sponsoring/Sponsoren'
 import Rechte         from './pages/sponsoring/Rechte'
 import Pakete         from './pages/sponsoring/Pakete'
 import Angebote       from './pages/sponsoring/Angebote'
@@ -78,6 +79,11 @@ import Sichtbarkeit   from './pages/sponsoring/Sichtbarkeit'
 import SponsorSuccess from './pages/sponsoring/SponsorSuccess'
 import SpAssistent    from './pages/sponsoring/Assistent'        // Alias: 'Assistant' ist belegt
 import LinkedInImport from './pages/sponsoring/LinkedInImport'
+import Ligen          from './pages/sponsoring/Ligen'
+import Kampagnen      from './pages/sponsoring/Kampagnen'
+import Branchenanalyse from './pages/sponsoring/Branchenanalyse'
+import MockupStudio   from './pages/sponsoring/MockupStudio'
+import Ziele          from './pages/sponsoring/Ziele'
 import Layout        from './components/Layout'
 import ModuleGuard   from './components/ModuleGuard'
 import PermissionGuard from './components/PermissionGuard'
@@ -344,6 +350,11 @@ export default function App() {
                 <Media session={session} />
               </ModuleGuard>
             } />
+            <Route path="/bibliothek" element={
+              <ModuleGuard module="content">
+                <Bibliothek session={session} />
+              </ModuleGuard>
+            } />
             <Route path="/settings" element={<Navigate to="/settings/profil" replace />} />
             <Route path="/settings/profil" element={<Settings session={session} />} />
             <Route path="/settings/konto" element={<SettingsKonto session={session} />} />
@@ -351,6 +362,7 @@ export default function App() {
             <Route path="/settings/extension" element={<SettingsExtension session={session} />} />
             <Route path="/settings/notifications" element={<SettingsNotifications session={session} />} />
             <Route path="/settings/affiliate" element={<SettingsAffiliate session={session} />} />
+            <Route path="/settings/instagram" element={<SettingsInstagram session={session} />} />
               <Route path="/billing" element={<BillingRedirect />} />
             <Route path="/profile"  element={<Profile session={session} />} />
             <Route path="/aufgaben" element={<Aufgaben session={session} />} />
@@ -364,7 +376,8 @@ export default function App() {
             {/* <Route path="/admin/whitelabel" element={role === 'admin' ? <WhiteLabel /> : role === null ? <div style={{padding:48,textAlign:'center',color:'#94A3B8'}}>Lädt…</div> : <Navigate to="/" replace />} /> */}
             {/* <Route path="/admin/tenants"    element={role === 'admin' ? <AdminTenants session={session} /> : role === null ? <div style={{padding:48,textAlign:'center',color:'#94A3B8'}}>Lädt…</div> : <Navigate to="/" replace />} /> */}
             {/* <Route path="/admin/plans"      element={role === 'admin' ? <AdminPlans /> : role === null ? <div style={{padding:48,textAlign:'center',color:'#94A3B8'}}>Lädt…</div> : <Navigate to="/" replace />} /> */}
-            <Route path="/assistant" element={<Assistant session={session} />} />
+            {/* Assistent-Seite retired (Phase 1) — Leadly-Bubble ist die Assistenz-Surface. */}
+            <Route path="/assistant" element={<Navigate to="/dashboard" replace />} />
             <Route path="/changelog" element={<Changelog />} />
             {/* Phase 5A: Admin routes disabled — migration to admin.leadesk.de. See docs/architecture/PHASE_5_*.md */}
             {/* <Route path="/admin-docs" element={role === 'admin' ? <AdminDocs /> : role === null ? <div style={{padding:48,textAlign:'center',color:'#94A3B8'}}>Lädt…</div> : <Navigate to="/" replace />} /> */}
@@ -373,9 +386,13 @@ export default function App() {
             <Route path="/leads/imports"  element={<LeadsImports session={session} />} />
             <Route path="/leads/:id"      element={<LeadDetail session={session} />} />
 
+            {/* Instagram — Addon-Modul, gated über account_addons → modules[]='instagram' */}
+            <Route path="/instagram" element={<ModuleGuard module="instagram"><Instagram /></ModuleGuard>} />
+
             {/* Sponsoring OS — Addon-Modul, gated über account_addons → modules[]='sponsoring' */}
             <Route path="/sponsoring"               element={<ModuleGuard module="sponsoring"><SponsoringHome /></ModuleGuard>} />
-            <Route path="/sponsoring/sponsoren"     element={<ModuleGuard module="sponsoring"><Sponsoren /></ModuleGuard>} />
+            {/* „Sponsoren" lebt jetzt als Sicht im CRM-Unternehmen — Redirect für alte Bookmarks */}
+            <Route path="/sponsoring/sponsoren"     element={<Navigate to="/organizations?view=sponsoren" replace />} />
             <Route path="/sponsoring/rechte"        element={<ModuleGuard module="sponsoring"><Rechte /></ModuleGuard>} />
             <Route path="/sponsoring/pakete"        element={<ModuleGuard module="sponsoring"><Pakete /></ModuleGuard>} />
             <Route path="/sponsoring/angebote"      element={<ModuleGuard module="sponsoring"><Angebote /></ModuleGuard>} />
@@ -388,6 +405,11 @@ export default function App() {
             <Route path="/sponsoring/success"       element={<ModuleGuard module="sponsoring"><SponsorSuccess /></ModuleGuard>} />
             <Route path="/sponsoring/assistent"     element={<ModuleGuard module="sponsoring"><SpAssistent /></ModuleGuard>} />
             <Route path="/sponsoring/linkedin-import" element={<ModuleGuard module="sponsoring"><LinkedInImport /></ModuleGuard>} />
+            <Route path="/sponsoring/ligen"          element={<ModuleGuard module="sponsoring"><Ligen /></ModuleGuard>} />
+            <Route path="/sponsoring/kampagnen"      element={<ModuleGuard module="sponsoring"><Kampagnen /></ModuleGuard>} />
+            <Route path="/sponsoring/branchenanalyse" element={<ModuleGuard module="sponsoring"><Branchenanalyse /></ModuleGuard>} />
+            <Route path="/sponsoring/mockup"         element={<ModuleGuard module="sponsoring"><MockupStudio /></ModuleGuard>} />
+            <Route path="/sponsoring/ziele"          element={<ModuleGuard module="sponsoring"><Ziele /></ModuleGuard>} />
 
             <Route path="*" element={<Navigate to="/" replace />} />
           </Routes>

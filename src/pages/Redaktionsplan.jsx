@@ -13,10 +13,12 @@ import { fetchCompanyPromptBlock, fetchCompanyPromptBlocks } from '../lib/compan
 import CompanyMultiSelect from '../components/CompanyMultiSelect'
 import PillSelect from '../components/PillSelect'
 import { buildAudiencePrompt, buildKnowledgePrompt } from '../lib/audiencePrompt'
+import { publishToInstagram } from '../lib/instagram'
 
 // ─── Konstanten ──────────────────────────────────────────────────────────────
 const PLATFORMS = {
-  linkedin: { label: 'LinkedIn', color: '#0A66C2', bg: '#EFF6FF', icon: 'linkedin' },
+  linkedin:  { label: 'LinkedIn',  color: '#0A66C2', bg: '#EFF6FF', icon: 'linkedin' },
+  instagram: { label: 'Instagram', color: '#E1306C', bg: '#FFF1F7', icon: '📸' },
 }
 
 const STATUS = {
@@ -799,7 +801,7 @@ function PostModal({ post, onClose, onSave, onDelete, session, activeTeamId, mem
                 <div style={{ position:'absolute', bottom:30, left:'50%', transform:'translateX(-50%)', pointerEvents:'none', display:'flex', flexDirection:'column', alignItems:'center', gap:8, padding:'12px 16px', background:'rgba(255,255,255,0.95)', borderRadius:14, boxShadow:'0 4px 18px rgba(15,23,42,0.08)', maxWidth:'88%' }}>
                   <button type="button" onClick={() => jumpToTextStudio('auto')}
                     style={{ pointerEvents:'auto', padding:'10px 18px', borderRadius:9, border:'none', background:'var(--wl-primary, rgb(49,90,231))', color:'#fff', fontSize:13, fontWeight:700, cursor:'pointer', display:'inline-flex', alignItems:'center', gap:6, boxShadow:'0 2px 10px rgba(49,90,231,.25)', whiteSpace:'nowrap' }}>
-                    <span style={{display:'inline-flex',alignItems:'center',gap:6}}><Sparkles size={13}/>In Textwerkstatt schreiben →</span>
+                    <span style={{display:'inline-flex',alignItems:'center',gap:6}}><Sparkles size={13}/>In Content-Werkstatt schreiben →</span>
                   </button>
                   <div style={{ fontSize:11, color:'var(--text-muted)', textAlign:'center', lineHeight:1.4 }}>
                     oder direkt hier tippen
@@ -809,7 +811,7 @@ function PostModal({ post, onClose, onSave, onDelete, session, activeTeamId, mem
                 /* Has-Text: nur Text-verbessern-Button oben rechts im Textfeld */
                 <div style={{ position:'absolute', top:8, right:10, display:'flex', gap:6, zIndex:2 }}>
                   <button type="button" onClick={() => jumpToTextStudio('improve')}
-                    title="Text in der Textwerkstatt verbessern"
+                    title="Text in der Content-Werkstatt verbessern"
                     style={{ padding:'5px 10px', borderRadius:7, border:'1.5px solid rgba(49,90,231,0.25)', background:'rgba(49,90,231,0.06)', color:'var(--wl-primary, rgb(49,90,231))', fontSize:11, fontWeight:700, cursor:'pointer', display:'inline-flex', alignItems:'center', gap:4, whiteSpace:'nowrap' }}>
                     <span style={{display:'inline-flex',alignItems:'center',gap:6}}><Wand2 size={13}/>Text verbessern</span>
                   </button>
@@ -954,7 +956,7 @@ function PostModal({ post, onClose, onSave, onDelete, session, activeTeamId, mem
                   style={{ flex:'1 1 auto', padding:'9px 12px', borderRadius:8, border:'1.5px solid var(--border)', background:'#fff', color:'var(--text-primary)', fontSize:12, fontWeight:600, cursor:'pointer', display:'inline-flex', alignItems:'center', justifyContent:'center', gap:5 }}>
                   <span style={{display:'inline-flex',alignItems:'center',gap:6}}><BookOpen size={12}/>Aus Bibliothek</span>
                 </button>
-                <button onClick={() => { if (navigate) navigate('/visuals?post_id=' + post.id); onClose() }}
+                <button onClick={() => { if (navigate) navigate('/content-studio?post_id=' + post.id + '&gen=image'); onClose() }}
                   style={{ flex:'1 1 auto', padding:'9px 12px', borderRadius:8, border:'1.5px solid var(--border)', background:'#fff', color:'var(--text-primary)', fontSize:12, fontWeight:600, cursor:'pointer', display:'inline-flex', alignItems:'center', justifyContent:'center', gap:5 }}>
                   <span style={{display:'inline-flex',alignItems:'center',gap:6}}><Wand2 size={12}/>KI-Bild generieren</span>
                 </button>
@@ -1557,7 +1559,7 @@ function PostModal({ post, onClose, onSave, onDelete, session, activeTeamId, mem
             style={{ padding:'9px 20px', borderRadius:10, border:'none', background:'var(--wl-primary, rgb(49,90,231))', color:'#fff', fontSize:13, fontWeight:700, cursor:'pointer', opacity: saving ? 0.7 : 1, display:'inline-flex', alignItems:'center', gap:5 }}>
             {saving ? <span style={{display:'inline-flex',alignItems:'center',gap:6}}><Loader2 size={12} className='lk-spin'/>Speichere…</span> : isNew ? <span style={{display:'inline-flex',alignItems:'center',gap:6}}><Plus size={12}/>Erstellen</span> : <span style={{display:'inline-flex',alignItems:'center',gap:6}}><Save size={12}/>Speichern</span>}
           </button>
-          {isPersonalPost && form.content && form.status !== 'published' && (() => {
+          {isPersonalPost && form.platform !== 'instagram' && form.content && form.status !== 'published' && (() => {
             const hasSchedule = !!form.scheduled_at
             const future = hasSchedule && new Date(form.scheduled_at) > new Date()
             return (
@@ -1614,6 +1616,65 @@ function PostModal({ post, onClose, onSave, onDelete, session, activeTeamId, mem
                 } finally { setSaving(false) }
               }} disabled={saving} style={{ padding:'9px 16px', borderRadius:10, border:'none', background: saving ? '#94A3B8' : 'var(--wl-primary, rgb(49,90,231))', color:'#fff', fontSize:13, fontWeight:700, cursor: saving ? 'wait' : 'pointer', display:'flex', alignItems:'center', gap:5 }}>
                 {future ? <span style={{display:'inline-flex',alignItems:'center',gap:6}}><Calendar size={13}/>Auto-Publish einplanen</span> : <span style={{display:'inline-flex',alignItems:'center',gap:6}}><Rocket size={13}/>Jetzt auf LinkedIn posten</span>}
+              </button>
+            )
+          })()}
+          {/* Instagram — Sofort-Veröffentlichung ODER Auto-Publish einplanen (Bild-Pflicht) */}
+          {isPersonalPost && form.platform === 'instagram' && form.status !== 'published' && (() => {
+            const future = !!form.scheduled_at && new Date(form.scheduled_at) > new Date()
+            return (
+              <button onClick={async () => {
+                if (!post?.id) { alert('Bitte zuerst speichern.'); return }
+                const cover = postVisuals[0]
+                if (!cover?.signed_url) { alert('Instagram benötigt ein Bild oder Video. Bitte zuerst ein Visual hinzufügen.'); return }
+                // ── Zukünftiger Termin → Auto-Publish einplanen (Cron-Worker) ──
+                if (future) {
+                  if (!window.confirm(`Auto-Publish einplanen für ${new Date(form.scheduled_at).toLocaleString('de-DE')}? Der Worker postet dann automatisch auf Instagram.`)) return
+                  setSaving(true)
+                  try {
+                    await supabase.from('post_publish_queue').delete().eq('post_id', post.id).eq('status', 'pending')
+                    const { error: qErr } = await supabase.from('post_publish_queue').insert({
+                      post_id: post.id, team_id: activeTeamId,
+                      scheduled_for: new Date(form.scheduled_at).toISOString(), status: 'pending',
+                    })
+                    if (qErr) throw qErr
+                    const scheduledIso = new Date(form.scheduled_at).toISOString()
+                    const { data: updated, error: upErr } = await supabase.from('content_posts')
+                      .update({ status: 'scheduled', scheduled_at: scheduledIso }).eq('id', post.id).select().single()
+                    if (upErr) throw upErr
+                    upd('status', 'scheduled')
+                    if (updated && onSave) onSave(updated)
+                  } catch (e) {
+                    alert('Einplanen fehlgeschlagen: ' + (e.message || 'Unbekannt'))
+                  } finally { setSaving(false) }
+                  return
+                }
+                // ── Sofort veröffentlichen ──
+                if (!window.confirm('Jetzt auf Instagram veröffentlichen?\n\nDas Cover-Visual wird über die offizielle Instagram-API gepostet.')) return
+                setSaving(true)
+                try {
+                  const ext = (cover.storage_path?.split('.').pop() || '').toLowerCase()
+                  const mediaType = ['mp4','mov','m4v'].includes(ext) ? 'REELS' : 'IMAGE'
+                  const res = await publishToInstagram({ mediaUrl: cover.signed_url, caption: form.content || '', mediaType })
+                  if (res?.ok) {
+                    const nowIso = new Date().toISOString()
+                    const { data: updated } = await supabase.from('content_posts')
+                      .update({ status: 'published', published_at: nowIso })
+                      .eq('id', post.id).select().maybeSingle()
+                    upd('status', 'published')
+                    upd('published_at', nowIso)
+                    if (updated && onSave) onSave(updated)
+                    alert('Live auf Instagram!')
+                  } else {
+                    alert('Veröffentlichung abgelehnt: ' + (res?.error || 'Unbekannt'))
+                  }
+                } catch (e) {
+                  alert('Veröffentlichen fehlgeschlagen: ' + (e.message || 'Unbekannt'))
+                } finally { setSaving(false) }
+              }} disabled={saving} style={{ padding:'9px 16px', borderRadius:10, border:'none', background: saving ? '#94A3B8' : '#E1306C', color:'#fff', fontSize:13, fontWeight:700, cursor: saving ? 'wait' : 'pointer', display:'flex', alignItems:'center', gap:5 }}>
+                {future
+                  ? <span style={{display:'inline-flex',alignItems:'center',gap:6}}><Calendar size={13}/>Auto-Publish einplanen</span>
+                  : <span style={{display:'inline-flex',alignItems:'center',gap:6}}><Rocket size={13}/>Jetzt auf Instagram posten</span>}
               </button>
             )
           })()}

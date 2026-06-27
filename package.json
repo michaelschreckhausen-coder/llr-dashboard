@@ -12,6 +12,7 @@
     "schema-dump:staging": "PROD=0 bash scripts/dump-hetzner-schema.sh"
   },
   "dependencies": {
+    "@huggingface/transformers": "^3.8.1",
     "@sentry/react": "^10.57.0",
     "@supabase/supabase-js": "^2.39.0",
     "@tiptap/extension-highlight": "3.26.0",
@@ -20,13 +21,19 @@
     "@tiptap/react": "^3.26.0",
     "@tiptap/starter-kit": "^3.26.0",
     "i18next": "^26.0.5",
+    "jspdf": "^4.2.1",
+    "jszip": "^3.10.1",
+    "konva": "^9.3.22",
     "lucide-react": "^1.14.0",
+    "microsoft-cognitiveservices-speech-sdk": "^1.50.0",
     "react": "^18.2.0",
     "react-dom": "^18.2.0",
     "react-i18next": "^17.0.3",
+    "react-konva": "^18.2.16",
     "react-router-dom": "^6.21.0",
     "react-window": "^1.8.11",
-    "recharts": "^2.10.0"
+    "recharts": "^2.10.0",
+    "three": "^0.160.1"
   },
   "devDependencies": {
     "@types/react": "^18.2.0",

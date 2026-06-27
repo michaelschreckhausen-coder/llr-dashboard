@@ -10,6 +10,7 @@ import { useState } from 'react'
 import { Loader2, Upload, Check } from 'lucide-react'
 import { supabase } from '../../lib/supabase'
 import { useTeam } from '../../context/TeamContext'
+import PageHeader from '../../components/PageHeader'
 
 // Brand-Glyph: lucide-react@1.14.0 exportiert kein 'Linkedin' (siehe
 // Icon-Convention-Drift in CLAUDE.md) → lokales Inline-SVG-Fallback.
@@ -56,15 +57,15 @@ export default function LinkedInImport() {
   if (!activeTeamId) return <div style={{ padding: 32, color: 'var(--text-muted)' }}>Kein aktives Team.</div>
 
   return (
-    <div style={{ padding: 32, maxWidth: 900, margin: '0 auto' }}>
-      <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 6 }}>
-        <Linkedin size={26} color={PRIMARY} />
-        <h1 style={{ fontSize: 26, fontWeight: 800, color: 'var(--text-strong)', margin: 0, letterSpacing: '-0.01em' }}>LinkedIn-Import</h1>
-      </div>
-      <p style={{ fontSize: 14, color: 'var(--text-muted)', margin: '0 0 8px', maxWidth: 680, lineHeight: 1.6 }}>
-        Füge Unternehmen aus Sales Navigator oder einer CSV ein — eine Zeile pro Sponsor, Komma- oder Tab-getrennt:
-        <br /><code style={{ fontSize: 12.5 }}>Name, Branche, Region, Website, LinkedIn-URL</code>
-      </p>
+    <div style={{ width: '100%', maxWidth: 1100, margin: '0 auto', padding: '24px 16px 40px' }}>
+      <PageHeader
+        overline="Sponsoring"
+        title="LinkedIn-Import"
+        subtitle={<>
+          Füge Unternehmen aus Sales Navigator oder einer CSV ein — eine Zeile pro Sponsor, Komma- oder Tab-getrennt:
+          <br /><code style={{ fontSize: 12.5 }}>Name, Branche, Region, Website, LinkedIn-URL</code>
+        </>}
+      />
       <p style={{ fontSize: 12.5, color: 'var(--text-muted)', margin: '0 0 20px', maxWidth: 680, lineHeight: 1.6 }}>
         Hinweis: Bei verbundenem Leadesk lässt sich stattdessen die bestehende Chrome-Extension nutzen (Sales-Navigator-Listen direkt übernehmen).
       </p>

@@ -1,0 +1,147 @@
+// src/lib/designAssets.js
+// Asset-Bibliothek für den Grafik-Designer der Content-Werkstatt.
+//
+// Jedes Asset ist ein SVG-Pfad (`d`), gezeichnet in einer 0..100 / 100x100-Viewbox,
+// damit es exakt so rendert wie die bestehenden `sticker`-Objekte (Konva <Path>).
+// Felder: { id, label, keywords, category, d }
+//   - label/keywords sind deutsch (label) bzw. Such-Stichworte fuer die Suche.
+//   - category ist eine der German-Kategorien (siehe ASSET_CATEGORIES).
+//   - d ist gueltige SVG-Pfaddaten; gefuellt gerendert (currentColor / fill).
+//
+// Bewusst gefuellte Silhouetten, weil sticker-Objekte standardmaessig gefuellt werden.
+
+export const ASSET_CATEGORIES = ['Alle', 'Formen', 'Pfeile', 'Symbole', 'Sprechblasen', 'Dekor']
+
+export const DESIGN_ASSETS = [
+  // --- Formen ---------------------------------------------------------------
+  { id: 'triangle', label: 'Dreieck', keywords: 'dreieck triangle form', category: 'Formen',
+    d: 'M50 8 L92 88 L8 88 Z' },
+  { id: 'square', label: 'Quadrat', keywords: 'quadrat square viereck form', category: 'Formen',
+    d: 'M12 12 H88 V88 H12 Z' },
+  { id: 'rounded_square', label: 'Abgerundetes Quadrat', keywords: 'quadrat rund abgerundet form', category: 'Formen',
+    d: 'M28 12 H72 Q88 12 88 28 V72 Q88 88 72 88 H28 Q12 88 12 72 V28 Q12 12 28 12 Z' },
+  { id: 'pentagon', label: 'Fuenfeck', keywords: 'fuenfeck pentagon form', category: 'Formen',
+    d: 'M50 6 L92 38 L76 90 L24 90 L8 38 Z' },
+  { id: 'hexagon', label: 'Sechseck', keywords: 'sechseck hexagon wabe form', category: 'Formen',
+    d: 'M28 10 H72 L94 50 L72 90 H28 L6 50 Z' },
+  { id: 'octagon', label: 'Achteck', keywords: 'achteck octagon stopp form', category: 'Formen',
+    d: 'M32 8 H68 L92 32 V68 L68 92 H32 L8 68 V32 Z' },
+  { id: 'diamond', label: 'Raute', keywords: 'raute diamant karo form', category: 'Formen',
+    d: 'M50 6 L94 50 L50 94 L6 50 Z' },
+  { id: 'parallelogram', label: 'Parallelogramm', keywords: 'parallelogramm form schraeg', category: 'Formen',
+    d: 'M28 22 H92 L72 78 H8 Z' },
+  { id: 'trapezoid', label: 'Trapez', keywords: 'trapez form', category: 'Formen',
+    d: 'M28 22 H72 L92 78 H8 Z' },
+  { id: 'semicircle', label: 'Halbkreis', keywords: 'halbkreis bogen form', category: 'Formen',
+    d: 'M8 70 A42 42 0 0 1 92 70 Z' },
+  { id: 'quartercircle', label: 'Viertelkreis', keywords: 'viertelkreis ecke form', category: 'Formen',
+    d: 'M14 86 V14 A72 72 0 0 1 86 86 Z' },
+  { id: 'plus', label: 'Plus / Kreuz', keywords: 'plus kreuz hinzufuegen form', category: 'Formen',
+    d: 'M38 10 H62 V38 H90 V62 H62 V90 H38 V62 H10 V38 H38 Z' },
+  { id: 'ring', label: 'Ring', keywords: 'ring donut kreis hohl form', category: 'Formen',
+    d: 'M50 8 A42 42 0 1 0 50 92 A42 42 0 1 0 50 8 Z M50 30 A20 20 0 1 1 50 70 A20 20 0 1 1 50 30 Z' },
+  { id: 'blob', label: 'Klecks', keywords: 'klecks blob organisch form', category: 'Formen',
+    d: 'M30 18 C50 6 78 12 86 34 C94 56 82 78 60 86 C40 93 14 84 10 60 C6 40 14 28 30 18 Z' },
+  { id: 'circle', label: 'Kreis', keywords: 'kreis rund punkt form', category: 'Formen',
+    d: 'M50 8 A42 42 0 1 0 50 92 A42 42 0 1 0 50 8 Z' },
+
+  // --- Pfeile ---------------------------------------------------------------
+  { id: 'arrow_right', label: 'Pfeil rechts', keywords: 'pfeil rechts arrow', category: 'Pfeile',
+    d: 'M8 38 H58 V20 L92 50 L58 80 V62 H8 Z' },
+  { id: 'arrow_left', label: 'Pfeil links', keywords: 'pfeil links arrow zurueck', category: 'Pfeile',
+    d: 'M92 38 H42 V20 L8 50 L42 80 V62 H92 Z' },
+  { id: 'arrow_up', label: 'Pfeil hoch', keywords: 'pfeil hoch oben arrow up', category: 'Pfeile',
+    d: 'M38 92 V42 H20 L50 8 L80 42 H62 V92 Z' },
+  { id: 'arrow_down', label: 'Pfeil runter', keywords: 'pfeil runter unten arrow down', category: 'Pfeile',
+    d: 'M38 8 V58 H20 L50 92 L80 58 H62 V8 Z' },
+  { id: 'arrow_double', label: 'Doppelpfeil', keywords: 'doppelpfeil beide pfeile arrow', category: 'Pfeile',
+    d: 'M28 20 L4 50 L28 80 V62 H72 V80 L96 50 L72 20 V38 H28 Z' },
+  { id: 'arrow_curved', label: 'Pfeil gebogen', keywords: 'pfeil gebogen kurve arrow', category: 'Pfeile',
+    d: 'M16 84 C16 44 44 24 78 24 V8 L96 34 L78 60 V44 C50 44 34 58 34 84 Z' },
+  { id: 'chevron_right', label: 'Chevron rechts', keywords: 'chevron pfeil winkel rechts', category: 'Pfeile',
+    d: 'M30 12 L70 50 L30 88 L18 76 L46 50 L18 24 Z' },
+  { id: 'chevron_down', label: 'Chevron runter', keywords: 'chevron pfeil winkel unten', category: 'Pfeile',
+    d: 'M12 30 L50 70 L88 30 L76 18 L50 46 L24 18 Z' },
+
+  // --- Symbole --------------------------------------------------------------
+  { id: 'check', label: 'Haken', keywords: 'haken check erledigt richtig ok', category: 'Symbole',
+    d: 'M40 78 L12 50 L22 40 L40 58 L78 20 L88 30 Z' },
+  { id: 'close', label: 'X / Schliessen', keywords: 'x close schliessen falsch fehler kreuz', category: 'Symbole',
+    d: 'M28 16 L50 38 L72 16 L84 28 L62 50 L84 72 L72 84 L50 62 L28 84 L16 72 L38 50 L16 28 Z' },
+  { id: 'star', label: 'Stern', keywords: 'stern star bewertung favorit', category: 'Symbole',
+    d: 'M50 6 L62 38 L96 38 L68 60 L79 94 L50 73 L21 94 L32 60 L4 38 L38 38 Z' },
+  { id: 'heart', label: 'Herz', keywords: 'herz heart liebe like', category: 'Symbole',
+    d: 'M50 86 C50 86 10 60 10 34 C10 19 22 11 33 11 C42 11 47 17 50 23 C53 17 58 11 67 11 C78 11 90 19 90 34 C90 60 50 86 50 86 Z' },
+  { id: 'bolt', label: 'Blitz', keywords: 'blitz bolt energie schnell power', category: 'Symbole',
+    d: 'M56 6 L20 56 H46 L40 94 L80 40 H52 Z' },
+  { id: 'pin', label: 'Standort', keywords: 'standort pin ort karte location', category: 'Symbole',
+    d: 'M50 6 C32 6 18 20 18 38 C18 62 50 94 50 94 C50 94 82 62 82 38 C82 20 68 6 50 6 Z M50 50 A12 12 0 1 1 50 26 A12 12 0 1 1 50 50 Z' },
+  { id: 'bulb', label: 'Gluehbirne', keywords: 'gluehbirne idee bulb tipp licht', category: 'Symbole',
+    d: 'M50 8 C33 8 22 21 22 36 C22 47 28 54 36 62 V72 H64 V62 C72 54 78 47 78 36 C78 21 67 8 50 8 Z M38 78 H62 V84 H38 Z M42 90 H58 V94 H42 Z' },
+  { id: 'gear', label: 'Zahnrad', keywords: 'zahnrad gear einstellungen settings', category: 'Symbole',
+    d: 'M44 6 H56 L59 18 L70 23 L81 17 L89 25 L83 36 L88 47 L100 50 L88 53 L83 64 L89 75 L81 83 L70 77 L59 82 L56 94 H44 L41 82 L30 77 L19 83 L11 75 L17 64 L12 53 L0 50 L12 47 L17 36 L11 25 L19 17 L30 23 L41 18 Z M50 34 A16 16 0 1 0 50 66 A16 16 0 1 0 50 34 Z' },
+  { id: 'search', label: 'Lupe', keywords: 'lupe suche search finden magnifier', category: 'Symbole',
+    d: 'M44 8 A30 30 0 1 0 44 68 A30 30 0 1 0 44 8 Z M44 22 A16 16 0 1 1 44 54 A16 16 0 1 1 44 22 Z M64 60 L92 88 L84 96 L56 68 Z' },
+  { id: 'play', label: 'Play', keywords: 'play abspielen video start dreieck', category: 'Symbole',
+    d: 'M24 14 L86 50 L24 86 Z' },
+  { id: 'bell', label: 'Glocke', keywords: 'glocke bell benachrichtigung alarm', category: 'Symbole',
+    d: 'M50 8 C42 8 36 14 36 22 C24 28 22 40 22 56 L14 72 H86 L78 56 C78 40 76 28 64 22 C64 14 58 8 50 8 Z M40 78 A10 10 0 0 0 60 78 Z' },
+  { id: 'flag', label: 'Flagge', keywords: 'flagge flag fahne markierung ziel', category: 'Symbole',
+    d: 'M22 8 H28 V92 H22 Z M28 12 H82 L70 30 L82 48 H28 Z' },
+  { id: 'shield', label: 'Schild', keywords: 'schild shield schutz sicherheit', category: 'Symbole',
+    d: 'M50 6 L86 18 V46 C86 70 70 86 50 94 C30 86 14 70 14 46 V18 Z' },
+  { id: 'thumbsup', label: 'Daumen hoch', keywords: 'daumen hoch like gut thumbs up', category: 'Symbole',
+    d: 'M30 44 H44 L52 16 C58 16 64 22 62 32 L58 44 H82 C88 44 92 48 90 54 L82 84 C81 89 77 92 72 92 H30 Z M10 46 H26 V92 H10 Z' },
+  { id: 'clock', label: 'Uhr', keywords: 'uhr clock zeit time', category: 'Symbole',
+    d: 'M50 8 A42 42 0 1 0 50 92 A42 42 0 1 0 50 8 Z M50 22 A28 28 0 1 1 50 78 A28 28 0 1 1 50 22 Z M46 30 H54 V52 L70 60 L66 68 L46 56 Z' },
+  { id: 'calendar', label: 'Kalender', keywords: 'kalender calendar datum termin', category: 'Symbole',
+    d: 'M22 14 H30 V22 H70 V14 H78 V22 H88 V90 H12 V22 H22 Z M12 38 H88 V46 H12 Z' },
+  { id: 'mail', label: 'Brief', keywords: 'mail brief envelope umschlag nachricht email', category: 'Symbole',
+    d: 'M8 22 H92 V78 H8 Z M8 22 L50 56 L92 22' },
+  { id: 'phone', label: 'Telefon', keywords: 'telefon phone anruf kontakt', category: 'Symbole',
+    d: 'M28 10 C20 10 14 18 16 30 C22 58 42 78 70 84 C82 86 90 80 90 72 L90 60 L66 54 L58 64 C48 58 42 52 36 42 L46 34 L40 10 Z' },
+  { id: 'user', label: 'Person', keywords: 'person user nutzer profil kontakt', category: 'Symbole',
+    d: 'M50 12 A18 18 0 1 0 50 48 A18 18 0 1 0 50 12 Z M16 92 C16 70 32 56 50 56 C68 56 84 70 84 92 Z' },
+  { id: 'home', label: 'Haus', keywords: 'haus home start zuhause', category: 'Symbole',
+    d: 'M50 8 L92 44 H80 V90 H58 V62 H42 V90 H20 V44 H8 Z' },
+  { id: 'lock', label: 'Schloss', keywords: 'schloss lock sicher gesperrt', category: 'Symbole',
+    d: 'M34 40 V30 A16 16 0 0 1 66 30 V40 H58 V30 A8 8 0 0 0 42 30 V40 Z M22 44 H78 V92 H22 Z' },
+  { id: 'tag', label: 'Etikett', keywords: 'etikett tag preis label', category: 'Symbole',
+    d: 'M10 16 H52 L90 54 L54 90 L16 52 Z M28 30 A8 8 0 1 0 28 46 A8 8 0 1 0 28 30 Z' },
+  { id: 'globe', label: 'Globus', keywords: 'globus welt global international web', category: 'Symbole',
+    d: 'M50 8 A42 42 0 1 0 50 92 A42 42 0 1 0 50 8 Z M50 8 C36 28 36 72 50 92 M50 8 C64 28 64 72 50 92 M10 50 H90 M16 30 H84 M16 70 H84' },
+
+  // --- Sprechblasen ---------------------------------------------------------
+  { id: 'bubble_left', label: 'Sprechblase (links)', keywords: 'sprechblase bubble chat links nachricht', category: 'Sprechblasen',
+    d: 'M16 12 H84 Q92 12 92 20 V60 Q92 68 84 68 H40 L22 88 L26 68 H16 Q8 68 8 60 V20 Q8 12 16 12 Z' },
+  { id: 'bubble_right', label: 'Sprechblase (rechts)', keywords: 'sprechblase bubble chat rechts nachricht', category: 'Sprechblasen',
+    d: 'M16 12 H84 Q92 12 92 20 V60 Q92 68 84 68 H74 L78 88 L60 68 H16 Q8 68 8 60 V20 Q8 12 16 12 Z' },
+  { id: 'bubble_thought', label: 'Gedankenblase', keywords: 'gedankenblase thought wolke denken', category: 'Sprechblasen',
+    d: 'M30 18 Q50 6 70 18 Q92 22 88 42 Q96 56 80 62 Q60 72 38 62 Q14 60 16 40 Q10 26 30 18 Z M28 72 A8 8 0 1 0 28 88 A8 8 0 1 0 28 72 Z M14 86 A5 5 0 1 0 14 96 A5 5 0 1 0 14 86 Z' },
+  { id: 'callout_rect', label: 'Hinweis-Box', keywords: 'callout box hinweis rechteck zitat', category: 'Sprechblasen',
+    d: 'M8 14 H92 V62 H56 L44 82 L40 62 H8 Z' },
+
+  // --- Dekor ----------------------------------------------------------------
+  { id: 'sparkle', label: 'Funkeln', keywords: 'funkeln sparkle glitzer stern dekor', category: 'Dekor',
+    d: 'M50 6 C54 34 66 46 94 50 C66 54 54 66 50 94 C46 66 34 54 6 50 C34 46 46 34 50 6 Z' },
+  { id: 'starburst', label: 'Sternexplosion', keywords: 'sternexplosion starburst knall neu badge', category: 'Dekor',
+    d: 'M50 4 L58 22 L76 12 L72 32 L92 32 L77 46 L94 56 L74 60 L82 80 L62 72 L58 92 L48 75 L34 90 L33 70 L12 73 L24 56 L6 50 L24 42 L10 26 L31 28 L32 8 L46 22 Z' },
+  { id: 'underline', label: 'Unterstreichung', keywords: 'unterstreichung underline strich betonen dekor', category: 'Dekor',
+    d: 'M6 52 C26 40 74 40 94 52 L94 64 C74 52 26 52 6 64 Z' },
+  { id: 'wave', label: 'Wellenlinie', keywords: 'welle wave linie schwung dekor', category: 'Dekor',
+    d: 'M4 50 Q19 30 34 50 T64 50 T94 50 L94 62 Q79 42 64 62 T34 62 T4 62 Z' },
+  { id: 'dotgrid', label: 'Punktraster', keywords: 'punkte raster dots muster dekor', category: 'Dekor',
+    d: 'M18 18 A8 8 0 1 0 18 34 A8 8 0 1 0 18 18 Z M50 18 A8 8 0 1 0 50 34 A8 8 0 1 0 50 18 Z M82 18 A8 8 0 1 0 82 34 A8 8 0 1 0 82 18 Z M18 50 A8 8 0 1 0 18 66 A8 8 0 1 0 18 50 Z M50 50 A8 8 0 1 0 50 66 A8 8 0 1 0 50 50 Z M82 50 A8 8 0 1 0 82 66 A8 8 0 1 0 82 50 Z M18 82 A8 8 0 1 0 18 98 A8 8 0 1 0 18 82 Z M50 82 A8 8 0 1 0 50 98 A8 8 0 1 0 50 82 Z M82 82 A8 8 0 1 0 82 98 A8 8 0 1 0 82 82 Z' },
+  { id: 'confetti', label: 'Konfetti', keywords: 'konfetti confetti party feier dekor', category: 'Dekor',
+    d: 'M14 14 L30 22 L22 38 L6 30 Z M62 10 L80 16 L74 34 L56 28 Z M78 56 L94 64 L86 80 L70 72 Z M20 64 L36 72 L28 88 L12 80 Z M46 42 L58 48 L52 60 L40 54 Z' },
+  { id: 'quote', label: 'Anfuehrungszeichen', keywords: 'anfuehrungszeichen quote zitat dekor', category: 'Dekor',
+    d: 'M10 20 H40 V50 C40 66 30 76 14 80 L10 70 C20 66 26 60 26 52 H10 Z M58 20 H88 V50 C88 66 78 76 62 80 L58 70 C68 66 74 60 74 52 H58 Z' },
+  { id: 'flourish', label: 'Ecken-Zierde', keywords: 'ecke zierde flourish ornament rahmen dekor', category: 'Dekor',
+    d: 'M8 92 C8 50 50 8 92 8 L92 20 C56 20 20 56 20 92 Z M30 92 C30 60 60 30 92 30 L92 42 C66 42 42 66 42 92 Z' },
+  { id: 'scribble', label: 'Kringel-Strich', keywords: 'kringel scribble gekritzelt strich dekor', category: 'Dekor',
+    d: 'M6 60 C20 40 32 78 46 56 C58 38 66 76 80 54 C88 42 92 56 96 50 L94 62 C88 70 80 60 78 66 C66 88 56 50 46 70 C34 92 20 52 12 70 Z' },
+]
+
+export function findAssetById(id) {
+  return DESIGN_ASSETS.find(a => a.id === id) || null
+}

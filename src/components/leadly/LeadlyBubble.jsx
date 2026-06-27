@@ -48,9 +48,9 @@ export default function LeadlyBubble() {
   const [open, setOpen] = useState(false);
   const leadly = useLeadly();
 
-  // Bubble verstecken auf /assistant (dort ist Leadly als Full-Page-Variante)
-  // und vor Login (/login, /signup, etc).
-  const hidePaths = ['/assistant', '/login', '/signup', '/reset-password', '/auth/callback'];
+  // Bubble vor Login verstecken (/login, /signup, etc). /assistant ist retired
+  // (→ Redirect auf /dashboard), die Bubble ist überall die einzige Leadly-Surface.
+  const hidePaths = ['/login', '/signup', '/reset-password', '/auth/callback'];
   const hidden = hidePaths.some(p => location.pathname.startsWith(p));
 
   // Briefing 1× pro Tag/Session anstoßen (sobald uid bekannt)
@@ -62,6 +62,34 @@ export default function LeadlyBubble() {
     window.sessionStorage?.setItem(sessionKey, '1');
     leadly.fetchBriefing?.();
   }, [leadly.uid]);
+
+  // Dashboard-Briefing-Karten (und andere Surfaces) können eine Aktion an Leadly
+  // übergeben: öffnet die Bubble + sendet den Prompt. Schreib-Tools laufen dann
+  // durch die Bestätigungs-Guardrail (pending_action → Übernehmen).
+  useEffect(() => {
+    const onPrompt = (e) => {
+      const text = e?.detail?.text;
+      setOpen(true);
+      leadly.markBriefingRead?.();
+      if (text) leadly.sendMessage?.(text);
+    };
+    window.addEventListener('leadly:prompt', onPrompt);
+    return () => window.removeEventListener('leadly:prompt', onPrompt);
+  }, [leadly]);
+
+  // Strukturierter Handoff: öffnet die Bubble + zeigt direkt die Confirm-Karte
+  // (z.B. Dashboard-Aufgabe „Übernehmen" mit task_id → complete_task).
+  useEffect(() => {
+    const onAction = (e) => {
+      const action = e?.detail;
+      if (!action?.name) return;
+      setOpen(true);
+      leadly.markBriefingRead?.();
+      leadly.proposeAction?.(action);
+    };
+    window.addEventListener('leadly:action', onAction);
+    return () => window.removeEventListener('leadly:action', onAction);
+  }, [leadly]);
 
   if (hidden) return null;
 

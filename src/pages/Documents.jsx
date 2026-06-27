@@ -8,7 +8,7 @@ import { listDocuments, createDocument, deleteDocument, listChatsForDocument, ad
 
 const P = 'var(--wl-primary, rgb(49,90,231))'
 
-export default function Documents() {
+export default function Documents({ embedded = false }) {
   const navigate = useNavigate()
   const { activeTeamId } = useTeam()
   const { activeBrandVoice } = useBrandVoice()
@@ -126,20 +126,24 @@ export default function Documents() {
   }
 
   return (
-    <div style={{ width:'100%', maxWidth:1200, margin:'0 auto', padding:'24px 16px 40px' }}>
+    <div style={embedded ? { width:'100%' } : { width:'100%', maxWidth:1200, margin:'0 auto', padding:'24px 16px 40px' }}>
       {/* Header — gleiches Muster wie Medien/Visuals */}
-      <div style={{ display:'flex', alignItems:'flex-end', justifyContent:'space-between', gap:16, marginBottom:22, flexWrap:'wrap' }}>
+      <div style={{ display:'flex', alignItems:'flex-end', justifyContent: embedded ? 'flex-end' : 'space-between', gap:16, marginBottom: embedded ? 12 : 22, flexWrap:'wrap' }}>
+        {!embedded && (
         <div>
           <div style={{ fontSize:20, color:'#30A0D0', fontFamily:'"Caveat", cursive', fontWeight:600, marginBottom:6 }}>Content · Dokumente</div>
           <h1 style={{ fontSize:26, fontWeight:700, margin:0, letterSpacing:'-0.3px', lineHeight:1.2 }}>Deine Dokumente.</h1>
           <p style={{ fontSize:13, color:'var(--text-muted)', margin:'8px 0 0', lineHeight:1.6 }}>
-            Bearbeitbare Texte aus der Text-Werkstatt{activeBrandVoice?.name ? ` von ${activeBrandVoice.name}` : ''} — öffnen sich zusammen mit dem zugehörigen Chat.
+            Bearbeitbare Texte aus der Content-Werkstatt{activeBrandVoice?.name ? ` von ${activeBrandVoice.name}` : ''} — öffnen sich zusammen mit dem zugehörigen Chat.
           </p>
         </div>
+        )}
+        {!embedded && (
         <button onClick={handleNew} disabled={creating}
           style={{ padding:'9px 16px', borderRadius:9, border:'none', background: creating ? '#94A3B8' : P, color:'#fff', fontSize:13, fontWeight:700, cursor: creating ? 'wait' : 'pointer', whiteSpace:'nowrap', boxShadow: creating ? 'none' : '0 2px 10px rgba(49,90,231,.18)' }}>
           {creating ? 'Lege an…' : 'Neues Dokument'}
         </button>
+        )}
       </div>
 
       {loading ? (
@@ -148,7 +152,7 @@ export default function Documents() {
         <div style={{ padding:'60px 20px', textAlign:'center', background:'var(--surface)', borderRadius:14, border:'1px dashed var(--border)', color:'var(--text-muted)' }}>
           <div style={{ display:'flex', justifyContent:'center', marginBottom:14, color:'var(--text-soft,#98a2b3)' }}><FileText size={42} strokeWidth={1.5}/></div>
           <h2 style={{ fontSize:18, fontWeight:700, color:'rgb(20,20,43)', margin:'0 0 6px' }}>Noch keine Dokumente</h2>
-          <p style={{ fontSize:13, margin:0, lineHeight:1.5 }}>Erstelle eins oder öffne einen Text aus der Text-Werkstatt im Editor.</p>
+          <p style={{ fontSize:13, margin:0, lineHeight:1.5 }}>Erstelle eins oder öffne einen Text aus der Content-Werkstatt im Editor.</p>
         </div>
       ) : (
         <div style={{ display:'flex', flexDirection:'column', gap:10 }}>

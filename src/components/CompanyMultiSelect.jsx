@@ -13,6 +13,7 @@ export default function CompanyMultiSelect({
   onChange = () => {},
   label = 'Unternehmen',
   buttonStyle = {},
+  iconOnly = false,
 }) {
   const [open, setOpen] = useState(false)
   const ref = useRef(null)
@@ -36,16 +37,23 @@ export default function CompanyMultiSelect({
   return (
     <div ref={ref} style={{ position:'relative', display:'inline-block' }}>
       <button type="button" onClick={() => setOpen(o => !o)}
-        title="Optional: Du schreibst in deiner Stimme als Ambassador für ein oder mehrere Unternehmen"
-        style={{
+        title={count ? `Unternehmen: ${btnLabel}` : 'Optional: Du schreibst in deiner Stimme als Ambassador für ein oder mehrere Unternehmen'}
+        style={iconOnly ? {
+          display:'inline-flex', alignItems:'center', justifyContent:'center', width:34, height:34, borderRadius:9, boxSizing:'border-box',
+          border:'1.5px solid ' + (count ? P : 'var(--border)'),
+          background: count ? 'rgba(49,90,231,0.06)' : 'var(--surface, #fff)',
+          color: count ? P : 'var(--text-primary)', cursor:'pointer', fontFamily:'inherit', flexShrink:0, position:'relative', ...buttonStyle,
+        } : {
           display:'inline-flex', alignItems:'center', gap:6, padding:'7px 10px', borderRadius:9,
           border:'1.5px solid ' + (count ? P : 'var(--border)'),
           background: count ? 'rgba(49,90,231,0.06)' : 'var(--surface, #fff)',
           color: count ? P : 'var(--text-primary)', fontSize:12, fontWeight:500,
           cursor:'pointer', fontFamily:'inherit', maxWidth:190, ...buttonStyle,
         }}>
-        <Building2 size={13} strokeWidth={1.75}/><span style={{ flex:1, minWidth:0, overflow:'hidden', textOverflow:'ellipsis', textAlign:'left' }}>{btnLabel}</span>
-        <ChevronDown size={13} strokeWidth={2} style={{ opacity:0.5, marginLeft:2, flexShrink:0 }}/>
+        <Building2 size={iconOnly ? 16 : 13} strokeWidth={1.75}/>
+        {!iconOnly && <span style={{ flex:1, minWidth:0, overflow:'hidden', textOverflow:'ellipsis', textAlign:'left' }}>{btnLabel}</span>}
+        {!iconOnly && <ChevronDown size={13} strokeWidth={2} style={{ opacity:0.5, marginLeft:2, flexShrink:0 }}/>}
+        {iconOnly && count > 1 && <span style={{ position:'absolute', top:-5, right:-5, minWidth:15, height:15, padding:'0 3px', borderRadius:8, background:P, color:'#fff', fontSize:9, fontWeight:800, display:'inline-flex', alignItems:'center', justifyContent:'center' }}>{count}</span>}
       </button>
       {open && (
         <div style={{

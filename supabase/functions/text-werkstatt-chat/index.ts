@@ -28,7 +28,7 @@
 // Persistiert beide Turns in content_chat_messages.
 
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
-import { buildBrandPrompt, buildAudiencePrompt, buildKnowledgePrompt, buildBrandCorpus, HUMAN_STYLE_GUIDE, LINKEDIN_POST_GUIDE, stripEmDashes } from "../_shared/brandPrompt.ts";
+import { buildBrandPrompt, buildAudiencePrompt, buildStrike2AudiencePrompt, buildKnowledgePrompt, buildBrandCorpus, HUMAN_STYLE_GUIDE, LINKEDIN_POST_GUIDE, stripEmDashes } from "../_shared/brandPrompt.ts";
 import { createClient } from "npm:@supabase/supabase-js@2";
 
 const CORS = {
@@ -250,6 +250,7 @@ Deno.serve(async (req) => {
     const brandVoiceId: string = body.brand_voice_id;
     const postId: string | undefined = body.post_id;
     const targetAudienceId: string | undefined = body.target_audience_id;
+    const strike2PersonaId: string | undefined = body.strike2_persona_id;
     // Ambassador-Modell: optionaler Company-Brand-Kontext (brand_voices.account_type='company_page')
     const companyVoiceId: string | null | undefined = body.company_voice_id;
     const companyVoiceIds: string[] = Array.isArray(body.company_voice_ids) ? body.company_voice_ids.filter(Boolean) : (companyVoiceId ? [companyVoiceId] : []);
@@ -284,6 +285,7 @@ Deno.serve(async (req) => {
         team_id: teamId,
         created_by: user.id,
         target_audience_id: targetAudienceId || null,
+        strike2_persona_id: strike2PersonaId || null,
         company_voice_id: companyVoiceIds[0] || null,
         company_voice_ids: companyVoiceIds,
         post_id: postId || null,
@@ -302,7 +304,7 @@ Deno.serve(async (req) => {
     }
 
     // ─── Kontext laden (BV, Zielgruppe, Wissen, Post) ──────────────────────
-    const [bvRes, audRes, knowRes, postRes] = await Promise.all([
+    const [bvRes, audRes, knowRes, postRes, s2Res] = await Promise.all([
       admin.from("brand_voices").select("*").eq("id", chat.brand_voice_id).maybeSingle(),
       chat.target_audience_id || targetAudienceId
         ? admin.from("target_audiences").select("*").eq("id", chat.target_audience_id || targetAudienceId).maybeSingle()
@@ -312,6 +314,9 @@ Deno.serve(async (req) => {
         : Promise.resolve({ data: [] }),
       chat.post_id
         ? admin.from("content_posts").select("title,content,notes,topic,platform").eq("id", chat.post_id).maybeSingle()
+        : Promise.resolve({ data: null }),
+      (chat.strike2_persona_id || strike2PersonaId)
+        ? admin.from("strike2_personas").select("name, persona_grunddaten, antworten").eq("id", chat.strike2_persona_id || strike2PersonaId).maybeSingle()
         : Promise.resolve({ data: null }),
     ]);
 
@@ -338,7 +343,7 @@ Deno.serve(async (req) => {
     // ─── System-Prompt zusammenbauen ───────────────────────────────────────
     const systemParts = [SYSTEM_PROMPT_BASE, LINKEDIN_POST_GUIDE, HUMAN_STYLE_GUIDE];
     const bvCtx = buildBrandPrompt(bvRes.data);
-    const audCtx = buildAudiencePrompt(audRes.data);
+    const audCtx = s2Res?.data ? buildStrike2AudiencePrompt(s2Res.data) : buildAudiencePrompt(audRes.data);
     const knowCtx = buildKnowledgePrompt(knowRes.data || []);
     const postCtx = buildPostContext(postRes.data, postVisuals);
     if (bvCtx) systemParts.push(bvCtx);
@@ -430,6 +435,7 @@ Deno.serve(async (req) => {
       updates.title = smartTitle || autoTitleFromMessage(userMessage);
     }
     if (targetAudienceId && targetAudienceId !== chat.target_audience_id) updates.target_audience_id = targetAudienceId;
+    if (strike2PersonaId && strike2PersonaId !== chat.strike2_persona_id) updates.strike2_persona_id = strike2PersonaId;
     await admin.from("content_chats").update(updates).eq("id", chat.id);
 
     return json({

@@ -27,6 +27,47 @@ const SUPABASE_ANON_KEY    = Deno.env.get("SUPABASE_ANON_KEY")!;
 const SUPABASE_SERVICE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
 
 const DEFAULT_MODEL = "claude-sonnet-4-6";  // Aligned mit src/components/ModelSelector.jsx
+
+// ─── Guardrail: schreibende/außenwirksame Tools brauchen explizite Bestätigung ──
+// Diese Tools werden im Loop NICHT autonom ausgeführt, sondern als pending_action
+// ans Frontend zurückgegeben. Ausführung erst nach User-Klick via confirmed_action.
+// (remember_/forget_preference sind interne Lern-Config → kein Bestätigungszwang.)
+const WRITE_TOOLS = new Set<string>([
+  'create_lead', 'create_task', 'create_deal',
+  'update_lead', 'update_deal', 'update_organization',
+  'add_brand_memory', 'report_problem',
+  'complete_task', 'update_task',
+  // revert_action ist NICHT als LLM-Tool definiert (kein Eintrag in TOOLS) — es wird
+  // nur per Frontend-„Rückgängig" über confirmed_action ausgeführt; steht aber in der
+  // Write-Liste, damit der confirmed_action-Pfad es akzeptiert.
+  'revert_action',
+]);
+// Update-Tools, deren Vorher-Zustand fürs Undo gesichert wird: tool → [tabelle, id-feld]
+const BEFORE_CAPTURE: Record<string, [string, string]> = {
+  update_lead:         ['leads', 'lead_id'],
+  update_deal:         ['deals', 'deal_id'],
+  update_organization: ['organizations', 'organization_id'],
+  complete_task:       ['lead_tasks', 'task_id'],
+  update_task:         ['lead_tasks', 'task_id'],
+};
+
+function summarizeAction(name: string, input: Record<string, unknown>): string {
+  const i = input || {};
+  const s = (v: unknown) => (typeof v === 'string' ? v : '');
+  switch (name) {
+    case 'create_lead': return `Kontakt anlegen: ${[s(i.first_name), s(i.last_name)].filter(Boolean).join(' ') || '—'}${i.company ? ` (${s(i.company)})` : ''}`;
+    case 'update_lead': return `Kontakt aktualisieren${i.status ? ` → Status ${s(i.status)}` : ''}${i.lead_score != null ? ` · Score ${i.lead_score}` : ''}`;
+    case 'create_task': return `Aufgabe anlegen: ${s(i.title) || '—'}${i.due_date ? ` (fällig ${s(i.due_date)})` : ''}`;
+    case 'complete_task': return `Aufgabe als erledigt markieren`;
+    case 'update_task': return `Aufgabe aktualisieren${i.status ? ` → ${s(i.status)}` : ''}${i.due_date ? ` · fällig ${s(i.due_date)}` : ''}${i.priority ? ` · ${s(i.priority)}` : ''}`;
+    case 'create_deal': return `Deal anlegen: ${s(i.title) || '—'}${i.value != null ? ` · ${i.value} €` : ''}${i.stage ? ` · ${s(i.stage)}` : ''}`;
+    case 'update_deal': return `Deal aktualisieren${i.stage ? ` → ${s(i.stage)}` : ''}${i.value != null ? ` · ${i.value} €` : ''}`;
+    case 'update_organization': return `Unternehmen aktualisieren`;
+    case 'add_brand_memory': return `Brand-Notiz speichern: ${s(i.content).slice(0, 80) || '—'}`;
+    case 'report_problem': return `Support-Ticket erstellen: ${s(i.summary).slice(0, 80) || '—'}`;
+    default: return `Aktion: ${name}`;
+  }
+}
 const EMBEDDING_MODEL = "text-embedding-3-small";  // 1536 dims, OpenAI
 const MAX_ITERATIONS = 6;
 const MEMORY_TOP_K = 4;            // User-Memory Top-K
@@ -88,6 +129,33 @@ const TOOLS = [
     },
   },
   {
+    name: "complete_task",
+    description: "Markiert eine Aufgabe als erledigt (status='done'). Braucht die task_id (z.B. aus search/Listen).",
+    input_schema: {
+      type: "object",
+      properties: {
+        task_id: { type: "string", description: "UUID der Aufgabe" },
+      },
+      required: ["task_id"],
+    },
+  },
+  {
+    name: "update_task",
+    description: "Aktualisiert eine Aufgabe (Fälligkeit, Priorität, Status, Titel, Beschreibung). Braucht die task_id.",
+    input_schema: {
+      type: "object",
+      properties: {
+        task_id:     { type: "string", description: "UUID der Aufgabe" },
+        due_date:    { type: "string", description: "Neue Fälligkeit YYYY-MM-DD" },
+        priority:    { type: "string", enum: ["low", "normal", "high"], description: "Priorität" },
+        status:      { type: "string", enum: ["open", "done"], description: "Status" },
+        title:       { type: "string", description: "Neuer Titel" },
+        description: { type: "string", description: "Neue Beschreibung" },
+      },
+      required: ["task_id"],
+    },
+  },
+  {
     name: "create_deal",
     description: "Legt einen Deal an. Mindestens title + stage. Optional Wert + Verknüpfung zu Lead/Unternehmen.",
     input_schema: {
@@ -116,6 +184,18 @@ const TOOLS = [
         owner_id:  { type: "string", description: "Owner-UUID-Filter" },
         only_overdue_followup: { type: "boolean", description: "Nur Leads mit überfälligem next_followup" },
         limit:     { type: "number", description: "Max Treffer (default 20, max 50)" },
+      },
+    },
+  },
+  {
+    name: "list_tasks",
+    description: "Listet/sucht editierbare CRM-Aufgaben (lead_tasks) des aktiven Teams, sortiert nach Fälligkeit. Liefert id, title, due_date, status, priority, lead_id. Nutze die id fuer complete_task/update_task. Damit loest du z.B. die aelteste ueberfaellige Aufgabe zu einer konkreten id auf.",
+    input_schema: {
+      type: "object",
+      properties: {
+        filter: { type: "string", enum: ["overdue", "today", "open", "all"], description: "overdue=überfällig, today=heute fällig, open=alle offenen (Default), all=inkl. erledigte" },
+        query:  { type: "string", description: "Volltext auf den Titel (optional)" },
+        limit:  { type: "number", description: "Max Treffer (default 20, max 50)" },
       },
     },
   },
@@ -222,6 +302,36 @@ const TOOLS = [
     name: "list_connections",
     description: "Listet die jüngsten Vernetzungen/Connection-Anfragen (Name, Headline, Firma, Status, gesendet am).",
     input_schema: { type: "object", properties: { limit: { type: "number", description: "Max Treffer (default 20, max 50)" } } },
+  },
+  {
+    name: "get_brand_memory",
+    description: "Zeigt die gemerkten Notizen/Fakten (Memory) einer Brand und woraus die Brand sonst lernt (Beiträge). Ohne brand_voice_id die aktuell aktive Brand. Für Fragen wie 'Was hat sich meine Brand gemerkt?'.",
+    input_schema: { type: "object", properties: { brand_voice_id: { type: "string", description: "UUID der Brand (optional; sonst aktive Brand)" } } },
+  },
+  {
+    name: "add_brand_memory",
+    description: "Fügt der Memory einer Brand manuell eine Notiz/Fakt/Regel hinzu (z.B. 'Wir betonen immer Datenschutz'). Fließt künftig in die Content-Generierung dieser Brand ein. Ohne brand_voice_id die aktive Brand.",
+    input_schema: { type: "object", properties: { content: { type: "string", description: "Die zu merkende Notiz/Fakt als Klartext" }, brand_voice_id: { type: "string", description: "UUID der Brand (optional; sonst aktive Brand)" } }, required: ["content"] },
+  },
+  {
+    name: "diagnose_publishing",
+    description: "Technische Diagnose für Veröffentlichungs-Probleme: listet Beiträge mit Publish-Fehler (Fehlermeldung + letzter Versuch). Für 'mein Beitrag wurde nicht veröffentlicht'.",
+    input_schema: { type: "object", properties: {} },
+  },
+  {
+    name: "get_credit_status",
+    description: "Aktueller Credit-Stand des Accounts (verbleibende Credits, Tageslimit). Für 'warum geht die KI nicht mehr / sind meine Credits aufgebraucht'.",
+    input_schema: { type: "object", properties: {} },
+  },
+  {
+    name: "get_connection_status",
+    description: "LinkedIn-Verbindungsstatus je Brand (verbunden? Token abgelaufen? widerrufen? Refresh fehlgeschlagen?). Für 'LinkedIn/Extension verbindet nicht', fehlgeschlagene Posts, SSI/Vernetzungen-Probleme.",
+    input_schema: { type: "object", properties: {} },
+  },
+  {
+    name: "report_problem",
+    description: "Eskalation: meldet ein technisches Problem an den Support (legt ein Ticket an). Nutze es, wenn du ein Problem nicht selbst lösen kannst ODER der User es eskalieren möchte. Fasse das Problem klar zusammen.",
+    input_schema: { type: "object", properties: { summary: { type: "string", description: "Kurze Problembeschreibung" }, details: { type: "string", description: "Details/Schritte/Fehlermeldung (optional)" }, area: { type: "string", description: "Betroffener Bereich, z.B. Content, LinkedIn, Vernetzung (optional)" } }, required: ["summary"] },
   },
 ];
 
@@ -342,6 +452,25 @@ async function loadLearningScope(userId: string): Promise<'privat' | 'account' |
     .maybeSingle();
   const v = data?.leadly_learning_scope;
   return (v === 'privat' || v === 'account' || v === 'global') ? v : 'account';
+}
+
+// Aktive Brand des Users (Brand-Ebene) für Kontext + Brand-Memory-Default.
+async function loadActiveBrand(admin: ReturnType<typeof createClient>, userId: string): Promise<{ id: string; label: string; typ: string } | null> {
+  try {
+    const { data: pref } = await admin.from('user_preferences').select('active_brand_voice_id').eq('user_id', userId).maybeSingle();
+    const bvId = (pref as any)?.active_brand_voice_id;
+    if (!bvId) return null;
+    const { data: bv } = await admin.from('brand_voices').select('id, name, brand_name, account_type').eq('id', bvId).maybeSingle();
+    if (!bv) return null;
+    return { id: (bv as any).id, label: (bv as any).brand_name || (bv as any).name || 'Brand', typ: (bv as any).account_type === 'company_page' ? 'Company Brand' : 'Personal Brand' };
+  } catch { return null; }
+}
+
+// Brand-ID auflösen: explizit übergeben oder aktive Brand des Users.
+async function resolveBrandId(input: unknown, supabase: ReturnType<typeof createClient>, ctx: { userId: string }): Promise<string | null> {
+  if (input) return String(input);
+  const { data } = await supabase.from('user_preferences').select('active_brand_voice_id').eq('user_id', ctx.userId).maybeSingle();
+  return (data as any)?.active_brand_voice_id || null;
 }
 
 async function loadUserAccountId(userId: string): Promise<string | null> {
@@ -555,7 +684,7 @@ async function executeTool(
   name: string,
   input: Record<string, unknown>,
   supabase: ReturnType<typeof createClient>,
-  ctx: { userId: string; teamId: string | null },
+  ctx: { userId: string; teamId: string | null; accountId?: string | null },
 ): Promise<{ ok: boolean; data?: unknown; error?: string }> {
   try {
     switch (name) {
@@ -610,6 +739,76 @@ async function executeTool(
         return { ok: true, data };
       }
 
+      case "complete_task": {
+        if (!input.task_id) return { ok: false, error: 'task_id erforderlich' };
+        const { data, error } = await supabase
+          .from('lead_tasks').update({ status: 'done' }).eq('id', input.task_id)
+          .select('id, title, status').single();
+        if (error) return { ok: false, error: error.message };
+        return { ok: true, data };
+      }
+
+      case "update_task": {
+        if (!input.task_id) return { ok: false, error: 'task_id erforderlich' };
+        // status separat updaten (Top-Fallstrick #1: constrained field nicht bündeln)
+        if (input.status !== undefined) {
+          const { error: se } = await supabase.from('lead_tasks').update({ status: input.status }).eq('id', input.task_id);
+          if (se) return { ok: false, error: se.message };
+        }
+        const patch: Record<string, unknown> = {};
+        if (input.due_date !== undefined)    patch.due_date = input.due_date;
+        if (input.priority !== undefined)    patch.priority = input.priority;
+        if (input.title !== undefined)       patch.title = input.title;
+        if (input.description !== undefined) patch.description = input.description;
+        if (Object.keys(patch).length) {
+          const { error } = await supabase.from('lead_tasks').update(patch).eq('id', input.task_id);
+          if (error) return { ok: false, error: error.message };
+        }
+        const { data } = await supabase.from('lead_tasks')
+          .select('id, title, status, due_date, priority').eq('id', input.task_id).maybeSingle();
+        return { ok: true, data };
+      }
+
+      case "revert_action": {
+        // Undo (B2.3): macht eine zuvor bestätigte create_/update_-Aktion rückgängig.
+        const auditId = input.audit_id;
+        if (!auditId) return { ok: false, error: 'audit_id erforderlich' };
+        const { data: a } = await supabase.from('leadly_action_audit').select('*').eq('id', auditId).maybeSingle();
+        if (!a) return { ok: false, error: 'Audit-Eintrag nicht gefunden' };
+        const tn = a.tool_name as string;
+        const ti = (a.tool_input || {}) as Record<string, unknown>;
+        const res = (a.result || {}) as { data?: { id?: string } };
+        const bef = (a.before || null) as Record<string, unknown> | null;
+        const createMap: Record<string, string> = { create_lead: 'leads', create_task: 'lead_tasks', create_deal: 'deals', add_brand_memory: 'brand_memory' };
+        if (createMap[tn]) {
+          const newId = res?.data?.id;
+          if (!newId) return { ok: false, error: 'Keine ID zum Rückgängigmachen gespeichert' };
+          const { error } = await supabase.from(createMap[tn]).delete().eq('id', newId);
+          if (error) return { ok: false, error: error.message };
+          return { ok: true, data: { reverted: tn, deleted: newId } };
+        }
+        if (BEFORE_CAPTURE[tn]) {
+          if (!bef) return { ok: false, error: 'Kein Vorher-Zustand gespeichert' };
+          const [tbl, idf] = BEFORE_CAPTURE[tn];
+          const idv = ti[idf];
+          if (!idv) return { ok: false, error: 'Keine Ziel-ID' };
+          const patch: Record<string, unknown> = {};
+          for (const k of Object.keys(ti)) { if (k === idf) continue; if (k in bef) patch[k] = bef[k]; }
+          if (tn === 'complete_task' && bef.status !== undefined) patch.status = bef.status;
+          if (Object.keys(patch).length === 0) return { ok: false, error: 'Nichts rückgängig zu machen' };
+          if ('status' in patch) {
+            await supabase.from(tbl).update({ status: patch.status }).eq('id', idv);
+            delete patch.status;
+          }
+          if (Object.keys(patch).length) {
+            const { error } = await supabase.from(tbl).update(patch).eq('id', idv);
+            if (error) return { ok: false, error: error.message };
+          }
+          return { ok: true, data: { reverted: tn, id: idv } };
+        }
+        return { ok: false, error: 'Diese Aktion ist nicht umkehrbar (' + tn + ')' };
+      }
+
       case "create_deal": {
         const payload: Record<string, unknown> = {
           title:      input.title,
@@ -639,8 +838,7 @@ async function executeTool(
           .eq('archived', false)
           .order('updated_at', { ascending: false })
           .limit(limit);
-        // RLS scopt schon auf team — wir filtern nicht zusätzlich, weil
-        // search auch über Solo-Leads soll wenn kein Team aktiv ist.
+        if (ctx.teamId) q = q.eq('team_id', ctx.teamId); // TEAM-ISOLATION: nur Leads des aktiven Teams
         if (input.status)    q = q.eq('status', input.status);
         if (input.owner_id)  q = q.eq('owner_id', input.owner_id);
         if (typeof input.score_min === 'number') q = q.gte('lead_score', input.score_min);
@@ -652,6 +850,25 @@ async function executeTool(
           const esc = String(input.query).replace(/[%,]/g, '');
           q = q.or(`first_name.ilike.%${esc}%,last_name.ilike.%${esc}%,company.ilike.%${esc}%,email.ilike.%${esc}%`);
         }
+        const { data, error } = await q;
+        if (error) return { ok: false, error: error.message };
+        return { ok: true, data };
+      }
+
+      case "list_tasks": {
+        const limit = Math.min(Number(input.limit) || 20, 50);
+        const filter = typeof input.filter === 'string' ? input.filter : 'open';
+        const today = new Date().toISOString().split('T')[0];
+        let q = supabase
+          .from('lead_tasks')
+          .select('id, title, due_date, status, priority, lead_id')
+          .order('due_date', { ascending: true, nullsFirst: false })
+          .limit(limit);
+        if (ctx.teamId) q = q.eq('team_id', ctx.teamId); // TEAM-ISOLATION
+        if (filter !== 'all') q = q.neq('status', 'done');
+        if (filter === 'overdue')    q = q.lt('due_date', today);
+        else if (filter === 'today') q = q.eq('due_date', today);
+        if (input.query) { const esc = String(input.query).replace(/[%,]/g, ''); q = q.ilike('title', `%${esc}%`); }
         const { data, error } = await q;
         if (error) return { ok: false, error: error.message };
         return { ok: true, data };
@@ -751,17 +968,22 @@ async function executeTool(
 
       case "get_account_overview": {
         const today = new Date().toISOString().split('T')[0];
+        const tid = ctx.teamId;
+        // vernetzungen hat kein team_id → über die Brands des aktiven Teams scopen
+        const tbv = await supabase.from('brand_voices').select('id').eq('team_id', tid);
+        const teamBvIds = ((tbv.data as any[]) || []).map((b: any) => b.id);
+        const bvFilter = teamBvIds.length ? teamBvIds : ['00000000-0000-0000-0000-000000000000'];
         const [leads, dealsR, tasksOpen, tasksOverdue, posts, brands, auds, kb, conns, ssi] = await Promise.all([
-          supabase.from('leads').select('id', { count: 'exact', head: true }).eq('archived', false),
-          supabase.from('deals').select('stage'),
-          supabase.from('lead_tasks').select('id', { count: 'exact', head: true }).eq('status', 'open'),
-          supabase.from('lead_tasks').select('id', { count: 'exact', head: true }).eq('status', 'open').lt('due_date', today),
-          supabase.from('content_posts').select('status'),
-          supabase.from('brand_voices').select('account_type'),
-          supabase.from('target_audiences').select('id', { count: 'exact', head: true }),
-          supabase.from('knowledge_base').select('id', { count: 'exact', head: true }),
-          supabase.from('vernetzungen').select('id', { count: 'exact', head: true }),
-          supabase.from('ssi_scores').select('total_score, recorded_at').order('recorded_at', { ascending: false }).limit(1),
+          supabase.from('leads').select('id', { count: 'exact', head: true }).eq('archived', false).eq('team_id', tid),
+          supabase.from('deals').select('stage').eq('team_id', tid),
+          supabase.from('lead_tasks').select('id', { count: 'exact', head: true }).eq('status', 'open').eq('team_id', tid),
+          supabase.from('lead_tasks').select('id', { count: 'exact', head: true }).eq('status', 'open').lt('due_date', today).eq('team_id', tid),
+          supabase.from('content_posts').select('status').eq('team_id', tid),
+          supabase.from('brand_voices').select('account_type').eq('team_id', tid),
+          supabase.from('target_audiences').select('id', { count: 'exact', head: true }).eq('team_id', tid),
+          supabase.from('knowledge_base').select('id', { count: 'exact', head: true }).eq('team_id', tid),
+          supabase.from('vernetzungen').select('id', { count: 'exact', head: true }).in('brand_voice_id', bvFilter),
+          supabase.from('ssi_scores').select('total_score, recorded_at').eq('team_id', tid).order('recorded_at', { ascending: false }).limit(1),
         ]);
         const dealsOpen = (dealsR.data || []).filter((d: any) => d.stage !== 'gewonnen' && d.stage !== 'verloren').length;
         const dealsWon = (dealsR.data || []).filter((d: any) => d.stage === 'gewonnen').length;
@@ -783,6 +1005,7 @@ async function executeTool(
       case "get_brands": {
         let q = supabase.from('brand_voices')
           .select('id, name, brand_name, account_type, is_active, mission, tonality, linkedin_style, example_texts, perspective')
+          .eq('team_id', ctx.teamId)
           .order('updated_at', { ascending: false }).limit(50);
         if (input.account_type) q = q.eq('account_type', input.account_type);
         const { data, error } = await q;
@@ -803,6 +1026,7 @@ async function executeTool(
       case "list_audiences": {
         const { data, error } = await supabase.from('target_audiences')
           .select('id, name, job_titles, industries, pain_points, region, is_active')
+          .eq('team_id', ctx.teamId)
           .order('updated_at', { ascending: false }).limit(50);
         if (error) return { ok: false, error: error.message };
         return { ok: true, data: data || [] };
@@ -811,6 +1035,7 @@ async function executeTool(
       case "list_knowledge": {
         const { data, error } = await supabase.from('knowledge_base')
           .select('id, name, category, product_form, source_url, file_name')
+          .eq('team_id', ctx.teamId)
           .order('updated_at', { ascending: false }).limit(50);
         if (error) return { ok: false, error: error.message };
         return { ok: true, data: data || [] };
@@ -820,6 +1045,7 @@ async function executeTool(
         const limit = Math.min(Number(input.limit) || 20, 50);
         let q = supabase.from('content_posts')
           .select('id, title, status, scheduled_at, published_at, topic')
+          .eq('team_id', ctx.teamId)
           .order('updated_at', { ascending: false }).limit(limit);
         if (input.status) q = q.eq('status', String(input.status));
         const { data, error } = await q;
@@ -830,6 +1056,7 @@ async function executeTool(
       case "get_ssi": {
         const { data, error } = await supabase.from('ssi_scores')
           .select('total_score, build_brand, find_people, engage_insights, build_relationships, industry_rank, network_rank, recorded_at, brand_voice_id')
+          .eq('team_id', ctx.teamId)
           .order('recorded_at', { ascending: false }).limit(12);
         if (error) return { ok: false, error: error.message };
         const seen = new Set(); const latest: any[] = [];
@@ -839,11 +1066,87 @@ async function executeTool(
 
       case "list_connections": {
         const limit = Math.min(Number(input.limit) || 20, 50);
+        const tbvC = await supabase.from('brand_voices').select('id').eq('team_id', ctx.teamId);
+        const cBvIds = ((tbvC.data as any[]) || []).map((b: any) => b.id);
         const { data, error } = await supabase.from('vernetzungen')
           .select('id, li_name, li_headline, li_company, status, sent_at, responded_at, outcome_notes')
+          .in('brand_voice_id', cBvIds.length ? cBvIds : ['00000000-0000-0000-0000-000000000000'])
           .order('created_at', { ascending: false }).limit(limit);
         if (error) return { ok: false, error: error.message };
         return { ok: true, data: data || [] };
+      }
+
+      case "get_brand_memory": {
+        const bvId = await resolveBrandId(input.brand_voice_id, supabase, ctx);
+        if (!bvId) return { ok: false, error: 'Keine Brand angegeben und keine aktive Brand gefunden.' };
+        const [mem, brand, posts] = await Promise.all([
+          supabase.from('brand_memory').select('id, content, source, created_at').eq('brand_voice_id', bvId).order('created_at', { ascending: false }).limit(50),
+          supabase.from('brand_voices').select('name, brand_name, account_type').eq('id', bvId).maybeSingle(),
+          supabase.from('content_posts').select('id', { count: 'exact', head: true }).eq('brand_voice_id', bvId),
+        ]);
+        return { ok: true, data: {
+          brand: (brand.data as any)?.brand_name || (brand.data as any)?.name || bvId,
+          gemerkte_notizen: ((mem.data as any[]) || []).map(m => ({ id: m.id, inhalt: m.content, quelle: m.source })),
+          lernt_aus_beitraegen: posts.count || 0,
+        } };
+      }
+
+      case "add_brand_memory": {
+        const content = String(input.content || '').trim();
+        if (!content) return { ok: false, error: 'content required' };
+        const bvId = await resolveBrandId(input.brand_voice_id, supabase, ctx);
+        if (!bvId) return { ok: false, error: 'Keine Brand angegeben und keine aktive Brand gefunden.' };
+        const { data, error } = await supabase.from('brand_memory')
+          .insert({ brand_voice_id: bvId, team_id: ctx.teamId, user_id: ctx.userId, content, source: 'assistant' })
+          .select('id, content').single();
+        if (error) return { ok: false, error: error.message };
+        return { ok: true, data };
+      }
+
+      case "diagnose_publishing": {
+        const { data, error } = await supabase.from('content_posts')
+          .select('id, title, status, publishing_error, last_publish_attempt_at, scheduled_at')
+          .not('publishing_error', 'is', null)
+          .order('last_publish_attempt_at', { ascending: false }).limit(20);
+        if (error) return { ok: false, error: error.message };
+        return { ok: true, data: { mit_fehler: data || [], anzahl: (data || []).length } };
+      }
+
+      case "get_credit_status": {
+        if (!ctx.accountId) return { ok: true, data: { hinweis: 'Kein aktiver Account/Plan zugeordnet.' } };
+        const admin = createClient(SUPABASE_URL, SUPABASE_SERVICE_KEY);
+        const { data, error } = await admin.rpc('check_credits_for_account', { p_account_id: ctx.accountId, p_estimated_credits: 0 });
+        if (error) return { ok: false, error: error.message };
+        return { ok: true, data };
+      }
+
+      case "get_connection_status": {
+        const { data, error } = await supabase.from('linkedin_oauth_tokens')
+          .select('brand_voice_id, display_name, access_token_expires_at, revoked_at, refresh_failed_at, refresh_failure_reason, last_used_at')
+          .order('updated_at', { ascending: false }).limit(20);
+        if (error) return { ok: false, error: error.message };
+        const now = Date.now();
+        const conns = ((data as any[]) || []).map(t => ({
+          brand_voice_id: t.brand_voice_id, name: t.display_name,
+          status: t.revoked_at ? 'widerrufen'
+            : (t.refresh_failed_at ? 'refresh_fehlgeschlagen'
+            : (t.access_token_expires_at && new Date(t.access_token_expires_at).getTime() < now ? 'token_abgelaufen' : 'verbunden')),
+          fehler: t.refresh_failure_reason || null,
+          token_gueltig_bis: t.access_token_expires_at,
+        }));
+        return { ok: true, data: { linkedin_verbindungen: conns, anzahl: conns.length,
+          hinweis: conns.length === 0 ? 'Keine LinkedIn-Verbindung gefunden — LinkedIn verbinden bzw. Chrome Extension installieren & einloggen.' : undefined } };
+      }
+
+      case "report_problem": {
+        const summary = String(input.summary || '').trim();
+        if (!summary) return { ok: false, error: 'summary required' };
+        const { data, error } = await supabase.from('support_tickets')
+          .insert({ user_id: ctx.userId, team_id: ctx.teamId, account_id: ctx.accountId,
+            summary, details: input.details ? String(input.details) : null, area: input.area ? String(input.area) : null, source: 'assistant' })
+          .select('id, summary, status').single();
+        if (error) return { ok: false, error: error.message };
+        return { ok: true, data };
       }
 
       default:
@@ -916,7 +1219,22 @@ WICHTIGE KONZEPTE:
 - Chrome Extension: Brücke zu LinkedIn (Lead-Import, Auto-Vernetzung, SSI-Scraping, Nachrichten). Muss installiert sein.
 - Brand-Wechsel: oben im Header zwischen Personal- und Company Brands wechseln; jede Brand hat eigenen Content und eigenes Memory.
 - Plan & Credits: KI-Funktionen verbrauchen Credits; Limits richten sich nach dem Plan (Verbrauch ist in der App sichtbar).
-- Geführte Touren: pro Bereich (Content, Branding), startbar über das Fragezeichen oben rechts oder unter „Erste Schritte“ (Profil-Menü).`;
+- Geführte Touren: pro Bereich (Content, Branding), startbar über das Fragezeichen oben rechts oder unter „Erste Schritte“ (Profil-Menü).
+
+AUFBAU / EBENEN (kannst du dem User erklären):
+- USER-EBENE (nur für die einzelne Person): Profil, bevorzugtes KI-Modell, aktive Brand-Auswahl, Memory an/aus, Onboarding-/Touren-Status sowie persönliche Konventionen für den Assistenten. Gilt nur für dich.
+- TEAM-/ACCOUNT-EBENE (im Team geteilt): fast alle Geschäftsdaten — Kontakte, Unternehmen, Deals, Pipeline, Aufgaben — und auch die Brands, Zielgruppen, Wissensdatenbank und Beiträge. Jedes Teammitglied sieht und bearbeitet sie. Zweck: gemeinsam am selben Bestand arbeiten.
+- BRAND-EBENE (pro Markenstimme): der gesamte Content hängt an einer Brand — Text-Werkstatt-Chats, Dokumente, Beiträge, Visuals/Medien, SSI, Vernetzungen UND das Content-Memory. Wechselt man oben im Header die Brand, wechselt der komplette Content-Kontext. Zweck: jede Person/Marke hat eigene Stimme, Themen und Lerndaten — die KI vermischt sie nicht.
+Faustregel: Content-Funktionen sind brand-gebunden (die aktive Brand zählt), CRM/LinkedIn/Reporting sind team-geteilt, Einstellungen/Modell/Touren sind user-persönlich.`;
+
+const TROUBLESHOOTING_GUIDE = `## Technischer Support — häufige Probleme & Lösungswege:
+- "KI-Generierung schlägt fehl / antwortet nicht": Credits prüfen (get_credit_status) — bei aufgebraucht Top-Up/Plan; sicherstellen, dass oben eine Brand aktiv ist. Bei sporadischem Bildgenerierungs-Fehler: einmal erneut versuchen (bekannte Flakiness bei manchen Bild-Modellen).
+- "Beitrag wurde nicht veröffentlicht": diagnose_publishing nutzen (zeigt die Fehlermeldung). Oft abgelaufene LinkedIn-Verbindung → get_connection_status, dann LinkedIn neu verbinden.
+- "LinkedIn/Extension verbindet nicht": get_connection_status (Token abgelaufen/widerrufen/Refresh-Fehler). Lösung: LinkedIn neu verbinden; Chrome Extension installieren, einloggen, Seite neu laden. Vernetzungen, SSI und Nachrichten laufen über die Extension.
+- "SSI aktualisiert nicht": SSI wird über die Extension täglich erfasst — Extension muss installiert/eingeloggt sein und LinkedIn besucht werden. get_ssi zeigt das letzte Datum.
+- "Neue Funktion/Änderung nicht sichtbar": Hard-Refresh (Cmd/Strg+Shift+R) — der Browser hält manchmal alte Versionen.
+- "Limit erreicht": plan-abhängige Limits (Vernetzungen/Tag, Credits/Monat) — Plan/Top-Up prüfen.
+Vorgehen bei technischen Problemen: erst mit den Diagnose-Tools die Ursache eingrenzen und einen konkreten Lösungsweg nennen. Der User kann dir Screenshots, Bilder oder PDFs anhängen — sieh sie dir genau an (Fehlermeldung, Bildschirminhalt) und beziehe dich konkret darauf. Wenn du es nicht lösen kannst oder der User eskalieren möchte: mit report_problem ein Support-Ticket anlegen (Problem vorher klar zusammenfassen).`;
 
 const SYSTEM_PROMPT_BASE = `Du bist Leadly, der interne Assistent und Produkt-Berater von Leadesk — einer LinkedIn-Suite. Du kennst jede Funktion von Leadesk und alle Daten des Users (Kontakte, Deals, Aufgaben, Brand Voices, Zielgruppen, Wissensdatenbank, Beiträge, SSI, Vernetzungen) und hilfst bei allen Fragen.
 
@@ -924,7 +1242,15 @@ Deine zwei Rollen:
 1) BERATER & SUPPORT: Erkläre Funktionen und hilf weiter, wenn der User etwas nicht versteht („Wie funktioniert X?“, „Wo finde ich Y?“, „Was bedeutet Z?“). Stütze dich auf den „Leadesk-Funktionsüberblick“ weiter unten. Antworte klar, freundlich und konkret, mit konkreten Schritten („Geh auf …, dann klick …“). Wenn etwas planabhängig ist oder du es nicht sicher weißt, sag das ehrlich, statt zu raten.
 2) AKTIVER CRM-ASSISTENT: Du kannst Kontakte und Aufgaben anlegen, Deals managen, Daten durchsuchen und Status ändern.
 
-Daten des Users: Für Fragen zu den konkreten Daten des Users IMMER die Lese-Tools nutzen (get_account_overview, get_brands, list_audiences, list_knowledge, list_posts, get_ssi, list_connections, search_leads) statt zu raten oder Zahlen zu erfinden.
+Daten des Users: Für Fragen zu den konkreten Daten des Users IMMER die Lese-Tools nutzen (get_account_overview, get_brands, list_audiences, list_knowledge, list_posts, get_ssi, list_connections, get_brand_memory, search_leads) statt zu raten oder Zahlen zu erfinden.
+
+Ebenen: Leadesk hat drei Ebenen — User (persönlich), Team/Account (geteilt) und Brand (pro Markenstimme). Du weißt, auf welcher Ebene welche Funktion liegt (siehe Funktionsüberblick) und welche Brand/welches Team gerade aktiv ist (siehe „Aktueller Kontext"). Erkläre das auf Nachfrage konkret.
+
+Brand-Memory: Jede Brand hat eine kuratierte Memory. Mit get_brand_memory zeigst du sie, mit add_brand_memory ergänzt du auf Wunsch des Users eine Notiz/Regel — diese fließt dann in die Content-Generierung dieser Brand ein.
+
+Technischer Support: Bei technischen Problemen ('X geht nicht', Fehlermeldung, 'nicht veröffentlicht', 'LinkedIn verbindet nicht') grenzt du die Ursache mit den Diagnose-Tools ein (diagnose_publishing, get_credit_status, get_connection_status) und nennst einen konkreten Lösungsweg (siehe Technischer-Support-Abschnitt). Wenn du es nicht lösen kannst oder der User eskalieren will, legst du mit report_problem ein Support-Ticket an.
+
+Du darfst auch erklären, was du selbst alles kannst, und schlägst nach einer Antwort ggf. einen sinnvollen nächsten Schritt vor (kurz, nicht aufdringlich).
 
 Antworte immer auf Deutsch, kurz und konkret. Bei klaren Aufträgen frage NICHT nach allen Feldern — leg den Datensatz mit dem an was du hast, der User kann ihn später ergänzen.
 
@@ -947,8 +1273,10 @@ function buildSystemPrompt(
   preferences: { key: string; value: string }[],
   accountMemories: { summary: string }[] = [],
   accountPreferences: { key: string; value: string }[] = [],
+  contextInfo = '',
 ) {
-  const parts = [SYSTEM_PROMPT_BASE, '\n\n## Leadesk-Funktionsüberblick (nutze ihn für Support- und Verständnisfragen):\n' + LEADESK_GUIDE];
+  const parts = [SYSTEM_PROMPT_BASE, '\n\n## Leadesk-Funktionsüberblick (nutze ihn für Support- und Verständnisfragen):\n' + LEADESK_GUIDE, '\n\n' + TROUBLESHOOTING_GUIDE];
+  if (contextInfo) parts.push('\n\n' + contextInfo);
   if (memories.length > 0) {
     parts.push(`\nDu erinnerst dich an (von ähnlichen Anfragen früher):\n${memories.map((m, i) => `${i + 1}. ${m.summary}`).join('\n')}`);
   }
@@ -989,7 +1317,7 @@ serve(async (req) => {
     const body = await req.json().catch(() => ({}));
     const mode = body.mode || 'chat';
     const teamId = body.team_id || caller.team_id || null;
-    const ctx = { userId, teamId };
+    const ctx = { userId, teamId, accountId: caller.account_id };
 
     // ─── Mode: briefing ──────────────────────────────────────────────
     if (mode === 'briefing') {
@@ -1088,6 +1416,57 @@ ${JSON.stringify(context, null, 2)}`;
       return json({ briefing_text: text, context, briefing_date: today });
     }
 
+    // ─── Confirmed write execution (Guardrail-Freigabe) ──────────────
+    // Frontend ruft nach User-Klick „Übernehmen" mit confirmed_action. Es wird
+    // GENAU dieses bestätigte Tool ausgeführt (RLS-scoped als der User) + auditiert.
+    // Kein LLM-Call, kein Credit-Gate (Tools sind kostenlos).
+    if (body.confirmed_action && typeof body.confirmed_action === 'object') {
+      const ca = body.confirmed_action as { name?: string; input?: Record<string, unknown> };
+      const caName = String(ca.name || '');
+      if (!WRITE_TOOLS.has(caName)) {
+        return json({ error: 'Unbekannte oder nicht bestätigungspflichtige Aktion.' }, 400);
+      }
+      const caInput = (ca.input && typeof ca.input === 'object') ? ca.input as Record<string, unknown> : {};
+
+      // B2.3 — Vorher-Zustand für Undo sichern (nur bei update-/complete-Tools).
+      let beforeState: Record<string, unknown> | null = null;
+      if (BEFORE_CAPTURE[caName]) {
+        const [tbl, idf] = BEFORE_CAPTURE[caName];
+        const idv = caInput[idf];
+        if (idv) {
+          const { data: row } = await supabase.from(tbl).select('*').eq('id', idv).maybeSingle();
+          beforeState = (row as Record<string, unknown>) || null;
+        }
+      }
+
+      const result = await executeTool(caName, caInput, supabase, ctx);
+      // Audit (service-role; darf den Flow nie blocken) — Insert mit before-State + id zurück.
+      let auditId: string | null = null;
+      try {
+        const { data: auditRow } = await adminForCredits.from('leadly_action_audit').insert({
+          user_id: userId, team_id: teamId, account_id: caller.account_id,
+          tool_name: caName, tool_input: caInput, result, before: beforeState,
+          ok: !!(result as { ok?: boolean }).ok, confirmed: true,
+        }).select('id').single();
+        auditId = auditRow?.id || null;
+      } catch (_e) { /* audit non-blocking */ }
+      const ok = !!(result as { ok?: boolean }).ok;
+      const okMsg = ok ? 'Erledigt.' : ('Das hat nicht geklappt: ' + ((result as { error?: string }).error || 'unbekannter Fehler') + '.');
+      // Revertierbar, wenn erfolgreich + kein Revert selbst + create/update-Tool.
+      const revertible = ok && caName !== 'revert_action'
+        && (BEFORE_CAPTURE[caName] !== undefined || ['create_lead', 'create_task', 'create_deal', 'add_brand_memory'].includes(caName));
+      return json({
+        reply: { role: 'assistant', content: okMsg, tool_calls: null },
+        tool_results: [{ tool_use_id: 'confirmed-' + caName, name: caName, output: result }],
+        executed: true,
+        audit_id: auditId,
+        revertible,
+        model: DEFAULT_MODEL,
+        finish_reason: 'confirmed',
+        iterations: 0,
+      });
+    }
+
     // ─── Mode: chat (Tool-Use-Loop) ──────────────────────────────────
     const incoming = Array.isArray(body.messages) ? body.messages : [];
     // Defensive: nur valide user/assistant-text-Messages durchreichen.
@@ -1112,6 +1491,31 @@ ${JSON.stringify(context, null, 2)}`;
     const lastUserMsg = [...anthropicMessages].reverse().find(m => m.role === 'user');
     const queryText = typeof lastUserMsg?.content === 'string' ? lastUserMsg.content : '';
     const queryEmbedding = queryText ? await generateEmbedding(queryText) : null;
+
+    // ─── Datei-/Bild-Anhänge → an die letzte User-Message als multimodale
+    //     Content-Blocks hängen (Anthropic base64). Bilder + PDFs liest das
+    //     Modell direkt; andere Typen werden als Text-Hinweis erwähnt. ──────
+    const attachments = Array.isArray(body.attachments) ? body.attachments : [];
+    if (attachments.length && lastUserMsg) {
+      const txt = typeof lastUserMsg.content === 'string' ? lastUserMsg.content : '';
+      const blocks: Array<Record<string, unknown>> = [];
+      if (txt) blocks.push({ type: 'text', text: txt });
+      for (const a of attachments.slice(0, 5)) {
+        const data = typeof a?.base64 === 'string' ? a.base64 : '';
+        const mime = typeof a?.type === 'string' ? a.type : '';
+        if (!data || !mime) continue;
+        if (mime.startsWith('image/')) {
+          blocks.push({ type: 'image', source: { type: 'base64', media_type: mime, data } });
+        } else if (mime === 'application/pdf') {
+          blocks.push({ type: 'document', source: { type: 'base64', media_type: 'application/pdf', data } });
+        } else {
+          blocks.push({ type: 'text', text: `[Anhang "${a?.name || 'Datei'}" (${mime}) — Format kann nicht direkt gelesen werden.]` });
+        }
+      }
+      if (blocks.length === 0) blocks.push({ type: 'text', text: txt || '(Anhang)' });
+      else if (!txt) blocks.unshift({ type: 'text', text: 'Hier ist mein Anhang:' });
+      lastUserMsg.content = blocks;
+    }
 
     // 3) User-Memory + Preferences (immer, auch bei privat)
     const userMemoryPromise = retrieveMemories(userId, queryEmbedding);
@@ -1140,9 +1544,20 @@ ${JSON.stringify(context, null, 2)}`;
         admin.rpc('increment_account_memory_recall', { p_id: m.id }).then(() => {}).catch(() => {});
       }
     }
+    const activeBrand = await loadActiveBrand(adminForCredits, userId);
+    const _nowD = new Date();
+    const _todayISO = _nowD.toISOString().split('T')[0];
+    const _weekday = _nowD.toLocaleDateString('de-DE', { weekday: 'long', timeZone: 'Europe/Berlin' });
+    const contextInfo = '## Aktueller Kontext des Users (Ebenen):\n'
+      + '- Heutiges Datum: ' + _todayISO + ' (' + _weekday + '). Relative Fälligkeiten wie „heute", „morgen", „nächste Woche", „in 3 Tagen" IMMER auf Basis dieses Datums als YYYY-MM-DD berechnen — nie nach dem heutigen Datum fragen.\n'
+      + '- Team-/Account-Ebene aktiv: geteilte Daten (Kontakte, Deals, Aufgaben, Brands, Zielgruppen, Wissen, Beiträge).\n'
+      + (activeBrand
+          ? '- Aktive Brand (Brand-Ebene): „' + activeBrand.label + '" (' + activeBrand.typ + '). Der gesamte Content (Text-Werkstatt, Dokumente, Beiträge, Visuals, Memory, SSI, Vernetzungen) bezieht sich auf DIESE Brand. Brand-Memory-Tools nutzen sie als Default.'
+          : '- Aktuell ist KEINE Brand ausgewählt. Für content-/brand-spezifische Aktionen den User bitten, oben eine Brand zu wählen.');
     const dynamicSystemPrompt = buildSystemPrompt(
       retrievedMemories, preferences,
       accountMemories, accountPreferences,
+      contextInfo,
     );
 
     const toolResults: Array<{ tool_use_id: string; name: string; output: unknown }> = [];
@@ -1213,6 +1628,32 @@ ${JSON.stringify(context, null, 2)}`;
 
       if (toolUses.length === 0 || lastFinish !== 'tool_use') {
         break; // Final assistant message
+      }
+
+      // ─── Guardrail: WRITE-Tools NIE autonom ausführen ──────────────
+      // Will das Modell ein schreibendes/außenwirksames Tool nutzen, führen wir
+      // es NICHT aus, sondern geben es als pending_action zur Bestätigung zurück.
+      // (Lese-Tools in derselben Runde werden dann ebenfalls nicht ausgeführt —
+      //  selten; der Loop endet hier. Der orphan tool_use im persistierten Verlauf
+      //  wird beim nächsten Replay ohnehin verworfen, s. Filter oben.)
+      const writeUses = toolUses.filter(tu => WRITE_TOOLS.has(tu.name));
+      if (writeUses.length > 0) {
+        const preamble = lastAssistantBlocks
+          .filter((b: { type: string }) => b.type === 'text')
+          .map((b: { text: string }) => b.text).join('\n').trim();
+        return json({
+          reply: { role: 'assistant', content: preamble || null, tool_calls: null },
+          pending_actions: writeUses.map(tu => ({
+            tool_use_id: tu.id, name: tu.name, input: tu.input || {},
+            summary: summarizeAction(tu.name, tu.input || {}),
+          })),
+          requires_confirmation: true,
+          tool_results: [],
+          model: DEFAULT_MODEL,
+          finish_reason: 'pending_confirmation',
+          iterations: iter,
+          learning_scope: learningScope,
+        });
       }
 
       // Assistant-Turn ans Message-Array hängen

@@ -4,6 +4,7 @@
 import { useState, useRef, useEffect } from 'react'
 import { Bot, Send, Loader2, User } from 'lucide-react'
 import { supabase } from '../../lib/supabase'
+import PageHeader from '../../components/PageHeader'
 
 const PRIMARY = 'var(--wl-primary, rgb(49,90,231))'
 
@@ -44,14 +45,12 @@ export default function Assistent() {
   }
 
   return (
-    <div style={{ padding: 32, maxWidth: 820, margin: '0 auto', display: 'flex', flexDirection: 'column', height: 'calc(100vh - 120px)' }}>
-      <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 6 }}>
-        <Bot size={26} color={PRIMARY} />
-        <h1 style={{ fontSize: 26, fontWeight: 800, color: 'var(--text-strong)', margin: 0, letterSpacing: '-0.01em' }}>Assistent</h1>
-      </div>
-      <p style={{ fontSize: 14, color: 'var(--text-muted)', margin: '0 0 16px' }}>
-        Frag mich zu deinen Sponsoren, Verträgen, Inventar und Kennzahlen.
-      </p>
+    <div style={{ width: '100%', maxWidth: 1100, margin: '0 auto', padding: '24px 16px 40px', display: 'flex', flexDirection: 'column', height: 'calc(100vh - 120px)' }}>
+      <PageHeader
+        overline="Sponsoring"
+        title="Assistent"
+        subtitle="Frag mich zu deinen Sponsoren, Verträgen, Inventar und Kennzahlen."
+      />
 
       {error && <div style={errBox}>{error}</div>}
 
@@ -88,7 +87,7 @@ export default function Assistent() {
       </div>
 
       <form onSubmit={(e) => { e.preventDefault(); send() }} style={{ display: 'flex', gap: 10, marginTop: 14 }}>
-        <input value={input} onChange={(e) => setInput(e.target.value)} placeholder="Frage stellen…" style={input} />
+        <input value={input} onChange={(e) => setInput(e.target.value)} placeholder="Frage stellen…" style={inputStyle} />
         <button type="submit" disabled={busy || !input.trim()} style={{ ...primaryBtn, opacity: busy || !input.trim() ? 0.6 : 1 }}>
           {busy ? <Loader2 size={16} className="spin" /> : <Send size={16} />}
         </button>
@@ -97,7 +96,7 @@ export default function Assistent() {
   )
 }
 
-const input = { flex: 1, padding: '11px 14px', borderRadius: 999, border: '1px solid var(--border)', background: 'var(--surface)', color: 'var(--text-strong)', fontSize: 14, boxSizing: 'border-box' }
+const inputStyle = { flex: 1, padding: '11px 14px', borderRadius: 999, border: '1px solid var(--border)', background: 'var(--surface)', color: 'var(--text-strong)', fontSize: 14, boxSizing: 'border-box' }
 const primaryBtn = { display: 'inline-flex', alignItems: 'center', justifyContent: 'center', width: 46, height: 46, borderRadius: '50%', border: 'none', background: PRIMARY, color: '#fff', cursor: 'pointer' }
 const chip = { fontSize: 13, fontWeight: 500, color: 'var(--text-strong)', background: 'var(--surface)', border: '1px solid var(--border)', padding: '8px 14px', borderRadius: 999, cursor: 'pointer', textAlign: 'left' }
 const errBox = { padding: '10px 14px', borderRadius: 10, background: '#FEE2E2', color: '#991B1B', fontSize: 13, marginBottom: 12 }

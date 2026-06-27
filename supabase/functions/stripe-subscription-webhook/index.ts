@@ -44,17 +44,23 @@ serve(async (req) => {
 
   const stripeKey = Deno.env.get('STRIPE_SECRET_KEY') || ''
   const webhookSecret = Deno.env.get('STRIPE_WEBHOOK_SECRET') || ''
+  // Affiliate Phase 5: Connect-Events (account.updated von connected accounts) kommen
+  // über einen SEPARATEN Connect-Webhook-Endpoint mit EIGENEM Secret. Wir verifizieren
+  // gegen beide Secrets (account-events + connect-events landen auf derselben EF-URL).
+  const connectSecret = Deno.env.get('STRIPE_CONNECT_WEBHOOK_SECRET') || ''
   if (!stripeKey || !webhookSecret) return bad(500, 'stripe not configured')
 
   const stripe = new Stripe(stripeKey, { apiVersion: '2024-04-10', httpClient: Stripe.createFetchHttpClient() })
   const sig = req.headers.get('stripe-signature') || ''
   const rawBody = await req.text()
 
-  let event: Stripe.Event
-  try {
-    event = await stripe.webhooks.constructEventAsync(rawBody, sig, webhookSecret)
-  } catch (e) {
-    console.error('[stripe-webhook] signature verify failed:', (e as Error).message)
+  let event: Stripe.Event | null = null
+  for (const secret of [webhookSecret, connectSecret].filter(Boolean)) {
+    try { event = await stripe.webhooks.constructEventAsync(rawBody, sig, secret); break }
+    catch (_) { /* nächstes Secret probieren */ }
+  }
+  if (!event) {
+    console.error('[stripe-webhook] signature verify failed (both secrets)')
     return bad(400, 'signature verification failed')
   }
 
@@ -144,7 +150,17 @@ serve(async (req) => {
       }
 
       case 'invoice.paid': {
-        // No-op — subscription-Update kommt via subscription.updated
+        // Subscription-Sync kommt via subscription.updated (No-op hier).
+        // NEU (Affiliate Phase 3): bezahltes Invoice eines geworbenen Customers
+        // → Conversion-Confirm + Commission-Event. Defensiv (nie 500 für Stripe).
+        try {
+          const inv = event.data.object as Stripe.Invoice
+          if (inv.customer && typeof inv.customer === 'string' && (inv.amount_paid || 0) > 0) {
+            await handleAffiliateInvoicePaid(supabase, inv)
+          }
+        } catch (e) {
+          console.warn('[invoice.paid] affiliate handler failed:', (e as Error).message)
+        }
         break
       }
 
@@ -156,6 +172,40 @@ serve(async (req) => {
             .from('credit_topups')
             .update({ status: 'refunded' })
             .eq('stripe_payment_intent_id', charge.payment_intent)
+        }
+        // NEU (Affiliate Phase 3): Clawback der Commission für das refundete Invoice.
+        try {
+          const invId = typeof charge.invoice === 'string'
+            ? charge.invoice
+            : (charge.invoice as Stripe.Invoice | null)?.id
+          if (invId) {
+            const { error: cbErr } = await supabase
+              .from('affiliate_commission_events')
+              .update({ status: 'clawed_back' })
+              .eq('stripe_invoice_id', invId)
+              .neq('status', 'clawed_back')
+            if (cbErr) console.warn('[charge.refunded] affiliate clawback:', cbErr.message)
+          }
+        } catch (e) {
+          console.warn('[charge.refunded] affiliate clawback failed:', (e as Error).message)
+        }
+        break
+      }
+
+      case 'account.updated': {
+        // NEU (Affiliate Phase 5): Stripe-Connect-Account-Status (Express-Onboarding).
+        // Stripe schickt das mehrfach beim Onboarding — handle_stripe_account_updated
+        // matcht auf affiliates.stripe_connect_account_id, no-op wenn unbekannt.
+        try {
+          const acct = event.data.object as Stripe.Account
+          const { error: e } = await supabase.rpc('handle_stripe_account_updated', {
+            p_account_id: acct.id,
+            p_charges_enabled: !!acct.charges_enabled,
+            p_payouts_enabled: !!acct.payouts_enabled,
+          })
+          if (e) console.warn('[account.updated] affiliate connect update:', e.message)
+        } catch (e) {
+          console.warn('[account.updated] handler failed:', (e as Error).message)
         }
         break
       }
@@ -170,6 +220,58 @@ serve(async (req) => {
 
   return ok()
 })
+
+// ─── Affiliate (Phase 3) ──────────────────────────────────────────────────────
+
+// invoice.paid → Conversion-Confirm (erstes Payment) + Commission-Event. Recurring:
+// jede Monatsrechnung im 12-Monats-Fenster erzeugt ein Event. Idempotent über
+// UNIQUE(stripe_invoice_id). Customer → Account → geworbener User → Conversion.
+async function handleAffiliateInvoicePaid(supabase: any, inv: Stripe.Invoice) {
+  const { data: acc } = await supabase
+    .from('accounts')
+    .select('owner_user_id')
+    .eq('stripe_customer_id', inv.customer)
+    .maybeSingle()
+  if (!acc?.owner_user_id) return
+
+  const { data: conv } = await supabase
+    .from('affiliate_conversions')
+    .select('id, affiliate_id, commission_rate_bps_snapshot, status, commission_end_at')
+    .eq('user_id', acc.owner_user_id)
+    .in('status', ['pending_payment', 'pending_confirm', 'confirmed'])
+    .maybeSingle()
+  if (!conv?.id) return
+
+  const now = new Date()
+  let withinWindow = false
+
+  if (conv.status === 'pending_payment') {
+    const end = new Date(now); end.setMonth(end.getMonth() + 12)
+    await supabase
+      .from('affiliate_conversions')
+      .update({ status: 'pending_confirm', first_paid_at: now.toISOString(), commission_end_at: end.toISOString() })
+      .eq('id', conv.id)
+      .eq('status', 'pending_payment')   // Race-Guard gegen Doppel-Delivery
+    withinWindow = true
+  } else {
+    withinWindow = !!conv.commission_end_at && now < new Date(conv.commission_end_at)
+  }
+  if (!withinWindow) return
+
+  const amountPaid = inv.amount_paid || 0
+  const commission = Math.round(amountPaid * conv.commission_rate_bps_snapshot / 10000)
+  const { error: evErr } = await supabase
+    .from('affiliate_commission_events')
+    .upsert({
+      conversion_id: conv.id,
+      affiliate_id: conv.affiliate_id,
+      stripe_invoice_id: inv.id,
+      payment_amount_cents: amountPaid,
+      commission_amount_cents: commission,
+      status: 'pending',
+    }, { onConflict: 'stripe_invoice_id', ignoreDuplicates: true })
+  if (evErr) console.warn('[affiliate invoice.paid] commission_event upsert:', evErr.message)
+}
 
 // ─── Handler ────────────────────────────────────────────────────────────────
 

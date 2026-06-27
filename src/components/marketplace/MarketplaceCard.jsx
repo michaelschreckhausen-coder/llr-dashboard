@@ -98,7 +98,7 @@ function IconFromName(name, color) {
   return <Icon size={22} color={color} />
 }
 
-export function MarketplaceCard({ addon, isSubscribed, isWaitlisted, onJoinWaitlist, onSubscribe, onActivateFree, onCancel, onManageBilling }) {
+export function MarketplaceCard({ addon, isSubscribed, isWaitlisted, manageViaStripe, onJoinWaitlist, onSubscribe, onActivateFree, onCancel, onManageBilling }) {
   const [busy, setBusy] = useState(false)
   const [hover, setHover] = useState(false)
   const [menuOpen, setMenuOpen] = useState(false)
@@ -106,6 +106,11 @@ export function MarketplaceCard({ addon, isSubscribed, isWaitlisted, onJoinWaitl
   const color = addon.highlight_color || 'var(--wl-primary, rgb(49,90,231))'
   const features = Array.isArray(addon.features) ? addon.features : []
   const hasStripe = !!addon.stripe_price_id
+  // Verwalten-vs-Kündigen gatet auf die AKTIVE Row dieses Accounts (manageViaStripe),
+  // NICHT auf das Addon: grandfathered Free-Bestandskunden eines inzwischen kosten-
+  // pflichtigen Addons (kein stripe_subscription_id) kündigen self-service statt ins
+  // Billing-Portal geschickt zu werden. Fallback hasStripe nur wenn Prop fehlt.
+  const showStripeManage = manageViaStripe !== undefined ? manageViaStripe : hasStripe
   // Free-Preview: kein Stripe-Preis, aber das Addon schaltet ein Modul frei
   // (activates_modules nicht leer) → direkt aktivierbar statt Warteliste.
   const isFreeActivatable = !hasStripe
@@ -149,7 +154,7 @@ export function MarketplaceCard({ addon, isSubscribed, isWaitlisted, onJoinWaitl
                 {/* Click-away-Overlay */}
                 <div onClick={() => setMenuOpen(false)} style={{ position: 'fixed', inset: 0, zIndex: 10 }} />
                 <div style={menuStyle}>
-                  {hasStripe ? (
+                  {showStripeManage ? (
                     <button type="button" style={menuItemStyle}
                       onClick={() => { setMenuOpen(false); onManageBilling?.(addon) }}>
                       Abonnement verwalten

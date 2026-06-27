@@ -6,6 +6,7 @@ import { useEffect, useMemo, useState, useCallback } from 'react'
 import { Radar, Sparkles, Plus, Loader2 } from 'lucide-react'
 import { supabase } from '../../lib/supabase'
 import { useTeam } from '../../context/TeamContext'
+import PageHeader from '../../components/PageHeader'
 
 const PRIMARY = 'var(--wl-primary, rgb(49,90,231))'
 const sp = () => supabase.schema('sponsoring')
@@ -18,6 +19,7 @@ const TYPE_LABEL = {
 export default function Signale() {
   const { activeTeamId } = useTeam()
   const [sponsors, setSponsors] = useState([])
+  const [orgs, setOrgs] = useState([])
   const [signals, setSignals] = useState([])
   const [selSponsor, setSelSponsor] = useState('')
   const [text, setText] = useState('')
@@ -29,18 +31,29 @@ export default function Signale() {
   const fetchAll = useCallback(async () => {
     if (!activeTeamId) return
     setLoading(true); setError(null)
-    const [s, sig] = await Promise.all([
-      sp().from('sponsor_profiles').select('id, name').eq('team_id', activeTeamId).order('name'),
+    const [s, sig, o] = await Promise.all([
+      sp().from('sponsor_profiles').select('id, organization_id').eq('team_id', activeTeamId).order('created_at', { ascending: false }),
       sp().from('signals').select('*').eq('team_id', activeTeamId).order('detected_at', { ascending: false }),
+      supabase.from('organizations').select('id, name').eq('team_id', activeTeamId),
     ])
-    if (s.error || sig.error) { setError((s.error || sig.error).message); setLoading(false); return }
-    setSponsors(s.data || []); setSignals(sig.data || [])
+    if (s.error || sig.error || o.error) { setError((s.error || sig.error || o.error).message); setLoading(false); return }
+    setSponsors(s.data || []); setSignals(sig.data || []); setOrgs(o.data || [])
     setLoading(false)
   }, [activeTeamId])
 
   useEffect(() => { fetchAll() }, [fetchAll])
 
-  const sponsorName = useMemo(() => Object.fromEntries(sponsors.map((s) => [s.id, s.name])), [sponsors])
+  // Sponsor-Name kommt aus organizations.name (sponsor_profiles ist 1:1-Extension).
+  const orgName = useMemo(() => Object.fromEntries(orgs.map((o) => [o.id, o.name])), [orgs])
+  const sponsorName = useMemo(
+    () => Object.fromEntries(sponsors.map((s) => [s.id, orgName[s.organization_id] || '—'])),
+    [sponsors, orgName],
+  )
+  // Sponsoren clientseitig alphabetisch nach aufgelöstem Org-Namen sortieren (vorher .order('name')).
+  const sortedSponsors = useMemo(
+    () => [...sponsors].sort((a, b) => (orgName[a.organization_id] || '').localeCompare(orgName[b.organization_id] || '')),
+    [sponsors, orgName],
+  )
 
   async function detect() {
     if (!selSponsor || !text.trim()) return
@@ -56,14 +69,12 @@ export default function Signale() {
   if (!activeTeamId) return <div style={{ padding: 32, color: 'var(--text-muted)' }}>Kein aktives Team.</div>
 
   return (
-    <div style={{ padding: 32, maxWidth: 1000, margin: '0 auto' }}>
-      <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 6 }}>
-        <Radar size={26} color={PRIMARY} />
-        <h1 style={{ fontSize: 26, fontWeight: 800, color: 'var(--text-strong)', margin: 0, letterSpacing: '-0.01em' }}>Signale</h1>
-      </div>
-      <p style={{ fontSize: 14, color: 'var(--text-muted)', margin: '0 0 24px', maxWidth: 660, lineHeight: 1.6 }}>
-        Erkenne Sponsoring-Kaufsignale (Expansion, Investition, neuer GF …). Füge einen Text ein — die KI extrahiert die Signale.
-      </p>
+    <div style={{ width: '100%', maxWidth: 1100, margin: '0 auto', padding: '24px 16px 40px' }}>
+      <PageHeader
+        overline="Sponsoring"
+        title="Signale"
+        subtitle="Erkenne Sponsoring-Kaufsignale (Expansion, Investition, neuer GF …). Füge einen Text ein — die KI extrahiert die Signale."
+      />
 
       {error && <div style={errBox}>{error}</div>}
       {note && <div style={okBox}>{note}</div>}
@@ -72,7 +83,7 @@ export default function Signale() {
         <div style={{ display: 'flex', gap: 10, marginBottom: 10 }}>
           <select value={selSponsor} onChange={(e) => setSelSponsor(e.target.value)} style={{ ...input, maxWidth: 280 }}>
             <option value="">— Sponsor wählen —</option>
-            {sponsors.map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}
+            {sortedSponsors.map((s) => <option key={s.id} value={s.id}>{orgName[s.organization_id] || '—'}</option>)}
           </select>
         </div>
         <textarea value={text} onChange={(e) => setText(e.target.value)} rows={5}

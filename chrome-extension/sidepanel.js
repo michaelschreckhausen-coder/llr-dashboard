@@ -495,6 +495,710 @@ async function loadTeams(userId) {
   }
 }
 
+// ── Phase 1: Sales-Navigator-Modus (Foundation) ──────────────────
+async function detectSalesNavContext() {
+  try {
+    const [tab] = await chrome.tabs.query({ active: true, currentWindow: true })
+    if (!tab || !tab.url) return null
+    if (tab.url.indexOf('https://www.linkedin.com/sales/lead/') === 0) {
+      var m = tab.url.match(/\/sales\/lead\/([^/?]+)/)
+      return { mode: 'sales_lead', url: tab.url, sourceId: m ? m[1] : null }
+    }
+    if (tab.url.indexOf('https://www.linkedin.com/sales/search/people') === 0) {
+      const u = new URL(tab.url)
+      return { mode: 'sales_saved_search', url: tab.url, savedSearchId: u.searchParams.get('savedSearchId') }
+    }
+    return null
+  } catch (e) {
+    return null
+  }
+}
+
+function renderSalesNavView(ctx, addonActive) {
+  const root = document.getElementById('salesNavStub')
+  if (!root) { console.warn('[Leadesk] salesNavStub fehlt'); return }
+  const isLead = ctx.mode === 'sales_lead'
+
+  // Gate: ohne aktives sales-nav-sync-Addon → Upsell statt Import-Buttons
+  const upsellHtml =
+    '<div style="font-size:12px;color:#92400E;background:#FEF3C7;border:1px solid #FDE68A;padding:12px;border-radius:8px;margin-top:12px">' +
+    '<strong>🎁 Sales Navigator Sync aktivieren</strong><br>' +
+    'Importiere Leads aus Sales Navigator — kostenfrei bis 31.08.2026.' +
+    '<button id="snUpsellBtn" class="btn-primary" style="width:100%;margin-top:10px">Im Leadesk-Marketplace aktivieren</button></div>'
+
+  let actionHtml
+  if (!addonActive) {
+    actionHtml = upsellHtml
+  } else if (isLead) {
+    actionHtml = '<button id="salesImportBtn" class="btn-primary" style="width:100%;margin-top:12px">Lead importieren</button>'
+  } else if (ctx.mode === 'sales_saved_search') {
+    actionHtml = currentTeamId
+      ? '<button id="salesBulkBtn" class="btn-primary" style="width:100%;margin-top:12px">Suchergebnisse scannen (Vorschau)</button>' +
+        '<button id="salesWorkerBtn" class="btn-primary" style="width:100%;margin-top:8px">Alle Seiten importieren</button>' +
+        '<div id="salesBulkStatus" style="font-size:11px;margin-top:8px;color:#555"></div>' +
+        '<div id="salesBulkPreview" style="margin-top:10px"></div>'
+      : '<div style="font-size:12px;color:#92400E;background:#FEF3C7;border:1px solid #FDE68A;padding:10px;border-radius:8px;margin-top:12px">' +
+        '<strong>Solo-Account</strong><br>Bulk-Import aus gespeicherten Suchen braucht ein Team. ' +
+        'Leg in Leadesk unter <em>Einstellungen → Team</em> eines an. ' +
+        'Einzel-Import auf der Lead-Detailseite funktioniert weiter.</div>'
+  } else {
+    actionHtml = '<div style="font-size:11px;color:#92400E;background:#FEF3C7;padding:10px;border-radius:6px;margin-top:10px">Unterstützt: Lead-Detail + gespeicherte Suche.</div>'
+  }
+
+  root.style.display = 'block'
+  root.innerHTML =
+    '<div style="margin:6px 12px;padding:16px;border:1px solid #FDE68A;background:#FFFBEB;border-radius:10px">' +
+    '<div style="font-size:15px;font-weight:700;margin-bottom:8px">Sales Navigator erkannt</div>' +
+    '<div style="font-size:12px;margin-bottom:6px">Modus: <strong>' + ctx.mode + '</strong></div>' +
+    (ctx.savedSearchId ? '<div style="font-size:12px;margin-bottom:6px">Saved-Search-ID: <code>' + ctx.savedSearchId + '</code></div>' : '') +
+    (ctx.sourceId ? '<div style="font-size:12px;margin-bottom:6px">Lead-ID: <code>' + ctx.sourceId + '</code></div>' : '') +
+    actionHtml +
+    '</div>'
+  // Standard-Pages ausblenden (router-aware: .active entfernen → CSS .page{display:none})
+  document.querySelectorAll('.page').forEach(p => p.classList.remove('active'))
+
+  if (!addonActive) {
+    const ub = document.getElementById('snUpsellBtn')
+    if (ub) ub.addEventListener('click', () => chrome.tabs.create({ url: appOrigin() + '/marketplace' }))
+    return
+  }
+  if (isLead) {
+    const btn = document.getElementById('salesImportBtn')
+    if (btn) btn.addEventListener('click', () => importSalesNavLead(ctx))
+  } else if (ctx.mode === 'sales_saved_search') {
+    const btn = document.getElementById('salesBulkBtn')
+    if (btn) btn.addEventListener('click', () => previewSavedSearch(ctx))
+    const wbtn = document.getElementById('salesWorkerBtn')
+    if (wbtn) wbtn.addEventListener('click', () => {
+      const ok = window.confirm(
+        'Bis zu ' + BULK_CAP + ' Leads dieser Suche per Sales-Navigator-API importieren? ' +
+        '(Für größere Suchen danach einen weiteren Import starten. Dauert ~1 Min.)')
+      if (!ok) return
+      runApiBulkImport(ctx, BULK_CAP)
+    })
+    checkResumeOnOpen()
+  }
+}
+
+// Env-aware App-Origin (für Marketplace-Link)
+function appOrigin() {
+  return /staging/.test(SUPABASE_URL) ? 'https://staging.leadesk.de' : 'https://app.leadesk.de'
+}
+
+// Addon-Gate: i_have_addon('sales-nav-sync') via RPC, 5-Min-Cache in storage.
+const SN_ADDON_SLUG = 'sales-nav-sync'
+const SN_ENT_CACHE_KEY = 'leadesk_sn_addon'
+const SN_ENT_TTL_MS = 5 * 60 * 1000
+async function hasSalesNavAddon() {
+  try {
+    const c = await new Promise(r => chrome.storage.local.get(SN_ENT_CACHE_KEY, r))
+    const cached = c[SN_ENT_CACHE_KEY]
+    if (cached && (Date.now() - cached.ts) < SN_ENT_TTL_MS) return !!cached.active
+  } catch (e) {}
+  let active = false
+  try {
+    const res = await sbFetch('rpc/i_have_addon', 'POST', { p_slug: SN_ADDON_SLUG })
+    active = res === true || (Array.isArray(res) && res[0] === true)
+  } catch (e) {}
+  try { await chrome.storage.local.set({ [SN_ENT_CACHE_KEY]: { active: !!active, ts: Date.now() } }) } catch (e) {}
+  return !!active
+}
+
+// Phase 3: Saved-Search PREVIEW-only.
+// Scrape der Result-Liste → Vorschau (Count + erste 5 Leads). KEIN Insert,
+// KEIN Job-Row — der Bulk-Import-Trigger ist für Phase 4 geparkt (dort dann
+// inkl. Pre-Dedup gegen sales_nav_id, Job-Tracking, optional Profil-Enrichment
+// mit 12s-Throttle). Hier nur Verifikation, dass Scrape + sales_nav_id stimmen.
+function esc(s) {
+  return String(s == null ? '' : s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]))
+}
+async function previewSavedSearch(ctx) {
+  const btn = document.getElementById('salesBulkBtn')
+  const stat = document.getElementById('salesBulkStatus')
+  const prev = document.getElementById('salesBulkPreview')
+  const setStat = (t) => { if (stat) stat.textContent = t }
+  if (!btn) return
+  btn.disabled = true
+  btn.innerHTML = '<div class="spinner"></div> Lese Suchergebnisse...'
+  if (prev) prev.innerHTML = ''
+  try {
+    const [tab] = await chrome.tabs.query({ active: true, currentWindow: true })
+    if (!tab || !tab.id) throw new Error('Kein aktiver Tab')
+
+    const resp = await new Promise(resolve => {
+      chrome.tabs.sendMessage(tab.id, { type: 'SCRAPE_SALES_SEARCH', maxResults: 100 }, r => {
+        if (chrome.runtime.lastError) { resolve(null); return }
+        resolve(r)
+      })
+    })
+    if (!resp || !resp.ok || !resp.data) throw new Error((resp && resp.error) || 'Scrape fehlgeschlagen')
+
+    const { results, count } = resp.data
+    console.log('[Leadesk][SalesNav] scrapeSavedSearch →', count, 'Leads', JSON.parse(JSON.stringify(results))) // TEMP Phase-3-Smoke
+    if (!count) throw new Error('Keine Leads in der Suche gefunden')
+
+    // Vorschau: erste 5 Leads (Name · Job · Firma · sales_nav_id-Prefix)
+    const rows = results.slice(0, 5).map(r =>
+      '<div style="padding:6px 8px;border-bottom:1px solid #eee;font-size:12px">' +
+      '<div style="font-weight:600">' + esc(r.name) + '</div>' +
+      '<div style="color:#666">' + esc(r.job_title || '—') + (r.company ? ' · ' + esc(r.company) : '') + '</div>' +
+      '<div style="color:#999;font-size:10px;font-family:monospace">' + esc((r.sales_nav_id || '').slice(0, 22)) + '</div>' +
+      '</div>'
+    ).join('')
+    if (prev) {
+      prev.innerHTML =
+        '<div style="border:1px solid #ddd;border-radius:8px;overflow:hidden">' + rows + '</div>' +
+        (count > 5 ? '<div style="font-size:11px;color:#888;margin-top:6px">… und ' + (count - 5) + ' weitere</div>' : '') +
+        '<button id="salesBulkImportBtn" class="btn-primary" style="width:100%;margin-top:12px">Importieren (' + count + ' Leads)</button>'
+      const imp = document.getElementById('salesBulkImportBtn')
+      if (imp) imp.addEventListener('click', () => importBulkStub(ctx, results))
+    }
+    setStat(`${count} Leads erkannt`)
+    btn.className = 'btn-primary success'
+    btn.innerHTML = `✓ ${count} erkannt (Vorschau)`
+    btn.disabled = false
+  } catch (err) {
+    btn.className = 'btn-primary error'
+    btn.disabled = false
+    btn.innerHTML = '⚠ ' + (err.message || 'Fehler').substring(0, 40)
+  }
+}
+
+// Aufruf der sales-nav-import Edge Function (JWT-authentifiziert).
+async function efCall(action, payload) {
+  const { supabaseSession } = await getAuth()
+  const token = supabaseSession?.access_token
+  if (!token) return { ok: false, error: 'no_token' }
+  try {
+    const res = await fetch(`${SUPABASE_URL}/functions/v1/sales-nav-import`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + token },
+      body: JSON.stringify({ action, ...payload }),
+    })
+    const data = await res.json().catch(() => null)
+    if (!res.ok) return { ok: false, error: (data && data.error) || ('http_' + res.status) }
+    return { ok: true, data }
+  } catch (e) { return { ok: false, error: e.message } }
+}
+
+// Phase 4a: Stub-Bulk-Ingest aus der Saved-Search-Vorschau.
+// create → ingest (Batches à 50) → control:finish. Kein Throttle (Listendaten,
+// kein Profilbesuch). Cap 500/Job (EF cappt total_leads); Detail-Enrichment mit
+// 12s-Throttle ist 4b. COALESCE-Upsert in der RPC dedupt + ergänzt additiv.
+const BULK_BATCH = 50
+const BULK_CAP = 500
+async function importBulkStub(ctx, results) {
+  const btn = document.getElementById('salesBulkImportBtn')
+  const stat = document.getElementById('salesBulkStatus')
+  const setStat = (t) => { if (stat) stat.textContent = t }
+  if (!btn) return
+  if (!currentTeamId) { alert('Bulk-Import braucht ein Team.'); return }
+  const count = results.length
+  if (count > BULK_CAP) {
+    const ok = window.confirm(
+      `${count} Leads gefunden. Pro Job werden max. ${BULK_CAP} importiert.\n\n` +
+      `Die ersten ${BULK_CAP} jetzt importieren? Für den Rest später einen neuen Job starten.`)
+    if (!ok) return
+  }
+  btn.disabled = true
+  btn.innerHTML = '<div class="spinner"></div> Job anlegen...'
+  try {
+    const created = await efCall('create', {
+      team_id: currentTeamId, source_type: 'saved_search',
+      source_url: ctx.url, source_id: ctx.savedSearchId || null, total_scraped: count,
+    })
+    if (!created.ok) throw new Error('create: ' + created.error)
+    const { job_id, total_leads } = created.data
+
+    const toSend = results.slice(0, total_leads)
+    let inserted = 0, updated = 0, failed = 0
+    for (let i = 0; i < toSend.length; i += BULK_BATCH) {
+      const chunk = toSend.slice(i, i + BULK_BATCH)
+      const r = await efCall('ingest', { job_id, leads: chunk })
+      if (!r.ok) throw new Error('ingest: ' + r.error)
+      inserted += r.data.inserted; updated += r.data.updated; failed += r.data.failed
+      const done = Math.min(i + BULK_BATCH, toSend.length)
+      setStat(`${done}/${toSend.length} verarbeitet · ${inserted} neu · ${updated} aktualisiert`)
+      btn.innerHTML = `<div class="spinner"></div> ${done}/${toSend.length}…`
+    }
+    await efCall('control', { job_id, op: 'finish' })
+
+    btn.className = 'btn-primary success'
+    btn.innerHTML = `✓ ${inserted} neu, ${updated} aktualisiert`
+    setStat(`Fertig: ${inserted} neu · ${updated} aktualisiert · ${failed} Fehler · ${toSend.length} verarbeitet`)
+    setStatus('connected', `${inserted + updated} Leads importiert ✓`)
+  } catch (err) {
+    btn.className = 'btn-primary error'
+    btn.disabled = false
+    btn.innerHTML = '⚠ ' + (err.message || 'Fehler').substring(0, 40)
+  }
+}
+
+// ════════════════════════════════════════════════════════════════════
+// Phase 4b: Cross-Page-Worker (SKELETT — Code-Review vor Scharfschaltung)
+// Paginiert per chrome.tabs.update über die Saved-Search-Seiten, scraped je
+// Seite die Result-Liste (content-sales scrapeSavedSearch), sammelt, dann EIN
+// create+ingest-Lauf (Batches à 100). 429-Heuristiken pausieren den Job.
+// ⚠ Der Worker BESETZT den aktiven Tab während des Laufs — UX muss das klar
+//   kommunizieren (Banner "Tab wird für den Import genutzt, bitte nicht wegklicken").
+// Detail-Enrich (12s/Lead) ist Phase 4c, hier NICHT.
+// ════════════════════════════════════════════════════════════════════
+const WORKER_KEY = 'leadesk_sales_nav_active_job'
+const POLL_READY_TIMEOUT = 45000  // LinkedIn-Worst-Case-Ladezeit; short-circuit sobald Cards da
+// PAGE_SIZE bewusst entfernt: der Worker terminiert dynamisch bei "empty page"
+// + collected>=targetCount, nimmt also jede tatsächliche Seitengröße (25/50/…).
+const PAGE_THROTTLE_MS = 6000
+const MAX_PAGES = 40           // Hard-Ceiling; BULK_CAP (500) greift davor
+const RATE_LIMIT_PAUSE_MS = 60 * 60 * 1000  // 1h, configurable
+
+let workerControl = { paused: false, cancelled: false } // In-Memory-Flags
+
+async function loadWorkerState() { const o = await chrome.storage.local.get(WORKER_KEY); return o[WORKER_KEY] || null }
+async function saveWorkerState(s) { await chrome.storage.local.set({ [WORKER_KEY]: s }) }
+async function clearWorkerState() { await chrome.storage.local.remove(WORKER_KEY) }
+
+function sleep(ms) { return new Promise(r => setTimeout(r, ms)) }
+
+// Kanonische Saved-Search-URL aus savedSearchId bauen — NICHT von tab.url
+// kopieren! Die Sales-Nav-SPA normalisiert die aktive URL zur
+// ?query=(recentSearchParam:…)-Form, die als andere/leere Suche lädt → 0 Leads.
+// page 1 OHNE page-Param (Sales-Nav-Konvention für die erste Seite).
+function canonicalSavedSearchUrl(savedSearchId, page) {
+  var u = new URL('https://www.linkedin.com/sales/search/people')
+  u.searchParams.set('savedSearchId', String(savedSearchId))
+  if (page > 1) u.searchParams.set('page', String(page))
+  return u.toString()
+}
+
+// Fallback für Ad-hoc-Suchen ohne savedSearchId: page-Param auf die Live-URL
+// setzen (erhält _ntb/Filter). Weniger robust — daher nur wenn keine savedSearchId.
+function buildPageUrl(baseUrl, page) {
+  var u = new URL(baseUrl)
+  u.searchParams.set('page', String(page))
+  return u.toString()
+}
+
+// Wählt die Strategie: canonical (Saved Search) bevorzugt, sonst URL-Mutation.
+// + #leadesk-worker-Hash: signalisiert content-sales, dass DIES der Worker-Tab
+// ist (nicht der aktive User-Tab) → autonomer Scrape + Push. Sales-Nav ignoriert
+// den Hash (path/query-basiertes Routing).
+function workerPageUrl(savedSearchId, baseUrl, page) {
+  var u = savedSearchId ? canonicalSavedSearchUrl(savedSearchId, page) : buildPageUrl(baseUrl, page)
+  return u + '#leadesk-worker;p=' + page // p=N → content-sales zeigt die Seite im Overlay
+}
+
+// Eine Seite ansteuern + scrapen. Returnt { leads, rateLimited }.
+// Polling auf Result-Cards (statt fixem Wait). Returnt {ready, rateLimited}.
+// content-sales antwortet erst wenn das Content-Script auf der neuen Seite lebt
+// (lastError während des Page-Loads → weiter pollen).
+async function pollTabReady(tabId, timeout, interval) {
+  timeout = timeout || 8000; interval = interval || 200
+  const start = Date.now()
+  while (Date.now() - start < timeout) {
+    const r = await new Promise(res => {
+      chrome.tabs.sendMessage(tabId, { type: 'SALES_READY' }, resp => {
+        if (chrome.runtime.lastError) { res(null); return }
+        res(resp)
+      })
+    })
+    if (r && r.rateLimited) return { ready: false, rateLimited: r.rateLimited }
+    if (r && r.ready) return { ready: true, rateLimited: null }
+    await sleep(interval)
+  }
+  return { ready: false, rateLimited: null } // Timeout
+}
+
+// Eine Seite ansteuern + scrapen. Returnt { leads, rateLimited, timedOut }.
+// Worker-Tab MUSS aktiv/sichtbar sein während Poll+Scrape — sonst drosselt
+// Chrome Rendering/Lazy-Load im Background-Tab und die Result-Cards laden nie.
+// Nach dem Scrape Fokus zurück zum User-Tab (restoreTabId) → User hat seinen
+// Tab während der 6s-Throttle; der Worker-Tab blitzt nur kurz auf.
+// 8s-Poll → 1 Retry → bei zweitem Timeout timedOut=true (Loop → failed).
+// sendMessage mit hartem Timeout (MV3: ohne kann der Callback nie feuern wenn
+// der Channel still hängt). Resolve null bei Timeout/lastError — nie hängen.
+function sendMessageWithTimeout(tabId, msg, timeoutMs) {
+  timeoutMs = timeoutMs || 30000
+  return new Promise(resolve => {
+    var done = false
+    var timer = setTimeout(() => { if (!done) { done = true; console.log('[Leadesk][Worker] sendMessage TIMEOUT', msg.type); resolve(null) } }, timeoutMs)
+    chrome.tabs.sendMessage(tabId, msg, resp => {
+      if (done) return
+      done = true; clearTimeout(timer)
+      if (chrome.runtime.lastError) { console.log('[Leadesk][Worker] sendMessage error:', chrome.runtime.lastError.message); resolve(null); return }
+      resolve(resp)
+    })
+  })
+}
+
+// Wartet auf das SALES_SCRAPE_DONE-Push von content-sales (push-basiert →
+// kein sendMessage-Channel-Race). Listener VOR der Navigation registrieren.
+function waitForScrapeDone(timeoutMs) {
+  timeoutMs = timeoutMs || 60000
+  return new Promise(resolve => {
+    var done = false
+    function handler(msg) {
+      if (!msg || msg.type !== 'SALES_SCRAPE_DONE') return
+      if (done) return
+      done = true; clearTimeout(timer); chrome.runtime.onMessage.removeListener(handler)
+      resolve(msg)
+    }
+    var timer = setTimeout(() => { if (!done) { done = true; chrome.runtime.onMessage.removeListener(handler); console.log('[Leadesk][Worker] SALES_SCRAPE_DONE TIMEOUT (60s)'); resolve(null) } }, timeoutMs)
+    chrome.runtime.onMessage.addListener(handler)
+  })
+}
+
+// Push-basiert: navigieren → auf SALES_SCRAPE_DONE warten (content-sales scrapet
+// autonom via #leadesk-worker-Hash). Returnt { leads, rateLimited, timedOut }.
+async function navigateAndScrapePage(tabId, savedSearchId, baseUrl, page) {
+  const url = workerPageUrl(savedSearchId, baseUrl, page)
+  console.log('[Leadesk][Worker] navigate to page', page, '→', url)
+  const donePromise = waitForScrapeDone(60000) // Listener VOR Navigation → kein Miss
+  await chrome.tabs.update(tabId, { url: url, active: true }) // Vordergrund — bleibt aktiv über alle Seiten
+  const result = await donePromise
+  if (!result) return { leads: [], rateLimited: null, timedOut: true }
+  console.log('[Leadesk][Worker] scrape result page ' + page + ': ' + (result.results || []).length + ' leads' + (result.rateLimited ? ' rateLimited=' + result.rateLimited : ''))
+  return { leads: result.results || [], rateLimited: result.rateLimited || null, timedOut: false }
+}
+
+// ════════════════════════════════════════════════════════════════════
+// Phase 4b (NEU, API-basiert): Sales-Nav-API direkt statt DOM-Scraping.
+// Kein Tab-Worker, kein Scroll, kein Overlay — die Sidepanel ruft die interne
+// salesApiLeadSearch via chrome.scripting.executeScript({world:'MAIN'}) im
+// LinkedIn-Tab ab (Cookies via credentials:'include'). Schnell + robust.
+// (Der alte DOM-Worker driveWorker/navigateAndScrapePage bleibt dormant im File
+//  als Fallback bis diese API-Route verifiziert ist.)
+// ════════════════════════════════════════════════════════════════════
+
+// Läuft im MAIN-World des LinkedIn-Tabs (serialisiert via executeScript).
+// MUSS self-contained sein (keine Closure über Sidepanel-Scope).
+function pageWorldFetchBatch(savedSearchId, sessionId, start, count) {
+  var csrf = null
+  try { var m = document.cookie.match(/JSESSIONID="?([^";]+)"?/); csrf = m ? m[1] : null } catch (e) {}
+  var url = 'https://www.linkedin.com/sales-api/salesApiLeadSearch' +
+    '?q=savedSearchId&start=' + start + '&count=' + count +
+    '&savedSearchId=' + encodeURIComponent(savedSearchId) +
+    (sessionId ? '&trackingParam=(sessionId:' + encodeURIComponent(sessionId) + ')' : '') +
+    '&decorationId=com.linkedin.sales.deco.desktop.searchv2.LeadSearchResult-14'
+  var headers = { 'accept': '*/*', 'x-restli-protocol-version': '2.0.0' } // restli-Header: häufigste 400-Ursache
+  if (csrf) headers['csrf-token'] = csrf // defensiv — LinkedIn verlangt ihn meist
+  return fetch(url, { method: 'GET', credentials: 'include', headers: headers })
+    .then(function (r) { return r.ok ? r.json() : { __error: 'API ' + r.status } })
+    .catch(function (e) { return { __error: String(e && e.message || e) } })
+}
+
+async function execInPage(tabId, func, args) {
+  try {
+    const res = await chrome.scripting.executeScript({ target: { tabId }, world: 'MAIN', func: func, args: args || [] })
+    return res && res[0] ? res[0].result : null
+  } catch (e) { console.warn('[Leadesk][Worker][API] executeScript:', e.message); return null }
+}
+
+// sales_nav_id IMMER als ACwAA…-Profile-Hash aus entityUrn — konsistent mit
+// Phase-2-Single-Import (DB-verifiziert ACwAABTn_K8…). NICHT die numerische
+// member-ID aus objectUrn, sonst matcht der Dedup-Index nicht gegen Phase 2.
+function extractSalesNavId(el) {
+  var ent = String((el && el.entityUrn) || '')
+  var m = ent.match(/fs_salesProfile:\(([^,)]+)/) // "(ACwAA…,NAME_SEARCH,…)" → ACwAA…
+  if (m) return m[1]
+  var any = (ent.match(/(ACw[A-Za-z0-9_-]{10,})/) || [])[1] // Fallback
+  return any || null
+}
+
+function parseApiElement(el) {
+  if (!el) return null
+  var sid = extractSalesNavId(el)
+  if (!sid) { console.warn('[parse] FAIL kein sales_nav_id — entityUrn=', el.entityUrn, 'objectUrn=', el.objectUrn); return null }
+  var first = el.firstName || ''
+  var last = el.lastName || ''
+  // job_title/company stecken in currentPositions[0] (current:true), nicht top-level
+  var positions = Array.isArray(el.currentPositions) ? el.currentPositions : []
+  var pos = positions.filter(function (p) { return p && p.current })[0] || positions[0] || {}
+  return {
+    sales_nav_id: sid,
+    name: (first + ' ' + last).trim() || el.fullName || 'Unbekannt',
+    first_name: first || null,
+    last_name: last || null,
+    job_title: pos.title || el.headline || null,
+    company: pos.companyName || el.companyName || null,
+    source: 'sales_nav', status: 'Lead',
+  }
+}
+
+async function runApiBulkImport(ctx, targetCount) {
+  const stat = document.getElementById('salesBulkStatus')
+  const prev = document.getElementById('salesBulkPreview')
+  const setStat = (t) => { if (stat) stat.textContent = t }
+  const wbtn = document.getElementById('salesWorkerBtn')
+  if (!currentTeamId) { alert('Bulk-Import braucht ein Team.'); return }
+  if (!ctx.savedSearchId) { alert('Keine savedSearchId in der URL erkennbar.'); return }
+  if (wbtn) { wbtn.disabled = true; wbtn.innerHTML = '<div class="spinner"></div> Lade…' }
+  const target = Math.min(targetCount, BULK_CAP)
+  try {
+    const [tab] = await chrome.tabs.query({ active: true, currentWindow: true })
+    if (!tab || !tab.id || !/linkedin\.com\/sales\//.test(tab.url || '')) throw new Error('Kein aktiver Sales-Nav-Tab')
+
+    const sessionId = null // trackingParam optional — Smoke bestätigte: nicht nötig
+    const collected = []
+    const seen = new Set()
+    let start = 0, total = null, round = 0
+    while (collected.length < target && round < 60) { // round-Cap = Endlosschleifen-Backstop
+      const batch = await execInPage(tab.id, pageWorldFetchBatch, [ctx.savedSearchId, sessionId, start, 25])
+      if (!batch || batch.__error) throw new Error('API: ' + (batch && batch.__error || 'leere Antwort'))
+      const els = batch.elements || []
+      if (!els.length) break
+
+      let newInRound = 0
+      for (const e of els) {
+        let p = null
+        try { p = parseApiElement(e) } catch (pe) { console.error('[Leadesk][Worker][API] parse failed:', e && e.objectUrn, pe.message) }
+        if (p && p.sales_nav_id && !seen.has(p.sales_nav_id)) { seen.add(p.sales_nav_id); collected.push(p); newInRound++ }
+      }
+      total = (batch.paging && batch.paging.total) != null ? batch.paging.total : total
+      start += els.length
+      round++
+      setStat(`${collected.length} geladen${total != null ? ' / ' + total : ''}…`)
+      if (wbtn) wbtn.innerHTML = `<div class="spinner"></div> ${collected.length}${total != null ? '/' + Math.min(total, target) : ''}…`
+
+      if (newInRound === 0) break // Pagination-Ende oder sales_nav_id nicht geparst
+      if (total != null && start >= total) break
+      await sleep(500) // ~2 calls/s
+    }
+
+    if (!collected.length) throw new Error('0 Leads geparst (sales_nav_id-Mapping? → FIRST ELEMENT prüfen)')
+    const toSend = collected.slice(0, target)
+
+    // EF (Phase 4a) unverändert: create → ingest(100) → finish
+    const created = await efCall('create', {
+      team_id: currentTeamId, source_type: 'saved_search',
+      source_url: ctx.url, source_id: ctx.savedSearchId, total_scraped: toSend.length,
+    })
+    if (!created.ok) throw new Error('create: ' + created.error)
+    const jobId = created.data.job_id
+    let inserted = 0, updated = 0, failed = 0
+    for (let i = 0; i < toSend.length; i += 100) {
+      const r = await efCall('ingest', { job_id: jobId, leads: toSend.slice(i, i + 100) })
+      if (!r.ok) throw new Error('ingest: ' + r.error)
+      inserted += r.data.inserted; updated += r.data.updated; failed += r.data.failed
+      setStat(`${Math.min(i + 100, toSend.length)}/${toSend.length} importiert · ${inserted} neu`)
+    }
+    await efCall('control', { job_id: jobId, op: 'finish' })
+    if (wbtn) { wbtn.className = 'btn-primary success'; wbtn.innerHTML = `✓ ${inserted} neu, ${updated} aktualisiert` }
+    setStat(`Fertig: ${inserted} neu · ${updated} aktualisiert · ${failed} Fehler · ${toSend.length} gesamt`)
+    setStatus('connected', `${inserted + updated} Leads importiert ✓`)
+  } catch (err) {
+    console.warn('[Leadesk][Worker][API] error:', err.message)
+    if (wbtn) { wbtn.className = 'btn-primary error'; wbtn.disabled = false; wbtn.innerHTML = '⚠ ' + (err.message || 'Fehler').substring(0, 44) }
+  }
+}
+
+// Frischer Start: State anlegen → driveWorker.  (DORMANT — DOM-Fallback)
+async function runWorkerFlow(ctx, targetCount) {
+  workerControl = { paused: false, cancelled: false }
+  const state = {
+    savedSearchId: ctx.savedSearchId, url: ctx.url,
+    targetCount: Math.min(targetCount, BULK_CAP), teamId: currentTeamId,
+    currentPage: 1, collected: [], status: 'scanning', rateLimitUntil: null, jobId: null,
+  }
+  await saveWorkerState(state)
+  return driveWorker(state)
+}
+
+// Resume aus paused-State: ab state.currentPage weiterlaufen (frischer Tab).
+async function resumeWorker() {
+  const state = await loadWorkerState()
+  if (!state || state.status !== 'paused') return
+  workerControl = { paused: false, cancelled: false }
+  state.status = 'scanning'; state.rateLimitUntil = null
+  await saveWorkerState(state)
+  return driveWorker(state)
+}
+
+// Kern-Loop: dedizierter Background-Tab, Sammel-Phase, dann Ingest. Tab-Cleanup
+// im finally. State persistiert nach jeder Seite (Resume-fähig).
+async function driveWorker(state) {
+  // User-Tab merken, um den Fokus nach jedem Scrape + am Ende zurückzugeben
+  let originalTabId = null
+  try { const [a] = await chrome.tabs.query({ active: true, currentWindow: true }); originalTabId = a ? a.id : null } catch (e) {}
+
+  let tab
+  // Vordergrund-Tab (active:true): fokussiert → Sales-Nav lazy-loadet zuverlässig,
+  // kein Background-Throttling. User-Tab wird im finally wiederhergestellt.
+  try { tab = await chrome.tabs.create({ active: true }) }
+  catch (e) { console.log('[Leadesk][Worker] tab_create FAILED:', e.message); state.status = 'failed'; await saveWorkerState(state); renderWorkerProgress(state); throw new Error('tab_create: ' + e.message) }
+  state.tabId = tab.id; await saveWorkerState(state)
+  console.log('[Leadesk][Worker] Tab created', tab.id, '· target', state.targetCount, '· startPage', state.currentPage)
+  try {
+    const seen = new Set(state.collected.map(l => l.sales_nav_id))
+    while (state.collected.length < state.targetCount && state.currentPage <= MAX_PAGES) {
+      if (workerControl.cancelled) { console.log('[Leadesk][Worker] cancelled'); state.status = 'cancelled'; await saveWorkerState(state); break }
+      if (workerControl.paused)    { console.log('[Leadesk][Worker] paused'); state.status = 'paused';    await saveWorkerState(state); break }
+
+      renderWorkerLoading(state.currentPage, state.collected.length)
+      const { leads, rateLimited, timedOut } = await navigateAndScrapePage(state.tabId, state.savedSearchId, state.url, state.currentPage)
+      if (rateLimited) { console.log('[Leadesk][Worker] 429 detected:', rateLimited, '→ pause'); state.status = 'paused'; state.rateLimitUntil = Date.now() + RATE_LIMIT_PAUSE_MS; await saveWorkerState(state); renderWorkerProgress(state); break }
+      if (timedOut)    { console.log('[Leadesk][Worker] page', state.currentPage, 'timed out → failed'); state.status = 'failed'; await saveWorkerState(state); renderWorkerProgress(state); break }
+      if (!leads.length) { console.log('[Leadesk][Worker] empty page', state.currentPage, '→ Ende der Suche'); break }
+
+      for (const l of leads) { if (l.sales_nav_id && !seen.has(l.sales_nav_id)) { seen.add(l.sales_nav_id); state.collected.push(l) } }
+      console.log('[Leadesk][Worker] collected', state.collected.length, 'total nach Seite', state.currentPage)
+      state.currentPage++; await saveWorkerState(state); renderWorkerProgress(state)
+      await sleep(PAGE_THROTTLE_MS)
+    }
+    if (state.status === 'scanning' && state.collected.length) await ingestCollected(state)
+  } finally {
+    if (state.tabId) { try { await chrome.tabs.remove(state.tabId) } catch (e) {} }
+    if (originalTabId) { try { await chrome.tabs.update(originalTabId, { active: true }) } catch (e) {} }
+  }
+  return state
+}
+
+// Ingest-Phase: create → Batches à 100 → finish.
+async function ingestCollected(state) {
+  state.status = 'ingesting'; await saveWorkerState(state); renderWorkerProgress(state)
+  const toSend = state.collected.slice(0, state.targetCount)
+  console.log('[Leadesk][Worker] ingest start:', toSend.length, 'Leads')
+  const created = await efCall('create', {
+    team_id: state.teamId, source_type: 'saved_search',
+    source_url: state.url, source_id: state.savedSearchId || null, total_scraped: toSend.length,
+  })
+  if (!created.ok) { console.log('[Leadesk][Worker] create FAILED:', created.error); state.status = 'failed'; await saveWorkerState(state); renderWorkerProgress(state); throw new Error('create: ' + created.error) }
+  state.jobId = created.data.job_id; await saveWorkerState(state)
+  console.log('[Leadesk][Worker] job created', created.data.job_id, '· total_leads', created.data.total_leads)
+
+  let inserted = 0, updated = 0, failed = 0
+  for (let i = 0; i < toSend.length; i += 100) {
+    const r = await efCall('ingest', { job_id: state.jobId, leads: toSend.slice(i, i + 100) })
+    if (!r.ok) { console.log('[Leadesk][Worker] ingest FAILED:', r.error); state.status = 'failed'; await saveWorkerState(state); renderWorkerProgress(state); throw new Error('ingest: ' + r.error) }
+    inserted += r.data.inserted; updated += r.data.updated; failed += r.data.failed
+  }
+  await efCall('control', { job_id: state.jobId, op: 'finish' })
+  console.log('[Leadesk][Worker] DONE:', inserted, 'neu,', updated, 'aktualisiert,', failed, 'Fehler')
+  state.status = 'done'; state.result = { inserted, updated, failed }; await saveWorkerState(state); renderWorkerProgress(state)
+}
+
+async function pauseWorker() { workerControl.paused = true; const s = await loadWorkerState(); if (s && s.jobId) await efCall('control', { job_id: s.jobId, op: 'pause' }) }
+async function cancelWorker() { workerControl.cancelled = true; const s = await loadWorkerState(); if (s && s.jobId) await efCall('control', { job_id: s.jobId, op: 'cancel' }); await clearWorkerState() }
+
+// Resume-on-Open: beim Sidepanel-Mount offenen Job prüfen → Banner.
+async function checkResumeOnOpen() {
+  const s = await loadWorkerState()
+  if (!s) return
+  if (s.status === 'done' || s.status === 'cancelled' || s.status === 'failed') { await clearWorkerState(); return }
+  renderWorkerProgress(s)
+}
+
+// [TODO-REVIEW] Progress-UI: Bar "Seite 7/20 · 175 Leads · 0 Fehler" +
+// Tab-Besetzt-Warnung + Pause/Resume/Cancel-Buttons. Rendert in #salesBulkPreview.
+// Transienter Lade-Banner während des Page-Loads (bis zu 45s pro Seite).
+function renderWorkerLoading(page, collected) {
+  const prev = document.getElementById('salesBulkPreview')
+  if (!prev) return
+  prev.innerHTML =
+    '<div style="font-size:12px;padding:8px;border:1px solid #ddd;border-radius:8px">' +
+    '<div class="spinner" style="display:inline-block"></div> Lade Seite ' + page + ' — bis zu 45 Sek. · ' + collected + ' Leads bisher' +
+    '<br><span style="color:#92400E">⚠ Import läuft in einem Hintergrund-Tab — bitte nicht schließen.</span>' +
+    '</div>'
+}
+
+function renderWorkerProgress(state) {
+  const prev = document.getElementById('salesBulkPreview')
+  if (!prev || !state) return
+  const labels = { scanning: 'Sammle Seiten', ingesting: 'Importiere', paused: 'Pausiert', done: 'Fertig', failed: 'Fehler', cancelled: 'Abgebrochen' }
+  const n = state.collected ? state.collected.length : 0
+  const res = state.result ? ` · ${state.result.inserted} neu, ${state.result.updated} aktualisiert` : ''
+  let html =
+    '<div style="font-size:12px;padding:8px;border:1px solid #ddd;border-radius:8px">' +
+    '<strong>' + (labels[state.status] || state.status) + '</strong> · Seite ' + (state.currentPage || 1) +
+    ' · ' + n + ' Leads' + res +
+    (state.rateLimitUntil ? '<br><span style="color:#92400E">Limit erkannt — Auto-Resume um ' + new Date(state.rateLimitUntil).toLocaleTimeString() + '</span>' : '') +
+    (state.status === 'scanning' || state.status === 'ingesting' ? '<br><span style="color:#92400E">⚠ Import läuft in einem Hintergrund-Tab — bitte nicht schließen.</span>' : '') +
+    '</div>'
+  if (state.status === 'scanning' || state.status === 'ingesting') {
+    html += '<button id="wkPause" class="btn-secondary" style="margin-top:8px">Pause</button> ' +
+            '<button id="wkCancel" class="btn-secondary" style="margin-top:8px">Abbrechen</button>'
+  } else if (state.status === 'paused') {
+    html += '<button id="wkResume" class="btn-primary" style="margin-top:8px">Fortsetzen</button> ' +
+            '<button id="wkCancel" class="btn-secondary" style="margin-top:8px">Verwerfen</button>'
+  }
+  prev.innerHTML = html
+  const p = document.getElementById('wkPause'); if (p) p.onclick = () => pauseWorker()
+  const rs = document.getElementById('wkResume'); if (rs) rs.onclick = () => resumeWorker().catch(e => console.warn('[Leadesk][Worker]', e.message))
+  const c = document.getElementById('wkCancel'); if (c) c.onclick = () => cancelWorker().then(() => { const prev2 = document.getElementById('salesBulkPreview'); if (prev2) prev2.innerHTML = '' })
+}
+
+// Phase 2: Single-Lead-Import aus Sales Navigator.
+// Schickt SCRAPE_SALES_LEAD an content-sales.js, inserted mit source='sales_nav'
+// + sales_nav_id. Re-Import fängt der Phase-0-Dedup-Index (team_id, sales_nav_id).
+// Kein Throttle — Single-Lead ist sofortig nach Klick (12s-Regel erst Phase 4 Bulk).
+async function importSalesNavLead(ctx) {
+  const btn = document.getElementById('salesImportBtn')
+  if (!btn) return
+  if (!currentUserId) { alert('Nicht eingeloggt — bitte in Leadesk anmelden.'); return }
+  btn.disabled = true
+  btn.innerHTML = '<div class="spinner"></div> Lese Profil...'
+  try {
+    const [tab] = await chrome.tabs.query({ active: true, currentWindow: true })
+    if (!tab || !tab.id) throw new Error('Kein aktiver Tab')
+
+    const resp = await new Promise(resolve => {
+      chrome.tabs.sendMessage(tab.id, { type: 'SCRAPE_SALES_LEAD' }, r => {
+        if (chrome.runtime.lastError) { resolve(null); return }
+        resolve(r)
+      })
+    })
+    if (!resp || !resp.ok || !resp.data) throw new Error((resp && resp.error) || 'Scrape fehlgeschlagen')
+
+    const { profile, sourceId, profileUrl } = resp.data
+    if (!profile || !profile.name || profile.name === 'Unbekannt') throw new Error('Kein Profil erkannt')
+
+    const snId = sourceId || ctx.sourceId || null
+    const payload = {
+      ...profile,
+      user_id: currentUserId,
+      ...(currentTeamId ? { team_id: currentTeamId } : {}),
+      source: 'sales_nav',
+      sales_nav_id: snId,
+      ...(profileUrl ? { linkedin_url: profileUrl, profile_url: profileUrl } : {}),
+    }
+
+    // Plain INSERT — der partielle Unique-Index (team_id, sales_nav_id) WHERE
+    // sales_nav_id IS NOT NULL lässt sich NICHT als ON-CONFLICT-Arbiter
+    // inferieren (Postgres 42P10, verifiziert auf Staging 2026-06-18). Dedup
+    // läuft daher über den Index als harten Gate: Re-Import → 23505 →
+    // PostgREST 409 → wir interpretieren das als "bereits vorhanden".
+    // (Caveat: Solo-User mit team_id=NULL deduppen nicht — NULLs sind im
+    //  Unique-Index distinct. Team-Pfad ist der Hauptfall; Phase 4 ggf. härten.)
+    const result = await sbFetch('leads', 'POST', [payload])
+    if (result === null) {
+      if (/409|23505|duplicate key/i.test(window.__lastError || '')) {
+        btn.className = 'btn-primary success'
+        btn.innerHTML = '✓ Bereits in Leadesk'
+        setStatus('connected', 'Bereits vorhanden ✓')
+        return
+      }
+      throw new Error(window.__lastError || 'Speichern fehlgeschlagen')
+    }
+    const isNew = Array.isArray(result) && result.length > 0
+    btn.className = 'btn-primary success'
+    btn.innerHTML = isNew ? '✓ Importiert!' : '✓ Bereits in Leadesk'
+    setStatus('connected', isNew ? 'Lead importiert ✓' : 'Bereits vorhanden ✓')
+  } catch (err) {
+    btn.className = 'btn-primary error'
+    btn.disabled = false
+    btn.innerHTML = '⚠ ' + (err.message || 'Fehler').substring(0, 40)
+  }
+}
+
+function renderStandardView() {
+  const stub = document.getElementById('salesNavStub')
+  if (stub) { stub.style.display = 'none'; stub.innerHTML = '' }
+  // Falls eine vorige Sales-Ansicht alle Pages deaktiviert hat: Default reaktivieren
+  if (!document.querySelector('.page.active')) {
+    const def = document.getElementById('page-import')
+    if (def) def.classList.add('active')
+  }
+}
+
 // Phase D: Re-Render nach Team-Switch
 function refreshAfterTeamSwitch() {
   // Match-Banner refresh wenn Profil aktuell sichtbar
@@ -1171,6 +1875,9 @@ async function init() {
   setStatus('connected', 'Eingeloggt ✓')
   await Promise.all([loadTeams(userId), loadProfileFromTab()])
   loadSSI()
+  // Sales-Navigator-Modus erkennen + Addon-Gate
+  const salesCtx = await detectSalesNavContext()
+  if (salesCtx) { renderSalesNavView(salesCtx, await hasSalesNavAddon()) } else renderStandardView()
 }
 
 // ── Events ────────────────────────────────────────────────────────
@@ -1195,6 +1902,21 @@ chrome.tabs.onUpdated.addListener((tabId, changeInfo) => {
     if (tabs[0]?.id === tabId) setTimeout(loadProfileFromTab, 800)
   })
 })
+
+// Phase 1: Sales-Nav-Modus LIVE re-detektieren bei Tab-Wechsel/Navigation (nicht nur Mount).
+async function reDetect() {
+  const salesCtx = await detectSalesNavContext()
+  if (salesCtx) { renderSalesNavView(salesCtx, await hasSalesNavAddon()) } else renderStandardView()
+}
+chrome.tabs.onActivated.addListener(reDetect)
+chrome.tabs.onUpdated.addListener((tabId, changeInfo) => {
+  if (changeInfo.status === 'complete' || changeInfo.url) {
+    chrome.tabs.query({ active: true, currentWindow: true }, tabs => {
+      if (tabs[0]?.id === tabId) reDetect()
+    })
+  }
+})
+
 chrome.runtime.onMessage.addListener(msg => {
   if (msg.type === 'PROFILE_DETECTED' && msg.profile) {
     currentProfile = msg.profile; showProfile(msg.profile); setStatus('connected', 'Profil erkannt ✓')

@@ -24,6 +24,7 @@ function parseLooseJson(text) {
   return JSON.parse(j)
 }
 import { resizeImageBeforeUpload } from '../lib/imageResize'
+import { uploadBrandFont, listBrandFonts, deleteBrandFont, renameBrandFont, loadBrandFonts, isAllowedFontFile } from '../lib/brandFonts'
 import KnowledgeImporter from '../components/KnowledgeImporter'
 import SharingPicker from '../components/SharingPicker'
 import EmptyHero from '../components/EmptyHero'
@@ -894,6 +895,155 @@ function BookletEditor({ edit, u, activeTeamId }) {
   )
 }
 
+// ─── Schriftarten-Upload (eigene Font-Dateien, brand_voices.font_assets) ─────
+// Nutzt src/lib/brandFonts.js. Hochgeladene Schriften stehen anschließend im
+// Content-Werkstatt-Designer zur Verfügung. Asset = { name, path, format, family }.
+function BrandFontUploadEditor({ edit, u, activeTeamId }) {
+  const bvId = edit?.id || null
+  const assets = Array.isArray(edit?.font_assets) ? edit.font_assets : []
+  const [uploading, setUploading] = React.useState(false)
+  const [error, setError] = React.useState('')
+  const [renamingPath, setRenamingPath] = React.useState(null)
+  const [renameValue, setRenameValue] = React.useState('')
+  const [previewTick, setPreviewTick] = React.useState(0)
+
+  // Beim Laden der Brand Voice: existierende Fonts aus der DB lesen + per
+  // FontFace-API laden, damit die Vorschau-Zeilen in der eigenen Schrift rendern.
+  React.useEffect(() => {
+    let cancelled = false
+    if (!bvId) return
+    ;(async () => {
+      const { data } = await listBrandFonts(bvId)
+      if (cancelled) return
+      const list = Array.isArray(data) ? data : []
+      // Form-State spiegeln, falls noch nicht vorhanden
+      u('font_assets', list)
+      await loadBrandFonts(list)
+      if (!cancelled) setPreviewTick(t => t + 1)
+    })()
+    return () => { cancelled = true }
+  }, [bvId])
+
+  async function handleFiles(fileList) {
+    const files = Array.from(fileList || [])
+    if (!files.length) return
+    if (!bvId) { setError('Bitte die Brand Voice zuerst speichern, dann kannst du Schriften hochladen.'); return }
+    if (!activeTeamId) { setError('Kein Team aktiv — kann nicht hochladen.'); return }
+    setError('')
+    const invalid = files.filter(f => !isAllowedFontFile(f.name))
+    if (invalid.length) {
+      setError('Nur .woff2, .woff, .ttf oder .otf erlaubt: ' + invalid.map(f => f.name).join(', '))
+    }
+    const valid = files.filter(f => isAllowedFontFile(f.name))
+    if (!valid.length) return
+    setUploading(true)
+    let latest = null
+    try {
+      for (const file of valid) {
+        const { data, all, error: upErr } = await uploadBrandFont(activeTeamId, bvId, file)
+        if (upErr) { setError('Upload „' + file.name + '" fehlgeschlagen: ' + (upErr.message || 'Fehler')); continue }
+        if (all) latest = all
+        if (data) { try { await loadBrandFonts([data]) } catch (_e) {} }
+      }
+      if (latest) u('font_assets', latest)
+      setPreviewTick(t => t + 1)
+    } finally { setUploading(false) }
+  }
+
+  async function handleDelete(path) {
+    if (!bvId) return
+    if (!window.confirm('Diese Schrift wirklich entfernen?')) return
+    const { error: delErr, all } = await deleteBrandFont(bvId, path)
+    if (delErr) { setError('Löschen fehlgeschlagen: ' + (delErr.message || 'Fehler')); return }
+    if (all) u('font_assets', all)
+  }
+
+  function startRename(asset) { setRenamingPath(asset.path); setRenameValue(asset.name || asset.family || '') }
+  async function commitRename(path) {
+    const clean = (renameValue || '').trim()
+    if (!bvId || !clean) { setRenamingPath(null); return }
+    const { error: renErr, all } = await renameBrandFont(bvId, path, clean)
+    if (renErr) { setError('Umbenennen fehlgeschlagen: ' + (renErr.message || 'Fehler')); return }
+    if (all) {
+      u('font_assets', all)
+      try { await loadBrandFonts(all) } catch (_e) {}
+      setPreviewTick(t => t + 1)
+    }
+    setRenamingPath(null)
+  }
+
+  return (
+    <div style={{ padding:'12px 14px', background:'#FAFAFA', border:'1.5px solid var(--border)', borderRadius:10, flex:'1 1 100%', minWidth:280 }}>
+      <div style={{ fontSize:13, fontWeight:700, color:'var(--text-primary)', marginBottom:4 }}>Aa Schriftarten</div>
+      <div style={{ fontSize:11, color:'var(--text-muted)', lineHeight:1.5, marginBottom:10 }}>Eigene Schrift-Dateien hochladen. Hochgeladene Schriften stehen anschließend im Content-Werkstatt-Designer zur Verfügung.</div>
+
+      {/* Upload-Bereich */}
+      <label style={{ display:'flex', flexDirection:'column', alignItems:'center', justifyContent:'center', gap:6, padding:'18px 14px', borderRadius:10, border:'1.5px dashed var(--border)', cursor: uploading ? 'wait' : 'pointer', fontSize:12.5, color:'var(--text-muted)', background:'#fff', textAlign:'center' }}>
+        {uploading
+          ? <span style={{ display:'inline-flex', alignItems:'center', gap:6, color:'var(--text-primary)', fontWeight:600 }}><Loader2 size={15} className="lk-spin"/>Lade hoch…</span>
+          : <>
+              <Upload size={18} strokeWidth={1.75} style={{ color:'var(--wl-primary, rgb(49,90,231))' }}/>
+              <span style={{ fontWeight:600, color:'var(--text-primary)' }}>Schrift hochladen (.woff2, .woff, .ttf, .otf)</span>
+              <span style={{ fontSize:11 }}>Mehrere Dateien möglich</span>
+            </>}
+        <input type="file" multiple accept=".woff2,.woff,.ttf,.otf,font/woff2,font/woff,font/ttf,font/otf"
+          disabled={uploading || !edit?.id}
+          onChange={e => { handleFiles(e.target.files); e.target.value = '' }}
+          style={{ display:'none' }}/>
+      </label>
+
+      {error && <div style={{ color:'#e53e3e', fontSize:12, marginTop:8, lineHeight:1.5 }}>{error}</div>}
+      {!edit?.id && <div style={{ fontSize:11, color:'#92400E', marginTop:8 }}>Speichere die Brand Voice zuerst, dann kannst du hier Schriften hochladen.</div>}
+
+      {/* Liste hochgeladener Schriften */}
+      {assets.length > 0 ? (
+        <div style={{ marginTop:12, display:'flex', flexDirection:'column', gap:8 }}>
+          {assets.map((a) => (
+            <div key={a.path} style={{ display:'flex', alignItems:'center', gap:10, padding:'10px 12px', background:'#fff', border:'1px solid var(--border)', borderRadius:8 }}>
+              <div style={{ flex:1, minWidth:0 }}>
+                {renamingPath === a.path ? (
+                  <input autoFocus value={renameValue}
+                    onChange={e => setRenameValue(e.target.value)}
+                    onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); commitRename(a.path) } if (e.key === 'Escape') setRenamingPath(null) }}
+                    onBlur={() => commitRename(a.path)}
+                    style={{ width:'100%', padding:'5px 8px', fontSize:13, fontWeight:600, border:'1.5px solid var(--wl-primary, rgb(49,90,231))', borderRadius:6, boxSizing:'border-box' }}/>
+                ) : (
+                  <>
+                    <div style={{ fontSize:13, fontWeight:600, color:'var(--text-primary)', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>
+                      {a.name || a.family} <span style={{ fontSize:10.5, fontWeight:600, color:'var(--text-soft, #9CA3AF)', textTransform:'uppercase', marginLeft:4 }}>{a.format}</span>
+                    </div>
+                    <div key={previewTick} style={{ fontFamily: a.family, fontSize:19, color:'var(--text-primary)', lineHeight:1.3, marginTop:2 }}>
+                      Aa Bb Cc 123
+                    </div>
+                  </>
+                )}
+              </div>
+              {renamingPath !== a.path && (
+                <>
+                  <button type="button" onClick={() => startRename(a)} title="Umbenennen"
+                    style={{ border:'1px solid var(--border)', background:'#fff', borderRadius:6, fontSize:11, padding:'5px 9px', cursor:'pointer', color:'var(--text-muted)' }}>
+                    Umbenennen
+                  </button>
+                  <button type="button" onClick={() => handleDelete(a.path)} title="Entfernen"
+                    style={{ border:'none', background:'transparent', cursor:'pointer', color:'#ef4444', padding:0, lineHeight:1 }}>
+                    <Trash2 size={15} strokeWidth={1.75}/>
+                  </button>
+                </>
+              )}
+            </div>
+          ))}
+        </div>
+      ) : (
+        edit?.id && !uploading && (
+          <div style={{ fontSize:11.5, color:'var(--text-muted)', marginTop:10, lineHeight:1.5 }}>
+            Noch keine Schriften hochgeladen. Hochgeladene Schriften stehen anschließend im Content-Werkstatt-Designer zur Verfügung.
+          </div>
+        )
+      )}
+    </div>
+  )
+}
+
 // ─── Visuelle Identität — typabhängiger Container ───────────────────────────
 // personal     → nur Personen-Bilder (hero_image_paths)
 // company_page → Logos (logo_paths) + CI-Bibliothek + Farben + Fonts + CI-Booklet
@@ -927,9 +1077,13 @@ function VisualIdentityEditor({ edit, u, session, activeTeamId }) {
             hint="Quadratisches App-Icon / Favicon der Marke. Wird bei Bild-Generierungen als Marken-Referenz mitgesendet."
             max={4} folder="bv-favicon" fileLabel="Favicons"/>
         </div>
-        {/* Reihe 2: Markenfarben über die ganze Breite (Schriftarten entfernt — Bild-KI kann keine Font-Dateien nutzen) */}
+        {/* Reihe 2: Markenfarben über die ganze Breite */}
         <div style={{ display:'flex', gap:12, marginTop:12 }}>
           <BrandColorsEditor edit={edit} u={u}/>
+        </div>
+        {/* Reihe 2b: Schriftarten-Upload (eigene Font-Dateien für den Designer) */}
+        <div style={{ display:'flex', gap:12, marginTop:12 }}>
+          <BrandFontUploadEditor edit={edit} u={u} activeTeamId={activeTeamId}/>
         </div>
         {/* Reihe 3: CI-Booklet / Brand Guideline | Beispiel-Designs & Referenzbilder */}
         <div style={{ display:'flex', gap:12, flexWrap:'wrap', marginTop:12 }}>

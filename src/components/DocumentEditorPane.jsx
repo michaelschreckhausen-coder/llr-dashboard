@@ -5,7 +5,7 @@ import Highlight from '@tiptap/extension-highlight'
 import {
   Bold, Italic, Heading1, Heading2, List, ListOrdered, Quote, Undo2, Redo2,
   X, FilePlus2, Sparkles, Wand2, PenLine, Copy, Download, FileText,
-  Send, Languages, ArrowRightToLine, Plus, Trash2, RotateCcw, ArrowDownToLine, Check, PanelRightClose, ChevronDown, Smile, Underline as UnderlineIcon, Highlighter,
+  Send, Languages, ArrowRightToLine, CalendarPlus, Plus, Trash2, RotateCcw, ArrowDownToLine, Check, PanelRightClose, ChevronDown, Smile, Underline as UnderlineIcon, Highlighter,
 } from 'lucide-react'
 import { supabase } from '../lib/supabase'
 import {
@@ -406,7 +406,7 @@ const DocumentEditorPane = forwardRef(function DocumentEditorPane({
               <button onClick={handleAttach} title="Inhalt als LinkedIn-Beitrag übernehmen"
                 style={{ display:'inline-flex', alignItems:'center', gap:6, height:30, padding:'0 11px', borderRadius:7, border:'none', background:'transparent', color:'var(--text-muted,#475467)', fontSize:12.5, fontWeight:500, cursor:'pointer', whiteSpace:'nowrap', fontFamily:'inherit' }}
                 onMouseEnter={e=>{ e.currentTarget.style.background='#EEF1F6' }} onMouseLeave={e=>{ e.currentTarget.style.background='transparent' }}>
-                <ArrowRightToLine size={15} strokeWidth={2}/>In Beitrag
+                <CalendarPlus size={15} strokeWidth={2}/>In Beitrag
               </button>
             )}
             <span style={{ width:1, height:18, background:'var(--border,#E9ECF2)', margin:'0 4px' }}/>

@@ -62,6 +62,7 @@ function IcGrid()     { return <SvgIcon><rect x="3" y="3" width="7" height="7"/>
 function IcBarChart() { return <SvgIcon><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></SvgIcon> }
 function IcStar()     { return <SvgIcon><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></SvgIcon> }
 function IcImage()    { return <SvgIcon><rect x="3" y="3" width="18" height="18" rx="2" ry="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></SvgIcon> }
+function IcInstagram(){ return <SvgIcon><rect x="2" y="2" width="20" height="20" rx="5" ry="5"/><path d="M16 11.37A4 4 0 1 1 12.63 8 4 4 0 0 1 16 11.37z"/><line x1="17.5" y1="6.5" x2="17.51" y2="6.5"/></SvgIcon> }
 function IcDoc()      { return <SvgIcon><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></SvgIcon> }
 function IcMail()     { return <SvgIcon><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></SvgIcon> }
 function IcChat()     { return <SvgIcon><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></SvgIcon> }
@@ -97,7 +98,7 @@ import { isFlagEnabled } from '../lib/featureFlags'
 function getNav(t) {
   return [
   { to: '/dashboard',       icon: IcHome,     label: t('nav.home'), tourId: 'nav-dashboard' },
-  { to: '/assistant',       icon: IcAssistant, label: t('nav.assistant') },
+  // Assistent-Nav retired (Phase 1) — Leadly lebt in der Bubble + im Dashboard-Briefing.
   { to: '/aufgaben',        icon: IcKanban,   label: t('nav.aufgaben') },
 
   { divider: true, label: t('nav.branding'), tourId: 'nav-branding' },
@@ -105,7 +106,6 @@ function getNav(t) {
   { to: '/company-brand',   icon: IcCompanyBrand, label: 'Company Brand' },
   { to: '/zielgruppen',     icon: IcTarget,   label: t('nav.zielgruppen') },
   { to: '/branding/strike2-personas', icon: IcTarget, label: 'Strike2 Zielgruppen', module: 'strike2_zielgruppen_plus' },
-  { to: '/wissensdatenbank', icon: IcCloud,   label: t('nav.wissensdatenbank') },
   { to: '/ki-sichtbarkeit', icon: IcSparkles, label: 'KI-Sichtbarkeit', addonSlug: 'auralis' },
 
   { divider: true, label: t('nav.sales'), tourId: 'nav-sales' },
@@ -113,6 +113,9 @@ function getNav(t) {
   { to: '/leads',           icon: IcUsers,    label: 'Kontakte' },
   { to: '/leads/imports',   icon: IcUsers,    label: 'Import-Historie', indent: true },
   { to: '/deals',           icon: IcBarChart, label: t('nav.deals') },
+  // Aus Sponsoring in CRM verschoben; Per-Item-Gating ans Sponsoring-Addon gebunden.
+  { to: '/sponsoring/angebote',  icon: IcDoc,    label: 'Angebote',  module: 'sponsoring' },
+  { to: '/sponsoring/vertraege', icon: IcShield, label: 'Verträge',  module: 'sponsoring' },
   { to: '/reports',         icon: IcBarChart, label: t('nav.salesReporting') },
 
   // Projektumsetzung temporär ausgeblendet (2026-06-01 — kommt später zurück)
@@ -125,30 +128,66 @@ function getNav(t) {
 
   { divider: true, label: t('nav.content'), tourId: 'nav-content' },
   { to: '/redaktionsplan',  icon: IcCalPen,   label: t('nav.redaktionsplan') },
-  { to: '/content-studio',  icon: IcStar,     label: 'Text-Werkstatt' },
-  { to: '/dokumente',       icon: IcDoc,      label: 'Dokumente' },
-  { to: '/visuals',         icon: IcImage,    label: 'Visuals' },
-  { to: '/media',           icon: IcBarChart, label: 'Medien' },
+  { to: '/content-studio',  icon: IcStar,     label: 'Content-Werkstatt' },
+  { to: '/bibliothek',      icon: IcImage,    label: 'Bibliothek' },
+
+  // Instagram — Addon-Section. Divider-Label MUSS 'Instagram' sein, damit
+  // SIDEBAR_DIVIDER_TO_MODULE die Section ohne instagram-Modul ausblendet.
+  { divider: true, label: 'Instagram', tourId: 'nav-instagram' },
+  { to: '/instagram',       icon: IcInstagram, label: 'Analysen' },
+
+  // "Wissen" — gemischte Herkunft: Wissensdatenbank (branding-Modul) + Ligen/Pakete
+  // (sponsoring-Addon). BEWUSST KEIN Eintrag in SIDEBAR_DIVIDER_TO_MODULE → Gating
+  // läuft per-Item über item.module; die Section verschwindet via Hide-empty-Divider
+  // (Layout-Filter unten), sobald 0 Items sichtbar sind. Routen unverändert.
+  { divider: true, label: 'Wissen', tourId: 'nav-wissen' },
+  { to: '/wissensdatenbank',       icon: IcCloud,  label: t('nav.wissensdatenbank'), module: 'branding' },
+  { to: '/sponsoring/ligen',       icon: IcShield, label: 'Ligen',             module: 'sponsoring' },
+  { to: '/sponsoring/pakete',      icon: IcPuzzle, label: 'Pakete',            module: 'sponsoring' },
+  { to: '/sponsoring/rechte',      icon: IcGrid,   label: 'Rechte & Inventar', module: 'sponsoring' },
+  { to: '/sponsoring/hospitality', icon: IcHeart,  label: 'Hospitality',       module: 'sponsoring' },
 
   // Sponsoring OS — Addon-Section. Divider-Label MUSS 'Sponsoring' sein, damit
   // SIDEBAR_DIVIDER_TO_MODULE die Section ohne sponsoring-Modul ausblendet.
   { divider: true, label: 'Sponsoring', tourId: 'nav-sponsoring' },
   { to: '/sponsoring',                 icon: IcRocket,        label: 'Übersicht' },
-  { to: '/sponsoring/sponsoren',       icon: IcCompanyBrand,  label: 'Sponsoren' },
-  { to: '/sponsoring/rechte',          icon: IcGrid,          label: 'Rechte & Inventar' },
-  { to: '/sponsoring/pakete',          icon: IcPuzzle,        label: 'Pakete' },
-  { to: '/sponsoring/angebote',        icon: IcDoc,           label: 'Angebote' },
-  { to: '/sponsoring/vertraege',       icon: IcShield,        label: 'Verträge' },
+  { to: '/sponsoring/kampagnen',       icon: IcRocket,        label: 'Kampagnen' },
+  { to: '/sponsoring/branchenanalyse', icon: IcTarget,        label: 'Branchenanalyse' },
+  { to: '/sponsoring/mockup',          icon: IcSparkles,      label: 'Mockup-Studio' },
   { to: '/sponsoring/aktivierung',     icon: IcZap,           label: 'Aktivierung' },
-  { to: '/sponsoring/hospitality',     icon: IcHeart,         label: 'Hospitality' },
+  { to: '/sponsoring/ziele',           icon: IcStar,          label: 'Ziele (SOLL)' },
   { to: '/sponsoring/reporting',       icon: IcBarChart,      label: 'Reporting' },
   { to: '/sponsoring/signale',         icon: IcTarget,        label: 'Signale' },
   { to: '/sponsoring/sichtbarkeit',    icon: IcSparkles,      label: 'KI-Sichtbarkeit' },
   { to: '/sponsoring/success',         icon: IcStar,          label: 'Sponsor Success' },
-  { to: '/sponsoring/assistent',       icon: IcAssistant,     label: 'Assistent' },
-  { to: '/sponsoring/linkedin-import', icon: IcLinkedIn,      label: 'LinkedIn-Import' },
+  // Aus dem Menü ausgeblendet (Routen + ModuleGuard bleiben bestehen, per Direkt-URL
+  // weiter erreichbar): /sponsoring/assistent + /sponsoring/linkedin-import.
 
   ]
+}
+
+// ─── Aktive Section bestimmen ────────────────────────────────────────────────
+// Die aktive/aufgeklappte Section folgt dem Nav-ITEM, das den pathname am
+// spezifischsten matcht (längster passender `to`), NICHT einem URL-Präfix.
+// Sonst fängt z.B. die Sponsoring-"Übersicht" (to:'/sponsoring') auch
+// /sponsoring/ligen via startsWith und würde die Section "Wissen" verdrängen,
+// obwohl Ligen/Pakete als Nav-Items in "Wissen" leben.
+function getActiveSectionLabel(nav, pathname) {
+  let curLabel = null
+  let bestLen = -1
+  let bestLabel = null
+  const consider = (to) => {
+    if (!to) return
+    if (pathname === to || pathname.startsWith(to + '/')) {
+      if (to.length > bestLen) { bestLen = to.length; bestLabel = curLabel }
+    }
+  }
+  for (const item of nav) {
+    if (item.divider) { curLabel = item.label; continue }
+    consider(item.to)
+    if (item.subSection && Array.isArray(item.items)) item.items.forEach(s => consider(s.to))
+  }
+  return bestLabel
 }
 
 // ─── NavItem ──────────────────────────────────────────────────────────────────
@@ -225,19 +264,17 @@ function SubSection({ item, location }) {
 }
 
 // ─── NavSection (Accordion, collapsed: flat mit Divider) ─────────────────────
-function NavSection({ label, items, isAdmin, location, collapsed, isOpen, onOpen, onToggle, tourId }) {
-  // Auto-open wenn ein Kind aktiv ist
-  const hasActive = items.some(it => {
-    if (it.to) return location.pathname === it.to || location.pathname.startsWith(it.to + '/')
-    if (it.subSection) return it.items.some(sub => location.pathname === sub.to || location.pathname.startsWith(sub.to + '/'))
-    return false
-  })
+function NavSection({ label, items, isAdmin, location, collapsed, isOpen, onOpen, onToggle, tourId, autoActive }) {
   const open = isOpen
 
-  // Wenn Route wechselt und ein Kind aktiv wird → aufklappen
+  // Auto-open: NUR die Section, die den pathname am spezifischsten matcht
+  // (autoActive wird zentral im Parent via getActiveSectionLabel bestimmt) — nicht
+  // jede Section, deren Item-Präfix zufällig passt. Sonst öffnet /sponsoring/ligen
+  // (Item in "Wissen") auch die Sponsoring-Section (to:'/sponsoring' matcht per
+  // startsWith) und verdrängt "Wissen".
   useEffect(() => {
-    if (hasActive) onOpen()
-  }, [location.pathname])
+    if (autoActive) onOpen()
+  }, [location.pathname, autoActive])
 
   const visibleItems = items.filter(it => !it.adminOnly || isAdmin)
   if (visibleItems.length === 0) return null
@@ -329,7 +366,7 @@ export default function Layout({ session, role, onLogout, children }) {
   const { brandVoices: _bvAll } = useBrandVoice()
   const [showContentIntro, setShowContentIntro] = useState(false)
   const [introManual, setIntroManual] = useState(false)
-  const _isContentRoute = ['/redaktionsplan','/content-studio','/visuals','/media','/dokumente'].some(r => location.pathname === r || location.pathname.startsWith(r + '/'))
+  const _isContentRoute = ['/redaktionsplan','/content-studio','/bibliothek','/visuals','/media','/dokumente'].some(r => location.pathname === r || location.pathname.startsWith(r + '/'))
   useEffect(() => {
     if (false) setShowContentIntro(true) // abgelöst durch Content-Bereichstour (AREA_TOURS.content)
   }, [onbLoading, contentIntroSeen, _isContentRoute, (_bvAll||[]).length])
@@ -440,6 +477,8 @@ export default function Layout({ session, role, onLogout, children }) {
   const { t } = useTranslation()
   const { language, setLanguage } = useLanguage()
   const NAV = getNav(t)
+  // Aktive Section folgt dem spezifischsten Nav-Item, nicht dem URL-Präfix.
+  const activeSecLabel = getActiveSectionLabel(NAV, location.pathname)
   const { hasModule, hasPermission, loading: entitlementsLoading, data: entData } = useEntitlements()
   // Sidebar-Gating B3: Addons mit leerem activates_modules (z.B. auralis →
   // KI-Sichtbarkeit) sind nicht in entitlements.modules → Slug-Gate via useAddons.
@@ -607,7 +646,7 @@ export default function Layout({ session, role, onLogout, children }) {
     '/ki-sichtbarkeit': 'KI-Sichtbarkeit',
     '/icp': 'Zielgruppen (ICP)',
     '/linkedin-connect': 'LinkedIn Cloud',
-    '/content-studio': 'Content Studio', '/redaktionsplan': 'Redaktionsplan', '/dokumente': 'Dokumente',
+    '/content-studio': 'Content Studio', '/redaktionsplan': 'Redaktionsplan', '/dokumente': 'Dokumente', '/bibliothek': 'Bibliothek',
     '/settings/team': 'Team',
     '/settings': 'Einstellungen',
     '/profile': 'Mein Profil',
@@ -819,6 +858,7 @@ export default function Layout({ session, role, onLogout, children }) {
                       isAdmin={isAdmin}
                       location={location}
                       collapsed={isCollapsed}
+                      autoActive={activeSecLabel === sec.label}
                       isOpen={openSection === sec.label}
                       onOpen={() => setOpenSection(sec.label)}
                       onToggle={() => setOpenSection(prev => prev === sec.label ? null : sec.label)}
@@ -1276,7 +1316,7 @@ function isBrandVoiceContext(pathname) {
   // BV-Switcher sichtbar in LinkedIn-Bereich + Content-Bereich
   const bvRoutes = [
     '/profiltexte', '/vernetzungen', '/messages', '/automatisierung',
-    '/redaktionsplan', '/content-studio', '/visuals', '/dokumente', '/media', '/content-reporting',
+    '/redaktionsplan', '/content-studio', '/bibliothek', '/visuals', '/dokumente', '/media', '/content-reporting',
   ]
   return bvRoutes.some(r => pathname === r || pathname.startsWith(r + '/'))
 }

@@ -2,10 +2,11 @@
 // Misst über mehrere KI-Provider, ob ein Sponsor/Verein in den Antworten genannt
 // wird. Sichtbarkeits-Index aus v_geo_visibility. Schema 'sponsoring'.
 
-import { useEffect, useState, useCallback } from 'react'
+import { useEffect, useMemo, useState, useCallback } from 'react'
 import { Eye, Sparkles, Loader2, RefreshCw } from 'lucide-react'
 import { supabase } from '../../lib/supabase'
 import { useTeam } from '../../context/TeamContext'
+import PageHeader from '../../components/PageHeader'
 
 const PRIMARY = 'var(--wl-primary, rgb(49,90,231))'
 const sp = () => supabase.schema('sponsoring')
@@ -20,6 +21,7 @@ function indexColor(i) {
 export default function Sichtbarkeit() {
   const { activeTeamId } = useTeam()
   const [sponsors, setSponsors] = useState([])
+  const [orgs, setOrgs] = useState([])
   const [agg, setAgg] = useState([])
   const [runs, setRuns] = useState([])
   const [loading, setLoading] = useState(true)
@@ -32,24 +34,34 @@ export default function Sichtbarkeit() {
   const fetchAll = useCallback(async () => {
     if (!activeTeamId) return
     setLoading(true); setError(null)
-    const [s, v, r] = await Promise.all([
-      sp().from('sponsor_profiles').select('id, name').eq('team_id', activeTeamId).order('name'),
+    const [s, v, r, o] = await Promise.all([
+      sp().from('sponsor_profiles').select('id, organization_id').eq('team_id', activeTeamId).order('created_at', { ascending: false }),
       sp().from('v_geo_visibility').select('*').eq('team_id', activeTeamId),
       sp().from('geo_visibility_runs').select('*').eq('team_id', activeTeamId).order('run_at', { ascending: false }).limit(30),
+      supabase.from('organizations').select('id, name').eq('team_id', activeTeamId),
     ])
-    if (s.error || v.error || r.error) { setError((s.error || v.error || r.error).message); setLoading(false); return }
-    setSponsors(s.data || []); setAgg(v.data || []); setRuns(r.data || [])
+    if (s.error || v.error || r.error || o.error) { setError((s.error || v.error || r.error || o.error).message); setLoading(false); return }
+    setSponsors(s.data || []); setAgg(v.data || []); setRuns(r.data || []); setOrgs(o.data || [])
     setLoading(false)
   }, [activeTeamId])
 
   useEffect(() => { fetchAll() }, [fetchAll])
+
+  // Sponsor-Name kommt aus organizations.name (sponsor_profiles ist 1:1-Extension).
+  const orgName = useMemo(() => Object.fromEntries(orgs.map((o) => [o.id, o.name])), [orgs])
+  // Sponsoren clientseitig alphabetisch nach aufgelöstem Org-Namen sortieren (vorher .order('name')).
+  const sortedSponsors = useMemo(
+    () => [...sponsors].sort((a, b) => (orgName[a.organization_id] || '').localeCompare(orgName[b.organization_id] || '')),
+    [sponsors, orgName],
+  )
 
   async function runCheck() {
     setBusy(true); setError(null)
     const payload = subjectType === 'sponsor'
       ? (() => {
           const s = sponsors.find((x) => x.id === sponsorId)
-          return s ? { subject_type: 'sponsor', subject_name: s.name, subject_ref: s.id } : null
+          const name = s ? orgName[s.organization_id] : null
+          return s && name ? { subject_type: 'sponsor', subject_name: name, subject_ref: s.id } : null
         })()
       : (clubName.trim() ? { subject_type: 'club', subject_name: clubName.trim() } : null)
 
@@ -65,17 +77,13 @@ export default function Sichtbarkeit() {
   if (!activeTeamId) return <div style={{ padding: 32, color: 'var(--text-muted)' }}>Kein aktives Team.</div>
 
   return (
-    <div style={{ padding: 32, maxWidth: 1000, margin: '0 auto' }}>
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 6 }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-          <Eye size={26} color={PRIMARY} />
-          <h1 style={{ fontSize: 26, fontWeight: 800, color: 'var(--text-strong)', margin: 0, letterSpacing: '-0.01em' }}>KI-Sichtbarkeit</h1>
-        </div>
-        <button onClick={fetchAll} title="Aktualisieren" style={iconBtn}><RefreshCw size={16} /></button>
-      </div>
-      <p style={{ fontSize: 14, color: 'var(--text-muted)', margin: '0 0 24px', maxWidth: 680, lineHeight: 1.6 }}>
-        Wird dein Verein/Sponsor in KI-Antworten (ChatGPT, Claude, Perplexity …) genannt? Der Index zeigt den Anteil der Nennungen.
-      </p>
+    <div style={{ width: '100%', maxWidth: 1100, margin: '0 auto', padding: '24px 16px 40px' }}>
+      <PageHeader
+        overline="Sponsoring"
+        title="KI-Sichtbarkeit"
+        subtitle="Wird dein Verein/Sponsor in KI-Antworten (ChatGPT, Claude, Perplexity …) genannt? Der Index zeigt den Anteil der Nennungen."
+        action={<button onClick={fetchAll} title="Aktualisieren" style={iconBtn}><RefreshCw size={16} /></button>}
+      />
 
       {error && <div style={errBox}>{error}</div>}
 
@@ -90,7 +98,7 @@ export default function Sichtbarkeit() {
           <Field label="Sponsor">
             <select value={sponsorId} onChange={(e) => setSponsorId(e.target.value)} style={{ ...input, minWidth: 220 }}>
               <option value="">— wählen —</option>
-              {sponsors.map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}
+              {sortedSponsors.map((s) => <option key={s.id} value={s.id}>{orgName[s.organization_id] || '—'}</option>)}
             </select>
           </Field>
         ) : (

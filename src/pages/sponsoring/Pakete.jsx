@@ -6,6 +6,7 @@ import { useEffect, useMemo, useState, useCallback } from 'react'
 import { Package, Plus, Loader2, ChevronDown, ChevronRight, X } from 'lucide-react'
 import { supabase } from '../../lib/supabase'
 import { useTeam } from '../../context/TeamContext'
+import PageHeader from '../../components/PageHeader'
 
 const PRIMARY = 'var(--wl-primary, rgb(49,90,231))'
 const sp = () => supabase.schema('sponsoring')
@@ -82,16 +83,12 @@ export default function Pakete() {
   if (!activeTeamId) return <div style={{ padding: 32, color: 'var(--text-muted)' }}>Kein aktives Team.</div>
 
   return (
-    <div style={{ padding: 32, maxWidth: 1000, margin: '0 auto' }}>
-      <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 6 }}>
-        <Package size={26} color={PRIMARY} />
-        <h1 style={{ fontSize: 26, fontWeight: 800, color: 'var(--text-strong)', margin: 0, letterSpacing: '-0.01em' }}>
-          Pakete
-        </h1>
-      </div>
-      <p style={{ fontSize: 14, color: 'var(--text-muted)', margin: '0 0 24px', maxWidth: 640, lineHeight: 1.6 }}>
-        Schnüre Sponsoring-Pakete aus deinen Rechten. Der Paketwert summiert die Listenpreise der enthaltenen Rechte.
-      </p>
+    <div style={{ width: '100%', maxWidth: 1100, margin: '0 auto', padding: '24px 16px 40px' }}>
+      <PageHeader
+        overline="Sponsoring"
+        title="Pakete"
+        subtitle="Schnüre Sponsoring-Pakete aus deinen Rechten. Der Paketwert summiert die Listenpreise der enthaltenen Rechte."
+      />
 
       {error && <div style={errBox}>{error}</div>}
 
