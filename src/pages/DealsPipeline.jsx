@@ -1,6 +1,6 @@
 // DealsPipeline — Kanban-Ansicht über die echten Deals (deals-Tabelle)
 // Teilt Datenmodell mit Deals.jsx (gleiche Liste, andere Darstellung)
-import React, { useState, useEffect } from 'react'
+import React, { useState, useEffect, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
 import { useTeam } from '../context/TeamContext'
@@ -37,6 +37,9 @@ export default function DealsPipeline({ session }) {
   const [loading, setLoading]     = useState(true)
   const [dragOver, setDragOver]   = useState(null)
   const [dragging, setDragging]   = useState(null)
+  // Merkt, ob gerade ein Drag lief — verhindert, dass der Card-onClick nach
+  // einem Drop wegnavigiert (sonst „lässt sich nicht verschieben").
+  const draggedRef = useRef(false)
 
   useEffect(() => { load() /* eslint-disable-next-line */ }, [activeTeamId])
 
@@ -125,10 +128,11 @@ export default function DealsPipeline({ session }) {
                       onDragStart={e => {
                         e.dataTransfer.setData('dealId', d.id)
                         e.dataTransfer.effectAllowed = 'move'
+                        draggedRef.current = true
                         setDragging(d.id)
                       }}
-                      onDragEnd={() => { setDragging(null); setDragOver(null) }}
-                      onClick={() => navigate(`/deals/${d.id}`)}
+                      onDragEnd={() => { setDragging(null); setDragOver(null); setTimeout(() => { draggedRef.current = false }, 80) }}
+                      onClick={() => { if (draggedRef.current) return; navigate(`/deals/${d.id}`) }}
                       style={{
                         background: '#fff',
                         borderRadius: 8,

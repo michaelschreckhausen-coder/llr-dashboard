@@ -9,7 +9,7 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import {
-  ArrowLeft, Download, Trash2, Pencil, Rocket, Paperclip, User, Building2,
+  ArrowLeft, Download, Eye, Trash2, Pencil, Rocket, Paperclip, User, Building2,
   CalendarCheck, Phone, TrendingUp, Mail, Send, FileText, Target, CheckCircle2, Users, Link2,
 } from 'lucide-react'
 import { supabase } from '../lib/supabase'
@@ -204,6 +204,24 @@ export default function DealDetail({ session }) {
     } catch (err) { alert('Download-Fehler: ' + err.message) }
   }
 
+  async function openFile(att) {
+    // Fenster synchron öffnen (User-Gesture bleibt erhalten → kein Popup-Block),
+    // dann Blob laden und die Object-URL setzen. Blob: ist same-origin, daher
+    // blockt Chrome PDFs/Bilder nicht (vgl. Top-Fallstrick #5).
+    const win = window.open('', '_blank')
+    try {
+      const { data: blob, error } = await supabase.storage.from('deal-attachments').download(att.file_path)
+      if (error || !blob) { if (win) win.close(); alert('Öffnen fehlgeschlagen: ' + (error?.message || 'keine Datei')); return }
+      const url = URL.createObjectURL(blob)
+      if (win) win.location = url
+      else window.open(url, '_blank')
+      setTimeout(() => URL.revokeObjectURL(url), 60000)
+    } catch (err) {
+      if (win) win.close()
+      alert('Öffnen fehlgeschlagen: ' + err.message)
+    }
+  }
+
   async function deleteFile(att) {
     setDeleting(att.id)
     await supabase.storage.from('deal-attachments').remove([att.file_path])
@@ -219,11 +237,11 @@ export default function DealDetail({ session }) {
   }
 
   if (loading) {
-    return <div style={{ maxWidth: 920, margin: '0 auto', padding: '40px 24px', color: '#9CA3AF' }}>Lade Deal…</div>
+    return <div style={{ width: '100%', maxWidth: 1100, margin: '0 auto', padding: '24px 16px 40px', color: '#9CA3AF' }}>Lade Deal…</div>
   }
   if (notFound || !deal) {
     return (
-      <div style={{ maxWidth: 920, margin: '0 auto', padding: '40px 24px' }}>
+      <div style={{ width: '100%', maxWidth: 1100, margin: '0 auto', padding: '24px 16px 40px' }}>
         <button onClick={() => navigate('/deals?view=liste')} style={backBtnStyle}><ArrowLeft size={15} /> Zurück zu Deals</button>
         <div style={{ marginTop: 24, color: '#6B7280' }}>Deal nicht gefunden.</div>
       </div>
@@ -238,36 +256,34 @@ export default function DealDetail({ session }) {
   const leadName = lead ? ([lead.first_name, lead.last_name].filter(Boolean).join(' ') || lead.name || lead.company) : null
 
   return (
-    <div style={{ maxWidth: 920, margin: '0 auto', padding: '24px 24px 60px' }}>
+    <div style={{ width: '100%', maxWidth: 1100, margin: '0 auto', padding: '24px 16px 40px' }}>
       <button onClick={() => navigate('/deals?view=liste')} style={backBtnStyle}><ArrowLeft size={15} /> Zurück zu Deals</button>
 
-      {/* Header */}
-      <div style={{ ...cardStyle, marginTop: 14 }}>
-        <div style={{ display: 'flex', alignItems: 'flex-start', gap: 12 }}>
-          <div style={{ flex: 1, minWidth: 0 }}>
-            <div style={{ fontSize: 22, fontWeight: 800, color: '#111827', marginBottom: 8 }}>{deal.title || deal.name || '—'}</div>
-            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
-              <span style={{ fontSize: 11, fontWeight: 700, padding: '3px 10px', borderRadius: 99, background: s.bg, color: s.color }}>{s.label}</span>
-              {deal.value && <span style={{ fontSize: 11, fontWeight: 700, padding: '3px 10px', borderRadius: 99, background: '#F0FDF4', color: '#059669' }}>{fmtEur(deal.value)}</span>}
-              {closeDate && <span style={{ fontSize: 11, fontWeight: 600, padding: '3px 10px', borderRadius: 99, background: isOverdue ? '#FEF2F2' : '#F3F4F6', color: isOverdue ? '#DC2626' : '#6B7280' }}>{isOverdue ? 'Überfällig · ' : ''}{fmtDate(closeDate)}</span>}
-            </div>
-          </div>
-          <div style={{ display: 'flex', gap: 6, flexShrink: 0 }}>
-            {deal.stage === 'gewonnen' && (
-              <button onClick={() => setShowStartProjekt(true)} style={{ padding: '7px 14px', borderRadius: 8, border: '1px solid #059669', background: '#F0FDF4', fontSize: 12, fontWeight: 700, cursor: 'pointer', color: '#059669', display: 'inline-flex', alignItems: 'center', gap: 5 }}><Rocket size={14} /> Projekt starten</button>
-            )}
-            <button onClick={() => setEditing(true)} style={{ padding: '7px 14px', borderRadius: 8, border: '1px solid #E4E7EC', background: 'var(--surface, #fff)', fontSize: 12, fontWeight: 700, cursor: 'pointer', color: '#374151', display: 'inline-flex', alignItems: 'center', gap: 5 }}><Pencil size={14} /> Bearbeiten</button>
+      {/* Seitenkopf (Standard-Layout: h1-Titel, Aktionen rechts) */}
+      <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 16, margin: '16px 0 20px' }}>
+        <div style={{ minWidth: 0 }}>
+          <h1 style={{ fontSize: 26, fontWeight: 700, margin: 0, letterSpacing: '-0.3px', lineHeight: 1.2, color: '#111827' }}>{deal.title || deal.name || '—'}</h1>
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginTop: 10 }}>
+            <span style={{ fontSize: 11, fontWeight: 700, padding: '3px 10px', borderRadius: 99, background: s.bg, color: s.color }}>{s.label}</span>
+            {deal.value && <span style={{ fontSize: 11, fontWeight: 700, padding: '3px 10px', borderRadius: 99, background: '#F0FDF4', color: '#059669' }}>{fmtEur(deal.value)}</span>}
+            {closeDate && <span style={{ fontSize: 11, fontWeight: 600, padding: '3px 10px', borderRadius: 99, background: isOverdue ? '#FEF2F2' : '#F3F4F6', color: isOverdue ? '#DC2626' : '#6B7280' }}>{isOverdue ? 'Überfällig · ' : ''}{fmtDate(closeDate)}</span>}
           </div>
         </div>
+        <div style={{ display: 'flex', gap: 6, flexShrink: 0 }}>
+          {deal.stage === 'gewonnen' && (
+            <button onClick={() => setShowStartProjekt(true)} style={{ padding: '7px 14px', borderRadius: 8, border: '1px solid #059669', background: '#F0FDF4', fontSize: 12, fontWeight: 700, cursor: 'pointer', color: '#059669', display: 'inline-flex', alignItems: 'center', gap: 5 }}><Rocket size={14} /> Projekt starten</button>
+          )}
+          <button onClick={() => setEditing(true)} style={{ padding: '7px 14px', borderRadius: 8, border: '1px solid #E4E7EC', background: 'var(--surface, #fff)', fontSize: 12, fontWeight: 700, cursor: 'pointer', color: '#374151', display: 'inline-flex', alignItems: 'center', gap: 5 }}><Pencil size={14} /> Bearbeiten</button>
+        </div>
+      </div>
 
-        {/* Wahrscheinlichkeit */}
-        <div style={{ marginTop: 18 }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 5, fontSize: 11, fontWeight: 700, color: '#6B7280', textTransform: 'uppercase', letterSpacing: '0.06em' }}>
-            <span>Abschluss-Wahrscheinlichkeit</span><span>{deal.probability}%</span>
-          </div>
-          <div style={{ height: 7, background: '#F1F5F9', borderRadius: 99, overflow: 'hidden' }}>
-            <div style={{ height: '100%', width: `${deal.probability || 0}%`, background: deal.stage === 'gewonnen' ? '#059669' : deal.stage === 'verloren' ? '#DC2626' : PRIMARY, borderRadius: 99 }} />
-          </div>
+      {/* Wahrscheinlichkeit */}
+      <div style={cardStyle}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 5, fontSize: 11, fontWeight: 700, color: '#6B7280', textTransform: 'uppercase', letterSpacing: '0.06em' }}>
+          <span>Abschluss-Wahrscheinlichkeit</span><span>{deal.probability}%</span>
+        </div>
+        <div style={{ height: 7, background: '#F1F5F9', borderRadius: 99, overflow: 'hidden' }}>
+          <div style={{ height: '100%', width: `${deal.probability || 0}%`, background: deal.stage === 'gewonnen' ? '#059669' : deal.stage === 'verloren' ? '#DC2626' : PRIMARY, borderRadius: 99 }} />
         </div>
       </div>
 
@@ -331,6 +347,7 @@ export default function DealDetail({ session }) {
                   <div style={{ fontSize: 12, fontWeight: 600, color: '#111827', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{att.name}</div>
                   <div style={{ fontSize: 10, color: '#9CA3AF' }}>{fmtSize(att.file_size)} · {new Date(att.created_at).toLocaleDateString('de-DE', { day: '2-digit', month: 'short' })}</div>
                 </div>
+                <button onClick={() => openFile(att)} style={{ padding: '5px 11px', borderRadius: 7, border: '1px solid #E4E7EC', background: 'var(--surface, #fff)', fontSize: 11, fontWeight: 600, cursor: 'pointer', color: PRIMARY, display: 'inline-flex', alignItems: 'center', gap: 4 }}><Eye size={13} /> Öffnen</button>
                 <button onClick={() => downloadFile(att)} style={{ padding: '5px 11px', borderRadius: 7, border: '1px solid #E4E7EC', background: 'var(--surface, #fff)', fontSize: 11, fontWeight: 600, cursor: 'pointer', color: PRIMARY, display: 'inline-flex', alignItems: 'center', gap: 4 }}><Download size={13} /> Download</button>
                 {att.uploaded_by === uid && (
                   <button onClick={() => deleteFile(att)} disabled={deleting === att.id} style={{ width: 26, height: 26, borderRadius: 6, border: 'none', background: 'none', cursor: 'pointer', color: '#D1D5DB', display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }}>
