@@ -130,13 +130,15 @@ async function handleIngest(
   if (!job) return json({ error: "job_not_found" }, 404);
   if (job.status === "cancelled") return json({ error: "job_cancelled" }, 409);
 
-  // Upsert über SECURITY-DEFINER-RPC sales_nav_upsert_lead — COALESCE-Update
+  // Upsert über SECURITY-DEFINER-RPC sales_nav_upsert_inbox — Ziel ist die
+  // Triage-Inbox public.linkedin_inbox (NICHT direkt leads). COALESCE-Update
   // (überschreibt nie mit NULL), gibt true=INSERT / false=UPDATE zurück.
-  // (Migration 20260628160000_sales_nav_upsert_rpc.sql)
+  // Überführung in echte leads erst per promote_inbox_contact (1-Klick-Review).
+  // (Migration 20260703100200_sales_nav_upsert_inbox_rpc.sql)
   let inserted = 0, updated = 0, failed = 0;
   for (const lead of leads) {
     if (!lead || !lead.sales_nav_id) { failed++; continue; }
-    const { data, error } = await admin.rpc("sales_nav_upsert_lead", {
+    const { data, error } = await admin.rpc("sales_nav_upsert_inbox", {
       p_team_id: job.team_id, p_user_id: job.user_id, p_lead: lead,
     });
     if (error) {
