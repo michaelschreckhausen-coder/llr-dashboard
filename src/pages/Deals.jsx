@@ -1,11 +1,10 @@
 // Deals v2 — PDF Blob-Download, expected_close_date, Slide-in Panel
 import { useTranslation } from 'react-i18next'
-import React, { useState, useEffect, useRef } from 'react'
+import React, { useState, useEffect } from 'react'
 import { supabase } from '../lib/supabase'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import { useTeam } from '../context/TeamContext'
 import OrganizationPicker from '../components/OrganizationPicker'
-import ProjektStartenModal from '../components/ProjektStartenModal'
 
 const PRIMARY = 'rgb(49,90,231)'
 
@@ -27,22 +26,6 @@ function fmtEur(v) {
 function fmtDate(d) {
   if (!d) return null
   return new Date(d + 'T12:00:00').toLocaleDateString('de-DE', { day: '2-digit', month: 'short', year: '2-digit' })
-}
-function fmtSize(bytes) {
-  if (!bytes) return ''
-  if (bytes < 1024) return bytes + ' B'
-  if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(1) + ' KB'
-  return (bytes / 1024 / 1024).toFixed(1) + ' MB'
-}
-function fileIcon(mime) {
-  if (!mime) return '📎'
-  if (mime.includes('pdf')) return '📄'
-  if (mime.includes('word') || mime.includes('document')) return '📝'
-  if (mime.includes('excel') || mime.includes('spreadsheet') || mime.includes('csv')) return '📊'
-  if (mime.includes('powerpoint') || mime.includes('presentation')) return '📋'
-  if (mime.includes('image')) return '🖼'
-  if (mime.includes('zip')) return '🗜'
-  return '📎'
 }
 
 // ── Deal-Formular Modal ────────────────────────────────────────────────────────
@@ -253,202 +236,6 @@ export function DealModal({ deal, leads, teamMembers = [], teamId, uid, onSave, 
   )
 }
 
-// ── Deal-Detail Panel ──────────────────────────────────────────────────────────
-function DealDetail({ deal, uid, session, onEdit, onDelete, onClose, onRefresh }) {
-  const [attachments, setAttachments] = useState([])
-  const [uploading,   setUploading]   = useState(false)
-  const [uploadErr,   setUploadErr]   = useState(null)
-  const [deleting,    setDeleting]    = useState(null)
-  const [showStartProjekt, setShowStartProjekt] = useState(false)
-  const fileRef = useRef(null)
-  const s = STAGE_MAP[deal.stage] || STAGE_MAP.prospect
-
-  useEffect(() => { loadAttachments() }, [deal.id])
-
-  async function loadAttachments() {
-    const { data } = await supabase.from('deal_attachments').select('*').eq('deal_id', deal.id).order('created_at', { ascending: false })
-    setAttachments(data || [])
-  }
-
-  async function uploadFile(e) {
-    const file = e.target.files?.[0]
-    if (!file) return
-    if (file.size > 10 * 1024 * 1024) { setUploadErr('Datei zu groß (max. 10 MB)'); return }
-    setUploading(true)
-    setUploadErr(null)
-    try {
-      const ext  = file.name.split('.').pop()
-      const path = `${uid}/${deal.id}/${Date.now()}.${ext}`
-      const { error: storageErr } = await supabase.storage
-        .from('deal-attachments')
-        .upload(path, file, { contentType: file.type, upsert: false })
-      if (storageErr) { setUploadErr(storageErr.message); setUploading(false); return }
-      await supabase.from('deal_attachments').insert({
-        deal_id: deal.id, uploaded_by: uid,
-        name: file.name, file_path: path,
-        file_size: file.size, mime_type: file.type,
-      })
-      await loadAttachments()
-    } catch(err) { setUploadErr(err.message) }
-    setUploading(false)
-    e.target.value = ''
-  }
-
-  async function downloadFile(att) {
-    try {
-      // Blob via Supabase SDK holen — umgeht CORS-Probleme beim PDF-Viewer
-      const { data: blob, error } = await supabase.storage
-        .from('deal-attachments')
-        .download(att.file_path)
-      if (error) { alert('Download-Fehler: ' + error.message); return }
-      if (!blob) { alert('Keine Datei erhalten'); return }
-      const blobUrl = URL.createObjectURL(blob)
-      const a = document.createElement('a')
-      a.href = blobUrl
-      a.download = att.name
-      document.body.appendChild(a)
-      a.click()
-      document.body.removeChild(a)
-      setTimeout(() => URL.revokeObjectURL(blobUrl), 10000)
-    } catch (err) {
-      alert('Download-Fehler: ' + err.message)
-    }
-  }
-
-  async function deleteFile(att) {
-    setDeleting(att.id)
-    await supabase.storage.from('deal-attachments').remove([att.file_path])
-    await supabase.from('deal_attachments').delete().eq('id', att.id)
-    setAttachments(prev => prev.filter(a => a.id !== att.id))
-    setDeleting(null)
-  }
-
-  const today = new Date().toISOString().split('T')[0]
-  const isOverdue = (deal.expected_close || deal.expected_close_date) && (deal.expected_close || deal.expected_close_date) < today && deal.stage !== 'gewonnen' && deal.stage !== 'verloren'
-
-  return (
-    <div style={{ background: 'var(--surface)', border: '1px solid #E4E7EC', borderRadius: 16, overflow: 'hidden' }}>
-      {/* Header */}
-      <div style={{ padding: '18px 20px', borderBottom: '1px solid #F1F5F9', display: 'flex', alignItems: 'flex-start', gap: 12 }}>
-        <div style={{ flex: 1, minWidth: 0 }}>
-          <div style={{ fontSize: 16, fontWeight: 800, color: '#111827', marginBottom: 6 }}>{deal.title || deal.name || '—'}</div>
-          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
-            <span style={{ fontSize: 11, fontWeight: 700, padding: '2px 9px', borderRadius: 99, background: s.bg, color: s.color }}>
-              {s.label}
-            </span>
-            {deal.value && (
-              <span style={{ fontSize: 11, fontWeight: 700, padding: '2px 9px', borderRadius: 99, background: '#F0FDF4', color: '#059669' }}>
-                {fmtEur(deal.value)}
-              </span>
-            )}
-            {(deal.expected_close || deal.expected_close_date) && (
-              <span style={{ fontSize: 11, fontWeight: 600, padding: '2px 9px', borderRadius: 99, background: isOverdue ? '#FEF2F2' : '#F3F4F6', color: isOverdue ? '#DC2626' : '#6B7280' }}>
-                {isOverdue ? 'Überfällig · ' : ''}{fmtDate(deal.expected_close || deal.expected_close_date)}
-              </span>
-            )}
-          </div>
-        </div>
-        <div style={{ display: 'flex', gap: 6, flexShrink: 0 }}>
-          {deal.stage === 'gewonnen' && (
-            <button onClick={() => setShowStartProjekt(true)} style={{ padding: '5px 12px', borderRadius: 8, border: '1px solid #059669', background: '#F0FDF4', fontSize: 11, fontWeight: 700, cursor: 'pointer', color: '#059669' }}>Projekt starten</button>
-          )}
-          <button onClick={onEdit} style={{ padding: '5px 12px', borderRadius: 8, border: '1px solid #E4E7EC', background: 'var(--surface)', fontSize: 11, fontWeight: 700, cursor: 'pointer', color: '#374151' }}>Bearbeiten</button>
-          <button onClick={onClose} style={{ width: 28, height: 28, borderRadius: 8, border: 'none', background: '#F3F4F6', cursor: 'pointer', fontSize: 16, color: '#6B7280', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>×</button>
-        </div>
-      </div>
-
-      <div style={{ padding: '16px 20px', display: 'flex', flexDirection: 'column', gap: 16 }}>
-        {/* Wahrscheinlichkeit */}
-        <div>
-          <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 5, fontSize: 11, fontWeight: 700, color: '#6B7280', textTransform: 'uppercase', letterSpacing: '0.06em' }}>
-            <span>Abschluss-Wahrscheinlichkeit</span><span>{deal.probability}%</span>
-          </div>
-          <div style={{ height: 6, background: '#F1F5F9', borderRadius: 99, overflow: 'hidden' }}>
-            <div style={{ height: '100%', width: `${deal.probability}%`, background: deal.stage === 'gewonnen' ? '#059669' : deal.stage === 'verloren' ? '#DC2626' : PRIMARY, borderRadius: 99 }}/>
-          </div>
-        </div>
-
-        {/* Beschreibung + Notizen */}
-        {deal.description && (
-          <div>
-            <div style={{ fontSize: 11, fontWeight: 700, color: '#9CA3AF', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 4 }}>Beschreibung</div>
-            <div style={{ fontSize: 13, color: '#374151', lineHeight: 1.6 }}>{deal.description}</div>
-          </div>
-        )}
-        {deal.notes && (
-          <div>
-            <div style={{ fontSize: 11, fontWeight: 700, color: '#9CA3AF', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 4 }}>Notizen</div>
-            <div style={{ fontSize: 13, color: '#374151', lineHeight: 1.6, whiteSpace: 'pre-wrap' }}>{deal.notes}</div>
-          </div>
-        )}
-
-        {/* Anhänge */}
-        <div>
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 }}>
-            <div style={{ fontSize: 11, fontWeight: 700, color: '#9CA3AF', textTransform: 'uppercase', letterSpacing: '0.06em' }}>
-              Anhänge ({attachments.length})
-            </div>
-            <button onClick={() => fileRef.current?.click()}
-              style={{ padding: '4px 12px', borderRadius: 8, border: '1.5px dashed ' + PRIMARY, background: 'rgba(49,90,231,0.04)', fontSize: 11, fontWeight: 700, cursor: 'pointer', color: PRIMARY }}>
-              {uploading ? 'Hochladen…' : '+ Datei anhängen'}
-            </button>
-            <input ref={fileRef} type="file" style={{ display: 'none' }} onChange={uploadFile}
-              accept=".pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.jpg,.jpeg,.png,.gif,.webp,.txt,.csv,.zip"/>
-          </div>
-
-          {uploadErr && <div style={{ fontSize: 11, color: '#DC2626', marginBottom: 8, padding: '6px 10px', background: '#FEF2F2', borderRadius: 6 }}>{uploadErr}</div>}
-
-          {attachments.length === 0 ? (
-            <div style={{ textAlign: 'center', padding: '20px 0', color: '#CBD5E1', fontSize: 12 }}>
-              Noch keine Anhänge · max. 10 MB pro Datei
-            </div>
-          ) : (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-              {attachments.map(att => (
-                <div key={att.id} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '8px 10px', borderRadius: 9, border: '1px solid #F1F5F9', background: '#F9FAFB' }}>
-                  <span style={{ fontSize: 20, flexShrink: 0 }}>{fileIcon(att.mime_type)}</span>
-                  <div style={{ flex: 1, minWidth: 0 }}>
-                    <div style={{ fontSize: 12, fontWeight: 600, color: '#111827', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{att.name}</div>
-                    <div style={{ fontSize: 10, color: '#9CA3AF' }}>{fmtSize(att.file_size)} · {new Date(att.created_at).toLocaleDateString('de-DE', { day: '2-digit', month: 'short' })}</div>
-                  </div>
-                  <button onClick={() => downloadFile(att)}
-                    style={{ padding: '4px 10px', borderRadius: 7, border: '1px solid #E4E7EC', background: 'var(--surface)', fontSize: 11, fontWeight: 600, cursor: 'pointer', color: PRIMARY }}>
-                    ↓ Download
-                  </button>
-                  {att.uploaded_by === uid && (
-                    <button onClick={() => deleteFile(att)} disabled={deleting === att.id}
-                      style={{ width: 24, height: 24, borderRadius: 6, border: 'none', background: 'none', cursor: 'pointer', fontSize: 14, color: '#D1D5DB' }}
-                      onMouseEnter={e => e.currentTarget.style.color = '#DC2626'}
-                      onMouseLeave={e => e.currentTarget.style.color = '#D1D5DB'}>
-                      {deleting === att.id ? '⏳' : '×'}
-                    </button>
-                  )}
-                </div>
-              ))}
-            </div>
-          )}
-        </div>
-
-        {/* Löschen */}
-        {deal.created_by === uid && (
-          <button onClick={() => { if (window.confirm('Deal wirklich löschen?')) onDelete(deal.id) }}
-            style={{ alignSelf: 'flex-start', padding: '6px 12px', borderRadius: 8, border: '1px solid #FECACA', background: 'var(--surface)', fontSize: 11, fontWeight: 600, cursor: 'pointer', color: '#DC2626' }}>
-            🗑 Deal löschen
-          </button>
-        )}
-      </div>
-      {showStartProjekt && (
-        <ProjektStartenModal
-          deal={deal}
-          session={session}
-          onClose={() => setShowStartProjekt(false)}
-          onCreated={() => { setShowStartProjekt(false); if (onRefresh) onRefresh() }}
-        />
-      )}
-    </div>
-  )
-}
-
 // ── Hauptseite ─────────────────────────────────────────────────────────────────
 export default function Deals({ session }) {
   const { t } = useTranslation()
@@ -460,30 +247,19 @@ export default function Deals({ session }) {
   const [teamMembers, setTeamMembers] = useState([])
   const [loading,   setLoading]   = useState(true)
   const [modal,     setModal]     = useState(null)  // null | 'new' | deal-object
-  const [selected,  setSelected]  = useState(null)  // aktiver Deal für Detail
   const [filter,    setFilter]    = useState('all')
   const [ownerFilter, setOwnerFilter] = useState(null)
   const [search,    setSearch]    = useState('')
-  const [searchParams, setSearchParams] = useSearchParams()
+  const [searchParams] = useSearchParams()
 
   useEffect(() => { load() }, [activeTeamId])
 
-  // 2026-06-02: Deep-Link aus Aufgaben-Hub. /deals?open=<deal-id> selektiert
-  // den Deal sobald die Liste geladen ist. Query-Param wird danach geleert
-  // damit History-Refresh den Modal nicht erneut oeffnet.
+  // 2026-06-02: Deep-Link aus Aufgaben-Hub. /deals?open=<deal-id> öffnet die
+  // eigenständige Deal-Detailseite (früher: Slide-in-Drawer).
   useEffect(() => {
-    if (loading) return
     const openId = searchParams.get('open')
-    if (!openId) return
-    const deal = deals.find(d => d.id === openId)
-    if (deal) {
-      setSelected(deal)
-      // Param wegputzen
-      const next = new URLSearchParams(searchParams)
-      next.delete('open')
-      setSearchParams(next, { replace: true })
-    }
-  }, [loading, deals, searchParams, setSearchParams])
+    if (openId) navigate(`/deals/${openId}`, { replace: true })
+  }, [searchParams, navigate])
 
   async function load() {
     setLoading(true)
@@ -525,12 +301,6 @@ export default function Deals({ session }) {
     } else setTeamMembers([])
 
     setLoading(false)
-  }
-
-  async function deleteDeal(id) {
-    await supabase.from('deals').delete().eq('id', id)
-    setDeals(prev => prev.filter(d => d.id !== id))
-    setSelected(null)
   }
 
   // Filter
@@ -626,7 +396,7 @@ export default function Deals({ session }) {
         </div>
       </div>
 
-      {/* Layout: Liste links, Detail rechts */}
+      {/* Deal-Liste (Klick öffnet die eigenständige Detailseite /deals/:id) */}
       <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: 16 }}>
         {/* Deal-Liste */}
         <div>
@@ -642,16 +412,15 @@ export default function Deals({ session }) {
             <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
               {filtered.map(deal => {
                 const s = STAGE_MAP[deal.stage] || STAGE_MAP.prospect
-                const isActive = selected?.id === deal.id
                 const isOvd = (deal.expected_close || deal.expected_close_date) && (deal.expected_close || deal.expected_close_date) < today && !['gewonnen','verloren'].includes(deal.stage)
                 const lead = deal.leads
 
                 return (
                   <div key={deal.id}
-                    onClick={() => setSelected(isActive ? null : deal)}
-                    style={{ background: 'var(--surface)', border: '1.5px solid ' + (isActive ? PRIMARY : '#E4E7EC'), borderRadius: 13, padding: '14px 16px', cursor: 'pointer', transition: 'all 0.15s', display: 'flex', alignItems: 'center', gap: 14 }}
-                    onMouseEnter={e => { if (!isActive) e.currentTarget.style.borderColor = '#C7D2FE' }}
-                    onMouseLeave={e => { if (!isActive) e.currentTarget.style.borderColor = '#E4E7EC' }}>
+                    onClick={() => navigate(`/deals/${deal.id}`)}
+                    style={{ background: 'var(--surface)', border: '1.5px solid #E4E7EC', borderRadius: 13, padding: '14px 16px', cursor: 'pointer', transition: 'all 0.15s', display: 'flex', alignItems: 'center', gap: 14 }}
+                    onMouseEnter={e => { e.currentTarget.style.borderColor = '#C7D2FE' }}
+                    onMouseLeave={e => { e.currentTarget.style.borderColor = '#E4E7EC' }}>
 
                     {/* Stage-Dot */}
                     <div style={{ width: 10, height: 10, borderRadius: '50%', background: s.color, flexShrink: 0 }}/>
@@ -681,23 +450,6 @@ export default function Deals({ session }) {
             </div>
           )}
         </div>
-
-        {/* Detail-Panel — fixed Slide-in von rechts */}
-        {selected && (
-          <div style={{ position: 'fixed', top: 0, right: 0, bottom: 0, width: 440, zIndex: 400, display: 'flex', flexDirection: 'column', boxShadow: '-4px 0 24px rgba(0,0,0,0.12)' }}>
-            <div style={{ flex: 1, overflowY: 'auto', background: 'var(--surface)' }}>
-              <DealDetail
-                deal={selected}
-                session={session}
-                uid={uid}
-                onEdit={() => setModal(selected)}
-                onDelete={deleteDeal}
-                onClose={() => setSelected(null)}
-                onRefresh={load}
-              />
-            </div>
-          </div>
-        )}
       </div>
 
       {/* Modal */}
@@ -708,7 +460,7 @@ export default function Deals({ session }) {
           teamMembers={teamMembers}
           teamId={activeTeamId}
           uid={uid}
-          onSave={() => { setModal(null); load(); if (modal !== 'new') setSelected(null) }}
+          onSave={() => { setModal(null); load() }}
           onClose={() => setModal(null)}
         />
       )}

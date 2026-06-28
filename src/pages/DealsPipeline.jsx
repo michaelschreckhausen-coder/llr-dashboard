@@ -128,7 +128,7 @@ export default function DealsPipeline({ session }) {
                         setDragging(d.id)
                       }}
                       onDragEnd={() => { setDragging(null); setDragOver(null) }}
-                      onClick={() => navigate(`/deals?view=liste&deal=${d.id}`)}
+                      onClick={() => navigate(`/deals/${d.id}`)}
                       style={{
                         background: '#fff',
                         borderRadius: 8,
