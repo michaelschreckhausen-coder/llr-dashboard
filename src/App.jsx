@@ -29,6 +29,7 @@ import IntegrationSettings from './pages/IntegrationSettings'
 import Marketplace from './pages/Marketplace'
 import Deals         from './pages/Deals'
 import DealsContainer from './pages/DealsContainer'
+import DealDetail     from './pages/DealDetail'
 import Organizations from './pages/Organizations'
 import OrganizationProfile from './pages/OrganizationProfile'
 import Profiltexte      from './pages/Profiltexte'
@@ -369,6 +370,7 @@ export default function App() {
             <Route path="/integrations" element={<IntegrationSettings session={session} />} />
             <Route path="/marketplace"  element={<Marketplace />} />
             <Route path="/deals"    element={<DealsContainer session={session} />} />
+            <Route path="/deals/:id" element={<DealDetail session={session} />} />
             <Route path="/organizations"     element={<Organizations session={session} />} />
             <Route path="/organizations/:id" element={<OrganizationProfile session={session} />} />
             {/* Phase 5A: Admin routes disabled — migration to admin.leadesk.de. See docs/architecture/PHASE_5_*.md */}
