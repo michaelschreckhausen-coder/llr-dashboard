@@ -466,17 +466,28 @@ async function pollQueue() {
 // Liest die eigene LinkedIn-Connections-Seite, um zu erkennen welche
 // gesendeten Vernetzungsanfragen angenommen wurden. Läuft IN der Seite
 // (executeScript). Liefert [{ name, profile_url }]. Muster: SSI-Scraper.
-async function scrapeConnectionsPage(maxScrolls) {
+async function scrapeConnectionsPage() {
   function sleepP(ms) { return new Promise(function(r) { setTimeout(r, ms) }) }
   var href = window.location.href
   if (href.indexOf('/login') !== -1 || href.indexOf('/authwall') !== -1 || href.indexOf('/checkpoint') !== -1) {
     return { error: 'Nicht auf LinkedIn eingeloggt' }
   }
-  // Lazy-Load: mehrfach bis ans Seitenende scrollen, damit mehr Connections nachladen.
-  var scrolls = maxScrolls || 6
-  for (var i = 0; i < scrolls; i++) {
+  await sleepP(2500)
+  // Robust bis ans Ende scrollen: solange die Seitenhöhe durch Lazy-Load wächst (max ~22 Schritte).
+  // Abbruch, sobald die Höhe 3× in Folge stabil bleibt = unten angekommen.
+  var lastH = 0, stable = 0, MAX = 22
+  for (var s = 0; s < MAX; s++) {
     window.scrollTo(0, document.body.scrollHeight)
-    await sleepP(1200)
+    await sleepP(900)
+    // Manche Layouts laden nicht rein per Scroll, sondern über einen Button.
+    var btns = document.querySelectorAll('button')
+    for (var b = 0; b < btns.length; b++) {
+      var bt = (btns[b].textContent || '').trim().toLowerCase()
+      if (bt === 'mehr anzeigen' || bt === 'show more' || bt === 'mehr laden') { btns[b].click(); break }
+    }
+    var h = document.body.scrollHeight
+    if (h <= lastH) { stable++; if (stable >= 3) break } else { stable = 0 }
+    lastH = h
   }
   window.scrollTo(0, 0)
   await sleepP(400)
@@ -524,15 +535,17 @@ async function scrapeConnectionsForWebApp() {
   var url = 'https://www.linkedin.com/mynetwork/invite-connect/connections/'
   var win = null
   try {
-    win = await chrome.windows.create({ url: url, focused: false, state: 'minimized' })
+    // WICHTIG: NICHT minimiert öffnen — LinkedIn lädt die Connections-Liste per
+    // Lazy-Load nur, wenn die Seite gerendert wird. focused:false = Hintergrund, aber gerendert.
+    win = await chrome.windows.create({ url: url, focused: false })
     var tab = win.tabs[0]
-    await waitLoaded(tab.id, 25000)
-    await sleep(4000)
-    var result = await chrome.scripting.executeScript({ target: { tabId: tab.id }, func: scrapeConnectionsPage, args: [6] })
+    await waitLoaded(tab.id, 30000)
+    await sleep(2000)
+    var result = await chrome.scripting.executeScript({ target: { tabId: tab.id }, func: scrapeConnectionsPage })
     var res = result && result[0] && result[0].result
     if (res && res.retry) {
       await sleep(3000)
-      result = await chrome.scripting.executeScript({ target: { tabId: tab.id }, func: scrapeConnectionsPage, args: [6] })
+      result = await chrome.scripting.executeScript({ target: { tabId: tab.id }, func: scrapeConnectionsPage })
       res = result && result[0] && result[0].result
     }
     if (res && res.error) return { error: res.error }
