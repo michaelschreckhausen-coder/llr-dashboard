@@ -181,16 +181,19 @@ export default function LinkedInInbox() {
   const chip = (active) => ({ display: 'inline-flex', alignItems: 'center', gap: 6, padding: '5px 12px', borderRadius: 99, fontSize: 13, fontWeight: 600, cursor: 'pointer', border: `1.5px solid ${active ? primary : border}`, background: active ? 'var(--primary-soft)' : card, color: active ? primary : muted })
 
   return (
-    <div style={{ padding: '24px 24px 60px' }}>
+    <div style={{ width: '100%', maxWidth: 1100, margin: '0 auto', padding: '24px 16px 40px' }}>
       <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
-      <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 4 }}>
-        <InboxIcon size={22} style={{ color: primary }} />
-        <h1 style={{ fontSize: 22, fontWeight: 800, color: text, margin: 0 }}>Import-Inbox</h1>
-        {!loading && <span style={{ background: primary, color: '#fff', borderRadius: 99, padding: '2px 10px', fontSize: 13, fontWeight: 700 }}>{rows.length}</span>}
+      {/* Journal-Header (analog /messages, /automatisierung) */}
+      <div style={{ marginBottom: 22 }}>
+        <div style={{ fontSize: 20, color: '#30A0D0', fontFamily: '"Caveat", cursive', fontWeight: 600, marginBottom: 6 }}>LinkedIn · Import-Inbox</div>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+          <h1 style={{ fontSize: 26, fontWeight: 700, margin: 0, letterSpacing: '-0.3px', lineHeight: 1.2, color: 'var(--text-primary, rgb(20,20,43))' }}>Deine Import-Inbox.</h1>
+          {!loading && <span style={{ background: primary, color: '#fff', borderRadius: 99, padding: '2px 10px', fontSize: 13, fontWeight: 700 }}>{rows.length}</span>}
+        </div>
+        <p style={{ fontSize: 13, color: muted, margin: '8px 0 0', lineHeight: 1.6, maxWidth: 600 }}>
+          Aus LinkedIn importierte Kontakte — noch keine CRM-Kontakte. Nach Kampagnen sortieren, sichten und per Klick ins CRM übernehmen.
+        </p>
       </div>
-      <p style={{ color: muted, fontSize: 14, margin: '0 0 16px' }}>
-        Aus LinkedIn importierte Kontakte — noch keine CRM-Kontakte. Nach Kampagnen sortieren, sichten und per Klick ins CRM übernehmen.
-      </p>
 
       {/* Kampagnen-Filterleiste */}
       {!loading && rows.length > 0 && (

@@ -127,12 +127,20 @@ export default function SSI({ session }) {
   const trend = latest && prevEntry ? Math.round(latest.total_score) - Math.round(prevEntry.total_score) : null
 
   return (
-    <div style={{ maxWidth:960 }}>
+    <div style={{ width:'100%', maxWidth:1100, margin:'0 auto', padding:'24px 16px 40px' }}>
 
-      {/* ── Header ── */}
-      <div style={{ marginBottom:24, display:'flex', alignItems:'flex-start', justifyContent:'space-between', gap:12, flexWrap:'wrap' }}>
+      {/* ── Journal-Header (analog /messages, /automatisierung) ── */}
+      <div style={{ marginBottom:22, display:'flex', alignItems:'flex-end', justifyContent:'space-between', gap:20, flexWrap:'wrap' }}>
 
-        <div style={{ display:'flex', gap:10, alignItems:'center' }}>
+        <div style={{ flex:'1 1 auto', minWidth:280 }}>
+          <div style={{ fontSize:20, color:'#30A0D0', fontFamily:'"Caveat", cursive', fontWeight:600, marginBottom:6 }}>LinkedIn · SSI</div>
+          <h1 style={{ fontSize:26, fontWeight:700, margin:0, letterSpacing:'-0.3px', lineHeight:1.2, color:'var(--text-primary, rgb(20,20,43))' }}>Dein Social Selling Index.</h1>
+          <p style={{ fontSize:13, color:'var(--text-muted)', margin:'8px 0 0', lineHeight:1.6, maxWidth:600 }}>
+            Dein LinkedIn-SSI im Blick — automatisch über die Extension ausgelesen oder manuell erfasst.
+          </p>
+        </div>
+
+        <div style={{ display:'flex', gap:10, alignItems:'center', flexWrap:'wrap' }}>
           <a href={EXTENSION_WEBSTORE_URL} target="_blank" rel="noopener noreferrer"
             title="Der SSI wird automatisch über die Leadesk Chrome-Extension ausgelesen"
             style={{ display:'flex', alignItems:'center', gap:7, padding:'10px 18px', borderRadius:12, border:'1.5px solid rgb(49,90,231)', background:'var(--surface)', color:'var(--wl-primary, rgb(49,90,231))', fontSize:13, fontWeight:700, cursor:'pointer', textDecoration:'none' }}>
