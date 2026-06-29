@@ -1151,41 +1151,45 @@ export default function ContentStudio({ session }) {
               <path d="M23 14.5 L 31 15 L 27 8" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" fill="none"/>
             </svg>
           )
-          // Frei schwebende Labels + Pfeile (links), dann die Umschalt-Buttons,
-          // und ganz rechts am Rand die anliegende weiße Pull-out-Karte.
+          // Labels + Pfeile schweben links. Die Umschalt-Buttons liegen mit flacher
+          // rechter Seite am großen, eingeklappten Splitscreen-Kasten an, der nur
+          // mit einem schmalen Streifen vom rechten Rand hereinschaut (Großteil
+          // ragt aus dem Viewport und wird vom Eltern-overflow:hidden geclippt).
           return (
-            <div style={{ position:'absolute', top:'50%', right:0, transform:'translateY(-50%)', zIndex:50, display:'flex', alignItems:'stretch', gap:10, pointerEvents:'none' }}>
-              {/* Beschriftungen + Pfeile (frei, dekorativ) */}
-              <div style={{ display:'flex', flexDirection:'column' }}>
-                <div style={hintRow}><span style={scriptHint}>ins Dokument</span><CurvedArrow/></div>
-                <div style={{ height:1 }}/>
-                <div style={hintRow}><span style={scriptHint}>zum Designer</span><CurvedArrow/></div>
-              </div>
-              {/* Umschalt-Buttons (Dokument / Designer) */}
-              <div style={{ display:'flex', flexDirection:'column', overflow:'hidden', background:'var(--surface,#fff)',
-                  border:'1px solid var(--border,#E9ECF2)', borderRadius:10, boxShadow:'0 2px 8px rgba(16,24,40,0.10)', pointerEvents:'auto' }}>
-                <button onClick={() => openTo('doc')} title="Dokument öffnen" style={switchBtn}
-                  onMouseEnter={e => { e.currentTarget.style.background='rgba(49,90,231,0.08)'; e.currentTarget.style.color='var(--wl-primary, rgb(49,90,231))' }}
-                  onMouseLeave={e => { e.currentTarget.style.background='transparent'; e.currentTarget.style.color='var(--text-secondary,#475569)' }}>
-                  <FileText size={18} strokeWidth={1.9}/>
-                </button>
-                <div style={{ height:1, background:'var(--border,#E9ECF2)' }}/>
-                <button onClick={() => openTo('design')} title="Designer öffnen" style={switchBtn}
-                  onMouseEnter={e => { e.currentTarget.style.background='rgba(49,90,231,0.08)'; e.currentTarget.style.color='var(--wl-primary, rgb(49,90,231))' }}
-                  onMouseLeave={e => { e.currentTarget.style.background='transparent'; e.currentTarget.style.color='var(--text-secondary,#475569)' }}>
-                  <Brush size={18} strokeWidth={1.9}/>
-                </button>
-              </div>
-              {/* Anliegende weiße Pull-out-Karte am rechten Rand */}
-              <button onClick={() => openTo(null)} title="Splitscreen ausklappen"
-                style={{ width:26, alignSelf:'stretch', display:'flex', alignItems:'center', justifyContent:'center', cursor:'pointer',
-                  background:'var(--surface,#fff)', border:'1px solid var(--border,#E9ECF2)', borderRight:'none', borderRadius:'12px 0 0 12px',
-                  boxShadow:'-4px 0 18px rgba(16,24,40,0.14)', color:'var(--text-secondary,#475569)', padding:0, pointerEvents:'auto' }}
-                onMouseEnter={e => { e.currentTarget.style.background='rgba(49,90,231,0.06)'; e.currentTarget.style.color='var(--wl-primary, rgb(49,90,231))' }}
-                onMouseLeave={e => { e.currentTarget.style.background='var(--surface,#fff)'; e.currentTarget.style.color='var(--text-secondary,#475569)' }}>
-                <ChevronLeft size={18} strokeWidth={2}/>
+            <>
+              {/* Großer eingeklappter Splitscreen-Kasten — zum Ausziehen */}
+              <button onClick={() => openTo(null)} title="Splitscreen ausziehen"
+                style={{ position:'absolute', top:'50%', right:-168, transform:'translateY(-50%)', width:190, height:320, zIndex:49,
+                  background:'var(--surface,#fff)', border:'1px solid var(--border,#E9ECF2)', borderRadius:'20px 0 0 20px',
+                  boxShadow:'-12px 0 30px rgba(16,24,40,0.14)', cursor:'pointer', padding:0,
+                  display:'flex', alignItems:'center', justifyContent:'flex-start' }}>
+                <span style={{ width:4, height:38, marginLeft:8, borderRadius:3, background:'var(--border,#D7DCE5)' }}/>
               </button>
-            </div>
+              {/* Labels + Umschalt-Buttons, direkt links am Kasten anliegend */}
+              <div style={{ position:'absolute', top:'50%', right:22, transform:'translateY(-50%)', zIndex:50, display:'flex', alignItems:'stretch', gap:10, pointerEvents:'none' }}>
+                {/* Beschriftungen + Pfeile (frei, dekorativ) */}
+                <div style={{ display:'flex', flexDirection:'column' }}>
+                  <div style={hintRow}><span style={scriptHint}>ins Dokument</span><CurvedArrow/></div>
+                  <div style={{ height:1 }}/>
+                  <div style={hintRow}><span style={scriptHint}>zum Designer</span><CurvedArrow/></div>
+                </div>
+                {/* Umschalt-Buttons (wie zuvor) — links rund, rechts flach am Kasten */}
+                <div style={{ display:'flex', flexDirection:'column', overflow:'hidden', background:'var(--surface,#fff)',
+                    border:'1px solid var(--border,#E9ECF2)', borderRight:'none', borderRadius:'10px 0 0 10px', boxShadow:'-2px 0 8px rgba(16,24,40,0.08)', pointerEvents:'auto' }}>
+                  <button onClick={() => openTo('doc')} title="Dokument öffnen" style={switchBtn}
+                    onMouseEnter={e => { e.currentTarget.style.background='rgba(49,90,231,0.08)'; e.currentTarget.style.color='var(--wl-primary, rgb(49,90,231))' }}
+                    onMouseLeave={e => { e.currentTarget.style.background='transparent'; e.currentTarget.style.color='var(--text-secondary,#475569)' }}>
+                    <FileText size={18} strokeWidth={1.9}/>
+                  </button>
+                  <div style={{ height:1, background:'var(--border,#E9ECF2)' }}/>
+                  <button onClick={() => openTo('design')} title="Designer öffnen" style={switchBtn}
+                    onMouseEnter={e => { e.currentTarget.style.background='rgba(49,90,231,0.08)'; e.currentTarget.style.color='var(--wl-primary, rgb(49,90,231))' }}
+                    onMouseLeave={e => { e.currentTarget.style.background='transparent'; e.currentTarget.style.color='var(--text-secondary,#475569)' }}>
+                    <Brush size={18} strokeWidth={1.9}/>
+                  </button>
+                </div>
+              </div>
+            </>
           )
         })()
       ) : (
