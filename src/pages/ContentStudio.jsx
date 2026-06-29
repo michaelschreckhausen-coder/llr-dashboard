@@ -1170,14 +1170,14 @@ export default function ContentStudio({ session }) {
               {/* Großer eingeklappter Splitscreen-Kasten — volle Pane-Höhe, bündig
                  am rechten Rand; ragt rechts raus und wird vom Container geclippt. */}
               <button onClick={() => openTo(null)} title="Splitscreen ausziehen"
-                style={{ position:'absolute', top:0, bottom:0, right:-190, width:212, zIndex:49,
-                  background:'var(--surface,#fff)', borderLeft:'1px solid var(--border,#E9ECF2)', borderRadius:'18px 0 0 18px',
-                  boxShadow:'-14px 0 34px rgba(16,24,40,0.13)', cursor:'pointer', padding:0,
+                style={{ position:'absolute', top:0, bottom:0, right:-176, width:212, zIndex:49,
+                  background:'var(--surface,#fff)', border:'1px solid var(--border,#E9ECF2)', borderRight:'none', borderRadius:'16px 0 0 16px',
+                  boxShadow:'-6px 0 18px rgba(16,24,40,0.07)', cursor:'pointer', padding:0,
                   display:'flex', alignItems:'center', justifyContent:'flex-start' }}>
-                <span style={{ width:4, height:40, marginLeft:7, borderRadius:3, background:'var(--border,#D7DCE5)' }}/>
+                <span style={{ width:4, height:42, marginLeft:13, borderRadius:3, background:'var(--border,#D7DCE5)' }}/>
               </button>
               {/* Labels + Umschalt-Buttons, direkt links am Kasten anliegend */}
-              <div style={{ position:'absolute', top:'50%', right:22, transform:'translateY(-50%)', zIndex:50, display:'flex', alignItems:'stretch', gap:10, pointerEvents:'none' }}>
+              <div style={{ position:'absolute', top:'50%', right:36, transform:'translateY(-50%)', zIndex:50, display:'flex', alignItems:'stretch', gap:10, pointerEvents:'none' }}>
                 {/* Beschriftungen + Pfeile (frei, dekorativ) */}
                 <div style={{ display:'flex', flexDirection:'column' }}>
                   <div style={hintRow}><span style={scriptHint}>ins Dokument</span><CurvedArrow/></div>
