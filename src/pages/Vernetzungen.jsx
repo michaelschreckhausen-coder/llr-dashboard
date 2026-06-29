@@ -1,7 +1,7 @@
 import React, { useEffect, useState, useCallback } from 'react'
 import {
   Check, Loader2, MessageSquare, Sparkles, Bot, Save, Download,
-  RefreshCw, Zap, Target, AlignLeft, Calendar, Flame
+  RefreshCw, Zap, Target, AlignLeft, Calendar, Flame, Users, TrendingUp, Clock
 } from 'lucide-react'
 import { useTeam } from '../context/TeamContext'
 import { useNavigate } from 'react-router-dom'
@@ -12,7 +12,6 @@ import LeadDrawer from '../components/LeadDrawer'
 import InboxLink from '../components/InboxLink'
 import PageHeader from '../components/PageHeader'
 import TabBar from '../components/TabBar'
-import SectionCard from '../components/SectionCard'
 import { scrapeLinkedInConnections, normalizeLinkedInUrl } from '../lib/leadeskExtension'
 
 const P = 'var(--wl-primary, rgb(49,90,231))'
@@ -31,6 +30,67 @@ const REPLY_CFG = {
   langsam:       { label:'Langsam', color:'#92400E', bg:'#FFFBEB' },
   keine_antwort: { label:'Keine Antwort', color:'#991B1B', bg:'#FEF2F2' },
   unbekannt:     { label:'— Unbekannt', color:'#475569', bg:'#F8FAFC' },
+}
+
+/* ── Reports-Stil Diagramm-Komponenten (gespiegelt aus Reports.jsx) ── */
+const RC = { surface:'var(--surface, #fff)', border:'#E4E7EC', text1:'var(--text-strong, #111827)', text2:'#374151', text3:'#6B7280' }
+const fmt = new Intl.NumberFormat('de-DE')
+
+function KpiCard({ label, value, sub, color, Icon }) {
+  return (
+    <div style={{ background:RC.surface, border:`1px solid ${RC.border}`, borderRadius:14, padding:'14px 16px', display:'flex', flexDirection:'column', gap:4 }}>
+      <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center' }}>
+        <span style={{ fontSize:10, fontWeight:700, color, textTransform:'uppercase', letterSpacing:'0.06em' }}>{label}</span>
+        {Icon && <Icon size={14} color={color}/>}
+      </div>
+      <div style={{ fontSize:22, fontWeight:800, color:RC.text1, fontVariantNumeric:'tabular-nums' }}>{value}</div>
+      {sub && <div style={{ fontSize:11, color:RC.text3 }}>{sub}</div>}
+    </div>
+  )
+}
+
+function Panel({ title, action, children }) {
+  return (
+    <div style={{ background:RC.surface, border:`1px solid ${RC.border}`, borderRadius:14, padding:18, marginBottom:16 }}>
+      {title && (
+        <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:14 }}>
+          <h3 style={{ fontSize:14, fontWeight:700, color:RC.text1, margin:0 }}>{title}</h3>{action}
+        </div>
+      )}
+      {children}
+    </div>
+  )
+}
+
+function BarRow({ label, count, total, color=P }) {
+  const pct = total > 0 ? Math.round((count/total)*100) : 0
+  return (
+    <div style={{ marginBottom:10 }}>
+      <div style={{ display:'flex', justifyContent:'space-between', alignItems:'baseline', marginBottom:4 }}>
+        <span style={{ fontSize:13, color:RC.text2, fontWeight:500 }}>{label}</span>
+        <span style={{ fontSize:12, color:RC.text3, fontVariantNumeric:'tabular-nums' }}><strong style={{ color:RC.text1 }}>{fmt.format(count)}</strong>{total>0 && <> · {pct}%</>}</span>
+      </div>
+      <div style={{ height:6, background:'#F3F4F6', borderRadius:3, overflow:'hidden' }}>
+        <div style={{ width:`${pct}%`, height:'100%', background:color, transition:'width 0.3s' }}/>
+      </div>
+    </div>
+  )
+}
+
+function Donut({ percent=0, size=90, color=P, label }) {
+  const r = size/2 - 6, circ = 2*Math.PI*r, dash = circ*Math.min(1, Math.max(0, percent/100))
+  return (
+    <div style={{ position:'relative', width:size, height:size }}>
+      <svg width={size} height={size} style={{ transform:'rotate(-90deg)' }}>
+        <circle cx={size/2} cy={size/2} r={r} fill="none" stroke="#F3F4F6" strokeWidth={8}/>
+        <circle cx={size/2} cy={size/2} r={r} fill="none" stroke={color} strokeWidth={8} strokeDasharray={`${dash} ${circ-dash}`} strokeLinecap="round"/>
+      </svg>
+      <div style={{ position:'absolute', inset:0, display:'flex', flexDirection:'column', alignItems:'center', justifyContent:'center' }}>
+        <div style={{ fontSize:18, fontWeight:800, color:RC.text1, fontVariantNumeric:'tabular-nums' }}>{Math.round(percent)}%</div>
+        {label && <div style={{ fontSize:10, color:RC.text3, textTransform:'uppercase', letterSpacing:'0.05em' }}>{label}</div>}
+      </div>
+    </div>
+  )
 }
 
 function Avatar({ name, avatar_url, size=44 }) {
@@ -329,6 +389,18 @@ export default function Vernetzungen({ session }) {
   const responseLeads = leads.filter(l => l.li_connection_status === 'verbunden' && l.li_reply_behavior && l.li_reply_behavior !== 'unbekannt')
   const totalResponseRate = responseLeads.length > 0 ? Math.round(responseLeads.filter(l => l.li_reply_behavior !== 'keine_antwort').length / responseLeads.length * 100) : 0
 
+  // Diagramm-Daten (Reports-Stil)
+  const CONN_LABELS = [
+    { key:'verbunden',       label:'Vernetzt',   color:'#059669' },
+    { key:'pending',         label:'Ausstehend', color:'#D97706' },
+    { key:'nicht_verbunden', label:'Offen',      color:'#6B7280' },
+    { key:'abgelehnt',       label:'Abgelehnt',  color:'#DC2626' },
+  ]
+  const connStats = CONN_LABELS.map(c => ({ ...c, count: leads.filter(l => (l.li_connection_status || 'nicht_verbunden') === c.key).length }))
+  const totalForConn = leads.length || 1
+  const connRate = leads.length > 0 ? Math.round(stats.verbunden / leads.length * 100) : 0
+  const replyStats = leads.reduce((acc, l) => { const r = l.li_reply_behavior; if (r && r !== 'unbekannt') acc[r] = (acc[r] || 0) + 1; return acc }, {})
+
   const TABS = [
     { v:'offen',      label:`Offen (${stats.offen})`,           color:'blue' },
     { v:'ausstehend', label:`Ausstehend (${stats.pending})`,    color:'amber' },
@@ -352,7 +424,7 @@ export default function Vernetzungen({ session }) {
   )
 
   return (
-    <div style={{ maxWidth:1100, margin:'0 auto', padding:'24px 16px 40px' }}>
+    <div style={{ width:'100%', maxWidth:1100, margin:'0 auto', padding:'24px 16px 40px' }}>
       {anfrageModal && <AnfrageModal lead={anfrageModal} onClose={()=>setAnfrageModal(null)} onSaved={handleAnfrageSaved} session={session}/>}
       {statusModal  && <StatusModal  lead={statusModal}  onClose={()=>setStatusModal(null)}  onSaved={handleStatusSaved}/>}
       {selected     && <LeadDrawer session={session} lead={selected} onClose={()=>setSelected(null)} onUpdate={(u)=>{ setLeads(l=>l.map(x=>x.id===u.id?u:x)); setSelected(u) }} onDelete={(id)=>{ setLeads(l=>l.filter(x=>x.id!==id)); setSelected(null) }}/>}
@@ -373,22 +445,31 @@ export default function Vernetzungen({ session }) {
         </div>
       )}
 
-      {/* KPI-Leiste */}
-      <SectionCard icon="🔗" color="blue" title="Überblick" subtitle="Status deiner LinkedIn-Vernetzungen">
-        <div style={{ display:'flex', gap:10, flexWrap:'wrap' }}>
-          {[
-            { label:'Vernetzt',     val:stats.verbunden,        color:'#065F46', bg:'#ECFDF5', border:'#6EE7B7' },
-            { label:'Ausstehend',   val:stats.pending,          color:'#92400E', bg:'#FFFBEB', border:'#FCD34D' },
-            { label:'Offen',        val:stats.offen,            color:'#475569', bg:'#F8FAFC', border:'#E2E8F0' },
-            { label:'Antwortquote', val:totalResponseRate+'%',  color:totalResponseRate>=50?'#16a34a':totalResponseRate>=25?'#d97706':'#dc2626', bg:totalResponseRate>=50?'#F0FDF4':totalResponseRate>=25?'#FFFBEB':'#FEF2F2', border:totalResponseRate>=50?'#86EFAC':totalResponseRate>=25?'#FCD34D':'#FECACA' },
-          ].map(s => (
-            <div key={s.label} style={{ background:s.bg, border:'1px solid '+s.border, borderRadius:12, padding:'10px 20px', textAlign:'center', flex:'1 1 80px' }}>
-              <div style={{ fontSize:22, fontWeight:800, color:s.color, lineHeight:1.2 }}>{s.val}</div>
-              <div style={{ fontSize:11, color:s.color, fontWeight:600, marginTop:2 }}>{s.label}</div>
-            </div>
-          ))}
-        </div>
-      </SectionCard>
+      {/* KPI-Karten (Reports-Stil) */}
+      <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fit, minmax(150px, 1fr))', gap:12, marginBottom:16 }}>
+        <KpiCard label="Vernetzt"     value={stats.verbunden}        color="#059669" Icon={Check}/>
+        <KpiCard label="Ausstehend"   value={stats.pending}          color="#D97706" Icon={Clock}/>
+        <KpiCard label="Offen"        value={stats.offen}            color="#6B7280" Icon={Users}/>
+        <KpiCard label="Antwortquote" value={totalResponseRate+'%'}  color={totalResponseRate>=50?'#059669':totalResponseRate>=25?'#D97706':'#DC2626'} Icon={TrendingUp}/>
+      </div>
+
+      {/* Diagramme (Reports-Stil) */}
+      <div style={{ display:'grid', gridTemplateColumns:'2fr 1fr', gap:14 }}>
+        <Panel title="Verbindungsstatus">
+          {connStats.map(s => <BarRow key={s.key} label={s.label} count={s.count} total={totalForConn} color={s.color}/>)}
+        </Panel>
+        <Panel title="Connection-Rate">
+          <div style={{ display:'flex', flexDirection:'column', alignItems:'center', gap:12 }}>
+            <Donut percent={connRate} color="#0C447C" label="Verbunden"/>
+            <div style={{ fontSize:12, color:RC.text3, textAlign:'center' }}>{stats.verbunden} von {leads.length} Kontakten</div>
+          </div>
+        </Panel>
+      </div>
+      {Object.keys(replyStats).length > 0 && (
+        <Panel title="Antwortverhalten">
+          {Object.entries(replyStats).map(([k, v]) => <BarRow key={k} label={REPLY_CFG[k]?.label || k} count={v} total={stats.verbunden || leads.length} color="#185FA5"/>)}
+        </Panel>
+      )}
 
       {/* Tabs */}
       <TabBar tabs={TABS} active={tab} onChange={setTab} style={{ marginBottom:14 }}/>
