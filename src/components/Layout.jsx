@@ -122,11 +122,11 @@ function getNav(t) {
   // Projektumsetzung temporär ausgeblendet (2026-06-01 — kommt später zurück)
   { divider: true, label: 'LinkedIn', tourId: 'nav-linkedin' },
   { to: '/linkedin-inbox',  icon: IcInbox,    label: 'Import-Inbox' },
+  { to: '/vernetzungen',    icon: IcHeart,    label: 'Vernetzung' },
+  { to: '/automatisierung', icon: IcZap,      label: 'Automatisierung' },
+  { to: '/messages',        icon: IcMail,     label: 'Nachrichten' },
   { to: '/ssi',             icon: IcTarget,   label: t('nav.ssiTracker') },
   { to: '/profiltexte',     icon: IcLinkedIn, label: t('nav.profiltexte') },
-  { to: '/vernetzungen',    icon: IcHeart,    label: 'Vernetzung' },
-  { to: '/messages',        icon: IcMail,     label: 'Nachrichten' },
-  { to: '/automatisierung', icon: IcZap,      label: 'Automatisierung' },
 
   { divider: true, label: t('nav.content'), tourId: 'nav-content' },
   { to: '/redaktionsplan',  icon: IcCalPen,   label: t('nav.redaktionsplan') },
