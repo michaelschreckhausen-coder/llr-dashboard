@@ -351,7 +351,12 @@ async function processJob(job) {
     var res = result && result[0] && result[0].result
     if (res && res.ok) {
       await sbPatch('connection_queue?id=eq.' + job.id, { status: 'done', finished_at: new Date().toISOString() })
-      await sbPatch('leads?id=eq.' + job.lead_id, { li_connection_status: 'pending', li_connection_requested_at: new Date().toISOString() })
+      // Dual-track: Inbox-Prospect ODER Lead — Status auf die richtige Tabelle schreiben.
+      if (job.inbox_id) {
+        await sbPatch('linkedin_inbox?id=eq.' + job.inbox_id, { li_connection_status: 'pending', li_connection_requested_at: new Date().toISOString() })
+      } else if (job.lead_id) {
+        await sbPatch('leads?id=eq.' + job.lead_id, { li_connection_status: 'pending', li_connection_requested_at: new Date().toISOString() })
+      }
       await chrome.action.setBadgeText({ text: '✓' })
       await chrome.action.setBadgeBackgroundColor({ color: '#059669' })
       setTimeout(function() { chrome.action.setBadgeText({ text: '' }) }, 5000)

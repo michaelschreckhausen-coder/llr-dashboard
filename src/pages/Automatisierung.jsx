@@ -195,10 +195,12 @@ export default function Automatisierung({ session }) {
       supabase.from('automation_campaigns').select('*').eq('user_id', uid).order('created_at', { ascending:false }),
       supabase.from('automation_jobs').select('*').eq('user_id', uid)
         .in('status', ['pending','claimed','running']).order('scheduled_at', { ascending:true }).limit(100),
-      supabase.from('leads')
-        .select('id,first_name,last_name,company,job_title,linkedin_url,hs_score,li_connection_status')
-        .eq('user_id', uid).not('linkedin_url','is', null)
-        .order('hs_score', { ascending:false }).limit(300),
+      // Increment 3: Kampagnen-Ziele kommen aus der LinkedIn-Inbox (Prospects,
+      // noch keine Leads), nicht aus leads. RLS scoped auf das Team des Users.
+      supabase.from('linkedin_inbox')
+        .select('id,first_name,last_name,name,company,job_title,linkedin_url,li_connection_status')
+        .eq('review_status', 'new').not('linkedin_url','is', null)
+        .order('imported_at', { ascending:false }).limit(300),
       supabase.from('automation_logs').select('action,success,created_at').eq('user_id', uid).gte('created_at', since24h),
     ])
     setCampaigns(c.data || [])
@@ -273,13 +275,13 @@ export default function Automatisierung({ session }) {
 
     if (selectedLeads.length && data) {
       const now = new Date()
-      const clInserts = selectedLeads.map((leadId, idx) => ({
+      // Live-automation_campaign_leads-Schema (Drift #13): nur campaign_id,
+      // inbox_id, status, current_step — kein user_id/next_action_at.
+      const clInserts = selectedLeads.map((leadId) => ({
         campaign_id: data.id,
-        lead_id: leadId,
-        user_id: uid,
+        inbox_id: leadId,
         status: 'queued',
         current_step: 0,
-        next_action_at: new Date(now.getTime() + idx * 2 * 60000).toISOString(),
       }))
       await supabase.from('automation_campaign_leads').insert(clInserts)
 
@@ -290,13 +292,14 @@ export default function Automatisierung({ session }) {
           const lead = leads.find(l => l.id === selectedLeads[i])
           if (!lead?.linkedin_url) continue
           jobInserts.push({
+            // Live-automation_jobs-Schema (Drift #13): kein priority/campaign_id,
+            // kein lead_id. Verknüpfung zur Kampagne läuft über
+            // automation_campaign_leads; Extension führt via type/payload aus.
             user_id: uid,
-            campaign_id: data.id,
-            lead_id: lead.id,
+            inbox_id: lead.id,
             type: firstStep.type,
             payload: { linkedin_url: lead.linkedin_url, message: firstStep.message || '' },
             status: 'pending',
-            priority: 5,
             scheduled_at: new Date(now.getTime() + i * 3 * 60000).toISOString(),
           })
         }
