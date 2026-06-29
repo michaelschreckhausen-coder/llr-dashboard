@@ -1066,10 +1066,11 @@ export default function ContentStudio({ session }) {
       {(() => {
         const basis = !editorOpen ? '0%' : (paneView === 'suite' ? '100%' : '52%')
         return (
-      <section data-tour-id="cs-doc-pane" style={{ display:'flex', flexDirection:'column', flexGrow:0, flexShrink:0, flexBasis: basis, minWidth:0, overflow:'hidden',
+      <section data-tour-id="cs-doc-pane" style={{ display:'flex', flexDirection:'column', flexGrow:0, flexShrink:1, flexBasis: basis, minWidth:0, overflow:'hidden',
+        marginTop: editorOpen ? 8 : 0, marginBottom: editorOpen ? 8 : 0,
         border: editorOpen ? '1px solid var(--border,#E9ECF2)' : 'none', borderRight: 'none',
         borderRadius: editorOpen ? '16px 0 0 16px' : 0,
-        boxShadow: editorOpen ? '-6px 0 18px rgba(16,24,40,0.07)' : 'none',
+        boxShadow: editorOpen ? '-6px 0 18px rgba(16,24,40,0.07), 0 0 16px rgba(16,24,40,0.05)' : 'none',
         background: editorOpen ? 'var(--surface,#fff)' : 'var(--page-bg, #F7F8FA)' }}>
         <div style={{ display:'flex', flex:1, minHeight:0 }}>
           {splitMode === 'design' ? (
