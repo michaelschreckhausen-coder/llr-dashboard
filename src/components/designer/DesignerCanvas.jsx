@@ -4010,7 +4010,7 @@ function ContextBar({
               onFocus={startEdit} onMouseDown={startEdit} onBlur={endInteraction}
               onChange={e => liveEdit({ fontSize: parseInt(e.target.value, 10) || 44 })}
               style={{ width: 38, height: '100%', border: 'none', borderLeft: '1px solid var(--border,#E9ECF2)', borderRight: '1px solid var(--border,#E9ECF2)', textAlign: 'center', fontSize: 12, fontFamily: 'inherit', outline: 'none', MozAppearance: 'textfield', boxSizing: 'border-box' }} />
-            <button type="button" title="Größer" style={stepBtn} onClick={() => setOnce({ fontSize: Math.min(400, fs + 1) })}><Plus size={13} strokeWidth={2} /></button>
+            <button type="button" title="Größer" style={stepBtn} onClick={() => setOnce({ fontSize: Math.min(400, fs + 1) })}><PlusIcon size={13} strokeWidth={2} /></button>
           </div>
           {/* Textfarbe als A-Swatch */}
           <ColorPopover value={o.fill} brandColors={brandColors} title="Textfarbe" onStart={startEdit} onChange={(hex) => liveEdit({ fill: hex })} onEnd={endInteraction}
