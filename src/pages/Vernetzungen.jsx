@@ -275,7 +275,7 @@ export default function Vernetzungen({ session }) {
         setActivities(prev => ({ ...prev, ...map }))
       }
     }
-  }, [])
+  }, [activeTeamId])
 
   async function loadActivities(leadId) {
     if (activities[leadId]) return

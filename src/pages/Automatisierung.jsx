@@ -261,14 +261,14 @@ export default function Automatisierung({ session }) {
   // ── Aktionen ────────────────────────────────────────────────────────────
   async function createCampaign() {
     if (!newCamp.name.trim()) { showFlash('Kampagnenname fehlt', 'err'); return }
+    // Live-automation_campaigns-Schema (Drift #13): name/user_id/team_id/
+    // trigger_type/actions(jsonb)/is_active — KEIN description/sequence/settings/
+    // leads_total/status. Sequenz-Steps wandern in actions(jsonb).
     const { data, error } = await supabase.from('automation_campaigns').insert({
       user_id: uid,
       name: newCamp.name.trim(),
-      description: newCamp.description,
-      sequence: newCamp.sequence,
-      settings: newCamp.settings,
-      leads_total: selectedLeads.length,
-      status: 'draft',
+      actions: newCamp.sequence,
+      is_active: false,
     }).select().single()
 
     if (error) { showFlash(error.message, 'err'); return }
