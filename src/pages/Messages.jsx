@@ -29,6 +29,7 @@ import { useSearchParams, useNavigate } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
 import { sharedEntityIds, scopeByTeamOrShared } from '../lib/teamShares'
 import { useTeam } from '../context/TeamContext'
+import InboxLink from '../components/InboxLink'
 import { useBrandVoice } from '../context/BrandVoiceContext'
 import { useModel } from '../context/ModelContext'
 
@@ -478,10 +479,13 @@ export default function Messages({ session }) {
             Drei Modi für drei Momente: Vernetzungs-Note, First Message, Sales Pitch — in deiner Brand Voice, optional auf Zielgruppe + Lead-Kontext zugeschnitten.
           </p>
         </div>
-        <button onClick={() => setShowHistory(h => !h)}
-          style={{ display:'flex', alignItems:'center', gap:6, padding:'7px 14px', borderRadius:8, border:'1px solid var(--border)', background:'var(--surface)', fontSize:12, fontWeight:600, color:'#475569', cursor:'pointer' }}>
-          <span style={{display:'inline-flex',alignItems:'center',gap:6}}><Clock size={13} strokeWidth={1.75}/>Verlauf ({history.length})</span>
-        </button>
+        <div style={{ display:'flex', alignItems:'center', gap:8, flexWrap:'wrap' }}>
+          <InboxLink />
+          <button onClick={() => setShowHistory(h => !h)}
+            style={{ display:'flex', alignItems:'center', gap:6, padding:'7px 14px', borderRadius:8, border:'1px solid var(--border)', background:'var(--surface)', fontSize:12, fontWeight:600, color:'#475569', cursor:'pointer' }}>
+            <span style={{display:'inline-flex',alignItems:'center',gap:6}}><Clock size={13} strokeWidth={1.75}/>Verlauf ({history.length})</span>
+          </button>
+        </div>
       </div>
 
       {/* Brand-Voice-Banner */}
