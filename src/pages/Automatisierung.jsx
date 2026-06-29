@@ -55,6 +55,9 @@ const STEP_TYPES = {
   wait:           { label:'Warten',            Icon: Hourglass,     color:'#7c3aed', bg:'#F5F3FF', desc:'Zeitverzögerung zwischen Schritten' },
 }
 
+// #13: Step-Type → kanonische automation_jobs.action (CHECK connect/message/follow/visit/like/endorse)
+const STEP_TO_ACTION = { send_connect: 'connect', send_message: 'message', visit_profile: 'visit', follow_profile: 'follow' }
+
 // Default-Sequenz für neue Kampagne (matches Waalaxy "Invitation + Message")
 const DEFAULT_SEQUENCE = [
   { type:'send_connect',  delay_min:5,    delay_max:15,   message:'Hallo {{first_name}}, ich bin auf dein Profil gestoßen und würde mich gerne mit dir vernetzen.' },
@@ -261,46 +264,50 @@ export default function Automatisierung({ session }) {
   // ── Aktionen ────────────────────────────────────────────────────────────
   async function createCampaign() {
     if (!newCamp.name.trim()) { showFlash('Kampagnenname fehlt', 'err'); return }
-    // Live-automation_campaigns-Schema (Drift #13): name/user_id/team_id/
-    // trigger_type/actions(jsonb)/is_active — KEIN description/sequence/settings/
-    // leads_total/status. Sequenz-Steps wandern in actions(jsonb).
+    // #13: kanonisches automation_*-Schema (Prod = Repo) + inbox_id-dual-track.
     const { data, error } = await supabase.from('automation_campaigns').insert({
       user_id: uid,
       name: newCamp.name.trim(),
-      actions: newCamp.sequence,
-      is_active: false,
+      description: newCamp.description || null,
+      sequence: newCamp.sequence,
+      settings: newCamp.settings,
+      status: 'draft',
+      leads_total: selectedLeads.length,
     }).select().single()
 
     if (error) { showFlash(error.message, 'err'); return }
 
     if (selectedLeads.length && data) {
       const now = new Date()
-      // Live-automation_campaign_leads-Schema (Drift #13): nur campaign_id,
-      // inbox_id, status, current_step — kein user_id/next_action_at.
-      const clInserts = selectedLeads.map((leadId) => ({
+      // dual-track: inbox_id statt lead_id (XOR), user_id NOT NULL (kanonisch).
+      const clInserts = selectedLeads.map((inboxId, idx) => ({
         campaign_id: data.id,
-        inbox_id: leadId,
+        inbox_id: inboxId,
+        user_id: uid,
         status: 'queued',
         current_step: 0,
+        next_action_at: new Date(now.getTime() + idx * 2 * 60000).toISOString(),
       }))
       await supabase.from('automation_campaign_leads').insert(clInserts)
 
       const firstStep = newCamp.sequence.find(s => s.type !== 'wait')
       if (firstStep) {
+        const action = STEP_TO_ACTION[firstStep.type] || 'connect'
         const jobInserts = []
         for (let i = 0; i < selectedLeads.length; i++) {
           const lead = leads.find(l => l.id === selectedLeads[i])
           if (!lead?.linkedin_url) continue
           jobInserts.push({
-            // Live-automation_jobs-Schema (Drift #13): kein priority/campaign_id,
-            // kein lead_id. Verknüpfung zur Kampagne läuft über
-            // automation_campaign_leads; Extension führt via type/payload aus.
+            // kanonisch: action/target_url/target_name + inbox_id-dual-track.
             user_id: uid,
-            inbox_id: lead.id,
-            type: firstStep.type,
-            payload: { linkedin_url: lead.linkedin_url, message: firstStep.message || '' },
+            campaign_id: data.id,
+            action,
+            target_url: lead.linkedin_url,
+            target_name: ((lead.first_name || '') + ' ' + (lead.last_name || '')).trim() || lead.name || null,
+            payload: { message: firstStep.message || '' },
             status: 'pending',
             scheduled_at: new Date(now.getTime() + i * 3 * 60000).toISOString(),
+            inbox_id: lead.id,
           })
         }
         if (jobInserts.length) await supabase.from('automation_jobs').insert(jobInserts)
