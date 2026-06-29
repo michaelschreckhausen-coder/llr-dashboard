@@ -4003,15 +4003,6 @@ function ContextBar({
 
       <Divider />
 
-      {/* ── Position / Größe / Drehung ── */}
-      {numField('X', o.x, v => setOnce({ x: v || 0 }))}
-      {numField('Y', o.y, v => setOnce({ y: v || 0 }))}
-      {hasWH && numField('B', o.width, v => setOnce({ width: Math.max(1, v || 1) }), { min: 1 })}
-      {hasWH && numField('H', o.height, v => setOnce({ height: Math.max(1, v || 1) }), { min: 1 })}
-      {isEllipse && numField('rX', o.radiusX, v => setOnce({ radiusX: Math.max(1, v || 1) }), { min: 1 })}
-      {isEllipse && numField('rY', o.radiusY, v => setOnce({ radiusY: Math.max(1, v || 1) }), { min: 1 })}
-      {numField('Drehung°', o.rotation, v => setOnce({ rotation: v || 0 }), { w: 60 })}
-
       {/* ── Deckkraft ── */}
       <label style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: 11, color: 'var(--text-muted)' }} title="Deckkraft">
         Deckkraft
@@ -4019,18 +4010,6 @@ function ContextBar({
           onMouseDown={startEdit} onChange={e => liveEdit({ opacity: (parseInt(e.target.value, 10) || 0) / 100 })} onMouseUp={endInteraction} style={{ width: 80, accentColor: P }} />
         <span style={{ width: 30, textAlign: 'right' }}>{opacityPct}%</span>
       </label>
-
-      <Divider />
-
-      {/* ── Ausrichten / Verteilen ── */}
-      <ToolBtn onClick={() => alignObjects('left')} title="Links ausrichten"><AlignStartVertical size={14} strokeWidth={1.9} /></ToolBtn>
-      <ToolBtn onClick={() => alignObjects('hcenter')} title="Horizontal zentrieren"><AlignCenterVertical size={14} strokeWidth={1.9} /></ToolBtn>
-      <ToolBtn onClick={() => alignObjects('right')} title="Rechts ausrichten"><AlignEndVertical size={14} strokeWidth={1.9} /></ToolBtn>
-      <ToolBtn onClick={() => alignObjects('top')} title="Oben ausrichten"><AlignStartHorizontal size={14} strokeWidth={1.9} /></ToolBtn>
-      <ToolBtn onClick={() => alignObjects('vcenter')} title="Vertikal zentrieren"><AlignCenterHorizontal size={14} strokeWidth={1.9} /></ToolBtn>
-      <ToolBtn onClick={() => alignObjects('bottom')} title="Unten ausrichten"><AlignEndHorizontal size={14} strokeWidth={1.9} /></ToolBtn>
-      {selCount >= 3 && <ToolBtn onClick={() => distributeObjects('h')} title="Horizontal verteilen"><AlignHorizontalDistributeCenter size={14} strokeWidth={1.9} /></ToolBtn>}
-      {selCount >= 3 && <ToolBtn onClick={() => distributeObjects('v')} title="Vertikal verteilen"><AlignVerticalDistributeCenter size={14} strokeWidth={1.9} /></ToolBtn>}
 
       <Divider />
 
