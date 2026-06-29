@@ -1,0 +1,292 @@
+# Leadesk — Claude Code Briefing
+
+Diese Datei wird von Claude Code bei jedem Start eingelesen. Sie ist die Single Source of Truth für deine Arbeitsweise auf diesem Projekt. **Aktueller Stand für In-App-Details immer prüfen:** `app.leadesk.de/admin-docs` (Doku) und `app.leadesk.de/admin-logs` (Changelog).
+
+---
+
+## Projekt
+
+**Leadesk** ist eine Multi-Tenant LinkedIn-Suite (SaaS, Whitelabel) mit CRM, Pipeline, Content-KI, Vernetzungsautomatisierung und Delivery-Modul. Repo: `michaelschreckhausen-coder/llr-dashboard`. Live: `app.leadesk.de`. Staging: `staging.leadesk.de`.
+
+**Zwei Entwickler:** Michael Schreckhausen (Lead), Julian Wolf. Beide gleichberechtigt für Develop und Releases. Synchronisation läuft über das In-App-Changelog und die Git-History.
+
+## Stack
+
+- **Frontend:** React 18 + Vite, **JSX (kein TypeScript)**, **ausschließlich Inline-Styles** (`style={{...}}`) — kein CSS, kein Tailwind, keine externen Stylesheets
+- **Backend:** Supabase (Postgres, Auth, Edge Functions, Storage, Realtime)
+- **Hosting:** Vercel, ein Projekt mit zwei Environments. Region `fra1` (DSGVO).
+- **UI-Sprache:** Deutsch (Texte, Stage-Werte, Status-Werte)
+
+## Infrastruktur
+
+### Production (Supabase Cloud)
+```
+Projekt-ID:   jdhajqpgfrsuoluaesjn
+URL:          https://jdhajqpgfrsuoluaesjn.supabase.co
+Domain:       app.leadesk.de
+SQL-Zugriff:  Supabase Dashboard SQL Editor
+```
+
+### Staging (Hetzner Self-Hosted, seit 2026-04-23)
+```
+db-01:        178.104.210.216  (SSH direkt vom Mac)
+app-01:       138.199.163.189  (Caddy → Kong)
+API-URL:      https://supabase-staging.leadesk.de
+Domain:       staging.leadesk.de
+Container:    supabase-db in /opt/supabase/docker/
+```
+
+**SSH läuft direkt vom Mac**, nicht zwischen den Servern (keine Cross-Server-Keys). Kein Sudo-User, alles als `root`.
+
+### Vercel
+```
+Team-ID:      team_nI2qPVOuujYLpMrATLCE5bgq
+Project-ID:   prj_KqhdpHmTzD8KoTpIbtPv0htTsnyC
+```
+Env-Vars `VITE_SUPABASE_URL` und `VITE_SUPABASE_ANON_KEY` sind pro Environment gesetzt. Ohne korrekt gesetzte Env-Vars startet die App gar nicht (kein Fallback in `src/lib/supabase.js`).
+
+### Tote Cloud-Staging-Instanz
+`swljvgmnxomvcevoupgg` ist seit 2026-04-23 abgeschaltet. Referenzen im Code/Memory ignorieren.
+
+---
+
+## 🚀 Deployment-Workflow: Staging First (PFLICHT)
+
+| Branch | Domain | Supabase |
+|---|---|---|
+| `develop` | `staging.leadesk.de` | Hetzner |
+| `main` | `app.leadesk.de` | Cloud |
+
+1. **Jede** Änderung → Commit auf `develop`
+2. Vercel baut automatisch ~30-45s nach Push
+3. Auf `staging.leadesk.de` testen, Browser-Konsole prüfen
+4. **Merge `develop → main` nur auf explizite Anweisung** des Entwicklers im Chat ("freigeben", "in Produktion", "mergen")
+5. **Niemals direkt auf `main` committen oder pushen**
+
+Auch Hotfixes laufen über `develop` mit Fast-Track-Merge.
+
+---
+
+## ⚠️ Pflicht-Workflow vor JEDER Änderung
+
+1. **Changelog lesen:** `app.leadesk.de/admin-logs` — was hat der andere Dev zuletzt geändert?
+2. **Doku prüfen:** `app.leadesk.de/admin-docs` — Tabellen, Routen, Trigger aktuell?
+3. **Aktuellen Code holen:** Immer von `develop`, nie aus dem Gedächtnis. Lokal: `git pull origin develop` vor jeder Bearbeitung.
+
+## Pflicht-Workflow nach JEDER Änderung
+
+1. Push auf `develop`, Vercel-Build abwarten
+2. Hard-Refresh (`Cmd+Shift+R`) auf `staging.leadesk.de`, Konsole checken
+3. **Changelog-Eintrag** auf `app.leadesk.de/admin-logs` erstellen (zeitlich beim Staging-Merge, nicht erst bei Prod)
+4. Bei strukturellen Änderungen: prüfen ob `admin-docs` aktualisiert werden muss
+
+---
+
+## Code-Regeln (permanent)
+
+### Styling
+- **Nur Inline-Styles**, kein Tailwind/CSS
+- Primary Color **immer** über CSS-Variable: `var(--wl-primary, rgb(49,90,231))` — nie hardcodiertes Blau
+- UI-Texte deutsch
+
+### Standard-Imports & Team-Context
+```jsx
+import { supabase } from '../lib/supabase'
+import { useTeam } from '../context/TeamContext'
+
+const { activeTeamId, team, members } = useTeam()  // NIE localStorage direkt
+```
+
+Bei **jedem** `insert()` auf Multi-Tenant-Tabellen (`pm_*`, `leads`, `deals`, etc.) muss `team_id: activeTeamId` mit. Sonst NOT-NULL-Fehler.
+
+### React Hooks
+- Hooks immer am Anfang der Komponente, nie nach `if`/`return`
+- Niemals `useTranslation()` o.ä. innerhalb eines `useState()`-Initializers (build-breaking)
+- `useEffect`-Dependencies vollständig, besonders `activeTeamId`
+- States, die im JSX genutzt werden, **müssen** deklariert sein (sonst Whitescreen)
+
+### Datenbank
+- **RLS Pflicht** für jede neue Tabelle
+- Standard-Felder: `user_id`, `team_id`, `is_shared`, `created_at`, `updated_at`
+- Trigger, die in RLS-Tabellen schreiben: `SECURITY DEFINER`
+- Migrationen **idempotent** oder BEGIN/COMMIT-gewrappt: `CREATE TABLE IF NOT EXISTS`, `DROP POLICY IF EXISTS`, `ADD COLUMN IF NOT EXISTS`
+- Nie Tabellen/Spalten löschen ohne Rücksprache
+
+### Edge Functions
+- **Immer** `supabase.functions.invoke('name', { body: {...} })`, nie hardcoded URL — sonst kaputt zwischen Prod und Staging
+- Auth in jeder Edge Function prüfen
+
+### Commit-Präfixe
+`feat:` `fix:` `docs:` `ux:` `refactor:`
+
+---
+
+## ⚠️ Kritische Fallstricke (aus Erfahrung gelernt)
+
+### 1. Hetzner-Staging-Grants (häufigste Falle)
+Self-hosted Supabase auf Hetzner hat **keine Default-Grants** für `authenticated` auf den meisten Tabellen. Die App läuft trotzdem (`authenticator → postgres`-Bypass), **aber RLS-Policies mit Cross-Table-Subqueries scheitern stumm**.
+
+Beispiel: Policy `team_id IN (SELECT team_id FROM team_members WHERE user_id = auth.uid())` — die Sub-Query läuft als `authenticated` und bekommt 0 Rows ohne Error.
+
+**Fix bei jeder neuen Cross-Table-Policy:**
+```sql
+GRANT SELECT ON team_members TO authenticated;
+GRANT SELECT ON teams        TO authenticated;
+GRANT ALL    ON dbg_tabelle  TO authenticated;
+```
+
+Bei Prod-Cutover ebenfalls beachten.
+
+### 2. ENUM-Felder → Silent Fail
+```jsx
+// ❌ FALSCH — kombiniertes Update mit ENUM speichert NICHTS
+await supabase.from('leads').update({ deal_stage: 'angebot', name: 'X' }).eq('id', id)
+
+// ✅ RICHTIG — ENUM separat
+await supabase.from('leads').update({ deal_stage: 'angebot' }).eq('id', id)
+await supabase.from('leads').update({ name: 'X' }).eq('id', id)
+```
+
+### 3. Stage-Werte sind DEUTSCH in der DB
+```jsx
+d.stage === 'gewonnen'      // nicht 'won'
+d.stage === 'verloren'      // nicht 'lost'
+d.stage === 'angebot' | 'verhandlung' | 'prospect' | 'opportunity'
+```
+
+### 4. Status-Werte (leads.status) sind ENGLISCH-AKRONYME
+`'Lead'`, `'LQL'`, `'MQL'`, `'MQN'`, `'SQL'` — CHECK-Constraint `leads_crm_status_check` (auf Prod, auf Staging noch nachzuziehen).
+
+### 5. team_id bei jedem Multi-Tenant-Insert
+```jsx
+const { activeTeamId } = useTeam()
+await supabase.from('pm_projects').insert({ ...form, user_id: uid, team_id: activeTeamId })
+```
+
+### 6. PDF-Download → Blob, nicht window.open
+```jsx
+// ❌ Chrome blockiert Cross-Origin
+window.open(signedUrl, '_blank')
+
+// ✅
+const { data: blob } = await supabase.storage.from('deal-attachments').download(path)
+const url = URL.createObjectURL(blob)
+const a = document.createElement('a'); a.href = url; a.download = filename; a.click()
+```
+
+### 7. Edge-Function: invoke statt fetch
+```jsx
+// ❌
+fetch('https://jdhajqpgfrsuoluaesjn.supabase.co/functions/v1/generate', {...})
+
+// ✅
+await supabase.functions.invoke('generate', { body: {...} })
+```
+
+### 8. Chrome Extension MV3 Service Worker → 5s Timeout
+`sendResponse` muss innerhalb von 5s kommen. Lange Operationen: sofort antworten und Ergebnis über `chrome.storage.local` kommunizieren.
+
+### 9. PostgREST Embed
+Nur existierende Felder in Joins. `leads` hat `first_name` + `last_name`, kein `name`-Feld.
+
+### 10. GitHub-Web-Edit
+Default-Branch ist der angesehene Branch. **Vor jedem Commit Branch-Auswahl prüfen.** Bei lokalem Arbeiten: `git branch --show-current` vor Commit.
+
+---
+
+## Migrations-Workflow (zwingend Staging zuerst)
+
+### 1. Datei anlegen
+```
+supabase/migrations/YYYYMMDDHHMMSS_kurzname.sql
+```
+
+### 2. Auf Staging anwenden
+```bash
+ssh root@178.104.210.216 'docker exec -i supabase-db psql -U postgres -d postgres' \
+  < supabase/migrations/YYYYMMDDHHMMSS_kurzname.sql
+```
+
+### 3. Verifizieren
+```bash
+ssh root@178.104.210.216 'docker exec -i supabase-db psql -U postgres -d postgres -c "\dt"'
+ssh root@178.104.210.216 'docker exec -i supabase-db psql -U postgres -d postgres -c "\dp tabelle"'
+```
+
+### 4. App auf Staging testen, Console-Errors checken
+
+### 5. Auf Prod anwenden — **NUR auf explizite Anweisung im Chat**
+Via Supabase Dashboard SQL Editor: `https://supabase.com/dashboard/project/jdhajqpgfrsuoluaesjn/sql`
+
+### 6. Changelog-Eintrag mit `db-change`-Tag
+
+---
+
+## RLS-Standard-Patterns
+
+**User-Scope:**
+```sql
+CREATE POLICY "tab_own" ON tab FOR ALL USING (user_id = auth.uid());
+```
+
+**Team-Scope (Multi-Tenant):**
+```sql
+CREATE POLICY "tab_team" ON tab FOR ALL USING (
+  team_id IN (SELECT team_id FROM team_members WHERE user_id = auth.uid())
+);
+GRANT SELECT ON team_members TO authenticated;  -- Pflicht auf Hetzner!
+```
+
+**Via Parent-Join:**
+```sql
+CREATE POLICY "kind_team" ON kind FOR ALL USING (
+  EXISTS (SELECT 1 FROM pm_projects p
+          WHERE p.id = project_id
+            AND p.team_id IN (SELECT team_id FROM team_members WHERE user_id = auth.uid()))
+);
+```
+
+**Shared-Flag:**
+```sql
+CREATE POLICY "kb_own_or_shared" ON knowledge_base FOR SELECT USING (
+  user_id = auth.uid()
+  OR (is_shared = true AND team_id IN (SELECT team_id FROM team_members WHERE user_id = auth.uid()))
+);
+```
+
+---
+
+## Aktueller Stand (Stand 2026-04-23, in Memory pflegen)
+
+**Auf `develop`, noch nicht auf `main`:**
+- Multi-Provider-AI-Release (13 Commits, Migration `20260422120000_add_default_ai_model_to_profiles.sql`)
+- Delivery-Modul Phase 0+1 (Migrations `20260423130000_delivery_phase_0_1.sql` und `20260423150000_delivery_phase_1_hotfix_grants.sql`)
+
+**Offen:**
+- Phase 1b: „🚀 Projekt starten"-Button auch in `LeadProfile.jsx` und `Pipeline.jsx`
+- Prod-DB-Cutover Cloud → Hetzner (Backup-Strategie davor einrichten!)
+- Staging-DB fehlt CHECK-Constraint `leads_crm_status_check` (bei Prod-Cutover beachten)
+- Migration `20260424160000_leads_linkedin_url_partial_unique.sql` auf Hetzner-Staging anwenden
+
+---
+
+## Sicherheitsregeln
+
+- **Niemals** Secrets/API-Keys committen
+- `docker-compose.override.yml` mit LLM-Provider-Keys ist **nicht im Repo** (per Hand auf Server deployed)
+- RLS für **jede** neue Tabelle, keine Ausnahmen
+- Bei neuen Cross-Table-Policies: Grants auf referenzierte Tabellen (siehe Fallstrick #1)
+- Schema-Änderungen erst Staging, dann Prod
+- ENUM-Felder nie in kombiniertem Update
+- Plan-Limits client- UND serverseitig validieren
+
+---
+
+## Zwei verbindliche Sicherheitsleinen für Claude Code
+
+Selbst bei voller Autonomie:
+
+1. **Prod-DB-Migrations** (Cloud, `jdhajqpgfrsuoluaesjn`) erst nach expliziter Bestätigung im Chat — nie autonom
+2. **`develop → main`-Merge** erst nach expliziter Bestätigung im Chat — nie autonom
+
+Alles andere (Develop-Pushes, Staging-DB-Migrationen, Hetzner-SSH, lokale Builds, Code-Edits) läuft autonom durch.
