@@ -169,6 +169,15 @@ export default function ContentStudio({ session }) {
   const [pendingDocText, setPendingDocText] = useState(null)
   const editorOpenRef = useRef(editorOpen)
   useEffect(() => { editorOpenRef.current = editorOpen }, [editorOpen])
+  // Eingeklappt: das 24px-rechts-Padding der App-Shell (MAIN) entfernen, damit
+  // die ausziehbare Splitscreen-Karte bündig am echten Bildschirmrand sitzt.
+  useEffect(() => {
+    const main = document.querySelector('main')
+    if (!main) return
+    const prev = main.style.paddingRight
+    if (!editorOpen) main.style.paddingRight = '0px'
+    return () => { main.style.paddingRight = prev }
+  }, [editorOpen])
   const [useEditorContext, setUseEditorContext] = useState(false)
   const [chatDocs, setChatDocs] = useState([])
   const [demoRailDocs, setDemoRailDocs] = useState(null) // Tour-Demo: rechte Dokument-Leiste mit Beispiel-Dokumenten
@@ -1157,13 +1166,14 @@ export default function ContentStudio({ session }) {
           // ragt aus dem Viewport und wird vom Eltern-overflow:hidden geclippt).
           return (
             <>
-              {/* Großer eingeklappter Splitscreen-Kasten — zum Ausziehen */}
+              {/* Großer eingeklappter Splitscreen-Kasten — volle Pane-Höhe, bündig
+                 am rechten Rand; ragt rechts raus und wird vom Container geclippt. */}
               <button onClick={() => openTo(null)} title="Splitscreen ausziehen"
-                style={{ position:'absolute', top:'50%', right:-168, transform:'translateY(-50%)', width:190, height:320, zIndex:49,
-                  background:'var(--surface,#fff)', border:'1px solid var(--border,#E9ECF2)', borderRadius:'20px 0 0 20px',
-                  boxShadow:'-12px 0 30px rgba(16,24,40,0.14)', cursor:'pointer', padding:0,
+                style={{ position:'absolute', top:0, bottom:0, right:-190, width:212, zIndex:49,
+                  background:'var(--surface,#fff)', borderLeft:'1px solid var(--border,#E9ECF2)', borderRadius:'18px 0 0 18px',
+                  boxShadow:'-14px 0 34px rgba(16,24,40,0.13)', cursor:'pointer', padding:0,
                   display:'flex', alignItems:'center', justifyContent:'flex-start' }}>
-                <span style={{ width:4, height:38, marginLeft:8, borderRadius:3, background:'var(--border,#D7DCE5)' }}/>
+                <span style={{ width:4, height:40, marginLeft:7, borderRadius:3, background:'var(--border,#D7DCE5)' }}/>
               </button>
               {/* Labels + Umschalt-Buttons, direkt links am Kasten anliegend */}
               <div style={{ position:'absolute', top:'50%', right:22, transform:'translateY(-50%)', zIndex:50, display:'flex', alignItems:'stretch', gap:10, pointerEvents:'none' }}>
