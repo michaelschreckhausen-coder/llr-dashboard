@@ -3492,7 +3492,7 @@ export default function DesignerCanvas({ visual, teamId, onSaved, onReplaceVisua
               onTouchMove={onStageMouseMove}
               onTouchEnd={onStageMouseUp}
             >
-              <Layer ref={layerRef}>
+              <Layer ref={layerRef} clipX={0} clipY={0} clipWidth={stageSize.width} clipHeight={stageSize.height}>
                 {/* Weiße Artboard (Whiteboard) — IMMER als Stage-Hintergrund. */}
                 <Rect id="__bgfill__" x={0} y={0} width={stageSize.width} height={stageSize.height} fill={bgColor || '#ffffff'} listening />
                 {objects.map(renderObject)}
@@ -3506,6 +3506,10 @@ export default function DesignerCanvas({ visual, teamId, onSaved, onReplaceVisua
                   <Rect x={marquee.x - off.x} y={marquee.y - off.y} width={marquee.w} height={marquee.h}
                     stroke={PRGB} strokeWidth={1 / effScale} dash={[6 / effScale, 4 / effScale]} fill="rgba(49,90,231,0.10)" listening={false} />
                 )}
+              </Layer>
+              {/* Transformer auf eigenem, NICHT geclipptem Layer: Rahmen/Anfasser
+                 dürfen über den Seitenrand hinaus; der Bildinhalt bleibt geclippt. */}
+              <Layer>
                 <Transformer ref={trRef} rotateEnabled
                   keepRatio={lockRatio}
                   anchorStroke={distortActive ? DISTORT_RGB : PRGB}
