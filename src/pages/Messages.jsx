@@ -29,7 +29,6 @@ import { useSearchParams, useNavigate } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
 import { sharedEntityIds, scopeByTeamOrShared } from '../lib/teamShares'
 import { useTeam } from '../context/TeamContext'
-import InboxLink from '../components/InboxLink'
 import { useBrandVoice } from '../context/BrandVoiceContext'
 import { useModel } from '../context/ModelContext'
 
@@ -226,6 +225,9 @@ export default function Messages({ session }) {
     let q = supabase
       .from('leads')
       .select('id, first_name, last_name, name, job_title, headline, company, linkedin_url, team_id, user_id')
+      // Nur CRM-Kontakte mit Inbox-Herkunft (ueber die Import-Inbox gekommen).
+      .in('source', ['sales_nav', 'linkedin_scrape', 'extension_import'])
+      .eq('archived', false)
       .order('created_at', { ascending: false })
       .limit(200)
     if (activeTeamId) {
@@ -315,11 +317,11 @@ export default function Messages({ session }) {
   }
 
   async function generate() {
-    const recipientName = manualName.trim() || (selectedLead ? fullName(selectedLead) : '')
-    if (!recipientName) {
-      showFlash('Bitte einen Lead auswählen oder einen Namen eingeben.', 'error')
+    if (!selectedLead) {
+      showFlash('Bitte einen Kontakt auswählen.', 'error')
       return
     }
+    const recipientName = fullName(selectedLead)
     setGenerating(true)
     setResult('')
     setSavedArchive(false); setSavedActivity(false); setQueued(false)
@@ -480,7 +482,6 @@ export default function Messages({ session }) {
           </p>
         </div>
         <div style={{ display:'flex', alignItems:'center', gap:8, flexWrap:'wrap' }}>
-          <InboxLink />
           <button onClick={() => setShowHistory(h => !h)}
             style={{ display:'flex', alignItems:'center', gap:6, padding:'7px 14px', borderRadius:8, border:'1px solid var(--border)', background:'var(--surface)', fontSize:12, fontWeight:600, color:'#475569', cursor:'pointer' }}>
             <span style={{display:'inline-flex',alignItems:'center',gap:6}}><Clock size={13} strokeWidth={1.75}/>Verlauf ({history.length})</span>
@@ -524,7 +525,7 @@ export default function Messages({ session }) {
         </div>
 
         {/* Empfänger: Lead-Autocomplete */}
-        <Field label="Empfänger (Lead)" optional hint={selectedLead ? 'Aus CRM verknüpft — Activity + Vernetzungs-Queue verfügbar.' : 'Optional. Wenn leer, Name/Position/Firma unten manuell setzen.'}>
+        <Field label="Empfänger (Kontakt)" hint={selectedLead ? 'Aus CRM verknüpft — Activity + Vernetzungs-Queue verfügbar.' : 'Nur Kontakte aus der Import-Inbox. Tippen oder klicken zum Wählen.'}>
           <div style={{ position:'relative' }}>
             <input
               value={leadSearch}
@@ -537,7 +538,7 @@ export default function Messages({ session }) {
               placeholder="Lead suchen…"
               style={inp}
             />
-            {leadsDropdownOpen && leadSearch && filteredLeads.length > 0 && (
+            {leadsDropdownOpen && filteredLeads.length > 0 && (
               <div style={{ position:'absolute', top:'100%', left:0, right:0, zIndex:99, background:'var(--surface)', border:'1.5px solid #E2E8F0', borderRadius:10, boxShadow:'0 8px 24px rgba(0,0,0,0.12)', marginTop:4, maxHeight:240, overflowY:'auto' }}>
                 {filteredLeads.map(l => (
                   <div key={l.id} onClick={() => applyLead(l)}
@@ -572,19 +573,6 @@ export default function Messages({ session }) {
             </div>
           )}
         </Field>
-
-        {/* Manuelle Empfänger-Felder (nur wenn kein Lead oder als Override) */}
-        <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr 1fr', gap:10, marginBottom:14 }}>
-          <Field label="Name">
-            <input value={manualName} onChange={e => setManualName(e.target.value)} placeholder="Max Mustermann" style={inp}/>
-          </Field>
-          <Field label="Position">
-            <input value={manualPosition} onChange={e => setManualPosition(e.target.value)} placeholder="Head of Sales…" style={inp}/>
-          </Field>
-          <Field label="Unternehmen">
-            <input value={manualCompany} onChange={e => setManualCompany(e.target.value)} placeholder="Acme GmbH…" style={inp}/>
-          </Field>
-        </div>
 
         {/* Zielgruppe */}
         <Field label="Zielgruppe" optional hint={
