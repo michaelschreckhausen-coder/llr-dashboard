@@ -9,6 +9,7 @@ const P = 'var(--wl-primary, rgb(49,90,231))'
 
 export default function AudienceSelect({ audiences = [], value = '', onChange = () => {}, label = 'Zielgruppe', buttonStyle = {}, iconOnly = false }) {
   const [open, setOpen] = useState(false)
+  const [hover, setHover] = useState(false)
   const ref = useRef(null)
   useEffect(() => {
     function onDoc(e) { if (ref.current && !ref.current.contains(e.target)) setOpen(false) }
@@ -22,7 +23,9 @@ export default function AudienceSelect({ audiences = [], value = '', onChange = 
 
   return (
     <div ref={ref} style={{ position:'relative', display:'inline-block' }}>
-      <button type="button" onClick={() => setOpen(o => !o)} title={sel ? `Zielgruppe: ${sel.name}` : 'Zielgruppe für die Generierung'}
+      <button type="button" onClick={() => setOpen(o => !o)}
+        onMouseEnter={() => setHover(true)} onMouseLeave={() => setHover(false)} onMouseDown={() => setHover(false)}
+        title={iconOnly ? undefined : (sel ? `Zielgruppe: ${sel.name}` : 'Zielgruppe für die Generierung')}
         style={iconOnly ? {
           display:'inline-flex', alignItems:'center', justifyContent:'center', width:34, height:34, borderRadius:9, boxSizing:'border-box',
           border:'1.5px solid ' + (active ? P : 'var(--border)'),
@@ -39,6 +42,9 @@ export default function AudienceSelect({ audiences = [], value = '', onChange = 
         {!iconOnly && <span style={{ flex:1, minWidth:0, overflow:'hidden', textOverflow:'ellipsis', textAlign:'left' }}>{btnLabel}</span>}
         {!iconOnly && <ChevronDown size={13} strokeWidth={2} style={{ opacity:0.5, marginLeft:2, flexShrink:0 }}/>}
       </button>
+      {iconOnly && hover && !open && (
+        <span style={{ position:'absolute', bottom:'calc(100% + 6px)', left:'50%', transform:'translateX(-50%)', zIndex:200, background:'#101828', color:'#fff', fontSize:11, fontWeight:600, lineHeight:1.2, padding:'4px 8px', borderRadius:6, whiteSpace:'nowrap', pointerEvents:'none', boxShadow:'0 4px 12px rgba(16,24,40,0.25)' }}>{sel ? sel.name : 'Zielgruppe'}</span>
+      )}
       {open && (
         <div style={{ position:'absolute', zIndex:60, bottom:'calc(100% + 6px)', left:0, minWidth:220, maxHeight:280, overflowY:'auto',
           background:'#fff', border:'1px solid var(--border)', borderRadius:10, boxShadow:'0 12px 32px rgba(15,23,42,0.16)', padding:6 }}>

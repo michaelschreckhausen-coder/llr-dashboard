@@ -33,7 +33,8 @@ import {
   Bold, Italic, Sliders, Loader2, X, ChevronUp, ChevronDown, Brush, Lasso,
   Eraser, Image as ImageIcon, LayoutTemplate, Copy, ZoomIn, ZoomOut, Maximize2,
   Upload, Frame, Eye, EyeOff, Lock, Unlock, Layers, GripVertical, Underline,
-  FlipHorizontal2, FlipVertical2, Scaling, Send, CalendarPlus, FileText, Search,
+  FlipHorizontal2, FlipVertical2, FlipHorizontal, FlipVertical, Scaling, Send, CalendarPlus, FileText, Search,
+  AlignLeft, AlignCenter, AlignRight, Baseline, MoveVertical,
   AlignStartVertical, AlignCenterVertical, AlignEndVertical,
   AlignStartHorizontal, AlignCenterHorizontal, AlignEndHorizontal,
   AlignHorizontalDistributeCenter, AlignVerticalDistributeCenter,
@@ -183,6 +184,10 @@ const FORMAT_PRESETS = [
 const ZOOM_MIN = 0.1
 const ZOOM_MAX = 8
 
+// Rand um die Artboard (Display-px), damit Auswahlrahmen/Anfasser über den
+// Seitenrand hinaus sichtbar bleiben (Stage ist größer als die Seite).
+const CANVAS_PAD = 80
+
 export default function DesignerCanvas({ visual, teamId, onSaved, onReplaceVisual, onPagesToPost }) {
   const stageRef = useRef(null)
   const layerRef = useRef(null)
@@ -296,6 +301,17 @@ export default function DesignerCanvas({ visual, teamId, onSaved, onReplaceVisua
   useEffect(() => {
     if (activeTool !== 'ai') { setAiMode(null); clearMask(); setAiPreview(null) }
     // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activeTool])
+  // Werkzeug-Panel schließt sich, sobald man irgendwo daneben klickt (nicht nur via X).
+  useEffect(() => {
+    if (!activeTool) return
+    const onDocDown = (e) => {
+      const t = e.target
+      if (t && t.closest && t.closest('[data-tool-ui]')) return
+      setActiveTool(null)
+    }
+    document.addEventListener('mousedown', onDocDown, true)
+    return () => document.removeEventListener('mousedown', onDocDown, true)
   }, [activeTool])
   const [elementTab, setElementTab] = useState('shapes')   // shapes | icons | graphics | images
   const [uploadThumbs, setUploadThumbs] = useState([])     // diese Sitzung hochgeladene DataURLs
@@ -1790,7 +1806,7 @@ export default function DesignerCanvas({ visual, teamId, onSaved, onReplaceVisua
     if (!pos) return null
     const offX = baseCrop ? baseCrop.x : 0
     const offY = baseCrop ? baseCrop.y : 0
-    return { x: pos.x / effScale + offX, y: pos.y / effScale + offY }
+    return { x: (pos.x - CANVAS_PAD) / effScale + offX, y: (pos.y - CANVAS_PAD) / effScale + offY }
   }
   function onStageMouseDown(e) {
     const stage = stageRef.current
@@ -1922,7 +1938,7 @@ export default function DesignerCanvas({ visual, teamId, onSaved, onReplaceVisua
       try { stage.getLayers().forEach(l => l.batchDraw()) } catch (_e) {}
       // Die Stage hat exakt Artboard-Größe (dispW×dispH); ihr Canvas clippt bereits
       // alles ausserhalb der Artboard. Daher kein zusätzliches Crop nötig.
-      const opts = { pixelRatio, mimeType }
+      const opts = { pixelRatio, mimeType, x: CANVAS_PAD, y: CANVAS_PAD, width: stageSize.width * effScale, height: stageSize.height * effScale }
       if (mimeType === 'image/jpeg') opts.quality = quality
       dataUrl = stage.toDataURL(opts)
     } finally {
@@ -2909,6 +2925,34 @@ export default function DesignerCanvas({ visual, teamId, onSaved, onReplaceVisua
   }
 
   // ─── Render-Helfer für Konva-Objekte ───────────────────────────────────────
+  // Live-Zuschnitt eines Bildes beim Ziehen an einem Seiten-Anker (kein Verzerren):
+  // Frame-Maß folgt dem Anker, die Quell-Skalierung bleibt konstant (Basis aus
+  // onTransformStart), die crop-Region wächst/schrumpft, geklemmt an die Bildgrenzen.
+  function liveCropImage(node, anchor) {
+    const b = cropDragRef.current
+    if (!b) return
+    if (anchor === 'middle-left' || anchor === 'middle-right') {
+      let newW = Math.max(8, node.width() * node.scaleX())
+      let cw = newW / b.sPx
+      let cx = anchor === 'middle-left' ? (b.cx0 + b.cw0 - cw) : b.cx0
+      if (cx < 0) { cw += cx; cx = 0 }
+      if (cx + cw > b.natW) cw = b.natW - cx
+      cw = Math.max(1, cw); newW = cw * b.sPx
+      node.scaleX(1); node.width(newW)
+      node.crop({ x: cx, y: b.cy0, width: cw, height: b.ch0 })
+    } else {
+      let newH = Math.max(8, node.height() * node.scaleY())
+      let ch = newH / b.sPy
+      let cy = anchor === 'top-center' ? (b.cy0 + b.ch0 - ch) : b.cy0
+      if (cy < 0) { ch += cy; cy = 0 }
+      if (cy + ch > b.natH) ch = b.natH - cy
+      ch = Math.max(1, ch); newH = ch * b.sPy
+      node.scaleY(1); node.height(newH)
+      node.crop({ x: b.cx0, y: cy, width: b.cw0, height: ch })
+    }
+    try { node.getLayer()?.batchDraw() } catch (_e) {}
+  }
+
   const off = { x: baseCrop ? baseCrop.x : 0, y: baseCrop ? baseCrop.y : 0 }
 
   // Doppelklick auf ein Nicht-Text-Objekt: "Verzerren"-Modus für genau dieses Objekt
@@ -2978,7 +3022,16 @@ export default function DesignerCanvas({ visual, teamId, onSaved, onReplaceVisua
           updateObject(o.id, { x: node.x() + off.x, y: node.y() + off.y }, false)
         }
       },
-      onTransformStart: () => pushHistory(),
+      onTransformStart: () => {
+        pushHistory()
+        if (o.type === 'image') {
+          const el = imgCache[o.src]
+          const natW = (el && (el.naturalWidth || el.width)) || o.width || 1
+          const natH = (el && (el.naturalHeight || el.height)) || o.height || 1
+          const cw0 = o.cropWidth || natW, ch0 = o.cropHeight || natH
+          cropDragRef.current = { natW, natH, cw0, ch0, cx0: o.cropX || 0, cy0: o.cropY || 0, sPx: (o.width || 1) / cw0, sPy: (o.height || 1) / ch0 }
+        } else { cropDragRef.current = null }
+      },
       onTransform: (e) => {
         const node = e.target
         let anchor = ''
@@ -2988,6 +3041,8 @@ export default function DesignerCanvas({ visual, teamId, onSaved, onReplaceVisua
         // Smart-Guides auch beim Skalieren: aktive Kante(n) snappen + Hilfslinien zeigen.
         // Im proportionalen Modus (Nicht-Text, kein Verzerren) wird das achsenweise
         // Kanten-Snapping übersprungen, da es sonst das Seitenverhältnis verzerren würde.
+        const _side = anchor === 'middle-left' || anchor === 'middle-right' || anchor === 'top-center' || anchor === 'bottom-center'
+        if (o.type === 'image' && _side && distortId !== o.id) { liveCropImage(node, anchor); return }
         const isText = o.type === 'text'
         const singleSel = selectedIds.length === 1 && selectedIds[0] === o.id
         const proportional = singleSel && !isText && distortId !== o.id
@@ -3025,9 +3080,22 @@ export default function DesignerCanvas({ visual, teamId, onSaved, onReplaceVisua
           patch.height = Math.max(4, node.height() * node.scaleY())
           node.scaleX(1); node.scaleY(1)
         } else if (o.type === 'image') {
-          patch.width = Math.max(4, node.width() * node.scaleX())
-          patch.height = Math.max(4, node.height() * node.scaleY())
+          let anchor = ''
+          try { anchor = trRef.current?.getActiveAnchor() || '' } catch (_e) {}
+          const isSide = anchor === 'middle-left' || anchor === 'middle-right' || anchor === 'top-center' || anchor === 'bottom-center'
+          if (isSide && distortId !== o.id) {
+            // Live-Crop hat node bereits gesetzt (Breite/Höhe + crop, scale=1) → übernehmen.
+            patch.width = Math.max(8, node.width())
+            patch.height = Math.max(8, node.height())
+            try { const c = node.crop(); if (c) { patch.cropX = c.x; patch.cropY = c.y; patch.cropWidth = c.width; patch.cropHeight = c.height } } catch (_e) {}
+          } else {
+            // Ecke → ganze Größe skalieren, Crop-Region beibehalten.
+            patch.width = Math.max(4, node.width() * node.scaleX())
+            patch.height = Math.max(4, node.height() * node.scaleY())
+            if (o.cropWidth) { patch.cropX = o.cropX || 0; patch.cropY = o.cropY || 0; patch.cropWidth = o.cropWidth; patch.cropHeight = o.cropHeight }
+          }
           node.scaleX(1); node.scaleY(1)
+          cropDragRef.current = null
         } else if (o.type === 'ellipse') {
           patch.radiusX = Math.max(2, (o.radiusX || 90) * node.scaleX())
           patch.radiusY = Math.max(2, (o.radiusY || 90) * node.scaleY())
@@ -3282,7 +3350,7 @@ export default function DesignerCanvas({ visual, teamId, onSaved, onReplaceVisua
         <ContextBar selected={selected} updateObject={updateObject}
           commitHistoryOnce={commitHistoryOnce} endInteraction={endInteraction}
           reorder={reorder} deleteSelected={deleteSelected} duplicateSelected={duplicateSelected}
-          onFlip={flipSelected}
+          onFlip={flipSelected} onCrop={() => setCropMode(true)}
           fonts={allFonts} selectedIds={selectedIds} brandColors={brandColors}
           alignObjects={alignObjects} distributeObjects={distributeObjects} />
       )}
@@ -3404,17 +3472,18 @@ export default function DesignerCanvas({ visual, teamId, onSaved, onReplaceVisua
           </div>
         ) : (
           <div style={{
-            position: 'relative', width: dispW, height: dispH,
+            position: 'relative', width: dispW + CANVAS_PAD * 2, height: dispH + CANVAS_PAD * 2,
             transform: `translate(${pan.x}px, ${pan.y}px)`,
-            boxShadow: '0 4px 24px rgba(16,24,40,0.14)',
-            // Weiße Artboard (Whiteboard-Modell).
-            background: '#fff',
-            backgroundRepeat: 'repeat',
           }}>
+            {/* Artboard-Karte (Schatten) — eigentliche Seitenfläche, mittig im Rand. */}
+            <div style={{ position: 'absolute', left: CANVAS_PAD, top: CANVAS_PAD, width: dispW, height: dispH,
+              boxShadow: '0 4px 24px rgba(16,24,40,0.14)', background: '#fff' }} />
             <Stage
               ref={stageRef}
-              width={dispW}
-              height={dispH}
+              width={dispW + CANVAS_PAD * 2}
+              height={dispH + CANVAS_PAD * 2}
+              x={CANVAS_PAD}
+              y={CANVAS_PAD}
               scaleX={effScale}
               scaleY={effScale}
               onMouseDown={onStageMouseDown}
@@ -3424,7 +3493,7 @@ export default function DesignerCanvas({ visual, teamId, onSaved, onReplaceVisua
               onTouchMove={onStageMouseMove}
               onTouchEnd={onStageMouseUp}
             >
-              <Layer ref={layerRef}>
+              <Layer ref={layerRef} clipX={0} clipY={0} clipWidth={stageSize.width} clipHeight={stageSize.height}>
                 {/* Weiße Artboard (Whiteboard) — IMMER als Stage-Hintergrund. */}
                 <Rect id="__bgfill__" x={0} y={0} width={stageSize.width} height={stageSize.height} fill={bgColor || '#ffffff'} listening />
                 {objects.map(renderObject)}
@@ -3438,6 +3507,10 @@ export default function DesignerCanvas({ visual, teamId, onSaved, onReplaceVisua
                   <Rect x={marquee.x - off.x} y={marquee.y - off.y} width={marquee.w} height={marquee.h}
                     stroke={PRGB} strokeWidth={1 / effScale} dash={[6 / effScale, 4 / effScale]} fill="rgba(49,90,231,0.10)" listening={false} />
                 )}
+              </Layer>
+              {/* Transformer auf eigenem, NICHT geclipptem Layer: Rahmen/Anfasser
+                 dürfen über den Seitenrand hinaus; der Bildinhalt bleibt geclippt. */}
+              <Layer>
                 <Transformer ref={trRef} rotateEnabled
                   keepRatio={lockRatio}
                   anchorStroke={distortActive ? DISTORT_RGB : PRGB}
@@ -3449,22 +3522,10 @@ export default function DesignerCanvas({ visual, teamId, onSaved, onReplaceVisua
                   rotationSnaps={[0, 45, 90, 135, 180, 225, 270, 315]}
                   rotationSnapTolerance={4}
                   boundBoxFunc={(oldBox, newBox) => {
-                    if (newBox.width < 8 || newBox.height < 8) return oldBox
-                    // Proportional-Modus: Seitenkanten (middle-*) würden in Konva sonst
-                    // verzerren → Verhältnis von oldBox erzwingen, mittig zur fixen Achse.
-                    if (lockRatio && (oldBox.rotation || 0) === 0) {
-                      let anchor = ''
-                      try { anchor = trRef.current?.getActiveAnchor() || '' } catch (_e) {}
-                      const ratio = Math.abs(oldBox.width / oldBox.height) || 1
-                      if (anchor === 'middle-left' || anchor === 'middle-right') {
-                        const newH = Math.abs(newBox.width) / ratio
-                        return { ...newBox, y: newBox.y - (newH - newBox.height) / 2, height: newH }
-                      }
-                      if (anchor === 'top-center' || anchor === 'bottom-center') {
-                        const newW = Math.abs(newBox.height) * ratio
-                        return { ...newBox, x: newBox.x - (newW - newBox.width) / 2, width: newW }
-                      }
-                    }
+                    // Nur Mindestgröße erzwingen. Ecken halten via keepRatio das Verhältnis
+                    // (Element als Ganzes skalieren); Seiten-Anker ändern in Konva nur EINE
+                    // Achse (Formen: Maß; Bilder: wird in onTransformEnd zu Zuschnitt).
+                    if (Math.abs(newBox.width) < 8 || Math.abs(newBox.height) < 8) return oldBox
                     return newBox
                   }} />
               </Layer>
@@ -3477,7 +3538,7 @@ export default function DesignerCanvas({ visual, teamId, onSaved, onReplaceVisua
             <canvas
               ref={overlayRef}
               style={{
-                position: 'absolute', top: 0, left: 0, width: dispW, height: dispH,
+                position: 'absolute', top: CANVAS_PAD, left: CANVAS_PAD, width: dispW, height: dispH,
                 pointerEvents: aiActive ? 'auto' : 'none',
                 cursor: aiActive ? 'crosshair' : 'default', zIndex: 40,
               }}
@@ -3697,7 +3758,7 @@ function Divider() {
 function ToolBtn({ children, onClick, title, active }) {
   return (
     <button onClick={onClick} title={title}
-      style={{ width: 32, height: 32, display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+      style={{ width: 32, height: 32, flexShrink: 0, display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
         borderRadius: 8, cursor: 'pointer', fontFamily: 'inherit',
         border: '1px solid ' + (active ? P : 'var(--border,#E9ECF2)'),
         background: active ? 'rgba(49,90,231,0.08)' : 'var(--surface,#fff)',
@@ -3841,9 +3902,63 @@ function ExportModal({ onExport, exporting, onClose }) {
 // Vereint Text-/Form-Formatierung mit numerischen Eigenschaften (X/Y/Größe/
 // Drehung/Deckkraft), Ausrichten/Verteilen sowie Ebenen-/Duplizieren-/Löschen-
 // Aktionen in EINER sauberen, umbrechenden Leiste.
+// Canva-artiges Transparenz-Icon (Schachbrett in abgerundetem Quadrat).
+function TransparencyIcon({ size = 15 }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" style={{ display: 'block' }}>
+      <defs><clipPath id="lk-transp-clip"><rect x="3" y="3" width="18" height="18" rx="3.5" /></clipPath></defs>
+      <g clipPath="url(#lk-transp-clip)">
+        <rect x="3" y="3" width="9" height="9" fill="currentColor" opacity="0.85" />
+        <rect x="12" y="12" width="9" height="9" fill="currentColor" opacity="0.85" />
+      </g>
+      <rect x="3" y="3" width="18" height="18" rx="3.5" fill="none" stroke="currentColor" strokeWidth="1.8" />
+    </svg>
+  )
+}
+// Kompaktes Dropdown für die Kontext-Leiste (Icon-Trigger + Popover).
+function BarMenu({ title, trigger, width = 180, children }) {
+  const [open, setOpen] = useState(false)
+  const ref = useRef(null)
+  useEffect(() => {
+    if (!open) return
+    const h = (e) => { if (ref.current && !ref.current.contains(e.target)) setOpen(false) }
+    document.addEventListener('mousedown', h)
+    return () => document.removeEventListener('mousedown', h)
+  }, [open])
+  return (
+    <div ref={ref} style={{ position: 'relative', display: 'inline-flex', flexShrink: 0 }}>
+      <button type="button" onClick={() => setOpen(o => !o)} title={title}
+        style={{ height: 32, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: 3, padding: '0 7px',
+          borderRadius: 8, border: '1px solid ' + (open ? P : 'var(--border,#E9ECF2)'), background: open ? 'rgba(49,90,231,0.08)' : 'var(--surface,#fff)',
+          color: open ? P : 'var(--text-muted,#475467)', cursor: 'pointer', fontFamily: 'inherit' }}>
+        {trigger}
+        <ChevronDown size={12} strokeWidth={2} style={{ opacity: 0.5 }} />
+      </button>
+      {open && (
+        <div onClick={() => setOpen(false)} style={{ position: 'absolute', top: 'calc(100% + 6px)', left: 0, zIndex: 130, minWidth: width,
+          background: '#fff', border: '1px solid var(--border)', borderRadius: 10, boxShadow: '0 12px 32px rgba(16,24,40,0.16)', padding: 6 }}>
+          {children}
+        </div>
+      )}
+    </div>
+  )
+}
+function BarMenuItem({ icon, label, active, onClick }) {
+  return (
+    <button type="button" onClick={onClick}
+      onMouseEnter={e => { e.currentTarget.style.background = '#F4F6FA' }}
+      onMouseLeave={e => { e.currentTarget.style.background = active ? 'rgba(49,90,231,0.08)' : 'transparent' }}
+      style={{ display: 'flex', alignItems: 'center', gap: 9, width: '100%', textAlign: 'left', padding: '8px 10px', borderRadius: 7,
+        border: 'none', background: active ? 'rgba(49,90,231,0.08)' : 'transparent', cursor: 'pointer', fontSize: 13,
+        color: active ? P : 'var(--text-primary)', fontFamily: 'inherit' }}>
+      {icon}{label}
+    </button>
+  )
+}
+
 function ContextBar({
   selected, updateObject, reorder, deleteSelected, duplicateSelected,
-  commitHistoryOnce, endInteraction, fonts, onFlip,
+  commitHistoryOnce, endInteraction, fonts, onFlip, onCrop,
   selectedIds, alignObjects, distributeObjects, brandColors = [],
 }) {
   const FONT_LIST = (fonts && fonts.length) ? fonts : FONTS
@@ -3852,6 +3967,8 @@ function ContextBar({
   const hasFill = ['text', 'rect', 'ellipse', 'sticker'].includes(o.type)
   const hasStroke = ['rect', 'ellipse', 'line', 'arrow', 'sticker'].includes(o.type)
   const hasWH = (o.type === 'rect' || o.type === 'image')
+  const isImage = o.type === 'image'
+  const isRect = o.type === 'rect'
   const isEllipse = o.type === 'ellipse'
   const fontStyle = o.fontStyle || 'normal'
   const isBold = fontStyle.includes('bold')
@@ -3877,7 +3994,7 @@ function ContextBar({
 
   // Kompakte Zahlen-Eingabe (X/Y/B/H/Drehung)
   const numField = (label, value, onCommitVal, opts = {}) => (
-    <label style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }} title={label}>
+    <label style={{ display: 'inline-flex', alignItems: 'center', gap: 4, flexShrink: 0 }} title={label}>
       <span style={{ fontSize: 10.5, color: 'var(--text-muted)' }}>{label}</span>
       <input type="number" value={Math.round((Number(value) || 0) * 100) / 100}
         step={opts.step || 1} min={opts.min}
@@ -3887,106 +4004,104 @@ function ContextBar({
     </label>
   )
 
+  // Mini-Stepper-Button (Schriftgröße −/+)
+  const stepBtn = { width: 26, height: '100%', border: 'none', background: 'transparent', cursor: 'pointer', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', color: 'var(--text-muted,#475467)', padding: 0 }
+  const fs = Math.round(o.fontSize || 44)
+
   return (
-    <div style={{ ...barStyle, flexWrap: 'wrap', gap: 7 }}>
-      {/* ── Text-Formatierung ── */}
+    <div style={{ ...barStyle, flexWrap: 'nowrap', gap: 6, minWidth: 0 }}>
+      {/* ── TEXT ── */}
       {isText && (
         <>
-          <select value={o.fontFamily || 'Inter'} onChange={e => setOnce({ fontFamily: e.target.value })} style={{ ...selStyle, minWidth: 116 }}>
+          <select value={o.fontFamily || 'Inter'} onChange={e => setOnce({ fontFamily: e.target.value })} style={{ ...selStyle, minWidth: 104, maxWidth: 132, flexShrink: 0 }} title="Schriftart">
             {FONT_LIST.map(f => <option key={f} value={f}>{f}</option>)}
           </select>
-          <input type="number" min={6} max={400} value={Math.round(o.fontSize || 44)}
-            onFocus={startEdit} onMouseDown={startEdit} onBlur={endInteraction}
-            onChange={e => liveEdit({ fontSize: parseInt(e.target.value, 10) || 44 })}
-            style={{ ...selStyle, width: 60 }} title="Schriftgröße" />
-          <ToolBtn onClick={() => setStyleFlag('bold')} active={isBold} title="Fett"><Bold size={14} strokeWidth={2.2} /></ToolBtn>
-          <ToolBtn onClick={() => setStyleFlag('italic')} active={isItalic} title="Kursiv"><Italic size={14} strokeWidth={2.2} /></ToolBtn>
-          <ToolBtn onClick={() => setOnce({ textDecoration: isUnderline ? '' : 'underline' })} active={isUnderline} title="Unterstrichen"><Underline size={14} strokeWidth={2.2} /></ToolBtn>
-          <select value={o.align || 'left'} onChange={e => setOnce({ align: e.target.value })} style={selStyle} title="Textausrichtung">
-            <option value="left">Links</option><option value="center">Zentriert</option><option value="right">Rechts</option>
-          </select>
-          <select value={o.effect || 'none'} onChange={e => setOnce({ effect: e.target.value })} style={selStyle} title="Texteffekt">
-            {TEXT_EFFECTS.map(ef => <option key={ef.id} value={ef.id}>{ef.label}</option>)}
-          </select>
+          {/* Schriftgröße mit −/+ Stepper */}
+          <div style={{ display: 'inline-flex', alignItems: 'center', height: 32, flexShrink: 0, border: '1px solid var(--border,#E9ECF2)', borderRadius: 8, background: '#fff', overflow: 'hidden' }}>
+            <button type="button" title="Kleiner" style={stepBtn} onClick={() => setOnce({ fontSize: Math.max(6, fs - 1) })}><Minus size={13} strokeWidth={2} /></button>
+            <input type="number" min={6} max={400} value={fs}
+              onFocus={startEdit} onMouseDown={startEdit} onBlur={endInteraction}
+              onChange={e => liveEdit({ fontSize: parseInt(e.target.value, 10) || 44 })}
+              style={{ width: 38, height: '100%', border: 'none', borderLeft: '1px solid var(--border,#E9ECF2)', borderRight: '1px solid var(--border,#E9ECF2)', textAlign: 'center', fontSize: 12, fontFamily: 'inherit', outline: 'none', MozAppearance: 'textfield', boxSizing: 'border-box' }} />
+            <button type="button" title="Größer" style={stepBtn} onClick={() => setOnce({ fontSize: Math.min(400, fs + 1) })}><PlusIcon size={13} strokeWidth={2} /></button>
+          </div>
+          {/* Textfarbe als A-Swatch */}
+          <ColorPopover value={o.fill} brandColors={brandColors} title="Textfarbe" onStart={startEdit} onChange={(hex) => liveEdit({ fill: hex })} onEnd={endInteraction}
+            triggerStyle={{ width: 32, height: 32, flexShrink: 0, display: 'inline-flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 1, borderRadius: 8, border: '1px solid var(--border,#E9ECF2)', background: 'var(--surface,#fff)', cursor: 'pointer', padding: 0 }}
+            triggerContent={<><Baseline size={15} strokeWidth={2} color="var(--text-muted,#475467)" style={{ marginBottom: -2 }} /><span style={{ width: 16, height: 3, borderRadius: 2, background: toHex(o.fill || '#000000') }} /></>} />
           <Divider />
+          <ToolBtn onClick={() => setStyleFlag('bold')} active={isBold} title="Fett"><Bold size={14} strokeWidth={2.4} /></ToolBtn>
+          <ToolBtn onClick={() => setStyleFlag('italic')} active={isItalic} title="Kursiv"><Italic size={14} strokeWidth={2.4} /></ToolBtn>
+          <ToolBtn onClick={() => setOnce({ textDecoration: isUnderline ? '' : 'underline' })} active={isUnderline} title="Unterstrichen"><Underline size={14} strokeWidth={2.4} /></ToolBtn>
+          <BarMenu title="Ausrichtung" width={150}
+            trigger={(o.align === 'center') ? <AlignCenter size={15} strokeWidth={2} /> : (o.align === 'right') ? <AlignRight size={15} strokeWidth={2} /> : <AlignLeft size={15} strokeWidth={2} />}>
+            <BarMenuItem icon={<AlignLeft size={15} strokeWidth={2} />} label="Links" active={(o.align || 'left') === 'left'} onClick={() => setOnce({ align: 'left' })} />
+            <BarMenuItem icon={<AlignCenter size={15} strokeWidth={2} />} label="Zentriert" active={o.align === 'center'} onClick={() => setOnce({ align: 'center' })} />
+            <BarMenuItem icon={<AlignRight size={15} strokeWidth={2} />} label="Rechts" active={o.align === 'right'} onClick={() => setOnce({ align: 'right' })} />
+          </BarMenu>
+          <BarMenu title="Abstand" width={210} trigger={<MoveVertical size={15} strokeWidth={2} />}>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 10, padding: '4px 6px' }}>
+              {numField('Zeilenhöhe', o.lineHeight || 1.2, v => setOnce({ lineHeight: v || 1.2 }), { step: 0.05, min: 0.5, w: 70 })}
+              {numField('Laufweite', o.letterSpacing || 0, v => setOnce({ letterSpacing: v || 0 }), { step: 0.5, w: 70 })}
+            </div>
+          </BarMenu>
+          <BarMenu title="Effekte" width={180} trigger={<span style={{ fontSize: 12.5, fontWeight: 600 }}>Effekte</span>}>
+            {TEXT_EFFECTS.map(ef => (
+              <BarMenuItem key={ef.id} label={ef.label} active={(o.effect || 'none') === ef.id} onClick={() => setOnce({ effect: ef.id })} />
+            ))}
+          </BarMenu>
         </>
       )}
 
-      {/* ── Füllung / Rand / Eckenradius / Schatten ── */}
-      {hasFill && (
-        <label style={lblStyle} title="Füllfarbe">
-          <span style={{ fontSize: 11, color: 'var(--text-muted)' }}>Füllung</span>
-          <ColorPopover value={o.fill} brandColors={brandColors} title="Füllfarbe"
-            onStart={startEdit} onChange={(hex) => liveEdit({ fill: hex })} onEnd={endInteraction} />
-        </label>
+      {/* ── FORMEN: Füllung (Swatch) + Stil-Menü ── */}
+      {!isText && hasFill && (
+        <ColorPopover value={o.fill} brandColors={brandColors} title="Füllfarbe" round onStart={startEdit} onChange={(hex) => liveEdit({ fill: hex })} onEnd={endInteraction} size={30} />
       )}
-      {hasStroke && (
-        <>
-          <label style={lblStyle} title="Randfarbe">
-            <span style={{ fontSize: 11, color: 'var(--text-muted)' }}>Rand</span>
-            <ColorPopover value={o.stroke || '#ffffff'} brandColors={brandColors} title="Randfarbe"
-              onStart={startEdit} onChange={(hex) => liveEdit({ stroke: hex })} onEnd={endInteraction} />
-          </label>
-          {numField('Stärke', o.strokeWidth || 0, v => setOnce({ strokeWidth: Math.max(0, v || 0) }), { min: 0, w: 50 })}
-        </>
-      )}
-      {o.type === 'rect' && numField('Ecken', o.cornerRadius || 0, v => setOnce({ cornerRadius: Math.max(0, v || 0) }), { min: 0, w: 50 })}
-      {(hasFill || hasStroke) && (
-        <ToolBtn onClick={() => setOnce(o.shadowBlur ? { shadowBlur: 0 } : { shadowBlur: 12, shadowColor: 'rgba(0,0,0,0.35)', shadowOffsetX: 0, shadowOffsetY: 4 })} active={!!o.shadowBlur} title={o.shadowBlur ? 'Schatten aus' : 'Schatten an'}>
-            <Sliders size={14} strokeWidth={1.9} />
-        </ToolBtn>
+      {!isText && (hasStroke || isRect || hasFill) && (hasStroke || isRect) && (
+        <BarMenu title="Stil" width={210} trigger={<Sliders size={15} strokeWidth={2} />}>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 10, padding: '4px 6px' }}>
+            {hasStroke && (
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10 }}>
+                <span style={{ fontSize: 12.5, color: 'var(--text-primary)' }}>Randfarbe</span>
+                <ColorPopover value={o.stroke || '#ffffff'} brandColors={brandColors} title="Randfarbe" onStart={startEdit} onChange={(hex) => liveEdit({ stroke: hex })} onEnd={endInteraction} size={28} />
+              </div>
+            )}
+            {hasStroke && numField('Randstärke', o.strokeWidth || 0, v => setOnce({ strokeWidth: Math.max(0, v || 0) }), { min: 0, w: 70 })}
+            {isRect && numField('Ecken', o.cornerRadius || 0, v => setOnce({ cornerRadius: Math.max(0, v || 0) }), { min: 0, w: 70 })}
+            <button type="button" onClick={() => setOnce(o.shadowBlur ? { shadowBlur: 0 } : { shadowBlur: 12, shadowColor: 'rgba(0,0,0,0.35)', shadowOffsetX: 0, shadowOffsetY: 4 })}
+              style={{ display: 'flex', alignItems: 'center', gap: 9, width: '100%', textAlign: 'left', padding: '8px 6px', borderRadius: 7, border: 'none', background: o.shadowBlur ? 'rgba(49,90,231,0.08)' : 'transparent', cursor: 'pointer', fontSize: 13, color: o.shadowBlur ? P : 'var(--text-primary)', fontFamily: 'inherit' }}>
+              <Sliders size={15} strokeWidth={1.9} />Schatten {o.shadowBlur ? 'an' : 'aus'}
+            </button>
+          </div>
+        </BarMenu>
       )}
 
-      {/* ── Text-Feinheiten ── */}
-      {isText && (
-        <>
-          {numField('Zeilenh.', o.lineHeight || 1.2, v => setOnce({ lineHeight: v || 1.2 }), { step: 0.05, min: 0.5, w: 52 })}
-          {numField('Laufw.', o.letterSpacing || 0, v => setOnce({ letterSpacing: v || 0 }), { step: 0.5, w: 50 })}
-        </>
+      {/* ── BILD: Zuschneiden ── */}
+      {isImage && onCrop && (
+        <ToolBtn onClick={onCrop} title="Zuschneiden"><Crop size={15} strokeWidth={1.9} /></ToolBtn>
       )}
 
       <Divider />
 
-      {/* ── Position / Größe / Drehung ── */}
-      {numField('X', o.x, v => setOnce({ x: v || 0 }))}
-      {numField('Y', o.y, v => setOnce({ y: v || 0 }))}
-      {hasWH && numField('B', o.width, v => setOnce({ width: Math.max(1, v || 1) }), { min: 1 })}
-      {hasWH && numField('H', o.height, v => setOnce({ height: Math.max(1, v || 1) }), { min: 1 })}
-      {isEllipse && numField('rX', o.radiusX, v => setOnce({ radiusX: Math.max(1, v || 1) }), { min: 1 })}
-      {isEllipse && numField('rY', o.radiusY, v => setOnce({ radiusY: Math.max(1, v || 1) }), { min: 1 })}
-      {numField('Drehung°', o.rotation, v => setOnce({ rotation: v || 0 }), { w: 60 })}
+      {/* ── Spiegeln (nur Nicht-Text) ── */}
+      {!isText && onFlip && (
+        <BarMenu title="Spiegeln" width={200} trigger={<FlipHorizontal size={16} strokeWidth={1.8} />}>
+          <BarMenuItem icon={<FlipHorizontal size={16} strokeWidth={1.8} />} label="Horizontal spiegeln" onClick={() => onFlip('x')} />
+          <BarMenuItem icon={<FlipVertical size={16} strokeWidth={1.8} />} label="Vertikal spiegeln" onClick={() => onFlip('y')} />
+        </BarMenu>
+      )}
 
-      {/* ── Deckkraft ── */}
-      <label style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: 11, color: 'var(--text-muted)' }} title="Deckkraft">
-        Deckkraft
-        <input type="range" min={0} max={100} step={1} value={opacityPct}
-          onMouseDown={startEdit} onChange={e => liveEdit({ opacity: (parseInt(e.target.value, 10) || 0) / 100 })} onMouseUp={endInteraction} style={{ width: 80, accentColor: P }} />
-        <span style={{ width: 30, textAlign: 'right' }}>{opacityPct}%</span>
-      </label>
+      {/* ── Deckkraft (Icon-Dropdown) ── */}
+      <BarMenu title="Deckkraft" width={200} trigger={<TransparencyIcon size={15} />}>
+        <div onClick={e => e.stopPropagation()} style={{ padding: '6px 8px' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 11.5, color: 'var(--text-muted)', marginBottom: 8 }}><span>Deckkraft</span><span>{opacityPct}%</span></div>
+          <input type="range" min={0} max={100} step={1} value={opacityPct}
+            onMouseDown={startEdit} onChange={e => liveEdit({ opacity: (parseInt(e.target.value, 10) || 0) / 100 })} onMouseUp={endInteraction}
+            style={{ width: '100%', accentColor: P }} />
+        </div>
+      </BarMenu>
 
-      <Divider />
-
-      {/* ── Ausrichten / Verteilen ── */}
-      <ToolBtn onClick={() => alignObjects('left')} title="Links ausrichten"><AlignStartVertical size={14} strokeWidth={1.9} /></ToolBtn>
-      <ToolBtn onClick={() => alignObjects('hcenter')} title="Horizontal zentrieren"><AlignCenterVertical size={14} strokeWidth={1.9} /></ToolBtn>
-      <ToolBtn onClick={() => alignObjects('right')} title="Rechts ausrichten"><AlignEndVertical size={14} strokeWidth={1.9} /></ToolBtn>
-      <ToolBtn onClick={() => alignObjects('top')} title="Oben ausrichten"><AlignStartHorizontal size={14} strokeWidth={1.9} /></ToolBtn>
-      <ToolBtn onClick={() => alignObjects('vcenter')} title="Vertikal zentrieren"><AlignCenterHorizontal size={14} strokeWidth={1.9} /></ToolBtn>
-      <ToolBtn onClick={() => alignObjects('bottom')} title="Unten ausrichten"><AlignEndHorizontal size={14} strokeWidth={1.9} /></ToolBtn>
-      {selCount >= 3 && <ToolBtn onClick={() => distributeObjects('h')} title="Horizontal verteilen"><AlignHorizontalDistributeCenter size={14} strokeWidth={1.9} /></ToolBtn>}
-      {selCount >= 3 && <ToolBtn onClick={() => distributeObjects('v')} title="Vertikal verteilen"><AlignVerticalDistributeCenter size={14} strokeWidth={1.9} /></ToolBtn>}
-
-      <Divider />
-
-      {/* ── Ebene / Duplizieren / Löschen ── */}
-      <ToolBtn onClick={() => reorder('top')} title="Nach ganz vorne"><BringToFront size={14} strokeWidth={1.9} /></ToolBtn>
-      <ToolBtn onClick={() => reorder('up')} title="Eine Ebene nach vorne"><ChevronUp size={14} strokeWidth={2} /></ToolBtn>
-      <ToolBtn onClick={() => reorder('down')} title="Eine Ebene nach hinten"><ChevronDown size={14} strokeWidth={2} /></ToolBtn>
-      <ToolBtn onClick={() => reorder('bottom')} title="Nach ganz hinten"><SendToBack size={14} strokeWidth={1.9} /></ToolBtn>
-      {onFlip && <Divider />}
-      {onFlip && <ToolBtn onClick={() => onFlip('x')} title="Horizontal spiegeln"><FlipHorizontal2 size={14} strokeWidth={1.9} /></ToolBtn>}
-      {onFlip && <ToolBtn onClick={() => onFlip('y')} title="Vertikal spiegeln"><FlipVertical2 size={14} strokeWidth={1.9} /></ToolBtn>}
-      <div style={{ flex: 1 }} />
+      <div style={{ flex: 1, minWidth: 8 }} />
       <ToolBtn onClick={duplicateSelected} title="Duplizieren (Strg+D)"><Copy size={14} strokeWidth={1.9} /></ToolBtn>
       <ToolBtn onClick={deleteSelected} title="Löschen (Entf)"><Trash2 size={14} strokeWidth={1.9} /></ToolBtn>
     </div>
@@ -4106,7 +4221,7 @@ function ColorSwatch({ c, current, onPick }) {
         boxShadow: on ? '0 0 0 2px var(--surface,#fff), 0 0 0 4px ' + P : 'none', outline: 'none' }} />
   )
 }
-function ColorPopover({ value, onChange, onStart, onEnd, brandColors = [], title = 'Farbe', size = 30 }) {
+function ColorPopover({ value, onChange, onStart, onEnd, brandColors = [], title = 'Farbe', size = 30, triggerContent = null, triggerStyle = null, round = false }) {
   const [open, setOpen] = React.useState(false)
   const [openUp, setOpenUp] = React.useState(true)
   const ref = React.useRef(null)
@@ -4127,8 +4242,14 @@ function ColorPopover({ value, onChange, onStart, onEnd, brandColors = [], title
   const swLabel = { fontSize: 10.5, fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em', margin: '8px 2px 7px' }
   return (
     <div ref={ref} style={{ position: 'relative', display: 'inline-flex' }}>
-      <button ref={btnRef} type="button" title={title} onClick={toggle}
-        style={{ width: size, height: size, borderRadius: 8, border: '1px solid var(--border,#E9ECF2)', background: cur, cursor: 'pointer', padding: 0, boxShadow: 'inset 0 0 0 2px var(--surface,#fff)' }} />
+      {triggerContent ? (
+        <button ref={btnRef} type="button" title={title} onClick={toggle} style={triggerStyle || { height: 32, padding: '0 6px', borderRadius: 8, border: '1px solid var(--border,#E9ECF2)', background: 'var(--surface,#fff)', cursor: 'pointer' }}>
+          {triggerContent}
+        </button>
+      ) : (
+        <button ref={btnRef} type="button" title={title} onClick={toggle}
+          style={{ width: size, height: size, borderRadius: round ? '50%' : 8, border: '1px solid var(--border,#E9ECF2)', background: cur, cursor: 'pointer', padding: 0, boxShadow: 'inset 0 0 0 2px var(--surface,#fff)' }} />
+      )}
       {open && (
         <div style={{ position: 'absolute', zIndex: 130, ...(openUp ? { bottom: 'calc(100% + 8px)' } : { top: 'calc(100% + 8px)' }), left: 0, width: 214, background: 'var(--surface,#fff)', border: '1px solid var(--border,#E9ECF2)', borderRadius: 12, boxShadow: '0 16px 44px rgba(16,24,40,0.20)', padding: 12 }}>
           {brandColors.length > 0 && (
@@ -4174,7 +4295,7 @@ const RAIL_TOOLS = [
 
 function ToolRail({ active, onSelect }) {
   return (
-    <div style={{ width: 76, flexShrink: 0, borderRight: '1px solid var(--border)', background: 'var(--surface,#fff)',
+    <div data-tool-ui style={{ width: 76, flexShrink: 0, borderRight: '1px solid var(--border)', background: 'var(--surface,#fff)',
       display: 'flex', flexDirection: 'column', alignItems: 'stretch', gap: 3, padding: '10px 8px', overflowY: 'auto' }}>
       {RAIL_TOOLS.map(t => {
         if (t.divider) {
@@ -4458,7 +4579,7 @@ function ToolPanel(props) {
         border: '1px solid var(--border)', background: 'var(--surface,#fff)', display: 'flex', flexDirection: 'column',
         overflow: 'hidden', boxShadow: '0 12px 40px rgba(16,24,40,0.18)' }
   return (
-    <div style={frame}>
+    <div data-tool-ui style={frame}>
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '9px 12px', borderBottom: '1px solid var(--border)', flexShrink: 0 }}>
         <span style={{ fontSize: 12.5, fontWeight: 700, color: 'var(--text-primary)' }}>{titleMap[tool] || ''}</span>
         <button onClick={onClose} title="Schließen" style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-muted)', display: 'flex' }}><X size={16} /></button>
