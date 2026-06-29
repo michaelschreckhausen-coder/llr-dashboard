@@ -105,17 +105,10 @@ function AnfrageModal({ lead, onClose, onSaved, session }) {
   // Manuell senden (nur Status setzen)
   async function save() {
     setSave(true)
-    await supabase.from('leads').update({
+    await supabase.from('linkedin_inbox').update({
       li_connection_status: 'pending',
       li_connection_requested_at: new Date().toISOString(),
     }).eq('id', lead.id)
-    await supabase.from('activities').insert({
-      lead_id: lead.id, team_id: lead.team_id || null,
-      user_id: session.user.id,
-      type: 'linkedin_connection', direction: 'outbound',
-      subject: 'Vernetzungsanfrage gesendet', body: msg,
-      occurred_at: new Date().toISOString(),
-    }).select()
     onSaved(lead.id, 'pending')
     setSave(false); setSent(true)
     setTimeout(onClose, 1200)
@@ -132,15 +125,16 @@ function AnfrageModal({ lead, onClose, onSaved, session }) {
     const { error } = await supabase.from('connection_queue').insert({
       brand_voice_id: activeBrandVoice?.id || null,
       user_id: session.user.id,
-      lead_id: lead.id,
+      inbox_id: lead.id,
       linkedin_url: liUrl,
       message: msg || null,
       status: 'pending',
     })
     if (!error) {
-      // Status auf pending setzen
-      await supabase.from('leads').update({
+      // Status auf pending setzen (am Inbox-Prospect)
+      await supabase.from('linkedin_inbox').update({
         li_connection_status: 'pending',
+        li_connection_requested_at: new Date().toISOString(),
       }).eq('id', lead.id)
       onSaved(lead.id, 'pending')
       setSave(false); setSent(true)
@@ -191,7 +185,7 @@ function StatusModal({ lead, onClose, onSaved }) {
     if (status === 'verbunden' && lead.li_connection_status !== 'verbunden') {
       updates.li_connected_at = new Date().toISOString()
     }
-    await supabase.from('leads').update(updates).eq('id', lead.id)
+    await supabase.from('linkedin_inbox').update(updates).eq('id', lead.id)
     onSaved(lead.id, status, reply)
     setSaving(false)
     onClose()
@@ -256,12 +250,15 @@ export default function Vernetzungen({ session }) {
   const load = useCallback(async () => {
     // Hardening 2026-06-11: STRICT team_id-Filter (kein user_id-Fallback mehr)
     if (!activeTeamId) { setLeads([]); setLoading(false); return }
+    // Increment 3: Outreach arbeitet auf LinkedIn-Inbox-Prospects (noch keine
+    // CRM-Leads), nicht auf leads. Nur offene Einträge (review_status='new').
     const { data } = await supabase
-      .from('leads')
-      .select('id,first_name,last_name,name,job_title,headline,company,avatar_url,profile_url,linkedin_url,email,li_connection_status,li_connection_requested_at,li_connected_at,li_reply_behavior,li_last_interaction_at,li_message_summary,li_about_summary,ai_need_detected,ai_buying_intent,hs_score,deal_stage,deal_value,lifecycle_stage,notes,created_at,is_shared,team_id,user_id')
+      .from('linkedin_inbox')
+      .select('id,first_name,last_name,name,job_title,headline,company,avatar_url,linkedin_url,li_connection_status,li_connection_requested_at,li_connected_at,li_last_interaction_at,li_about_summary,team_id,user_id,imported_at')
       .eq('team_id', activeTeamId)
+      .eq('review_status', 'new')
       .order('li_connected_at', { ascending:false, nullsFirst:false })
-    const leads = data || []
+    const leads = (data || []).map(r => ({ ...r, created_at: r.imported_at }))
     setLeads(leads)
     setLoading(false)
     // Lade letzte Aktivität für alle Leads auf einmal (batch)
@@ -278,7 +275,7 @@ export default function Vernetzungen({ session }) {
         setActivities(prev => ({ ...prev, ...map }))
       }
     }
-  }, [])
+  }, [activeTeamId])
 
   async function loadActivities(leadId) {
     if (activities[leadId]) return
@@ -431,19 +428,18 @@ export default function Vernetzungen({ session }) {
             if (!toQueue.length) { alert('Keine Kontakte zum Hinzufügen'); return }
             if (!window.confirm(`${toQueue.length} Kontakte automatisch vernetzen?`)) return
             const uid = session.user.id
-            const jobs = toQueue.map(l => ({ user_id:uid, brand_voice_id: activeBrandVoice?.id || null, lead_id:l.id, linkedin_url:(l.linkedin_url||l.profile_url).split('?')[0].replace(/\/$/,''), status:'pending' }))
+            const jobs = toQueue.map(l => ({ user_id:uid, brand_voice_id: activeBrandVoice?.id || null, inbox_id:l.id, linkedin_url:(l.linkedin_url||l.profile_url).split('?')[0].replace(/\/$/,''), status:'pending' }))
             const { error } = await supabase.from('connection_queue').insert(jobs)
-            if (!error) { await Promise.all(toQueue.map(l => supabase.from('leads').update({ li_connection_status:'pending' }).eq('id', l.id))); alert(`${jobs.length} Kontakte in Queue gestellt.`) }
+            if (!error) { await Promise.all(toQueue.map(l => supabase.from('linkedin_inbox').update({ li_connection_status:'pending', li_connection_requested_at:new Date().toISOString() }).eq('id', l.id))); alert(`${jobs.length} Kontakte in Queue gestellt.`) }
             else alert('Fehler: '+error.message)
           }} style={{ padding:'8px 16px', borderRadius:10, border:'none', background:'var(--wl-primary, rgb(49,90,231))', color:'#fff', fontSize:13, fontWeight:700, cursor:'pointer', display:'flex', alignItems:'center', gap:6 }}>
             <span style={{display:'inline-flex',alignItems:'center',gap:6}}><Bot size={14}/>Auto-Vernetzen</span> <span style={{ background:'rgba(255,255,255,0.25)', borderRadius:99, padding:'1px 7px', fontSize:11 }}>{filtered.filter(l => l.li_connection_status !== 'verbunden' && l.li_connection_status !== 'pending').length}</span>
           </button>
           <button onClick={async () => {
-            if (!window.confirm(`Für ${filtered.length} Kontakte eine LinkedIn-Aktivität loggen?`)) return
-            const uid = session.user.id
-            const rows = filtered.map(l => ({ lead_id:l.id, user_id:uid, type:'linkedin_message', subject:'LinkedIn-Kontakt', direction:'outbound', occurred_at:new Date().toISOString() }))
-            await supabase.from('activities').insert(rows)
-            alert(`${rows.length} Aktivitäten geloggt`)
+            if (!window.confirm(`Für ${filtered.length} Kontakte einen LinkedIn-Touch markieren?`)) return
+            const now = new Date().toISOString()
+            await Promise.all(filtered.map(l => supabase.from('linkedin_inbox').update({ li_last_interaction_at: now }).eq('id', l.id)))
+            alert(`${filtered.length} Kontakte markiert`)
           }} style={{ padding:'8px 14px', borderRadius:10, border:'1.5px solid rgba(10,102,194,0.3)', background:'rgba(10,102,194,0.07)', fontSize:12, fontWeight:700, color:'#0A66C2', cursor:'pointer', display:'flex', alignItems:'center', gap:5 }}>
             <span style={{display:'inline-flex',alignItems:'center',gap:6}}><MessageSquare size={14}/>Batch</span> <span style={{ background:'rgba(10,102,194,0.15)', borderRadius:99, padding:'1px 6px', fontSize:11 }}>{filtered.length}</span>
           </button>
