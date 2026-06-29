@@ -3990,7 +3990,7 @@ function ContextBar({
   )
 
   return (
-    <div style={{ ...barStyle, flexWrap: 'nowrap', gap: 7, overflowX: 'auto' }}>
+    <div style={{ ...barStyle, flexWrap: 'nowrap', gap: 7 }}>
       {/* ── Text ── */}
       {isText && (
         <>
