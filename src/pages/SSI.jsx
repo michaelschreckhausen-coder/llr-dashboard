@@ -56,30 +56,52 @@ function SubScoreCard({ label, value, max=25, color, icon }) {
   )
 }
 
-// ─── Reports-Stil Verlaufschart (cleane Karte + Balken, analog Reports) ───────
+// ─── Reports-Stil Verlaufschart (Linien-Graph, cleane Karte) ─────────────────
 function SsiTrend({ entries }) {
   const primary = 'var(--wl-primary, rgb(49,90,231))'
-  // entries: neuste zuerst → chronologisch, letzte 16
-  const data = entries.slice(0, 16).reverse().map(e => ({
+  // entries: neuste zuerst → chronologisch, letzte 24
+  const data = entries.slice(0, 24).reverse().map(e => ({
     score: Math.round(e.total_score),
     label: new Date(e.recorded_at).toLocaleDateString('de-DE', { day:'2-digit', month:'2-digit' }),
   }))
   if (data.length < 2) return null
-  const max = Math.max(...data.map(d => d.score), 1)
+  const W = 800, H = 180, padL = 30, padR = 14, padT = 12, padB = 8
+  const scores = data.map(d => d.score)
+  const hi = Math.min(100, Math.ceil((Math.max(...scores) + 4) / 5) * 5)
+  const lo = Math.max(0, Math.floor((Math.min(...scores) - 4) / 5) * 5)
+  const span = Math.max(1, hi - lo)
+  const x = i => padL + (i / (data.length - 1)) * (W - padL - padR)
+  const y = v => padT + (1 - (v - lo) / span) * (H - padT - padB)
+  const pts = data.map((d, i) => `${x(i).toFixed(1)},${y(d.score).toFixed(1)}`)
+  const linePath = 'M' + pts.join(' L')
+  const areaPath = `M${x(0).toFixed(1)},${(H - padB).toFixed(1)} L${pts.join(' L')} L${x(data.length - 1).toFixed(1)},${(H - padB).toFixed(1)} Z`
+  const grid = [hi, Math.round((hi + lo) / 2), lo]
   return (
-    <div style={{ background:'var(--surface)', border:'1px solid var(--border)', borderRadius:18, padding:'18px 20px', marginBottom:16, boxShadow:'0 2px 12px rgba(0,0,0,0.04)' }}>
-      <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:16 }}>
+    <div style={{ background:'var(--surface)', border:'1px solid var(--border)', borderRadius:14, padding:18, marginBottom:16 }}>
+      <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:14 }}>
         <h3 style={{ fontSize:14, fontWeight:700, color:'rgb(20,20,43)', margin:0 }}>SSI-Verlauf</h3>
         <span style={{ fontSize:11, color:'#9CA3AF' }}>letzte {data.length} Messungen · Gesamt-Score</span>
       </div>
-      <div style={{ display:'flex', alignItems:'flex-end', gap:6, height:160 }}>
-        {data.map((d, i) => (
-          <div key={i} title={`${d.label}: ${d.score}`} style={{ flex:1, minWidth:0, height:'100%', display:'flex', flexDirection:'column', alignItems:'center', justifyContent:'flex-end' }}>
-            <div style={{ fontSize:10, fontWeight:700, color:'#6B7280', marginBottom:3 }}>{d.score}</div>
-            <div style={{ width:'100%', maxWidth:26, height:`${Math.max(4, (d.score / max) * 70)}%`, background:primary, opacity:0.85, borderRadius:'4px 4px 0 0', transition:'height 0.6s ease' }}/>
-            <div style={{ fontSize:9, color:'#9CA3AF', marginTop:6, whiteSpace:'nowrap' }}>{d.label}</div>
-          </div>
+      <svg width="100%" height="180" viewBox={`0 0 ${W} ${H}`} preserveAspectRatio="none" style={{ display:'block' }}>
+        <defs>
+          <linearGradient id="ssiArea" x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0%" stopColor={primary} stopOpacity="0.16"/>
+            <stop offset="100%" stopColor={primary} stopOpacity="0"/>
+          </linearGradient>
+        </defs>
+        {grid.map((g, i) => (
+          <g key={i}>
+            <line x1={padL} y1={y(g)} x2={W - padR} y2={y(g)} stroke="#F3F4F6" strokeWidth="1" vectorEffect="non-scaling-stroke"/>
+            <text x={padL - 6} y={y(g) + 3} fontSize="9" textAnchor="end" fill="#9CA3AF">{g}</text>
+          </g>
         ))}
+        <path d={areaPath} fill="url(#ssiArea)"/>
+        <path d={linePath} fill="none" stroke={primary} strokeWidth="2.5" strokeLinejoin="round" strokeLinecap="round" vectorEffect="non-scaling-stroke"/>
+      </svg>
+      <div style={{ display:'flex', justifyContent:'space-between', marginTop:6, paddingLeft:22, fontSize:9, color:'#9CA3AF' }}>
+        <span>{data[0].label}</span>
+        {data.length > 2 && <span>{data[Math.floor((data.length - 1) / 2)].label}</span>}
+        <span>{data[data.length - 1].label}</span>
       </div>
     </div>
   )
@@ -236,78 +258,60 @@ export default function SSI({ session }) {
         </div>
       ) : (
         <div>
-          {/* Hero: Big Donut like Waalaxy */}
+          {/* Hero — Reports-Karten-Layout (clean, kein Gradient) */}
           <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:16, marginBottom:16 }}>
 
-            {/* Left: LinkedIn-style gradient card with Donut */}
-            <div style={{ background:'linear-gradient(135deg, rgb(49,90,231) 0%, rgb(119,161,243) 100%)', borderRadius:20, padding:'24px 28px', color:'white', position:'relative', overflow:'hidden' }}>
-              <div style={{ position:'absolute', top:-40, right:-40, width:180, height:180, borderRadius:'50%', background:'rgba(255,255,255,0.08)' }}/>
-              <div style={{ position:'absolute', bottom:-60, left:-20, width:160, height:160, borderRadius:'50%', background:'rgba(255,255,255,0.05)' }}/>
-              <div style={{ position:'relative', zIndex:1, display:'flex', alignItems:'flex-start', justifyContent:'space-between' }}>
-                <div>
-                  <div style={{ fontSize:12, fontWeight:700, color:'rgba(255,255,255,0.75)', textTransform:'uppercase', letterSpacing:'0.08em', marginBottom:12 }}>Aktueller SSI</div>
-                  <div style={{ display:'flex', alignItems:'center', gap:12 }}>
-                    <div style={{ fontSize:68, fontWeight:900, letterSpacing:'-0.04em', lineHeight:1 }}>{score}</div>
+            {/* Aktueller SSI — cleaner Donut + Score + Trend + Ranking */}
+            <div style={{ background:'var(--surface)', border:'1px solid var(--border)', borderRadius:14, padding:18 }}>
+              <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:14 }}>
+                <h3 style={{ fontSize:14, fontWeight:700, color:'rgb(20,20,43)', margin:0 }}>Aktueller SSI</h3>
+                <span style={{ fontSize:11, color:'#9CA3AF' }}>{new Date(latest.recorded_at).toLocaleDateString('de-DE',{day:'2-digit',month:'short',year:'numeric'})}</span>
+              </div>
+              <div style={{ display:'flex', alignItems:'center', gap:22 }}>
+                <div style={{ position:'relative', flexShrink:0, width:120, height:120 }}>
+                  <DonutChart value={score} max={100} size={120} stroke={12} color="var(--wl-primary, rgb(49,90,231))" bg="#F3F4F6"/>
+                  <div style={{ position:'absolute', inset:0, display:'flex', alignItems:'center', justifyContent:'center', flexDirection:'column' }}>
+                    <span style={{ fontSize:28, fontWeight:800, color:'rgb(20,20,43)', lineHeight:1 }}>{score}</span>
+                    <span style={{ fontSize:10, color:'#9CA3AF' }}>/ 100</span>
+                  </div>
+                </div>
+                <div style={{ flex:1, minWidth:0 }}>
+                  <div style={{ display:'flex', alignItems:'baseline', gap:8 }}>
+                    <span style={{ fontSize:13, color:'#6B7280' }}>Gesamt-Score</span>
                     {trend !== null && trend !== 0 && (
-                      <div style={{ display:'flex', flexDirection:'column', alignItems:'center' }}>
-                        <span style={{ fontSize:22, fontWeight:900, color:trend>0?'#4ade80':'#f87171' }}>{trend>0?'↑':'↓'}</span>
-                        <span style={{ fontSize:13, fontWeight:700, color:trend>0?'#4ade80':'#f87171' }}>{trend>0?'+':''}{trend}</span>
-                      </div>
+                      <span style={{ fontSize:13, fontWeight:700, color:trend>0?'#059669':'#DC2626' }}>{trend>0?'↑ +':'↓ '}{trend}</span>
                     )}
                   </div>
-                  <div style={{ fontSize:14, color:'rgba(255,255,255,0.7)', marginTop:6 }}>von 100 Punkten</div>
-                  {latest.industry_rank && <div style={{ marginTop:14, display:'flex', gap:16 }}>
-                    <div><div style={{ fontSize:18, fontWeight:800 }}>Top {latest.industry_rank}%</div><div style={{ fontSize:11, color:'rgba(255,255,255,0.65)' }}>Branche</div></div>
-                    {latest.network_rank && <div><div style={{ fontSize:18, fontWeight:800 }}>Top {latest.network_rank}%</div><div style={{ fontSize:11, color:'rgba(255,255,255,0.65)' }}>Netzwerk</div></div>}
-                  </div>}
-                </div>
-                <div style={{ position:'relative', flexShrink:0 }}>
-                  <DonutChart value={score} max={100} size={160} stroke={18} color="white" bg="rgba(255,255,255,0.2)"/>
-                  <div style={{ position:'absolute', inset:0, display:'flex', alignItems:'center', justifyContent:'center', flexDirection:'column' }}>
-                    <span style={{ fontSize:22, fontWeight:900, color:'white', lineHeight:1 }}>{score}%</span>
-                  </div>
-                </div>
-              </div>
-              <div style={{ position:'relative', zIndex:1, marginTop:16, fontSize:11, color:'rgba(255,255,255,0.6)' }}>
-                Letzte Messung: {new Date(latest.recorded_at).toLocaleDateString('de-DE',{day:'2-digit',month:'long',year:'numeric'})}
-              </div>
-            </div>
-
-            {/* Right: Purple SSI Rankings card */}
-            <div style={{ background:'linear-gradient(135deg, #7C3CAE 0%, #B07AE0 100%)', borderRadius:20, padding:'24px 28px', color:'white', position:'relative', overflow:'hidden', display:'flex', flexDirection:'column', justifyContent:'space-between' }}>
-              <div style={{ position:'absolute', top:-30, right:-30, width:140, height:140, borderRadius:'50%', background:'rgba(255,255,255,0.08)' }}/>
-              <div style={{ position:'relative', zIndex:1 }}>
-                <div style={{ fontSize:12, fontWeight:700, color:'rgba(255,255,255,0.75)', textTransform:'uppercase', letterSpacing:'0.08em', marginBottom:16 }}>Teilscores</div>
-                <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:12 }}>
-                  {SUBSCORES.map(s => (
-                    <div key={s.key} style={{ background:'rgba(255,255,255,0.12)', borderRadius:12, padding:'10px 12px' }}>
-                      <div style={{ fontSize:11, color:'rgba(255,255,255,0.7)', marginBottom:4, lineHeight:1.3 }}>{s.label}</div>
-                      <div style={{ fontSize:22, fontWeight:800, lineHeight:1 }}>{Number(latest[s.key]||0).toFixed(1)}</div>
-                      <div style={{ fontSize:10, color:'rgba(255,255,255,0.5)' }}>/ 25</div>
-                      <div style={{ marginTop:6, height:3, background:'rgba(255,255,255,0.2)', borderRadius:999 }}>
-                        <div style={{ height:'100%', width:((latest[s.key]||0)/25*100)+'%', background:'rgba(255,255,255,0.8)', borderRadius:999, transition:'width 0.8s' }}/>
-                      </div>
+                  {(latest.industry_rank || latest.network_rank) && (
+                    <div style={{ marginTop:14, display:'flex', gap:24 }}>
+                      {latest.industry_rank && <div><div style={{ fontSize:18, fontWeight:800, color:'rgb(20,20,43)' }}>Top {latest.industry_rank}%</div><div style={{ fontSize:11, color:'#9CA3AF' }}>Branche</div></div>}
+                      {latest.network_rank && <div><div style={{ fontSize:18, fontWeight:800, color:'rgb(20,20,43)' }}>Top {latest.network_rank}%</div><div style={{ fontSize:11, color:'#9CA3AF' }}>Netzwerk</div></div>}
                     </div>
-                  ))}
+                  )}
+                  <div style={{ marginTop:14, fontSize:11, color:'#9CA3AF' }}>{entries.length} Messungen erfasst</div>
                 </div>
               </div>
-              <div style={{ position:'relative', zIndex:1, marginTop:14, display:'flex', gap:8 }}>
-                {entries.length >= 2 && (() => {
-                  const prev = entries[1]
-                  const diff = (latest.total_score - prev.total_score).toFixed(1)
-                  const up = diff >= 0
-                  return <div style={{ background:'rgba(255,255,255,0.15)', borderRadius:10, padding:'8px 12px', fontSize:13, fontWeight:700 }}>{up?'+':''}{diff} vs. Vorwert</div>
-                })()}
-                <div style={{ background:'rgba(255,255,255,0.15)', borderRadius:10, padding:'8px 12px', fontSize:13, fontWeight:700 }}>{entries.length} Messungen</div>
-              </div>
             </div>
-          </div>
 
-          {/* Sub Score Cards */}
-          <div style={{ display:'grid', gridTemplateColumns:'repeat(4,1fr)', gap:12, marginBottom:16 }}>
-            {SUBSCORES.map(s => (
-              <SubScoreCard key={s.key} label={s.label} value={Number(latest[s.key]||0)} color={s.color}/>
-            ))}
+            {/* Teilscores — Reports-BarRows */}
+            <div style={{ background:'var(--surface)', border:'1px solid var(--border)', borderRadius:14, padding:18 }}>
+              <h3 style={{ fontSize:14, fontWeight:700, color:'rgb(20,20,43)', margin:'0 0 14px' }}>Teilscores</h3>
+              {SUBSCORES.map(s => {
+                const v = Number(latest[s.key] || 0)
+                const pct = Math.min(100, v / 25 * 100)
+                return (
+                  <div key={s.key} style={{ marginBottom:12 }}>
+                    <div style={{ display:'flex', justifyContent:'space-between', alignItems:'baseline', marginBottom:5 }}>
+                      <span style={{ fontSize:13, color:'#374151', fontWeight:500 }}>{s.label}</span>
+                      <span style={{ fontSize:12, color:'#6B7280' }}><strong style={{ color:'rgb(20,20,43)' }}>{v.toFixed(1)}</strong> / 25</span>
+                    </div>
+                    <div style={{ height:6, background:'#F3F4F6', borderRadius:3, overflow:'hidden' }}>
+                      <div style={{ width:pct+'%', height:'100%', background:s.color, transition:'width 0.5s' }}/>
+                    </div>
+                  </div>
+                )
+              })}
+            </div>
           </div>
 
           {/* Verlaufs-Chart (Reports-Stil) */}
