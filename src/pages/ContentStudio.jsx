@@ -169,10 +169,11 @@ export default function ContentStudio({ session }) {
   const [pendingDocText, setPendingDocText] = useState(null)
   const editorOpenRef = useRef(editorOpen)
   useEffect(() => { editorOpenRef.current = editorOpen }, [editorOpen])
-  // Eingeklappt: das 24px-rechts-Padding der App-Shell (MAIN) entfernen, damit
-  // die ausziehbare Splitscreen-Karte bündig am echten Bildschirmrand sitzt.
+  const csRootRef = useRef(null)
+  // Eingeklappt: das 24px-rechts-Padding der umgebenden App-Shell (MAIN) entfernen,
+  // damit die ausziehbare Splitscreen-Karte bündig am echten Bildschirmrand sitzt.
   useEffect(() => {
-    const main = document.querySelector('main')
+    const main = csRootRef.current?.closest('main')
     if (!main) return
     const prev = main.style.paddingRight
     if (!editorOpen) main.style.paddingRight = '0px'
@@ -920,7 +921,7 @@ export default function ContentStudio({ session }) {
 
   // ─── Render ───────────────────────────────────────────────────────────────
   return (
-    <div style={{ display:'flex', position:'relative', height:'100%', minHeight:0, overflow:'hidden', background:'var(--page-bg, #F7F8FA)' }}>
+    <div ref={csRootRef} style={{ display:'flex', position:'relative', height:'100%', minHeight:0, overflow:'hidden', background:'var(--page-bg, #F7F8FA)' }}>
       {/* Sidebar */}
       {sidebarOpen && (
         <aside style={{ width:264, borderRight:'1px solid var(--border,#E9ECF2)', background:'var(--page-bg, #F7F8FA)', display:'flex', flexDirection:'column', flexShrink:0 }}>
