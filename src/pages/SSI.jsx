@@ -56,6 +56,35 @@ function SubScoreCard({ label, value, max=25, color, icon }) {
   )
 }
 
+// ─── Reports-Stil Verlaufschart (cleane Karte + Balken, analog Reports) ───────
+function SsiTrend({ entries }) {
+  const primary = 'var(--wl-primary, rgb(49,90,231))'
+  // entries: neuste zuerst → chronologisch, letzte 16
+  const data = entries.slice(0, 16).reverse().map(e => ({
+    score: Math.round(e.total_score),
+    label: new Date(e.recorded_at).toLocaleDateString('de-DE', { day:'2-digit', month:'2-digit' }),
+  }))
+  if (data.length < 2) return null
+  const max = Math.max(...data.map(d => d.score), 1)
+  return (
+    <div style={{ background:'var(--surface)', border:'1px solid var(--border)', borderRadius:18, padding:'18px 20px', marginBottom:16, boxShadow:'0 2px 12px rgba(0,0,0,0.04)' }}>
+      <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:16 }}>
+        <h3 style={{ fontSize:14, fontWeight:700, color:'rgb(20,20,43)', margin:0 }}>SSI-Verlauf</h3>
+        <span style={{ fontSize:11, color:'#9CA3AF' }}>letzte {data.length} Messungen · Gesamt-Score</span>
+      </div>
+      <div style={{ display:'flex', alignItems:'flex-end', gap:6, height:160 }}>
+        {data.map((d, i) => (
+          <div key={i} title={`${d.label}: ${d.score}`} style={{ flex:1, minWidth:0, height:'100%', display:'flex', flexDirection:'column', alignItems:'center', justifyContent:'flex-end' }}>
+            <div style={{ fontSize:10, fontWeight:700, color:'#6B7280', marginBottom:3 }}>{d.score}</div>
+            <div style={{ width:'100%', maxWidth:26, height:`${Math.max(4, (d.score / max) * 70)}%`, background:primary, opacity:0.85, borderRadius:'4px 4px 0 0', transition:'height 0.6s ease' }}/>
+            <div style={{ fontSize:9, color:'#9CA3AF', marginTop:6, whiteSpace:'nowrap' }}>{d.label}</div>
+          </div>
+        ))}
+      </div>
+    </div>
+  )
+}
+
 const SUBSCORES = [
   { key:'build_brand',         label:'Professionelle Marke', color:'#315AE7', icon:'B' },
   { key:'find_people',         label:'Personen finden',      color:'#10B981', icon:'P' },
@@ -280,6 +309,9 @@ export default function SSI({ session }) {
               <SubScoreCard key={s.key} label={s.label} value={Number(latest[s.key]||0)} color={s.color}/>
             ))}
           </div>
+
+          {/* Verlaufs-Chart (Reports-Stil) */}
+          <SsiTrend entries={entries} />
 
           {/* History Table */}
           {entries.length > 1 && (
