@@ -316,6 +316,7 @@ export default function Automatisierung({ session }) {
 
     showFlash(`Kampagne "${data.name}" erstellt ✓`)
     resetModal()
+    setStatusTab('draft')   // neue Kampagne ist 'draft' → auf den Entwurf-Tab wechseln, sonst scheint sie im Laufend-Tab "verschwunden"
     load()
   }
 
