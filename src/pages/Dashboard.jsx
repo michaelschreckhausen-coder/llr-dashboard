@@ -251,12 +251,12 @@ export default function Dashboard({ session }) {
       </div>
       <div>
 
-        {/* Leadly-Vorschläge — übernehmbare Aktionen in den 4 Bereichen */}
-        {suggestions.length > 0 && (
-          <div style={{ marginTop: space[5] }}>
-            <div style={{ fontSize: 12, fontWeight: 700, color: colors.inkMuted, textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: space[3] }}>
-              Leadly schlägt vor
-            </div>
+        {/* Leadly-Vorschläge — übernehmbare Aktionen, oder Hinweis wenn nichts ansteht */}
+        <div style={{ marginTop: space[5] }}>
+          <div style={{ fontSize: 12, fontWeight: 700, color: colors.inkMuted, textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: space[3] }}>
+            Leadly schlägt vor
+          </div>
+          {suggestions.length > 0 ? (
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: space[3] }}>
               {displayedSuggestions.map((s) => (
                 <div key={s.id} style={{ background: colors.white, border: `1px solid ${colors.border}`, borderRadius: radii.lg, padding: '14px 16px', display: 'flex', flexDirection: 'column', gap: 8 }}>
@@ -278,8 +278,25 @@ export default function Dashboard({ session }) {
                 </div>
               ))}
             </div>
-          </div>
-        )}
+          ) : (
+            <div style={{
+              background: colors.white, border: `1px solid ${colors.border}`,
+              borderRadius: radii.lg, padding: '20px 22px',
+              display: 'flex', flexDirection: 'column', gap: 8,
+            }}>
+              <div style={{ fontSize: 14, fontWeight: 600, color: colors.ink, display: 'flex', alignItems: 'center', gap: 8 }}>
+                <span aria-hidden="true">✨</span> Leadly hat gerade nichts vorzuschlagen
+              </div>
+              <div style={{ fontSize: 13, color: colors.inkMuted, lineHeight: 1.5, maxWidth: '60ch' }}>
+                Aktuell stehen keine offenen Follow-ups, heißen Kontakte, aktiven Deals oder überfälligen Aufgaben an. Sobald sich etwas ergibt, erscheinen hier konkrete Vorschläge.
+              </div>
+              <button onClick={() => askLeadly('Was kann ich heute im Vertrieb sinnvoll angehen?')}
+                style={{ alignSelf: 'flex-start', marginTop: 4, padding: '7px 14px', borderRadius: 8, border: `1px solid ${colors.border}`, background: colors.white, color: colors.inkMuted, fontSize: 12, fontWeight: 600, cursor: 'pointer' }}>
+                Leadly fragen
+              </button>
+            </div>
+          )}
+        </div>
       </div>
 
     </div>
