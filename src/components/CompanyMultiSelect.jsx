@@ -16,6 +16,7 @@ export default function CompanyMultiSelect({
   iconOnly = false,
 }) {
   const [open, setOpen] = useState(false)
+  const [hover, setHover] = useState(false)
   const ref = useRef(null)
   useEffect(() => {
     function onDoc(e) { if (ref.current && !ref.current.contains(e.target)) setOpen(false) }
@@ -37,7 +38,8 @@ export default function CompanyMultiSelect({
   return (
     <div ref={ref} style={{ position:'relative', display:'inline-block' }}>
       <button type="button" onClick={() => setOpen(o => !o)}
-        title={count ? `Unternehmen: ${btnLabel}` : 'Optional: Du schreibst in deiner Stimme als Ambassador für ein oder mehrere Unternehmen'}
+        onMouseEnter={() => setHover(true)} onMouseLeave={() => setHover(false)} onMouseDown={() => setHover(false)}
+        title={iconOnly ? undefined : (count ? `Unternehmen: ${btnLabel}` : 'Optional: Du schreibst in deiner Stimme als Ambassador für ein oder mehrere Unternehmen')}
         style={iconOnly ? {
           display:'inline-flex', alignItems:'center', justifyContent:'center', width:34, height:34, borderRadius:9, boxSizing:'border-box',
           border:'1.5px solid ' + (count ? P : 'var(--border)'),
@@ -55,6 +57,9 @@ export default function CompanyMultiSelect({
         {!iconOnly && <ChevronDown size={13} strokeWidth={2} style={{ opacity:0.5, marginLeft:2, flexShrink:0 }}/>}
         {iconOnly && count > 1 && <span style={{ position:'absolute', top:-5, right:-5, minWidth:15, height:15, padding:'0 3px', borderRadius:8, background:P, color:'#fff', fontSize:9, fontWeight:800, display:'inline-flex', alignItems:'center', justifyContent:'center' }}>{count}</span>}
       </button>
+      {iconOnly && hover && !open && (
+        <span style={{ position:'absolute', bottom:'calc(100% + 6px)', left:'50%', transform:'translateX(-50%)', zIndex:200, background:'#101828', color:'#fff', fontSize:11, fontWeight:600, lineHeight:1.2, padding:'4px 8px', borderRadius:6, whiteSpace:'nowrap', pointerEvents:'none', boxShadow:'0 4px 12px rgba(16,24,40,0.25)' }}>{count ? btnLabel : 'Unternehmen'}</span>
+      )}
       {open && (
         <div style={{
           position:'absolute', zIndex:60, top:'calc(100% + 4px)', left:0, minWidth:220, maxHeight:280, overflowY:'auto',

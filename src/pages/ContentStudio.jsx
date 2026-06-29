@@ -1444,6 +1444,25 @@ function ChatView({
 }
 
 // ─── ChatInput-Komponente (wird sowohl in Clean als auch Chat genutzt) ──────
+// Sofort-Tooltip (ohne die ~1-2s Verzögerung des nativen title-Attributs).
+function Tip({ label, children, side = 'top' }) {
+  const [show, setShow] = useState(false)
+  if (!label) return children
+  return (
+    <span style={{ position:'relative', display:'inline-flex' }}
+      onMouseEnter={() => setShow(true)} onMouseLeave={() => setShow(false)} onMouseDown={() => setShow(false)}>
+      {children}
+      {show && (
+        <span style={{ position:'absolute', left:'50%', transform:'translateX(-50%)',
+          ...(side === 'bottom' ? { top:'calc(100% + 6px)' } : { bottom:'calc(100% + 6px)' }),
+          zIndex:200, background:'#101828', color:'#fff', fontSize:11, fontWeight:600, lineHeight:1.2,
+          padding:'4px 8px', borderRadius:6, whiteSpace:'nowrap', pointerEvents:'none',
+          boxShadow:'0 4px 12px rgba(16,24,40,0.25)' }}>{label}</span>
+      )}
+    </span>
+  )
+}
+
 function ChatInput({
   input, setInput, sending,
   attachments, setAttachments,
@@ -1511,10 +1530,10 @@ function ChatInput({
         <div style={{ display:'flex', alignItems:'center', gap:6, flexWrap:'nowrap', flex:1, minWidth:0, overflow:'visible' }}>
           {/* Plus-Button: Datei + Wissen */}
           <div style={{ position:'relative', flexShrink:0 }}>
-            <button onClick={() => setPlusOpen(o => !o)} title="Datei oder Wissen hinzufügen"
+            <Tip label="Datei oder Wissen hinzufügen"><button onClick={() => setPlusOpen(o => !o)}
               style={{ ...IconBtn(plusOpen), width:34, padding:0, justifyContent:'center', gap:0 }}>
               <Plus size={16} strokeWidth={2}/>
-            </button>
+            </button></Tip>
             {plusOpen && (
               <>
                 <div onClick={() => setPlusOpen(false)} style={{ position:'fixed', inset:0, zIndex:80 }}/>
@@ -1555,35 +1574,34 @@ function ChatInput({
           )}
 
           {/* Web-Suche */}
-          <button data-tour-id="cs-websearch" onClick={() => setUseWebSearch(v => !v)} title="Web-Suche aktivieren"
+          <Tip label="Web-Suche aktivieren"><button data-tour-id="cs-websearch" onClick={() => setUseWebSearch(v => !v)}
             style={{ ...IconBtn(useWebSearch), width:34, padding:0, justifyContent:'center', gap:0 }}>
             <Globe size={16} strokeWidth={1.75}/>
-          </button>
+          </button></Tip>
 
           {/* Visual-Modus: Bild im Chat erstellen (Format + Modell erscheinen in Zeile 2) */}
-          <button data-tour-id="cs-visual" onClick={() => setVisualMode(v => !v)} title="Bild im Chat erstellen"
+          <Tip label="Bild im Chat erstellen"><button data-tour-id="cs-visual" onClick={() => setVisualMode(v => !v)}
             style={{ ...IconBtn(visualMode), width:34, padding:0, justifyContent:'center', gap:0 }}>
             <ImageIcon size={16} strokeWidth={1.75}/>
-          </button>
+          </button></Tip>
           {/* Editor-Kontext (nur wenn Dokument-Editor offen) */}
           {editorOpen && (
-            <button onClick={() => setUseEditorContext(v => !v)} title="Dokument-Inhalt als zusätzlichen Kontext für die KI nutzen"
+            <Tip label="Dokument-Inhalt als Kontext für die KI nutzen"><button onClick={() => setUseEditorContext(v => !v)}
               style={{ ...IconBtn(useEditorContext), width:34, padding:0, justifyContent:'center', gap:0 }}>
               <FileText size={16} strokeWidth={1.75}/>
-            </button>
+            </button></Tip>
           )}
         </div>
 
         {/* Mikrofon + Senden (rechts) */}
         <div style={{ display:'flex', alignItems:'center', gap:6 }}>
-          <button type="button" onClick={voice.isRecording ? voice.stop : voice.start}
+          <Tip label={voice.isRecording ? 'Aufnahme stoppen' : 'Spracheingabe'}><button type="button" onClick={voice.isRecording ? voice.stop : voice.start}
             disabled={!enabled}
-            title={voice.isRecording ? 'Aufnahme stoppen' : 'Spracheingabe'}
             style={{ ...IconBtn(voice.isRecording), width:34, padding:0, justifyContent:'center', gap:0,
               ...(voice.isRecording ? { background:'#FEE2E2', color:'#DC2626', borderColor:'#FECACA' } : {}),
               cursor: enabled ? 'pointer' : 'not-allowed', opacity: enabled ? 1 : 0.5 }}>
             {voice.isRecording ? <Square size={14} strokeWidth={2}/> : <Mic size={16} strokeWidth={1.9}/>}
-          </button>
+          </button></Tip>
           <button onClick={sendMessage} disabled={!input.trim() || sending || !enabled}
             style={{
               padding:'8px 14px', borderRadius:9, border:'none',
@@ -1610,10 +1628,10 @@ function ChatInput({
             {ASPECT_PRESETS.map(a => <option key={a.value} value={a.value}>{a.label}</option>)}
           </select>
           {hasChatVisuals && (
-            <button onClick={() => setForceNewImage(v => !v)} title={forceNewImage ? 'Neues, unabhängiges Bild' : 'Folge-Bearbeitung des letzten Bildes'}
+            <Tip label={forceNewImage ? 'Neues, unabhängiges Bild' : 'Folge-Bearbeitung des letzten Bildes'}><button onClick={() => setForceNewImage(v => !v)}
               style={{ ...IconBtn(forceNewImage), height:32, padding:'0 10px', gap:6 }}>
               <FilePlus2 size={14} strokeWidth={1.75}/>Neues Bild
-            </button>
+            </button></Tip>
           )}
         </div>
       )}
@@ -1694,15 +1712,15 @@ function ImageBubble({ meta, onOpenInDesigner, onDownloadVisual, onImageToPost, 
         )}
       </div>
       <div style={{ display:'flex', gap:8, flexWrap:'wrap', alignItems:'center' }}>
-        <button onClick={() => onOpenInDesigner && onOpenInDesigner(meta)} title="In den Designer öffnen"
+        <Tip label="In den Designer öffnen"><button onClick={() => onOpenInDesigner && onOpenInDesigner(meta)}
           style={{ width:34, height:34, padding:0, justifyContent:'center', borderRadius:8, border:'none', background:P, color:'#fff', cursor:'pointer', display:'inline-flex', alignItems:'center' }}>
           <Brush size={15} strokeWidth={1.9}/>
-        </button>
+        </button></Tip>
         <div style={{ position:'relative' }}>
-          <button onClick={openPostMenu} disabled={busy} title={done ? 'Zum Beitrag hinzugefügt ✓' : 'In Beitrag'}
+          <Tip label={done ? 'Zum Beitrag hinzugefügt ✓' : 'In Beitrag'}><button onClick={openPostMenu} disabled={busy}
             style={{ width:34, height:34, padding:0, justifyContent:'center', borderRadius:8, border:'1.5px solid '+(done?'#15803d':P), background:done?'rgba(21,128,61,0.10)':'rgba(49,90,231,0.06)', color:done?'#15803d':P, cursor:busy?'default':'pointer', display:'inline-flex', alignItems:'center' }}>
             {busy ? <Loader2 size={15} className="lk-spin"/> : <CalendarPlus size={15} strokeWidth={1.9}/>}
-          </button>
+          </button></Tip>
           {postMenuOpen && (
             <div style={{ position:'absolute', bottom:'calc(100% + 6px)', left:0, zIndex:40, width:260, maxHeight:280, overflowY:'auto', background:'var(--surface,#fff)', border:'1px solid var(--border,#E9ECF2)', borderRadius:10, boxShadow:'0 12px 32px rgba(16,24,40,0.16)', padding:6 }}>
               <button onClick={() => pick('__new__')} style={{ ...ibMenuItem, color:P, fontWeight:700 }}>+ Als neuen Beitrag anlegen</button>
@@ -1718,10 +1736,10 @@ function ImageBubble({ meta, onOpenInDesigner, onDownloadVisual, onImageToPost, 
             </div>
           )}
         </div>
-        <button onClick={() => onDownloadVisual && onDownloadVisual(meta)} title="Herunterladen"
+        <Tip label="Herunterladen"><button onClick={() => onDownloadVisual && onDownloadVisual(meta)}
           style={{ width:34, height:34, padding:0, justifyContent:'center', borderRadius:8, border:'1.5px solid '+P, background:'rgba(49,90,231,0.06)', color:P, cursor:'pointer', display:'inline-flex', alignItems:'center' }}>
           <Download size={15} strokeWidth={1.9}/>
-        </button>
+        </button></Tip>
       </div>
     </div>
   )
@@ -1758,11 +1776,10 @@ function MessageBubble({ msg, onAttachToPost, loadExistingPosts, onInsertToDoc, 
       {!isUser && beitragstext && (
         <div style={{ display:'flex', gap:8, flexWrap:'wrap' }}>
           <div style={{ position:'relative' }}>
-            <button data-tour-id="cs-insert-doc" onClick={() => { if (hasOpenDoc) setMenuOpen(o => !o); else onInsertToDoc && onInsertToDoc(beitragstext, 'new') }}
-              title="Ins Dokument"
+            <Tip label="Ins Dokument"><button data-tour-id="cs-insert-doc" onClick={() => { if (hasOpenDoc) setMenuOpen(o => !o); else onInsertToDoc && onInsertToDoc(beitragstext, 'new') }}
               style={{ width:34, height:34, padding:0, justifyContent:'center', borderRadius:8, border:'none', background:P, color:'#fff', cursor:'pointer', display:'inline-flex', alignItems:'center' }}>
               <FileText size={15} strokeWidth={1.9}/>
-            </button>
+            </button></Tip>
             {menuOpen && hasOpenDoc && (
               <>
                 <div onClick={() => setMenuOpen(false)} style={{ position:'fixed', inset:0, zIndex:80 }}/>
@@ -1774,14 +1791,13 @@ function MessageBubble({ msg, onAttachToPost, loadExistingPosts, onInsertToDoc, 
             )}
           </div>
           <div data-tour-id="cs-attach-post" style={{ position:'relative' }}>
-            <button onClick={async () => {
+            <Tip label="In Beitrag übernehmen"><button onClick={async () => {
                 const open = !postMenuOpen; setPostMenuOpen(open)
                 if (open && posts === null && loadExistingPosts) { setPostsLoading(true); const r = await loadExistingPosts(); setPosts(r || []); setPostsLoading(false) }
               }}
-              title="In Beitrag übernehmen"
               style={{ width:34, height:34, padding:0, justifyContent:'center', borderRadius:8, border:'1.5px solid ' + P, background:'rgba(49,90,231,0.06)', color:P, cursor:'pointer', display:'inline-flex', alignItems:'center' }}>
               <CalendarPlus size={15} strokeWidth={1.9}/>
-            </button>
+            </button></Tip>
             {postMenuOpen && (
               <>
                 <div onClick={() => setPostMenuOpen(false)} style={{ position:'fixed', inset:0, zIndex:80 }}/>
