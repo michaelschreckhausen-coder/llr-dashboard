@@ -424,14 +424,20 @@ async function importLead() {
   btn.disabled = true
   btn.innerHTML = '<div class="spinner"></div> Importiere...'
   try {
-    const payload = { ...currentProfile, user_id: currentUserId, ...(currentTeamId ? { team_id: currentTeamId } : {}) }
-    const result = await sbFetch('leads?on_conflict=user_id,linkedin_url', 'POST', [payload])
+    if (!currentTeamId) { throw new Error('Kein aktives Team — bitte in der App ein Team wählen.') }
+    // Regulärer LinkedIn-Import landet ab jetzt in der Import-Inbox (Triage VOR dem CRM),
+    // nicht mehr direkt in leads. Überführung ins CRM per 1-Klick in /linkedin-inbox.
+    const result = await sbFetch('rpc/import_linkedin_to_inbox', 'POST', {
+      p_team_id: currentTeamId,
+      p_user_id: currentUserId,
+      p_profile: currentProfile,
+    })
     if (result !== null) {
-      const isNew = Array.isArray(result) && result.length > 0
+      const isNew = result === true || (Array.isArray(result) && result[0] === true)
       btn.className = 'btn-primary success'
-      btn.innerHTML = isNew ? '✓ Importiert!' : '✓ Bereits in Leadesk'
+      btn.innerHTML = isNew ? '✓ In Import-Inbox!' : '✓ Schon in Inbox'
       btn.disabled = false
-      setStatus('connected', isNew ? 'Lead importiert ✓' : 'Bereits vorhanden ✓')
+      setStatus('connected', isNew ? 'In Import-Inbox ✓' : 'Bereits in Inbox ✓')
     } else {
       throw new Error(window.__lastError || 'Fehler beim Speichern')
     }

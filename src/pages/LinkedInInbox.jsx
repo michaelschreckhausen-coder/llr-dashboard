@@ -119,7 +119,7 @@ export default function LinkedInInbox() {
   const card = 'var(--surface)', border = 'var(--border)', text = 'var(--text-primary)', muted = 'var(--text-muted)', primary = 'var(--primary)'
 
   return (
-    <div style={{ maxWidth: 920, margin: '0 auto', padding: '24px 20px 80px' }}>
+    <div style={{ padding: '24px 24px 60px' }}>
       <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
       <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 4 }}>
         <InboxIcon size={22} style={{ color: primary }} />

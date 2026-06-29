@@ -11,6 +11,7 @@ import { useNavigate } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
 import { useBrandVoice } from '../context/BrandVoiceContext'
 import LeadDrawer from '../components/LeadDrawer'
+import InboxLink from '../components/InboxLink'
 import { useModel } from '../context/ModelContext'
 
 const fullName = l => ((l.first_name||'') + ' ' + (l.last_name||'')).trim() || l.name || 'Unbekannt'
@@ -424,6 +425,7 @@ export default function Vernetzungen({ session }) {
         </div>
         {/* Aktions-Buttons */}
         <div style={{ display:'flex', gap:8, flexWrap:'wrap', alignItems:'center' }}>
+          <InboxLink />
           <button onClick={async () => {
             const toQueue = filtered.filter(l => l.li_connection_status !== 'verbunden' && l.li_connection_status !== 'pending' && (l.linkedin_url || l.profile_url))
             if (!toQueue.length) { alert('Keine Kontakte zum Hinzufügen'); return }

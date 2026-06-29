@@ -11,6 +11,7 @@
 
 import React, { useState, useEffect, useCallback, useMemo } from 'react'
 import { useNavigate } from 'react-router-dom'
+import InboxLink from '../components/InboxLink'
 import {
   Zap, Plus, Play, Pause, RotateCw, Send, Users, BarChart3,
   Clock, X, Trash2, Eye, UserPlus, UserCheck, MessageSquare, Hourglass, Download,
@@ -420,6 +421,7 @@ export default function Automatisierung({ session }) {
             <div style={subtitleStyle}>LinkedIn-Kampagnen · Sequenz-Builder · Browser-Extension</div>
           </div>
           <div style={{ display:'flex', alignItems:'center', gap:8, flexWrap:'wrap' }}>
+            <InboxLink />
             <div style={{ position:'relative' }}>
               <Search size={14} style={searchIconStyle} />
               <input value={search} onChange={e => setSearch(e.target.value)}
