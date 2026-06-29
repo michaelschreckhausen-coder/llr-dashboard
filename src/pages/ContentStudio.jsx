@@ -169,6 +169,16 @@ export default function ContentStudio({ session }) {
   const [pendingDocText, setPendingDocText] = useState(null)
   const editorOpenRef = useRef(editorOpen)
   useEffect(() => { editorOpenRef.current = editorOpen }, [editorOpen])
+  const csRootRef = useRef(null)
+  // Eingeklappt: das 24px-rechts-Padding der umgebenden App-Shell (MAIN) entfernen,
+  // damit die ausziehbare Splitscreen-Karte bündig am echten Bildschirmrand sitzt.
+  useEffect(() => {
+    const main = csRootRef.current?.closest('main')
+    if (!main) return
+    // Shell-CSS setzt padding-right per !important -> mit 'important' überschreiben.
+    if (!editorOpen) main.style.setProperty('padding-right', '0px', 'important')
+    return () => { main.style.removeProperty('padding-right') }
+  }, [editorOpen])
   const [useEditorContext, setUseEditorContext] = useState(false)
   const [chatDocs, setChatDocs] = useState([])
   const [demoRailDocs, setDemoRailDocs] = useState(null) // Tour-Demo: rechte Dokument-Leiste mit Beispiel-Dokumenten
@@ -911,7 +921,7 @@ export default function ContentStudio({ session }) {
 
   // ─── Render ───────────────────────────────────────────────────────────────
   return (
-    <div style={{ display:'flex', position:'relative', height:'100%', minHeight:0, overflow:'hidden', background:'var(--page-bg, #F7F8FA)' }}>
+    <div ref={csRootRef} style={{ display:'flex', position:'relative', height:'100%', minHeight:0, overflow:'hidden', background:'var(--page-bg, #F7F8FA)' }}>
       {/* Sidebar */}
       {sidebarOpen && (
         <aside style={{ width:264, borderRight:'1px solid var(--border,#E9ECF2)', background:'var(--page-bg, #F7F8FA)', display:'flex', flexDirection:'column', flexShrink:0 }}>
@@ -1128,17 +1138,71 @@ export default function ContentStudio({ session }) {
           getrennt durch den Strich. Links = Vollbild-Toggle (bleibt wo er ist),
           rechts (andere Seite des Strichs) = Editor einklappen. */}
       {!editorOpen ? (
-        <button onClick={() => {
+        // Eingeklappter Splitscreen: sichtbarer weißer Balken am rechten Rand mit
+        // den beiden Umschalt-Buttons (Dokument/Designer). Links daneben je ein
+        // handgezeichneter Pfeil + Beschriftung in Marken-Schreibschrift, damit
+        // klar ist, dass sich hier ein Panel herausziehen lässt.
+        (() => {
+          const openTo = (mode) => {
+            if (mode) setSplitMode(mode)
             setEditorOpen(true); setPaneView('split'); setSidebarOpen(false)
-            if (splitMode === 'doc' && !docParam && activeChatId && chatDocs.length) {
+            const m = mode || splitMode
+            if (m === 'doc' && !docParam && activeChatId && chatDocs.length) {
               const last = chatDocs[0]
               if (last) { const n = new URLSearchParams(searchParams); n.set('doc', last.id); setSearchParams(n, { replace: true }) }
             }
-          }}
-          title="Editor öffnen"
-          style={{ ...edgeBtn, position:'absolute', top:'50%', right:8, transform:'translateY(-50%)' }}>
-          <ChevronLeft size={18} strokeWidth={2}/>
-        </button>
+          }
+          const scriptHint = { fontFamily:"'Segoe Script','Bradley Hand','Brush Script MT','Comic Sans MS',cursive", fontStyle:'italic', fontSize:16, fontWeight:600, color:'var(--wl-primary, rgb(49,90,231))', whiteSpace:'nowrap', lineHeight:1 }
+          const hintRow = { flex:1, display:'flex', alignItems:'center', justifyContent:'flex-end', gap:7 }
+          const switchBtn = { width:46, height:50, display:'inline-flex', alignItems:'center', justifyContent:'center', border:'none', background:'transparent', cursor:'pointer', color:'var(--text-secondary,#475569)' }
+          const CurvedArrow = () => (
+            <svg width="34" height="24" viewBox="0 0 34 24" fill="none" style={{ color:'var(--wl-primary, rgb(49,90,231))', flexShrink:0 }} aria-hidden="true">
+              <path d="M3 5 C 14 3, 25 7, 30 14" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" fill="none"/>
+              <path d="M23 14.5 L 31 15 L 27 8" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" fill="none"/>
+            </svg>
+          )
+          // Labels + Pfeile schweben links. Die Umschalt-Buttons liegen mit flacher
+          // rechter Seite am großen, eingeklappten Splitscreen-Kasten an, der nur
+          // mit einem schmalen Streifen vom rechten Rand hereinschaut (Großteil
+          // ragt aus dem Viewport und wird vom Eltern-overflow:hidden geclippt).
+          return (
+            <>
+              {/* Großer eingeklappter Splitscreen-Kasten — volle Pane-Höhe, bündig
+                 am rechten Rand; ragt rechts raus und wird vom Container geclippt. */}
+              <button onClick={() => openTo(null)} title="Splitscreen ausziehen"
+                style={{ position:'absolute', top:0, bottom:0, right:-176, width:212, zIndex:49,
+                  background:'var(--surface,#fff)', border:'1px solid var(--border,#E9ECF2)', borderRight:'none', borderRadius:'16px 0 0 16px',
+                  boxShadow:'-6px 0 18px rgba(16,24,40,0.07)', cursor:'pointer', padding:0,
+                  display:'flex', alignItems:'center', justifyContent:'flex-start' }}>
+                <span style={{ width:4, height:42, marginLeft:13, borderRadius:3, background:'var(--border,#D7DCE5)' }}/>
+              </button>
+              {/* Labels + Umschalt-Buttons, direkt links am Kasten anliegend */}
+              <div style={{ position:'absolute', top:'50%', right:36, transform:'translateY(-50%)', zIndex:50, display:'flex', alignItems:'stretch', gap:10, pointerEvents:'none' }}>
+                {/* Beschriftungen + Pfeile (frei, dekorativ) */}
+                <div style={{ display:'flex', flexDirection:'column' }}>
+                  <div style={hintRow}><span style={scriptHint}>ins Dokument</span><CurvedArrow/></div>
+                  <div style={{ height:1 }}/>
+                  <div style={hintRow}><span style={scriptHint}>zum Designer</span><CurvedArrow/></div>
+                </div>
+                {/* Umschalt-Buttons (wie zuvor) — links rund, rechts flach am Kasten */}
+                <div style={{ display:'flex', flexDirection:'column', overflow:'hidden', background:'var(--surface,#fff)',
+                    border:'1px solid var(--border,#E9ECF2)', borderRight:'none', borderRadius:'10px 0 0 10px', boxShadow:'-2px 0 8px rgba(16,24,40,0.08)', pointerEvents:'auto' }}>
+                  <button onClick={() => openTo('doc')} title="Dokument öffnen" style={switchBtn}
+                    onMouseEnter={e => { e.currentTarget.style.background='rgba(49,90,231,0.08)'; e.currentTarget.style.color='var(--wl-primary, rgb(49,90,231))' }}
+                    onMouseLeave={e => { e.currentTarget.style.background='transparent'; e.currentTarget.style.color='var(--text-secondary,#475569)' }}>
+                    <FileText size={18} strokeWidth={1.9}/>
+                  </button>
+                  <div style={{ height:1, background:'var(--border,#E9ECF2)' }}/>
+                  <button onClick={() => openTo('design')} title="Designer öffnen" style={switchBtn}
+                    onMouseEnter={e => { e.currentTarget.style.background='rgba(49,90,231,0.08)'; e.currentTarget.style.color='var(--wl-primary, rgb(49,90,231))' }}
+                    onMouseLeave={e => { e.currentTarget.style.background='transparent'; e.currentTarget.style.color='var(--text-secondary,#475569)' }}>
+                    <Brush size={18} strokeWidth={1.9}/>
+                  </button>
+                </div>
+              </div>
+            </>
+          )
+        })()
       ) : (
         <>
           {/* Dokument/Designer-Wechsler — gestapelt, oben, LINKS am Trennstrich
@@ -1146,18 +1210,20 @@ export default function ContentStudio({ session }) {
              Split-Steuerung). */}
           <div style={{ position:'absolute', top:44, zIndex:50,
               display:'flex', flexDirection:'column', overflow:'hidden',
-              border:'1px solid var(--border,#E9ECF2)', background:'var(--surface,#fff)', boxShadow:'0 2px 8px rgba(16,24,40,0.10)',
-              ...(paneView === 'suite' ? { left:16, borderRadius:10 } : { right:'52%', borderRadius:'10px 0 0 10px' }) }}>
+              border:'1px solid var(--border,#E9ECF2)', background:'var(--surface,#fff)', boxShadow:'-2px 0 8px rgba(16,24,40,0.08)',
+              ...(paneView === 'suite' ? { left:16, borderRadius:10 } : { right:'52%', borderRadius:'10px 0 0 10px', borderRight:'none' }) }}>
             <button onClick={() => setSplitMode('doc')} title="Dokument"
-              style={{ ...segBtn, color: splitMode === 'doc' ? 'var(--wl-primary, rgb(49,90,231))' : 'var(--text-muted)',
-                background: splitMode === 'doc' ? 'rgba(49,90,231,0.10)' : 'transparent' }}>
-              <FileText size={16} strokeWidth={1.9}/>
+              style={{ width:46, height:50, display:'inline-flex', alignItems:'center', justifyContent:'center', border:'none', cursor:'pointer',
+                color: splitMode === 'doc' ? 'var(--wl-primary, rgb(49,90,231))' : 'var(--text-secondary,#475569)',
+                background: splitMode === 'doc' ? 'rgba(49,90,231,0.08)' : 'transparent' }}>
+              <FileText size={18} strokeWidth={1.9}/>
             </button>
             <div style={{ height:1, background:'var(--border,#E9ECF2)' }}/>
             <button onClick={() => setSplitMode('design')} title="Designer"
-              style={{ ...segBtn, color: splitMode === 'design' ? 'var(--wl-primary, rgb(49,90,231))' : 'var(--text-muted)',
-                background: splitMode === 'design' ? 'rgba(49,90,231,0.10)' : 'transparent' }}>
-              <Brush size={16} strokeWidth={1.9}/>
+              style={{ width:46, height:50, display:'inline-flex', alignItems:'center', justifyContent:'center', border:'none', cursor:'pointer',
+                color: splitMode === 'design' ? 'var(--wl-primary, rgb(49,90,231))' : 'var(--text-secondary,#475569)',
+                background: splitMode === 'design' ? 'rgba(49,90,231,0.08)' : 'transparent' }}>
+              <Brush size={18} strokeWidth={1.9}/>
             </button>
           </div>
           {/* Split/Vollbild-Steuerung — vertikal mittig, der Strich läuft zwischen den
