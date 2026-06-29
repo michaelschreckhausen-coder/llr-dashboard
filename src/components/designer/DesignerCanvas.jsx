@@ -33,8 +33,8 @@ import {
   Bold, Italic, Sliders, Loader2, X, ChevronUp, ChevronDown, Brush, Lasso,
   Eraser, Image as ImageIcon, LayoutTemplate, Copy, ZoomIn, ZoomOut, Maximize2,
   Upload, Frame, Eye, EyeOff, Lock, Unlock, Layers, GripVertical, Underline,
-  FlipHorizontal2, FlipVertical2, Scaling, Send, CalendarPlus, FileText, Search,
-  AlignLeft, AlignCenter, AlignRight, Baseline, MoveVertical, Blend,
+  FlipHorizontal2, FlipVertical2, FlipHorizontal, FlipVertical, Scaling, Send, CalendarPlus, FileText, Search,
+  AlignLeft, AlignCenter, AlignRight, Baseline, MoveVertical,
   AlignStartVertical, AlignCenterVertical, AlignEndVertical,
   AlignStartHorizontal, AlignCenterHorizontal, AlignEndHorizontal,
   AlignHorizontalDistributeCenter, AlignVerticalDistributeCenter,
@@ -3902,6 +3902,19 @@ function ExportModal({ onExport, exporting, onClose }) {
 // Vereint Text-/Form-Formatierung mit numerischen Eigenschaften (X/Y/Größe/
 // Drehung/Deckkraft), Ausrichten/Verteilen sowie Ebenen-/Duplizieren-/Löschen-
 // Aktionen in EINER sauberen, umbrechenden Leiste.
+// Canva-artiges Transparenz-Icon (Schachbrett in abgerundetem Quadrat).
+function TransparencyIcon({ size = 15 }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" style={{ display: 'block' }}>
+      <defs><clipPath id="lk-transp-clip"><rect x="3" y="3" width="18" height="18" rx="3.5" /></clipPath></defs>
+      <g clipPath="url(#lk-transp-clip)">
+        <rect x="3" y="3" width="9" height="9" fill="currentColor" opacity="0.85" />
+        <rect x="12" y="12" width="9" height="9" fill="currentColor" opacity="0.85" />
+      </g>
+      <rect x="3" y="3" width="18" height="18" rx="3.5" fill="none" stroke="currentColor" strokeWidth="1.8" />
+    </svg>
+  )
+}
 // Kompaktes Dropdown für die Kontext-Leiste (Icon-Trigger + Popover).
 function BarMenu({ title, trigger, width = 180, children }) {
   const [open, setOpen] = useState(false)
@@ -4072,14 +4085,14 @@ function ContextBar({
 
       {/* ── Spiegeln (nur Nicht-Text) ── */}
       {!isText && onFlip && (
-        <BarMenu title="Spiegeln" width={200} trigger={<FlipHorizontal2 size={15} strokeWidth={1.9} />}>
-          <BarMenuItem icon={<FlipHorizontal2 size={15} strokeWidth={1.9} />} label="Horizontal spiegeln" onClick={() => onFlip('x')} />
-          <BarMenuItem icon={<FlipVertical2 size={15} strokeWidth={1.9} />} label="Vertikal spiegeln" onClick={() => onFlip('y')} />
+        <BarMenu title="Spiegeln" width={200} trigger={<FlipHorizontal size={16} strokeWidth={1.8} />}>
+          <BarMenuItem icon={<FlipHorizontal size={16} strokeWidth={1.8} />} label="Horizontal spiegeln" onClick={() => onFlip('x')} />
+          <BarMenuItem icon={<FlipVertical size={16} strokeWidth={1.8} />} label="Vertikal spiegeln" onClick={() => onFlip('y')} />
         </BarMenu>
       )}
 
       {/* ── Deckkraft (Icon-Dropdown) ── */}
-      <BarMenu title="Deckkraft" width={200} trigger={<Blend size={15} strokeWidth={1.9} />}>
+      <BarMenu title="Deckkraft" width={200} trigger={<TransparencyIcon size={15} />}>
         <div onClick={e => e.stopPropagation()} style={{ padding: '6px 8px' }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 11.5, color: 'var(--text-muted)', marginBottom: 8 }}><span>Deckkraft</span><span>{opacityPct}%</span></div>
           <input type="range" min={0} max={100} step={1} value={opacityPct}
