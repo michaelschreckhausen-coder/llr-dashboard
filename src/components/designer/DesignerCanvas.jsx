@@ -34,7 +34,7 @@ import {
   Eraser, Image as ImageIcon, LayoutTemplate, Copy, ZoomIn, ZoomOut, Maximize2,
   Upload, Frame, Eye, EyeOff, Lock, Unlock, Layers, GripVertical, Underline,
   FlipHorizontal2, FlipVertical2, Scaling, Send, CalendarPlus, FileText, Search,
-  AlignLeft, AlignCenter, AlignRight,
+  AlignLeft, AlignCenter, AlignRight, Baseline, MoveVertical, Blend,
   AlignStartVertical, AlignCenterVertical, AlignEndVertical,
   AlignStartHorizontal, AlignCenterHorizontal, AlignEndHorizontal,
   AlignHorizontalDistributeCenter, AlignVerticalDistributeCenter,
@@ -3350,7 +3350,7 @@ export default function DesignerCanvas({ visual, teamId, onSaved, onReplaceVisua
         <ContextBar selected={selected} updateObject={updateObject}
           commitHistoryOnce={commitHistoryOnce} endInteraction={endInteraction}
           reorder={reorder} deleteSelected={deleteSelected} duplicateSelected={duplicateSelected}
-          onFlip={flipSelected}
+          onFlip={flipSelected} onCrop={() => setCropMode(true)}
           fonts={allFonts} selectedIds={selectedIds} brandColors={brandColors}
           alignObjects={alignObjects} distributeObjects={distributeObjects} />
       )}
@@ -3945,7 +3945,7 @@ function BarMenuItem({ icon, label, active, onClick }) {
 
 function ContextBar({
   selected, updateObject, reorder, deleteSelected, duplicateSelected,
-  commitHistoryOnce, endInteraction, fonts, onFlip,
+  commitHistoryOnce, endInteraction, fonts, onFlip, onCrop,
   selectedIds, alignObjects, distributeObjects, brandColors = [],
 }) {
   const FONT_LIST = (fonts && fonts.length) ? fonts : FONTS
@@ -3954,6 +3954,8 @@ function ContextBar({
   const hasFill = ['text', 'rect', 'ellipse', 'sticker'].includes(o.type)
   const hasStroke = ['rect', 'ellipse', 'line', 'arrow', 'sticker'].includes(o.type)
   const hasWH = (o.type === 'rect' || o.type === 'image')
+  const isImage = o.type === 'image'
+  const isRect = o.type === 'rect'
   const isEllipse = o.type === 'ellipse'
   const fontStyle = o.fontStyle || 'normal'
   const isBold = fontStyle.includes('bold')
@@ -3989,85 +3991,102 @@ function ContextBar({
     </label>
   )
 
+  // Mini-Stepper-Button (Schriftgröße −/+)
+  const stepBtn = { width: 26, height: '100%', border: 'none', background: 'transparent', cursor: 'pointer', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', color: 'var(--text-muted,#475467)', padding: 0 }
+  const fs = Math.round(o.fontSize || 44)
+
   return (
-    <div style={{ ...barStyle, flexWrap: 'nowrap', gap: 7 }}>
-      {/* ── Text ── */}
+    <div style={{ ...barStyle, flexWrap: 'nowrap', gap: 6, minWidth: 0 }}>
+      {/* ── TEXT ── */}
       {isText && (
         <>
-          <select value={o.fontFamily || 'Inter'} onChange={e => setOnce({ fontFamily: e.target.value })} style={{ ...selStyle, minWidth: 110, flexShrink: 0 }}>
+          <select value={o.fontFamily || 'Inter'} onChange={e => setOnce({ fontFamily: e.target.value })} style={{ ...selStyle, minWidth: 104, maxWidth: 132, flexShrink: 0 }} title="Schriftart">
             {FONT_LIST.map(f => <option key={f} value={f}>{f}</option>)}
           </select>
-          <input type="number" min={6} max={400} value={Math.round(o.fontSize || 44)}
-            onFocus={startEdit} onMouseDown={startEdit} onBlur={endInteraction}
-            onChange={e => liveEdit({ fontSize: parseInt(e.target.value, 10) || 44 })}
-            style={{ ...selStyle, width: 56, flexShrink: 0 }} title="Schriftgröße" />
-          <ToolBtn onClick={() => setStyleFlag('bold')} active={isBold} title="Fett"><Bold size={14} strokeWidth={2.2} /></ToolBtn>
-          <ToolBtn onClick={() => setStyleFlag('italic')} active={isItalic} title="Kursiv"><Italic size={14} strokeWidth={2.2} /></ToolBtn>
-          <ToolBtn onClick={() => setOnce({ textDecoration: isUnderline ? '' : 'underline' })} active={isUnderline} title="Unterstrichen"><Underline size={14} strokeWidth={2.2} /></ToolBtn>
-          <BarMenu title="Textausrichtung" width={160}
-            trigger={(o.align === 'center') ? <AlignCenter size={15} strokeWidth={1.9} /> : (o.align === 'right') ? <AlignRight size={15} strokeWidth={1.9} /> : <AlignLeft size={15} strokeWidth={1.9} />}>
-            <BarMenuItem icon={<AlignLeft size={15} strokeWidth={1.9} />} label="Links" active={(o.align || 'left') === 'left'} onClick={() => setOnce({ align: 'left' })} />
-            <BarMenuItem icon={<AlignCenter size={15} strokeWidth={1.9} />} label="Zentriert" active={o.align === 'center'} onClick={() => setOnce({ align: 'center' })} />
-            <BarMenuItem icon={<AlignRight size={15} strokeWidth={1.9} />} label="Rechts" active={o.align === 'right'} onClick={() => setOnce({ align: 'right' })} />
+          {/* Schriftgröße mit −/+ Stepper */}
+          <div style={{ display: 'inline-flex', alignItems: 'center', height: 32, flexShrink: 0, border: '1px solid var(--border,#E9ECF2)', borderRadius: 8, background: '#fff', overflow: 'hidden' }}>
+            <button type="button" title="Kleiner" style={stepBtn} onClick={() => setOnce({ fontSize: Math.max(6, fs - 1) })}><Minus size={13} strokeWidth={2} /></button>
+            <input type="number" min={6} max={400} value={fs}
+              onFocus={startEdit} onMouseDown={startEdit} onBlur={endInteraction}
+              onChange={e => liveEdit({ fontSize: parseInt(e.target.value, 10) || 44 })}
+              style={{ width: 38, height: '100%', border: 'none', borderLeft: '1px solid var(--border,#E9ECF2)', borderRight: '1px solid var(--border,#E9ECF2)', textAlign: 'center', fontSize: 12, fontFamily: 'inherit', outline: 'none', MozAppearance: 'textfield', boxSizing: 'border-box' }} />
+            <button type="button" title="Größer" style={stepBtn} onClick={() => setOnce({ fontSize: Math.min(400, fs + 1) })}><Plus size={13} strokeWidth={2} /></button>
+          </div>
+          {/* Textfarbe als A-Swatch */}
+          <ColorPopover value={o.fill} brandColors={brandColors} title="Textfarbe" onStart={startEdit} onChange={(hex) => liveEdit({ fill: hex })} onEnd={endInteraction}
+            triggerStyle={{ width: 32, height: 32, flexShrink: 0, display: 'inline-flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 1, borderRadius: 8, border: '1px solid var(--border,#E9ECF2)', background: 'var(--surface,#fff)', cursor: 'pointer', padding: 0 }}
+            triggerContent={<><Baseline size={15} strokeWidth={2} color="var(--text-muted,#475467)" style={{ marginBottom: -2 }} /><span style={{ width: 16, height: 3, borderRadius: 2, background: toHex(o.fill || '#000000') }} /></>} />
+          <Divider />
+          <ToolBtn onClick={() => setStyleFlag('bold')} active={isBold} title="Fett"><Bold size={14} strokeWidth={2.4} /></ToolBtn>
+          <ToolBtn onClick={() => setStyleFlag('italic')} active={isItalic} title="Kursiv"><Italic size={14} strokeWidth={2.4} /></ToolBtn>
+          <ToolBtn onClick={() => setOnce({ textDecoration: isUnderline ? '' : 'underline' })} active={isUnderline} title="Unterstrichen"><Underline size={14} strokeWidth={2.4} /></ToolBtn>
+          <BarMenu title="Ausrichtung" width={150}
+            trigger={(o.align === 'center') ? <AlignCenter size={15} strokeWidth={2} /> : (o.align === 'right') ? <AlignRight size={15} strokeWidth={2} /> : <AlignLeft size={15} strokeWidth={2} />}>
+            <BarMenuItem icon={<AlignLeft size={15} strokeWidth={2} />} label="Links" active={(o.align || 'left') === 'left'} onClick={() => setOnce({ align: 'left' })} />
+            <BarMenuItem icon={<AlignCenter size={15} strokeWidth={2} />} label="Zentriert" active={o.align === 'center'} onClick={() => setOnce({ align: 'center' })} />
+            <BarMenuItem icon={<AlignRight size={15} strokeWidth={2} />} label="Rechts" active={o.align === 'right'} onClick={() => setOnce({ align: 'right' })} />
           </BarMenu>
-          <select value={o.effect || 'none'} onChange={e => setOnce({ effect: e.target.value })} style={{ ...selStyle, flexShrink: 0 }} title="Texteffekt">
-            {TEXT_EFFECTS.map(ef => <option key={ef.id} value={ef.id}>{ef.label}</option>)}
-          </select>
+          <BarMenu title="Abstand" width={210} trigger={<MoveVertical size={15} strokeWidth={2} />}>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 10, padding: '4px 6px' }}>
+              {numField('Zeilenhöhe', o.lineHeight || 1.2, v => setOnce({ lineHeight: v || 1.2 }), { step: 0.05, min: 0.5, w: 70 })}
+              {numField('Laufweite', o.letterSpacing || 0, v => setOnce({ letterSpacing: v || 0 }), { step: 0.5, w: 70 })}
+            </div>
+          </BarMenu>
+          <BarMenu title="Effekte" width={180} trigger={<span style={{ fontSize: 12.5, fontWeight: 600 }}>Effekte</span>}>
+            {TEXT_EFFECTS.map(ef => (
+              <BarMenuItem key={ef.id} label={ef.label} active={(o.effect || 'none') === ef.id} onClick={() => setOnce({ effect: ef.id })} />
+            ))}
+          </BarMenu>
         </>
       )}
 
-      {/* ── Füllung / Rand / Ecken / Schatten ── */}
-      {hasFill && (
-        <label style={{ ...lblStyle, flexShrink: 0 }} title="Füllfarbe">
-          <span style={{ fontSize: 11, color: 'var(--text-muted)' }}>Füllung</span>
-          <ColorPopover value={o.fill} brandColors={brandColors} title="Füllfarbe" onStart={startEdit} onChange={(hex) => liveEdit({ fill: hex })} onEnd={endInteraction} />
-        </label>
+      {/* ── FORMEN: Füllung (Swatch) + Stil-Menü ── */}
+      {!isText && hasFill && (
+        <ColorPopover value={o.fill} brandColors={brandColors} title="Füllfarbe" round onStart={startEdit} onChange={(hex) => liveEdit({ fill: hex })} onEnd={endInteraction} size={30} />
       )}
-      {hasStroke && (
-        <>
-          <label style={{ ...lblStyle, flexShrink: 0 }} title="Randfarbe">
-            <span style={{ fontSize: 11, color: 'var(--text-muted)' }}>Rand</span>
-            <ColorPopover value={o.stroke || '#ffffff'} brandColors={brandColors} title="Randfarbe" onStart={startEdit} onChange={(hex) => liveEdit({ stroke: hex })} onEnd={endInteraction} />
-          </label>
-          {numField('Stärke', o.strokeWidth || 0, v => setOnce({ strokeWidth: Math.max(0, v || 0) }), { min: 0, w: 50 })}
-        </>
-      )}
-      {o.type === 'rect' && numField('Ecken', o.cornerRadius || 0, v => setOnce({ cornerRadius: Math.max(0, v || 0) }), { min: 0, w: 50 })}
-      {(hasFill || hasStroke) && (
-        <ToolBtn onClick={() => setOnce(o.shadowBlur ? { shadowBlur: 0 } : { shadowBlur: 12, shadowColor: 'rgba(0,0,0,0.35)', shadowOffsetX: 0, shadowOffsetY: 4 })} active={!!o.shadowBlur} title={o.shadowBlur ? 'Schatten aus' : 'Schatten an'}>
-          <Sliders size={14} strokeWidth={1.9} />
-        </ToolBtn>
-      )}
-
-      {/* ── Textabstände (kompakt im Dropdown) ── */}
-      {isText && (
-        <BarMenu title="Zeilen-/Zeichenabstand" width={200} trigger={<span style={{ fontSize: 12 }}>Abstand</span>}>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 8, padding: '4px 6px' }}>
-            {numField('Zeilenhöhe', o.lineHeight || 1.2, v => setOnce({ lineHeight: v || 1.2 }), { step: 0.05, min: 0.5, w: 64 })}
-            {numField('Laufweite', o.letterSpacing || 0, v => setOnce({ letterSpacing: v || 0 }), { step: 0.5, w: 64 })}
+      {!isText && (hasStroke || isRect || hasFill) && (hasStroke || isRect) && (
+        <BarMenu title="Stil" width={210} trigger={<Sliders size={15} strokeWidth={2} />}>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 10, padding: '4px 6px' }}>
+            {hasStroke && (
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10 }}>
+                <span style={{ fontSize: 12.5, color: 'var(--text-primary)' }}>Randfarbe</span>
+                <ColorPopover value={o.stroke || '#ffffff'} brandColors={brandColors} title="Randfarbe" onStart={startEdit} onChange={(hex) => liveEdit({ stroke: hex })} onEnd={endInteraction} size={28} />
+              </div>
+            )}
+            {hasStroke && numField('Randstärke', o.strokeWidth || 0, v => setOnce({ strokeWidth: Math.max(0, v || 0) }), { min: 0, w: 70 })}
+            {isRect && numField('Ecken', o.cornerRadius || 0, v => setOnce({ cornerRadius: Math.max(0, v || 0) }), { min: 0, w: 70 })}
+            <button type="button" onClick={() => setOnce(o.shadowBlur ? { shadowBlur: 0 } : { shadowBlur: 12, shadowColor: 'rgba(0,0,0,0.35)', shadowOffsetX: 0, shadowOffsetY: 4 })}
+              style={{ display: 'flex', alignItems: 'center', gap: 9, width: '100%', textAlign: 'left', padding: '8px 6px', borderRadius: 7, border: 'none', background: o.shadowBlur ? 'rgba(49,90,231,0.08)' : 'transparent', cursor: 'pointer', fontSize: 13, color: o.shadowBlur ? P : 'var(--text-primary)', fontFamily: 'inherit' }}>
+              <Sliders size={15} strokeWidth={1.9} />Schatten {o.shadowBlur ? 'an' : 'aus'}
+            </button>
           </div>
         </BarMenu>
       )}
 
+      {/* ── BILD: Zuschneiden ── */}
+      {isImage && onCrop && (
+        <ToolBtn onClick={onCrop} title="Zuschneiden"><Crop size={15} strokeWidth={1.9} /></ToolBtn>
+      )}
+
       <Divider />
 
-      {/* ── Deckkraft (kompakt) ── */}
-      <BarMenu title="Deckkraft" width={190} trigger={<span style={{ fontSize: 12, minWidth: 30, textAlign: 'center' }}>{opacityPct}%</span>}>
-        <div onClick={e => e.stopPropagation()} style={{ padding: '6px 8px' }}>
-          <div style={{ fontSize: 11, color: 'var(--text-muted)', marginBottom: 8 }}>Deckkraft</div>
-          <input type="range" min={0} max={100} step={1} value={opacityPct}
-            onMouseDown={startEdit} onChange={e => liveEdit({ opacity: (parseInt(e.target.value, 10) || 0) / 100 })} onMouseUp={endInteraction}
-            style={{ width: '100%', accentColor: P }} />
-        </div>
-      </BarMenu>
-
-      {/* ── Spiegeln (Dropdown) ── */}
-      {onFlip && (
+      {/* ── Spiegeln (nur Nicht-Text) ── */}
+      {!isText && onFlip && (
         <BarMenu title="Spiegeln" width={200} trigger={<FlipHorizontal2 size={15} strokeWidth={1.9} />}>
           <BarMenuItem icon={<FlipHorizontal2 size={15} strokeWidth={1.9} />} label="Horizontal spiegeln" onClick={() => onFlip('x')} />
           <BarMenuItem icon={<FlipVertical2 size={15} strokeWidth={1.9} />} label="Vertikal spiegeln" onClick={() => onFlip('y')} />
         </BarMenu>
       )}
+
+      {/* ── Deckkraft (Icon-Dropdown) ── */}
+      <BarMenu title="Deckkraft" width={200} trigger={<Blend size={15} strokeWidth={1.9} />}>
+        <div onClick={e => e.stopPropagation()} style={{ padding: '6px 8px' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 11.5, color: 'var(--text-muted)', marginBottom: 8 }}><span>Deckkraft</span><span>{opacityPct}%</span></div>
+          <input type="range" min={0} max={100} step={1} value={opacityPct}
+            onMouseDown={startEdit} onChange={e => liveEdit({ opacity: (parseInt(e.target.value, 10) || 0) / 100 })} onMouseUp={endInteraction}
+            style={{ width: '100%', accentColor: P }} />
+        </div>
+      </BarMenu>
 
       <div style={{ flex: 1, minWidth: 8 }} />
       <ToolBtn onClick={duplicateSelected} title="Duplizieren (Strg+D)"><Copy size={14} strokeWidth={1.9} /></ToolBtn>
@@ -4189,7 +4208,7 @@ function ColorSwatch({ c, current, onPick }) {
         boxShadow: on ? '0 0 0 2px var(--surface,#fff), 0 0 0 4px ' + P : 'none', outline: 'none' }} />
   )
 }
-function ColorPopover({ value, onChange, onStart, onEnd, brandColors = [], title = 'Farbe', size = 30 }) {
+function ColorPopover({ value, onChange, onStart, onEnd, brandColors = [], title = 'Farbe', size = 30, triggerContent = null, triggerStyle = null, round = false }) {
   const [open, setOpen] = React.useState(false)
   const [openUp, setOpenUp] = React.useState(true)
   const ref = React.useRef(null)
@@ -4210,8 +4229,14 @@ function ColorPopover({ value, onChange, onStart, onEnd, brandColors = [], title
   const swLabel = { fontSize: 10.5, fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em', margin: '8px 2px 7px' }
   return (
     <div ref={ref} style={{ position: 'relative', display: 'inline-flex' }}>
-      <button ref={btnRef} type="button" title={title} onClick={toggle}
-        style={{ width: size, height: size, borderRadius: 8, border: '1px solid var(--border,#E9ECF2)', background: cur, cursor: 'pointer', padding: 0, boxShadow: 'inset 0 0 0 2px var(--surface,#fff)' }} />
+      {triggerContent ? (
+        <button ref={btnRef} type="button" title={title} onClick={toggle} style={triggerStyle || { height: 32, padding: '0 6px', borderRadius: 8, border: '1px solid var(--border,#E9ECF2)', background: 'var(--surface,#fff)', cursor: 'pointer' }}>
+          {triggerContent}
+        </button>
+      ) : (
+        <button ref={btnRef} type="button" title={title} onClick={toggle}
+          style={{ width: size, height: size, borderRadius: round ? '50%' : 8, border: '1px solid var(--border,#E9ECF2)', background: cur, cursor: 'pointer', padding: 0, boxShadow: 'inset 0 0 0 2px var(--surface,#fff)' }} />
+      )}
       {open && (
         <div style={{ position: 'absolute', zIndex: 130, ...(openUp ? { bottom: 'calc(100% + 8px)' } : { top: 'calc(100% + 8px)' }), left: 0, width: 214, background: 'var(--surface,#fff)', border: '1px solid var(--border,#E9ECF2)', borderRadius: 12, boxShadow: '0 16px 44px rgba(16,24,40,0.20)', padding: 12 }}>
           {brandColors.length > 0 && (
