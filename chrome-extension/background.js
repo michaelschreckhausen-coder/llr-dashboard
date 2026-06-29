@@ -491,17 +491,31 @@ async function scrapeConnectionsPage(maxScrolls) {
     } catch (e) { return null }
   }
 
-  var seen = {}
+  // LinkedIn rendert pro Kontakt ZWEI /in/-Anchors (Bild + Text). Der Name steht im
+  // Text-Anchor als Gesamttext OHNE die Headline (die in einem Kind-<span> liegt).
+  // Daher: ganzen Anchor-Text nehmen und die Span-Texte (Headline) herausschneiden.
+  function cardName(a) {
+    var full = (a.textContent || '').replace(/\s+/g, ' ').trim()
+    if (!full) return ''
+    var spans = a.querySelectorAll('span')
+    for (var i = 0; i < spans.length; i++) {
+      var st = (spans[i].textContent || '').replace(/\s+/g, ' ').trim()
+      if (st && st.length >= 3) full = full.split(st).join('')
+    }
+    full = full.replace(/\s+/g, ' ').trim()
+    return full.length > 80 ? '' : full
+  }
+
+  var idx = {}
   var out = []
   anchors.forEach(function(a) {
     var url = norm(a.href)
-    if (!url || seen[url]) return
-    // Sichtbarer Name steht bei LinkedIn meist in einem aria-hidden span; sonst Anchor-Text.
-    var nameEl = a.querySelector('span[aria-hidden="true"]')
-    var name = ((nameEl ? nameEl.textContent : a.textContent) || '').trim().split('\n')[0].trim()
-    if (!name || name.length > 80) name = ''
-    seen[url] = true
-    out.push({ name: name, profile_url: url })
+    if (!url) return
+    var name = cardName(a)
+    // Erste Sichtung des Profils anlegen; spätere Anchors nur nutzen, um einen
+    // noch leeren Namen nachzutragen (Bild-Anchor hat keinen Text, Text-Anchor schon).
+    if (idx[url] === undefined) { idx[url] = out.length; out.push({ name: name, profile_url: url }) }
+    else if (!out[idx[url]].name && name) { out[idx[url]].name = name }
   })
   return { connections: out }
 }

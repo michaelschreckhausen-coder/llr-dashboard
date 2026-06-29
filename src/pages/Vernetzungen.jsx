@@ -334,21 +334,23 @@ export default function Vernetzungen({ session }) {
       const res = await scrapeLinkedInConnections()
       if (res.error) { setSyncMsg({ type:'err', text: res.error }); setSyncing(false); return }
       const conns = res.connections || []
-      const urlSet  = new Set(conns.map(c => normalizeLinkedInUrl(c.profile_url)).filter(Boolean))
+      const slugSet = new Set(conns.map(c => normalizeLinkedInUrl(c.profile_url)).filter(Boolean))
       const nameSet = new Set(conns.map(c => (c.name||'').trim().toLowerCase()).filter(Boolean))
-      const pending = leads.filter(l => l.li_connection_status === 'pending')
+      // Kandidaten: alle, die noch NICHT als vernetzt markiert sind — nicht nur 'pending',
+      // da man auch ohne App-Anfrage bereits vernetzt sein kann.
+      const candidates = leads.filter(l => l.li_connection_status !== 'verbunden')
       const now = new Date().toISOString()
-      const matched = pending.filter(l => {
-        const u = normalizeLinkedInUrl(l.linkedin_url || l.profile_url)
-        return (u && urlSet.has(u)) || nameSet.has(fullName(l).trim().toLowerCase())
+      const matched = candidates.filter(l => {
+        const slug = normalizeLinkedInUrl(l.linkedin_url || l.profile_url)
+        return (slug && slugSet.has(slug)) || nameSet.has(fullName(l).trim().toLowerCase())
       })
       // Matched → verbunden (per Zeile via .eq, kein .in()-Bundle — Fallstrick #1)
       await Promise.all(matched.map(l => supabase.from('linkedin_inbox').update({
         li_connection_status: 'verbunden', li_accepted_at: now, li_connected_at: now, li_connection_checked_at: now,
       }).eq('id', l.id)))
-      // checked_at auf alle ausstehenden (auch ohne Treffer) — reines Timestamp-Feld
-      if (pending.length) {
-        await supabase.from('linkedin_inbox').update({ li_connection_checked_at: now }).in('id', pending.map(l => l.id))
+      // checked_at auf alle geprüften Kandidaten (auch ohne Treffer) — reines Timestamp-Feld
+      if (candidates.length) {
+        await supabase.from('linkedin_inbox').update({ li_connection_checked_at: now }).in('id', candidates.map(l => l.id))
       }
       const matchedIds = new Set(matched.map(l => l.id))
       setLeads(ls => ls.map(l => matchedIds.has(l.id) ? {...l, li_connection_status:'verbunden', li_accepted_at:now, li_connected_at:now} : l))

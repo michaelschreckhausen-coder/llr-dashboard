@@ -260,9 +260,15 @@ export async function scrapeLinkedInConnections() {
   }
 }
 
-// Normalisiert eine LinkedIn-Profil-URL auf linkedin.com/in/<slug> (klein, ohne Query/Slash).
+// Normalisiert eine LinkedIn-Profil-URL auf den reinen Profil-Slug (Teil nach /in/).
+// Tolerant gegenüber Protokoll, www/Locale-Subdomain, Query, Hash und Trailing-Slash —
+// dadurch matcht z.B. "https://www.linkedin.com/in/pierredesaint-just/" gegen
+// "linkedin.com/in/pierredesaint-just". Der Slug ist als Match-Schlüssel zuverlässiger
+// als die volle URL.
 export function normalizeLinkedInUrl(u) {
   if (!u) return null
-  const m = String(u).match(/https?:\/\/[^/]*linkedin\.com\/in\/[^/?#]+/i)
-  return m ? m[0].toLowerCase().replace(/\/$/, '') : null
+  const s = String(u).toLowerCase().split('?')[0].split('#')[0]
+  const m = s.match(/\/in\/([^/]+)/)
+  if (!m) return null
+  try { return decodeURIComponent(m[1]).replace(/\/+$/, '') } catch { return m[1].replace(/\/+$/, '') }
 }
