@@ -152,11 +152,12 @@ export default function LinkedInInbox() {
     const ids = [...selected]; if (!ids.length) return
     setBusy(true); setMsg(null)
     let cid = campaignId
+    let cName = campaignId ? campName(campaignId) : ''
     if (!cid && newName && newName.trim()) {
       const { data: created, error: cErr } = await supabase
         .from('automation_campaigns').insert({ user_id: uid, name: newName.trim() }).select('id, name').single()
       if (cErr) { setBusy(false); setMsg({ text: 'Kampagne anlegen fehlgeschlagen: ' + cErr.message }); return }
-      cid = created.id
+      cid = created.id; cName = created.name
       setCampaigns(prev => [created, ...prev])
     }
     if (!cid) { setBusy(false); return }
@@ -173,7 +174,7 @@ export default function LinkedInInbox() {
       return n
     })
     setSelected(new Set())
-    setMsg({ text: `${toAdd.length} Kontakt(e) zu „${campName(cid)}" hinzugefügt (nur gruppiert — kein Outreach gestartet).` })
+    setMsg({ text: `${toAdd.length} Kontakt(e) zu „${cName || 'Kampagne'}" hinzugefügt (nur gruppiert — kein Outreach gestartet).` })
   }
 
   const card = 'var(--surface)', border = 'var(--border)', text = 'var(--text-primary)', muted = 'var(--text-muted)', primary = 'var(--primary)'
