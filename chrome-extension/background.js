@@ -615,7 +615,7 @@ chrome.runtime.onInstalled.addListener(async function(details) {
 
   chrome.alarms.create('queuePoll', { periodInMinutes: 40/60 })
   chrome.alarms.create('ssiDaily', { when: getNext8AM(), periodInMinutes: 24*60 })
-  console.log('[Leadesk] v7.9 installiert')
+  console.log('[Leadesk] v' + ((chrome.runtime.getManifest && chrome.runtime.getManifest().version) || '?') + ' installiert')
   if (details.reason === 'install') chrome.tabs.create({ url: 'https://app.leadesk.de' })
 })
 
