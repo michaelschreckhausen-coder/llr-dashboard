@@ -1174,20 +1174,19 @@ async function importSalesNavLead(ctx) {
     // PostgREST 409 → wir interpretieren das als "bereits vorhanden".
     // (Caveat: Solo-User mit team_id=NULL deduppen nicht — NULLs sind im
     //  Unique-Index distinct. Team-Pfad ist der Hauptfall; Phase 4 ggf. härten.)
-    const result = await sbFetch('leads', 'POST', [payload])
-    if (result === null) {
-      if (/409|23505|duplicate key/i.test(window.__lastError || '')) {
-        btn.className = 'btn-primary success'
-        btn.innerHTML = '✓ Bereits in Leadesk'
-        setStatus('connected', 'Bereits vorhanden ✓')
-        return
-      }
-      throw new Error(window.__lastError || 'Speichern fehlgeschlagen')
-    }
-    const isNew = Array.isArray(result) && result.length > 0
+    // Sales-Nav-Einzelimport landet ab jetzt in der Import-Inbox (Triage VOR dem
+    // CRM), nicht mehr direkt in leads. Übernahme ins CRM per 1-Klick in /linkedin-inbox.
+    if (!currentTeamId) { throw new Error('Kein aktives Team — bitte in der App ein Team wählen.') }
+    const result = await sbFetch('rpc/import_linkedin_to_inbox', 'POST', {
+      p_team_id: currentTeamId,
+      p_user_id: currentUserId,
+      p_profile: payload,
+    })
+    if (result === null) { throw new Error(window.__lastError || 'Speichern fehlgeschlagen') }
+    const isNew = result === true || (Array.isArray(result) && result[0] === true)
     btn.className = 'btn-primary success'
-    btn.innerHTML = isNew ? '✓ Importiert!' : '✓ Bereits in Leadesk'
-    setStatus('connected', isNew ? 'Lead importiert ✓' : 'Bereits vorhanden ✓')
+    btn.innerHTML = isNew ? '✓ In Import-Inbox!' : '✓ Schon in Inbox'
+    setStatus('connected', isNew ? 'In Import-Inbox ✓' : 'Bereits in Inbox ✓')
   } catch (err) {
     btn.className = 'btn-primary error'
     btn.disabled = false
