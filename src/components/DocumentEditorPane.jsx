@@ -81,7 +81,7 @@ function clamp(v, lo, hi) { return Math.max(lo, Math.min(hi, v)) }
 
 const DocumentEditorPane = forwardRef(function DocumentEditorPane({
   docId, teamId, brandVoiceId, brandVoiceName, audienceId, companyVoiceIds = [], sourceChatId = null, editorOpen = false,
-  onDocCreated, onClose, onAttachToPost, onNewDocument,
+  onDocCreated, onClose, onAttachToPost, onNewDocument, initialText = null, onInitialConsumed,
 }, ref) {
   const [title, setTitle] = useState('')
   const titleRef = useRef('')
@@ -184,6 +184,19 @@ const DocumentEditorPane = forwardRef(function DocumentEditorPane({
     })()
     return () => { cancelled = true }
   }, [docId, editor])
+
+  // Erstbefüllung: Editor wurde leer gemountet (kein docId) und es liegt ein
+  // initialer Text vor (z. B. „→ ins Dokument" aus dem Chat ohne offenes Doc).
+  // Läuft NACH dem docId-Effekt (der bei !docId den Inhalt leert).
+  const initialAppliedRef = useRef(false)
+  useEffect(() => {
+    if (!editor || docId) return
+    if (initialText && !initialAppliedRef.current) {
+      initialAppliedRef.current = true
+      loadNewDocWithText(initialText)
+      onInitialConsumed && onInitialConsumed()
+    }
+  }, [editor, docId, initialText])
 
   useEffect(() => () => clearTimeout(saveTimer.current), [])
 
