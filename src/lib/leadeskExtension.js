@@ -237,3 +237,32 @@ export async function getActiveLinkedInIdentity() {
     return { error: e.message || 'Fehler beim Lesen der LinkedIn-Identity' }
   }
 }
+
+// Scrapet die eigene LinkedIn-Connections-Seite, um zu erkennen welche
+// gesendeten Vernetzungsanfragen angenommen wurden.
+// Returnt { connections: [{ name, profile_url }] } oder { error }.
+export async function scrapeLinkedInConnections() {
+  const det = await detectLeadeskExtension()
+  if (!det.installed) {
+    return {
+      error: 'Leadesk Chrome-Extension nicht aktiv. Bitte installiere oder aktiviere die Extension, um deine Verbindungen abzugleichen.',
+      missingExtension: true,
+    }
+  }
+  try {
+    const resp = await sendBridgeMessage('scrape_connections', {}, BRIDGE_TIMEOUT_SCRAPE)
+    if (resp?.error && /Unbekannte Aktion/i.test(resp.error)) {
+      return { error: 'Deine Leadesk-Extension ist zu alt für den Verbindungs-Abgleich (benötigt die neueste Version). Bitte Extension aktualisieren.', outdatedExtension: true }
+    }
+    return resp || { error: 'Keine Antwort von der Extension' }
+  } catch (e) {
+    return { error: e.message || 'Fehler beim Verbindungs-Abgleich via Extension' }
+  }
+}
+
+// Normalisiert eine LinkedIn-Profil-URL auf linkedin.com/in/<slug> (klein, ohne Query/Slash).
+export function normalizeLinkedInUrl(u) {
+  if (!u) return null
+  const m = String(u).match(/https?:\/\/[^/]*linkedin\.com\/in\/[^/?#]+/i)
+  return m ? m[0].toLowerCase().replace(/\/$/, '') : null
+}

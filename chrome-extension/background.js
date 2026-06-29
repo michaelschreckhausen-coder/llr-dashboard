@@ -462,6 +462,74 @@ async function pollQueue() {
   } finally { processing = false }
 }
 
+// ── Connections-Scraper ───────────────────────────────────────────
+// Liest die eigene LinkedIn-Connections-Seite, um zu erkennen welche
+// gesendeten Vernetzungsanfragen angenommen wurden. Läuft IN der Seite
+// (executeScript). Liefert [{ name, profile_url }]. Muster: SSI-Scraper.
+async function scrapeConnectionsPage(maxScrolls) {
+  function sleepP(ms) { return new Promise(function(r) { setTimeout(r, ms) }) }
+  var href = window.location.href
+  if (href.indexOf('/login') !== -1 || href.indexOf('/authwall') !== -1 || href.indexOf('/checkpoint') !== -1) {
+    return { error: 'Nicht auf LinkedIn eingeloggt' }
+  }
+  // Lazy-Load: mehrfach bis ans Seitenende scrollen, damit mehr Connections nachladen.
+  var scrolls = maxScrolls || 6
+  for (var i = 0; i < scrolls; i++) {
+    window.scrollTo(0, document.body.scrollHeight)
+    await sleepP(1200)
+  }
+  window.scrollTo(0, 0)
+  await sleepP(400)
+
+  var anchors = Array.prototype.slice.call(document.querySelectorAll('a[href*="/in/"]'))
+  if (!anchors.length) return { error: 'Seite noch nicht geladen', retry: true }
+
+  function norm(u) {
+    try {
+      var m = String(u).match(/https?:\/\/[^/]*linkedin\.com\/in\/[^/?#]+/i)
+      return m ? m[0].toLowerCase().replace(/\/$/, '') : null
+    } catch (e) { return null }
+  }
+
+  var seen = {}
+  var out = []
+  anchors.forEach(function(a) {
+    var url = norm(a.href)
+    if (!url || seen[url]) return
+    // Sichtbarer Name steht bei LinkedIn meist in einem aria-hidden span; sonst Anchor-Text.
+    var nameEl = a.querySelector('span[aria-hidden="true"]')
+    var name = ((nameEl ? nameEl.textContent : a.textContent) || '').trim().split('\n')[0].trim()
+    if (!name || name.length > 80) name = ''
+    seen[url] = true
+    out.push({ name: name, profile_url: url })
+  })
+  return { connections: out }
+}
+
+async function scrapeConnectionsForWebApp() {
+  var url = 'https://www.linkedin.com/mynetwork/invite-connect/connections/'
+  var win = null
+  try {
+    win = await chrome.windows.create({ url: url, focused: false, state: 'minimized' })
+    var tab = win.tabs[0]
+    await waitLoaded(tab.id, 25000)
+    await sleep(4000)
+    var result = await chrome.scripting.executeScript({ target: { tabId: tab.id }, func: scrapeConnectionsPage, args: [6] })
+    var res = result && result[0] && result[0].result
+    if (res && res.retry) {
+      await sleep(3000)
+      result = await chrome.scripting.executeScript({ target: { tabId: tab.id }, func: scrapeConnectionsPage, args: [6] })
+      res = result && result[0] && result[0].result
+    }
+    if (res && res.error) return { error: res.error }
+    return { connections: (res && res.connections) || [] }
+  } catch (e) {
+    return { error: e.message || String(e) }
+  } finally {
+    if (win && win.id) setTimeout(function() { chrome.windows.remove(win.id).catch(function() {}) }, 1500)
+  }
+}
+
 // ── Messages ──────────────────────────────────────────────────────
 chrome.runtime.onMessage.addListener(function(msg, sender, sendResponse) {
   if (msg.type === 'GET_AUTH') { getAuth().then(sendResponse); return true }
@@ -474,6 +542,17 @@ chrome.runtime.onMessage.addListener(function(msg, sender, sendResponse) {
     }
     var scrapeFn = msg.type === 'BRIDGE_SCRAPE_LINKEDIN_COMPANY' ? scrapeLinkedInCompanyForWebApp : scrapeLinkedInProfileForWebApp
     scrapeFn(msg.url, !!msg.includePosts).then(sendResponse).catch(function(err) {
+      sendResponse({ error: String(err && err.message || err) })
+    })
+    return true
+  }
+  if (msg.type === 'BRIDGE_SCRAPE_CONNECTIONS') {
+    var senderUrlC = (sender && sender.url) || ''
+    if (!/^https:\/\/(app|staging|[a-z0-9-]+)\.leadesk\.de\//.test(senderUrlC)) {
+      sendResponse({ error: 'Unbefugter Bridge-Aufruf' })
+      return true
+    }
+    scrapeConnectionsForWebApp().then(sendResponse).catch(function(err) {
       sendResponse({ error: String(err && err.message || err) })
     })
     return true
