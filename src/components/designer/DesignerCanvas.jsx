@@ -297,6 +297,17 @@ export default function DesignerCanvas({ visual, teamId, onSaved, onReplaceVisua
     if (activeTool !== 'ai') { setAiMode(null); clearMask(); setAiPreview(null) }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [activeTool])
+  // Werkzeug-Panel schließt sich, sobald man irgendwo daneben klickt (nicht nur via X).
+  useEffect(() => {
+    if (!activeTool) return
+    const onDocDown = (e) => {
+      const t = e.target
+      if (t && t.closest && t.closest('[data-tool-ui]')) return
+      setActiveTool(null)
+    }
+    document.addEventListener('mousedown', onDocDown, true)
+    return () => document.removeEventListener('mousedown', onDocDown, true)
+  }, [activeTool])
   const [elementTab, setElementTab] = useState('shapes')   // shapes | icons | graphics | images
   const [uploadThumbs, setUploadThumbs] = useState([])     // diese Sitzung hochgeladene DataURLs
   const [aiCommand, setAiCommand] = useState('')           // freier KI-Befehl (mask-free)
