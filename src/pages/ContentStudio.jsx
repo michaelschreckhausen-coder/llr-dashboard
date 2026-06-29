@@ -164,6 +164,9 @@ export default function ContentStudio({ session }) {
   const editorRef = useRef(null)
   const docParam = searchParams.get('doc')
   const [editorOpen, setEditorOpen] = useState(!!docParam)
+  // Neues Dokument: Editor mounten (auch ohne docParam) + Text nach Mount laden.
+  const [newDocActive, setNewDocActive] = useState(false)
+  const [pendingDocText, setPendingDocText] = useState(null)
   const editorOpenRef = useRef(editorOpen)
   useEffect(() => { editorOpenRef.current = editorOpen }, [editorOpen])
   const [useEditorContext, setUseEditorContext] = useState(false)
@@ -197,7 +200,7 @@ export default function ContentStudio({ session }) {
   const [pickerBrandChats, setPickerBrandChats] = useState([])
   const [pickerSearch, setPickerSearch] = useState('')
 
-  useEffect(() => { if (docParam) { setEditorOpen(true); setSidebarOpen(false); setSplitMode('doc') } }, [docParam])
+  useEffect(() => { if (docParam) { setEditorOpen(true); setSidebarOpen(false); setSplitMode('doc'); setNewDocActive(false) } }, [docParam])
 
   // ─── Brand-Wechsel: Content-Werkstatt komplett zurücksetzen ─────────────────
   // Bilder, Design-Projekte, Dokumente und Chats sind strikt brand-scoped. Beim
@@ -212,6 +215,7 @@ export default function ContentStudio({ session }) {
     prevBrandRef.current = id
     if (!had) return                                    // Erst-Initialisierung → nicht resetten
     setEditorOpen(false); setVisualMode(false); setForceNewImage(false)
+    setNewDocActive(false); setPendingDocText(null)
     setSplitMode('doc'); setPaneView('split'); setSidebarOpen(false)
     setActiveChatId(null); setActiveChat(null); setMessages([]); setLinkedPost(null)
     setChatDocs([]); setDemoRailDocs(null); setChatVisuals([]); setActiveVisual(null)
@@ -608,6 +612,7 @@ export default function ContentStudio({ session }) {
 
   async function openChat(chatId) {
     setActiveChatId(chatId)
+    setNewDocActive(false); setPendingDocText(null)
     setMessages([]); setMessagesLoading(true)
     const { data: c } = await supabase.from('content_chats').select('*').eq('id', chatId).maybeSingle()
     setActiveChat(c)
@@ -1004,8 +1009,14 @@ export default function ContentStudio({ session }) {
             loadExistingPosts={loadExistingPosts}
             onInsertToDoc={(text, mode) => {
               setSidebarOpen(false); setEditorOpen(true); setSplitMode('doc'); setPaneView('split')
-              if (mode === 'new') editorRef.current?.loadNewDocWithText?.(text)
-              else editorRef.current?.insertText?.(text)
+              // Editor schon gemountet (Doc offen) → direkt schreiben.
+              if (editorRef.current) {
+                if (mode === 'append') editorRef.current.insertText?.(text)
+                else editorRef.current.loadNewDocWithText?.(text)
+                return
+              }
+              // Kein Dokument offen → Editor leer mounten und Text nach Mount laden.
+              setPendingDocText(text); setNewDocActive(true)
             }}
             onOpenInDesigner={(meta) => openVisualInDesigner(meta.visual_id || { storage_path: meta.storage_path, prompt: meta.prompt, aspect_ratio: meta.aspect_ratio, kind: 'image' }, { assignToChat: !!activeChatId })}
             onDownloadVisual={(meta) => downloadVisual(meta.storage_path, meta.visual_id)}
@@ -1077,12 +1088,14 @@ export default function ContentStudio({ session }) {
           ) : (
             <>
               <div style={{ flex:1, minWidth:0, height:'100%' }}>
-                {!docParam && !demoRailDocs ? (
+                {!docParam && !demoRailDocs && !newDocActive ? (
                   <EmptyOpenPane type="doc" onOpen={() => startOpenPicker('doc')} onNew={openNewDoc} />
                 ) : (
                 <DocumentEditorPane
                   ref={editorRef}
                   docId={docParam}
+                  initialText={(!docParam && newDocActive) ? pendingDocText : null}
+                  onInitialConsumed={() => setPendingDocText(null)}
                   editorOpen={editorOpen && splitMode === 'doc'}
                   teamId={activeTeamId}
                   brandVoiceId={activeBrandVoice?.id}
