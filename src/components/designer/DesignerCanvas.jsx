@@ -3025,8 +3025,44 @@ export default function DesignerCanvas({ visual, teamId, onSaved, onReplaceVisua
           patch.height = Math.max(4, node.height() * node.scaleY())
           node.scaleX(1); node.scaleY(1)
         } else if (o.type === 'image') {
-          patch.width = Math.max(4, node.width() * node.scaleX())
-          patch.height = Math.max(4, node.height() * node.scaleY())
+          // Ecke → ganzes Bild skalieren (Crop-Region bleibt). Seite → ZUSCHNEIDEN:
+          // Frame-Maß ändern, Quell-Skalierung konstant halten (kein Verzerren), an
+          // Bildgrenzen klemmen. So verhält es sich wie Crop in Canva/Figma.
+          let anchor = ''
+          try { anchor = trRef.current?.getActiveAnchor() || '' } catch (_e) {}
+          const isSide = anchor === 'middle-left' || anchor === 'middle-right' || anchor === 'top-center' || anchor === 'bottom-center'
+          const scx = node.scaleX(), scy = node.scaleY()
+          const el = imgCache[o.src]
+          const natW = (el && (el.naturalWidth || el.width)) || o.width || 1
+          const natH = (el && (el.naturalHeight || el.height)) || o.height || 1
+          const cw0 = o.cropWidth || natW, ch0 = o.cropHeight || natH
+          const cx0 = o.cropX || 0, cy0 = o.cropY || 0
+          if (isSide && (anchor === 'middle-left' || anchor === 'middle-right')) {
+            const newW = Math.max(8, node.width() * scx)
+            const sPx = (o.width || 1) / cw0           // Display-px pro Quell-px
+            let cw = newW / sPx
+            let cx = anchor === 'middle-left' ? cx0 + (cw0 - cw) : cx0
+            if (cx < 0) { cw += cx; cx = 0 }
+            if (cx + cw > natW) cw = natW - cx
+            cw = Math.max(1, cw)
+            patch.width = Math.max(8, cw * sPx); patch.height = o.height
+            patch.cropX = cx; patch.cropWidth = cw; patch.cropY = cy0; patch.cropHeight = ch0
+          } else if (isSide) {
+            const newH = Math.max(8, node.height() * scy)
+            const sPx = (o.height || 1) / ch0
+            let ch = newH / sPx
+            let cy = anchor === 'top-center' ? cy0 + (ch0 - ch) : cy0
+            if (cy < 0) { ch += cy; cy = 0 }
+            if (cy + ch > natH) ch = natH - cy
+            ch = Math.max(1, ch)
+            patch.height = Math.max(8, ch * sPx); patch.width = o.width
+            patch.cropY = cy; patch.cropHeight = ch; patch.cropX = cx0; patch.cropWidth = cw0
+          } else {
+            // Ecke (oder unbekannt) → ganze Größe; Crop-Region beibehalten
+            patch.width = Math.max(4, node.width() * scx)
+            patch.height = Math.max(4, node.height() * scy)
+            if (o.cropWidth) { patch.cropX = cx0; patch.cropY = cy0; patch.cropWidth = cw0; patch.cropHeight = ch0 }
+          }
           node.scaleX(1); node.scaleY(1)
         } else if (o.type === 'ellipse') {
           patch.radiusX = Math.max(2, (o.radiusX || 90) * node.scaleX())
@@ -3449,22 +3485,10 @@ export default function DesignerCanvas({ visual, teamId, onSaved, onReplaceVisua
                   rotationSnaps={[0, 45, 90, 135, 180, 225, 270, 315]}
                   rotationSnapTolerance={4}
                   boundBoxFunc={(oldBox, newBox) => {
-                    if (newBox.width < 8 || newBox.height < 8) return oldBox
-                    // Proportional-Modus: Seitenkanten (middle-*) würden in Konva sonst
-                    // verzerren → Verhältnis von oldBox erzwingen, mittig zur fixen Achse.
-                    if (lockRatio && (oldBox.rotation || 0) === 0) {
-                      let anchor = ''
-                      try { anchor = trRef.current?.getActiveAnchor() || '' } catch (_e) {}
-                      const ratio = Math.abs(oldBox.width / oldBox.height) || 1
-                      if (anchor === 'middle-left' || anchor === 'middle-right') {
-                        const newH = Math.abs(newBox.width) / ratio
-                        return { ...newBox, y: newBox.y - (newH - newBox.height) / 2, height: newH }
-                      }
-                      if (anchor === 'top-center' || anchor === 'bottom-center') {
-                        const newW = Math.abs(newBox.height) * ratio
-                        return { ...newBox, x: newBox.x - (newW - newBox.width) / 2, width: newW }
-                      }
-                    }
+                    // Nur Mindestgröße erzwingen. Ecken halten via keepRatio das Verhältnis
+                    // (Element als Ganzes skalieren); Seiten-Anker ändern in Konva nur EINE
+                    // Achse (Formen: Maß; Bilder: wird in onTransformEnd zu Zuschnitt).
+                    if (Math.abs(newBox.width) < 8 || Math.abs(newBox.height) < 8) return oldBox
                     return newBox
                   }} />
               </Layer>
@@ -4174,7 +4198,7 @@ const RAIL_TOOLS = [
 
 function ToolRail({ active, onSelect }) {
   return (
-    <div style={{ width: 76, flexShrink: 0, borderRight: '1px solid var(--border)', background: 'var(--surface,#fff)',
+    <div data-tool-ui style={{ width: 76, flexShrink: 0, borderRight: '1px solid var(--border)', background: 'var(--surface,#fff)',
       display: 'flex', flexDirection: 'column', alignItems: 'stretch', gap: 3, padding: '10px 8px', overflowY: 'auto' }}>
       {RAIL_TOOLS.map(t => {
         if (t.divider) {
@@ -4458,7 +4482,7 @@ function ToolPanel(props) {
         border: '1px solid var(--border)', background: 'var(--surface,#fff)', display: 'flex', flexDirection: 'column',
         overflow: 'hidden', boxShadow: '0 12px 40px rgba(16,24,40,0.18)' }
   return (
-    <div style={frame}>
+    <div data-tool-ui style={frame}>
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '9px 12px', borderBottom: '1px solid var(--border)', flexShrink: 0 }}>
         <span style={{ fontSize: 12.5, fontWeight: 700, color: 'var(--text-primary)' }}>{titleMap[tool] || ''}</span>
         <button onClick={onClose} title="Schließen" style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-muted)', display: 'flex' }}><X size={16} /></button>
