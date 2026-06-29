@@ -183,6 +183,10 @@ const FORMAT_PRESETS = [
 const ZOOM_MIN = 0.1
 const ZOOM_MAX = 8
 
+// Rand um die Artboard (Display-px), damit Auswahlrahmen/Anfasser über den
+// Seitenrand hinaus sichtbar bleiben (Stage ist größer als die Seite).
+const CANVAS_PAD = 80
+
 export default function DesignerCanvas({ visual, teamId, onSaved, onReplaceVisual, onPagesToPost }) {
   const stageRef = useRef(null)
   const layerRef = useRef(null)
@@ -1801,7 +1805,7 @@ export default function DesignerCanvas({ visual, teamId, onSaved, onReplaceVisua
     if (!pos) return null
     const offX = baseCrop ? baseCrop.x : 0
     const offY = baseCrop ? baseCrop.y : 0
-    return { x: pos.x / effScale + offX, y: pos.y / effScale + offY }
+    return { x: (pos.x - CANVAS_PAD) / effScale + offX, y: (pos.y - CANVAS_PAD) / effScale + offY }
   }
   function onStageMouseDown(e) {
     const stage = stageRef.current
@@ -1933,7 +1937,7 @@ export default function DesignerCanvas({ visual, teamId, onSaved, onReplaceVisua
       try { stage.getLayers().forEach(l => l.batchDraw()) } catch (_e) {}
       // Die Stage hat exakt Artboard-Größe (dispW×dispH); ihr Canvas clippt bereits
       // alles ausserhalb der Artboard. Daher kein zusätzliches Crop nötig.
-      const opts = { pixelRatio, mimeType }
+      const opts = { pixelRatio, mimeType, x: CANVAS_PAD, y: CANVAS_PAD, width: stageSize.width * effScale, height: stageSize.height * effScale }
       if (mimeType === 'image/jpeg') opts.quality = quality
       dataUrl = stage.toDataURL(opts)
     } finally {
@@ -3467,17 +3471,18 @@ export default function DesignerCanvas({ visual, teamId, onSaved, onReplaceVisua
           </div>
         ) : (
           <div style={{
-            position: 'relative', width: dispW, height: dispH,
+            position: 'relative', width: dispW + CANVAS_PAD * 2, height: dispH + CANVAS_PAD * 2,
             transform: `translate(${pan.x}px, ${pan.y}px)`,
-            boxShadow: '0 4px 24px rgba(16,24,40,0.14)',
-            // Weiße Artboard (Whiteboard-Modell).
-            background: '#fff',
-            backgroundRepeat: 'repeat',
           }}>
+            {/* Artboard-Karte (Schatten) — eigentliche Seitenfläche, mittig im Rand. */}
+            <div style={{ position: 'absolute', left: CANVAS_PAD, top: CANVAS_PAD, width: dispW, height: dispH,
+              boxShadow: '0 4px 24px rgba(16,24,40,0.14)', background: '#fff' }} />
             <Stage
               ref={stageRef}
-              width={dispW}
-              height={dispH}
+              width={dispW + CANVAS_PAD * 2}
+              height={dispH + CANVAS_PAD * 2}
+              x={CANVAS_PAD}
+              y={CANVAS_PAD}
               scaleX={effScale}
               scaleY={effScale}
               onMouseDown={onStageMouseDown}
@@ -3528,7 +3533,7 @@ export default function DesignerCanvas({ visual, teamId, onSaved, onReplaceVisua
             <canvas
               ref={overlayRef}
               style={{
-                position: 'absolute', top: 0, left: 0, width: dispW, height: dispH,
+                position: 'absolute', top: CANVAS_PAD, left: CANVAS_PAD, width: dispW, height: dispH,
                 pointerEvents: aiActive ? 'auto' : 'none',
                 cursor: aiActive ? 'crosshair' : 'default', zIndex: 40,
               }}
