@@ -27,7 +27,7 @@ const PRIMARY = 'rgb(49,90,231)'
 const PRIMARY_VAR = `var(--wl-primary, ${PRIMARY})`
 
 const pageOuterStyle    = { background:'var(--surface-canvas, #F8FAFC)', minHeight:'100vh', padding:'24px 24px 60px' }
-const pageStyle         = { width:'100%', margin:'0 auto', display:'flex', flexDirection:'column' }
+const pageStyle         = { width:'100%', maxWidth:1100, margin:'0 auto', display:'flex', flexDirection:'column' }
 const headerRowStyle    = { display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:20, gap:12, flexWrap:'wrap' }
 const titleStyle        = { fontSize:22, fontWeight:800, margin:0, color:'var(--text-strong, #111827)' }
 const subtitleStyle     = { fontSize:13, color:'var(--text-muted, #6B7280)', marginTop:4 }
