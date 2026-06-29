@@ -1140,41 +1140,37 @@ export default function ContentStudio({ session }) {
               if (last) { const n = new URLSearchParams(searchParams); n.set('doc', last.id); setSearchParams(n, { replace: true }) }
             }
           }
-          const collapsedTab = { width:46, height:50, display:'inline-flex', alignItems:'center', justifyContent:'center', border:'none', background:'transparent', cursor:'pointer', color:'var(--text-secondary,#475569)' }
-          const hintRow = { flex:1, display:'flex', alignItems:'center', justifyContent:'flex-end', gap:7 }
           const scriptHint = { fontFamily:"'Segoe Script','Bradley Hand','Brush Script MT','Comic Sans MS',cursive", fontStyle:'italic', fontSize:16, fontWeight:600, color:'var(--wl-primary, rgb(49,90,231))', whiteSpace:'nowrap', lineHeight:1 }
+          const rowBtn = { display:'flex', alignItems:'center', gap:9, width:'100%', padding:'13px 14px', border:'none', background:'transparent', cursor:'pointer', textAlign:'left' }
+          const iconBox = { width:34, height:34, flexShrink:0, display:'inline-flex', alignItems:'center', justifyContent:'center', borderRadius:9, border:'1px solid var(--border,#E9ECF2)', background:'var(--surface,#fff)', color:'var(--wl-primary, rgb(49,90,231))' }
           const CurvedArrow = () => (
-            <svg width="34" height="24" viewBox="0 0 34 24" fill="none" style={{ color:'var(--wl-primary, rgb(49,90,231))', flexShrink:0 }} aria-hidden="true">
+            <svg width="32" height="22" viewBox="0 0 34 24" fill="none" style={{ color:'var(--wl-primary, rgb(49,90,231))', flexShrink:0 }} aria-hidden="true">
               <path d="M3 5 C 14 3, 25 7, 30 14" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" fill="none"/>
               <path d="M23 14.5 L 31 15 L 27 8" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" fill="none"/>
             </svg>
           )
+          // Eine durchgehende weiße Karte: Label + Pfeil + Button liegen je Zeile
+          // aneinander an, ganze Zeile klickbar.
           return (
-            <div style={{ position:'absolute', top:'50%', right:0, transform:'translateY(-50%)', zIndex:50, display:'flex', alignItems:'stretch', gap:10, pointerEvents:'none' }}>
-              {/* Beschriftungen + Pfeile (dekorativ, blockieren den Chat nicht) */}
-              <div style={{ display:'flex', flexDirection:'column' }}>
-                <div style={hintRow}><span style={scriptHint}>ins Dokument</span><CurvedArrow/></div>
-                <div style={{ height:1 }}/>
-                <div style={hintRow}><span style={scriptHint}>zum Designer</span><CurvedArrow/></div>
-              </div>
-              {/* Weißer Pull-out-Balken mit den Umschalt-Buttons */}
-              <div style={{ display:'flex', flexDirection:'column', overflow:'hidden', background:'var(--surface,#fff)',
-                  border:'1px solid var(--border,#E9ECF2)', borderRight:'none', borderRadius:'14px 0 0 14px',
-                  boxShadow:'-4px 0 18px rgba(16,24,40,0.14)', pointerEvents:'auto' }}>
-                <button onClick={() => openTo('doc')} title="Dokument öffnen"
-                  style={collapsedTab}
-                  onMouseEnter={e => { e.currentTarget.style.background='rgba(49,90,231,0.08)'; e.currentTarget.style.color='var(--wl-primary, rgb(49,90,231))' }}
-                  onMouseLeave={e => { e.currentTarget.style.background='transparent'; e.currentTarget.style.color='var(--text-secondary,#475569)' }}>
-                  <FileText size={18} strokeWidth={1.9}/>
-                </button>
-                <div style={{ height:1, background:'var(--border,#E9ECF2)' }}/>
-                <button onClick={() => openTo('design')} title="Designer öffnen"
-                  style={collapsedTab}
-                  onMouseEnter={e => { e.currentTarget.style.background='rgba(49,90,231,0.08)'; e.currentTarget.style.color='var(--wl-primary, rgb(49,90,231))' }}
-                  onMouseLeave={e => { e.currentTarget.style.background='transparent'; e.currentTarget.style.color='var(--text-secondary,#475569)' }}>
-                  <Brush size={18} strokeWidth={1.9}/>
-                </button>
-              </div>
+            <div style={{ position:'absolute', top:'50%', right:0, transform:'translateY(-50%)', zIndex:50,
+                display:'flex', flexDirection:'column', overflow:'hidden', background:'var(--surface,#fff)',
+                border:'1px solid var(--border,#E9ECF2)', borderRight:'none', borderRadius:'14px 0 0 14px',
+                boxShadow:'-4px 0 18px rgba(16,24,40,0.14)', pointerEvents:'auto' }}>
+              <button onClick={() => openTo('doc')} title="Dokument öffnen" style={rowBtn}
+                onMouseEnter={e => { e.currentTarget.style.background='rgba(49,90,231,0.06)' }}
+                onMouseLeave={e => { e.currentTarget.style.background='transparent' }}>
+                <span style={scriptHint}>ins Dokument</span>
+                <CurvedArrow/>
+                <span style={iconBox}><FileText size={18} strokeWidth={1.9}/></span>
+              </button>
+              <div style={{ height:1, background:'var(--border,#E9ECF2)' }}/>
+              <button onClick={() => openTo('design')} title="Designer öffnen" style={rowBtn}
+                onMouseEnter={e => { e.currentTarget.style.background='rgba(49,90,231,0.06)' }}
+                onMouseLeave={e => { e.currentTarget.style.background='transparent' }}>
+                <span style={scriptHint}>zum Designer</span>
+                <CurvedArrow/>
+                <span style={iconBox}><Brush size={18} strokeWidth={1.9}/></span>
+              </button>
             </div>
           )
         })()
