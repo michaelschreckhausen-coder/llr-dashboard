@@ -425,11 +425,14 @@ export default function Automatisierung({ session }) {
           </div>
         )}
 
-        {/* Header */}
-        <div style={headerRowStyle}>
-          <div>
-            <h1 style={titleStyle}>Automatisierung</h1>
-            <div style={subtitleStyle}>LinkedIn-Kampagnen · Sequenz-Builder · Browser-Extension</div>
+        {/* Journal-Header (analog /messages) */}
+        <div style={{ display:'flex', alignItems:'flex-end', justifyContent:'space-between', gap:20, flexWrap:'wrap', marginBottom:22 }}>
+          <div style={{ flex:'1 1 auto', minWidth:280 }}>
+            <div style={{ fontSize:20, color:'#30A0D0', fontFamily:'"Caveat", cursive', fontWeight:600, marginBottom:6 }}>LinkedIn · Automatisierung</div>
+            <h1 style={{ fontSize:26, fontWeight:700, margin:0, letterSpacing:'-0.3px', lineHeight:1.2, color:'var(--text-primary, rgb(20,20,43))' }}>Deine Kampagnen, auf Autopilot.</h1>
+            <p style={{ fontSize:13, color:'var(--text-muted)', margin:'8px 0 0', lineHeight:1.6, maxWidth:600 }}>
+              LinkedIn-Sequenzen aus deinen Import-Kontakten — Vernetzen, Nachrichten und Follow-ups, automatisch über die Browser-Extension.
+            </p>
           </div>
           <div style={{ display:'flex', alignItems:'center', gap:8, flexWrap:'wrap' }}>
             <InboxLink />
