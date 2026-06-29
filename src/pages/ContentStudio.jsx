@@ -175,9 +175,9 @@ export default function ContentStudio({ session }) {
   useEffect(() => {
     const main = csRootRef.current?.closest('main')
     if (!main) return
-    const prev = main.style.paddingRight
-    if (!editorOpen) main.style.paddingRight = '0px'
-    return () => { main.style.paddingRight = prev }
+    // Shell-CSS setzt padding-right per !important -> mit 'important' überschreiben.
+    if (!editorOpen) main.style.setProperty('padding-right', '0px', 'important')
+    return () => { main.style.removeProperty('padding-right') }
   }, [editorOpen])
   const [useEditorContext, setUseEditorContext] = useState(false)
   const [chatDocs, setChatDocs] = useState([])
