@@ -1,0 +1,63 @@
+name: DB-Migrationen anwenden
+
+# Wendet neue supabase/migrations/*.sql automatisch an:
+#   develop → Staging-Hetzner (automatisch)
+#   main    → Prod-Hetzner   (hinter manuellem Freigabe-Gate, Environment "production")
+#
+# Voraussetzungen (einmalig, siehe MIGRATIONS_CI_SETUP):
+#   - Repo-Secret HETZNER_DEPLOY_KEY = privater SSH-Key, dessen Public-Key in
+#     authorized_keys BEIDER Server (Staging 178.104.210.216 + Prod 128.140.123.163) liegt.
+#   - GitHub Environment "production" mit "Required reviewers" → erzwingt die
+#     explizite Freigabe vor jeder Prod-Migration (Hard-Rule).
+
+on:
+  push:
+    branches: [develop, main]
+    paths:
+      - 'supabase/migrations/**.sql'
+
+concurrency:
+  group: db-migrate-${{ github.ref_name }}
+  cancel-in-progress: false
+
+jobs:
+  staging:
+    if: github.ref_name == 'develop'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: SSH-Key einrichten
+        run: |
+          mkdir -p ~/.ssh && chmod 700 ~/.ssh
+          printf '%s\n' "${{ secrets.HETZNER_DEPLOY_KEY }}" > ~/.ssh/deploy_key
+          chmod 600 ~/.ssh/deploy_key
+      - name: Migrationen auf Staging anwenden
+        env:
+          HOST: 178.104.210.216
+          ENVLABEL: STAGING
+          BEFORE: ${{ github.event.before }}
+          AFTER: ${{ github.sha }}
+        run: bash scripts/apply-migrations.sh
+
+  prod:
+    if: github.ref_name == 'main'
+    runs-on: ubuntu-latest
+    environment: production   # Schutz-Gate: wartet auf manuelle Freigabe (Required reviewers)
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: SSH-Key einrichten
+        run: |
+          mkdir -p ~/.ssh && chmod 700 ~/.ssh
+          printf '%s\n' "${{ secrets.HETZNER_DEPLOY_KEY }}" > ~/.ssh/deploy_key
+          chmod 600 ~/.ssh/deploy_key
+      - name: Migrationen auf Prod anwenden
+        env:
+          HOST: 128.140.123.163
+          ENVLABEL: PROD
+          BEFORE: ${{ github.event.before }}
+          AFTER: ${{ github.sha }}
+        run: bash scripts/apply-migrations.sh
