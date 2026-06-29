@@ -176,9 +176,10 @@ export default function ContentStudio({ session }) {
     const main = csRootRef.current?.closest('main')
     if (!main) return
     // Shell-CSS setzt padding-right per !important -> mit 'important' überschreiben.
-    if (!editorOpen) main.style.setProperty('padding-right', '0px', 'important')
+    // Immer (auch ausgeklappt), damit die Splitscreen-Karte/Pane bündig am Rand sitzt.
+    main.style.setProperty('padding-right', '0px', 'important')
     return () => { main.style.removeProperty('padding-right') }
-  }, [editorOpen])
+  }, [])
   const [useEditorContext, setUseEditorContext] = useState(false)
   const [chatDocs, setChatDocs] = useState([])
   const [demoRailDocs, setDemoRailDocs] = useState(null) // Tour-Demo: rechte Dokument-Leiste mit Beispiel-Dokumenten
@@ -1065,7 +1066,11 @@ export default function ContentStudio({ session }) {
       {(() => {
         const basis = !editorOpen ? '0%' : (paneView === 'suite' ? '100%' : '52%')
         return (
-      <section data-tour-id="cs-doc-pane" style={{ display:'flex', flexDirection:'column', flexGrow:0, flexShrink:0, flexBasis: basis, minWidth:0, overflow:'hidden', borderLeft: editorOpen ? '1px solid var(--border,#E9ECF2)' : 'none', background:'var(--page-bg, #F7F8FA)' }}>
+      <section data-tour-id="cs-doc-pane" style={{ display:'flex', flexDirection:'column', flexGrow:0, flexShrink:0, flexBasis: basis, minWidth:0, overflow:'hidden',
+        border: editorOpen ? '1px solid var(--border,#E9ECF2)' : 'none', borderRight: 'none',
+        borderRadius: editorOpen ? '16px 0 0 16px' : 0,
+        boxShadow: editorOpen ? '-6px 0 18px rgba(16,24,40,0.07)' : 'none',
+        background: editorOpen ? 'var(--surface,#fff)' : 'var(--page-bg, #F7F8FA)' }}>
         <div style={{ display:'flex', flex:1, minHeight:0 }}>
           {splitMode === 'design' ? (
             <>
@@ -1204,35 +1209,47 @@ export default function ContentStudio({ session }) {
           )
         })()
       ) : (
-        // Ausgeklappt: EINE zentrierte Karte an der Panel-Kante — gleicher Look wie
-        // eingeklappt: Dokument/Designer (46x50, Aktiv-Highlight) + Ansicht-Steuerung
-        // (Vollbild/Einklappen bzw. Splitscreen) gestapelt, vertikal mittig.
-        (() => {
-          const tabBtn = (active) => ({ width:46, height:50, display:'inline-flex', alignItems:'center', justifyContent:'center', border:'none', cursor:'pointer',
-            background: active ? 'rgba(49,90,231,0.08)' : 'transparent', color: active ? 'var(--wl-primary, rgb(49,90,231))' : 'var(--text-secondary,#475569)' })
-          const ctrlBtn = { width:46, height:46, display:'inline-flex', alignItems:'center', justifyContent:'center', border:'none', cursor:'pointer', background:'transparent', color:'var(--text-secondary,#475569)' }
-          const line = { height:1, background:'var(--border,#E9ECF2)' }
-          return (
-            <div style={{ position:'absolute', top:'50%', zIndex:50,
-                display:'flex', flexDirection:'column', overflow:'hidden',
-                border:'1px solid var(--border,#E9ECF2)', background:'var(--surface,#fff)', borderRadius:12, boxShadow:'0 2px 12px rgba(16,24,40,0.10)',
-                ...(paneView === 'suite' ? { left:16, transform:'translateY(-50%)' } : { right:'52%', transform:'translate(50%,-50%)' }) }}>
-              <button onClick={() => setSplitMode('doc')} title="Dokument" style={tabBtn(splitMode === 'doc')}><FileText size={18} strokeWidth={1.9}/></button>
-              <div style={line}/>
-              <button onClick={() => setSplitMode('design')} title="Designer" style={tabBtn(splitMode === 'design')}><Brush size={18} strokeWidth={1.9}/></button>
-              <div style={{ ...line, height:6, background:'var(--page-bg,#F7F8FA)' }}/>
-              {paneView === 'suite' ? (
-                <button onClick={() => setPaneView('split')} title="Splitscreen" style={ctrlBtn}><ChevronRight size={18} strokeWidth={2}/></button>
-              ) : (
-                <>
-                  <button onClick={() => setPaneView('suite')} title="Vollbild" style={ctrlBtn}><ChevronLeft size={18} strokeWidth={2}/></button>
-                  <div style={line}/>
-                  <button onClick={() => { setEditorOpen(false); setPaneView('split') }} title="Einklappen" style={ctrlBtn}><ChevronRight size={18} strokeWidth={2}/></button>
-                </>
-              )}
+        <>
+          {/* Dokument/Designer-Wechsler — gestapelt, oben, LINKS am Trennstrich
+             ANLIEGEND: rund nur links, flach rechts (gleiches Format wie die
+             Split-Steuerung). */}
+          <div style={{ position:'absolute', top:44, zIndex:50,
+              display:'flex', flexDirection:'column', overflow:'hidden',
+              border:'1px solid var(--border,#E9ECF2)', background:'var(--surface,#fff)', boxShadow:'0 2px 8px rgba(16,24,40,0.10)',
+              ...(paneView === 'suite' ? { left:16, borderRadius:10 } : { right:'52%', borderRadius:'10px 0 0 10px' }) }}>
+            <button onClick={() => setSplitMode('doc')} title="Dokument"
+              style={{ ...segBtn, color: splitMode === 'doc' ? 'var(--wl-primary, rgb(49,90,231))' : 'var(--text-muted)',
+                background: splitMode === 'doc' ? 'rgba(49,90,231,0.10)' : 'transparent' }}>
+              <FileText size={16} strokeWidth={1.9}/>
+            </button>
+            <div style={{ height:1, background:'var(--border,#E9ECF2)' }}/>
+            <button onClick={() => setSplitMode('design')} title="Designer"
+              style={{ ...segBtn, color: splitMode === 'design' ? 'var(--wl-primary, rgb(49,90,231))' : 'var(--text-muted)',
+                background: splitMode === 'design' ? 'rgba(49,90,231,0.10)' : 'transparent' }}>
+              <Brush size={16} strokeWidth={1.9}/>
+            </button>
+          </div>
+          {/* Split/Vollbild-Steuerung — vertikal mittig, der Strich läuft zwischen den
+             beiden Hälften (straddelnd, mittig auf dem Strich). */}
+          {paneView === 'suite' ? (
+            <button onClick={() => setPaneView('split')} title="Splitscreen"
+              style={{ ...edgeBtn, position:'absolute', top:'50%', left:16, transform:'translateY(-50%)', zIndex:50 }}>
+              <ChevronRight size={18} strokeWidth={2}/>
+            </button>
+          ) : (
+            <div style={{ position:'absolute', top:'50%', right:'52%', transform:'translate(50%,-50%)', zIndex:50,
+                display:'flex', alignItems:'center', overflow:'hidden', borderRadius:10,
+                border:'1px solid var(--border,#E9ECF2)', background:'var(--surface,#fff)', boxShadow:'0 2px 8px rgba(16,24,40,0.10)' }}>
+              <button onClick={() => setPaneView('suite')} title="Vollbild" style={segBtn}>
+                <ChevronLeft size={18} strokeWidth={2}/>
+              </button>
+              <div style={{ width:1, alignSelf:'stretch', background:'var(--border,#E9ECF2)' }}/>
+              <button onClick={() => { setEditorOpen(false); setPaneView('split') }} title="Editor einklappen" style={segBtn}>
+                <ChevronRight size={18} strokeWidth={2}/>
+              </button>
             </div>
-          )
-        })()
+          )}
+        </>
       )}
 
       {/* "Öffnen"-Picker: zuerst Dokument/Design wählen, dann Chat (oder ohne) */}
