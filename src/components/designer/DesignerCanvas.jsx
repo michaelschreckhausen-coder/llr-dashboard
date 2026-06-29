@@ -34,6 +34,7 @@ import {
   Eraser, Image as ImageIcon, LayoutTemplate, Copy, ZoomIn, ZoomOut, Maximize2,
   Upload, Frame, Eye, EyeOff, Lock, Unlock, Layers, GripVertical, Underline,
   FlipHorizontal2, FlipVertical2, Scaling, Send, CalendarPlus, FileText, Search,
+  AlignLeft, AlignCenter, AlignRight,
   AlignStartVertical, AlignCenterVertical, AlignEndVertical,
   AlignStartHorizontal, AlignCenterHorizontal, AlignEndHorizontal,
   AlignHorizontalDistributeCenter, AlignVerticalDistributeCenter,
@@ -3757,7 +3758,7 @@ function Divider() {
 function ToolBtn({ children, onClick, title, active }) {
   return (
     <button onClick={onClick} title={title}
-      style={{ width: 32, height: 32, display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+      style={{ width: 32, height: 32, flexShrink: 0, display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
         borderRadius: 8, cursor: 'pointer', fontFamily: 'inherit',
         border: '1px solid ' + (active ? P : 'var(--border,#E9ECF2)'),
         background: active ? 'rgba(49,90,231,0.08)' : 'var(--surface,#fff)',
@@ -3901,6 +3902,47 @@ function ExportModal({ onExport, exporting, onClose }) {
 // Vereint Text-/Form-Formatierung mit numerischen Eigenschaften (X/Y/Größe/
 // Drehung/Deckkraft), Ausrichten/Verteilen sowie Ebenen-/Duplizieren-/Löschen-
 // Aktionen in EINER sauberen, umbrechenden Leiste.
+// Kompaktes Dropdown für die Kontext-Leiste (Icon-Trigger + Popover).
+function BarMenu({ title, trigger, width = 180, children }) {
+  const [open, setOpen] = useState(false)
+  const ref = useRef(null)
+  useEffect(() => {
+    if (!open) return
+    const h = (e) => { if (ref.current && !ref.current.contains(e.target)) setOpen(false) }
+    document.addEventListener('mousedown', h)
+    return () => document.removeEventListener('mousedown', h)
+  }, [open])
+  return (
+    <div ref={ref} style={{ position: 'relative', display: 'inline-flex', flexShrink: 0 }}>
+      <button type="button" onClick={() => setOpen(o => !o)} title={title}
+        style={{ height: 32, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: 3, padding: '0 7px',
+          borderRadius: 8, border: '1px solid ' + (open ? P : 'var(--border,#E9ECF2)'), background: open ? 'rgba(49,90,231,0.08)' : 'var(--surface,#fff)',
+          color: open ? P : 'var(--text-muted,#475467)', cursor: 'pointer', fontFamily: 'inherit' }}>
+        {trigger}
+        <ChevronDown size={12} strokeWidth={2} style={{ opacity: 0.5 }} />
+      </button>
+      {open && (
+        <div onClick={() => setOpen(false)} style={{ position: 'absolute', top: 'calc(100% + 6px)', left: 0, zIndex: 130, minWidth: width,
+          background: '#fff', border: '1px solid var(--border)', borderRadius: 10, boxShadow: '0 12px 32px rgba(16,24,40,0.16)', padding: 6 }}>
+          {children}
+        </div>
+      )}
+    </div>
+  )
+}
+function BarMenuItem({ icon, label, active, onClick }) {
+  return (
+    <button type="button" onClick={onClick}
+      onMouseEnter={e => { e.currentTarget.style.background = '#F4F6FA' }}
+      onMouseLeave={e => { e.currentTarget.style.background = active ? 'rgba(49,90,231,0.08)' : 'transparent' }}
+      style={{ display: 'flex', alignItems: 'center', gap: 9, width: '100%', textAlign: 'left', padding: '8px 10px', borderRadius: 7,
+        border: 'none', background: active ? 'rgba(49,90,231,0.08)' : 'transparent', cursor: 'pointer', fontSize: 13,
+        color: active ? P : 'var(--text-primary)', fontFamily: 'inherit' }}>
+      {icon}{label}
+    </button>
+  )
+}
+
 function ContextBar({
   selected, updateObject, reorder, deleteSelected, duplicateSelected,
   commitHistoryOnce, endInteraction, fonts, onFlip,
@@ -3937,7 +3979,7 @@ function ContextBar({
 
   // Kompakte Zahlen-Eingabe (X/Y/B/H/Drehung)
   const numField = (label, value, onCommitVal, opts = {}) => (
-    <label style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }} title={label}>
+    <label style={{ display: 'inline-flex', alignItems: 'center', gap: 4, flexShrink: 0 }} title={label}>
       <span style={{ fontSize: 10.5, color: 'var(--text-muted)' }}>{label}</span>
       <input type="number" value={Math.round((Number(value) || 0) * 100) / 100}
         step={opts.step || 1} min={opts.min}
@@ -3948,44 +3990,44 @@ function ContextBar({
   )
 
   return (
-    <div style={{ ...barStyle, flexWrap: 'wrap', gap: 7 }}>
-      {/* ── Text-Formatierung ── */}
+    <div style={{ ...barStyle, flexWrap: 'nowrap', gap: 7, overflowX: 'auto' }}>
+      {/* ── Text ── */}
       {isText && (
         <>
-          <select value={o.fontFamily || 'Inter'} onChange={e => setOnce({ fontFamily: e.target.value })} style={{ ...selStyle, minWidth: 116 }}>
+          <select value={o.fontFamily || 'Inter'} onChange={e => setOnce({ fontFamily: e.target.value })} style={{ ...selStyle, minWidth: 110, flexShrink: 0 }}>
             {FONT_LIST.map(f => <option key={f} value={f}>{f}</option>)}
           </select>
           <input type="number" min={6} max={400} value={Math.round(o.fontSize || 44)}
             onFocus={startEdit} onMouseDown={startEdit} onBlur={endInteraction}
             onChange={e => liveEdit({ fontSize: parseInt(e.target.value, 10) || 44 })}
-            style={{ ...selStyle, width: 60 }} title="Schriftgröße" />
+            style={{ ...selStyle, width: 56, flexShrink: 0 }} title="Schriftgröße" />
           <ToolBtn onClick={() => setStyleFlag('bold')} active={isBold} title="Fett"><Bold size={14} strokeWidth={2.2} /></ToolBtn>
           <ToolBtn onClick={() => setStyleFlag('italic')} active={isItalic} title="Kursiv"><Italic size={14} strokeWidth={2.2} /></ToolBtn>
           <ToolBtn onClick={() => setOnce({ textDecoration: isUnderline ? '' : 'underline' })} active={isUnderline} title="Unterstrichen"><Underline size={14} strokeWidth={2.2} /></ToolBtn>
-          <select value={o.align || 'left'} onChange={e => setOnce({ align: e.target.value })} style={selStyle} title="Textausrichtung">
-            <option value="left">Links</option><option value="center">Zentriert</option><option value="right">Rechts</option>
-          </select>
-          <select value={o.effect || 'none'} onChange={e => setOnce({ effect: e.target.value })} style={selStyle} title="Texteffekt">
+          <BarMenu title="Textausrichtung" width={160}
+            trigger={(o.align === 'center') ? <AlignCenter size={15} strokeWidth={1.9} /> : (o.align === 'right') ? <AlignRight size={15} strokeWidth={1.9} /> : <AlignLeft size={15} strokeWidth={1.9} />}>
+            <BarMenuItem icon={<AlignLeft size={15} strokeWidth={1.9} />} label="Links" active={(o.align || 'left') === 'left'} onClick={() => setOnce({ align: 'left' })} />
+            <BarMenuItem icon={<AlignCenter size={15} strokeWidth={1.9} />} label="Zentriert" active={o.align === 'center'} onClick={() => setOnce({ align: 'center' })} />
+            <BarMenuItem icon={<AlignRight size={15} strokeWidth={1.9} />} label="Rechts" active={o.align === 'right'} onClick={() => setOnce({ align: 'right' })} />
+          </BarMenu>
+          <select value={o.effect || 'none'} onChange={e => setOnce({ effect: e.target.value })} style={{ ...selStyle, flexShrink: 0 }} title="Texteffekt">
             {TEXT_EFFECTS.map(ef => <option key={ef.id} value={ef.id}>{ef.label}</option>)}
           </select>
-          <Divider />
         </>
       )}
 
-      {/* ── Füllung / Rand / Eckenradius / Schatten ── */}
+      {/* ── Füllung / Rand / Ecken / Schatten ── */}
       {hasFill && (
-        <label style={lblStyle} title="Füllfarbe">
+        <label style={{ ...lblStyle, flexShrink: 0 }} title="Füllfarbe">
           <span style={{ fontSize: 11, color: 'var(--text-muted)' }}>Füllung</span>
-          <ColorPopover value={o.fill} brandColors={brandColors} title="Füllfarbe"
-            onStart={startEdit} onChange={(hex) => liveEdit({ fill: hex })} onEnd={endInteraction} />
+          <ColorPopover value={o.fill} brandColors={brandColors} title="Füllfarbe" onStart={startEdit} onChange={(hex) => liveEdit({ fill: hex })} onEnd={endInteraction} />
         </label>
       )}
       {hasStroke && (
         <>
-          <label style={lblStyle} title="Randfarbe">
+          <label style={{ ...lblStyle, flexShrink: 0 }} title="Randfarbe">
             <span style={{ fontSize: 11, color: 'var(--text-muted)' }}>Rand</span>
-            <ColorPopover value={o.stroke || '#ffffff'} brandColors={brandColors} title="Randfarbe"
-              onStart={startEdit} onChange={(hex) => liveEdit({ stroke: hex })} onEnd={endInteraction} />
+            <ColorPopover value={o.stroke || '#ffffff'} brandColors={brandColors} title="Randfarbe" onStart={startEdit} onChange={(hex) => liveEdit({ stroke: hex })} onEnd={endInteraction} />
           </label>
           {numField('Stärke', o.strokeWidth || 0, v => setOnce({ strokeWidth: Math.max(0, v || 0) }), { min: 0, w: 50 })}
         </>
@@ -3993,39 +4035,41 @@ function ContextBar({
       {o.type === 'rect' && numField('Ecken', o.cornerRadius || 0, v => setOnce({ cornerRadius: Math.max(0, v || 0) }), { min: 0, w: 50 })}
       {(hasFill || hasStroke) && (
         <ToolBtn onClick={() => setOnce(o.shadowBlur ? { shadowBlur: 0 } : { shadowBlur: 12, shadowColor: 'rgba(0,0,0,0.35)', shadowOffsetX: 0, shadowOffsetY: 4 })} active={!!o.shadowBlur} title={o.shadowBlur ? 'Schatten aus' : 'Schatten an'}>
-            <Sliders size={14} strokeWidth={1.9} />
+          <Sliders size={14} strokeWidth={1.9} />
         </ToolBtn>
       )}
 
-      {/* ── Text-Feinheiten ── */}
+      {/* ── Textabstände (kompakt im Dropdown) ── */}
       {isText && (
-        <>
-          {numField('Zeilenh.', o.lineHeight || 1.2, v => setOnce({ lineHeight: v || 1.2 }), { step: 0.05, min: 0.5, w: 52 })}
-          {numField('Laufw.', o.letterSpacing || 0, v => setOnce({ letterSpacing: v || 0 }), { step: 0.5, w: 50 })}
-        </>
+        <BarMenu title="Zeilen-/Zeichenabstand" width={200} trigger={<span style={{ fontSize: 12 }}>Abstand</span>}>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 8, padding: '4px 6px' }}>
+            {numField('Zeilenhöhe', o.lineHeight || 1.2, v => setOnce({ lineHeight: v || 1.2 }), { step: 0.05, min: 0.5, w: 64 })}
+            {numField('Laufweite', o.letterSpacing || 0, v => setOnce({ letterSpacing: v || 0 }), { step: 0.5, w: 64 })}
+          </div>
+        </BarMenu>
       )}
 
       <Divider />
 
-      {/* ── Deckkraft ── */}
-      <label style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: 11, color: 'var(--text-muted)' }} title="Deckkraft">
-        Deckkraft
-        <input type="range" min={0} max={100} step={1} value={opacityPct}
-          onMouseDown={startEdit} onChange={e => liveEdit({ opacity: (parseInt(e.target.value, 10) || 0) / 100 })} onMouseUp={endInteraction} style={{ width: 80, accentColor: P }} />
-        <span style={{ width: 30, textAlign: 'right' }}>{opacityPct}%</span>
-      </label>
+      {/* ── Deckkraft (kompakt) ── */}
+      <BarMenu title="Deckkraft" width={190} trigger={<span style={{ fontSize: 12, minWidth: 30, textAlign: 'center' }}>{opacityPct}%</span>}>
+        <div onClick={e => e.stopPropagation()} style={{ padding: '6px 8px' }}>
+          <div style={{ fontSize: 11, color: 'var(--text-muted)', marginBottom: 8 }}>Deckkraft</div>
+          <input type="range" min={0} max={100} step={1} value={opacityPct}
+            onMouseDown={startEdit} onChange={e => liveEdit({ opacity: (parseInt(e.target.value, 10) || 0) / 100 })} onMouseUp={endInteraction}
+            style={{ width: '100%', accentColor: P }} />
+        </div>
+      </BarMenu>
 
-      <Divider />
+      {/* ── Spiegeln (Dropdown) ── */}
+      {onFlip && (
+        <BarMenu title="Spiegeln" width={200} trigger={<FlipHorizontal2 size={15} strokeWidth={1.9} />}>
+          <BarMenuItem icon={<FlipHorizontal2 size={15} strokeWidth={1.9} />} label="Horizontal spiegeln" onClick={() => onFlip('x')} />
+          <BarMenuItem icon={<FlipVertical2 size={15} strokeWidth={1.9} />} label="Vertikal spiegeln" onClick={() => onFlip('y')} />
+        </BarMenu>
+      )}
 
-      {/* ── Ebene / Duplizieren / Löschen ── */}
-      <ToolBtn onClick={() => reorder('top')} title="Nach ganz vorne"><BringToFront size={14} strokeWidth={1.9} /></ToolBtn>
-      <ToolBtn onClick={() => reorder('up')} title="Eine Ebene nach vorne"><ChevronUp size={14} strokeWidth={2} /></ToolBtn>
-      <ToolBtn onClick={() => reorder('down')} title="Eine Ebene nach hinten"><ChevronDown size={14} strokeWidth={2} /></ToolBtn>
-      <ToolBtn onClick={() => reorder('bottom')} title="Nach ganz hinten"><SendToBack size={14} strokeWidth={1.9} /></ToolBtn>
-      {onFlip && <Divider />}
-      {onFlip && <ToolBtn onClick={() => onFlip('x')} title="Horizontal spiegeln"><FlipHorizontal2 size={14} strokeWidth={1.9} /></ToolBtn>}
-      {onFlip && <ToolBtn onClick={() => onFlip('y')} title="Vertikal spiegeln"><FlipVertical2 size={14} strokeWidth={1.9} /></ToolBtn>}
-      <div style={{ flex: 1 }} />
+      <div style={{ flex: 1, minWidth: 8 }} />
       <ToolBtn onClick={duplicateSelected} title="Duplizieren (Strg+D)"><Copy size={14} strokeWidth={1.9} /></ToolBtn>
       <ToolBtn onClick={deleteSelected} title="Löschen (Entf)"><Trash2 size={14} strokeWidth={1.9} /></ToolBtn>
     </div>
