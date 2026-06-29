@@ -2920,6 +2920,34 @@ export default function DesignerCanvas({ visual, teamId, onSaved, onReplaceVisua
   }
 
   // ─── Render-Helfer für Konva-Objekte ───────────────────────────────────────
+  // Live-Zuschnitt eines Bildes beim Ziehen an einem Seiten-Anker (kein Verzerren):
+  // Frame-Maß folgt dem Anker, die Quell-Skalierung bleibt konstant (Basis aus
+  // onTransformStart), die crop-Region wächst/schrumpft, geklemmt an die Bildgrenzen.
+  function liveCropImage(node, anchor) {
+    const b = cropDragRef.current
+    if (!b) return
+    if (anchor === 'middle-left' || anchor === 'middle-right') {
+      let newW = Math.max(8, node.width() * node.scaleX())
+      let cw = newW / b.sPx
+      let cx = anchor === 'middle-left' ? (b.cx0 + b.cw0 - cw) : b.cx0
+      if (cx < 0) { cw += cx; cx = 0 }
+      if (cx + cw > b.natW) cw = b.natW - cx
+      cw = Math.max(1, cw); newW = cw * b.sPx
+      node.scaleX(1); node.width(newW)
+      node.crop({ x: cx, y: b.cy0, width: cw, height: b.ch0 })
+    } else {
+      let newH = Math.max(8, node.height() * node.scaleY())
+      let ch = newH / b.sPy
+      let cy = anchor === 'top-center' ? (b.cy0 + b.ch0 - ch) : b.cy0
+      if (cy < 0) { ch += cy; cy = 0 }
+      if (cy + ch > b.natH) ch = b.natH - cy
+      ch = Math.max(1, ch); newH = ch * b.sPy
+      node.scaleY(1); node.height(newH)
+      node.crop({ x: b.cx0, y: cy, width: b.cw0, height: ch })
+    }
+    try { node.getLayer()?.batchDraw() } catch (_e) {}
+  }
+
   const off = { x: baseCrop ? baseCrop.x : 0, y: baseCrop ? baseCrop.y : 0 }
 
   // Doppelklick auf ein Nicht-Text-Objekt: "Verzerren"-Modus für genau dieses Objekt
@@ -2989,7 +3017,16 @@ export default function DesignerCanvas({ visual, teamId, onSaved, onReplaceVisua
           updateObject(o.id, { x: node.x() + off.x, y: node.y() + off.y }, false)
         }
       },
-      onTransformStart: () => pushHistory(),
+      onTransformStart: () => {
+        pushHistory()
+        if (o.type === 'image') {
+          const el = imgCache[o.src]
+          const natW = (el && (el.naturalWidth || el.width)) || o.width || 1
+          const natH = (el && (el.naturalHeight || el.height)) || o.height || 1
+          const cw0 = o.cropWidth || natW, ch0 = o.cropHeight || natH
+          cropDragRef.current = { natW, natH, cw0, ch0, cx0: o.cropX || 0, cy0: o.cropY || 0, sPx: (o.width || 1) / cw0, sPy: (o.height || 1) / ch0 }
+        } else { cropDragRef.current = null }
+      },
       onTransform: (e) => {
         const node = e.target
         let anchor = ''
@@ -2999,6 +3036,8 @@ export default function DesignerCanvas({ visual, teamId, onSaved, onReplaceVisua
         // Smart-Guides auch beim Skalieren: aktive Kante(n) snappen + Hilfslinien zeigen.
         // Im proportionalen Modus (Nicht-Text, kein Verzerren) wird das achsenweise
         // Kanten-Snapping übersprungen, da es sonst das Seitenverhältnis verzerren würde.
+        const _side = anchor === 'middle-left' || anchor === 'middle-right' || anchor === 'top-center' || anchor === 'bottom-center'
+        if (o.type === 'image' && _side && distortId !== o.id) { liveCropImage(node, anchor); return }
         const isText = o.type === 'text'
         const singleSel = selectedIds.length === 1 && selectedIds[0] === o.id
         const proportional = singleSel && !isText && distortId !== o.id
@@ -3036,45 +3075,22 @@ export default function DesignerCanvas({ visual, teamId, onSaved, onReplaceVisua
           patch.height = Math.max(4, node.height() * node.scaleY())
           node.scaleX(1); node.scaleY(1)
         } else if (o.type === 'image') {
-          // Ecke → ganzes Bild skalieren (Crop-Region bleibt). Seite → ZUSCHNEIDEN:
-          // Frame-Maß ändern, Quell-Skalierung konstant halten (kein Verzerren), an
-          // Bildgrenzen klemmen. So verhält es sich wie Crop in Canva/Figma.
           let anchor = ''
           try { anchor = trRef.current?.getActiveAnchor() || '' } catch (_e) {}
           const isSide = anchor === 'middle-left' || anchor === 'middle-right' || anchor === 'top-center' || anchor === 'bottom-center'
-          const scx = node.scaleX(), scy = node.scaleY()
-          const el = imgCache[o.src]
-          const natW = (el && (el.naturalWidth || el.width)) || o.width || 1
-          const natH = (el && (el.naturalHeight || el.height)) || o.height || 1
-          const cw0 = o.cropWidth || natW, ch0 = o.cropHeight || natH
-          const cx0 = o.cropX || 0, cy0 = o.cropY || 0
-          if (isSide && (anchor === 'middle-left' || anchor === 'middle-right')) {
-            const newW = Math.max(8, node.width() * scx)
-            const sPx = (o.width || 1) / cw0           // Display-px pro Quell-px
-            let cw = newW / sPx
-            let cx = anchor === 'middle-left' ? cx0 + (cw0 - cw) : cx0
-            if (cx < 0) { cw += cx; cx = 0 }
-            if (cx + cw > natW) cw = natW - cx
-            cw = Math.max(1, cw)
-            patch.width = Math.max(8, cw * sPx); patch.height = o.height
-            patch.cropX = cx; patch.cropWidth = cw; patch.cropY = cy0; patch.cropHeight = ch0
-          } else if (isSide) {
-            const newH = Math.max(8, node.height() * scy)
-            const sPx = (o.height || 1) / ch0
-            let ch = newH / sPx
-            let cy = anchor === 'top-center' ? cy0 + (ch0 - ch) : cy0
-            if (cy < 0) { ch += cy; cy = 0 }
-            if (cy + ch > natH) ch = natH - cy
-            ch = Math.max(1, ch)
-            patch.height = Math.max(8, ch * sPx); patch.width = o.width
-            patch.cropY = cy; patch.cropHeight = ch; patch.cropX = cx0; patch.cropWidth = cw0
+          if (isSide && distortId !== o.id) {
+            // Live-Crop hat node bereits gesetzt (Breite/Höhe + crop, scale=1) → übernehmen.
+            patch.width = Math.max(8, node.width())
+            patch.height = Math.max(8, node.height())
+            try { const c = node.crop(); if (c) { patch.cropX = c.x; patch.cropY = c.y; patch.cropWidth = c.width; patch.cropHeight = c.height } } catch (_e) {}
           } else {
-            // Ecke (oder unbekannt) → ganze Größe; Crop-Region beibehalten
-            patch.width = Math.max(4, node.width() * scx)
-            patch.height = Math.max(4, node.height() * scy)
-            if (o.cropWidth) { patch.cropX = cx0; patch.cropY = cy0; patch.cropWidth = cw0; patch.cropHeight = ch0 }
+            // Ecke → ganze Größe skalieren, Crop-Region beibehalten.
+            patch.width = Math.max(4, node.width() * node.scaleX())
+            patch.height = Math.max(4, node.height() * node.scaleY())
+            if (o.cropWidth) { patch.cropX = o.cropX || 0; patch.cropY = o.cropY || 0; patch.cropWidth = o.cropWidth; patch.cropHeight = o.cropHeight }
           }
           node.scaleX(1); node.scaleY(1)
+          cropDragRef.current = null
         } else if (o.type === 'ellipse') {
           patch.radiusX = Math.max(2, (o.radiusX || 90) * node.scaleX())
           patch.radiusY = Math.max(2, (o.radiusY || 90) * node.scaleY())
