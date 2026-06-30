@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "Leadesk",
-  "version": "9.28.0",
+  "version": "9.29.0",
   "description": "LinkedIn-Profile mit einem Klick in Leadesk importieren",
   "permissions": [
     "activeTab",
