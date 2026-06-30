@@ -1,5 +1,4 @@
 import React, { useEffect, useState, useRef } from 'react'
-import { Mic } from 'lucide-react'
 import { supabase } from '../lib/supabase'
 import { authRedirect } from '../lib/authRedirect'
 import { useLang, setLang, t } from '../lib/i18n'
@@ -297,12 +296,12 @@ export default function Settings({ session }) {
   /* ── Shared styles ── */
   const inp = { width:'100%', padding:'9px 12px', border:'1.5px solid #dde3ea', borderRadius:8, fontSize:13, boxSizing:'border-box', fontFamily:'inherit' }
   const lbl = { display:'block', fontSize:12, fontWeight:700, color:'#555', textTransform:'uppercase', letterSpacing:'0.5px', marginBottom:5 }
-  const box = { background:'var(--surface)', borderRadius:12, border:'1px solid #e8ecf0', marginBottom:16 }
-  const hdr = { padding:'14px 20px', borderBottom:'1px solid #f0f0f0', fontWeight:700, fontSize:14 }
+  const box = { background:'var(--surface)', borderRadius:14, border:'1px solid #E4E7EC', marginBottom:16 }
+  const hdr = { padding:'14px 20px', borderBottom:'1px solid #EEF1F5', fontWeight:700, fontSize:14 }
   const bdy = { padding:'18px 20px', display:'flex', flexDirection:'column', gap:14 }
 
   return (
-    <div style={{ maxWidth:680 }}>
+    <div style={{ width:'100%', maxWidth:760, margin:'0 auto', padding:'8px 0 40px' }}>
       <SettingsTabs />
 
       {/* ── Account Info ── */}
@@ -387,10 +386,6 @@ export default function Settings({ session }) {
           <div>
             <label style={lbl}>Position / Headline</label>
             <input value={form.headline} onChange={e => setForm(f => ({ ...f, headline: e.target.value }))} placeholder="CEO | Founder | Sales Manager" style={inp}/>
-          </div>
-          <div>
-            <label style={lbl}>Über mich</label>
-            <textarea value={form.bio} onChange={e => setForm(f => ({ ...f, bio: e.target.value }))} placeholder="Kurze Beschreibung…" rows={4} style={{ ...inp, resize:'vertical', lineHeight:1.6, fontFamily:'inherit' }}/>
           </div>
           {profMsg && (
             <div style={{ padding:'10px 14px', borderRadius:8, fontSize:13, background: profMsg.type==='success' ? '#e6f4ee' : '#fde8e8', color: profMsg.type==='success' ? '#057642' : '#cc1016', border:`1px solid ${profMsg.type==='success' ? '#b7dfcb' : '#f5b8b8'}` }}>{profMsg.text}</div>
@@ -629,18 +624,6 @@ export default function Settings({ session }) {
           </select>
           <div style={{ fontSize:12, color:'#aaa', marginTop:6 }}>{t('settings_output_hint')}</div>
 
-        </div>
-      </div>
-
-      {/* ── Brand Voice hint ── */}
-      <div style={{ background:'#f0f7ff', borderRadius:12, border:'1px solid #c6daf8', marginBottom:16, padding:'16px 20px', display:'flex', alignItems:'flex-start', gap:12 }}>
-        <div style={{ flexShrink:0, display:'inline-flex', color:'var(--text-muted)' }}><Mic size={24} strokeWidth={1.75}/></div>
-        <div>
-          <div style={{ fontWeight:700, fontSize:14, color:LI_BLUE, marginBottom:4 }}>{t('settings_bv_title')}</div>
-          <div style={{ fontSize:13, color:'#555', lineHeight:1.5 }}>{t('settings_bv_text')}</div>
-          <a href="/brand-voice" style={{ display:'inline-block', marginTop:8, fontSize:13, fontWeight:600, color:LI_BLUE, textDecoration:'none' }}>
-            {t('settings_bv_link')}
-          </a>
         </div>
       </div>
 
