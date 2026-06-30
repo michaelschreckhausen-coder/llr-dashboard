@@ -1218,12 +1218,12 @@ export default function ContentStudio({ session }) {
             {/* Ausgeklappt (Split/Vollbild): Switcher oben + Ansicht-Steuerung mittig */}
             {editorOpen && !page && (
               <>
-                <div style={{ position:'absolute', top:44, zIndex:50, ...(suite ? { left:16 } : { right:'52%' }) }}>
+                <div style={{ position:'absolute', zIndex:50, ...(suite ? { top:16, left:16 } : { top:44, right:'52%' }) }}>
                   <Switcher/>
                 </div>
-                <div style={{ position:'absolute', top:'50%', zIndex:50, display:'flex', flexDirection:'column', overflow:'hidden',
+                <div style={{ position:'absolute', zIndex:50, display:'flex', flexDirection:'column', overflow:'hidden',
                     background:'var(--surface,#fff)', border:'1px solid var(--border,#E9ECF2)', borderRadius:10, boxShadow:'0 2px 10px rgba(16,24,40,0.10)',
-                    ...(suite ? { left:16, transform:'translateY(-50%)' } : { right:'52%', transform:'translate(50%,-50%)' }) }}>
+                    ...(suite ? { top:16, right:16 } : { top:'50%', right:'52%', transform:'translate(50%,-50%)' }) }}>
                   {suite ? (
                     <button onClick={() => setPaneView('split')} title="Splitscreen" style={ctrlBtn}><ChevronRight size={18} strokeWidth={2}/></button>
                   ) : (
