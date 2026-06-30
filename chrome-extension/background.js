@@ -483,13 +483,12 @@ async function scrapeConnectionsPage() {
     }
     return n
   }
-  var TARGET = 22, prev = 0, noGrow = 0, MAX = 18
+  var TARGET = 22, prev = 0, noGrow = 0, MAX = 10
   for (var s = 0; s < MAX; s++) {
     window.scrollTo(0, document.body.scrollHeight)
-    await sleepP(1300)
-    // Jiggle: kurz hoch und wieder ganz runter — triggert LinkedIns Lazy-Load erneut
-    // (im unfokussierten Hintergrund-Fenster lädt reines Bottom-Scrollen oft zu wenig nach).
-    window.scrollBy(0, -800); await sleepP(250); window.scrollTo(0, document.body.scrollHeight); await sleepP(350)
+    await sleepP(900)
+    // Jiggle: kurz hoch und wieder ganz runter — triggert LinkedIns Lazy-Load erneut.
+    window.scrollBy(0, -800); await sleepP(200); window.scrollTo(0, document.body.scrollHeight); await sleepP(300)
     // Manche Layouts laden über einen Button statt rein per Scroll.
     var btns = document.querySelectorAll('button')
     for (var b = 0; b < btns.length; b++) {
@@ -498,7 +497,7 @@ async function scrapeConnectionsPage() {
     }
     var cnt = uniqCount()
     if (cnt >= TARGET) break
-    if (cnt <= prev) { noGrow++; if (noGrow >= 5) break } else { noGrow = 0 }
+    if (cnt <= prev) { noGrow++; if (noGrow >= 3) break } else { noGrow = 0 }
     prev = cnt
   }
   window.scrollTo(0, 0)
@@ -560,8 +559,14 @@ async function scrapeConnectionsForWebApp() {
     // werden von Chrome/LinkedIn gedrosselt und laden nur den ersten Batch.
     tab = await chrome.tabs.create({ url: url, active: true })
     if (tab.windowId) { try { await chrome.windows.update(tab.windowId, { focused: true }) } catch (_) {} }
+    // Leadesk-Ladeanzeige einblenden (gleiches Overlay wie Brand-/Profil-Scraper),
+    // sobald content.js auf dem Tab bereit ist. Max 6 Versuche à 400ms.
+    for (var ovi = 0; ovi < 6; ovi++) {
+      await sleep(400)
+      try { var ovok = await chrome.tabs.sendMessage(tab.id, { type: 'SHOW_LOADING_OVERLAY' }); if (ovok && ovok.ok) break } catch (e) {}
+    }
     await waitLoaded(tab.id, 30000)
-    await sleep(1500)
+    await sleep(1200)
     var result = await chrome.scripting.executeScript({ target: { tabId: tab.id }, func: scrapeConnectionsPage })
     var res = result && result[0] && result[0].result
     if (res && res.retry) {
