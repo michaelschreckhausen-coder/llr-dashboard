@@ -61,9 +61,10 @@ const tabStyle = { padding:'8px 0 12px', color: COLORS.textSecondary, cursor:'po
 const tabActiveStyle = { ...tabStyle, color: COLORS.textPrimary, fontWeight:500, borderBottom:`2px solid ${COLORS.primary}` };
 const tabCountStyle = { fontSize:11, color: COLORS.textTertiary, marginLeft:4 };
 const contentStyle = { flex:1, padding:'24px 28px', overflow:'auto' };
-// 3-Spalten-Layout (HubSpot-Pattern): links Summary/Properties, Mitte Tabs/Timeline,
-// rechts verknuepfte Datensaetze. Phase 1 — Responsive (<1100px stapeln) folgt in Phase 3.
-const threeColStyle = { display:'grid', gridTemplateColumns:'250px minmax(0,1fr) 236px', gap:16, padding:'20px 28px 48px', alignItems:'start', flex:1 };
+// 2-Spalten-Layout: links Sidebar (Summary/Properties + verknüpfte Datensätze
+// gestapelt), rechts breite Haupt-Spalte (Tabs/Timeline). Bei <1100px (isSmall)
+// einspaltig gestapelt. Gibt der Mitte bei 1100px deutlich mehr Breite als 3 Spalten.
+const threeColStyle = { display:'grid', gridTemplateColumns:'290px minmax(0,1fr)', gap:16, padding:'20px 28px 48px', alignItems:'start', flex:1 };
 const railColStyle = { display:'flex', flexDirection:'column', gap:14, minWidth:0 };
 const centerColStyle = { display:'flex', flexDirection:'column', minWidth:0 };
 const railCardStyle = { background: COLORS.surface, borderRadius: RADIUS.lg, border:`0.5px solid ${COLORS.borderSubtle}`, padding:'14px 16px' };
@@ -960,23 +961,20 @@ function ActivityTab({ leadId, leadTeamId, lead, initialDraft, onDraftConsumed }
 
       {/* Nachricht verfassen (zusammengeführt aus dem früheren Nachrichten-Tab) */}
       <div style={{ marginBottom: 22, padding:'16px', background: COLORS.surface, border:`1px solid ${COLORS.borderSubtle}`, borderRadius: RADIUS.lg, boxShadow:'0 1px 2px rgba(16,24,40,0.04)' }}>
-        <div style={{ display:'flex', gap:10, marginBottom:12, alignItems:'center' }}>
+        <div style={{ display:'flex', gap:10, marginBottom:12, alignItems:'center', flexWrap:'wrap' }}>
           <span style={{ width:28, height:28, borderRadius:8, background:'rgba(49,90,231,0.10)', color: COLORS.primary, display:'grid', placeItems:'center', flexShrink:0 }}>
             <Send size={15} />
           </span>
-          <span style={{ fontSize:11, fontWeight:700, color: COLORS.textTertiary, textTransform:'uppercase', letterSpacing:'0.06em' }}>Nachricht verfassen</span>
-          {lead && (lead.first_name || lead.last_name) && (
-            <span style={{ fontSize:12, color: COLORS.textTertiary }}>· an {lead.first_name} {lead.last_name}</span>
-          )}
+          <span style={{ fontSize:11, fontWeight:700, color: COLORS.textTertiary, textTransform:'uppercase', letterSpacing:'0.06em', whiteSpace:'nowrap' }}>Nachricht verfassen</span>
           <select value={msgType} onChange={e => setMsgType(e.target.value)}
-            style={{ ...inputStyle, width: 190, flex: 'none', marginLeft:'auto', height:32 }}>
+            style={{ ...inputStyle, width: 180, flex: 'none', marginLeft:'auto', height:32 }}>
             <option value="linkedin_message">LinkedIn-Nachricht</option>
             <option value="email">E-Mail</option>
             <option value="message">Sonstige Nachricht</option>
           </select>
         </div>
         <textarea style={textareaStyle}
-          placeholder="Nachricht eingeben…"
+          placeholder={lead && (lead.first_name || lead.last_name) ? `Nachricht an ${[lead.first_name, lead.last_name].filter(Boolean).join(' ')}…` : 'Nachricht eingeben…'}
           value={msgBody} onChange={e => setMsgBody(e.target.value)} rows={4} />
         <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', gap:8, marginTop:10 }}>
           <span style={{ fontSize:11, color: COLORS.textTertiary }}>
