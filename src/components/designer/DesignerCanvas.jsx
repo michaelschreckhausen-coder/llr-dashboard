@@ -2716,12 +2716,15 @@ export default function DesignerCanvas({ visual, teamId, onSaved, onReplaceVisua
       layer.destroyChildren()
       const cw = baseCrop?.width || stageSize.width
       const ch = baseCrop?.height || stageSize.height
-      const sw = 1 / effScale
+      // Canva-typische, klar sichtbare Hilfslinien: kräftiges Magenta, durchgezogen,
+      // etwas dicker — damit Ausrichtung/Andocken sofort erkennbar ist.
+      const GUIDE = '#FF1F8F'
+      const sw = 1.6 / effScale
       for (const x of vLines) {
-        layer.add(new Konva.Line({ points: [x, -4 / effScale, x, ch + 4 / effScale], stroke: PRGB, strokeWidth: sw, dash: [4 / effScale, 4 / effScale], listening: false }))
+        layer.add(new Konva.Line({ points: [x, -6 / effScale, x, ch + 6 / effScale], stroke: GUIDE, strokeWidth: sw, listening: false }))
       }
       for (const y of hLines) {
-        layer.add(new Konva.Line({ points: [-4 / effScale, y, cw + 4 / effScale, y], stroke: PRGB, strokeWidth: sw, dash: [4 / effScale, 4 / effScale], listening: false }))
+        layer.add(new Konva.Line({ points: [-6 / effScale, y, cw + 6 / effScale, y], stroke: GUIDE, strokeWidth: sw, listening: false }))
       }
       layer.batchDraw()
     } catch (_e) {}
