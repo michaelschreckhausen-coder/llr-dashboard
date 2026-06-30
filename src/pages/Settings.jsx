@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react'
+import React, { useEffect, useState, useRef } from 'react'
 import { Mic } from 'lucide-react'
 import { supabase } from '../lib/supabase'
 import { authRedirect } from '../lib/authRedirect'
@@ -23,6 +23,16 @@ export default function Settings({ session }) {
   const [lang, setUiLang]       = useLang()
   const [profile,  setProfile]  = useState(null)
   const [outputLang, setOutputLang] = useState('auto')
+
+  /* Profil-Stammdaten (aus der früheren /profile-Seite integriert) */
+  const [form, setForm]         = useState({ full_name: '', company: '', headline: '', bio: '' })
+  const [profSaving, setProfSaving] = useState(false)
+  const [profMsg,    setProfMsg]    = useState(null)
+  const [avatarUpl,  setAvatarUpl]  = useState(false)
+  const [newEmail,   setNewEmail]   = useState('')
+  const [emailSaving, setEmailSaving] = useState(false)
+  const [emailMsg,   setEmailMsg]   = useState(null)
+  const fileRef = useRef(null)
   const [saving,   setSaving]   = useState(false)
   const [saved,    setSaved]    = useState(false)
   const [pwNew,    setPwNew]    = useState('')
@@ -138,6 +148,7 @@ export default function Settings({ session }) {
       .from('profiles').select('*, plans(name, daily_limit),default_ai_model').eq('id', session.user.id).single()
     setProfile(data)
     setOutputLang(data?.output_language || 'auto')
+    if (data) setForm({ full_name: data.full_name || '', company: data.company || '', headline: data.headline || '', bio: data.bio || '' })
 
     /* Load linked OAuth identities — IMMER frisch via getUser, nicht aus dem stale session-Prop.
        Nach linkIdentity-Redirect ist session.user.identities noch von vor dem Link. */
@@ -220,6 +231,56 @@ export default function Settings({ session }) {
     setSaving(false); setSaved(true); setTimeout(() => setSaved(false), 2000)
   }
 
+  /* ── Profil-Stammdaten speichern (aus /profile integriert) ── */
+  async function saveProfile() {
+    setProfSaving(true); setProfMsg(null)
+    const { error } = await supabase.from('profiles')
+      .update({ full_name: form.full_name, company: form.company, headline: form.headline, bio: form.bio, updated_at: new Date().toISOString() })
+      .eq('id', session.user.id)
+    if (error) { setProfMsg({ type:'error', text: error.message }) }
+    else {
+      // Auth-Metadaten synchronisieren, damit Header-Name sofort aktuell ist
+      await supabase.auth.updateUser({ data: { full_name: form.full_name } })
+      setProfile(p => ({ ...(p || {}), ...form }))
+      setProfMsg({ type:'success', text: 'Profil gespeichert' })
+      window.dispatchEvent(new CustomEvent('leadesk_profile_updated'))
+      setTimeout(() => setProfMsg(null), 3000)
+    }
+    setProfSaving(false)
+  }
+
+  /* ── Avatar-Upload via Supabase-Storage-Client (env-sicher, kein hardcoded URL) ── */
+  async function uploadAvatar(e) {
+    const file = e.target.files?.[0]; if (!file) return
+    if (file.size > 3 * 1024 * 1024) { setProfMsg({ type:'error', text:'Bild zu groß (max. 3 MB)' }); return }
+    setAvatarUpl(true); setProfMsg(null)
+    try {
+      const ext = file.name.split('.').pop()
+      const path = `${session.user.id}/avatar.${ext}`
+      const { error: upErr } = await supabase.storage.from('avatars').upload(path, file, { contentType: file.type, upsert: true })
+      if (upErr) { setProfMsg({ type:'error', text: upErr.message }); setAvatarUpl(false); return }
+      const { data: pub } = supabase.storage.from('avatars').getPublicUrl(path)
+      const publicUrl = `${pub.publicUrl}?t=${Date.now()}`
+      await supabase.from('profiles').update({ avatar_url: publicUrl }).eq('id', session.user.id)
+      setProfile(p => ({ ...(p || {}), avatar_url: publicUrl }))
+      setProfMsg({ type:'success', text: 'Profilbild aktualisiert' })
+      window.dispatchEvent(new CustomEvent('leadesk_profile_updated'))
+      setTimeout(() => setProfMsg(null), 3000)
+    } catch (err) { setProfMsg({ type:'error', text: err.message }) }
+    setAvatarUpl(false)
+    if (e?.target) e.target.value = ''
+  }
+
+  /* ── E-Mail-Adresse ändern (aus /profile integriert) ── */
+  async function changeEmail() {
+    if (!newEmail || !newEmail.includes('@')) { setEmailMsg({ type:'error', text:'Gültige E-Mail eingeben' }); return }
+    setEmailSaving(true); setEmailMsg(null)
+    const { error } = await supabase.auth.updateUser({ email: newEmail })
+    if (error) setEmailMsg({ type:'error', text: error.message })
+    else { setEmailMsg({ type:'success', text:'Bestätigungsmail gesendet — bitte neue E-Mail verifizieren' }); setNewEmail('') }
+    setEmailSaving(false)
+  }
+
   async function changePassword() {
     setPwMsg(null)
     if (!pwNew || pwNew.length < 8) { setPwMsg({ type:'error', text: t('settings_pw_short') }); return }
@@ -248,14 +309,17 @@ export default function Settings({ session }) {
       <div style={box}>
         <div style={hdr}>{t('settings_account')}</div>
         <div style={{ padding:'18px 20px', display:'flex', flexDirection:'column', gap:12 }}>
-          {/* Avatar + Name Card (zeigt LinkedIn-Profilbild wenn synct, sonst Initial-Bubble) */}
+          {/* Avatar + Name Card — Avatar ist klickbar zum Hochladen (aus /profile integriert) */}
           <div style={{ display:'flex', alignItems:'center', gap:16, padding:'12px 14px', background:'#fafafa', borderRadius:8 }}>
-            <div style={{
-              width:56, height:56, borderRadius:'50%', overflow:'hidden', flexShrink:0,
-              background: profile?.avatar_url ? 'transparent' : 'linear-gradient(135deg,#3b82f6,#6366f1)',
-              display:'flex', alignItems:'center', justifyContent:'center',
-              color:'#fff', fontSize:20, fontWeight:600,
-            }}>
+            <div
+              onClick={() => fileRef.current?.click()}
+              title="Profilbild ändern"
+              style={{
+                position:'relative', width:56, height:56, borderRadius:'50%', overflow:'hidden', flexShrink:0,
+                background: profile?.avatar_url ? 'transparent' : 'linear-gradient(135deg,#3b82f6,#6366f1)',
+                display:'flex', alignItems:'center', justifyContent:'center',
+                color:'#fff', fontSize:20, fontWeight:600, cursor:'pointer',
+              }}>
               {profile?.avatar_url ? (
                 <img
                   src={profile.avatar_url}
@@ -266,7 +330,14 @@ export default function Settings({ session }) {
               ) : (
                 (profile?.full_name || session.user.email || '?').slice(0,1).toUpperCase()
               )}
+              <div
+                onMouseEnter={e => e.currentTarget.style.opacity = 1}
+                onMouseLeave={e => e.currentTarget.style.opacity = 0}
+                style={{ position:'absolute', inset:0, background:'rgba(0,0,0,0.45)', display:'flex', alignItems:'center', justifyContent:'center', opacity:0, transition:'opacity 0.2s', fontSize:10, fontWeight:700 }}>
+                {avatarUpl ? '⏳' : 'Ändern'}
+              </div>
             </div>
+            <input ref={fileRef} type="file" accept="image/*" style={{ display:'none' }} onChange={uploadAvatar} />
             <div style={{ flex:1, minWidth:0 }}>
               <div style={{ fontSize:15, fontWeight:600, color:'#0f172a', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>
                 {profile?.full_name || session.user.email}
@@ -274,7 +345,7 @@ export default function Settings({ session }) {
               <div style={{ fontSize:12, color:'#888', marginTop:2 }}>
                 {profile?.linkedin_data_last_synced_at
                   ? 'LinkedIn-Daten zuletzt synct: ' + new Date(profile.linkedin_data_last_synced_at).toLocaleString('de-DE')
-                  : 'Profilbild + Name können via LinkedIn-Verknüpfung übernommen werden'}
+                  : 'Klicke auf das Bild, um dein Profilbild zu ändern'}
               </div>
             </div>
           </div>
@@ -295,6 +366,62 @@ export default function Settings({ session }) {
                 {profile.plans?.daily_limit === -1 ? t('settings_unlimited') : `${profile.plans?.daily_limit} ${t('settings_per_day')}`}
               </div>
             </div>
+          )}
+        </div>
+      </div>
+
+      {/* ── Persönliche Daten (aus /profile integriert) ── */}
+      <div style={box}>
+        <div style={hdr}>Persönliche Daten</div>
+        <div style={bdy}>
+          <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:14 }}>
+            <div>
+              <label style={lbl}>Vollständiger Name</label>
+              <input value={form.full_name} onChange={e => setForm(f => ({ ...f, full_name: e.target.value }))} placeholder="Max Mustermann" style={inp}/>
+            </div>
+            <div>
+              <label style={lbl}>Unternehmen</label>
+              <input value={form.company} onChange={e => setForm(f => ({ ...f, company: e.target.value }))} placeholder="Firma GmbH" style={inp}/>
+            </div>
+          </div>
+          <div>
+            <label style={lbl}>Position / Headline</label>
+            <input value={form.headline} onChange={e => setForm(f => ({ ...f, headline: e.target.value }))} placeholder="CEO | Founder | Sales Manager" style={inp}/>
+          </div>
+          <div>
+            <label style={lbl}>Über mich</label>
+            <textarea value={form.bio} onChange={e => setForm(f => ({ ...f, bio: e.target.value }))} placeholder="Kurze Beschreibung…" rows={4} style={{ ...inp, resize:'vertical', lineHeight:1.6, fontFamily:'inherit' }}/>
+          </div>
+          {profMsg && (
+            <div style={{ padding:'10px 14px', borderRadius:8, fontSize:13, background: profMsg.type==='success' ? '#e6f4ee' : '#fde8e8', color: profMsg.type==='success' ? '#057642' : '#cc1016', border:`1px solid ${profMsg.type==='success' ? '#b7dfcb' : '#f5b8b8'}` }}>{profMsg.text}</div>
+          )}
+          <button onClick={saveProfile} disabled={profSaving}
+            style={{ padding:'9px 22px', borderRadius:20, background:'linear-gradient(135deg,#0a66c2,#0077b5)', color:'#fff', border:'none', fontSize:13, fontWeight:700, cursor:'pointer', alignSelf:'flex-start', opacity: profSaving ? 0.6 : 1 }}>
+            {profSaving ? 'Speichern…' : 'Profil speichern'}
+          </button>
+        </div>
+      </div>
+
+      {/* ── E-Mail ändern (aus /profile integriert) ── */}
+      <div style={box}>
+        <div style={hdr}>E-Mail-Adresse ändern</div>
+        <div style={bdy}>
+          <div style={{ fontSize:12, color:'#888', lineHeight:1.5 }}>
+            Aktuelle E-Mail: <strong>{session.user.email}</strong>. Nach der Änderung erhältst du eine Bestätigungsmail an die neue Adresse.
+          </div>
+          <div style={{ display:'flex', gap:12, alignItems:'flex-end', flexWrap:'wrap' }}>
+            <div style={{ flex:1, minWidth:200 }}>
+              <label style={lbl}>Neue E-Mail-Adresse</label>
+              <input type="email" value={newEmail} onChange={e => setNewEmail(e.target.value)} placeholder="neue@email.de" style={inp}
+                onKeyDown={e => e.key === 'Enter' && changeEmail()}/>
+            </div>
+            <button onClick={changeEmail} disabled={emailSaving || !newEmail}
+              style={{ padding:'9px 22px', borderRadius:20, background:'linear-gradient(135deg,#0a66c2,#0077b5)', color:'#fff', border:'none', fontSize:13, fontWeight:700, cursor:'pointer', opacity:(emailSaving || !newEmail) ? 0.5 : 1 }}>
+              {emailSaving ? '…' : 'E-Mail ändern'}
+            </button>
+          </div>
+          {emailMsg && (
+            <div style={{ padding:'10px 14px', borderRadius:8, fontSize:13, background: emailMsg.type==='success' ? '#e6f4ee' : '#fde8e8', color: emailMsg.type==='success' ? '#057642' : '#cc1016', border:`1px solid ${emailMsg.type==='success' ? '#b7dfcb' : '#f5b8b8'}` }}>{emailMsg.text}</div>
           )}
         </div>
       </div>

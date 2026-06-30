@@ -23,7 +23,6 @@ import Wissensdatenbank          from './pages/Wissensdatenbank'
 import Automatisierung  from './pages/Automatisierung'
 import AdminUsers    from './pages/AdminUsers'
 import WhiteLabel    from './pages/WhiteLabel'
-import Profile       from './pages/Profile'
 import Aufgaben      from './pages/Aufgaben'
 import IntegrationSettings from './pages/IntegrationSettings'
 import Marketplace from './pages/Marketplace'
@@ -369,7 +368,8 @@ export default function App() {
             <Route path="/settings/affiliate" element={<SettingsAffiliate session={session} />} />
             <Route path="/settings/instagram" element={<SettingsInstagram session={session} />} />
               <Route path="/billing" element={<BillingRedirect />} />
-            <Route path="/profile"  element={<Profile session={session} />} />
+            {/* /profile in /settings/profil integriert (Dopplungen entfernt) — Redirect für Alt-Links/Bookmarks */}
+            <Route path="/profile"  element={<Navigate to="/settings/profil" replace />} />
             <Route path="/aufgaben" element={<Aufgaben session={session} />} />
             <Route path="/integrations" element={<IntegrationSettings session={session} />} />
             <Route path="/marketplace"  element={<Marketplace />} />
