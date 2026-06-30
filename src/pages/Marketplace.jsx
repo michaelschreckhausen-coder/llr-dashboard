@@ -345,6 +345,8 @@ export default function Marketplace() {
                 onActivateFree={onActivateFree}
                 onCancel={onCancel}
                 onManageBilling={onManageBilling}
+                settingsRoute={POST_SUBSCRIBE_REDIRECTS[addon.slug]}
+                onOpenSettings={(a) => navigate(POST_SUBSCRIBE_REDIRECTS[a.slug] || '/integrations')}
               />
             ))}
           </div>

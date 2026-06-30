@@ -98,7 +98,7 @@ function IconFromName(name, color) {
   return <Icon size={22} color={color} />
 }
 
-export function MarketplaceCard({ addon, isSubscribed, isWaitlisted, manageViaStripe, onJoinWaitlist, onSubscribe, onActivateFree, onCancel, onManageBilling }) {
+export function MarketplaceCard({ addon, isSubscribed, isWaitlisted, manageViaStripe, onJoinWaitlist, onSubscribe, onActivateFree, onCancel, onManageBilling, settingsRoute, onOpenSettings }) {
   const [busy, setBusy] = useState(false)
   const [hover, setHover] = useState(false)
   const [menuOpen, setMenuOpen] = useState(false)
@@ -154,6 +154,12 @@ export function MarketplaceCard({ addon, isSubscribed, isWaitlisted, manageViaSt
                 {/* Click-away-Overlay */}
                 <div onClick={() => setMenuOpen(false)} style={{ position: 'fixed', inset: 0, zIndex: 10 }} />
                 <div style={menuStyle}>
+                  {settingsRoute && (
+                    <button type="button" style={menuItemStyle}
+                      onClick={() => { setMenuOpen(false); onOpenSettings?.(addon) }}>
+                      Einstellungen
+                    </button>
+                  )}
                   {showStripeManage ? (
                     <button type="button" style={menuItemStyle}
                       onClick={() => { setMenuOpen(false); onManageBilling?.(addon) }}>
