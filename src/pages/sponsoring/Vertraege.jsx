@@ -72,7 +72,7 @@ export default function Vertraege() {
       sp().from('sponsor_profiles').select('id, organization_id').eq('team_id', activeTeamId),
       supabase.from('organizations').select('id, name').eq('team_id', activeTeamId),
       sp().from('packages').select('id, name').eq('team_id', activeTeamId),
-      sp().from('leagues').select('id, name').eq('team_id', activeTeamId).order('sort_order', { ascending: true }),
+      sp().from('leagues').select('id, name, adjust_pct').eq('team_id', activeTeamId).order('sort_order', { ascending: true }),
       sp().from('contract_templates').select('*').eq('team_id', activeTeamId).order('is_default', { ascending: false }),
     ])
     const err = off.error || ctr.error || spn.error || org.error || pk.error || lg.error || tpl.error
@@ -396,6 +396,24 @@ export default function Vertraege() {
                 {leagues.map((l) => <option key={l.id} value={l.id}>{l.name}</option>)}
               </select>
             </Field>
+            {/* V1: %-Auf-/Abschlag der gewählten Spielklasse — Vorschlag + auf Volumen anwenden */}
+            {(() => {
+              const lg = leagues.find((l) => l.id === ef.league_id)
+              const pct = lg && lg.adjust_pct != null ? Number(lg.adjust_pct) : null
+              if (pct == null || pct === 0) return null
+              const adjusted = Math.round(((Number(ef.value_cash) || 0) * (1 + pct / 100)) * 100) / 100
+              return (
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10, marginTop: 6, padding: '8px 12px', borderRadius: 8, background: 'var(--surface-muted, #F8FAFC)', border: '1px solid var(--border)' }}>
+                  <span style={{ fontSize: 12, color: 'var(--text-muted)' }}>
+                    Liga-Auf-/Abschlag: <strong style={{ color: pct >= 0 ? '#059669' : '#B45309' }}>{pct > 0 ? '+' : ''}{pct}%</strong> → Cash {fmt(adjusted)}
+                  </span>
+                  <button type="button" onClick={() => setEf({ ...ef, value_cash: adjusted })}
+                    style={{ fontSize: 12, fontWeight: 700, color: PRIMARY, background: 'none', border: '1px solid ' + PRIMARY, borderRadius: 8, padding: '4px 10px', cursor: 'pointer' }}>
+                    Auf Volumen anwenden
+                  </button>
+                </div>
+              )
+            })()}
 
             <div style={{ display: 'flex', gap: 10 }}>
               <div style={{ flex: 1 }}>
