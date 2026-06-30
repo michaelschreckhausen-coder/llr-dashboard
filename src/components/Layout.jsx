@@ -1048,7 +1048,7 @@ export default function Layout({ session, role, onLogout, children }) {
                   </div>
                   {/* Menu Items */}
                   <div style={{ padding:'6px' }}>
-                    <button onClick={() => { navigate('/profile'); setShowMenu(false) }}
+                    <button onClick={() => { navigate('/settings/profil'); setShowMenu(false) }}
                       style={{ width:'100%', display:'flex', alignItems:'center', gap:10, padding:'9px 12px', borderRadius:10, border:'none', background:'none', cursor:'pointer', fontSize:13, color:'var(--text-primary)', textAlign:'left' }}
                       onMouseEnter={e => e.currentTarget.style.background='var(--surface-hover)'}
                       onMouseLeave={e => e.currentTarget.style.background='none'}>
