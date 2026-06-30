@@ -4,6 +4,7 @@ import { supabase } from '../lib/supabase'
 import { authRedirect } from '../lib/authRedirect'
 import { useLang, setLang, t } from '../lib/i18n'
 import { useTheme } from '../context/ThemeContext'
+import { useEntitlements } from '../hooks/useEntitlements'
 import SettingsTabs from '../components/SettingsTabs'
 
 const LI_BLUE  = '#0a66c2'
@@ -21,6 +22,8 @@ function LinkedInIcon({ size = 18, color = 'white' }) {
 
 export default function Settings({ session }) {
   const navigate = useNavigate()
+  // Plan account-zentrisch aus Entitlements (NICHT aus profile.plan_id-Embed — Legacy, unzuverlässig).
+  const { planName: entPlanName, accountStatus: entStatus, isTrial, trialDaysLeft } = useEntitlements()
   const [lang, setUiLang]       = useLang()
   const [profile,  setProfile]  = useState(null)
   const [outputLang, setOutputLang] = useState('auto')
@@ -357,17 +360,17 @@ export default function Settings({ session }) {
               <div style={{ fontSize:14, fontWeight:600 }}>{session.user.email}</div>
             </div>
           </div>
-          {profile && (
-            <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', padding:'10px 14px', background:'#fafafa', borderRadius:8 }}>
-              <div>
-                <div style={{ fontSize:12, color:'#888', marginBottom:2 }}>{t('settings_plan')}</div>
-                <div style={{ fontSize:14, fontWeight:600 }}>{profile.plans?.name || 'Free'}</div>
-              </div>
-              <div style={{ fontSize:12, color:'#888' }}>
-                {profile.plans?.daily_limit === -1 ? t('settings_unlimited') : `${profile.plans?.daily_limit} ${t('settings_per_day')}`}
-              </div>
+          <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', padding:'10px 14px', background:'#fafafa', borderRadius:8 }}>
+            <div>
+              <div style={{ fontSize:12, color:'#888', marginBottom:2 }}>{t('settings_plan')}</div>
+              <div style={{ fontSize:14, fontWeight:600 }}>{entPlanName || 'Free'}</div>
             </div>
-          )}
+            <div style={{ fontSize:12, color:'#888' }}>
+              {isTrial && trialDaysLeft != null
+                ? `Trial · ${trialDaysLeft} Tag${trialDaysLeft === 1 ? '' : 'e'}`
+                : (entStatus ? (entStatus === 'active' ? 'aktiv' : entStatus) : '')}
+            </div>
+          </div>
         </div>
       </div>
 
