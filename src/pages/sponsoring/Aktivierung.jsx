@@ -20,14 +20,15 @@ const STATUS_COLOR = { planned: '#6B7280', in_progress: '#D97706', done: '#2563E
 const TYPES = ['social_post', 'video', 'interview', 'hospitality', 'event', 'newsletter', 'content', 'other']
 const TYPE_LABEL = { social_post: 'Social Post', video: 'Video', interview: 'Interview', hospitality: 'Hospitality', event: 'Event', newsletter: 'Newsletter', content: 'Content', other: 'Sonstiges' }
 
-const EMPTY = { title: '', type: 'social_post', contract_id: '', scheduled_for: '', proof_url: '' }
+const EMPTY = { title: '', type: 'social_post', contract_id: '', scheduled_for: '', proof_url: '', responsible: '', contact_id: '' }
 
 export default function Aktivierung() {
-  const { activeTeamId } = useTeam()
+  const { activeTeamId, members = [] } = useTeam()
   const [acts, setActs] = useState([])
   const [contracts, setContracts] = useState([])
   const [sponsors, setSponsors] = useState([])
   const [orgs, setOrgs] = useState([])
+  const [leads, setLeads] = useState([])
   const [categories, setCategories] = useState([])
   const [rights, setRights] = useState([])
   const [templates, setTemplates] = useState([])
@@ -53,7 +54,7 @@ export default function Aktivierung() {
   const fetchAll = useCallback(async () => {
     if (!activeTeamId) return
     setLoading(true); setError(null)
-    const [a, c, s, o, cat, r, tpl, att] = await Promise.all([
+    const [a, c, s, o, cat, r, tpl, att, ld] = await Promise.all([
       sp().from('activations').select('*').eq('team_id', activeTeamId).order('scheduled_for', { ascending: true, nullsFirst: false }),
       sp().from('contracts').select('id, sponsor_profile_id, package_id').eq('team_id', activeTeamId),
       sp().from('sponsor_profiles').select('id, organization_id').eq('team_id', activeTeamId).order('created_at', { ascending: false }),
@@ -62,12 +63,13 @@ export default function Aktivierung() {
       sp().from('rights').select('id, name, category_id').eq('team_id', activeTeamId).order('name', { ascending: true }),
       sp().from('activation_templates').select('*').eq('team_id', activeTeamId).order('sort_order', { ascending: true }),
       sp().from('activation_attachments').select('*').eq('team_id', activeTeamId).order('created_at', { ascending: true }),
+      supabase.from('leads').select('id, first_name, last_name, company, organization_id').eq('team_id', activeTeamId),
     ])
-    const err = a.error || c.error || s.error || o.error || cat.error || r.error || tpl.error || att.error
+    const err = a.error || c.error || s.error || o.error || cat.error || r.error || tpl.error || att.error || ld.error
     if (err) { setError(err.message); setLoading(false); return }
     setActs(a.data || []); setContracts(c.data || []); setSponsors(s.data || []); setOrgs(o.data || [])
     setCategories(cat.data || []); setRights(r.data || []); setTemplates(tpl.data || [])
-    setAttachments(att.data || [])
+    setAttachments(att.data || []); setLeads(ld.data || [])
 
     // Signed-URLs defensiv parallel auflösen (Bucket privat → Anzeige via signedUrl)
     const pairs = await Promise.all((att.data || []).map(async (x) => [x.id, await signed(x.storage_path)]))
@@ -88,6 +90,26 @@ export default function Aktivierung() {
   ), [contracts, sponsorName])
   const categoryName = useMemo(() => Object.fromEntries(categories.map((c) => [c.id, c.name])), [categories])
   const rightName = useMemo(() => Object.fromEntries(rights.map((r) => [r.id, r.name])), [rights])
+  // A3: Verantwortlicher (Team-Mitglied) + Ansprechpartner (Org-Kontakt)
+  const memberName = useMemo(
+    () => Object.fromEntries(members.map((m) => [m.user_id, m.profile?.full_name || m.profile?.email || (m.user_id || '').slice(0, 8)])),
+    [members],
+  )
+  const leadName = useMemo(
+    () => Object.fromEntries(leads.map((l) => [l.id, `${l.first_name || ''} ${l.last_name || ''}`.trim() || l.company || 'Kontakt'])),
+    [leads],
+  )
+  // Org des im Anlage-Formular gewählten Vertrags → Ansprechpartner-Auswahl darauf filtern
+  const formContractOrgId = useMemo(() => {
+    const c = contracts.find((x) => x.id === form.contract_id)
+    if (!c) return null
+    const s = sponsors.find((x) => x.id === c.sponsor_profile_id)
+    return s?.organization_id || null
+  }, [form.contract_id, contracts, sponsors])
+  const contactOptions = useMemo(
+    () => (formContractOrgId ? leads.filter((l) => l.organization_id === formContractOrgId) : []),
+    [leads, formContractOrgId],
+  )
   const attByActivation = useMemo(() => {
     const m = {}
     for (const x of attachments) (m[x.activation_id] = m[x.activation_id] || []).push(x)
@@ -110,6 +132,8 @@ export default function Aktivierung() {
       contract_id: form.contract_id || null,
       scheduled_for: form.scheduled_for || null,
       proof_url: form.proof_url || null,
+      responsible: form.responsible || null,
+      contact_id: form.contact_id || null,
     })
     if (e2) { setError(e2.message); setBusy(false); return }
     setForm(EMPTY); await fetchAll(); setBusy(false)
@@ -203,7 +227,7 @@ export default function Aktivierung() {
 
       {error && <div style={errBox}>{error}</div>}
 
-      <form onSubmit={create} style={{ display: 'grid', gridTemplateColumns: '2fr 1fr 1.4fr 1fr auto', gap: 10, alignItems: 'end', ...card, marginBottom: 22 }}>
+      <form onSubmit={create} style={{ display: 'grid', gridTemplateColumns: '2fr 1fr 1.4fr 1fr 1.4fr 1.4fr', gap: 10, alignItems: 'end', ...card, marginBottom: 22 }}>
         <Field label="Maßnahme"><input value={form.title} onChange={(e) => setForm({ ...form, title: e.target.value })} placeholder="z.B. LinkedIn-Post zum Saisonstart" style={input} /></Field>
         <Field label="Typ">
           <select value={form.type} onChange={(e) => setForm({ ...form, type: e.target.value })} style={input}>
@@ -211,13 +235,25 @@ export default function Aktivierung() {
           </select>
         </Field>
         <Field label="Vertrag">
-          <select value={form.contract_id} onChange={(e) => setForm({ ...form, contract_id: e.target.value })} style={input}>
+          <select value={form.contract_id} onChange={(e) => setForm({ ...form, contract_id: e.target.value, contact_id: '' })} style={input}>
             <option value="">— keiner —</option>
             {contracts.map((c) => <option key={c.id} value={c.id}>{contractLabel[c.id]}</option>)}
           </select>
         </Field>
         <Field label="Termin"><input type="date" value={form.scheduled_for} onChange={(e) => setForm({ ...form, scheduled_for: e.target.value })} style={input} /></Field>
-        <button type="submit" disabled={busy || !form.title.trim()} style={{ ...primaryBtn, opacity: busy || !form.title.trim() ? 0.6 : 1 }}>
+        <Field label="Verantwortlich">
+          <select value={form.responsible} onChange={(e) => setForm({ ...form, responsible: e.target.value })} style={input}>
+            <option value="">— niemand —</option>
+            {members.map((m) => <option key={m.user_id} value={m.user_id}>{memberName[m.user_id]}</option>)}
+          </select>
+        </Field>
+        <Field label="Ansprechpartner">
+          <select value={form.contact_id} onChange={(e) => setForm({ ...form, contact_id: e.target.value })} style={input} disabled={!formContractOrgId}>
+            <option value="">{formContractOrgId ? '— keiner —' : '— erst Vertrag wählen —'}</option>
+            {contactOptions.map((l) => <option key={l.id} value={l.id}>{leadName[l.id]}</option>)}
+          </select>
+        </Field>
+        <button type="submit" disabled={busy || !form.title.trim()} style={{ ...primaryBtn, gridColumn: '1 / -1', justifySelf: 'end', opacity: busy || !form.title.trim() ? 0.6 : 1 }}>
           {busy ? <Loader2 size={14} className="spin" /> : <Plus size={14} />} Anlegen
         </button>
       </form>
@@ -260,6 +296,16 @@ export default function Aktivierung() {
                     {a.right_id ? (
                       <div style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 2 }}>
                         Recht: {rightName[a.right_id] || '—'}
+                      </div>
+                    ) : null}
+                    {a.contact_id ? (
+                      <div style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 2 }}>
+                        Ansprechpartner: {leadName[a.contact_id] || '—'}
+                      </div>
+                    ) : null}
+                    {a.responsible ? (
+                      <div style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 2 }}>
+                        Verantwortlich: {memberName[a.responsible] || '—'}
                       </div>
                     ) : null}
                     <select value={a.status} onChange={(e) => move(a.id, e.target.value)}
