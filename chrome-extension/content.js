@@ -292,7 +292,7 @@ function scrapeProfile() {
   if (li_about.length > 5000) li_about = li_about.slice(0, 5000)
 
   // ── Experience / Berufserfahrung ────────────────────────────────
-  var expSection = findSection(['Berufserfahrung', 'Experience'], ['experience'])
+  var expSection = findSection(['Berufserfahrung', 'Erfahrung', 'Experience'], ['experience'])
   var li_experience = expSection ? cleanSectionText(expSection) : ''
   if (li_experience.length > 10000) li_experience = li_experience.slice(0, 10000)
 

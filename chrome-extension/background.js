@@ -470,13 +470,33 @@ async function pollQueue() {
 // Lazy-Sections) und wieder nach oben. Läuft IN der Seite (executeScript).
 async function scrollProfilePage() {
   function sleepP(ms) { return new Promise(function(r) { setTimeout(r, ms) }) }
-  var step = Math.max(400, Math.round((window.innerHeight || 800) * 0.8))
-  var y = 0, guard = 0
-  while (y < document.body.scrollHeight && guard < 30) {
-    window.scrollTo(0, y); await sleepP(450); y += step; guard++
+  // LinkedIn rendert das Profil in einem INNEREN Scroll-Container (<main> mit
+  // overflow), nicht am window. Den größten scrollbaren Container ermitteln und
+  // kleinschrittig durchscrollen, damit ALLE Lazy-Sections (Erfahrung, Ausbildung,
+  // Kenntnisse, Lizenzen …) tatsächlich nachgeladen werden.
+  function scroller() {
+    var best = document.scrollingElement || document.body, bs = (best && best.scrollHeight) || 0
+    var nodes = document.querySelectorAll('div, main, section')
+    for (var i = 0; i < nodes.length; i++) {
+      var e = nodes[i], ov = getComputedStyle(e).overflowY
+      if ((ov === 'auto' || ov === 'scroll') && e.scrollHeight > e.clientHeight + 200 && e.scrollHeight > bs) { best = e; bs = e.scrollHeight }
+    }
+    return best
   }
-  window.scrollTo(0, document.body.scrollHeight); await sleepP(700)
-  window.scrollTo(0, 0); await sleepP(400)
+  var el = scroller(), pos = 0, guard = 0
+  while (guard < 60) {
+    pos += Math.max(300, Math.round(el.clientHeight * 0.7))
+    try { el.scrollTop = pos } catch (e) {}
+    window.scrollTo(0, pos)
+    await sleepP(350)
+    el = scroller()
+    if (pos >= el.scrollHeight - el.clientHeight) { await sleepP(700); if (pos >= el.scrollHeight - el.clientHeight) break }
+    guard++
+  }
+  await sleepP(600)
+  try { el.scrollTop = 0 } catch (e) {}
+  window.scrollTo(0, 0)
+  await sleepP(300)
   return true
 }
 
