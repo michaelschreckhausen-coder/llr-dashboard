@@ -18,6 +18,7 @@ import { supabase } from '../lib/supabase';
 import { colors, radii, shadows, space, motion, typography } from '../theme';
 import { useDashboardData } from '../hooks/useDashboardData';
 import { useLeadly } from '../hooks/useLeadly';
+import { detectLeadeskExtension } from '../lib/leadeskExtension';
 
 // ─── Helpers ─────────────────────────────────────────────────────────────
 const leadName = (l) => (`${l.first_name || ''} ${l.last_name || ''}`.trim() || l.name || '—');
@@ -119,6 +120,29 @@ export default function Dashboard({ session }) {
   useEffect(() => {
     if (localStorage.getItem('lk_aff_banner_dismissed')) return;
     supabase.from('affiliates').select('id').maybeSingle().then(({ data: a }) => { if (!a) setAffBanner(true); });
+  }, []);
+
+  // Extension-Update-Hinweis: admin-gesteuert (system_banners), nur bei fehlender/zu alter Extension.
+  const [extBanner, setExtBanner] = useState(null);
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        const { data: b } = await supabase.from('system_banners').select('*').eq('key', 'extension_update').maybeSingle();
+        if (cancelled || !b || !b.enabled) return;
+        if (localStorage.getItem('lk_ext_banner_dismissed') === (b.min_version || '')) return; // pro Mindestversion ausblendbar
+        const det = await detectLeadeskExtension();
+        const cmp = (a, c) => {
+          const pa = String(a || '0').split('.').map(n => parseInt(n) || 0);
+          const pc = String(c || '0').split('.').map(n => parseInt(n) || 0);
+          for (let i = 0; i < Math.max(pa.length, pc.length); i++) { const d = (pa[i] || 0) - (pc[i] || 0); if (d) return d; }
+          return 0;
+        };
+        const needs = !det.installed || (b.min_version && cmp(det.version, b.min_version) < 0);
+        if (!cancelled && needs) setExtBanner(b);
+      } catch (_) { /* Tabelle evtl. noch nicht migriert — kein Banner */ }
+    })();
+    return () => { cancelled = true; };
   }, []);
 
   const {
@@ -229,6 +253,27 @@ export default function Dashboard({ session }) {
 
   return (
     <div>
+      {extBanner && (
+        <div style={{
+          display: 'flex', alignItems: 'center', gap: 12,
+          background: '#FEF2F2', border: '1px solid #FECACA', borderRadius: 10,
+          padding: '12px 16px', marginBottom: space[6], fontSize: 13, color: '#991B1B',
+        }}>
+          <span style={{ fontSize: 18 }}>⚠️</span>
+          <div style={{ flex: 1, minWidth: 0 }}>
+            <strong style={{ display: 'block', marginBottom: 2 }}>{extBanner.title || 'Wichtiges Extension-Update'}</strong>
+            <span style={{ color: '#7F1D1D', lineHeight: 1.5 }}>{extBanner.message}</span>
+          </div>
+          {extBanner.cta_url && (
+            <a href={extBanner.cta_url} target="_blank" rel="noopener noreferrer"
+              style={{ flexShrink: 0, padding: '8px 14px', borderRadius: 8, background: '#DC2626', color: '#fff', fontWeight: 700, fontSize: 12, textDecoration: 'none', whiteSpace: 'nowrap' }}>
+              {extBanner.cta_label || 'Jetzt installieren'}
+            </a>
+          )}
+          <button onClick={() => { localStorage.setItem('lk_ext_banner_dismissed', extBanner.min_version || '1'); setExtBanner(null); }}
+            style={{ flexShrink: 0, border: 'none', background: 'transparent', color: '#991B1B', cursor: 'pointer', fontSize: 15, fontWeight: 700 }} aria-label="Ausblenden">✕</button>
+        </div>
+      )}
       {affBanner && (
         <div onClick={() => nav('/settings/affiliate')} style={{
           display: 'flex', alignItems: 'center', gap: 10, cursor: 'pointer',
