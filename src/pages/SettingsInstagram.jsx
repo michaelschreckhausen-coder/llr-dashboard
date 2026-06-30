@@ -89,7 +89,7 @@ export default function SettingsInstagram() {
   })
 
   return (
-    <div style={{ maxWidth: 740, margin: '0 auto' }}>
+    <div style={{ maxWidth: 1100, margin: '0 auto' }}>
       <SettingsTabs />
 
       <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 18 }}>

@@ -107,7 +107,7 @@ export default function SettingsNotifications({ session }) {
   }
 
   return (
-    <div style={{ maxWidth: 720, margin: '0 auto', padding: '0 0 24px 0' }}>
+    <div style={{ maxWidth: 1100, margin: '0 auto', padding: '0 0 24px 0' }}>
       <SettingsTabs />
       <h1 style={{ fontSize: 22, fontWeight: 800, margin: '0 0 8px 0', letterSpacing: '-0.01em' }}>
         E-Mail-Benachrichtigungen

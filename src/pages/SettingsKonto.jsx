@@ -226,7 +226,7 @@ export default function SettingsKonto() {
     && new Date(entitlements.trial_ends_at) <= new Date()
 
   return (
-    <div style={{ maxWidth: 900, margin: '0 auto' }}>
+    <div style={{ maxWidth: 1100, margin: '0 auto' }}>
       <SettingsTabs />
 
       {/* Success-Banner nach Stripe-Checkout */}

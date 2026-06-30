@@ -32,7 +32,7 @@ export default function SettingsExtension() {
   }
 
   return (
-    <div style={{ maxWidth:740, margin:'0 auto' }}>
+    <div style={{ maxWidth:1100, margin:'0 auto' }}>
       <SettingsTabs />
 
       {/* Status-Card */}
