@@ -618,7 +618,7 @@ export default function Projektmanagement({session}){
   const [taskLabels,setTaskLabels]=useState({})
   const [allUsers,setAllUsers]=useState([])
   const [projectLabels,setProjectLabels]=useState([])
-  const [viewMode,setViewMode]=useState('board')
+  const [viewMode,setViewMode]=useState('list') // Kanban-Board ausgeblendet (aktuell nicht nutzbar) → nur Liste
   const [filterMember,setFilterMember]=useState('')
   const [filterLabel,setFilterLabel]=useState('')
   const [filterPriority,setFilterPriority]=useState('')
@@ -767,10 +767,7 @@ export default function Projektmanagement({session}){
           <button onClick={()=>{setProjModal('new');setProjForm({name:'',description:'',color:'#0A66C2'})}} style={{padding:'6px 14px',borderRadius:8,border:'1.5px dashed #CBD5E1',background:'transparent',color:'var(--text-muted)',fontSize:12,fontWeight:600,cursor:'pointer'}}>+ Projekt</button>
         </div>
         <div style={{display:'flex',gap:8,alignItems:'center'}}>
-          <div style={{display:'flex',borderRadius:8,border:'1.5px solid #E2E8F0',overflow:'hidden'}}>
-            <button onClick={()=>setViewMode('board')} style={{padding:'6px 12px',border:'none',background:viewMode==='board'?'#0A66C2':'#fff',color:viewMode==='board'?'#fff':'#64748B',fontSize:12,fontWeight:700,cursor:'pointer'}}>⬜ Board</button>
-            <button onClick={()=>setViewMode('list')} style={{padding:'6px 12px',border:'none',background:viewMode==='list'?'#0A66C2':'#fff',color:viewMode==='list'?'#fff':'#64748B',fontSize:12,fontWeight:700,cursor:'pointer'}}>Liste</button>
-          </div>
+          {/* Kanban-Board-Umschalter ausgeblendet — Board-Ansicht aktuell nicht nutzbar, nur Liste */}
           <button onClick={()=>setShowLabelManager(true)} style={{padding:'6px 12px',borderRadius:8,border:'1.5px solid #E2E8F0',background:'var(--surface)',color:'var(--text-muted)',fontSize:12,fontWeight:600,cursor:'pointer'}}>Labels</button>
           <select value={sortBy} onChange={e=>setSortBy(e.target.value)} style={{padding:'6px 10px',borderRadius:8,border:'1.5px solid #E2E8F0',fontSize:12,fontFamily:'inherit',color:'var(--text-muted)',background:'var(--surface)'}}>
             <option value="position">Standard</option><option value="priority">Priorität</option><option value="due_date">Fälligkeit</option><option value="name">Name A→Z</option>
