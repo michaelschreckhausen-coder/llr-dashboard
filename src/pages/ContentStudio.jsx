@@ -192,6 +192,8 @@ export default function ContentStudio({ session }) {
   // paneView leitet die 3 Fullscreen-Zustände ab (Chat | Split | Suite)
   const [paneView, setPaneView] = useState('split')                            // 'chat' | 'split' | 'suite'
   const [panePct, setPanePct] = useState(52)   // Split-Breite der Pane in % (ziehbar)
+  // Echte linke Kante der Pane messen, damit Switcher + Steuerung exakt anliegen
+  // (in jedem Zustand: Split UND Vollbild — der schmale Chat-Streifen verschiebt sie).
   const rightOpen = editorOpen                                                  // Kompat: rechtes Panel offen?
   // Visual-Composer (In-Chat-Bildgenerierung)
   const [visualMode, setVisualMode] = useState(false)
@@ -973,10 +975,11 @@ export default function ContentStudio({ session }) {
           flexGrow: (editorOpen && (paneView === 'suite' || paneView === 'page')) ? 0 : 1,
           flexShrink: 1,
           flexBasis: !editorOpen ? '100%' : ((paneView === 'suite' || paneView === 'page') ? '0%' : '48%'),
+          display: (editorOpen && (paneView === 'suite' || paneView === 'page')) ? 'none' : 'flex',
           minWidth:0, overflow:'hidden',
           opacity: (editorOpen && (paneView === 'suite' || paneView === 'page')) ? 0 : 1,
           pointerEvents: (editorOpen && (paneView === 'suite' || paneView === 'page')) ? 'none' : 'auto',
-          display:'flex', flexDirection:'column', position:'relative',
+          flexDirection:'column', position:'relative',
           transition:'opacity 0.2s ease' }}>
         {/* Floating Sidebar-Toggle wenn zu */}
         {!sidebarOpen && (
