@@ -33,7 +33,7 @@ import {
   Bold, Italic, Sliders, Loader2, X, ChevronUp, ChevronDown, Brush, Lasso,
   Eraser, Image as ImageIcon, LayoutTemplate, Copy, ZoomIn, ZoomOut, Maximize2,
   Upload, Frame, Eye, EyeOff, Lock, Unlock, Layers, GripVertical, Underline,
-  FlipHorizontal2, FlipVertical2, FlipHorizontal, FlipVertical, Scaling, Send, CalendarPlus, FileText, Search,
+  FlipHorizontal2, FlipVertical2, FlipHorizontal, FlipVertical, Scaling, Send, CalendarPlus, FileText, Search, Paintbrush,
   AlignLeft, AlignCenter, AlignRight, Baseline, MoveVertical,
   AlignStartVertical, AlignCenterVertical, AlignEndVertical,
   AlignStartHorizontal, AlignCenterHorizontal, AlignEndHorizontal,
@@ -237,6 +237,8 @@ export default function DesignerCanvas({ visual, teamId, onSaved, onReplaceVisua
   const selectedId = selectedIds.length === 1 ? selectedIds[0] : null  // Abwärtskompatibel (Einzel-Selektion)
   const setSelectedId = useCallback((id) => setSelectedIds(id ? [id] : []), [])
   const [editingTextId, setEditingTextId] = useState(null)
+  const copyStyleRef = useRef(null)              // Format-Painter: kopierter Stil {type, style}
+  const [copyStyleActive, setCopyStyleActive] = useState(false)
   // "Verzerren"-Modus: per Doppelklick auf ein Objekt (kein Text) aktiviert. Solange
   // null, ist das Skalieren proportional (kein Verzerren); ist eine ID gesetzt, darf
   // dieses Objekt frei (nicht-proportional) skaliert werden. Rahmenfarbe + Anker-Form
@@ -1012,7 +1014,7 @@ export default function DesignerCanvas({ visual, teamId, onSaved, onReplaceVisua
       if (mod && e.key.toLowerCase() === 'c') { e.preventDefault(); copySelected(); return }
       if (mod && e.key.toLowerCase() === 'v') { e.preventDefault(); pasteClipboard(); return }
       if (mod && e.key.toLowerCase() === 'a') { e.preventDefault(); setSelectedIds(objects.map(o => o.id)); return }
-      if (e.key === 'Escape') { setSelectedIds([]); return }
+      if (e.key === 'Escape') { if (copyStyleRef.current) { copyStyleRef.current = null; setCopyStyleActive(false) } setSelectedIds([]); return }
       if ((e.key === 'Delete' || e.key === 'Backspace') && selectedIds.length) {
         e.preventDefault(); deleteSelected(); return
       }
@@ -3007,9 +3009,38 @@ export default function DesignerCanvas({ visual, teamId, onSaved, onReplaceVisua
     setDistortId(prev => (prev === o.id ? null : o.id))
   }
 
+  // ─── Format-Painter (Stil kopieren) ────────────────────────────────────────
+  function captureStyle(o) {
+    const KEYS = ['fill','stroke','strokeWidth','cornerRadius','opacity','shadowColor','shadowBlur','shadowOffsetX','shadowOffsetY','effect','fontFamily','fontSize','fontStyle','align','lineHeight','letterSpacing','textDecoration']
+    const style = {}; KEYS.forEach(k => { if (o[k] !== undefined) style[k] = o[k] })
+    return { type: o.type, style }
+  }
+  function startCopyStyle() {
+    const o = objects.find(x => x.id === selectedId); if (!o) return
+    copyStyleRef.current = captureStyle(o); setCopyStyleActive(true)
+  }
+  function applyCopiedStyle(targetId) {
+    const src = copyStyleRef.current; if (!src) return
+    const target = objects.find(o => o.id === targetId); if (!target) return
+    const ALLOW = {
+      text:    ['fill','effect','opacity','fontFamily','fontSize','fontStyle','align','lineHeight','letterSpacing','textDecoration','shadowColor','shadowBlur','shadowOffsetX','shadowOffsetY'],
+      rect:    ['fill','stroke','strokeWidth','cornerRadius','opacity','shadowColor','shadowBlur','shadowOffsetX','shadowOffsetY'],
+      ellipse: ['fill','stroke','strokeWidth','opacity','shadowColor','shadowBlur','shadowOffsetX','shadowOffsetY'],
+      line:    ['stroke','strokeWidth','opacity'],
+      arrow:   ['fill','stroke','strokeWidth','opacity'],
+      sticker: ['fill','stroke','strokeWidth','opacity'],
+      image:   ['opacity','cornerRadius','shadowColor','shadowBlur','shadowOffsetX','shadowOffsetY'],
+    }[target.type] || ['opacity']
+    const patch = {}; ALLOW.forEach(k => { if (src.style[k] !== undefined) patch[k] = src.style[k] })
+    if (Object.keys(patch).length) { commitHistoryOnce(); updateObject(targetId, patch, false); endInteraction() }
+  }
+
   // Klick auf ein Objekt: Shift → zur Auswahl togglen, sonst Einzel-Auswahl.
   function selectFromClick(id, e) {
     if (cropMode || aiMode) return
+    if (copyStyleRef.current && !e?.evt?.shiftKey) {
+      applyCopiedStyle(id); copyStyleRef.current = null; setCopyStyleActive(false); setSelectedIds([id]); return
+    }
     const shift = e?.evt?.shiftKey
     if (shift) {
       setSelectedIds(prev => prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id])
@@ -3393,6 +3424,7 @@ export default function DesignerCanvas({ visual, teamId, onSaved, onReplaceVisua
           reorder={reorder} deleteSelected={deleteSelected} duplicateSelected={duplicateSelected}
           onFlip={flipSelected} onCrop={() => setCropMode(true)}
           onEditImage={() => setActiveTool('edit')} onOpenLayers={() => setActiveTool('layers')}
+          onCopyStyle={startCopyStyle} copyStyleActive={copyStyleActive}
           fonts={allFonts} selectedIds={selectedIds} brandColors={brandColors}
           alignObjects={alignObjects} distributeObjects={distributeObjects} />
       )}
@@ -4001,6 +4033,7 @@ function BarMenuItem({ icon, label, active, onClick }) {
 function ContextBar({
   selected, updateObject, reorder, deleteSelected, duplicateSelected,
   commitHistoryOnce, endInteraction, fonts, onFlip, onCrop, onEditImage, onOpenLayers,
+  onCopyStyle, copyStyleActive = false,
   selectedIds, alignObjects, distributeObjects, brandColors = [],
 }) {
   const FONT_LIST = (fonts && fonts.length) ? fonts : FONTS
@@ -4190,6 +4223,9 @@ function ContextBar({
       </BarMenu>
 
       <div style={{ flex: 1, minWidth: 8 }} />
+      {onCopyStyle && (
+        <ToolBtn onClick={onCopyStyle} active={copyStyleActive} title={copyStyleActive ? 'Stil kopiert — jetzt Zielelement anklicken' : 'Stil kopieren'}><Paintbrush size={14} strokeWidth={1.9} /></ToolBtn>
+      )}
       <ToolBtn onClick={duplicateSelected} title="Duplizieren (Strg+D)"><Copy size={14} strokeWidth={1.9} /></ToolBtn>
       <ToolBtn onClick={deleteSelected} title="Löschen (Entf)"><Trash2 size={14} strokeWidth={1.9} /></ToolBtn>
     </div>
