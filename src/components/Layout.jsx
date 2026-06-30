@@ -1031,21 +1031,7 @@ export default function Layout({ session, role, onLogout, children }) {
               </div>
               {showMenu && (
                 <div style={{ position:'absolute', top:'calc(100% + 10px)', right:0, width:240, background:'var(--surface-glass-strong)', backdropFilter:'var(--glass-blur)', WebkitBackdropFilter:'var(--glass-blur)', borderRadius:16, boxShadow:'0 8px 32px rgba(0,0,0,0.14), 0 2px 8px rgba(0,0,0,0.08)', border:'1px solid rgba(0,0,0,0.06)', zIndex:999, overflow:'hidden' }}>
-                  {/* User Info Header */}
-                  <div style={{ padding:'16px 16px 12px', borderBottom:'1px solid var(--surface)', background:'linear-gradient(135deg, var(--wl-primary, rgb(0,48,96)) 0%, rgb(48,160,208) 100%)' }}>
-                    <div style={{ display:'flex', alignItems:'center', gap:10 }}>
-                      <div style={{ width:38, height:38, borderRadius:10, background:'var(--text-soft)', display:'flex', alignItems:'center', justifyContent:'center', color:'white', fontSize:14, fontWeight:800, flexShrink:0, overflow:'hidden' }}>
-                        {userAvatar ? <img src={userAvatar} alt="" style={{ width:'100%', height:'100%', objectFit:'cover', borderRadius:10 }}/> : userInitials}
-                      </div>
-                      <div style={{ minWidth:0 }}>
-                        <div style={{ fontSize:14, fontWeight:700, color:'white', whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis' }}>{userName || 'Michael'}</div>
-                        <div style={{ display:'flex', alignItems:'center', gap:6, marginTop:2 }}>
-                          <span style={{ fontSize:10, fontWeight:700, padding:'1px 8px', borderRadius:999, background:'var(--text-soft)', color:'white' }}>{isAdmin ? 'Admin' : 'User'}</span>
-                          <span style={{ fontSize:10, color:'var(--text-primary)' }}>Enterprise</span>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
+                  {/* User-Info-Header entfernt (Name/Rolle/Enterprise — nicht funktional) */}
                   {/* Menu Items */}
                   <div style={{ padding:'6px' }}>
                     <button onClick={() => { navigate('/settings/profil'); setShowMenu(false) }}
