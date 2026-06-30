@@ -432,6 +432,11 @@ export default function Layout({ session, role, onLogout, children }) {
   const [userName, setUserName] = useState('')
   const [notifications, setNotifications] = useState([])
   const [showNotif, setShowNotif] = useState(false)
+  // IDs bereits gesehener Benachrichtigungen (persistiert) → ungelesene = neue IDs.
+  // Dadurch wird die Glocke wieder rot, sobald etwas NEUES auftaucht.
+  const [seenNotifIds, setSeenNotifIds] = useState(() => {
+    try { return JSON.parse(localStorage.getItem('leadesk.notif.seen') || '[]') } catch { return [] }
+  })
   const [extInstalled, setExtInstalled] = useState(false)
   useEffect(() => {
     let cancelled = false
@@ -457,7 +462,6 @@ export default function Layout({ session, role, onLogout, children }) {
       document.removeEventListener('visibilitychange', onVisible)
     }
   }, [])
-  const [notifRead, setNotifRead] = useState(false)
   const [searchOpen,    setSearchOpen]    = useState(false)
   const [globalSearch,  setGlobalSearch]  = useState('')
   const [searchResults, setSearchResults] = useState([])
@@ -522,11 +526,18 @@ export default function Layout({ session, role, onLogout, children }) {
   }, [session])
 
   useEffect(() => {
-    if (session?.user) {
-      loadProfile()
-      loadNotifications(session.user.id)
-    }
+    if (session?.user) loadProfile()
   }, [session])
+
+  // Benachrichtigungen: neu laden bei Session- ODER Team-Wechsel (Bugfix: lief vorher
+  // nur auf [session] und brach bei noch leerem activeTeamId ab → dauerhaft leer) +
+  // leichtes Polling alle 60s, damit neue Events ohne Reload auftauchen.
+  useEffect(() => {
+    if (!session?.user || !activeTeamId) return
+    loadNotifications(session.user.id)
+    const iv = setInterval(() => loadNotifications(session.user.id), 60000)
+    return () => clearInterval(iv)
+  }, [session, activeTeamId])
 
   // Auf Profil-Updates hören (von der Profilseite gefeuert)
   useEffect(() => {
@@ -536,50 +547,87 @@ export default function Layout({ session, role, onLogout, children }) {
   }, [loadProfile])
 
   async function loadNotifications(uid) {
+    const tid = activeTeamId
+    if (!tid) return // Team noch nicht geladen — Effekt feuert erneut sobald activeTeamId da ist
     const notifs = []
     const since = new Date(Date.now()-7*24*60*60*1000).toISOString()
     const today = new Date().toISOString().split('T')[0]
+    const tomorrow = new Date(); tomorrow.setDate(tomorrow.getDate()+1)
+    const tomorrowStr = tomorrow.toISOString().split('T')[0]
+    const in3 = new Date(); in3.setDate(in3.getDate()+3)
+    const in3Str = in3.toISOString().split('T')[0]
+    // Jede Quelle einzeln abgesichert: eine fehlende Tabelle/Spalte darf nie die
+    // ganze Glocke killen.
+    const src = async (fn) => { try { await fn() } catch(e) { /* still ignorieren */ } }
 
-    // Neue Leads (letzte 7 Tage)
-    const tid = activeTeamId
-    if (!tid) return
-    const {data:leads} = await supabase.from('leads').select('id,first_name,last_name,name,created_at').eq('team_id',tid).gte('created_at',since).order('created_at',{ascending:false}).limit(3)
-    if(leads?.length) leads.forEach(l => {
-      const name = l.first_name ? `${l.first_name} ${l.last_name||''}`.trim() : (l.name||'Unbekannt')
-      notifs.push({id:'l'+l.id, type:'lead', icon:'user', title:`Neuer Lead: ${name}`, time:l.created_at})
+    // ── CRM: Neue Leads (letzte 7 Tage) ──
+    await src(async () => {
+      const {data} = await supabase.from('leads').select('id,first_name,last_name,name,created_at').eq('team_id',tid).gte('created_at',since).order('created_at',{ascending:false}).limit(5)
+      data?.forEach(l => {
+        const name = l.first_name ? `${l.first_name} ${l.last_name||''}`.trim() : (l.name||'Unbekannt')
+        notifs.push({id:'l'+l.id, type:'lead', icon:'👤', title:`Neuer Lead: ${name}`, time:l.created_at})
+      })
     })
 
-    // Überfällige Follow-ups (heute und früher)
-    const {data:followups} = await supabase.from('leads').select('id,first_name,last_name,next_followup').eq('team_id',tid).lte('next_followup',today).not('next_followup','is',null).order('next_followup',{ascending:true}).limit(3)
-    if(followups?.length) followups.forEach(l => {
-      const name = l.first_name ? `${l.first_name} ${l.last_name||''}`.trim() : 'Lead'
-      const d = new Date(l.next_followup)
-      const diff = Math.round((new Date()-d)/86400000)
-      const label = diff===0?'Heute':diff===1?'Gestern':`vor ${diff} Tagen`
-      notifs.push({id:'f'+l.id, type:'followup', icon:'calendar', title:`Follow-up ${label}: ${name}`, time:l.next_followup+'T09:00:00'})
+    // ── CRM: Überfällige/heute Follow-ups ──
+    await src(async () => {
+      const {data} = await supabase.from('leads').select('id,first_name,last_name,next_followup').eq('team_id',tid).lte('next_followup',today).not('next_followup','is',null).order('next_followup',{ascending:true}).limit(5)
+      data?.forEach(l => {
+        const name = l.first_name ? `${l.first_name} ${l.last_name||''}`.trim() : 'Lead'
+        const diff = Math.round((new Date()-new Date(l.next_followup))/86400000)
+        const label = diff<=0?'Heute':diff===1?'Gestern':`vor ${diff} Tagen`
+        notifs.push({id:'f'+l.id, type:'followup', icon:'📅', title:`Follow-up ${label}: ${name}`, time:l.next_followup+'T09:00:00'})
+      })
     })
 
-    // Einladungen offen
-    const {data:invites} = await supabase.from('invites').select('id,email,created_at').eq('status','pending').limit(2)
-    if(invites?.length) invites.forEach(inv=>notifs.push({id:'i'+inv.id,type:'invite',icon:'mail',title:'Einladung offen: '+inv.email,time:inv.created_at}))
-    // CRM-Aufgaben: überfällige + heute fällig
-    try {
-      const today = new Date().toISOString().split('T')[0]
-      const tomorrow = new Date(); tomorrow.setDate(tomorrow.getDate()+1)
-      const tomorrowStr = tomorrow.toISOString().split('T')[0]
-      let tq = supabase.from('lead_tasks').select('id,title,due_date,leads(first_name,last_name)').eq('status','open').lte('due_date',tomorrowStr).order('due_date',{ascending:true}).limit(5)
-      // tid bereits oben aus activeTeamId
-      if (tid) tq = tq.eq('team_id', tid)
-      const {data:tasks} = await tq
-      if(tasks?.length) tasks.forEach(t=>{
+    // ── CRM: Aufgaben überfällig/heute/morgen ──
+    await src(async () => {
+      const {data} = await supabase.from('lead_tasks').select('id,title,due_date,leads(first_name,last_name)').eq('team_id',tid).eq('status','open').lte('due_date',tomorrowStr).order('due_date',{ascending:true}).limit(5)
+      data?.forEach(t=>{
         const isOverdue = t.due_date < today
         const leadName = t.leads ? `${t.leads.first_name||''} ${t.leads.last_name||''}`.trim() : ''
-        notifs.push({id:'t'+t.id,type:'task',icon:isOverdue?'⚠':'📋',title:`${isOverdue?'Überfällig':'Fällig'}: ${t.title}${leadName?' · '+leadName:''}`,time:t.due_date+'T09:00:00'})
+        notifs.push({id:'t'+t.id,type:'task',icon:isOverdue?'⚠️':'📋',title:`${isOverdue?'Überfällig':'Fällig'}: ${t.title}${leadName?' · '+leadName:''}`,time:t.due_date+'T09:00:00'})
       })
-    } catch(e) {}
+    })
+
+    // ── CRM: Deals mit anstehendem Abschluss (nächste 3 Tage / überfällig) ──
+    await src(async () => {
+      const {data} = await supabase.from('deals').select('id,title,stage,expected_close_date').eq('team_id',tid).lte('expected_close_date',in3Str).not('expected_close_date','is',null).not('stage','in','("gewonnen","verloren")').order('expected_close_date',{ascending:true}).limit(5)
+      data?.forEach(d=>{
+        const overdue = d.expected_close_date < today
+        notifs.push({id:'d'+d.id,type:'deal',icon:'💼',title:`${overdue?'Abschluss überfällig':'Abschluss steht an'}: ${d.title||'Deal'}`,time:d.expected_close_date+'T09:00:00'})
+      })
+    })
+
+    // ── Projektumsetzung: Projekt-Aufgaben überfällig/heute ──
+    await src(async () => {
+      const {data} = await supabase.from('pm_tasks').select('id,title,due_date,status').eq('team_id',tid).lte('due_date',today).not('due_date','is',null).neq('status','done').order('due_date',{ascending:true}).limit(5)
+      data?.forEach(t=>{
+        const overdue = t.due_date < today
+        notifs.push({id:'p'+t.id,type:'pm',icon:overdue?'⚠️':'🗂️',title:`${overdue?'Projekt überfällig':'Projekt fällig'}: ${t.title||'Aufgabe'}`,time:t.due_date+'T09:00:00'})
+      })
+    })
+
+    // ── LinkedIn: neue angenommene Vernetzungen (letzte 7 Tage) ──
+    await src(async () => {
+      const {data} = await supabase.from('linkedin_inbox').select('id,name,li_accepted_at').eq('team_id',tid).gte('li_accepted_at',since).not('li_accepted_at','is',null).order('li_accepted_at',{ascending:false}).limit(5)
+      data?.forEach(c=>notifs.push({id:'c'+c.id,type:'connection',icon:'🤝',title:`Vernetzung angenommen: ${c.name||'Kontakt'}`,time:c.li_accepted_at}))
+    })
+
+    // ── Content: geplante Posts, die zur Veröffentlichung anstehen ──
+    await src(async () => {
+      const {data} = await supabase.from('content_posts').select('id,title,scheduled_at,status').eq('team_id',tid).eq('status','scheduled').lte('scheduled_at',tomorrowStr+'T23:59:59').not('scheduled_at','is',null).order('scheduled_at',{ascending:true}).limit(5)
+      data?.forEach(p=>notifs.push({id:'cp'+p.id,type:'content',icon:'📝',title:`Post geplant: ${p.title||'Beitrag'}`,time:p.scheduled_at}))
+    })
+
+    // ── Team: offene Einladungen ──
+    await src(async () => {
+      const {data} = await supabase.from('invites').select('id,email,created_at').eq('status','pending').limit(3)
+      data?.forEach(inv=>notifs.push({id:'i'+inv.id,type:'invite',icon:'✉️',title:'Einladung offen: '+inv.email,time:inv.created_at}))
+    })
 
     notifs.sort((a,b)=>new Date(b.time)-new Date(a.time))
-    setNotifications(notifs.slice(0,8))
+    setNotifications(notifs.slice(0,12))
   }
 
   useEffect(()=>{
@@ -950,14 +998,14 @@ export default function Layout({ session, role, onLogout, children }) {
 
           {/* Glocke — Pill */}
           <div style={{ position:'relative' }}>
-            <button data-notif style={{ position:'relative', background:'var(--surface)', backdropFilter:'var(--glass-blur)', WebkitBackdropFilter:'var(--glass-blur)', border:'1px solid var(--border)', cursor:'pointer', width:38, height:38, borderRadius:11, display:'flex', alignItems:'center', justifyContent:'center', color:'var(--text-muted)', transition:'all 0.15s' }}
-              onClick={()=>{setShowNotif(v=>!v);setNotifRead(true)}}
+            <button data-notif style={{ position:'relative', background: notifications.some(n=>!seenNotifIds.includes(n.id)) ? 'rgba(239,68,68,0.10)' : 'var(--surface)', backdropFilter:'var(--glass-blur)', WebkitBackdropFilter:'var(--glass-blur)', border:'1px solid '+(notifications.some(n=>!seenNotifIds.includes(n.id)) ? 'rgba(239,68,68,0.55)' : 'var(--border)'), cursor:'pointer', width:38, height:38, borderRadius:11, display:'flex', alignItems:'center', justifyContent:'center', color: notifications.some(n=>!seenNotifIds.includes(n.id)) ? 'rgb(220,38,38)' : 'var(--text-muted)', transition:'all 0.15s' }}
+              onClick={()=>{ setShowNotif(v=>{ const next=!v; if(next){ const ids=notifications.map(n=>n.id); setSeenNotifIds(ids); try{localStorage.setItem('leadesk.notif.seen',JSON.stringify(ids))}catch{} } return next }) }}
               onMouseEnter={e=>{ e.currentTarget.style.color='var(--text-primary)' }}
-              onMouseLeave={e=>{ e.currentTarget.style.color='var(--text-muted)' }}>
+              onMouseLeave={e=>{ e.currentTarget.style.color = notifications.some(n=>!seenNotifIds.includes(n.id)) ? 'rgb(220,38,38)' : 'var(--text-muted)' }}>
               <IcBell/>
-              {notifications.length > 0 && !notifRead && (
-                <span style={{ position:'absolute', top:7, right:7, width:8, height:8, borderRadius:'50%', background:'rgb(239,68,68)', border:'2px solid var(--bg-body)' }}/>
-              )}
+              {(() => { const u = notifications.filter(n=>!seenNotifIds.includes(n.id)).length; return u>0 ? (
+                <span style={{ position:'absolute', top:-5, right:-5, minWidth:18, height:18, padding:'0 4px', boxSizing:'border-box', borderRadius:9, background:'rgb(239,68,68)', color:'#fff', fontSize:10, fontWeight:800, display:'flex', alignItems:'center', justifyContent:'center', border:'2px solid var(--bg-body)', boxShadow:'0 2px 6px rgba(239,68,68,0.55)' }}>{u>9?'9+':u}</span>
+              ) : null })()}
             </button>
               {showNotif && (
                 <div data-notif style={{ position:'absolute', top:'calc(100% + 8px)', right:0, width:320, background:'var(--surface-glass-strong)', backdropFilter:'var(--glass-blur)', WebkitBackdropFilter:'var(--glass-blur)', borderRadius:16, boxShadow:'0 8px 32px rgba(15,23,42,0.18)', border:'1px solid var(--border)', zIndex:1000, overflow:'hidden' }}>
