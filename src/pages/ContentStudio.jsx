@@ -1232,10 +1232,12 @@ export default function ContentStudio({ session }) {
           background: active ? 'rgba(49,90,231,0.08)' : 'transparent', color: active ? 'var(--wl-primary, rgb(49,90,231))' : 'var(--text-secondary,#475569)' })
         const swCard = { display:'flex', flexDirection:'column', overflow:'hidden', background:'var(--surface,#fff)',
           border:'1px solid var(--border,#E9ECF2)', borderRight:'none', borderRadius:'10px 0 0 10px', boxShadow:'-2px 0 8px rgba(16,24,40,0.08)' }
-        const Switcher = ({ rounded } = {}) => (
-          <div style={{ ...swCard, ...(rounded ? { borderRight:'1px solid var(--border,#E9ECF2)', borderRadius:10 } : {}) }}>
+        const Switcher = ({ rounded, horizontal } = {}) => (
+          <div style={{ ...swCard,
+            ...(horizontal ? { flexDirection:'row' } : {}),
+            ...(rounded ? { borderRight:'1px solid var(--border,#E9ECF2)', borderRadius:10 } : {}) }}>
             <button onClick={() => openTo('doc')} title="Dokument" style={swBtn(splitMode === 'doc')}><FileText size={18} strokeWidth={1.9}/></button>
-            <div style={{ height:1, background:'var(--border,#E9ECF2)' }}/>
+            <div style={horizontal ? { width:1, alignSelf:'stretch', background:'var(--border,#E9ECF2)' } : { height:1, background:'var(--border,#E9ECF2)' }}/>
             <button onClick={() => openTo('design')} title="Designer" style={swBtn(splitMode === 'design')}><Brush size={18} strokeWidth={1.9}/></button>
           </div>
         )
@@ -1251,14 +1253,14 @@ export default function ContentStudio({ session }) {
           <>
             {/* SEITEN-VOLLBILD aktiv: schwebender Switcher + Verlassen-Button */}
             {page && (
-              <>
-                <div style={{ position:'fixed', top:16, left:16, zIndex:1001 }}><Switcher rounded/></div>
+              <div style={{ position:'fixed', bottom:20, left:'50%', transform:'translateX(-50%)', zIndex:1001, display:'flex', flexDirection:'row', alignItems:'center', gap:8 }}>
+                <Switcher rounded horizontal/>
                 <button onClick={() => setPaneView('split')} title="Seiten-Vollbild verlassen"
-                  style={{ position:'fixed', top:16, right:16, zIndex:1001, width:40, height:40, display:'inline-flex', alignItems:'center', justifyContent:'center',
+                  style={{ width:46, height:46, display:'inline-flex', alignItems:'center', justifyContent:'center',
                     borderRadius:10, border:'1px solid var(--border,#E9ECF2)', background:'var(--surface,#fff)', cursor:'pointer', color:'var(--text-secondary,#475569)', boxShadow:'0 2px 10px rgba(16,24,40,0.12)' }}>
                   <Minimize2 size={18} strokeWidth={2}/>
                 </button>
-              </>
+              </div>
             )}
             {/* Eingeklappt: Pull-out-Kasten (Klick öffnet) + Labels + Switcher */}
             {!editorOpen && (
