@@ -37,8 +37,8 @@ import { InlineEditField } from '../components/leads/InlineEditField';
 import { TagEditor } from '../components/leads/TagEditor';
 import { LeadStatusMiniPath } from '../components/leads/LeadStatusMiniPath';
 import { BulkEditModal } from '../components/leads/BulkEditModal';
-import { LeadPreviewDrawer, DRAWER_WIDTH } from '../components/leads/LeadPreviewDrawer';
 import OrganizationPicker from '../components/OrganizationPicker';
+import PageHeader from '../components/PageHeader';
 import { tagColor } from '../lib/tagColors';
 import { useTagRegistry } from '../hooks/useTagRegistry';
 import { TagManagerModal } from '../components/leads/TagManagerModal';
@@ -52,8 +52,44 @@ import { useTeam } from '../context/TeamContext';
 // Visual aligned mit Deals/Organisationen (siehe pages/Deals.jsx).
 const PRIMARY = 'rgb(49,90,231)';
 
-const pageOuterStyle = { background: 'var(--surface-canvas, #F8FAFC)', minHeight:'100vh', padding:'24px 24px 60px' };
-const pageStyle = { width:'100%', margin:'0 auto', display:'flex', flexDirection:'column' };
+const pageOuterStyle = { background: 'var(--surface-canvas, #F8FAFC)', minHeight:'100vh', padding:'24px 16px 60px' };
+const pageStyle = { width:'100%', maxWidth:1100, margin:'0 auto', display:'flex', flexDirection:'column' };
+
+// ── Reports-Stil Diagramm-Komponenten (gespiegelt aus Vernetzungen.jsx) ──
+const RC = { surface:'var(--surface, #fff)', border:'#E4E7EC', text1:'var(--text-strong, #111827)', text2:'#374151', text3:'#6B7280' };
+const fmtNum = new Intl.NumberFormat('de-DE');
+
+function Panel({ title, action, children }) {
+  return (
+    <div style={{ background:RC.surface, border:`1px solid ${RC.border}`, borderRadius:14, padding:18, marginBottom:16 }}>
+      {title && (
+        <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:14 }}>
+          <h3 style={{ fontSize:14, fontWeight:700, color:RC.text1, margin:0 }}>{title}</h3>{action}
+        </div>
+      )}
+      {children}
+    </div>
+  );
+}
+
+function BarRow({ label, count, total, color=PRIMARY }) {
+  const pct = total > 0 ? Math.round((count/total)*100) : 0;
+  return (
+    <div style={{ marginBottom:10 }}>
+      <div style={{ display:'flex', justifyContent:'space-between', alignItems:'baseline', marginBottom:4 }}>
+        <span style={{ fontSize:13, color:RC.text2, fontWeight:500 }}>{label}</span>
+        <span style={{ fontSize:12, color:RC.text3, fontVariantNumeric:'tabular-nums' }}><strong style={{ color:RC.text1 }}>{fmtNum.format(count)}</strong>{total>0 && <> · {pct}%</>}</span>
+      </div>
+      <div style={{ height:6, background:'#F3F4F6', borderRadius:3, overflow:'hidden' }}>
+        <div style={{ width:`${pct}%`, height:'100%', background:color, transition:'width 0.3s' }}/>
+      </div>
+    </div>
+  );
+}
+
+function EmptyBars({ text }) {
+  return <div style={{ fontSize:12, color:RC.text3, padding:'8px 0' }}>{text}</div>;
+}
 const headerRowStyle = { display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom: 20 };
 const titleStyle = { fontSize:22, fontWeight:800, margin:0, color:'#111827' };
 const subtitleStyle = { fontSize:13, color:'#6B7280', marginTop:4 };
@@ -211,7 +247,6 @@ export default function Leads() {
   const [bulkStagePicker, setBulkStagePicker] = useState(null);
   const [bulkListPicker,  setBulkListPicker]  = useState(null);
   const [bulkEditOpen,    setBulkEditOpen]    = useState(false);
-  const [previewLeadId,   setPreviewLeadId]   = useState(null); // Sprint C/3 · Drawer
 
   // ─── Lists fetch ────────────────────────────────────────────────────
   const [lists, setLists] = useState([]);
@@ -437,13 +472,8 @@ export default function Leads() {
   }, [filteredLeads]);
 
   // ─── Handlers ───────────────────────────────────────────────────────
-  // Sprint C/3 · Click öffnet Side-Panel-Drawer statt direct-navigate.
-  // "Volle Page öffnen" im Drawer triggert das eigentliche navigate.
-  const handleLeadClick = useCallback(id => setPreviewLeadId(id), []);
-  const handleNavigateToFullPage = useCallback(id => {
-    setPreviewLeadId(null);
-    navigate(`/leads/${id}`);
-  }, [navigate]);
+  // Click navigiert direkt auf die Detail-Page (Drawer entfernt).
+  const handleLeadClick = useCallback(id => navigate(`/leads/${id}`), [navigate]);
 
   const handleOwnerAdd = useCallback((leadId, anchorEl) => {
     const rect = anchorEl?.getBoundingClientRect?.();
@@ -700,73 +730,110 @@ export default function Leads() {
     setListFilter(null);
   };
   const kpis = [
-    { label:'Gesamt Kontakte', value: leads.length,        color: PRIMARY,    bg:'rgba(49,90,231,0.06)', qf:'all' },
-    { label:'Hot Kontakte',    value: hotCount,            color:'#DC2626',   bg:'#FEF2F2',              qf:'hot' },
-    { label:'Follow-up heute', value: followupTodayCount,  color:'#7C3AED',   bg:'#F5F3FF',              qf:'followup_today' },
-    { label:'Überfällig',      value: overdueCount,        color:'#D97706',   bg:'#FFFBEB',              qf:'overdue' },
+    { label:'Gesamt Kontakte', value: leads.length,        color: PRIMARY,    bg:'rgba(49,90,231,0.06)', qf:'all',            Icon: UsersIcon },
+    { label:'Hot Kontakte',    value: hotCount,            color:'#DC2626',   bg:'#FEF2F2',              qf:'hot',            Icon: Flame },
+    { label:'Follow-up heute', value: followupTodayCount,  color:'#7C3AED',   bg:'#F5F3FF',              qf:'followup_today', Icon: Clock },
+    { label:'Überfällig',      value: overdueCount,        color:'#D97706',   bg:'#FFFBEB',              qf:'overdue',        Icon: AlertTriangle },
   ];
 
-  return (
-    <div style={{
-      ...pageOuterStyle,
-      // Sprint C/3 · Wenn Drawer offen, Right-Padding so groß dass Content nicht
-      // verdeckt wird. transition für smoothes resize wenn User Drawer auf/zu.
-      paddingRight: previewLeadId ? (DRAWER_WIDTH + 24) : 24,
-      transition: 'padding-right 0.2s ease-out',
-    }}>
-      <div style={pageStyle}>
-        {/* Header */}
-        <div style={headerRowStyle}>
-          <div>
-            <h1 style={titleStyle}>Kontakte</h1>
-            <div style={subtitleStyle}>
-              {filteredLeads.length} von {leads.length} sichtbar
-              {quickFilter && quickFilter !== 'all' && ` · ${QUICK_FILTERS.find(q => q.id === quickFilter)?.label}`}
-              {stageTab && ` · ${stageTab}`}
-              {listFilter && lists.find(l => l.id === listFilter) && ` · Liste: ${lists.find(l => l.id === listFilter).name}`}
-            </div>
-          </div>
-          <div style={{ display:'flex', alignItems:'center', gap:10 }}>
-            <div style={searchWrapStyle}>
-              <Search size={14} style={searchIconStyle} />
-              <input type="text" style={{ ...searchInputStyle, width: 240 }}
-                placeholder="Name, E-Mail, Firma, Tags…"
-                value={search} onChange={(e) => setSearch(e.target.value)} />
-            </div>
-            <button type="button" style={iconBtnStyle} aria-label="Benachrichtigungen">
-              <Bell size={16} />
-            </button>
-            <button type="button" style={primaryBtnStyle} onClick={() => setNewLeadOpen(true)}>
-              <Plus size={16} /> Neuer Kontakt
-            </button>
-          </div>
-        </div>
+  // ── Diagramm-Daten (Reports-Stil) — Verteilungen über den Lead-Pool ──
+  // Stage-Verteilung (CRM-Status, in definierter Reihenfolge)
+  const stageDist = STATUS_ORDER
+    .map(s => ({ label: `${s}${STATUS_CONFIG[s]?.sublabel ? ' · ' + STATUS_CONFIG[s].sublabel : ''}`, count: stageCounts[s] || 0, color: STATUS_CONFIG[s]?.dot || '#64748B' }))
+    .filter(s => s.count > 0);
+  // Quellen-Verteilung (Top-Quellen nach Anzahl)
+  const sourceDist = Object.entries(
+    leads.reduce((acc, l) => { const k = (l.source || '').trim() || 'Unbekannt'; acc[k] = (acc[k] || 0) + 1; return acc; }, {})
+  ).map(([label, count]) => ({ label, count })).sort((a, b) => b.count - a.count).slice(0, 7);
+  // Score-Verteilung (Hot ≥70 / Warm 40–69 / Cold <40)
+  const scoreDist = [
+    { label:'Hot · ≥ 70',   count: leads.filter(l => (l.lead_score || 0) >= 70).length,                          color:'#DC2626' },
+    { label:'Warm · 40–69', count: leads.filter(l => (l.lead_score || 0) >= 40 && (l.lead_score || 0) < 70).length, color:'#D97706' },
+    { label:'Cold · < 40',  count: leads.filter(l => (l.lead_score || 0) < 40).length,                           color:'#185FA5' },
+  ].filter(s => s.count > 0);
 
-        {/* KPI-Zeile — jede Card setzt den passenden Quick-Filter */}
-        <div style={kpisRowStyle}>
+  const subtitleText = [
+    `${filteredLeads.length} von ${leads.length} sichtbar`,
+    quickFilter && quickFilter !== 'all' ? QUICK_FILTERS.find(q => q.id === quickFilter)?.label : null,
+    stageTab || null,
+    listFilter && lists.find(l => l.id === listFilter) ? `Liste: ${lists.find(l => l.id === listFilter).name}` : null,
+  ].filter(Boolean).join(' · ');
+
+  const headerAction = (
+    <div style={{ display:'flex', alignItems:'center', gap:10, flexWrap:'wrap', justifyContent:'flex-end' }}>
+      <div style={searchWrapStyle}>
+        <Search size={14} style={searchIconStyle} />
+        <input type="text" style={{ ...searchInputStyle, width: 240 }}
+          placeholder="Name, E-Mail, Firma, Tags…"
+          value={search} onChange={(e) => setSearch(e.target.value)} />
+      </div>
+      <button type="button" style={iconBtnStyle} aria-label="Benachrichtigungen">
+        <Bell size={16} />
+      </button>
+      <button type="button" style={primaryBtnStyle} onClick={() => setNewLeadOpen(true)}>
+        <Plus size={16} /> Neuer Kontakt
+      </button>
+    </div>
+  );
+
+  return (
+    <div style={pageOuterStyle}>
+      <div style={pageStyle}>
+        <PageHeader
+          overline="CRM · Kontakte"
+          title="Kontakte"
+          subtitle={subtitleText}
+          action={headerAction}
+        />
+
+        {/* KPI-Karten (Reports-Stil) — jede Card setzt den passenden Quick-Filter */}
+        <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fit, minmax(150px, 1fr))', gap:12, marginBottom:16 }}>
           {kpis.map(k => {
             const isActive = quickFilter === k.qf && k.qf !== 'all';
             const isAllActive = k.qf === 'all' && quickFilter === 'all' && !stageTab && !listFilter;
             const highlight = isActive || isAllActive;
+            const Icon = k.Icon;
             return (
               <button key={k.label} type="button"
                 onClick={() => setQuickFilterAndResetStage(k.qf)}
                 style={{
-                  background: k.bg, borderRadius:14, padding:'14px 18px',
-                  border: `1px solid ${highlight ? k.color : k.color + '22'}`,
+                  background: RC.surface, borderRadius:14, padding:'14px 16px',
+                  border: `1px solid ${highlight ? k.color : RC.border}`,
                   boxShadow: highlight ? `0 0 0 3px ${k.color}1a` : 'none',
                   textAlign:'left', cursor:'pointer', transition:'box-shadow 0.15s, border-color 0.15s',
-                  font:'inherit',
+                  font:'inherit', display:'flex', flexDirection:'column', gap:4,
                 }}
                 aria-pressed={highlight}
                 title={k.qf === 'all' ? 'Alle Filter zurücksetzen' : `Filter: ${k.label}`}
               >
-                <div style={{ fontSize:10, fontWeight:700, color: k.color, textTransform:'uppercase', letterSpacing:'0.06em', marginBottom:4 }}>{k.label}</div>
-                <div style={{ fontSize:20, fontWeight:800, color: k.color, fontVariantNumeric:'tabular-nums' }}>{k.value}</div>
+                <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center' }}>
+                  <span style={{ fontSize:10, fontWeight:700, color: k.color, textTransform:'uppercase', letterSpacing:'0.06em' }}>{k.label}</span>
+                  {Icon && <Icon size={14} color={k.color} />}
+                </div>
+                <div style={{ fontSize:22, fontWeight:800, color: RC.text1, fontVariantNumeric:'tabular-nums' }}>{k.value}</div>
               </button>
             );
           })}
         </div>
+
+        {/* Diagramme (Reports-Stil) — Stage breit + Score daneben, Quellen darunter */}
+        <div style={{ display:'grid', gridTemplateColumns:'2fr 1fr', gap:14 }}>
+          <Panel title="Verteilung nach Stage">
+            {stageDist.length > 0
+              ? stageDist.map(s => <BarRow key={s.label} label={s.label} count={s.count} total={leads.length} color={s.color}/>)
+              : <EmptyBars text="Noch keine Kontakte mit Stage."/>}
+          </Panel>
+          <Panel title="Score-Verteilung">
+            {scoreDist.length > 0
+              ? scoreDist.map(s => <BarRow key={s.label} label={s.label} count={s.count} total={leads.length} color={s.color}/>)
+              : <EmptyBars text="Noch keine Score-Daten."/>}
+          </Panel>
+        </div>
+        <Panel title="Verteilung nach Quelle">
+          {sourceDist.length > 0
+            ? sourceDist.map(s => <BarRow key={s.label} label={s.label} count={s.count} total={leads.length} color="#0C447C"/>)
+            : <EmptyBars text="Keine Quellen erfasst."/>}
+        </Panel>
 
         {/* Saved Views ("Ansichten") als Tab-Leiste — Sprint B */}
         <LeadViewsTabs
@@ -1212,18 +1279,6 @@ export default function Leads() {
         />
       )}
 
-      {/* Sprint C/3 · Side-Panel-Preview-Drawer */}
-      {previewLeadId && (
-        <LeadPreviewDrawer
-          leadId={previewLeadId}
-          teamMembers={teamMembers}
-          currentUserId={currentUserId}
-          onClose={() => { setPreviewLeadId(null); refetch?.(); }}
-          onMutated={refetch}
-          tagSuggestions={allTags}
-          onNavigateToFullPage={handleNavigateToFullPage}
-        />
-      )}
       {tagManagerOpen && (
         <TagManagerModal
           onClose={() => { setTagManagerOpen(false); refetch?.(); }}
