@@ -301,7 +301,7 @@ export default function Settings({ session }) {
   const bdy = { padding:'18px 20px', display:'flex', flexDirection:'column', gap:14 }
 
   return (
-    <div style={{ width:'100%', maxWidth:760, margin:'0 auto', padding:'8px 0 40px' }}>
+    <div style={{ width:'100%', maxWidth:1100, margin:'0 auto', padding:'8px 0 40px' }}>
       <SettingsTabs />
 
       {/* ── Account Info ── */}
