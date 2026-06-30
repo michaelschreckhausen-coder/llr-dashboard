@@ -1078,6 +1078,7 @@ export default function ContentStudio({ session }) {
         ...(page
           ? { position:'fixed', inset:0, zIndex:1000, margin:0, border:'none', borderRadius:0, boxShadow:'none', background:'var(--surface,#fff)' }
           : { marginTop: editorOpen ? 16 : 0, marginBottom: editorOpen ? 16 : 0,
+              marginLeft: (editorOpen && paneView === 'suite') ? 84 : 0,
               border: editorOpen ? '1px solid var(--border,#E9ECF2)' : 'none', borderRight: 'none',
               borderRadius: editorOpen ? '16px 0 0 16px' : 0,
               boxShadow: editorOpen ? '-5px 0 13px rgba(16,24,40,0.07), 0 0 12px rgba(16,24,40,0.05)' : 'none',
@@ -1218,12 +1219,12 @@ export default function ContentStudio({ session }) {
             {/* Ausgeklappt (Split/Vollbild): Switcher oben + Ansicht-Steuerung mittig */}
             {editorOpen && !page && (
               <>
-                <div style={{ position:'absolute', zIndex:50, ...(suite ? { top:16, left:16 } : { top:44, right:'52%' }) }}>
+                <div style={{ position:'absolute', zIndex:50, ...(suite ? { top:44, left:84, transform:'translateX(-100%)' } : { top:44, right:'52%' }) }}>
                   <Switcher/>
                 </div>
                 <div style={{ position:'absolute', zIndex:50, display:'flex', flexDirection:'column', overflow:'hidden',
                     background:'var(--surface,#fff)', border:'1px solid var(--border,#E9ECF2)', borderRadius:10, boxShadow:'0 2px 10px rgba(16,24,40,0.10)',
-                    ...(suite ? { top:16, right:16 } : { top:'50%', right:'52%', transform:'translate(50%,-50%)' }) }}>
+                    ...(suite ? { top:'50%', left:84, transform:'translate(-50%,-50%)' } : { top:'50%', right:'52%', transform:'translate(50%,-50%)' }) }}>
                   {suite ? (
                     <button onClick={() => setPaneView('split')} title="Splitscreen" style={ctrlBtn}><ChevronRight size={18} strokeWidth={2}/></button>
                   ) : (
