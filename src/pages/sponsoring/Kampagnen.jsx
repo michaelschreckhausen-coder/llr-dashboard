@@ -48,6 +48,7 @@ function suggestionName(s) {
 export default function Kampagnen() {
   const { activeTeamId, members } = useTeam()
   const [campaigns, setCampaigns] = useState([])
+  const [counts, setCounts] = useState({})   // campaign_id -> { leads, orgs, deals, value }
   const [loading, setLoading] = useState(true)
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState(null)
@@ -68,6 +69,16 @@ export default function Kampagnen() {
   const [generating, setGenerating] = useState(false)
   const [savingLead, setSavingLead] = useState(false)
 
+  // Phase 2 (K2): bestehende CRM-Datensätze einer Kampagne zuordnen (KEINE Duplikate)
+  const [allOrgs, setAllOrgs]         = useState([])   // public.organizations (Picker)
+  const [allDeals, setAllDeals]       = useState([])   // public.deals (Picker)
+  const [allLeads, setAllLeads]       = useState([])   // public.leads (Picker)
+  const [linkedOrgs, setLinkedOrgs]   = useState([])   // campaign_organizations der Auswahl
+  const [linkedDeals, setLinkedDeals] = useState([])   // campaign_deals der Auswahl
+  const [pickOrg, setPickOrg]   = useState('')
+  const [pickDeal, setPickDeal] = useState('')
+  const [pickLead, setPickLead] = useState('')
+
   const fetchAll = useCallback(async () => {
     if (!activeTeamId) return
     setLoading(true); setError(null)
@@ -84,7 +95,26 @@ export default function Kampagnen() {
     setCampaigns(cs || [])
     setBrandVoices(bvs || [])
     setAudiences(tas || [])
+    await loadCounts()
     setLoading(false)
+  }, [activeTeamId])
+
+  // Aggregations-Counts pro Kampagne (verknüpfte CRM-Records + Pipeline-Wert aus den Deals)
+  const loadCounts = useCallback(async () => {
+    if (!activeTeamId) return
+    const [cl, cd, co, dv] = await Promise.all([
+      sp().from('campaign_leads').select('campaign_id').eq('team_id', activeTeamId),
+      sp().from('campaign_deals').select('campaign_id, deal_id').eq('team_id', activeTeamId),
+      sp().from('campaign_organizations').select('campaign_id').eq('team_id', activeTeamId),
+      supabase.from('deals').select('id, value').eq('team_id', activeTeamId),
+    ])
+    const dval = Object.fromEntries((dv.data || []).map((d) => [d.id, Number(d.value) || 0]))
+    const cmap = {}
+    const ensure = (id) => (cmap[id] ||= { leads: 0, orgs: 0, deals: 0, value: 0 })
+    ;(cl.data || []).forEach((r) => { ensure(r.campaign_id).leads++ })
+    ;(co.data || []).forEach((r) => { ensure(r.campaign_id).orgs++ })
+    ;(cd.data || []).forEach((r) => { const e = ensure(r.campaign_id); e.deals++; e.value += dval[r.deal_id] || 0 })
+    setCounts(cmap)
   }, [activeTeamId])
 
   useEffect(() => { fetchAll() }, [fetchAll])
@@ -125,14 +155,14 @@ export default function Kampagnen() {
 
   async function openDrawer(c) {
     setSel(c); setDraft(c); setEditing(false)
-    setLeadName(''); setLeadSponsorId('')
+    setLeadName(''); setLeadSponsorId(''); setPickOrg(''); setPickDeal(''); setPickLead('')
     await loadLeads(c.id)
-    loadSponsors()
+    loadSponsors(); loadCrm(); loadLinks(c.id)
   }
 
   function closeDrawer() {
     if (busy || generating || savingLead) return
-    setSel(null); setLeads([]); setSponsorMap({})
+    setSel(null); setLeads([]); setSponsorMap({}); setLinkedOrgs([]); setLinkedDeals([])
   }
 
   // Org-Namen für eine Liste von sponsor_profiles (Extensions mit organization_id)
@@ -226,8 +256,64 @@ export default function Kampagnen() {
     setError(null)
     const { error: e } = await sp().from('campaign_leads').delete().eq('id', leadId)
     if (e) { setError(e.message); return }
-    setLeads((prev) => prev.filter((l) => l.id !== leadId))
+    setLeads((prev) => prev.filter((l) => l.id !== leadId)); loadCounts()
   }
+
+  // ── Phase 2 (K2): bestehende CRM-Records laden + verknüpfen ──
+  const loadCrm = useCallback(async () => {
+    if (!activeTeamId) return
+    const [o, d, l] = await Promise.all([
+      supabase.from('organizations').select('id, name').eq('team_id', activeTeamId).order('name', { ascending: true }),
+      supabase.from('deals').select('*').eq('team_id', activeTeamId).order('created_at', { ascending: false }),
+      supabase.from('leads').select('id, first_name, last_name, company').eq('team_id', activeTeamId).order('created_at', { ascending: false }),
+    ])
+    setAllOrgs(o.data || []); setAllDeals(d.data || []); setAllLeads(l.data || [])
+  }, [activeTeamId])
+
+  const loadLinks = useCallback(async (campaignId) => {
+    if (!activeTeamId) return
+    const [d, o] = await Promise.all([
+      sp().from('campaign_deals').select('*').eq('team_id', activeTeamId).eq('campaign_id', campaignId),
+      sp().from('campaign_organizations').select('*').eq('team_id', activeTeamId).eq('campaign_id', campaignId),
+    ])
+    setLinkedDeals(d.data || []); setLinkedOrgs(o.data || [])
+  }, [activeTeamId])
+
+  async function addOrg() {
+    if (!sel || !pickOrg) return
+    const { error: e } = await sp().from('campaign_organizations')
+      .insert({ team_id: activeTeamId, campaign_id: sel.id, organization_id: pickOrg })
+    if (e) { setError(e.message); return }
+    setPickOrg(''); await loadLinks(sel.id); loadCounts()
+  }
+  async function removeOrg(rowId) {
+    const { error: e } = await sp().from('campaign_organizations').delete().eq('id', rowId)
+    if (e) { setError(e.message); return }
+    setLinkedOrgs((prev) => prev.filter((x) => x.id !== rowId)); loadCounts()
+  }
+  async function addDeal() {
+    if (!sel || !pickDeal) return
+    const { error: e } = await sp().from('campaign_deals')
+      .insert({ team_id: activeTeamId, campaign_id: sel.id, deal_id: pickDeal })
+    if (e) { setError(e.message); return }
+    setPickDeal(''); await loadLinks(sel.id); loadCounts()
+  }
+  async function removeDeal(rowId) {
+    const { error: e } = await sp().from('campaign_deals').delete().eq('id', rowId)
+    if (e) { setError(e.message); return }
+    setLinkedDeals((prev) => prev.filter((x) => x.id !== rowId)); loadCounts()
+  }
+  async function addExistingLead() {
+    if (!sel || !pickLead) return
+    const { error: e } = await sp().from('campaign_leads')
+      .insert({ team_id: activeTeamId, campaign_id: sel.id, lead_id: pickLead, source: 'crm' })
+    if (e) { setError(e.message); return }
+    setPickLead(''); await loadLeads(sel.id)
+  }
+
+  const orgLabel  = (id) => allOrgs.find((o) => o.id === id)?.name || '—'
+  const dealLabel = (id) => { const d = allDeals.find((x) => x.id === id); return d ? (d.title || d.name || 'Deal') : '—' }
+  const leadLabel = (id) => { const l = allLeads.find((x) => x.id === id); return l ? (`${l.first_name || ''} ${l.last_name || ''}`.trim() || l.company || 'Kontakt') : '' }
 
   async function adoptSuggestion(s) {
     if (!activeTeamId || !sel) return
@@ -337,6 +423,7 @@ export default function Kampagnen() {
           <table style={table}>
             <thead><tr style={trHead}>
               <th style={th}>Kampagne</th><th style={th}>Branche</th><th style={th}>Persona</th>
+              <th style={th}>Verknüpft</th><th style={th}>Pipeline</th>
               <th style={th}>Erw. Wert</th><th style={th}>Status</th>
             </tr></thead>
             <tbody>
@@ -345,6 +432,23 @@ export default function Kampagnen() {
                   <td style={{ ...td, fontWeight: 600, color: 'var(--text-strong)' }}>{c.title}</td>
                   <td style={td}>{c.industry || '—'}</td>
                   <td style={td}>{c.persona || '—'}</td>
+                  <td style={td}>
+                    {(() => {
+                      const k = counts[c.id] || { leads: 0, orgs: 0, deals: 0 }
+                      const chip = (bg, fg) => ({ display: 'inline-flex', alignItems: 'center', gap: 3, fontSize: 11, fontWeight: 700, padding: '2px 7px', borderRadius: 99, background: bg, color: fg, marginRight: 4 })
+                      if (!k.leads && !k.orgs && !k.deals) return <span style={{ color: 'var(--text-muted)' }}>—</span>
+                      return (
+                        <span style={{ whiteSpace: 'nowrap' }}>
+                          {k.leads > 0 && <span style={chip('#EFF6FF', '#1d4ed8')} title="Kontakte">{k.leads} K</span>}
+                          {k.orgs > 0 && <span style={chip('#F0FDF4', '#059669')} title="Unternehmen">{k.orgs} U</span>}
+                          {k.deals > 0 && <span style={chip('#FFFBEB', '#B45309')} title="Deals">{k.deals} D</span>}
+                        </span>
+                      )
+                    })()}
+                  </td>
+                  <td style={{ ...td, fontVariantNumeric: 'tabular-nums', fontWeight: 600 }}>
+                    {counts[c.id]?.value ? `${Number(counts[c.id].value).toLocaleString('de-DE')} €` : '—'}
+                  </td>
                   <td style={td}>{c.expected_value != null ? `${Number(c.expected_value).toLocaleString('de-DE')} €` : '—'}</td>
                   <td style={td} onClick={(e) => e.stopPropagation()}>
                     <select value={c.status || 'draft'} onChange={(e) => updateStatus(c.id, e.target.value)}
@@ -484,8 +588,21 @@ export default function Kampagnen() {
 
             {/* Zugeordnete Leads */}
             <div>
-              <h3 style={sectionH}>Zugeordnete Sponsoren / Leads</h3>
-              <div style={{ display: 'flex', gap: 8, margin: '10px 0 12px', alignItems: 'flex-end' }}>
+              <h3 style={sectionH}>Zugeordnete Kontakte</h3>
+              {/* Bestehenden CRM-Kontakt zuordnen (keine Duplikate) */}
+              <div style={{ display: 'flex', gap: 8, margin: '10px 0 6px', alignItems: 'flex-end' }}>
+                <div style={{ flex: 1 }}>
+                  <Field label="Bestehenden Kontakt zuordnen">
+                    <select value={pickLead} onChange={(e) => setPickLead(e.target.value)} style={input}>
+                      <option value="">— Kontakt wählen —</option>
+                      {allLeads.map((l) => <option key={l.id} value={l.id}>{leadLabel(l.id)}{l.company ? ' · ' + l.company : ''}</option>)}
+                    </select>
+                  </Field>
+                </div>
+                <button onClick={addExistingLead} disabled={!pickLead} style={{ ...primaryBtn, opacity: !pickLead ? 0.6 : 1 }}><Plus size={14} /></button>
+              </div>
+              <div style={{ fontSize: 11, color: 'var(--text-muted)', margin: '0 0 10px' }}>oder externen Namen erfassen (außerhalb CRM):</div>
+              <div style={{ display: 'flex', gap: 8, margin: '0 0 12px', alignItems: 'flex-end' }}>
                 <div style={{ flex: 1 }}>
                   <Field label="Name">
                     <input value={leadName} onChange={(e) => setLeadName(e.target.value)} placeholder="Sponsor-/Lead-Name" style={input} />
@@ -511,7 +628,7 @@ export default function Kampagnen() {
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
                   {leads.map((l) => {
                     const prof = l.sponsor_profile_id ? sponsorMap[l.sponsor_profile_id] : null
-                    const label = sponsorName(prof, orgName) || l.external_name || '—'
+                    const label = sponsorName(prof, orgName) || leadLabel(l.lead_id) || l.external_name || '—'
                     return (
                       <div key={l.id} style={leadRow}>
                         <div style={{ display: 'flex', alignItems: 'center', gap: 8, minWidth: 0 }}>
@@ -522,6 +639,62 @@ export default function Kampagnen() {
                       </div>
                     )
                   })}
+                </div>
+              )}
+            </div>
+
+            {/* Verknüpfte Unternehmen (bestehende CRM-Datensätze) */}
+            <div>
+              <h3 style={sectionH}>Verknüpfte Unternehmen</h3>
+              <div style={{ display: 'flex', gap: 8, margin: '10px 0 12px', alignItems: 'flex-end' }}>
+                <div style={{ flex: 1 }}>
+                  <Field label="Bestehendes Unternehmen zuordnen">
+                    <select value={pickOrg} onChange={(e) => setPickOrg(e.target.value)} style={input}>
+                      <option value="">— Unternehmen wählen —</option>
+                      {allOrgs.map((o) => <option key={o.id} value={o.id}>{o.name}</option>)}
+                    </select>
+                  </Field>
+                </div>
+                <button onClick={addOrg} disabled={!pickOrg} style={{ ...primaryBtn, opacity: !pickOrg ? 0.6 : 1 }}><Plus size={14} /></button>
+              </div>
+              {linkedOrgs.length === 0 ? (
+                <div style={{ fontSize: 13, color: 'var(--text-muted)' }}>Noch keine Unternehmen verknüpft.</div>
+              ) : (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                  {linkedOrgs.map((r) => (
+                    <div key={r.id} style={leadRow}>
+                      <span style={{ fontSize: 13, fontWeight: 600, color: 'var(--text-strong)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{orgLabel(r.organization_id)}</span>
+                      <button onClick={() => removeOrg(r.id)} title="Entfernen" style={{ ...iconBtnSm, color: '#DC2626' }}><Trash2 size={14} /></button>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            {/* Verknüpfte Deals (bestehende CRM-Datensätze) */}
+            <div>
+              <h3 style={sectionH}>Verknüpfte Deals</h3>
+              <div style={{ display: 'flex', gap: 8, margin: '10px 0 12px', alignItems: 'flex-end' }}>
+                <div style={{ flex: 1 }}>
+                  <Field label="Bestehenden Deal zuordnen">
+                    <select value={pickDeal} onChange={(e) => setPickDeal(e.target.value)} style={input}>
+                      <option value="">— Deal wählen —</option>
+                      {allDeals.map((d) => <option key={d.id} value={d.id}>{(d.title || d.name || 'Deal')}{d.value ? ' · ' + Number(d.value).toLocaleString('de-DE') + ' €' : ''}</option>)}
+                    </select>
+                  </Field>
+                </div>
+                <button onClick={addDeal} disabled={!pickDeal} style={{ ...primaryBtn, opacity: !pickDeal ? 0.6 : 1 }}><Plus size={14} /></button>
+              </div>
+              {linkedDeals.length === 0 ? (
+                <div style={{ fontSize: 13, color: 'var(--text-muted)' }}>Noch keine Deals verknüpft.</div>
+              ) : (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                  {linkedDeals.map((r) => (
+                    <div key={r.id} style={leadRow}>
+                      <span style={{ fontSize: 13, fontWeight: 600, color: 'var(--text-strong)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{dealLabel(r.deal_id)}</span>
+                      <button onClick={() => removeDeal(r.id)} title="Entfernen" style={{ ...iconBtnSm, color: '#DC2626' }}><Trash2 size={14} /></button>
+                    </div>
+                  ))}
                 </div>
               )}
             </div>
