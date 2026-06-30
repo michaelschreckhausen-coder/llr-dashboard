@@ -695,28 +695,54 @@ export default function DesignerCanvas({ visual, teamId, onSaved, onReplaceVisua
   const zoom100 = () => { setViewScale(scale > 0 ? 1 / scale : 1); setPan({ x: 0, y: 0 }) }
 
   // ─── Container: Mausrad (Cmd/Ctrl = Zoom, sonst vertikal pan) + Pan-Drag ─────
+  // WICHTIG: per addEventListener({passive:false}) registriert (siehe Effekt unten),
+  // damit e.preventDefault() den Browser-/Seiten-Zoom (Trackpad-Pinch = ctrl+wheel)
+  // zuverlässig unterbindet. Der React-onWheel-Prop wäre passiv → Seite würde mitzoomen.
   function onContainerWheel(e) {
     const el = containerRef.current
     if (!el) return
+    e.preventDefault(); e.stopPropagation()
     if (e.ctrlKey || e.metaKey) {
-      // Zoom zum Cursor: Container-relative Position des Cursors ermitteln.
-      e.preventDefault()
+      // Zoom GENAU auf den Cursor. Der Stage-Wrapper ist im Container zentriert
+      // (flex center) + um `pan` verschoben. Die Artboard-Top-Left liegt bei
+      //   artLeft = containerMitte − dispArt/2 + pan   (das CANVAS_PAD hebt sich raus).
+      // Wir halten den Bühnen-Punkt unter dem Cursor invariant.
       const rect = el.getBoundingClientRect()
-      // Cursor-Position relativ zur Top-Left-Ecke des Stage-Wrappers (vor Zoom).
-      // Wrapper-Top-Left in Container-Pixeln = Container-Mitte − dispW/2 + pan.
-      const wrapLeft = rect.width / 2 - dispW / 2 + pan.x
-      const wrapTop = rect.height / 2 - dispH / 2 + pan.y
-      const cx = e.clientX - rect.left - wrapLeft
-      const cy = e.clientY - rect.top - wrapTop
+      const Cx = rect.width / 2, Cy = rect.height / 2
+      const mx = e.clientX - rect.left, my = e.clientY - rect.top
+      const oldEff = scale * viewScale
+      if (!(oldEff > 0)) return
       const factor = e.deltaY < 0 ? 1.1 : 1 / 1.1
-      zoomTo(viewScale * factor, { x: cx, y: cy })
+      const nv = clampZoom(viewScale * factor)
+      const newEff = scale * nv
+      const oldDx = stageSize.width * oldEff, oldDy = stageSize.height * oldEff
+      const newDx = stageSize.width * newEff, newDy = stageSize.height * newEff
+      // Bühnen-Punkt unter Cursor (vor Zoom):
+      const sx = (mx - (Cx - oldDx / 2 + pan.x)) / oldEff
+      const sy = (my - (Cy - oldDy / 2 + pan.y)) / oldEff
+      // Neues pan, damit derselbe Punkt unter dem Cursor bleibt:
+      const panX = mx - Cx + newDx / 2 - sx * newEff
+      const panY = my - Cy + newDy / 2 - sy * newEff
+      setViewScale(nv)
+      setPan({ x: panX, y: panY })
     } else {
       // Rad allein = vertikal pan (Shift = horizontal). Verschiebt den Stage-Wrapper.
-      e.preventDefault()
       if (e.shiftKey) setPan(p => ({ x: p.x - e.deltaY, y: p.y }))
       else setPan(p => ({ x: p.x - e.deltaX, y: p.y - e.deltaY }))
     }
   }
+  // Non-passiven Wheel-Listener registrieren (preventDefault wirkt sonst nicht →
+  // Browser zoomt die ganze App). Handler-Ref wird je Render aktualisiert, damit
+  // er stets die aktuellen pan/viewScale/scale-Werte sieht.
+  const wheelHandlerRef = useRef(null)
+  wheelHandlerRef.current = onContainerWheel
+  useEffect(() => {
+    const el = containerRef.current
+    if (!el) return
+    const h = (e) => { if (wheelHandlerRef.current) wheelHandlerRef.current(e) }
+    el.addEventListener('wheel', h, { passive: false })
+    return () => el.removeEventListener('wheel', h)
+  }, [])
   function onContainerMouseDown(e) {
     if (spaceDownRef.current) {
       e.preventDefault()
@@ -3453,7 +3479,6 @@ export default function DesignerCanvas({ visual, teamId, onSaved, onReplaceVisua
       {/* Canvas-Bereich */}
       <div
         ref={containerRef}
-        onWheel={onContainerWheel}
         onMouseDown={onContainerMouseDown}
         onMouseMove={onContainerMouseMove}
         onMouseUp={onContainerMouseUp}
