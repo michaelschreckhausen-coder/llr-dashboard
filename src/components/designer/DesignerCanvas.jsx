@@ -3821,8 +3821,8 @@ function humanizeProviderError(msg) {
 
 // ─── kleine UI-Bausteine ──────────────────────────────────────────────────────
 const barStyle = {
-  display: 'flex', alignItems: 'center', gap: 8, padding: '8px 12px',
-  borderBottom: '1px solid var(--border,#E9ECF2)', background: 'var(--page-bg,#F7F8FA)', flexShrink: 0,
+  display: 'flex', alignItems: 'center', gap: 8, padding: '9px 12px',
+  borderBottom: '1px solid var(--border,#E9ECF2)', background: 'var(--surface,#fff)', flexShrink: 0,
 }
 
 function Divider() {
