@@ -1335,21 +1335,48 @@ export default function DesignerCanvas({ visual, teamId, onSaved, onReplaceVisua
   // Dekodiert die Datei zu einer DataURL, ermittelt die natürliche Größe und legt
   // ein image-Objekt an (auf max. ~50% der Bühne skaliert). HTMLImageElement wird
   // in imgCache gehalten und beim Render an die Konva-Image-Node gereicht.
-  function addImageFromDataUrl(dataUrl) {
+  function addImageFromDataUrl(dataUrl, meta = {}) {
     if (!dataUrl) return
     const img = new window.Image()
     img.onload = () => {
       const nw = img.naturalWidth || 200
       const nh = img.naturalHeight || 200
-      const maxDim = Math.min(stageSize.width, stageSize.height) * 0.5
-      const sc = Math.min(1, maxDim / Math.max(nw, nh))
-      const w = Math.round(nw * sc), h = Math.round(nh * sc)
+      let w, h
+      if (meta.isIcon || meta.isGraphic) {
+        // Icons/Grafiken: feste Zielgröße (~32% der Bühne), unabhängig von der
+        // (oft winzigen) SVG-Pixelgröße — sonst werden sie mikrig eingefügt.
+        const target = Math.min(stageSize.width, stageSize.height) * 0.32
+        const ratio = (nw && nh) ? nw / nh : 1
+        if (ratio >= 1) { w = Math.round(target); h = Math.round(target / ratio) }
+        else { h = Math.round(target); w = Math.round(target * ratio) }
+      } else {
+        const maxDim = Math.min(stageSize.width, stageSize.height) * 0.5
+        const sc = Math.min(1, maxDim / Math.max(nw, nh))
+        w = Math.round(nw * sc); h = Math.round(nh * sc)
+      }
       const c = center()
       setImgCache(prev => ({ ...prev, [dataUrl]: img }))
-      addObject({ type: 'image', src: dataUrl, x: c.x - w / 2, y: c.y - h / 2, width: w, height: h, rotation: 0, opacity: 1 })
+      addObject({ type: 'image', src: dataUrl, x: c.x - w / 2, y: c.y - h / 2, width: w, height: h, rotation: 0, opacity: 1,
+        ...(meta.iconId ? { iconId: meta.iconId, iconColor: meta.iconColor || '#1f2937', isIcon: true } : {}) })
     }
     img.onerror = () => setSavedMsg('Bild konnte nicht geladen werden.')
     img.src = dataUrl
+  }
+
+  // Icon (als Bild-Objekt eingefügt) NACH der Auswahl umfärben: SVG mit neuer Farbe
+  // neu rendern und src tauschen. Ermöglicht Farbänderung in der oberen Leiste.
+  async function recolorIcon(obj, hex) {
+    if (!obj?.iconId) return
+    try {
+      const url = await iconToDataUrl(obj.iconId, hex)
+      if (!url) return
+      const img = new window.Image()
+      img.onload = () => {
+        setImgCache(prev => ({ ...prev, [url]: img }))
+        commitHistoryOnce(); updateObject(obj.id, { src: url, iconColor: hex }, false); endInteraction()
+      }
+      img.src = url
+    } catch (_e) {}
   }
   // Bild aus der Medien-Bibliothek (Storage-Pfad) als Objekt einfügen.
   async function insertMediaFromPath(storagePath) {
@@ -3428,7 +3455,7 @@ export default function DesignerCanvas({ visual, teamId, onSaved, onReplaceVisua
           reorder={reorder} deleteSelected={deleteSelected} duplicateSelected={duplicateSelected}
           onFlip={flipSelected} onCrop={() => setCropMode(true)}
           onEditImage={() => setActiveTool('edit')} onOpenLayers={() => setActiveTool('layers')}
-          onCopyStyle={startCopyStyle} copyStyleActive={copyStyleActive}
+          onCopyStyle={startCopyStyle} copyStyleActive={copyStyleActive} onIconRecolor={recolorIcon}
           fonts={allFonts} selectedIds={selectedIds} brandColors={brandColors}
           alignObjects={alignObjects} distributeObjects={distributeObjects} />
       )}
@@ -3489,7 +3516,7 @@ export default function DesignerCanvas({ visual, teamId, onSaved, onReplaceVisua
           elementTab={elementTab} setElementTab={setElementTab}
           onAddRect={addRect} onAddEllipse={addEllipse} onAddLine={addLine} onAddArrow={addArrow}
           onAddAsset={addAsset}
-          onInsertMedia={(dataUrl) => addImageFromDataUrl(dataUrl)}
+          onInsertMedia={(dataUrl, meta) => addImageFromDataUrl(dataUrl, meta)}
           // Text
           onAddText={addText} onAddTextPreset={addTextPreset}
           // Uploads / Medien
@@ -4037,7 +4064,7 @@ function BarMenuItem({ icon, label, active, onClick }) {
 function ContextBar({
   selected, updateObject, reorder, deleteSelected, duplicateSelected,
   commitHistoryOnce, endInteraction, fonts, onFlip, onCrop, onEditImage, onOpenLayers,
-  onCopyStyle, copyStyleActive = false,
+  onCopyStyle, copyStyleActive = false, onIconRecolor,
   selectedIds, alignObjects, distributeObjects, brandColors = [],
 }) {
   const FONT_LIST = (fonts && fonts.length) ? fonts : FONTS
@@ -4170,7 +4197,13 @@ function ContextBar({
       )}
 
       {/* ── BILD: Bearbeiten (Anpassen/Filter/KI) + Zuschneiden ── */}
-      {isImage && onEditImage && (
+      {isImage && o.isIcon && onIconRecolor && (
+        <div style={{ display: 'inline-flex', alignItems: 'center', gap: 7 }}>
+          <span style={{ fontSize: 12.5, fontWeight: 600, color: 'var(--text-primary)' }}>Farbe</span>
+          <ColorPopover value={o.iconColor || '#1f2937'} brandColors={brandColors} title="Icon-Farbe" round onChange={(hex) => onIconRecolor(o, hex)} size={30} />
+        </div>
+      )}
+      {isImage && !o.isIcon && onEditImage && (
         <button type="button" onClick={onEditImage} title="Bild bearbeiten (Anpassen, Filter, KI)"
           style={{ display: 'inline-flex', alignItems: 'center', gap: 6, height: 34, padding: '0 12px', borderRadius: 9, border: 'none',
             background: 'rgba(49,90,231,0.08)', color: P, fontSize: 12.5, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit' }}>
@@ -4195,7 +4228,7 @@ function ContextBar({
       )}
 
       {/* ── Position: Ebenen-Reihenfolge + Ausrichten (an Seite) ── */}
-      <BarMenu title="Position" width={232} trigger={<span style={{ fontSize: 12.5, fontWeight: 600 }}>Position</span>}>
+      <BarMenu title="Position" width={232} trigger={<span style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: 12.5, fontWeight: 600 }}><Layers size={14} strokeWidth={1.9} />Position</span>}>
         <div style={{ padding: '2px 4px' }}>
           <div style={{ fontSize: 10.5, fontWeight: 700, color: 'var(--text-soft,#98a2b3)', textTransform: 'uppercase', letterSpacing: '0.05em', padding: '4px 6px 6px' }}>Anordnen</div>
           <BarMenuItem icon={<BringToFront size={15} strokeWidth={1.9} />} label="In den Vordergrund" onClick={() => reorder('top')} />
@@ -4514,7 +4547,7 @@ function IconsTab({ onInsert }) {
     setInserting(id)
     try {
       const dataUrl = await iconToDataUrl(id, color)
-      if (dataUrl) onInsert && onInsert(dataUrl)
+      if (dataUrl) onInsert && onInsert(dataUrl, { iconId: id, isIcon: true, iconColor: color })
     } finally {
       setInserting(null)
     }
@@ -4523,11 +4556,7 @@ function IconsTab({ onInsert }) {
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
       <MediaSearchInput value={q} onChange={setQ} placeholder="Icons suchen…" />
-      <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-        <span style={{ fontSize: 11.5, color: 'var(--text-muted)' }}>Farbe</span>
-        <input type="color" value={color} onChange={e => setColor(e.target.value)} title="Icon-Farbe"
-          style={{ width: 30, height: 26, padding: 0, border: '1px solid var(--border)', borderRadius: 6, cursor: 'pointer', background: '#fff' }} />
-      </div>
+      <div style={{ fontSize: 11, color: 'var(--text-muted)' }}>Farbe änderst du nach dem Einfügen oben in der Leiste.</div>
       {loading ? <MediaSpinner label="Suche Icons…" /> : (
         ids.length === 0 ? <MediaEmpty label="Keine Treffer." /> : (
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(44px, 1fr))', gap: 8 }}>
@@ -4567,7 +4596,7 @@ function GraphicsTab({ onInsert }) {
     setInserting(id)
     try {
       const dataUrl = await iconToDataUrl(id) // bereits farbig → kein color-Override
-      if (dataUrl) onInsert && onInsert(dataUrl)
+      if (dataUrl) onInsert && onInsert(dataUrl, { isGraphic: true })
     } finally {
       setInserting(null)
     }
