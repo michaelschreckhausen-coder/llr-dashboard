@@ -337,7 +337,7 @@ export default function TeamSettings({ session }) {
   )
 
   return (
-    <div style={{ maxWidth:1100, margin:'0 auto' }}>
+    <div style={{ width:'100%', maxWidth:1100, margin:'0 auto' }}>
       <SettingsTabs />
       <style>{`
         .ts-tab{padding:8px 18px;border-radius:9px;border:none;cursor:pointer;font-size:13px;font-weight:700}
