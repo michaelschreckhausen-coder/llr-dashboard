@@ -24,7 +24,7 @@ import DocumentEditorPane from '../components/DocumentEditorPane'
 import { listDocumentsForChat, listDocuments, addDocumentToChat, listChatsForDocument } from '../lib/contentDocuments'
 import DesignerPane from '../components/designer/DesignerPane'
 import { IMAGE_MODELS, DEFAULT_IMAGE_MODEL, splitModelValue, imageModelLabel, ASPECT_PRESETS, DEFAULT_ASPECT } from '../lib/imageModels'
-import { listVisualsForChat, linkVisualToChat, getVisual, signedVisualUrl, downloadVisualBlob, visualDataUrl, uploadImageBlob, listTeamVisuals, listChatsForVisual } from '../lib/contentVisuals'
+import { listVisualsForChat, linkVisualToChat, getVisual, signedVisualUrl, downloadVisualBlob, visualDataUrl, uploadImageBlob, listTeamVisuals, listChatsForVisual, createEmptyDesign as createEmptyDesignRow, addImagePageToDesign } from '../lib/contentVisuals'
 
 const P = 'var(--wl-primary, rgb(49,90,231))'
 const ACCENT = '#30A0D0'
@@ -167,8 +167,11 @@ export default function ContentStudio({ session }) {
   // Neues Dokument: Editor mounten (auch ohne docParam) + Text nach Mount laden.
   const [newDocActive, setNewDocActive] = useState(false)
   const [pendingDocText, setPendingDocText] = useState(null)
+  const [pendingInsert, setPendingInsert] = useState(null)   // { docId, text } → nach Editor-Load einfügen
   const editorOpenRef = useRef(editorOpen)
   useEffect(() => { editorOpenRef.current = editorOpen }, [editorOpen])
+  const activeVisualRef = useRef(null)
+  const newDocParamHandledRef = useRef(false)
   const csRootRef = useRef(null)
   // Eingeklappt: das 24px-rechts-Padding der umgebenden App-Shell (MAIN) entfernen,
   // damit die ausziehbare Splitscreen-Karte bündig am echten Bildschirmrand sitzt.
@@ -203,6 +206,7 @@ export default function ContentStudio({ session }) {
   // Bild<->Chat-Leiste + aktives Designer-Bild
   const [chatVisuals, setChatVisuals] = useState([])
   const [activeVisual, setActiveVisual] = useState(null)
+  useEffect(() => { activeVisualRef.current = activeVisual }, [activeVisual])
   const visualParamHandledRef = useRef(false)
 
   // "Öffnen"-Picker für leeres Dokument/Design: zuerst Element wählen, dann Chat.
@@ -428,26 +432,45 @@ export default function ContentStudio({ session }) {
     const { data } = await listDocumentsForChat(id)
     setChatDocs(data || [])
   }
-  // Bei Chatwechsel: Dokumente des Chats laden + offenes Dokument abgleichen.
-  // Gehört das offene Dokument NICHT zum neuen Chat → letztes Dokument dieses Chats
-  // zeigen (recency), oder einklappen wenn der Chat kein Dokument hat.
+  // Bei Chatwechsel: Dokumente + Designs des Chats laden und — wenn die Pane offen
+  // ist und das aktuell offene Artefakt NICHT zu diesem Chat gehört — das zuletzt
+  // bearbeitete Artefakt (Dokument ODER Design, per last_opened_at) wiederherstellen.
+  // Jeder Chat merkt sich so seinen Arbeitsstand. Pane bleibt zu, wenn sie zu war.
   useEffect(() => {
     let cancelled = false
     ;(async () => {
-      if (!activeChatId) { setChatDocs([]); return }
-      const { data } = await listDocumentsForChat(activeChatId)
+      if (!activeChatId) { setChatDocs([]); setChatVisuals([]); return }
+      const [docRes, vis] = await Promise.all([
+        listDocumentsForChat(activeChatId),
+        loadChatVisuals(activeChatId),
+      ])
       if (cancelled) return
-      const docs = data || []
+      const docs = docRes?.data || []
       setChatDocs(docs)
-      const cur = new URLSearchParams(window.location.search).get('doc')
-      if (cur && !docs.some(d => d.id === cur)) {
-        const n = new URLSearchParams(window.location.search)
-        if (editorOpenRef.current && docs.length) {
-          n.set('doc', docs[0].id); setSearchParams(n, { replace: true })
-        } else {
-          n.delete('doc'); setSearchParams(n, { replace: true })
-          if (editorOpenRef.current && !docs.length) setEditorOpen(false)
-        }
+      const designs = (vis || []).filter(v => v.kind === 'design')
+
+      if (!editorOpenRef.current) return                 // Pane zu → nur Listen laden, nicht aufpoppen
+      const sp = new URLSearchParams(window.location.search)
+      if (sp.get('newdoc')) return                       // explizit "neues Dokument" → nicht überschreiben
+      const curDoc = sp.get('doc'); const curVisual = sp.get('visual') || activeVisualRef.current?.id
+      // Offenes Artefakt gehört bereits zu diesem Chat → nichts tun.
+      if (curDoc && docs.some(d => d.id === curDoc)) return
+      if (curVisual && designs.some(v => v.id === curVisual)) return
+
+      const topDoc = docs[0]; const topDesign = designs[0]
+      const tDoc = topDoc?.last_opened_at ? Date.parse(topDoc.last_opened_at) : -1
+      const tDes = topDesign?.last_opened_at ? Date.parse(topDesign.last_opened_at) : -1
+      const n = new URLSearchParams(window.location.search)
+      if (tDoc < 0 && tDes < 0) {
+        // Chat hat noch kein Artefakt → Pane leeren (Leerzustand zeigen)
+        n.delete('doc'); n.delete('visual'); setSearchParams(n, { replace: true })
+        setActiveVisual(null); setNewDocActive(false)
+      } else if (tDes > tDoc) {
+        n.delete('doc'); n.delete('visual'); setSearchParams(n, { replace: true })
+        setActiveVisual(topDesign); setSplitMode('design'); setNewDocActive(false)
+      } else {
+        n.set('doc', topDoc.id); n.delete('visual'); setSearchParams(n, { replace: true })
+        setActiveVisual(null); setSplitMode('doc'); setNewDocActive(false)
       }
     })()
     return () => { cancelled = true }
@@ -461,9 +484,16 @@ export default function ContentStudio({ session }) {
     setEditorOpen(true); setSidebarOpen(false)
   }
   function openNewDoc() {
-    setEditorOpen(true); setSidebarOpen(false)
-    editorRef.current?.newDocument?.()
-    const n = new URLSearchParams(searchParams); n.delete('doc'); setSearchParams(n, { replace: true })
+    setEditorOpen(true); setSidebarOpen(false); setSplitMode('doc')
+    setPaneView(pv => pv === 'page' ? 'page' : 'split')
+    setPendingDocText(null)
+    const hadDoc = !!new URLSearchParams(window.location.search).get('doc')
+    const n = new URLSearchParams(window.location.search); n.delete('doc'); setSearchParams(n, { replace: true })
+    // Editor leer mounten (newDocActive) — KEIN editorRef-Aufruf, der ins Leere geht,
+    // wenn die Pane bisher den Leerzustand zeigte. Reihe wird erst beim ersten
+    // Speichern angelegt (mit sourceChatId → Auto-Zuordnung an aktiven Chat).
+    setNewDocActive(true)
+    if (editorRef.current && hadDoc) { try { editorRef.current.newDocument?.() } catch (_e) {} }
   }
   async function addExistingDoc(docId) {
     if (!docId || !activeChatId) return
@@ -483,7 +513,6 @@ export default function ContentStudio({ session }) {
     setChatVisuals(withUrls)
     return withUrls
   }
-  useEffect(() => { loadChatVisuals(activeChatId) /* eslint-disable-next-line */ }, [activeChatId])
 
   // Letztes Bild im Chat (für Folge-Edit-Logik) — chatVisuals ist nach Aktualität sortiert.
   function lastChatVisual() { return chatVisuals && chatVisuals.length ? chatVisuals[0] : null }
@@ -538,28 +567,14 @@ export default function ContentStudio({ session }) {
     if (!editorOpen) { setEditorOpen(true); setPaneView('split') }
   }
 
-  // Leeres Design anlegen + öffnen (für "Neues Design" in der Rail).
+  // Leeres Design anlegen + öffnen (für "Neues Design" in der Rail). Nutzt den
+  // geteilten Helfer (auch von der Bibliothek verwendet).
   async function createEmptyDesign() {
-    try {
-      const rid = () => Math.random().toString(36).slice(2, 10)
-      const page = { id: 'p' + rid(), objects: [], filters: {}, baseCrop: null, bgColor: '#ffffff', stage: { width: 1080, height: 1080 }, primaryImageId: null }
-      const design_json = { version: 2, pages: [page], activePageIndex: 0 }
-      let userId = null
-      try { const { data } = await supabase.auth.getUser(); userId = data?.user?.id || null } catch (_e) {}
-      // Platzhalter-Render (1x1 weiß) als storage_path (NOT NULL) — wird beim Speichern ersetzt.
-      const blob = await (await fetch('data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==')).blob()
-      const up = await uploadImageBlob(activeTeamId, blob)
-      if (up.error || !up.path) { setError('Design konnte nicht erstellt werden.'); return }
-      const { data: row, error } = await supabase.from('visuals').insert({
-        user_id: userId, team_id: activeTeamId, brand_voice_id: activeBrandVoice?.id || null,
-        kind: 'design', media_type: 'image', title: 'Neues Design', aspect_ratio: '1:1',
-        prompt: 'Design', storage_path: up.path, design_json,
-      }).select().single()
-      if (error || !row) { setError('Design konnte nicht erstellt werden.'); return }
-      if (activeChatId) { try { await linkVisualToChat(row.id, activeChatId) } catch (_e) {} ; loadChatVisuals(activeChatId) }
-      setActiveVisual(row); setSplitMode('design'); setSidebarOpen(false)
-      if (!editorOpen) { setEditorOpen(true); setPaneView('split') }
-    } catch (_e) { setError('Design konnte nicht erstellt werden.') }
+    const { data: row, error } = await createEmptyDesignRow({ teamId: activeTeamId, brandVoiceId: activeBrandVoice?.id || null })
+    if (error || !row) { setError('Design konnte nicht erstellt werden.'); return }
+    if (activeChatId) { try { await linkVisualToChat(row.id, activeChatId) } catch (_e) {} ; loadChatVisuals(activeChatId) }
+    setActiveVisual(row); setSplitMode('design'); setSidebarOpen(false)
+    if (!editorOpen) { setEditorOpen(true); setPaneView('split') }
   }
 
   // ─── "Öffnen"-Picker (leeres Dokument/Design): Element wählen → Chat wählen ──
@@ -627,6 +642,19 @@ export default function ContentStudio({ session }) {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [visualParam, activeChatId])
 
+  // ?newdoc=1 aus URL (z.B. aus der Bibliothek): leeres Dokument starten. Optionales
+  // chat_id in der URL sorgt via openChat dafür, dass sourceChatId = aktiver Chat ist
+  // (→ Auto-Zuordnung beim ersten Speichern).
+  useEffect(() => {
+    if (!searchParams.get('newdoc')) { newDocParamHandledRef.current = false; return }
+    if (newDocParamHandledRef.current) return
+    newDocParamHandledRef.current = true
+    const n = new URLSearchParams(window.location.search); n.delete('newdoc'); setSearchParams(n, { replace: true })
+    setSplitMode('doc')
+    openNewDoc()
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [searchParams])
+
   async function openChat(chatId) {
     setActiveChatId(chatId)
     setNewDocActive(false); setPendingDocText(null)
@@ -652,8 +680,9 @@ export default function ContentStudio({ session }) {
     setInput(''); setAttachments([]); setSelectedKnowledgeIds([])
     setLinkedPost(null); setError('')
     const next = new URLSearchParams(searchParams)
-    next.delete('chat_id'); next.delete('post_id')
+    next.delete('chat_id'); next.delete('post_id'); next.delete('doc'); next.delete('visual')
     setSearchParams(next, { replace:true })
+    setActiveVisual(null); setNewDocActive(false); setChatDocs([]); setChatVisuals([])
   }
 
   // ─── Senden ───────────────────────────────────────────────────────────────
@@ -949,7 +978,7 @@ export default function ContentStudio({ session }) {
             {chats.map(c => {
               const active = c.id === activeChatId
               return (
-                <button key={c.id} onClick={() => { const n = new URLSearchParams(searchParams); n.set('chat_id', c.id); n.delete('post_id'); setSearchParams(n) }}
+                <button key={c.id} onClick={() => { const n = new URLSearchParams(searchParams); n.set('chat_id', c.id); n.delete('post_id'); n.delete('doc'); n.delete('visual'); setSearchParams(n) }}
                   style={{
                     width:'100%', textAlign:'left', padding:'9px 11px', borderRadius:9, border:'none', cursor:'pointer', marginBottom:3,
                     background: active ? 'var(--surface,#fff)' : 'transparent',
@@ -1025,18 +1054,39 @@ export default function ContentStudio({ session }) {
             messagesEndRef={messagesEndRef}
             attachToPost={attachToPost}
             loadExistingPosts={loadExistingPosts}
-            onInsertToDoc={(text, mode) => {
-              setSidebarOpen(false); setEditorOpen(true); setSplitMode('doc'); setPaneView('split')
-              // Editor schon gemountet (Doc offen) → direkt schreiben.
-              if (editorRef.current) {
-                if (mode === 'append') editorRef.current.insertText?.(text)
-                else editorRef.current.loadNewDocWithText?.(text)
+            chatDocs={chatDocs}
+            onInsertToDoc={(text, mode, targetDocId) => {
+              setSidebarOpen(false); setEditorOpen(true); setSplitMode('doc')
+              setPaneView(pv => pv === 'page' ? 'page' : 'split')
+              const curDoc = new URLSearchParams(window.location.search).get('doc')
+              if (mode === 'existing' && targetDocId) {
+                // In bestehendes (evtl. nicht offenes) Dokument einfügen.
+                if (editorRef.current && curDoc === targetDocId) { editorRef.current.insertText?.(text); return }
+                setPendingInsert({ docId: targetDocId, text })
+                if (activeChatId) { try { addDocumentToChat(targetDocId, activeChatId) } catch (_e) {} }
+                setNewDocActive(false)
+                const n = new URLSearchParams(window.location.search); n.set('doc', targetDocId); setSearchParams(n, { replace: true })
                 return
               }
-              // Kein Dokument offen → Editor leer mounten und Text nach Mount laden.
+              // mode === 'new' → neues Dokument mit dem Text.
+              if (editorRef.current && !curDoc) { editorRef.current.loadNewDocWithText?.(text); return }
+              const n = new URLSearchParams(window.location.search); n.delete('doc'); setSearchParams(n, { replace: true })
               setPendingDocText(text); setNewDocActive(true)
             }}
-            onOpenInDesigner={(meta) => openVisualInDesigner(meta.visual_id || { storage_path: meta.storage_path, prompt: meta.prompt, aspect_ratio: meta.aspect_ratio, kind: 'image' }, { assignToChat: !!activeChatId })}
+            chatDesigns={(chatVisuals || []).filter(v => v.kind === 'design')}
+            onOpenInDesigner={async (meta, targetDesignId) => {
+              if (targetDesignId) {
+                // Bild als neue Seite in ein bestehendes Design einfügen.
+                const { data: row, error } = await addImagePageToDesign(targetDesignId, { storage_path: meta.storage_path })
+                if (error || !row) { setError('Bild konnte nicht ins Design eingefügt werden.'); return }
+                try { if (activeChatId) await linkVisualToChat(row.id, activeChatId) } catch (_e) {}
+                setActiveVisual(row); setSplitMode('design'); setSidebarOpen(false)
+                if (!editorOpen) { setEditorOpen(true); setPaneView('split') }
+                loadChatVisuals(activeChatId)
+                return
+              }
+              openVisualInDesigner(meta.visual_id || { storage_path: meta.storage_path, prompt: meta.prompt, aspect_ratio: meta.aspect_ratio, kind: 'image' }, { assignToChat: !!activeChatId })
+            }}
             onDownloadVisual={(meta) => downloadVisual(meta.storage_path, meta.visual_id)}
             onImageToPost={attachImageToPost}
             signedVisualUrlFn={signedVisualUrl}
@@ -1138,6 +1188,12 @@ export default function ContentStudio({ session }) {
                     loadChatDocs(activeChatId)
                   }}
                   onNewDocument={openNewDoc}
+                  onLoaded={(loadedId) => {
+                    if (pendingInsert && pendingInsert.docId === loadedId) {
+                      try { editorRef.current?.insertText?.(pendingInsert.text) } catch (_e) {}
+                      setPendingInsert(null)
+                    }
+                  }}
                   onClose={() => setEditorOpen(false)}
                 />
                 )}
@@ -1163,6 +1219,10 @@ export default function ContentStudio({ session }) {
           if (m === 'doc' && !docParam && activeChatId && chatDocs.length) {
             const last = chatDocs[0]
             if (last) { const n = new URLSearchParams(searchParams); n.set('doc', last.id); setSearchParams(n, { replace: true }) }
+          }
+          if (m === 'design' && !activeVisual && activeChatId) {
+            const lastDesign = (chatVisuals || []).find(v => v.kind === 'design')
+            if (lastDesign) setActiveVisual(lastDesign)
           }
         }
         const swBtn = (active) => ({ width:46, height:50, display:'inline-flex', alignItems:'center', justifyContent:'center', border:'none', cursor:'pointer',
@@ -1433,7 +1493,7 @@ function ChatView({
   useWebSearch, setUseWebSearch, editorOpen = false, useEditorContext = false, setUseEditorContext = () => {},
   visualMode = false, setVisualMode = () => {}, imageModel, setImageModel = () => {}, imageAspect, setImageAspect = () => {},
   forceNewImage = false, setForceNewImage = () => {}, hasChatVisuals = false,
-  handleFiles, fileInputRef, sendMessage, navigate, error, hasOpenDoc = false,
+  handleFiles, fileInputRef, sendMessage, navigate, error, hasOpenDoc = false, chatDocs = [], chatDesigns = [],
 }) {
   return (
     <>
@@ -1457,6 +1517,7 @@ function ChatView({
           {messagesLoading && <div style={{ textAlign:'center', padding:30, fontSize:12, color:'var(--text-muted)' }}>Lade Verlauf…</div>}
           {messages.map(m => (
             <MessageBubble key={m.id} msg={m} onAttachToPost={attachToPost} loadExistingPosts={loadExistingPosts} onInsertToDoc={onInsertToDoc} linkedPostId={linkedPost?.id} hasOpenDoc={hasOpenDoc}
+              chatDocs={chatDocs} chatDesigns={chatDesigns}
               onOpenInDesigner={onOpenInDesigner} onDownloadVisual={onDownloadVisual} onImageToPost={onImageToPost} signedVisualUrlFn={signedVisualUrlFn} />
           ))}
           {/* Loading-Indicator wenn letzter Turn user war */}
@@ -1727,8 +1788,9 @@ function parseImageMessage(msg) {
   return null
 }
 
-function ImageBubble({ meta, onOpenInDesigner, onDownloadVisual, onImageToPost, loadExistingPosts, signedVisualUrlFn }) {
+function ImageBubble({ meta, chatDesigns = [], onOpenInDesigner, onDownloadVisual, onImageToPost, loadExistingPosts, signedVisualUrlFn }) {
   const [url, setUrl] = useState(null)
+  const [designMenuOpen, setDesignMenuOpen] = useState(false)
   const [err, setErr] = useState(false)
   const [postMenuOpen, setPostMenuOpen] = useState(false)
   const [posts, setPosts] = useState(null)
@@ -1770,10 +1832,28 @@ function ImageBubble({ meta, onOpenInDesigner, onDownloadVisual, onImageToPost, 
         )}
       </div>
       <div style={{ display:'flex', gap:8, flexWrap:'wrap', alignItems:'center' }}>
-        <Tip label="In den Designer öffnen"><button onClick={() => onOpenInDesigner && onOpenInDesigner(meta)}
-          style={{ width:34, height:34, padding:0, justifyContent:'center', borderRadius:8, border:'none', background:P, color:'#fff', cursor:'pointer', display:'inline-flex', alignItems:'center' }}>
-          <Brush size={15} strokeWidth={1.9}/>
-        </button></Tip>
+        <div style={{ position:'relative' }}>
+          <Tip label="In den Designer öffnen"><button onClick={() => { if ((chatDesigns||[]).length) setDesignMenuOpen(o => !o); else onOpenInDesigner && onOpenInDesigner(meta) }}
+            style={{ width:34, height:34, padding:0, justifyContent:'center', borderRadius:8, border:'none', background:P, color:'#fff', cursor:'pointer', display:'inline-flex', alignItems:'center' }}>
+            <Brush size={15} strokeWidth={1.9}/>
+          </button></Tip>
+          {designMenuOpen && (
+            <>
+              <div onClick={() => setDesignMenuOpen(false)} style={{ position:'fixed', inset:0, zIndex:80 }}/>
+              <div style={{ position:'absolute', bottom:'calc(100% + 6px)', left:0, zIndex:81, background:'#fff', border:'1px solid var(--border)', borderRadius:10, boxShadow:'0 10px 30px rgba(0,0,0,.12)', minWidth:240, maxHeight:320, overflowY:'auto', padding:6 }}>
+                <button onClick={() => { onOpenInDesigner && onOpenInDesigner(meta); setDesignMenuOpen(false) }} style={{ ...ibMenuItem, color:P, fontWeight:700 }}>+ Neues Design</button>
+                {(chatDesigns||[]).length > 0 && <div style={{ height:1, background:'var(--border)', margin:'4px 0' }}/>}
+                {(chatDesigns||[]).length > 0 && <div style={{ padding:'6px 11px', fontSize:10, fontWeight:700, color:'var(--text-muted)', textTransform:'uppercase', letterSpacing:'0.04em' }}>In bestehendes Design einfügen</div>}
+                {(chatDesigns||[]).map(d => (
+                  <button key={d.id} onClick={() => { onOpenInDesigner && onOpenInDesigner(meta, d.id); setDesignMenuOpen(false) }} title={d.title || 'Design'}
+                    style={{ ...ibMenuItem, display:'block', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>
+                    {d.title || 'Design'}
+                  </button>
+                ))}
+              </div>
+            </>
+          )}
+        </div>
         <div style={{ position:'relative' }}>
           <Tip label={done ? 'Zum Beitrag hinzugefügt ✓' : 'In Beitrag'}><button onClick={openPostMenu} disabled={busy}
             style={{ width:34, height:34, padding:0, justifyContent:'center', borderRadius:8, border:'1.5px solid '+(done?'#15803d':P), background:done?'rgba(21,128,61,0.10)':'rgba(49,90,231,0.06)', color:done?'#15803d':P, cursor:busy?'default':'pointer', display:'inline-flex', alignItems:'center' }}>
@@ -1803,7 +1883,7 @@ function ImageBubble({ meta, onOpenInDesigner, onDownloadVisual, onImageToPost, 
   )
 }
 
-function MessageBubble({ msg, onAttachToPost, loadExistingPosts, onInsertToDoc, linkedPostId, hasOpenDoc = false, onOpenInDesigner, onDownloadVisual, onImageToPost, signedVisualUrlFn }) {
+function MessageBubble({ msg, onAttachToPost, loadExistingPosts, onInsertToDoc, linkedPostId, hasOpenDoc = false, chatDocs = [], chatDesigns = [], onOpenInDesigner, onDownloadVisual, onImageToPost, signedVisualUrlFn }) {
   const isUser = msg.role === 'user'
   const [menuOpen, setMenuOpen] = useState(false)
   const [postMenuOpen, setPostMenuOpen] = useState(false)
@@ -1816,7 +1896,7 @@ function MessageBubble({ msg, onAttachToPost, loadExistingPosts, onInsertToDoc, 
   // Bild-Nachricht → eigene Bubble (Vorschau + Designer/Download)
   const imageMeta = !isUser ? parseImageMessage(msg) : null
   if (imageMeta) {
-    return <ImageBubble meta={imageMeta} onOpenInDesigner={onOpenInDesigner} onDownloadVisual={onDownloadVisual} onImageToPost={onImageToPost} loadExistingPosts={loadExistingPosts} signedVisualUrlFn={signedVisualUrlFn} />
+    return <ImageBubble meta={imageMeta} chatDesigns={chatDesigns} onOpenInDesigner={onOpenInDesigner} onDownloadVisual={onDownloadVisual} onImageToPost={onImageToPost} loadExistingPosts={loadExistingPosts} signedVisualUrlFn={signedVisualUrlFn} />
   }
 
   return (
@@ -1834,16 +1914,23 @@ function MessageBubble({ msg, onAttachToPost, loadExistingPosts, onInsertToDoc, 
       {!isUser && beitragstext && (
         <div style={{ display:'flex', gap:8, flexWrap:'wrap' }}>
           <div style={{ position:'relative' }}>
-            <Tip label="Ins Dokument"><button data-tour-id="cs-insert-doc" onClick={() => { if (hasOpenDoc) setMenuOpen(o => !o); else onInsertToDoc && onInsertToDoc(beitragstext, 'new') }}
+            <Tip label="Ins Dokument"><button data-tour-id="cs-insert-doc" onClick={() => { if ((chatDocs||[]).length || hasOpenDoc) setMenuOpen(o => !o); else onInsertToDoc && onInsertToDoc(beitragstext, 'new') }}
               style={{ width:34, height:34, padding:0, justifyContent:'center', borderRadius:8, border:'none', background:P, color:'#fff', cursor:'pointer', display:'inline-flex', alignItems:'center' }}>
               <FileText size={15} strokeWidth={1.9}/>
             </button></Tip>
-            {menuOpen && hasOpenDoc && (
+            {menuOpen && (
               <>
                 <div onClick={() => setMenuOpen(false)} style={{ position:'fixed', inset:0, zIndex:80 }}/>
-                <div style={{ position:'absolute', bottom:'calc(100% + 6px)', left:0, zIndex:81, background:'#fff', border:'1px solid var(--border)', borderRadius:10, boxShadow:'0 10px 30px rgba(0,0,0,.12)', minWidth:230, padding:6 }}>
-                  <button onClick={() => { onInsertToDoc(beitragstext, 'append'); setMenuOpen(false) }} style={ibMenuItem}>Ins aktuelle Dokument</button>
-                  <button onClick={() => { onInsertToDoc(beitragstext, 'new'); setMenuOpen(false) }} style={ibMenuItem}>Als neues Dokument</button>
+                <div style={{ position:'absolute', bottom:'calc(100% + 6px)', left:0, zIndex:81, background:'#fff', border:'1px solid var(--border)', borderRadius:10, boxShadow:'0 10px 30px rgba(0,0,0,.12)', minWidth:240, maxHeight:320, overflowY:'auto', padding:6 }}>
+                  <button onClick={() => { onInsertToDoc(beitragstext, 'new'); setMenuOpen(false) }} style={{ ...ibMenuItem, color:P, fontWeight:700 }}>+ Als neues Dokument</button>
+                  {(chatDocs||[]).length > 0 && <div style={{ height:1, background:'var(--border)', margin:'4px 0' }}/>}
+                  {(chatDocs||[]).length > 0 && <div style={{ padding:'6px 11px', fontSize:10, fontWeight:700, color:'var(--text-muted)', textTransform:'uppercase', letterSpacing:'0.04em' }}>In bestehendes Dokument</div>}
+                  {(chatDocs||[]).map(d => (
+                    <button key={d.id} onClick={() => { onInsertToDoc(beitragstext, 'existing', d.id); setMenuOpen(false) }} title={d.title || 'Dokument'}
+                      style={{ ...ibMenuItem, display:'block', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>
+                      {d.title || 'Unbenanntes Dokument'}
+                    </button>
+                  ))}
                 </div>
               </>
             )}

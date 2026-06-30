@@ -18,7 +18,7 @@ export async function listVisualsForChat(chatId) {
     .eq('chat_id', chatId)
     .order('last_opened_at', { ascending: false })
   if (error) return { data: [], error }
-  const vis = (data || []).map(r => r.visuals).filter(Boolean)
+  const vis = (data || []).map(r => r.visuals && ({ ...r.visuals, last_opened_at: r.last_opened_at })).filter(Boolean)
   return { data: vis }
 }
 
@@ -128,4 +128,61 @@ export async function createImageVisual({ teamId, userId, brandVoiceId, title = 
   }).select().single()
   if (error) return { error }
   return { data }
+}
+
+// 1x1 weißer PNG-Platzhalter (storage_path ist NOT NULL; wird beim Speichern ersetzt).
+const BLANK_PNG = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg=='
+const ridFrag = () => Math.random().toString(36).slice(2, 10)
+
+// Leeres Design (kind='design') anlegen + Zeile zurückgeben. Geteilter Helfer für
+// Content-Werkstatt-Rail UND Bibliothek ("Neues Design").
+export async function createEmptyDesign({ teamId, brandVoiceId = null, title = 'Neues Design' }) {
+  try {
+    const page = { id: 'p' + ridFrag(), objects: [], filters: {}, baseCrop: null, bgColor: '#ffffff', stage: { width: 1080, height: 1080 }, primaryImageId: null }
+    const design_json = { version: 2, pages: [page], activePageIndex: 0 }
+    let userId = null
+    try { const { data } = await supabase.auth.getUser(); userId = data?.user?.id || null } catch (_e) {}
+    const blob = await (await fetch(BLANK_PNG)).blob()
+    const up = await uploadImageBlob(teamId, blob)
+    if (up.error || !up.path) return { error: up.error || new Error('upload failed') }
+    const { data: row, error } = await supabase.from('visuals').insert({
+      user_id: userId, team_id: teamId, brand_voice_id: brandVoiceId || null,
+      kind: 'design', media_type: 'image', title, aspect_ratio: '1:1', prompt: 'Design',
+      storage_path: up.path, design_json,
+    }).select().single()
+    if (error) return { error }
+    return { data: row }
+  } catch (e) { return { error: e } }
+}
+
+// Ein Bild (visuals-Row, kind='image') als NEUE Seite an ein bestehendes Design anhängen.
+// Gibt die aktualisierte Design-Zeile zurück; setzt activePageIndex auf die neue Seite.
+export async function addImagePageToDesign(designId, imageVisual) {
+  try {
+    const { data: design, error: gErr } = await supabase.from('visuals').select('*').eq('id', designId).maybeSingle()
+    if (gErr || !design) return { error: gErr || new Error('design not found') }
+    const dataUrl = await visualDataUrl(imageVisual.storage_path)
+    if (!dataUrl) return { error: new Error('image load failed') }
+    const dims = await new Promise(res => {
+      const im = new Image()
+      im.onload = () => res({ w: im.naturalWidth || 1080, h: im.naturalHeight || 1080 })
+      im.onerror = () => res({ w: 1080, h: 1080 })
+      im.src = dataUrl
+    })
+    const pid = 'o' + ridFrag()
+    const page = {
+      id: 'p' + ridFrag(),
+      objects: [{ id: pid, type: 'image', __primary: true, src: dataUrl, x: 0, y: 0, width: dims.w, height: dims.h, rotation: 0, opacity: 1 }],
+      filters: {}, baseCrop: null, bgColor: '#ffffff', stage: { width: dims.w, height: dims.h }, primaryImageId: pid,
+    }
+    const dj = design.design_json && design.design_json.version === 2 && Array.isArray(design.design_json.pages)
+      ? design.design_json
+      : { version: 2, pages: [], activePageIndex: 0 }
+    const pages = [...dj.pages, page]
+    const next = { ...dj, pages, activePageIndex: pages.length - 1 }
+    const { data: row, error } = await supabase.from('visuals')
+      .update({ design_json: next, updated_at: new Date().toISOString() }).eq('id', designId).select().single()
+    if (error) return { error }
+    return { data: row }
+  } catch (e) { return { error: e } }
 }

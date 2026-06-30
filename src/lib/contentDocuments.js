@@ -46,7 +46,7 @@ export async function listDocumentsForChat(chatId) {
     .eq('chat_id', chatId)
     .order('last_opened_at', { ascending: false })
   if (error) return { data: [], error }
-  const docs = (data || []).map(r => r.content_documents).filter(Boolean)
+  const docs = (data || []).map(r => r.content_documents && ({ ...r.content_documents, last_opened_at: r.last_opened_at })).filter(Boolean)
   return { data: docs }
 }
 
