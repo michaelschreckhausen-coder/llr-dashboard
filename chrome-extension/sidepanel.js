@@ -379,17 +379,23 @@ function renderMatchBanner(profile) {
 async function loadCampaignsForImport() {
   const wrap = $('campaignSelectorWrap'); const sel = $('campaignSelect')
   if (!wrap || !sel) return
+  wrap.style.display = 'block'  // immer sichtbar — auch wenn (noch) keine Kampagne existiert
+  const cur = sel.value
+  const esc = s => String(s || '').replace(/</g, '&lt;')
   try {
     const camps = await sbFetch('automation_campaigns?select=id,name,status&order=created_at.desc&limit=100')
-    if (!Array.isArray(camps) || !camps.length) { wrap.style.display = 'none'; return }
-    const cur = sel.value
-    const esc = s => String(s || '').replace(/</g, '&lt;')
-    sel.innerHTML = '<option value="">— Keine Kampagne —</option>' + camps.map(c =>
+    const list = Array.isArray(camps) ? camps : []
+    if (!list.length) {
+      sel.innerHTML = '<option value="">— Keine Kampagne (in der Automatisierung anlegen) —</option>'
+      return
+    }
+    sel.innerHTML = '<option value="">— Keine Kampagne —</option>' + list.map(c =>
       `<option value="${c.id}">${esc(c.name || 'Kampagne')}${c.status && c.status !== 'active' ? ' (' + esc(c.status) + ')' : ''}</option>`
     ).join('')
     if (cur) sel.value = cur
-    wrap.style.display = 'block'
-  } catch (_) { wrap.style.display = 'none' }
+  } catch (_) {
+    sel.innerHTML = '<option value="">— Keine Kampagne —</option>'
+  }
 }
 
 // Ordnet einen importierten Inbox-Kontakt einer Kampagne zu (automation_campaign_leads).
