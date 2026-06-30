@@ -19,6 +19,7 @@ import {
   Globe, ExternalLink, ChevronLeft, ChevronRight,
 } from 'lucide-react'
 import { supabase } from '../lib/supabase'
+import { useTeam } from '../context/TeamContext'
 import WizardLayout from '../components/WizardLayout'
 import { EXTENSION_WEBSTORE_URL } from '../lib/leadeskExtension'
 
@@ -163,6 +164,8 @@ function fullName(l) {
 // ─── Component ────────────────────────────────────────────────────────────
 export default function Automatisierung({ session }) {
   const navigate = useNavigate()
+  const { activeTeamId } = useTeam() || {}
+  const [sponsoringCampaigns, setSponsoringCampaigns] = useState([]) // K3: für die Zuordnung
   const [view, setView]               = useState('campaigns')   // campaigns | queue
   const [statusTab, setStatusTab]     = useState('active')
   const [campaigns, setCampaigns]     = useState([])
@@ -179,12 +182,25 @@ export default function Automatisierung({ session }) {
   const [newCamp, setNewCamp] = useState(() => emptyCampaign())
   const [selectedLeads, setSelectedLeads] = useState([])
 
+  // K3: Sponsoring-Kampagnen (für die optionale Zuordnung im Wizard) laden.
+  useEffect(() => {
+    if (!activeTeamId) { setSponsoringCampaigns([]); return }
+    let cancelled = false
+    ;(async () => {
+      const { data } = await supabase.schema('sponsoring').from('campaigns')
+        .select('id, title').eq('team_id', activeTeamId).order('created_at', { ascending: false })
+      if (!cancelled) setSponsoringCampaigns(data || [])
+    })()
+    return () => { cancelled = true }
+  }, [activeTeamId])
+
   const uid = session?.user?.id
 
   function emptyCampaign() {
     return {
       name:'',
       description:'',
+      sponsoring_campaign_id:'',   // K3: optional einer Sponsoring-Kampagne zuordnen
       sequence: JSON.parse(JSON.stringify(DEFAULT_SEQUENCE)),
       settings: { daily_limit:20, working_hours_start:8, working_hours_end:20 },
     }
@@ -269,6 +285,7 @@ export default function Automatisierung({ session }) {
       user_id: uid,
       name: newCamp.name.trim(),
       description: newCamp.description || null,
+      sponsoring_campaign_id: newCamp.sponsoring_campaign_id || null,
       sequence: newCamp.sequence,
       settings: newCamp.settings,
       status: 'draft',
@@ -399,6 +416,7 @@ export default function Automatisierung({ session }) {
       <NewCampaignWizard
         step={step} setStep={setStep}
         newCamp={newCamp} setNewCamp={setNewCamp}
+        sponsoringCampaigns={sponsoringCampaigns}
         quickTemplates={QUICK_TEMPLATES} pickTemplate={pickTemplate}
         leads={leads}
         selectedLeads={selectedLeads} setSelectedLeads={setSelectedLeads}
@@ -822,6 +840,7 @@ const STEP_ORDER = ['template', 'configure', 'leads']
 function NewCampaignWizard({
   step, setStep,
   newCamp, setNewCamp,
+  sponsoringCampaigns = [],
   quickTemplates, pickTemplate,
   leads,
   selectedLeads, setSelectedLeads,
@@ -970,6 +989,16 @@ function NewCampaignWizard({
                   placeholder="z.B. Cold Outreach an HR-Leiter aus E-Commerce" />
               </div>
             </div>
+            {sponsoringCampaigns.length > 0 && (
+              <div style={{ marginTop:14 }}>
+                <WLb label="Sponsoring-Kampagne (optional)" hint="Ordne diesen Outreach einer Sponsoring-Kampagne zu — er läuft dann unter dieser Kampagne." />
+                <select value={newCamp.sponsoring_campaign_id || ''} onChange={e => setNewCamp(p => ({ ...p, sponsoring_campaign_id:e.target.value }))}
+                  style={{ width:'100%', padding:'10px 12px', borderRadius:10, border:'1px solid var(--border)', background:'var(--surface)', color:'var(--text-primary, #111827)', fontSize:14, outline:'none' }}>
+                  <option value="">— keine —</option>
+                  {sponsoringCampaigns.map(c => <option key={c.id} value={c.id}>{c.title}</option>)}
+                </select>
+              </div>
+            )}
           </WSc>
 
           <WSc title="Limits & Arbeitszeit" hint="Wie viele Aktionen pro Tag und wann darf die Extension senden? Sinnvolle Defaults sind 20/Tag, 8–20 Uhr.">
