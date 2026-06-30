@@ -19,6 +19,7 @@ import { useNavigate } from 'react-router-dom';
 import { supabase } from '../lib/supabase';
 import { useTeam } from '../context/TeamContext';
 import { useReportsData } from '../hooks/useReportsData';
+import PageHeader from '../components/PageHeader';
 import { STATUS_ORDER, STATUS_CONFIG } from '../lib/leadStyleTokens';
 import {
   Users, Flame, TrendingUp, Target, Activity, Calendar, Link as LinkIcon,
@@ -999,34 +1000,32 @@ export default function Reports({ session }) {
   const overdueCount = tasks.filter(t => t.status === 'open' && t.due_date && t.due_date < todayISO).length;
 
   return (
-    <div style={{ background: COLORS.canvas, minHeight: '100vh', padding: '24px 24px 60px' }}>
-      <div style={{ width: '100%', margin: '0 auto', maxWidth: 1400 }}>
-        {/* Header */}
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 20 }}>
-          <div>
-            <h1 style={{ fontSize: 22, fontWeight: 800, margin: 0, color: COLORS.text1 }}>Reports</h1>
-            <div style={{ fontSize: 13, color: COLORS.text3, marginTop: 4 }}>
-              Übersicht über Pipeline, Aktivitäten und Performance · Range {range} Tage
+    <div style={{ background: COLORS.canvas, minHeight: '100vh', padding: '24px 16px 40px' }}>
+      <div style={{ width: '100%', margin: '0 auto', maxWidth: 1100 }}>
+        <PageHeader
+          overline="CRM · Reporting"
+          title="Reports"
+          subtitle={`Übersicht über Pipeline, Aktivitäten und Performance · Range ${range} Tage`}
+          action={(
+            <div style={{ display: 'flex', gap: 6, alignItems: 'center', flexWrap: 'wrap', justifyContent: 'flex-end' }}>
+              {[7, 30, 90].map(d => (
+                <button key={d} type="button" onClick={() => setRange(d)}
+                  style={{
+                    padding: '7px 14px', borderRadius: 8, fontSize: 13, fontWeight: 600, cursor: 'pointer',
+                    background: range === d ? PRIMARY : COLORS.surface,
+                    color: range === d ? '#fff' : COLORS.text2,
+                    border: range === d ? `1px solid ${PRIMARY}` : `1px solid ${COLORS.border}`,
+                  }}>{d} Tage</button>
+              ))}
+              <button type="button" onClick={refetch} title="Aktualisieren" style={iconBtnStyle}>
+                <RefreshCw size={14} />
+              </button>
             </div>
-          </div>
-          <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
-            {[7, 30, 90].map(d => (
-              <button key={d} type="button" onClick={() => setRange(d)}
-                style={{
-                  padding: '7px 14px', borderRadius: 8, fontSize: 13, fontWeight: 600, cursor: 'pointer',
-                  background: range === d ? PRIMARY : COLORS.surface,
-                  color: range === d ? '#fff' : COLORS.text2,
-                  border: range === d ? `1px solid ${PRIMARY}` : `1px solid ${COLORS.border}`,
-                }}>{d} Tage</button>
-            ))}
-            <button type="button" onClick={refetch} title="Aktualisieren" style={iconBtnStyle}>
-              <RefreshCw size={14} />
-            </button>
-          </div>
-        </div>
+          )}
+        />
 
         {/* KPI-Row — klickbar, jeder Card setzt den passenden Tab */}
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gap: 10, marginBottom: 20 }}>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))', gap: 12, marginBottom: 20 }}>
           <KpiCard label="Kontakte"      value={fmt.format(totalLeads)}   sub="im Pool"          color={PRIMARY}    Icon={Users}       onClick={() => setTab('overview')}  active={tab === 'overview'} />
           <KpiCard label="Hot Kontakte"  value={fmt.format(hotLeads)}     sub="Score ≥ 70"       color="#DC2626"    Icon={Flame}       onClick={() => setTab('ai')}        active={tab === 'ai'} />
           <KpiCard label="Pipeline-Wert" value={fmtEUR.format(pipelineValue)} sub="aktiv"        color="#22C55E"    Icon={Target}      onClick={() => setTab('pipeline')}  active={tab === 'pipeline'} />

@@ -5,6 +5,8 @@ import { supabase } from '../lib/supabase'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import { useTeam } from '../context/TeamContext'
 import OrganizationPicker from '../components/OrganizationPicker'
+import PageHeader from '../components/PageHeader'
+import { ChevronUp, ChevronDown } from 'lucide-react'
 
 const PRIMARY = 'rgb(49,90,231)'
 
@@ -26,6 +28,54 @@ function fmtEur(v) {
 function fmtDate(d) {
   if (!d) return null
   return new Date(d + 'T12:00:00').toLocaleDateString('de-DE', { day: '2-digit', month: 'short', year: '2-digit' })
+}
+
+/* ── Reports-Stil Design-Komponenten (gespiegelt aus Organizations/Vernetzungen) ── */
+const RC = { surface:'var(--surface, #fff)', border:'#E4E7EC', text1:'var(--text-strong, #111827)', text2:'#374151', text3:'#6B7280' }
+const PV = 'var(--wl-primary, rgb(49,90,231))'
+
+function KpiCard({ label, value, sub, color }) {
+  return (
+    <div style={{ background:RC.surface, border:`1px solid ${RC.border}`, borderRadius:14, padding:'14px 16px', display:'flex', flexDirection:'column', gap:4 }}>
+      <span style={{ fontSize:10, fontWeight:700, color, textTransform:'uppercase', letterSpacing:'0.06em' }}>{label}</span>
+      <div style={{ fontSize:22, fontWeight:800, color:RC.text1, fontVariantNumeric:'tabular-nums' }}>{value}</div>
+      {sub && <div style={{ fontSize:11, color:RC.text3 }}>{sub}</div>}
+    </div>
+  )
+}
+
+function Panel({ title, children }) {
+  return (
+    <div style={{ background:RC.surface, border:`1px solid ${RC.border}`, borderRadius:14, padding:18, marginBottom:16 }}>
+      {title && <div style={{ fontSize:14, fontWeight:700, color:RC.text1, margin:'0 0 14px' }}>{title}</div>}
+      {children}
+    </div>
+  )
+}
+
+function BarRow({ label, count, total, value, color=PV }) {
+  const pct = total > 0 ? Math.round((count/total)*100) : 0
+  return (
+    <div style={{ marginBottom:10 }}>
+      <div style={{ display:'flex', justifyContent:'space-between', alignItems:'baseline', marginBottom:4 }}>
+        <span style={{ fontSize:13, color:RC.text2, fontWeight:500 }}>{label}</span>
+        <span style={{ fontSize:12, color:RC.text3, fontVariantNumeric:'tabular-nums' }}><strong style={{ color:RC.text1 }}>{count}</strong>{value ? ` · ${value}` : (total>0 ? ` · ${pct}%` : '')}</span>
+      </div>
+      <div style={{ height:6, background:'#F3F4F6', borderRadius:3, overflow:'hidden' }}>
+        <div style={{ width:`${pct}%`, height:'100%', background:color, transition:'width 0.3s' }}/>
+      </div>
+    </div>
+  )
+}
+
+const scriptHintStyle = { fontFamily:"'Segoe Script','Bradley Hand','Brush Script MT','Comic Sans MS',cursive", fontStyle:'italic', fontSize:16, fontWeight:600, color:'var(--wl-primary, rgb(49,90,231))', whiteSpace:'nowrap', lineHeight:1 }
+function CurvedArrow() {
+  return (
+    <svg width="34" height="24" viewBox="0 0 34 24" fill="none" style={{ color:'var(--wl-primary, rgb(49,90,231))', flexShrink:0 }} aria-hidden="true">
+      <path d="M3 5 C 14 3, 25 7, 30 14" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" fill="none"/>
+      <path d="M23 14.5 L 31 15 L 27 8" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" fill="none"/>
+    </svg>
+  )
 }
 
 // ── Deal-Formular Modal ────────────────────────────────────────────────────────
@@ -250,6 +300,8 @@ export default function Deals({ session }) {
   const [filter,    setFilter]    = useState('all')
   const [ownerFilter, setOwnerFilter] = useState(null)
   const [search,    setSearch]    = useState('')
+  const [showDash, setShowDash] = useState(() => { try { return localStorage.getItem('leadesk_deals_dashboard') !== '0' } catch { return true } })
+  const toggleDash = () => setShowDash(v => { const n = !v; try { localStorage.setItem('leadesk_deals_dashboard', n ? '1' : '0') } catch {} return n })
   const [searchParams] = useSearchParams()
 
   useEffect(() => { load() }, [activeTeamId])
@@ -335,35 +387,52 @@ export default function Deals({ session }) {
   ]
 
   return (
-    <div style={{ width: '100%', margin: '0 auto', paddingBottom: 60 }}>
-      {/* Header */}
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 24 }}>
-        <div>
-          <h1 style={{ fontSize: 22, fontWeight: 800, color: '#111827', margin: 0 }}>Deals</h1>
-          <div style={{ fontSize: 13, color: '#6B7280', marginTop: 4 }}>
-            {team ? `Team: ${team.name}` : 'Meine Deals'} · {open.length} offen · {fmtEur(total)} Pipeline
+    <div style={{ width: '100%', maxWidth: 1100, margin: '0 auto', padding: '24px 16px 40px' }}>
+      <PageHeader
+        overline="CRM · Deals"
+        title="Deals"
+        subtitle={`${team ? `Team: ${team.name}` : 'Meine Deals'} · ${open.length} offen · ${fmtEur(total)} Pipeline. Verkaufschancen nach Phase verfolgen, gewichten und abschließen.`}
+        action={
+          <div style={{ display:'flex', alignItems:'center', gap:8, flexWrap:'wrap', justifyContent:'flex-end' }}>
+            <div style={{ display:'inline-flex', alignItems:'center', gap:7, pointerEvents:'none' }} aria-hidden="true">
+              <span style={scriptHintStyle}>Auf und zuklappen</span>
+              <CurvedArrow/>
+            </div>
+            <button onClick={toggleDash} title={showDash ? 'Dashboard ausblenden' : 'Dashboard einblenden'}
+              style={{ padding:'9px 14px', borderRadius:10, border:'1.5px solid #E2E8F0', background:'var(--surface-muted)', color:'#475569', fontSize:13, fontWeight:600, cursor:'pointer', display:'inline-flex', alignItems:'center', gap:6, whiteSpace:'nowrap' }}>
+              {showDash ? <ChevronUp size={15}/> : <ChevronDown size={15}/>}Dashboard
+            </button>
+            <button onClick={() => setModal('new')}
+              style={{ padding:'9px 18px', borderRadius:10, border:'none', background:PRIMARY, color:'#fff', fontSize:13, fontWeight:700, cursor:'pointer', whiteSpace:'nowrap' }}>
+              + Neuer Deal
+            </button>
           </div>
-        </div>
-        <button onClick={() => setModal('new')}
-          style={{ padding: '9px 20px', borderRadius: 10, border: 'none', background: PRIMARY, color: '#fff', fontSize: 13, fontWeight: 700, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 6 }}>
-          + Neuer Deal
-        </button>
-      </div>
+        }
+      />
 
-      {/* KPI-Zeile */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4,1fr)', gap: 12, marginBottom: 24 }}>
-        {[
-          { label: 'Pipeline Gesamt',  value: fmtEur(total),    color: PRIMARY,    bg: 'rgba(49,90,231,0.06)' },
-          { label: 'Gewichtet',        value: fmtEur(weighted), color: '#7C3AED',  bg: '#F5F3FF' },
-          { label: 'Gewonnen',         value: fmtEur(wonValue), color: '#059669', bg: '#ECFDF5' },
-          { label: 'Ø Deal-Wert',      value: open.length ? fmtEur(total / open.length) : '—', color: '#D97706', bg: '#FFFBEB' },
-        ].map(k => (
-          <div key={k.label} style={{ background: k.bg, borderRadius: 14, padding: '14px 18px', border: '1px solid ' + k.color + '22' }}>
-            <div style={{ fontSize: 10, fontWeight: 700, color: k.color, textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 4 }}>{k.label}</div>
-            <div style={{ fontSize: 20, fontWeight: 800, color: k.color }}>{k.value}</div>
+      {showDash && (
+        <>
+          {/* KPI-Karten (Reports-Stil) */}
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))', gap: 12, marginBottom: 16 }}>
+            <KpiCard label="Pipeline Gesamt" value={fmtEur(total)}    color={PRIMARY}  sub={`${open.length} offen`}/>
+            <KpiCard label="Gewichtet"       value={fmtEur(weighted)} color="#7C3AED"/>
+            <KpiCard label="Gewonnen"        value={fmtEur(wonValue)} color="#059669"  sub={`${won.length} Deals`}/>
+            <KpiCard label="Ø Deal-Wert"     value={open.length ? fmtEur(total / open.length) : '—'} color="#D97706"/>
           </div>
-        ))}
-      </div>
+
+          {/* Diagramm (Reports-Stil): Verteilung nach Phase */}
+          <Panel title="Verteilung nach Phase">
+            {deals.length > 0
+              ? STAGES.map(st => {
+                  const ds = deals.filter(d => d.stage === st.id)
+                  if (!ds.length) return null
+                  const val = ds.reduce((s, d) => s + (Number(d.value) || 0), 0)
+                  return <BarRow key={st.id} label={st.label} count={ds.length} total={deals.length} value={fmtEur(val)} color={st.color}/>
+                })
+              : <div style={{ fontSize: 12, color: RC.text3, padding: '8px 0' }}>Noch keine Deals erfasst.</div>}
+          </Panel>
+        </>
+      )}
 
       {/* Filter + Suche */}
       <div style={{ display: 'flex', gap: 10, marginBottom: 20, flexWrap: 'wrap', alignItems: 'center' }}>

@@ -10,7 +10,7 @@ import React, { useState, useEffect, useRef, useCallback } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import {
   ArrowLeft, Download, Eye, Trash2, Pencil, Rocket, Paperclip, User, Building2,
-  CalendarCheck, Phone, TrendingUp, Mail, Send, FileText, Target, CheckCircle2, Users, Link2,
+  CalendarCheck, Phone, TrendingUp, Mail, Send, FileText, Target, CheckCircle2, Users, Link2, Package,
 } from 'lucide-react'
 import { supabase } from '../lib/supabase'
 import { useTeam } from '../context/TeamContext'
@@ -103,6 +103,7 @@ export default function DealDetail({ session }) {
   const uid = session?.user?.id
 
   const [deal, setDeal]       = useState(null)
+  const [product, setProduct] = useState(null)
   const [loading, setLoading] = useState(true)
   const [notFound, setNotFound] = useState(false)
   const [leads, setLeads]     = useState([])
@@ -123,8 +124,19 @@ export default function DealDetail({ session }) {
       .select('*, leads(id,first_name,last_name,name,company), organizations(id,name)')
       .eq('id', id)
       .maybeSingle()
-    if (error || !data) { setNotFound(true); setDeal(null); setLoading(false); return }
+    if (error || !data) { setNotFound(true); setDeal(null); setProduct(null); setLoading(false); return }
     setDeal(data)
+    // Verknüpftes Produkt aus der Wissensdatenbank nachladen (separate Query
+    // statt PostgREST-Embed — vermeidet Embed-Silent-Fail, Felder 1:1 wie in Deals.jsx).
+    if (data.product_id) {
+      const { data: prod } = await supabase.from('knowledge_base')
+        .select('id, name, price, product_form, product_kind')
+        .eq('id', data.product_id)
+        .maybeSingle()
+      setProduct(prod || null)
+    } else {
+      setProduct(null)
+    }
     setLoading(false)
   }, [id])
 
@@ -262,6 +274,7 @@ export default function DealDetail({ session }) {
       {/* Seitenkopf (Standard-Layout: h1-Titel, Aktionen rechts) */}
       <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 16, margin: '16px 0 20px' }}>
         <div style={{ minWidth: 0 }}>
+          <div style={{ fontSize: 18, color: '#30A0D0', fontFamily: '"Caveat", cursive', fontWeight: 600, marginBottom: 2 }}>CRM · Deal</div>
           <h1 style={{ fontSize: 26, fontWeight: 700, margin: 0, letterSpacing: '-0.3px', lineHeight: 1.2, color: '#111827' }}>{deal.title || deal.name || '—'}</h1>
           <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginTop: 10 }}>
             <span style={{ fontSize: 11, fontWeight: 700, padding: '3px 10px', borderRadius: 99, background: s.bg, color: s.color }}>{s.label}</span>
@@ -301,6 +314,25 @@ export default function DealDetail({ session }) {
               <button onClick={() => navigate(`/organizations/${deal.organization_id}`)} style={chipBtnStyle}>
                 <Building2 size={14} /> {deal.organizations.name}
               </button>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* Verknüpftes Produkt (aus der Wissensdatenbank) */}
+      {product && (
+        <div style={{ ...cardStyle, marginTop: 16 }}>
+          <div style={{ ...labelStyle, display: 'inline-flex', alignItems: 'center', gap: 6 }}><Package size={13} /> Verknüpftes Produkt</div>
+          <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap' }}>
+            <div style={{ minWidth: 0 }}>
+              <div style={{ fontSize: 15, fontWeight: 700, color: '#111827' }}>{product.name}</div>
+              {(() => {
+                const meta = [product.product_kind, product.product_form].filter(Boolean).join(' · ')
+                return meta ? <div style={{ fontSize: 12, color: '#6B7280', marginTop: 3 }}>{meta}</div> : null
+              })()}
+            </div>
+            {product.price && (
+              <span style={{ fontSize: 13, fontWeight: 700, padding: '4px 12px', borderRadius: 99, background: '#F0FDF4', color: '#059669', flexShrink: 0, whiteSpace: 'nowrap' }}>{product.price}</span>
             )}
           </div>
         </div>

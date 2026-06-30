@@ -27,7 +27,7 @@ import {
   ArrowDownUp, X, Check, Flame, Briefcase, Star, Clock, AlertTriangle,
   Inbox, Users as UsersIcon, FolderPlus, Folder, Download, Upload,
   CheckSquare, Square, Archive, Trash2, MoreHorizontal,
-  Rows3, Rows2, FileUp, Puzzle, Pencil,
+  Rows3, Rows2, FileUp, Puzzle, Pencil, ChevronUp, ChevronDown,
 } from 'lucide-react';
 import { EXTENSION_WEBSTORE_URL } from '../lib/leadeskExtension';
 import { LeadsList } from '../components/leads/LeadsList';
@@ -37,8 +37,8 @@ import { InlineEditField } from '../components/leads/InlineEditField';
 import { TagEditor } from '../components/leads/TagEditor';
 import { LeadStatusMiniPath } from '../components/leads/LeadStatusMiniPath';
 import { BulkEditModal } from '../components/leads/BulkEditModal';
-import { LeadPreviewDrawer, DRAWER_WIDTH } from '../components/leads/LeadPreviewDrawer';
 import OrganizationPicker from '../components/OrganizationPicker';
+import PageHeader from '../components/PageHeader';
 import { tagColor } from '../lib/tagColors';
 import { useTagRegistry } from '../hooks/useTagRegistry';
 import { TagManagerModal } from '../components/leads/TagManagerModal';
@@ -52,8 +52,55 @@ import { useTeam } from '../context/TeamContext';
 // Visual aligned mit Deals/Organisationen (siehe pages/Deals.jsx).
 const PRIMARY = 'rgb(49,90,231)';
 
-const pageOuterStyle = { background: 'var(--surface-canvas, #F8FAFC)', minHeight:'100vh', padding:'24px 24px 60px' };
-const pageStyle = { width:'100%', margin:'0 auto', display:'flex', flexDirection:'column' };
+const pageOuterStyle = { background: 'var(--surface-canvas, #F8FAFC)', minHeight:'100vh', padding:'24px 16px 60px' };
+const pageStyle = { width:'100%', maxWidth:1100, margin:'0 auto', display:'flex', flexDirection:'column' };
+
+// ── Reports-Stil Diagramm-Komponenten (gespiegelt aus Vernetzungen.jsx) ──
+const RC = { surface:'var(--surface, #fff)', border:'#E4E7EC', text1:'var(--text-strong, #111827)', text2:'#374151', text3:'#6B7280' };
+const fmtNum = new Intl.NumberFormat('de-DE');
+
+function Panel({ title, action, children }) {
+  return (
+    <div style={{ background:RC.surface, border:`1px solid ${RC.border}`, borderRadius:14, padding:18, marginBottom:16 }}>
+      {title && (
+        <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:14 }}>
+          <h3 style={{ fontSize:14, fontWeight:700, color:RC.text1, margin:0 }}>{title}</h3>{action}
+        </div>
+      )}
+      {children}
+    </div>
+  );
+}
+
+function BarRow({ label, count, total, color=PRIMARY }) {
+  const pct = total > 0 ? Math.round((count/total)*100) : 0;
+  return (
+    <div style={{ marginBottom:10 }}>
+      <div style={{ display:'flex', justifyContent:'space-between', alignItems:'baseline', marginBottom:4 }}>
+        <span style={{ fontSize:13, color:RC.text2, fontWeight:500 }}>{label}</span>
+        <span style={{ fontSize:12, color:RC.text3, fontVariantNumeric:'tabular-nums' }}><strong style={{ color:RC.text1 }}>{fmtNum.format(count)}</strong>{total>0 && <> · {pct}%</>}</span>
+      </div>
+      <div style={{ height:6, background:'#F3F4F6', borderRadius:3, overflow:'hidden' }}>
+        <div style={{ width:`${pct}%`, height:'100%', background:color, transition:'width 0.3s' }}/>
+      </div>
+    </div>
+  );
+}
+
+function EmptyBars({ text }) {
+  return <div style={{ fontSize:12, color:RC.text3, padding:'8px 0' }}>{text}</div>;
+}
+
+// Handgezeichneter Hinweis-Pfeil + Schreibschrift-Label (gespiegelt aus ContentStudio.jsx)
+const scriptHintStyle = { fontFamily:"'Segoe Script','Bradley Hand','Brush Script MT','Comic Sans MS',cursive", fontStyle:'italic', fontSize:16, fontWeight:600, color:'var(--wl-primary, rgb(49,90,231))', whiteSpace:'nowrap', lineHeight:1 };
+function CurvedArrow() {
+  return (
+    <svg width="34" height="24" viewBox="0 0 34 24" fill="none" style={{ color:'var(--wl-primary, rgb(49,90,231))', flexShrink:0 }} aria-hidden="true">
+      <path d="M3 5 C 14 3, 25 7, 30 14" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" fill="none"/>
+      <path d="M23 14.5 L 31 15 L 27 8" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" fill="none"/>
+    </svg>
+  );
+}
 const headerRowStyle = { display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom: 20 };
 const titleStyle = { fontSize:22, fontWeight:800, margin:0, color:'#111827' };
 const subtitleStyle = { fontSize:13, color:'#6B7280', marginTop:4 };
@@ -211,7 +258,9 @@ export default function Leads() {
   const [bulkStagePicker, setBulkStagePicker] = useState(null);
   const [bulkListPicker,  setBulkListPicker]  = useState(null);
   const [bulkEditOpen,    setBulkEditOpen]    = useState(false);
-  const [previewLeadId,   setPreviewLeadId]   = useState(null); // Sprint C/3 · Drawer
+  // Dashboard-Block (KPIs + Grafiken) ein-/ausblendbar — persistiert in localStorage
+  const [showDash, setShowDash] = useState(() => { try { return localStorage.getItem('leadesk_leads_dashboard') !== '0'; } catch { return true; } });
+  const toggleDash = () => setShowDash(v => { const n = !v; try { localStorage.setItem('leadesk_leads_dashboard', n ? '1' : '0'); } catch {} return n; });
 
   // ─── Lists fetch ────────────────────────────────────────────────────
   const [lists, setLists] = useState([]);
@@ -437,13 +486,8 @@ export default function Leads() {
   }, [filteredLeads]);
 
   // ─── Handlers ───────────────────────────────────────────────────────
-  // Sprint C/3 · Click öffnet Side-Panel-Drawer statt direct-navigate.
-  // "Volle Page öffnen" im Drawer triggert das eigentliche navigate.
-  const handleLeadClick = useCallback(id => setPreviewLeadId(id), []);
-  const handleNavigateToFullPage = useCallback(id => {
-    setPreviewLeadId(null);
-    navigate(`/leads/${id}`);
-  }, [navigate]);
+  // Click navigiert direkt auf die Detail-Page (Drawer entfernt).
+  const handleLeadClick = useCallback(id => navigate(`/leads/${id}`), [navigate]);
 
   const handleOwnerAdd = useCallback((leadId, anchorEl) => {
     const rect = anchorEl?.getBoundingClientRect?.();
@@ -469,6 +513,18 @@ export default function Leads() {
       .update({ tags: Array.isArray(nextTags) ? nextTags : [], updated_at: new Date().toISOString() })
       .eq('id', leadId);
     if (error) { console.warn('[Leads] applyTags failed:', error.message); return; }
+    refetch?.();
+  };
+
+  // Favorit-Toggle direkt aus der Liste (analog zum Stern auf der Detail-Page).
+  // is_favorite ist boolean → single .eq()-Update mit updated_at ist safe
+  // (Fallstrick #1 betrifft nur .in()-Bulk auf constrained Feldern).
+  const toggleFavorite = async (leadId, next) => {
+    if (!leadId) return;
+    const { error } = await supabase.from('leads')
+      .update({ is_favorite: next, updated_at: new Date().toISOString() })
+      .eq('id', leadId);
+    if (error) { console.warn('[Leads] toggleFavorite failed:', error.message); return; }
     refetch?.();
   };
 
@@ -700,73 +756,121 @@ export default function Leads() {
     setListFilter(null);
   };
   const kpis = [
-    { label:'Gesamt Kontakte', value: leads.length,        color: PRIMARY,    bg:'rgba(49,90,231,0.06)', qf:'all' },
-    { label:'Hot Kontakte',    value: hotCount,            color:'#DC2626',   bg:'#FEF2F2',              qf:'hot' },
-    { label:'Follow-up heute', value: followupTodayCount,  color:'#7C3AED',   bg:'#F5F3FF',              qf:'followup_today' },
-    { label:'Überfällig',      value: overdueCount,        color:'#D97706',   bg:'#FFFBEB',              qf:'overdue' },
+    { label:'Gesamt Kontakte', value: leads.length,        color: PRIMARY,    bg:'rgba(49,90,231,0.06)', qf:'all',            Icon: UsersIcon },
+    { label:'Hot Kontakte',    value: hotCount,            color:'#DC2626',   bg:'#FEF2F2',              qf:'hot',            Icon: Flame },
+    { label:'Follow-up heute', value: followupTodayCount,  color:'#7C3AED',   bg:'#F5F3FF',              qf:'followup_today', Icon: Clock },
+    { label:'Überfällig',      value: overdueCount,        color:'#D97706',   bg:'#FFFBEB',              qf:'overdue',        Icon: AlertTriangle },
   ];
 
-  return (
-    <div style={{
-      ...pageOuterStyle,
-      // Sprint C/3 · Wenn Drawer offen, Right-Padding so groß dass Content nicht
-      // verdeckt wird. transition für smoothes resize wenn User Drawer auf/zu.
-      paddingRight: previewLeadId ? (DRAWER_WIDTH + 24) : 24,
-      transition: 'padding-right 0.2s ease-out',
-    }}>
-      <div style={pageStyle}>
-        {/* Header */}
-        <div style={headerRowStyle}>
-          <div>
-            <h1 style={titleStyle}>Kontakte</h1>
-            <div style={subtitleStyle}>
-              {filteredLeads.length} von {leads.length} sichtbar
-              {quickFilter && quickFilter !== 'all' && ` · ${QUICK_FILTERS.find(q => q.id === quickFilter)?.label}`}
-              {stageTab && ` · ${stageTab}`}
-              {listFilter && lists.find(l => l.id === listFilter) && ` · Liste: ${lists.find(l => l.id === listFilter).name}`}
-            </div>
-          </div>
-          <div style={{ display:'flex', alignItems:'center', gap:10 }}>
-            <div style={searchWrapStyle}>
-              <Search size={14} style={searchIconStyle} />
-              <input type="text" style={{ ...searchInputStyle, width: 240 }}
-                placeholder="Name, E-Mail, Firma, Tags…"
-                value={search} onChange={(e) => setSearch(e.target.value)} />
-            </div>
-            <button type="button" style={iconBtnStyle} aria-label="Benachrichtigungen">
-              <Bell size={16} />
-            </button>
-            <button type="button" style={primaryBtnStyle} onClick={() => setNewLeadOpen(true)}>
-              <Plus size={16} /> Neuer Kontakt
-            </button>
-          </div>
-        </div>
+  // ── Diagramm-Daten (Reports-Stil) — Verteilungen über den Lead-Pool ──
+  // Stage-Verteilung (CRM-Status, in definierter Reihenfolge)
+  const stageDist = STATUS_ORDER
+    .map(s => ({ label: `${s}${STATUS_CONFIG[s]?.sublabel ? ' · ' + STATUS_CONFIG[s].sublabel : ''}`, count: stageCounts[s] || 0, color: STATUS_CONFIG[s]?.dot || '#64748B' }))
+    .filter(s => s.count > 0);
+  // Quellen-Verteilung (Top-Quellen nach Anzahl)
+  const sourceDist = Object.entries(
+    leads.reduce((acc, l) => { const k = (l.source || '').trim() || 'Unbekannt'; acc[k] = (acc[k] || 0) + 1; return acc; }, {})
+  ).map(([label, count]) => ({ label, count })).sort((a, b) => b.count - a.count).slice(0, 7);
+  // Score-Verteilung (Hot ≥70 / Warm 40–69 / Cold <40)
+  const scoreDist = [
+    { label:'Hot · ≥ 70',   count: leads.filter(l => (l.lead_score || 0) >= 70).length,                          color:'#DC2626' },
+    { label:'Warm · 40–69', count: leads.filter(l => (l.lead_score || 0) >= 40 && (l.lead_score || 0) < 70).length, color:'#D97706' },
+    { label:'Cold · < 40',  count: leads.filter(l => (l.lead_score || 0) < 40).length,                           color:'#185FA5' },
+  ].filter(s => s.count > 0);
 
-        {/* KPI-Zeile — jede Card setzt den passenden Quick-Filter */}
-        <div style={kpisRowStyle}>
+  const subtitleText = [
+    `${filteredLeads.length} von ${leads.length} sichtbar`,
+    quickFilter && quickFilter !== 'all' ? QUICK_FILTERS.find(q => q.id === quickFilter)?.label : null,
+    stageTab || null,
+    listFilter && lists.find(l => l.id === listFilter) ? `Liste: ${lists.find(l => l.id === listFilter).name}` : null,
+  ].filter(Boolean).join(' · ');
+
+  const headerAction = (
+    <div style={{ display:'flex', alignItems:'center', gap:10, flexWrap:'wrap', justifyContent:'flex-end' }}>
+      <div style={{ display:'inline-flex', alignItems:'center', gap:7, pointerEvents:'none' }} aria-hidden="true">
+        <span style={scriptHintStyle}>Auf und zuklappen</span>
+        <CurvedArrow/>
+      </div>
+      <button type="button" onClick={toggleDash}
+        title={showDash ? 'Dashboard ausblenden' : 'Dashboard einblenden'}
+        style={{ ...ghostBtnStyle, height:34 }}>
+        {showDash ? <ChevronUp size={15}/> : <ChevronDown size={15}/>} Dashboard
+      </button>
+      <div style={searchWrapStyle}>
+        <Search size={14} style={searchIconStyle} />
+        <input type="text" style={{ ...searchInputStyle, width: 240 }}
+          placeholder="Name, E-Mail, Firma, Tags…"
+          value={search} onChange={(e) => setSearch(e.target.value)} />
+      </div>
+      <button type="button" style={iconBtnStyle} aria-label="Benachrichtigungen">
+        <Bell size={16} />
+      </button>
+      <button type="button" style={primaryBtnStyle} onClick={() => setNewLeadOpen(true)}>
+        <Plus size={16} /> Neuer Kontakt
+      </button>
+    </div>
+  );
+
+  return (
+    <div style={pageOuterStyle}>
+      <div style={pageStyle}>
+        <PageHeader
+          overline="CRM · Kontakte"
+          title="Kontakte"
+          subtitle={subtitleText}
+          action={headerAction}
+        />
+
+        {showDash && (<>
+        {/* KPI-Karten (Reports-Stil) — jede Card setzt den passenden Quick-Filter */}
+        <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fit, minmax(150px, 1fr))', gap:12, marginBottom:16 }}>
           {kpis.map(k => {
             const isActive = quickFilter === k.qf && k.qf !== 'all';
             const isAllActive = k.qf === 'all' && quickFilter === 'all' && !stageTab && !listFilter;
             const highlight = isActive || isAllActive;
+            const Icon = k.Icon;
             return (
               <button key={k.label} type="button"
                 onClick={() => setQuickFilterAndResetStage(k.qf)}
                 style={{
-                  background: k.bg, borderRadius:14, padding:'14px 18px',
-                  border: `1px solid ${highlight ? k.color : k.color + '22'}`,
+                  background: RC.surface, borderRadius:14, padding:'14px 16px',
+                  border: `1px solid ${highlight ? k.color : RC.border}`,
                   boxShadow: highlight ? `0 0 0 3px ${k.color}1a` : 'none',
                   textAlign:'left', cursor:'pointer', transition:'box-shadow 0.15s, border-color 0.15s',
-                  font:'inherit',
+                  font:'inherit', display:'flex', flexDirection:'column', gap:4,
                 }}
                 aria-pressed={highlight}
                 title={k.qf === 'all' ? 'Alle Filter zurücksetzen' : `Filter: ${k.label}`}
               >
-                <div style={{ fontSize:10, fontWeight:700, color: k.color, textTransform:'uppercase', letterSpacing:'0.06em', marginBottom:4 }}>{k.label}</div>
-                <div style={{ fontSize:20, fontWeight:800, color: k.color, fontVariantNumeric:'tabular-nums' }}>{k.value}</div>
+                <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center' }}>
+                  <span style={{ fontSize:10, fontWeight:700, color: k.color, textTransform:'uppercase', letterSpacing:'0.06em' }}>{k.label}</span>
+                  {Icon && <Icon size={14} color={k.color} />}
+                </div>
+                <div style={{ fontSize:22, fontWeight:800, color: RC.text1, fontVariantNumeric:'tabular-nums' }}>{k.value}</div>
               </button>
             );
           })}
         </div>
+
+        {/* Diagramme (Reports-Stil) — Stage breit + Score daneben, Quellen darunter */}
+        <div style={{ display:'grid', gridTemplateColumns:'2fr 1fr', gap:14 }}>
+          <Panel title="Verteilung nach Stage">
+            {stageDist.length > 0
+              ? stageDist.map(s => <BarRow key={s.label} label={s.label} count={s.count} total={leads.length} color={s.color}/>)
+              : <EmptyBars text="Noch keine Kontakte mit Stage."/>}
+          </Panel>
+          <Panel title="Score-Verteilung">
+            {scoreDist.length > 0
+              ? scoreDist.map(s => <BarRow key={s.label} label={s.label} count={s.count} total={leads.length} color={s.color}/>)
+              : <EmptyBars text="Noch keine Score-Daten."/>}
+          </Panel>
+        </div>
+        <Panel title="Verteilung nach Quelle">
+          {sourceDist.length > 0
+            ? sourceDist.map(s => <BarRow key={s.label} label={s.label} count={s.count} total={leads.length} color="#0C447C"/>)
+            : <EmptyBars text="Keine Quellen erfasst."/>}
+        </Panel>
+        </>)}
 
         {/* Saved Views ("Ansichten") als Tab-Leiste — Sprint B */}
         <LeadViewsTabs
@@ -1112,11 +1216,13 @@ export default function Leads() {
               onOwnerAdd={handleOwnerAdd}
               onTagAdd={handleTagAdd}
               onMenuClick={handleMenuClick}
+              onToggleFavorite={toggleFavorite}
               ownerById={ownerById}
               density={density}
               /* onUpdate bewusst weggelassen (2026-05-29): Lead-Karten sind
                  read-only, Bearbeiten nur in Detail-Page + Drawer. Die
-                 SelectableLeadRow-Branches haben read-only-Fallbacks. */
+                 SelectableLeadRow-Branches haben read-only-Fallbacks.
+                 onToggleFavorite ist eine gezielte Ausnahme (nur is_favorite). */
             />
           ) : (
             <LeadsBoard
@@ -1212,18 +1318,6 @@ export default function Leads() {
         />
       )}
 
-      {/* Sprint C/3 · Side-Panel-Preview-Drawer */}
-      {previewLeadId && (
-        <LeadPreviewDrawer
-          leadId={previewLeadId}
-          teamMembers={teamMembers}
-          currentUserId={currentUserId}
-          onClose={() => { setPreviewLeadId(null); refetch?.(); }}
-          onMutated={refetch}
-          tagSuggestions={allTags}
-          onNavigateToFullPage={handleNavigateToFullPage}
-        />
-      )}
       {tagManagerOpen && (
         <TagManagerModal
           onClose={() => { setTagManagerOpen(false); refetch?.(); }}
@@ -1352,7 +1446,7 @@ function BulkBar({ count, onStage, onOwner, onList, onArchive, onExport, onEdit,
 // ─── SelectableLeadsList — Wrapper um LeadsList mit Checkbox-Spalte ─────
 // Statt LeadsList ändern: wir wrappen die Standard-Komponente und blenden
 // links eine Checkbox-Spalte ein.
-function SelectableLeadsList({ leads, selectedIds, onToggleSelect, onLeadClick, onOwnerAdd, onTagAdd, onMenuClick, onUpdate, ownerById, density = 'comfortable' }) {
+function SelectableLeadsList({ leads, selectedIds, onToggleSelect, onLeadClick, onOwnerAdd, onTagAdd, onMenuClick, onUpdate, onToggleFavorite, ownerById, density = 'comfortable' }) {
   // Group leads by status für visuelle Sektionen (analog zu LeadsList default)
   const groups = useMemo(() => {
     const out = STATUS_ORDER.map(s => ({
@@ -1397,6 +1491,7 @@ function SelectableLeadsList({ leads, selectedIds, onToggleSelect, onLeadClick, 
                 onTagAdd={onTagAdd}
                 onMenuClick={onMenuClick}
                 onUpdate={onUpdate}
+                onToggleFavorite={onToggleFavorite}
                 density={density}
               />
             ))}
@@ -1407,7 +1502,7 @@ function SelectableLeadsList({ leads, selectedIds, onToggleSelect, onLeadClick, 
   );
 }
 
-function SelectableLeadRow({ lead, selected, onToggle, onLeadClick, onOwnerAdd, ownerById, onTagAdd, onMenuClick, onUpdate, density = 'comfortable' }) {
+function SelectableLeadRow({ lead, selected, onToggle, onLeadClick, onOwnerAdd, ownerById, onTagAdd, onMenuClick, onUpdate, onToggleFavorite, density = 'comfortable' }) {
   const isCompact = density === 'compact';
   // Inline-Edit-Handler — wenn kein onUpdate-Prop, kein Inline-Edit, sondern read-only.
   const handleUpdate = (field, value) =>
@@ -1443,6 +1538,14 @@ function SelectableLeadRow({ lead, selected, onToggle, onLeadClick, onOwnerAdd, 
         style={{ cursor:'pointer', display:'flex' }}>
         {selected ? <CheckSquare size={18} color={COLORS.primary} /> : <Square size={18} color={COLORS.textTertiary} />}
       </div>
+      {onToggleFavorite && (
+        <div data-no-row-click
+          onClick={(e) => { e.stopPropagation(); onToggleFavorite(lead.id, !lead.is_favorite); }}
+          title={lead.is_favorite ? 'Favorit entfernen' : 'Als Favorit markieren'}
+          style={{ cursor:'pointer', display:'flex', flexShrink:0 }}>
+          <Star size={isCompact ? 15 : 17} color={lead.is_favorite ? '#D97706' : '#CBD5E1'} fill={lead.is_favorite ? '#D97706' : 'none'} />
+        </div>
+      )}
       <div style={avatarStyle}>{initials}</div>
       <div style={{ flex:1, minWidth:0 }}>
         {isCompact ? (
