@@ -4,6 +4,7 @@ import { NavigationTimer } from './lib/useTabPersistedState'
 import { supabase } from './lib/supabase'
 import { captureRefFromUrl } from './lib/affiliateTracking'
 import Login         from './pages/Login'
+import MfaChallenge  from './components/MfaChallenge'
 import LinkedInCallback from './pages/auth/LinkedInCallback'
 import Unsubscribe   from './pages/Unsubscribe'
 import SettingsNotifications from './pages/SettingsNotifications'
@@ -131,6 +132,9 @@ export default function App() {
   const [session, setSession] = useState(undefined)
   const [role,    setRole]    = useState(null)
   const [accountStatus, setAccountStatus] = useState('active')
+  // 2FA-Gate: true wenn Session da, aber Assurance-Level erst aal1 und ein
+  // verifizierter TOTP-Factor existiert (nextLevel === 'aal2').
+  const [mfaRequired, setMfaRequired] = useState(false)
   // LinkedIn-Profile-Sync Phase 1: { diff, oidc, firstSync } | null
   const [liSync,  setLiSync]  = useState(null)
 
@@ -160,6 +164,27 @@ export default function App() {
     })
     return function() { listener.data.subscription.unsubscribe() }
   }, [])
+
+  // 2FA-Assurance-Level prüfen, sobald sich die Session ändert.
+  // Degradiert sicher: wirft die API (z.B. MFA serverseitig aus) → kein Gate.
+  useEffect(function() {
+    if (!session) { setMfaRequired(false); return }
+    var cancelled = false
+    supabase.auth.mfa.getAuthenticatorAssuranceLevel().then(function(res) {
+      if (cancelled) return
+      var d = res && res.data
+      setMfaRequired(!!d && d.currentLevel === 'aal1' && d.nextLevel === 'aal2')
+    }).catch(function() { if (!cancelled) setMfaRequired(false) })
+    return function() { cancelled = true }
+  }, [session])
+
+  async function recheckMfa() {
+    try {
+      var res = await supabase.auth.mfa.getAuthenticatorAssuranceLevel()
+      var d = res && res.data
+      setMfaRequired(!(d && d.currentLevel === 'aal2'))
+    } catch (e) { setMfaRequired(false) }
+  }
 
   async function fetchRole() {
     // Phase 5A: get_my_role removed, all /admin routes deactivated.
@@ -236,6 +261,10 @@ export default function App() {
   if (!session) {
     if (location.pathname === '/register') return <Register />
     return <Login />
+  }
+  // 2FA-Gate: Session existiert, aber Schritt 2 (TOTP-Code) steht noch aus.
+  if (mfaRequired) {
+    return <MfaChallenge onVerified={recheckMfa} />
   }
   // Konto wartet auf Freigabe
   if (accountStatus === 'pending') {
