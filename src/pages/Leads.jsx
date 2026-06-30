@@ -516,6 +516,18 @@ export default function Leads() {
     refetch?.();
   };
 
+  // Favorit-Toggle direkt aus der Liste (analog zum Stern auf der Detail-Page).
+  // is_favorite ist boolean → single .eq()-Update mit updated_at ist safe
+  // (Fallstrick #1 betrifft nur .in()-Bulk auf constrained Feldern).
+  const toggleFavorite = async (leadId, next) => {
+    if (!leadId) return;
+    const { error } = await supabase.from('leads')
+      .update({ is_favorite: next, updated_at: new Date().toISOString() })
+      .eq('id', leadId);
+    if (error) { console.warn('[Leads] toggleFavorite failed:', error.message); return; }
+    refetch?.();
+  };
+
   // Tag überall löschen: aus allen Kontakten entfernen + ggf. Registry-Eintrag.
   const purgeTag = async (name, registryId) => {
     if (!name) return;
@@ -1204,11 +1216,13 @@ export default function Leads() {
               onOwnerAdd={handleOwnerAdd}
               onTagAdd={handleTagAdd}
               onMenuClick={handleMenuClick}
+              onToggleFavorite={toggleFavorite}
               ownerById={ownerById}
               density={density}
               /* onUpdate bewusst weggelassen (2026-05-29): Lead-Karten sind
                  read-only, Bearbeiten nur in Detail-Page + Drawer. Die
-                 SelectableLeadRow-Branches haben read-only-Fallbacks. */
+                 SelectableLeadRow-Branches haben read-only-Fallbacks.
+                 onToggleFavorite ist eine gezielte Ausnahme (nur is_favorite). */
             />
           ) : (
             <LeadsBoard
@@ -1432,7 +1446,7 @@ function BulkBar({ count, onStage, onOwner, onList, onArchive, onExport, onEdit,
 // ─── SelectableLeadsList — Wrapper um LeadsList mit Checkbox-Spalte ─────
 // Statt LeadsList ändern: wir wrappen die Standard-Komponente und blenden
 // links eine Checkbox-Spalte ein.
-function SelectableLeadsList({ leads, selectedIds, onToggleSelect, onLeadClick, onOwnerAdd, onTagAdd, onMenuClick, onUpdate, ownerById, density = 'comfortable' }) {
+function SelectableLeadsList({ leads, selectedIds, onToggleSelect, onLeadClick, onOwnerAdd, onTagAdd, onMenuClick, onUpdate, onToggleFavorite, ownerById, density = 'comfortable' }) {
   // Group leads by status für visuelle Sektionen (analog zu LeadsList default)
   const groups = useMemo(() => {
     const out = STATUS_ORDER.map(s => ({
@@ -1477,6 +1491,7 @@ function SelectableLeadsList({ leads, selectedIds, onToggleSelect, onLeadClick, 
                 onTagAdd={onTagAdd}
                 onMenuClick={onMenuClick}
                 onUpdate={onUpdate}
+                onToggleFavorite={onToggleFavorite}
                 density={density}
               />
             ))}
@@ -1487,7 +1502,7 @@ function SelectableLeadsList({ leads, selectedIds, onToggleSelect, onLeadClick, 
   );
 }
 
-function SelectableLeadRow({ lead, selected, onToggle, onLeadClick, onOwnerAdd, ownerById, onTagAdd, onMenuClick, onUpdate, density = 'comfortable' }) {
+function SelectableLeadRow({ lead, selected, onToggle, onLeadClick, onOwnerAdd, ownerById, onTagAdd, onMenuClick, onUpdate, onToggleFavorite, density = 'comfortable' }) {
   const isCompact = density === 'compact';
   // Inline-Edit-Handler — wenn kein onUpdate-Prop, kein Inline-Edit, sondern read-only.
   const handleUpdate = (field, value) =>
@@ -1523,6 +1538,14 @@ function SelectableLeadRow({ lead, selected, onToggle, onLeadClick, onOwnerAdd, 
         style={{ cursor:'pointer', display:'flex' }}>
         {selected ? <CheckSquare size={18} color={COLORS.primary} /> : <Square size={18} color={COLORS.textTertiary} />}
       </div>
+      {onToggleFavorite && (
+        <div data-no-row-click
+          onClick={(e) => { e.stopPropagation(); onToggleFavorite(lead.id, !lead.is_favorite); }}
+          title={lead.is_favorite ? 'Favorit entfernen' : 'Als Favorit markieren'}
+          style={{ cursor:'pointer', display:'flex', flexShrink:0 }}>
+          <Star size={isCompact ? 15 : 17} color={lead.is_favorite ? '#D97706' : '#CBD5E1'} fill={lead.is_favorite ? '#D97706' : 'none'} />
+        </div>
+      )}
       <div style={avatarStyle}>{initials}</div>
       <div style={{ flex:1, minWidth:0 }}>
         {isCompact ? (
