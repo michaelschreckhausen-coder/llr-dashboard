@@ -466,6 +466,20 @@ async function pollQueue() {
 // Liest die eigene LinkedIn-Connections-Seite, um zu erkennen welche
 // gesendeten Vernetzungsanfragen angenommen wurden. Läuft IN der Seite
 // (executeScript). Liefert [{ name, profile_url }]. Muster: SSI-Scraper.
+// Scrollt eine LinkedIn-Profilseite Stück für Stück bis ans Ende (lädt alle
+// Lazy-Sections) und wieder nach oben. Läuft IN der Seite (executeScript).
+async function scrollProfilePage() {
+  function sleepP(ms) { return new Promise(function(r) { setTimeout(r, ms) }) }
+  var step = Math.max(400, Math.round((window.innerHeight || 800) * 0.8))
+  var y = 0, guard = 0
+  while (y < document.body.scrollHeight && guard < 30) {
+    window.scrollTo(0, y); await sleepP(450); y += step; guard++
+  }
+  window.scrollTo(0, document.body.scrollHeight); await sleepP(700)
+  window.scrollTo(0, 0); await sleepP(400)
+  return true
+}
+
 async function scrapeConnectionsPage() {
   function sleepP(ms) { return new Promise(function(r) { setTimeout(r, ms) }) }
   var href = window.location.href
@@ -867,6 +881,10 @@ async function scrapeLinkedInProfileForWebApp(rawUrl, includePosts, overlay) {
     return { error: 'Konnte LinkedIn-Tab nicht oeffnen: ' + e.message }
   }
   if (!tab || !tab.id) return { error: 'Kein Tab-Handle erhalten' }
+
+  // Profil Stück für Stück komplett durchscrollen, damit alle Lazy-Load-Sections
+  // (Berufserfahrung, Ausbildung, Kenntnisse …) geladen sind, BEVOR gescrapt wird.
+  try { await chrome.scripting.executeScript({ target: { tabId: tab.id }, func: scrollProfilePage }) } catch (e) {}
 
   var profile = null
   var lastErr = null
