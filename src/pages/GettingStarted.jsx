@@ -101,7 +101,7 @@ export default function GettingStarted() {
   const allDone = doneCount === total
 
   return (
-    <div style={{ width:'100%', maxWidth:1100, margin:'0 auto', paddingBottom:60 }}>
+    <div style={{ width:'100%', maxWidth:1100, margin:'0 auto', padding:'8px 0 40px' }}>
 
       {/* Seiten-Header + Produkt-Tour-Reset */}
       <div style={{ display:'flex', alignItems:'flex-start', justifyContent:'space-between', gap:16, marginBottom:18 }}>

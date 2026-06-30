@@ -28,8 +28,10 @@ const POST_SUBSCRIBE_REDIRECTS = {
   'sevdesk-integration': '/integrations',
 }
 
-const pageStyle    = { background: 'var(--surface-canvas, #F8FAFC)', minHeight: '100vh', padding: '32px 32px 60px' }
-const containerStyle = { maxWidth: 1280, margin: '0 auto', display: 'flex', flexDirection: 'column', gap: 28 }
+// An Settings angeglichen: gleiche Breite (1100), kein eigener Vollflächen-Canvas,
+// sitzt auf dem normalen App-Hintergrund wie /settings.
+const pageStyle    = { width: '100%', padding: '8px 0 40px' }
+const containerStyle = { width: '100%', maxWidth: 1100, margin: '0 auto', display: 'flex', flexDirection: 'column', gap: 24 }
 const heroStyle    = { display: 'flex', alignItems: 'center', gap: 16 }
 const heroIconBox  = {
   width: 56, height: 56, borderRadius: 16,
