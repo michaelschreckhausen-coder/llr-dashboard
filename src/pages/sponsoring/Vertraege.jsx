@@ -23,7 +23,7 @@ const OPEN_OFFER = ['draft', 'sent', 'negotiation']
 // Edit-Form-Defaults für die Zusatzfelder (Phase 5).
 const EMPTY_EDIT = {
   invoice_date: '', auto_renew: false, auto_renew_date: '',
-  league_id: '', value_cash: 0, value_barter: 0, industry: '',
+  league_id: '', value_cash: 0, value_barter: 0, industry: '', notes: '',
 }
 
 // CASH/BARTER-REGEL: total_price ist IMMER die abgeleitete Summe.
@@ -123,6 +123,7 @@ export default function Vertraege() {
       value_cash: c.value_cash != null ? c.value_cash : (c.total_price || 0),
       value_barter: c.value_barter != null ? c.value_barter : 0,
       industry: c.industry || '',
+      notes: c.notes || '',
     })
   }
 
@@ -142,6 +143,7 @@ export default function Vertraege() {
       value_barter: barter,
       total_price: sumCashBarter(cash, barter),
       industry: ef.industry || null,
+      notes: ef.notes || null,
       updated_at: new Date().toISOString(),
     }
     // CHECK/per-Row Update über .eq('id', id) (kein .in()-Bundle — Top-Fallstrick #1).
@@ -341,6 +343,12 @@ export default function Vertraege() {
 
             <Field label="Branche">
               <input type="text" value={ef.industry} onChange={(e) => setEf({ ...ef, industry: e.target.value })} style={input} placeholder="z.B. Finanzen, Handel …" />
+            </Field>
+
+            <Field label="Notiz">
+              <textarea value={ef.notes} onChange={(e) => setEf({ ...ef, notes: e.target.value })} rows={3}
+                style={{ ...input, resize: 'vertical', fontFamily: 'inherit', lineHeight: 1.5 }}
+                placeholder="Interne Notizen zum Vertrag…" />
             </Field>
 
             <button type="submit" disabled={busy} style={{ ...primaryBtn, marginTop: 14, justifyContent: 'center', opacity: busy ? 0.6 : 1 }}>
