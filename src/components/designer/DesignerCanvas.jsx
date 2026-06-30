@@ -255,6 +255,8 @@ export default function DesignerCanvas({ visual, teamId, onSaved, onReplaceVisua
 
   // Hintergrund-Füllfarbe (für Vorlagen ohne Bild)
   const [bgColor, setBgColor] = useState(null)        // null = kein Farbgrund (Bild-Modus)
+  const [pageAiCmd, setPageAiCmd] = useState('')
+  const [pageAiBusy, setPageAiBusy] = useState(false)
 
   // Bild-Filter (auf Bild-Objekt[e])
   const [filters, setFilters] = useState({ ...EMPTY_FILTERS })
@@ -1335,6 +1337,58 @@ export default function DesignerCanvas({ visual, teamId, onSaved, onReplaceVisua
   // Dekodiert die Datei zu einer DataURL, ermittelt die natürliche Größe und legt
   // ein image-Objekt an (auf max. ~50% der Bühne skaliert). HTMLImageElement wird
   // in imgCache gehalten und beim Render an die Konva-Image-Node gereicht.
+  // ─── KI für die GANZE Seite ──────────────────────────────────────────────────
+  // Schickt die editierbaren Elemente (Text/Formen/Bild-Geometrie) als JSON + den
+  // Befehl an die generate-Edge-Function und wendet die zurückgegebenen Änderungen
+  // an — Elemente bleiben editierbar (keine Pixel-Neugenerierung der ganzen Seite).
+  async function runPageAiCommand(cmd) {
+    const c = String(cmd || '').trim()
+    if (!c || pageAiBusy) return
+    setPageAiBusy(true)
+    try {
+      const cw = Math.round(baseCrop?.width || stageSize.width)
+      const ch = Math.round(baseCrop?.height || stageSize.height)
+      const slim = objects.filter(o => !o.hidden).map(o => {
+        const b = { id: o.id, type: o.type, x: Math.round(o.x || 0), y: Math.round(o.y || 0), rotation: Math.round(o.rotation || 0), opacity: o.opacity == null ? 1 : o.opacity }
+        if (o.type === 'text') Object.assign(b, { text: o.text, fontSize: o.fontSize, fontFamily: o.fontFamily, fill: o.fill, fontStyle: o.fontStyle || 'normal', align: o.align || 'left', width: Math.round(o.width || 360) })
+        else if (o.type === 'rect') Object.assign(b, { width: Math.round(o.width || 0), height: Math.round(o.height || 0), fill: o.fill, stroke: o.stroke, strokeWidth: o.strokeWidth || 0, cornerRadius: o.cornerRadius || 0 })
+        else if (o.type === 'ellipse') Object.assign(b, { radiusX: Math.round(o.radiusX || 0), radiusY: Math.round(o.radiusY || 0), fill: o.fill, stroke: o.stroke, strokeWidth: o.strokeWidth || 0 })
+        else if (o.type === 'sticker') Object.assign(b, { fill: o.fill, hinweis: 'Icon/Form – nur Farbe/Position/Größe' })
+        else if (o.type === 'image') Object.assign(b, { width: Math.round(o.width || 0), height: Math.round(o.height || 0), hinweis: 'Bild – Inhalt NICHT änderbar, nur Position/Größe' })
+        return b
+      })
+      const prompt = `Du bist ein erfahrener Grafik-Designer und bearbeitest eine Design-Seite (Größe ${cw}x${ch} Pixel). Hintergrundfarbe aktuell: ${bgColor || 'transparent'}.\n\nElemente als JSON (Koordinaten sind die linke obere Ecke in Pixeln, bei Ellipse der Mittelpunkt):\n${JSON.stringify(slim)}\n\nNutzer-Befehl: "${c}"\n\nWende den Befehl gestalterisch sinnvoll auf die GESAMTE Seite an. Erlaubt: Texte umformulieren/kürzen, Schriftgröße & Schriftschnitt, Farben (immer als Hex #rrggbb), Positionen (x,y), Breiten, Ausrichtung, Form-/Rahmenfarben, Eckenradius und die Hintergrundfarbe. Achte auf Lesbarkeit, Kontrast und sauberes Layout. Regeln: ALLE ids und types unverändert lassen, KEINE Elemente löschen, KEINE neuen Elemente/Bilder erfinden, Bild-Inhalte nicht ändern, alle Elemente innerhalb 0..${cw} (x) und 0..${ch} (y) halten.\n\nAntworte AUSSCHLIESSLICH mit gültigem JSON, ohne Markdown, ohne Erklärung, exakt in dieser Form:\n{"bgColor":"#rrggbb oder null","objects":[{"id":"<id>", ...geänderte Felder...}]}`
+      const { data, error } = await supabase.functions.invoke('generate', { body: { model: 'claude-sonnet-4-6', prompt } })
+      if (error) throw new Error(error.message || 'KI fehlgeschlagen')
+      let txt = String(data?.text || data?.content || data?.output || '').trim()
+      txt = txt.replace(/^```(?:json)?/i, '').replace(/```\s*$/i, '').trim()
+      const a = txt.indexOf('{'), z = txt.lastIndexOf('}')
+      if (a >= 0 && z > a) txt = txt.slice(a, z + 1)
+      const parsed = JSON.parse(txt)
+      const byId = new Map((Array.isArray(parsed.objects) ? parsed.objects : []).map(o => [o.id, o]))
+      if (byId.size === 0 && parsed.bgColor === undefined) throw new Error('Keine Änderungen erhalten')
+      pushHistory()
+      setObjects(prev => prev.map(o => {
+        const u = byId.get(o.id); if (!u) return o
+        const allow = ({
+          text:    ['text','fontSize','fontFamily','fill','fontStyle','align','width','x','y','rotation','opacity'],
+          rect:    ['width','height','fill','stroke','strokeWidth','cornerRadius','x','y','rotation','opacity'],
+          ellipse: ['radiusX','radiusY','fill','stroke','strokeWidth','x','y','rotation','opacity'],
+          sticker: ['fill','x','y','rotation','opacity'],
+          image:   ['x','y','width','height','rotation','opacity'],
+        })[o.type] || ['x','y','rotation','opacity']
+        const patch = {}
+        allow.forEach(k => { if (u[k] !== undefined && u[k] !== null) patch[k] = u[k] })
+        return { ...o, ...patch }
+      }))
+      if (parsed.bgColor !== undefined && bgColor !== null) setBgColor(parsed.bgColor)
+      setPageAiCmd('')
+      setSavedMsg('Seite mit KI bearbeitet')
+    } catch (e) {
+      setSavedMsg('KI-Fehler: ' + (e?.message || 'fehlgeschlagen'))
+    } finally { setPageAiBusy(false) }
+  }
+
   function addImageFromDataUrl(dataUrl, meta = {}) {
     if (!dataUrl) return
     const img = new window.Image()
@@ -3470,10 +3524,18 @@ export default function DesignerCanvas({ visual, teamId, onSaved, onReplaceVisua
       {selectedIds.length === 0 && !cropMode && !aiActive && !editingTextId && (
         <div style={barStyle}>
           <span style={{ fontSize: 12.5, fontWeight: 700, color: 'var(--text-primary)' }}>Seite</span>
-          <span style={{ fontSize: 12, color: 'var(--text-muted)' }}>Hintergrundfarbe</span>
+          <span style={{ fontSize: 12, color: 'var(--text-muted)' }}>Hintergrund</span>
           <ColorPopover value={bgColor || '#ffffff'} brandColors={brandColors} title="Seiten-Hintergrundfarbe"
             onStart={commitHistoryOnce} onChange={(hex) => setBgColor(hex)} onEnd={endInteraction} />
-          <span style={{ marginLeft: 'auto', fontSize: 11, color: 'var(--text-soft,#98a2b3)' }}>Klick auf ein Element, um es zu bearbeiten</span>
+          <Divider />
+          <div style={{ display: 'flex', alignItems: 'center', gap: 6, flex: 1, minWidth: 0, maxWidth: 560 }}>
+            <Sparkles size={15} strokeWidth={1.9} style={{ color: P, flexShrink: 0 }} />
+            <input value={pageAiCmd} onChange={e => setPageAiCmd(e.target.value)} disabled={pageAiBusy}
+              onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); runPageAiCommand(pageAiCmd) } }}
+              placeholder="KI: ganze Seite bearbeiten — z.B. „mach es wärmer & die Headline größer“"
+              style={{ flex: 1, minWidth: 0, height: 32, padding: '0 11px', borderRadius: 9, border: '1px solid var(--border,#E9ECF2)', fontSize: 12.5, outline: 'none', fontFamily: 'inherit', color: 'var(--text-primary)', background: '#fff' }} />
+            <SmallBtn primary disabled={pageAiBusy || !pageAiCmd.trim()} onClick={() => runPageAiCommand(pageAiCmd)}>{pageAiBusy ? 'KI…' : 'Anwenden'}</SmallBtn>
+          </div>
         </div>
       )}
       {cropMode && (
