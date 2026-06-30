@@ -314,7 +314,7 @@ export default function DesignerCanvas({ visual, teamId, onSaved, onReplaceVisua
   // Bug-Fix: KI-Masken-Modus IMMER verlassen, sobald man das KI-Werkzeug/Panel wechselt
   // oder schließt — sonst „klebt" das Auswahl-Overlay und man kommt nicht mehr weg.
   useEffect(() => {
-    if (activeTool !== 'ai') { setAiMode(null); clearMask(); setAiPreview(null) }
+    if (activeTool !== 'edit') { setAiMode(null); clearMask(); setAiPreview(null) }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [activeTool])
   // Werkzeug-Panel schließt sich, sobald man irgendwo daneben klickt (nicht nur via X).
@@ -3392,6 +3392,7 @@ export default function DesignerCanvas({ visual, teamId, onSaved, onReplaceVisua
           commitHistoryOnce={commitHistoryOnce} endInteraction={endInteraction}
           reorder={reorder} deleteSelected={deleteSelected} duplicateSelected={duplicateSelected}
           onFlip={flipSelected} onCrop={() => setCropMode(true)}
+          onEditImage={() => setActiveTool('edit')} onOpenLayers={() => setActiveTool('layers')}
           fonts={allFonts} selectedIds={selectedIds} brandColors={brandColors}
           alignObjects={alignObjects} distributeObjects={distributeObjects} />
       )}
@@ -3999,7 +4000,7 @@ function BarMenuItem({ icon, label, active, onClick }) {
 
 function ContextBar({
   selected, updateObject, reorder, deleteSelected, duplicateSelected,
-  commitHistoryOnce, endInteraction, fonts, onFlip, onCrop,
+  commitHistoryOnce, endInteraction, fonts, onFlip, onCrop, onEditImage, onOpenLayers,
   selectedIds, alignObjects, distributeObjects, brandColors = [],
 }) {
   const FONT_LIST = (fonts && fonts.length) ? fonts : FONTS
@@ -4131,7 +4132,14 @@ function ContextBar({
         </BarMenu>
       )}
 
-      {/* ── BILD: Zuschneiden ── */}
+      {/* ── BILD: Bearbeiten (Anpassen/Filter/KI) + Zuschneiden ── */}
+      {isImage && onEditImage && (
+        <button type="button" onClick={onEditImage} title="Bild bearbeiten (Anpassen, Filter, KI)"
+          style={{ display: 'inline-flex', alignItems: 'center', gap: 6, height: 34, padding: '0 12px', borderRadius: 9, border: 'none',
+            background: 'rgba(49,90,231,0.08)', color: P, fontSize: 12.5, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit' }}>
+          <Wand2 size={14} strokeWidth={2} />Bearbeiten
+        </button>
+      )}
       {isImage && onCrop && (
         <ToolBtn onClick={onCrop} title="Zuschneiden"><Crop size={15} strokeWidth={1.9} /></ToolBtn>
       )}
@@ -4145,6 +4153,31 @@ function ContextBar({
           <BarMenuItem icon={<FlipVertical size={16} strokeWidth={1.8} />} label="Vertikal spiegeln" onClick={() => onFlip('y')} />
         </BarMenu>
       )}
+
+      {/* ── Position: Ebenen-Reihenfolge + Ausrichten (an Seite) ── */}
+      <BarMenu title="Position" width={232} trigger={<span style={{ fontSize: 12.5, fontWeight: 600 }}>Position</span>}>
+        <div style={{ padding: '2px 4px' }}>
+          <div style={{ fontSize: 10.5, fontWeight: 700, color: 'var(--text-soft,#98a2b3)', textTransform: 'uppercase', letterSpacing: '0.05em', padding: '4px 6px 6px' }}>Anordnen</div>
+          <BarMenuItem icon={<BringToFront size={15} strokeWidth={1.9} />} label="In den Vordergrund" onClick={() => reorder('top')} />
+          <BarMenuItem icon={<ChevronUp size={15} strokeWidth={1.9} />} label="Eine Ebene nach vorne" onClick={() => reorder('up')} />
+          <BarMenuItem icon={<ChevronDown size={15} strokeWidth={1.9} />} label="Eine Ebene nach hinten" onClick={() => reorder('down')} />
+          <BarMenuItem icon={<SendToBack size={15} strokeWidth={1.9} />} label="In den Hintergrund" onClick={() => reorder('bottom')} />
+          <div style={{ height: 1, background: 'var(--border,#E9ECF2)', margin: '6px 4px' }} />
+          <div style={{ fontSize: 10.5, fontWeight: 700, color: 'var(--text-soft,#98a2b3)', textTransform: 'uppercase', letterSpacing: '0.05em', padding: '2px 6px 6px' }}>An Seite ausrichten</div>
+          <div style={{ display: 'flex', gap: 4, padding: '0 4px 4px' }}>
+            <ToolBtn onClick={() => alignObjects('left')} title="Links"><AlignStartVertical size={14} strokeWidth={1.9} /></ToolBtn>
+            <ToolBtn onClick={() => alignObjects('hcenter')} title="Horizontal zentrieren"><AlignCenterVertical size={14} strokeWidth={1.9} /></ToolBtn>
+            <ToolBtn onClick={() => alignObjects('right')} title="Rechts"><AlignEndVertical size={14} strokeWidth={1.9} /></ToolBtn>
+            <ToolBtn onClick={() => alignObjects('top')} title="Oben"><AlignStartHorizontal size={14} strokeWidth={1.9} /></ToolBtn>
+            <ToolBtn onClick={() => alignObjects('vcenter')} title="Vertikal zentrieren"><AlignCenterHorizontal size={14} strokeWidth={1.9} /></ToolBtn>
+            <ToolBtn onClick={() => alignObjects('bottom')} title="Unten"><AlignEndHorizontal size={14} strokeWidth={1.9} /></ToolBtn>
+          </div>
+          {onOpenLayers && (<>
+            <div style={{ height: 1, background: 'var(--border,#E9ECF2)', margin: '6px 4px' }} />
+            <BarMenuItem icon={<Layers size={15} strokeWidth={1.9} />} label="Alle Ebenen verwalten" onClick={onOpenLayers} />
+          </>)}
+        </div>
+      </BarMenu>
 
       {/* ── Deckkraft (Icon-Dropdown) ── */}
       <BarMenu title="Deckkraft" width={200} trigger={<TransparencyIcon size={15} />}>
@@ -4342,11 +4375,9 @@ const RAIL_TOOLS = [
   { id: 'uploads',   label: 'Medien',   Icon: ImageIcon },
   { id: 'div1', divider: true },
   { id: 'brand',     label: 'Marke',    Icon: Palette },
-  { id: 'div2', divider: true },
-  { id: 'ai',        label: 'KI',       Icon: Wand2 },
-  { id: 'filter',    label: 'Filter',   Icon: Sliders },
-  { id: 'layers',    label: 'Ebenen',   Icon: Layers },
 ]
+// Bild bearbeiten (Filter/Anpassen/KI), Ebenen & Ausrichten sind KEINE linken Tools mehr —
+// sie sind ausschließlich kontextuell über die obere Leiste erreichbar (wie Canva).
 
 function ToolRail({ active, onSelect }) {
   return (
@@ -4627,7 +4658,7 @@ function TemplateThumb({ tpl }) {
 // ─── Panel-Rahmen (docked sidebar oder Overlay-Popup) ───────────────────────
 function ToolPanel(props) {
   const { docked, tool, onClose } = props
-  const titleMap = { templates: 'Vorlagen', elements: 'Elemente', text: 'Text', uploads: 'Medien', brand: 'Marke', ai: 'KI-Werkzeuge', filter: 'Filter', layers: 'Ebenen' }
+  const titleMap = { templates: 'Vorlagen', elements: 'Elemente', text: 'Text', uploads: 'Medien', brand: 'Marke', ai: 'KI-Werkzeuge', filter: 'Filter', layers: 'Ebenen', edit: 'Bild bearbeiten' }
   const frame = docked
     ? { width: 300, flexShrink: 0, borderRight: '1px solid var(--border)', background: 'var(--surface,#fff)', display: 'flex', flexDirection: 'column', height: '100%', overflow: 'hidden' }
     : { position: 'absolute', left: 8, top: 8, bottom: 8, zIndex: 90, width: 300, maxWidth: 'calc(100% - 16px)', borderRadius: 12,
@@ -4647,6 +4678,7 @@ function ToolPanel(props) {
         {tool === 'brand' && <BrandPanelBody {...props} />}
         {tool === 'ai' && <AiPanelBody {...props} />}
         {tool === 'filter' && <FilterPanelBody {...props} />}
+        {tool === 'edit' && <EditPanelBody {...props} />}
         {tool === 'layers' && <LayersPanelBody {...props} />}
       </div>
     </div>
@@ -4957,6 +4989,20 @@ function AiPanelBody({
   )
 }
 
+// ─── Panel: Bild bearbeiten (kombiniert Anpassen/Filter + KI) ────────────────
+// Wird NUR kontextuell geöffnet (Bild ausgewählt → „Bearbeiten" in der oberen
+// Leiste). Bündelt Filter/Anpassungen und die KI-Werkzeuge in einem Panel — wie
+// Canvas „Bild bearbeiten".
+function EditPanelBody(props) {
+  return (
+    <div>
+      <AiPanelBody {...props} />
+      <div style={{ height: 1, background: 'var(--border,#E9ECF2)', margin: '16px 0' }} />
+      <FilterPanelBody {...props} />
+    </div>
+  )
+}
+
 // ─── Panel: Filter ──────────────────────────────────────────────────────────
 // Konva-Filterparameter grob als CSS-Filter abbilden (für Live-Vorschau-Thumbnails).
 function cssForFilter(f = {}) {
@@ -4984,10 +5030,6 @@ function FilterPanelBody({ filters, setFilters, commitHistoryOnce, endInteractio
   )
   return (
     <div>
-      <div style={{ fontSize: 11.5, color: 'var(--text-muted)', marginBottom: 10 }}>
-        Filter gelten {filterScope === 'einzeln' ? 'für das ausgewählte Bild.' : 'für alle Bild-Ebenen (nichts ausgewählt).'}
-      </div>
-
       <PanelLabel>Looks</PanelLabel>
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 8, marginBottom: 16 }}>
         {FILTER_PRESETS.map(p => (
