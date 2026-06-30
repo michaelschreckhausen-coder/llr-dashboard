@@ -602,6 +602,17 @@ export default function LeadDetail({ lead: leadProp }) {
             onOpenOwnerPicker={() => setOwnerPickerOpen(true)}
             updateLead={safeUpdateLead}
           />
+          <RelatedRail
+            lead={lead}
+            navigate={navigate}
+            refreshKey={railRefresh}
+            analysis={analysisDismissed ? null : currentAnalysis}
+            analyzeLoading={analyzeLoading}
+            onAnalyze={handleAnalyze}
+            onReanalyze={handleReanalyze}
+            onUseOutreach={handleUseOutreach}
+            onJumpTab={handleTabChange}
+          />
         </aside>
 
         <main style={centerColStyle}>
@@ -632,20 +643,6 @@ export default function LeadDetail({ lead: leadProp }) {
           {activeTab === 'tasks' && <TasksTab leadId={lead.id} leadTeamId={lead.team_id} onMutated={bumpRail} />}
           {activeTab === 'deals' && <DealsTab lead={lead} leadId={lead.id} navigate={navigate} onMutated={bumpRail} />}
         </main>
-
-        <aside style={railColStyle}>
-          <RelatedRail
-            lead={lead}
-            navigate={navigate}
-            refreshKey={railRefresh}
-            analysis={analysisDismissed ? null : currentAnalysis}
-            analyzeLoading={analyzeLoading}
-            onAnalyze={handleAnalyze}
-            onReanalyze={handleReanalyze}
-            onUseOutreach={handleUseOutreach}
-            onJumpTab={handleTabChange}
-          />
-        </aside>
       </div>
 
       <OwnerPicker
