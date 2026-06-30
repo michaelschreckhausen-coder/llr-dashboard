@@ -25,6 +25,19 @@ const EMPTY_EDIT = {
   invoice_date: '', auto_renew: false, auto_renew_date: '', renewal_interval: 'once',
   league_id: '', value_cash: 0, value_barter: 0, industry: '', notes: '',
   payment_plan: [],   // V2: [{ date, amount }] — Zahlungsziele aufgesplittet
+  discount_pct: 0, discount_scope: 'all', hospitality_value: 0,   // V4: Rabatt + Scope
+}
+
+// V4: Rabatt-Endsumme abhängig vom Scope berechnen.
+function discountedTotal({ value_cash, value_barter, discount_pct, discount_scope, hospitality_value }) {
+  const total = (Number(value_cash) || 0) + (Number(value_barter) || 0)
+  const pct = Number(discount_pct) || 0
+  if (!pct) return total
+  const hosp = Math.min(Number(hospitality_value) || 0, total)
+  const base = discount_scope === 'hospitality' ? hosp
+    : discount_scope === 'advertising' ? (total - hosp)
+    : total
+  return Math.round((total - base * pct / 100) * 100) / 100
 }
 
 // CASH/BARTER-REGEL: total_price ist IMMER die abgeleitete Summe.
@@ -127,6 +140,9 @@ export default function Vertraege() {
       industry: c.industry || '',
       notes: c.notes || '',
       payment_plan: Array.isArray(c.payment_plan) ? c.payment_plan : [],
+      discount_pct: c.discount_pct != null ? c.discount_pct : 0,
+      discount_scope: c.discount_scope || 'all',
+      hospitality_value: c.hospitality_value != null ? c.hospitality_value : 0,
     })
   }
 
@@ -151,6 +167,9 @@ export default function Vertraege() {
       payment_plan: (Array.isArray(ef.payment_plan) && ef.payment_plan.length)
         ? ef.payment_plan.filter(p => p && (p.date || p.amount)).map(p => ({ date: p.date || null, amount: Number(p.amount) || 0 }))
         : null,
+      discount_pct: Number(ef.discount_pct) || null,
+      discount_scope: (Number(ef.discount_pct) || 0) ? (ef.discount_scope || 'all') : null,
+      hospitality_value: Number(ef.hospitality_value) || null,
       updated_at: new Date().toISOString(),
     }
     // CHECK/per-Row Update über .eq('id', id) (kein .in()-Bundle — Top-Fallstrick #1).
@@ -395,6 +414,35 @@ export default function Vertraege() {
               <input type="text" readOnly value={fmt(sumCashBarter(ef.value_cash, ef.value_barter))}
                      style={{ ...input, background: 'var(--surface-muted, #F8FAFC)', color: 'var(--text-muted)' }} />
             </Field>
+
+            {/* V4: Rabatt mit Scope (Gesamt / Hospitality / Werbeleistungen) */}
+            <div style={{ display: 'flex', gap: 10 }}>
+              <div style={{ flex: 1 }}>
+                <Field label="Rabatt (%)">
+                  <input type="number" min="0" max="100" step="0.01" value={ef.discount_pct} onChange={(e) => setEf({ ...ef, discount_pct: e.target.value })} style={input} />
+                </Field>
+              </div>
+              <div style={{ flex: 1.4 }}>
+                <Field label="Rabatt gilt für">
+                  <select value={ef.discount_scope} onChange={(e) => setEf({ ...ef, discount_scope: e.target.value })} style={input}>
+                    <option value="all">Gesamtsumme</option>
+                    <option value="hospitality">Nur Hospitality</option>
+                    <option value="advertising">Nur Werbeleistungen</option>
+                  </select>
+                </Field>
+              </div>
+            </div>
+            {ef.discount_scope !== 'all' && (
+              <Field label="Hospitality-Wert (€) — Basis für den Scope (Werbeleistungen = Gesamt − Hospitality)">
+                <input type="number" min="0" step="0.01" value={ef.hospitality_value} onChange={(e) => setEf({ ...ef, hospitality_value: e.target.value })} style={input} />
+              </Field>
+            )}
+            {(Number(ef.discount_pct) || 0) > 0 && (
+              <Field label="Endsumme nach Rabatt">
+                <input type="text" readOnly value={fmt(discountedTotal(ef))}
+                       style={{ ...input, background: 'var(--surface-muted, #F8FAFC)', color: '#059669', fontWeight: 700 }} />
+              </Field>
+            )}
 
             <Field label="Branche">
               <input type="text" value={ef.industry} onChange={(e) => setEf({ ...ef, industry: e.target.value })} style={input} placeholder="z.B. Finanzen, Handel …" />
