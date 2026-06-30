@@ -356,6 +356,10 @@ function scrapeProfile() {
   var degreeScore = degree === '1st' ? 60 : degree === '2nd' ? 40 : 20
   console.log('[Leadesk Content] degree:', degree, '→ status:', connectionStatus)
 
+  // Profil-Checker: Header-Banner + Profilfoto über die licdn-Media-Pfade erkennen.
+  var hasBanner = Array.prototype.some.call(document.querySelectorAll('img'), function(i){ return /profile-displaybackgroundimage/i.test(i.src || '') })
+  var hasPhoto  = Array.prototype.some.call(document.querySelectorAll('img'), function(i){ return /profile-displayphoto/i.test(i.src || '') })
+
   return {
     first_name: firstName,
     last_name: lastName,
@@ -364,6 +368,8 @@ function scrapeProfile() {
     company: company,
     headline: headline,
     avatar_url: avatarUrl || null,
+    has_banner: hasBanner,
+    has_photo: hasPhoto,
     profile_url: liUrl,
     linkedin_url: liUrl,
     city: city || null,

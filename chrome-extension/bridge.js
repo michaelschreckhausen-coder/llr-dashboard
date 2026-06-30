@@ -107,6 +107,22 @@
       return
     }
 
+    if (data.action === 'check_own_profile') {
+      console.log('[Leadesk Bridge] check_own_profile request')
+      try {
+        chrome.runtime.sendMessage({ type: 'BRIDGE_CHECK_PROFILE' }, function(resp) {
+          if (chrome.runtime.lastError) {
+            reply({ error: 'Verbindung zur Extension fehlgeschlagen: ' + chrome.runtime.lastError.message + ' — Bitte Extension reloaden + Seite neu laden.' })
+            return
+          }
+          reply(resp || { error: 'Keine Antwort von der Extension' })
+        })
+      } catch(e) {
+        reply({ error: 'Bridge-Fehler: ' + e.message + ' — Bitte Extension reloaden + Seite neu laden.' })
+      }
+      return
+    }
+
     reply({ error: 'Unbekannte Aktion: ' + data.action })
   }, false)
 })()

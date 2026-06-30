@@ -618,6 +618,20 @@ chrome.runtime.onMessage.addListener(function(msg, sender, sendResponse) {
     })
     return true
   }
+  if (msg.type === 'BRIDGE_CHECK_PROFILE') {
+    var senderUrlP = (sender && sender.url) || ''
+    if (!/^https:\/\/(app|staging|[a-z0-9-]+)\.leadesk\.de\//.test(senderUrlP)) {
+      sendResponse({ error: 'Unbefugter Bridge-Aufruf' })
+      return true
+    }
+    scrapeLinkedInProfileForWebApp('https://www.linkedin.com/in/me/', false, {
+      title: 'Leadesk prüft dein Profil…',
+      subtitle: 'Wir prüfen Banner, Profilfoto, Slogan, Info-Box, Berufserfahrung und mehr.'
+    }).then(sendResponse).catch(function(err) {
+      sendResponse({ error: String(err && err.message || err) })
+    })
+    return true
+  }
   if (msg.type === 'POLL_NOW') { pollQueue(); sendResponse({ ok: true }); return true }
 
   // SSI: starte async im Hintergrund, Popup pollt chrome.storage
@@ -804,7 +818,7 @@ async function getActiveLinkedInIdentity() {
   }
 }
 
-async function scrapeLinkedInProfileForWebApp(rawUrl, includePosts) {
+async function scrapeLinkedInProfileForWebApp(rawUrl, includePosts, overlay) {
   console.log('[Leadesk Scrape] START', rawUrl)
   if (!rawUrl || typeof rawUrl !== 'string') return { error: 'URL fehlt' }
   var url
@@ -840,10 +854,11 @@ async function scrapeLinkedInProfileForWebApp(rawUrl, includePosts) {
     }
     // SHOW_LOADING_OVERLAY auf dem neuen Tab so frueh wie moeglich
     // (sobald content.js geladen ist). Wir versuchen alle 400ms, max 5x.
+    // overlay (optional) erlaubt eigenen Text, z.B. für den Profil-Checker.
     for (var ovi = 0; ovi < 5; ovi++) {
       await new Promise(function(r) { setTimeout(r, 400) })
       try {
-        var ok = await chrome.tabs.sendMessage(tab.id, { type: 'SHOW_LOADING_OVERLAY' })
+        var ok = await chrome.tabs.sendMessage(tab.id, { type: 'SHOW_LOADING_OVERLAY', title: overlay && overlay.title, subtitle: overlay && overlay.subtitle })
         if (ok && ok.ok) break
       } catch(e) {}
     }
