@@ -5,6 +5,7 @@ const PRIMARY = 'var(--wl-primary, rgb(49,90,231))'
 
 const TABS = [
   { to: '/settings/profil',        label: 'Profil' },
+  { to: '/settings/linkedin',      label: 'LinkedIn' },
   { to: '/settings/team',          label: 'Team' },
   { to: '/settings/konto',         label: 'Konto & Abo' },
   { to: '/settings/memory',        label: 'Memory' },

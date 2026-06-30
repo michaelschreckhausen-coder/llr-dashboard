@@ -1,4 +1,5 @@
 import React, { useEffect, useState, useRef } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
 import { authRedirect } from '../lib/authRedirect'
 import { useLang, setLang, t } from '../lib/i18n'
@@ -19,6 +20,7 @@ function LinkedInIcon({ size = 18, color = 'white' }) {
 }
 
 export default function Settings({ session }) {
+  const navigate = useNavigate()
   const [lang, setUiLang]       = useLang()
   const [profile,  setProfile]  = useState(null)
   const [outputLang, setOutputLang] = useState('auto')
@@ -421,88 +423,24 @@ export default function Settings({ session }) {
         </div>
       </div>
 
-      {/* ── LinkedIn Verknüpfung ── */}
+      {/* ── LinkedIn → zentraler Hub (Phase 2: aus Profil ausgelagert) ── */}
       <div style={box}>
         <div style={hdr}>
           <div style={{ display:'flex', alignItems:'center', gap:8 }}>
             <LinkedInIcon size={17} color={LI_BLUE} />
-            LinkedIn-Konto verknüpfen
+            LinkedIn-Verbindungen
           </div>
         </div>
         <div style={bdy}>
-
-          {/* Status card */}
-          <div style={{
-            display:'flex', alignItems:'center', justifyContent:'space-between',
-            padding:'14px 16px', borderRadius:10,
-            background: isLinkedInLinked ? '#e8f5ee' : '#f3f2ef',
-            border: `1.5px solid ${isLinkedInLinked ? '#86efac' : '#e0e0e0'}`,
-          }}>
-            <div style={{ display:'flex', alignItems:'center', gap:12 }}>
-              {/* LinkedIn logo circle */}
-              <div style={{ width:40, height:40, borderRadius:'50%', background: isLinkedInLinked ? LI_BLUE : '#c9cdd2', display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0 }}>
-                <LinkedInIcon size={20} color="white" />
-              </div>
-              <div>
-                <div style={{ fontWeight:700, fontSize:14, color: isLinkedInLinked ? '#057642' : '#555' }}>
-                  {isLinkedInLinked ? 'Verknüpft' : 'Nicht verknüpft'}
-                </div>
-                <div style={{ fontSize:12, color:'#888', marginTop:1 }}>
-                  {isLinkedInLinked
-                    ? (liIdentity?.identity_data?.email || liIdentity?.identity_data?.name || 'LinkedIn-Account verbunden')
-                    : 'Verbinde dein LinkedIn-Konto für schnelleres Einloggen'}
-                </div>
-              </div>
+          <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', gap:12, flexWrap:'wrap' }}>
+            <div style={{ fontSize:13, color:'#555', lineHeight:1.6 }}>
+              Anmelden, Veröffentlichen und Automatisieren sind jetzt im eigenen Tab <strong>„LinkedIn"</strong> gebündelt — dort entscheidest du je Funktion, was du verbinden möchtest.
             </div>
-
-            {/* Action button */}
-            {isLinkedInLinked ? (
-              <button
-                onClick={unlinkLinkedIn}
-                disabled={liUnlinking}
-                style={{
-                  padding:'7px 16px', borderRadius:16, fontSize:12, fontWeight:600, cursor:'pointer',
-                  border:'1.5px solid #fca5a5', background:'transparent', color:'#cc1016',
-                  opacity: liUnlinking ? 0.6 : 1, whiteSpace:'nowrap', flexShrink:0,
-                }}>
-                {liUnlinking ? '⏳' : 'Trennen'}
-              </button>
-            ) : (
-              <button
-                onClick={linkLinkedIn}
-                disabled={liLinking}
-                style={{
-                  display:'flex', alignItems:'center', gap:7,
-                  padding:'8px 16px', borderRadius:16, fontSize:12, fontWeight:700, cursor:'pointer',
-                  border:'none', background: LI_BLUE, color:'white',
-                  opacity: liLinking ? 0.7 : 1, whiteSpace:'nowrap', flexShrink:0,
-                  transition:'background 0.2s',
-                }}
-                onMouseOver={e => e.currentTarget.style.background = LI_HOVER}
-                onMouseOut={e => e.currentTarget.style.background = LI_BLUE}
-              >
-                <LinkedInIcon size={14} color="white" />
-                {liLinking ? 'Weiterleitung…' : 'LinkedIn verknüpfen'}
-              </button>
-            )}
+            <button onClick={() => navigate('/settings/linkedin')}
+              style={{ padding:'9px 16px', borderRadius:10, border:'none', background: LI_BLUE, color:'#fff', fontSize:13, fontWeight:700, cursor:'pointer', whiteSpace:'nowrap' }}>
+              Zu den LinkedIn-Verbindungen →
+            </button>
           </div>
-
-          {/* Info text */}
-          <div style={{ fontSize:12, color:'#888', lineHeight:1.6, padding:'0 2px' }}>
-            {isLinkedInLinked
-              ? 'Du kannst dich jetzt sowohl mit E-Mail/Passwort als auch mit LinkedIn anmelden. Deine Daten bleiben unverändert.'
-              : 'Verknüpfe dein LinkedIn-Konto, um dich zukünftig mit einem Klick anzumelden — ohne Passwort eingeben zu müssen.'}
-          </div>
-
-          {/* Status message */}
-          {liMsg && (
-            <div style={{
-              padding:'10px 14px', borderRadius:8, fontSize:13,
-              background: liMsg.type === 'success' ? '#e6f4ee' : '#fde8e8',
-              color:      liMsg.type === 'success' ? '#057642'  : '#cc1016',
-              border:     `1px solid ${liMsg.type === 'success' ? '#b7dfc9' : '#f5b8b8'}`,
-            }}>{liMsg.text}</div>
-          )}
         </div>
       </div>
 
