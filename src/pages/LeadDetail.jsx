@@ -675,9 +675,11 @@ function SummaryRail({ lead, owner, navigate, onOpenOwnerPicker, updateLead }) {
       <div style={railCardStyle}>
         <div style={railHeadStyle}><span style={railTitleStyle}>Über diesen Kontakt</span></div>
         <div style={{ display:'flex', flexDirection:'column', gap:10 }}>
-          <ContactRow icon={Mail} label="E-Mail" value={lead.email} linkLike />
-          <ContactRow icon={Phone} label="Telefon" value={lead.phone} />
-          <ContactRow icon={IcLinkedin} label="LinkedIn" value={lead.linkedin_url} linkLike truncate />
+          <ContactRow icon={Mail} label="E-Mail" value={lead.email} href={lead.email ? `mailto:${lead.email}` : null} truncate />
+          <ContactRow icon={Phone} label="Telefon" value={lead.phone} href={lead.phone ? `tel:${(lead.phone||'').replace(/\s/g,'')}` : null} truncate />
+          <ContactRow icon={IcLinkedin} label="LinkedIn" value={lead.linkedin_url}
+            href={lead.linkedin_url ? (/^https?:\/\//i.test(lead.linkedin_url) ? lead.linkedin_url : `https://${lead.linkedin_url}`) : null}
+            linkText="Profil öffnen" />
           <ContactRow icon={MapPin} label="Ort" value={lead.location} />
           <ContactRow icon={Workflow} label="Quelle" value={lead.source} />
         </div>
@@ -1641,30 +1643,40 @@ function DealsTab({ lead, leadId, navigate, onMutated }) {
 }
 
 // ─── Shared subcomponents ─────────────────────────────────────────────────
-function ContactRow({ icon: Icon, label, value, onSave, type = 'text', placeholder = '—', linkLike, truncate }) {
+function ContactRow({ icon: Icon, label, value, onSave, type = 'text', placeholder = '—', linkLike, truncate, href, linkText }) {
   // Falls kein onSave übergeben wird, bleibt es Read-only (Backward-Compat).
   const valueStyle = {
-    color: linkLike && value ? '#185FA5' : COLORS.textPrimary,
+    color: (linkLike || href) && value ? '#185FA5' : COLORS.textPrimary,
     overflow: truncate ? 'hidden' : 'visible',
     textOverflow: 'ellipsis',
     whiteSpace: 'nowrap',
     flex: 1,
     minWidth: 0,
   };
+  // Mit href + Value: als echter Link rendern. linkText kürzt die Anzeige
+  // (z.B. "Profil öffnen" statt langer LinkedIn-URL → kein Überlauf/Abschneiden).
+  const renderValue = () => {
+    if (onSave) {
+      return <InlineEditField value={value} onSave={onSave} type={type} placeholder={placeholder} />;
+    }
+    if (href && value) {
+      return (
+        <a href={href} target="_blank" rel="noreferrer" title={value}
+          style={{ color: '#185FA5', textDecoration: 'none', display: 'inline-flex', alignItems: 'center', gap: 4, maxWidth: '100%', overflow: 'hidden', whiteSpace: 'nowrap' }}
+          onMouseEnter={e => e.currentTarget.style.textDecoration = 'underline'}
+          onMouseLeave={e => e.currentTarget.style.textDecoration = 'none'}>
+          <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{linkText || value}</span>
+          <ExternalLink size={12} strokeWidth={2} style={{ flexShrink: 0 }} />
+        </a>
+      );
+    }
+    return value || '—';
+  };
   return (
     <div style={contactRowStyle}>
       <Icon size={15} color={COLORS.textTertiary} />
       <span style={contactLabelStyle}>{label}</span>
-      <span style={valueStyle}>
-        {onSave ? (
-          <InlineEditField
-            value={value}
-            onSave={onSave}
-            type={type}
-            placeholder={placeholder}
-          />
-        ) : (value || '—')}
-      </span>
+      <span style={valueStyle}>{renderValue()}</span>
     </div>
   );
 }
