@@ -266,6 +266,10 @@ export default function DesignerCanvas({ visual, teamId, onSaved, onReplaceVisua
   const [cropRect, setCropRect] = useState(null)      // {x,y,w,h} in Bühnenkoordinaten
   const cropDragRef = useRef(null)
   const [cropRatio, setCropRatio] = useState(null)   // null = frei; sonst Seitenverhältnis (w/h)
+  const [penColor, setPenColor] = useState('#111827')
+  const [penWidth, setPenWidth] = useState(6)
+  const drawRef = useRef(null)
+  const [drawPreview, setDrawPreview] = useState(null)
 
   // ─── KI-Masken-Werkzeug ────────────────────────────────────────────────────
   // aiMode: 'edit' (freier Prompt) | 'heal' (Objekt entfernen) | null
@@ -1945,6 +1949,7 @@ export default function DesignerCanvas({ visual, teamId, onSaved, onReplaceVisua
     if (spaceDownRef.current) return
     const p = stagePoint()
     if (!p) return
+    if (activeTool === 'draw') { drawRef.current = [p]; setDrawPreview([p]); return }
     if (cropMode) { cropDragRef.current = { x: p.x, y: p.y }; setCropRect({ x: p.x, y: p.y, w: 0, h: 0 }); return }
     // Klick auf leere Bühne → Marquee starten / Selektion lösen
     const onEmpty = e.target === stage || e.target.attrs?.id === '__bg__' || e.target.attrs?.id === '__bgfill__'
@@ -1960,6 +1965,7 @@ export default function DesignerCanvas({ visual, teamId, onSaved, onReplaceVisua
   function onStageMouseMove() {
     const p = stagePoint()
     if (!p) return
+    if (activeTool === 'draw' && drawRef.current) { drawRef.current = [...drawRef.current, p]; setDrawPreview(drawRef.current); return }
     if (cropMode && cropDragRef.current) {
       const s = cropDragRef.current
       let w = Math.abs(p.x - s.x), h = Math.abs(p.y - s.y)
@@ -1975,6 +1981,14 @@ export default function DesignerCanvas({ visual, teamId, onSaved, onReplaceVisua
     }
   }
   function onStageMouseUp() {
+    if (drawRef.current) {
+      const pts = drawRef.current; drawRef.current = null; setDrawPreview(null)
+      if (pts.length >= 2) {
+        const p0 = pts[0]; const flat = []; pts.forEach(pt => { flat.push(pt.x - p0.x, pt.y - p0.y) })
+        addObject({ type: 'line', x: p0.x, y: p0.y, points: flat, stroke: penColor, strokeWidth: penWidth, rotation: 0 })
+      }
+      return
+    }
     cropDragRef.current = null
     // Marquee abschließen → alle Objekte, deren Mittelpunkt im Rechteck liegt, selektieren.
     if (marqueeStartRef.current) {
@@ -3159,8 +3173,8 @@ export default function DesignerCanvas({ visual, teamId, onSaved, onReplaceVisua
     const base = {
       id: o.id,
       // Gesperrte Ebenen: nicht ziehbar, nicht selektierbar (listening aus).
-      draggable: !locked && !cropMode && !aiMode && !editingTextId && !spaceActive,
-      listening: !locked && !spaceActive,
+      draggable: !locked && !cropMode && !aiMode && !editingTextId && !spaceActive && activeTool !== 'draw',
+      listening: !locked && !spaceActive && activeTool !== 'draw',
       x: (o.x ?? 0) - off.x,
       y: (o.y ?? 0) - off.y,
       rotation: o.rotation || 0,
@@ -3595,6 +3609,7 @@ export default function DesignerCanvas({ visual, teamId, onSaved, onReplaceVisua
           docked={dockPanel}
           tool={activeTool}
           onClose={() => setActiveTool(null)}
+          penColor={penColor} setPenColor={setPenColor} penWidth={penWidth} setPenWidth={setPenWidth} onDoneDraw={() => setActiveTool(null)} brandColors={brandColors}
           // Vorlagen
           onApplyTemplate={applyTemplate}
           // Elemente
@@ -3653,7 +3668,7 @@ export default function DesignerCanvas({ visual, teamId, onSaved, onReplaceVisua
         style={{
           flex: 1, minHeight: 0, overflow: 'hidden', position: 'relative',
           display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 16, background: '#EEF1F6',
-          cursor: spaceActive ? (isPanning ? 'grabbing' : 'grab') : 'default',
+          cursor: activeTool === 'draw' ? 'crosshair' : (spaceActive ? (isPanning ? 'grabbing' : 'grab') : 'default'),
         }}
       >
         {loading ? (
@@ -3696,6 +3711,9 @@ export default function DesignerCanvas({ visual, teamId, onSaved, onReplaceVisua
                 {marquee && (marquee.w > 1 || marquee.h > 1) && (
                   <Rect x={marquee.x - off.x} y={marquee.y - off.y} width={marquee.w} height={marquee.h}
                     stroke={PRGB} strokeWidth={1 / effScale} dash={[6 / effScale, 4 / effScale]} fill="rgba(49,90,231,0.10)" listening={false} />
+                )}
+                {drawPreview && drawPreview.length >= 2 && (
+                  <Line points={drawPreview.flatMap(p => [p.x - off.x, p.y - off.y])} stroke={penColor} strokeWidth={penWidth} lineCap="round" lineJoin="round" tension={0.4} listening={false} />
                 )}
               </Layer>
               {/* Transformer auf eigenem, NICHT geclipptem Layer: Rahmen/Anfasser
@@ -4548,6 +4566,8 @@ const RAIL_TOOLS = [
   { id: 'uploads',   label: 'Medien',   Icon: ImageIcon },
   { id: 'div1', divider: true },
   { id: 'brand',     label: 'Marke',    Icon: Palette },
+  { id: 'div2', divider: true },
+  { id: 'draw',      label: 'Zeichnen', Icon: Brush },
 ]
 // Bild bearbeiten (Filter/Anpassen/KI), Ebenen & Ausrichten sind KEINE linken Tools mehr —
 // sie sind ausschließlich kontextuell über die obere Leiste erreichbar (wie Canva).
@@ -4824,7 +4844,7 @@ function TemplateThumb({ tpl }) {
 // ─── Panel-Rahmen (docked sidebar oder Overlay-Popup) ───────────────────────
 function ToolPanel(props) {
   const { docked, tool, onClose } = props
-  const titleMap = { templates: 'Vorlagen', elements: 'Elemente', text: 'Text', uploads: 'Medien', brand: 'Marke', ai: 'KI-Werkzeuge', filter: 'Filter', layers: 'Ebenen', edit: 'Bild bearbeiten' }
+  const titleMap = { templates: 'Vorlagen', elements: 'Elemente', text: 'Text', uploads: 'Medien', brand: 'Marke', ai: 'KI-Werkzeuge', filter: 'Filter', layers: 'Ebenen', edit: 'Bild bearbeiten', draw: 'Zeichnen' }
   const frame = docked
     ? { width: 300, flexShrink: 0, borderRight: '1px solid var(--border)', background: 'var(--surface,#fff)', display: 'flex', flexDirection: 'column', height: '100%', overflow: 'hidden' }
     : { position: 'absolute', left: 8, top: 8, bottom: 8, zIndex: 90, width: 300, maxWidth: 'calc(100% - 16px)', borderRadius: 12,
@@ -4846,6 +4866,7 @@ function ToolPanel(props) {
         {tool === 'filter' && <FilterPanelBody {...props} />}
         {tool === 'edit' && <EditPanelBody {...props} />}
         {tool === 'layers' && <LayersPanelBody {...props} />}
+        {tool === 'draw' && <DrawPanelBody {...props} />}
       </div>
     </div>
   )
@@ -5151,6 +5172,28 @@ function AiPanelBody({
         <PanelBtn full disabled={bgMenuBusy || !bgText.trim()} onClick={() => { if (bgText.trim()) { onBgReplace(bgText.trim()); setBgText('') } }}>Hintergrund ersetzen</PanelBtn>
       </div>
       {aiError && <div style={{ fontSize: 12, color: '#b91c1c', marginTop: 10 }}>{aiError}</div>}
+    </div>
+  )
+}
+
+// ─── Panel: Zeichnen (Freihand) ──────────────────────────────────────────────
+function DrawPanelBody({ penColor, setPenColor, penWidth, setPenWidth, onDoneDraw, brandColors = [] }) {
+  return (
+    <div>
+      <div style={{ fontSize: 12, color: 'var(--text-muted)', marginBottom: 12, lineHeight: 1.5 }}>
+        Zeichne frei auf der Fläche — halte die Maus gedrückt und ziehe. Jeder Strich wird ein eigenes Element, das du danach verschieben, färben oder löschen kannst.
+      </div>
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 14 }}>
+        <span style={{ fontSize: 12.5, fontWeight: 600, color: 'var(--text-primary)' }}>Stiftfarbe</span>
+        <ColorPopover value={penColor} brandColors={brandColors} title="Stiftfarbe" round onChange={(hex) => setPenColor(hex)} size={30} />
+      </div>
+      <div style={{ marginBottom: 16 }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12.5, fontWeight: 600, color: 'var(--text-primary)', marginBottom: 6 }}>
+          <span>Pinselstärke</span><span style={{ color: 'var(--text-muted)' }}>{penWidth} px</span>
+        </div>
+        <input type="range" min={1} max={60} step={1} value={penWidth} onChange={e => setPenWidth(parseInt(e.target.value, 10) || 1)} style={{ width: '100%', accentColor: P }} />
+      </div>
+      <PanelBtn full primary onClick={onDoneDraw}>Fertig</PanelBtn>
     </div>
   )
 }
