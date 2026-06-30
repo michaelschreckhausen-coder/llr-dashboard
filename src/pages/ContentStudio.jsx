@@ -1215,7 +1215,7 @@ export default function ContentStudio({ session }) {
             {/* Ausgeklappt (Split/Vollbild): Switcher oben + Ansicht-Steuerung mittig */}
             {editorOpen && !page && (
               <>
-                <div style={{ position:'absolute', top:44, zIndex:50, ...(suite ? { left:16 } : { right:'52%', transform:'translateX(-100%)' }) }}>
+                <div style={{ position:'absolute', top:44, zIndex:50, ...(suite ? { left:16 } : { right:'52%' }) }}>
                   <Switcher/>
                 </div>
                 <div style={{ position:'absolute', top:'50%', zIndex:50, display:'flex', flexDirection:'column', overflow:'hidden',
