@@ -90,6 +90,17 @@ function BarRow({ label, count, total, color=PRIMARY }) {
 function EmptyBars({ text }) {
   return <div style={{ fontSize:12, color:RC.text3, padding:'8px 0' }}>{text}</div>;
 }
+
+// Handgezeichneter Hinweis-Pfeil + Schreibschrift-Label (gespiegelt aus ContentStudio.jsx)
+const scriptHintStyle = { fontFamily:"'Segoe Script','Bradley Hand','Brush Script MT','Comic Sans MS',cursive", fontStyle:'italic', fontSize:16, fontWeight:600, color:'var(--wl-primary, rgb(49,90,231))', whiteSpace:'nowrap', lineHeight:1 };
+function CurvedArrow() {
+  return (
+    <svg width="34" height="24" viewBox="0 0 34 24" fill="none" style={{ color:'var(--wl-primary, rgb(49,90,231))', flexShrink:0 }} aria-hidden="true">
+      <path d="M3 5 C 14 3, 25 7, 30 14" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" fill="none"/>
+      <path d="M23 14.5 L 31 15 L 27 8" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" fill="none"/>
+    </svg>
+  );
+}
 const headerRowStyle = { display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom: 20 };
 const titleStyle = { fontSize:22, fontWeight:800, margin:0, color:'#111827' };
 const subtitleStyle = { fontSize:13, color:'#6B7280', marginTop:4 };
@@ -764,6 +775,10 @@ export default function Leads() {
 
   const headerAction = (
     <div style={{ display:'flex', alignItems:'center', gap:10, flexWrap:'wrap', justifyContent:'flex-end' }}>
+      <div style={{ display:'inline-flex', alignItems:'center', gap:7, pointerEvents:'none' }} aria-hidden="true">
+        <span style={scriptHintStyle}>Auf und zuklappen</span>
+        <CurvedArrow/>
+      </div>
       <button type="button" onClick={toggleDash}
         title={showDash ? 'Dashboard ausblenden' : 'Dashboard einblenden'}
         style={{ ...ghostBtnStyle, height:34 }}>

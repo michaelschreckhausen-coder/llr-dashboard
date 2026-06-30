@@ -65,6 +65,17 @@ function EmptyBars({ text }) {
   return <div style={{ fontSize:12, color:RC.text3, padding:'8px 0' }}>{text}</div>
 }
 
+// Handgezeichneter Hinweis-Pfeil + Schreibschrift-Label (gespiegelt aus ContentStudio.jsx)
+const scriptHintStyle = { fontFamily:"'Segoe Script','Bradley Hand','Brush Script MT','Comic Sans MS',cursive", fontStyle:'italic', fontSize:16, fontWeight:600, color:'var(--wl-primary, rgb(49,90,231))', whiteSpace:'nowrap', lineHeight:1 }
+function CurvedArrow() {
+  return (
+    <svg width="34" height="24" viewBox="0 0 34 24" fill="none" style={{ color:'var(--wl-primary, rgb(49,90,231))', flexShrink:0 }} aria-hidden="true">
+      <path d="M3 5 C 14 3, 25 7, 30 14" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" fill="none"/>
+      <path d="M23 14.5 L 31 15 L 27 8" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" fill="none"/>
+    </svg>
+  )
+}
+
 // ── Modal "Neue / Bearbeiten" ──────────────────────────────────────────────────
 function OrganizationModal({ org, industries, teamId, uid, onSave, onClose }) {
   const [form, setForm] = useState({
@@ -480,6 +491,10 @@ export default function Organizations({ session }) {
 
   const headerAction = (
     <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap', justifyContent: 'flex-end' }}>
+      <div style={{ display:'inline-flex', alignItems:'center', gap:7, pointerEvents:'none' }} aria-hidden="true">
+        <span style={scriptHintStyle}>Auf und zuklappen</span>
+        <CurvedArrow/>
+      </div>
       <button onClick={toggleDash} title={showDash ? 'Dashboard ausblenden' : 'Dashboard einblenden'}
         style={{ padding: '9px 14px', borderRadius: 10, border: '1.5px solid #E2E8F0', background: 'var(--surface-muted)', color: '#475569', fontSize: 13, fontWeight: 600, cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: 6, whiteSpace: 'nowrap' }}>
         {showDash ? <ChevronUp size={15}/> : <ChevronDown size={15}/>}Dashboard
