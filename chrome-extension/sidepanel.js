@@ -76,9 +76,9 @@ const MSG_TYPES = {
 
 // Brand-Voice + Audiences-State (lazy-loaded beim ersten Messages-Page-Open)
 let activeBrandVoice = null
+let brandVoices = []
 let audiences = []
 let selectedAudienceId = ''
-let bvLoadAttempted = false
 
 // ── Helpers ───────────────────────────────────────────────────────
 const getAuth = () => new Promise(r => chrome.storage.local.get(['supabaseSession','userId','env'], r)).then(data => {
@@ -551,6 +551,8 @@ async function loadTeams(userId) {
     }
 
     wrap.style.display = 'flex'
+    // Brand Voices des (jetzt bekannten) aktiven Teams laden
+    loadBrandVoiceAndAudiences()
   } catch (e) {
     console.warn('[Leadesk] loadTeams failed:', e)
   }
@@ -1270,6 +1272,8 @@ function refreshAfterTeamSwitch() {
   if (leadsPage && typeof loadLeads === 'function') {
     loadLeads()
   }
+  // Brand Voices sind team-scoped → bei Teamwechsel komplett neu laden
+  loadBrandVoiceAndAudiences()
 }
 
 // ── Profil laden ──────────────────────────────────────────────────
@@ -1545,6 +1549,13 @@ $('audienceSelect')?.addEventListener('change', e => {
   selectedAudienceId = e.target.value || ''
 })
 
+// Brand-Voice-Select-Handler: bei Wechsel aktive BV + zugehörige Zielgruppen neu laden
+$('bvSelect')?.addEventListener('change', e => {
+  const id = e.target.value
+  activeBrandVoice = brandVoices.find(b => b.id === id) || null
+  loadAudiencesForActiveBv()
+})
+
 // ── Brand-Voice + Audiences laden (lazy, beim ersten Messages-Page-Open) ─
 //
 // Lookup-Hierarchie analog BrandVoiceContext.jsx:
@@ -1553,78 +1564,75 @@ $('audienceSelect')?.addEventListener('change', e => {
 //
 // Audiences: target_audience_brand_voices JOIN target_audiences WHERE brand_voice_id = $bv.id
 async function loadBrandVoiceAndAudiences() {
-  if (bvLoadAttempted) return
-  bvLoadAttempted = true
-
   try {
     const { supabaseSession, userId } = await getAuth()
     const token = supabaseSession?.access_token
-    if (!token || !userId) {
-      updateBvBanner(null)
-      return
-    }
+    if (!token || !userId) { brandVoices = []; activeBrandVoice = null; renderBvSelect(); return }
 
     const headers = { 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + token }
 
-    // 1. user_preferences.active_brand_voice_id holen
+    // 1. ALLE Brand Voices des aktiven Teams laden
+    let list = []
+    if (currentTeamId) {
+      const r = await fetch(`${SUPABASE_URL}/rest/v1/brand_voices?team_id=eq.${currentTeamId}&select=id,name,is_active&order=created_at.desc`, { headers })
+      if (r.ok) list = await r.json()
+    }
+    // Fallback: eigene Brand Voices, falls im Team (noch) keine hinterlegt sind
+    if (!Array.isArray(list) || !list.length) {
+      const r2 = await fetch(`${SUPABASE_URL}/rest/v1/brand_voices?user_id=eq.${userId}&select=id,name,is_active&order=created_at.desc`, { headers })
+      if (r2.ok) list = await r2.json()
+    }
+    brandVoices = Array.isArray(list) ? list : []
+
+    // 2. Default-Auswahl: bevorzugte BV aus user_preferences, sonst erste der Liste
     let activeBvId = null
     try {
-      const prefRes = await fetch(
-        `${SUPABASE_URL}/rest/v1/user_preferences?user_id=eq.${userId}&select=active_brand_voice_id`,
-        { headers }
-      )
-      if (prefRes.ok) {
-        const prefData = await prefRes.json()
-        activeBvId = prefData?.[0]?.active_brand_voice_id || null
-      }
+      const prefRes = await fetch(`${SUPABASE_URL}/rest/v1/user_preferences?user_id=eq.${userId}&select=active_brand_voice_id`, { headers })
+      if (prefRes.ok) { const pd = await prefRes.json(); activeBvId = pd?.[0]?.active_brand_voice_id || null }
     } catch (_) {}
+    activeBrandVoice = brandVoices.find(b => b.id === activeBvId) || brandVoices[0] || null
 
-    // 2. Brand-Voice fetchen: explizite ID wenn vorhanden, sonst is_active=true Fallback
-    let bv = null
-    if (activeBvId) {
-      const bvRes = await fetch(
-        `${SUPABASE_URL}/rest/v1/brand_voices?id=eq.${activeBvId}&select=id,name,is_active`,
-        { headers }
-      )
-      if (bvRes.ok) {
-        const bvData = await bvRes.json()
-        bv = bvData?.[0] || null
-      }
-    }
-    if (!bv) {
-      // Fallback: erste eigene aktive BV
-      const fallbackRes = await fetch(
-        `${SUPABASE_URL}/rest/v1/brand_voices?user_id=eq.${userId}&is_active=eq.true&select=id,name&limit=1`,
-        { headers }
-      )
-      if (fallbackRes.ok) {
-        const fallbackData = await fallbackRes.json()
-        bv = fallbackData?.[0] || null
-      }
-    }
-
-    activeBrandVoice = bv
-    updateBvBanner(bv)
-
-    // 3. Audiences laden wenn BV vorhanden
-    if (bv) {
-      const audRes = await fetch(
-        `${SUPABASE_URL}/rest/v1/target_audience_brand_voices?brand_voice_id=eq.${bv.id}&select=target_audiences(id,name,description,is_default)`,
-        { headers }
-      )
-      if (audRes.ok) {
-        const audData = await audRes.json()
-        const list = (audData || []).map(r => r.target_audiences).filter(Boolean)
-        list.sort((a, b) => (b.is_default ? 1 : 0) - (a.is_default ? 1 : 0))
-        audiences = list
-        const def = list.find(a => a.is_default)
-        if (def) selectedAudienceId = def.id
-        renderAudienceSelect()
-      }
-    }
+    renderBvSelect()
+    await loadAudiencesForActiveBv(headers)
   } catch (e) {
     console.warn('[Leadesk BV/TA] load failed:', e.message)
   }
+}
+
+// Rendert das Brand-Voice-Dropdown mit allen Team-Brand-Voices.
+function renderBvSelect() {
+  const wrap = $('bvSelectWrap'); const sel = $('bvSelect')
+  if (!wrap || !sel) return
+  wrap.style.display = 'block'
+  if (!brandVoices.length) {
+    sel.innerHTML = '<option value="">— Keine Brand Voice im Team —</option>'
+    return
+  }
+  sel.innerHTML = brandVoices.map(b =>
+    `<option value="${b.id}"${activeBrandVoice && b.id === activeBrandVoice.id ? ' selected' : ''}>${escapeAudienceLabel(b.name || 'Brand Voice')}${b.is_active === false ? ' (inaktiv)' : ''}</option>`
+  ).join('')
+}
+
+// Lädt die Zielgruppen der aktuell gewählten Brand Voice.
+async function loadAudiencesForActiveBv(headers) {
+  audiences = []; selectedAudienceId = ''
+  if (!activeBrandVoice) { renderAudienceSelect(); return }
+  try {
+    if (!headers) {
+      const { supabaseSession } = await getAuth()
+      headers = { 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + (supabaseSession?.access_token || '') }
+    }
+    const r = await fetch(`${SUPABASE_URL}/rest/v1/target_audience_brand_voices?brand_voice_id=eq.${activeBrandVoice.id}&select=target_audiences(id,name,description,is_default)`, { headers })
+    if (r.ok) {
+      const d = await r.json()
+      const l = (d || []).map(x => x.target_audiences).filter(Boolean)
+      l.sort((a, b) => (b.is_default ? 1 : 0) - (a.is_default ? 1 : 0))
+      audiences = l
+      const def = l.find(a => a.is_default)
+      if (def) selectedAudienceId = def.id
+    }
+  } catch (_) {}
+  renderAudienceSelect()
 }
 
 function updateBvBanner(bv) {
