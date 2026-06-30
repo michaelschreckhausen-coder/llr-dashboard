@@ -25,7 +25,9 @@ const STATUS_LABEL = { pending: 'In Arbeit', done: 'Fertig', failed: 'Fehlgeschl
 const STATUS_COLOR = { pending: '#D97706', done: '#059669', failed: '#DC2626' }
 
 const EMPTY_TPL = { name: '', placement: '' }
-const EMPTY_MOCK = { stadium_template_id: '', sponsor_profile_id: '' }
+const EMPTY_MOCK = { stadium_template_id: '', sponsor_profile_id: '', prompt: '' }
+// M2: Werbeflächen-Typen (statt nur Stadion) — Wert bleibt Text in placement.
+const SURFACE_TYPES = ['LED-Bande', 'Trikot', 'Stadion-Bande', 'Hospitality-Bereich', 'Digital / Screen', 'Sonstige']
 
 export default function MockupStudio() {
   const { activeTeamId } = useTeam()
@@ -128,6 +130,7 @@ export default function MockupStudio() {
         stadium_template_id: mockForm.stadium_template_id,
         sponsor_profile_id: mockForm.sponsor_profile_id || null,
         logo_path: path,
+        prompt: mockForm.prompt?.trim() || null,
         status: 'pending',
       }).select('id').single()
       if (insErr || !inserted) { setError(insErr?.message || 'Mockup konnte nicht angelegt werden.'); setMockBusy(false); return }
@@ -163,7 +166,7 @@ export default function MockupStudio() {
 
   return (
     <div style={{ width: '100%', maxWidth: 1100, margin: '0 auto', padding: '24px 16px 40px' }}>
-      <PageHeader overline="Sponsoring" title="Mockup-Studio" subtitle="Lade Stadion-Vorlagen hoch und generiere per KI realistische Sponsor-Mockups (Logo auf LED-Bande, Trikot, Hospitality …)." action={
+      <PageHeader overline="Sponsoring" title="Mockup-Studio" subtitle="Lade Werbeflächen hoch (Stadion, Trikot, LED-Bande, Hospitality …) und generiere per KI realistische Sponsor-Mockups." action={
         <button onClick={fetchAll} title="Aktualisieren" style={iconBtn}>
           <RefreshCw size={16} />
         </button>
@@ -173,19 +176,21 @@ export default function MockupStudio() {
         <div style={errBox}>{error}</div>
       )}
 
-      {/* ─── Block 1: Stadion-Vorlagen ─────────────────────────────────────── */}
-      <h2 style={sectionTitle}>Stadion-Vorlagen</h2>
+      {/* ─── Block 1: Werbeflächen ─────────────────────────────────────── */}
+      <h2 style={sectionTitle}>Werbeflächen</h2>
 
       <form onSubmit={createTemplate} style={formCard}>
         <Field label="Name">
           <input value={tplForm.name} onChange={(e) => setTplForm({ ...tplForm, name: e.target.value })}
-                 placeholder="z.B. Heimstadion Nordtribüne" style={input} />
+                 placeholder="z.B. Heimstadion Nordtribüne, Heimtrikot 2027 …" style={input} />
         </Field>
-        <Field label="Platzierung">
-          <input value={tplForm.placement} onChange={(e) => setTplForm({ ...tplForm, placement: e.target.value })}
-                 placeholder="z.B. LED-Bande" style={input} />
+        <Field label="Art der Fläche">
+          <select value={tplForm.placement} onChange={(e) => setTplForm({ ...tplForm, placement: e.target.value })} style={input}>
+            <option value="">— wählen —</option>
+            {SURFACE_TYPES.map((s) => <option key={s} value={s}>{s}</option>)}
+          </select>
         </Field>
-        <Field label="Bild">
+        <Field label="Bild der Fläche">
           <label style={fileBtn}>
             <Upload size={14} /> {tplFile ? tplFile.name : 'Datei wählen'}
             <input type="file" accept="image/*" onChange={(e) => setTplFile(e.target.files?.[0] || null)}
@@ -194,14 +199,14 @@ export default function MockupStudio() {
         </Field>
         <button type="submit" disabled={tplBusy || !tplForm.name.trim() || !tplFile}
                 style={{ ...primaryBtn, opacity: tplBusy || !tplForm.name.trim() || !tplFile ? 0.6 : 1 }}>
-          {tplBusy ? <Loader2 size={14} className="spin" /> : <Plus size={14} />} Vorlage anlegen
+          {tplBusy ? <Loader2 size={14} className="spin" /> : <Plus size={14} />} Werbefläche anlegen
         </button>
       </form>
 
       {loading ? (
         <div style={muted}><Loader2 size={16} className="spin" /> Lade…</div>
       ) : templates.length === 0 ? (
-        <div style={muted}>Noch keine Stadion-Vorlagen.</div>
+        <div style={muted}>Noch keine Werbeflächen.</div>
       ) : (
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(220px, 1fr))', gap: 14, marginBottom: 28 }}>
           {templates.map((t) => (
@@ -230,7 +235,7 @@ export default function MockupStudio() {
       <h2 style={sectionTitle}>Mockup erstellen</h2>
 
       <form onSubmit={createMockup} style={formCard}>
-        <Field label="Stadion-Vorlage">
+        <Field label="Werbefläche">
           <select value={mockForm.stadium_template_id}
                   onChange={(e) => setMockForm({ ...mockForm, stadium_template_id: e.target.value })} style={input}>
             <option value="">— wählen —</option>
@@ -251,6 +256,12 @@ export default function MockupStudio() {
                    style={{ display: 'none' }} />
           </label>
         </Field>
+        <div style={{ gridColumn: '1 / -1' }}>
+          <Field label="Bild konkretisieren (optional)">
+            <input value={mockForm.prompt} onChange={(e) => setMockForm({ ...mockForm, prompt: e.target.value })}
+                   placeholder='z.B. "Fußballspieler neben dem Logo, Hintergrundfarbe rot des LED-Spots"' style={input} />
+          </Field>
+        </div>
         <button type="submit" disabled={mockBusy || !mockForm.stadium_template_id || !logoFile}
                 style={{ ...primaryBtn, opacity: mockBusy || !mockForm.stadium_template_id || !logoFile ? 0.6 : 1 }}>
           {mockBusy ? <Loader2 size={14} className="spin" /> : <Wand2 size={14} />}

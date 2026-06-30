@@ -41,7 +41,7 @@ function json(data: unknown, status = 200) {
 // Rueckgabe: die fertigen Bild-Bytes (PNG).
 async function callImageEdit(p: {
   authHeader: string; teamId: string; mockupId: string;
-  stadiumPath: string; logoPath: string; placement: string;
+  stadiumPath: string; logoPath: string; placement: string; extraPrompt?: string;
 }): Promise<Uint8Array> {
   const dl = async (bucket: string, path: string): Promise<Uint8Array> => {
     const { data, error } = await supabaseAdmin.storage.from(bucket).download(path);
@@ -65,7 +65,8 @@ async function callImageEdit(p: {
     body: JSON.stringify({
       prompt: `Platziere das Sponsorenlogo (zweites Referenzbild) fotorealistisch auf der Flaeche "${p.placement}" `
         + `des ersten Referenzbildes (Stadion/Bande). Perspektive, Beleuchtung und Verzerrung der Flaeche exakt `
-        + `beibehalten, den Rest des Bildes unveraendert lassen.`,
+        + `beibehalten, den Rest des Bildes unveraendert lassen.`
+        + (p.extraPrompt && p.extraPrompt.trim() ? ` Zusaetzliche Vorgaben des Nutzers (umsetzen, soweit mit dem Bild vereinbar): ${p.extraPrompt.trim()}` : ``),
       referenceImagePaths: [srcStadium, srcLogo],
       aspectRatio: "16:9",
       variants: 1,
@@ -114,6 +115,7 @@ serve(async (req) => {
       authHeader, teamId: m.team_id, mockupId: mockup_id,
       stadiumPath: tpl.storage_path, logoPath: m.logo_path,
       placement: tpl.placement || "LED-Bande",
+      extraPrompt: m.prompt || "",
     });
 
     // Ergebnis ablegen (Pfad-Konvention: <team_id>/<mockup_id>.png -> RLS greift)
