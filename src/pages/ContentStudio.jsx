@@ -181,6 +181,17 @@ export default function ContentStudio({ session }) {
     return () => { main.style.removeProperty('padding-right') }
   }, [])
 
+  // (Splitscreen-Steuerung: feste Zustände via Pfeil-Buttons, siehe unten)
+  const [useEditorContext, setUseEditorContext] = useState(false)
+  const [chatDocs, setChatDocs] = useState([])
+  const [demoRailDocs, setDemoRailDocs] = useState(null) // Tour-Demo: rechte Dokument-Leiste mit Beispiel-Dokumenten
+
+  // ─── Content-Werkstatt v2: Bilder / Designer ──────────────────────────────
+  const visualParam = searchParams.get('visual')
+  const [splitMode, setSplitMode] = useState(visualParam ? 'design' : 'doc')   // 'doc' | 'design'
+  // paneView leitet die 3 Fullscreen-Zustände ab (Chat | Split | Suite)
+  const [paneView, setPaneView] = useState('split')                            // 'chat' | 'split' | 'suite'
+  const [panePct, setPanePct] = useState(52)   // Split-Breite der Pane in % (ziehbar)
   // Echte linke Kante der Pane messen, damit Switcher + Steuerung exakt anliegen
   // (in jedem Zustand: Split UND Vollbild — der schmale Chat-Streifen verschiebt sie).
   const paneSecRef = useRef(null)
@@ -197,18 +208,6 @@ export default function ContentStudio({ session }) {
     window.addEventListener('resize', update)
     return () => { cancelAnimationFrame(raf); ro.disconnect(); window.removeEventListener('resize', update) }
   }, [editorOpen, paneView])
-
-  // (Splitscreen-Steuerung: feste Zustände via Pfeil-Buttons, siehe unten)
-  const [useEditorContext, setUseEditorContext] = useState(false)
-  const [chatDocs, setChatDocs] = useState([])
-  const [demoRailDocs, setDemoRailDocs] = useState(null) // Tour-Demo: rechte Dokument-Leiste mit Beispiel-Dokumenten
-
-  // ─── Content-Werkstatt v2: Bilder / Designer ──────────────────────────────
-  const visualParam = searchParams.get('visual')
-  const [splitMode, setSplitMode] = useState(visualParam ? 'design' : 'doc')   // 'doc' | 'design'
-  // paneView leitet die 3 Fullscreen-Zustände ab (Chat | Split | Suite)
-  const [paneView, setPaneView] = useState('split')                            // 'chat' | 'split' | 'suite'
-  const [panePct, setPanePct] = useState(52)   // Split-Breite der Pane in % (ziehbar)
   const rightOpen = editorOpen                                                  // Kompat: rechtes Panel offen?
   // Visual-Composer (In-Chat-Bildgenerierung)
   const [visualMode, setVisualMode] = useState(false)
