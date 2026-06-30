@@ -274,6 +274,7 @@ export default function DealDetail({ session }) {
       {/* Seitenkopf (Standard-Layout: h1-Titel, Aktionen rechts) */}
       <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 16, margin: '16px 0 20px' }}>
         <div style={{ minWidth: 0 }}>
+          <div style={{ fontSize: 18, color: '#30A0D0', fontFamily: '"Caveat", cursive', fontWeight: 600, marginBottom: 2 }}>CRM · Deal</div>
           <h1 style={{ fontSize: 26, fontWeight: 700, margin: 0, letterSpacing: '-0.3px', lineHeight: 1.2, color: '#111827' }}>{deal.title || deal.name || '—'}</h1>
           <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginTop: 10 }}>
             <span style={{ fontSize: 11, fontWeight: 700, padding: '3px 10px', borderRadius: 99, background: s.bg, color: s.color }}>{s.label}</span>
