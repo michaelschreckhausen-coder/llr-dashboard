@@ -1253,10 +1253,10 @@ export default function ContentStudio({ session }) {
           <>
             {/* SEITEN-VOLLBILD aktiv: schwebender Switcher + Verlassen-Button */}
             {page && (
-              <div style={{ position:'fixed', left:16, top:'58%', transform:'translateY(-50%)', zIndex:1001, display:'flex', flexDirection:'column', alignItems:'flex-start', gap:8 }}>
-                <Switcher rounded/>
+              <div style={{ position:'fixed', bottom:20, left:'50%', transform:'translateX(-50%)', zIndex:1001, display:'flex', flexDirection:'row', alignItems:'center', gap:8 }}>
+                <Switcher rounded horizontal/>
                 <button onClick={() => setPaneView('split')} title="Seiten-Vollbild verlassen"
-                  style={{ width:46, height:42, display:'inline-flex', alignItems:'center', justifyContent:'center',
+                  style={{ width:46, height:46, display:'inline-flex', alignItems:'center', justifyContent:'center',
                     borderRadius:10, border:'1px solid var(--border,#E9ECF2)', background:'var(--surface,#fff)', cursor:'pointer', color:'var(--text-secondary,#475569)', boxShadow:'0 2px 10px rgba(16,24,40,0.12)' }}>
                   <Minimize2 size={18} strokeWidth={2}/>
                 </button>
