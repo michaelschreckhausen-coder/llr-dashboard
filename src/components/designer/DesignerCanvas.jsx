@@ -4111,7 +4111,7 @@ function ContextBar({
 
       {/* ── FORMEN: Füllung (Swatch) + Stil-Menü ── */}
       {!isText && hasFill && (
-        <ColorPopover value={o.fill} brandColors={brandColors} title="Füllfarbe" round onStart={startEdit} onChange={(hex) => liveEdit({ fill: hex })} onEnd={endInteraction} size={30} />
+        <ColorPopover value={o.fill} brandColors={brandColors} title="Füllfarbe" round allowNone onStart={startEdit} onChange={(hex) => liveEdit({ fill: hex })} onEnd={endInteraction} size={30} />
       )}
       {!isText && (hasStroke || isRect || hasFill) && (hasStroke || isRect) && (
         <BarMenu title="Stil" width={210} trigger={<Sliders size={15} strokeWidth={2} />}>
@@ -4309,7 +4309,7 @@ function ColorSwatch({ c, current, onPick }) {
         boxShadow: on ? '0 0 0 2px var(--surface,#fff), 0 0 0 4px ' + P : 'none', outline: 'none' }} />
   )
 }
-function ColorPopover({ value, onChange, onStart, onEnd, brandColors = [], title = 'Farbe', size = 30, triggerContent = null, triggerStyle = null, round = false }) {
+function ColorPopover({ value, onChange, onStart, onEnd, brandColors = [], title = 'Farbe', size = 30, triggerContent = null, triggerStyle = null, round = false, allowNone = false }) {
   const [open, setOpen] = React.useState(false)
   const [openUp, setOpenUp] = React.useState(true)
   const ref = React.useRef(null)
@@ -4336,7 +4336,10 @@ function ColorPopover({ value, onChange, onStart, onEnd, brandColors = [], title
         </button>
       ) : (
         <button ref={btnRef} type="button" title={title} onClick={toggle}
-          style={{ width: size, height: size, borderRadius: round ? '50%' : 8, border: '1px solid var(--border,#E9ECF2)', background: cur, cursor: 'pointer', padding: 0, boxShadow: 'inset 0 0 0 2px var(--surface,#fff)' }} />
+          style={{ width: size, height: size, borderRadius: round ? '50%' : 8, border: '1px solid var(--border,#E9ECF2)', cursor: 'pointer', padding: 0, boxShadow: 'inset 0 0 0 2px var(--surface,#fff)',
+            background: (allowNone && (value === 'transparent' || !value))
+              ? 'linear-gradient(135deg, #fff 43%, #EF4444 44%, #EF4444 56%, #fff 57%)'
+              : cur }} />
       )}
       {open && (
         <div style={{ position: 'absolute', zIndex: 130, ...(openUp ? { bottom: 'calc(100% + 8px)' } : { top: 'calc(100% + 8px)' }), left: 0, width: 214, background: 'var(--surface,#fff)', border: '1px solid var(--border,#E9ECF2)', borderRadius: 12, boxShadow: '0 16px 44px rgba(16,24,40,0.20)', padding: 12 }}>
@@ -4348,6 +4351,15 @@ function ColorPopover({ value, onChange, onStart, onEnd, brandColors = [], title
           )}
           <div style={{ ...swLabel, marginTop: brandColors.length ? 10 : 0 }}>Standardfarben</div>
           <div style={swGrid}>{STD_SWATCHES.map((c, i) => <ColorSwatch key={i} c={c} current={cur} onPick={pick} />)}</div>
+          {allowNone && (
+            <button type="button" onClick={() => pick('transparent')}
+              style={{ display: 'flex', alignItems: 'center', gap: 8, width: '100%', marginTop: 9, padding: '7px 8px', borderRadius: 8, cursor: 'pointer', fontFamily: 'inherit', fontSize: 12.5, fontWeight: 600,
+                border: '1px solid ' + ((value === 'transparent' || !value) ? P : 'var(--border,#E9ECF2)'),
+                background: (value === 'transparent' || !value) ? 'rgba(49,90,231,0.06)' : 'var(--surface,#fff)', color: 'var(--text-primary)' }}>
+              <span style={{ width: 18, height: 18, borderRadius: 5, flexShrink: 0, border: '1px solid var(--border,#E9ECF2)', background: 'linear-gradient(135deg, #fff 43%, #EF4444 44%, #EF4444 56%, #fff 57%)' }} />
+              Keine Füllung
+            </button>
+          )}
           <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 10, paddingTop: 10, borderTop: '1px solid var(--border,#E9ECF2)' }}>
             <label style={{ position: 'relative', width: 30, height: 30, borderRadius: 7, overflow: 'hidden', border: '1px solid var(--border,#E9ECF2)', cursor: 'pointer', flexShrink: 0 }} title="Eigene Farbe">
               <input type="color" value={cur} onChange={e => { onStart && onStart(); onChange(e.target.value) }} onBlur={() => onEnd && onEnd()}
