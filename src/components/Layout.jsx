@@ -113,9 +113,9 @@ function getNav(t) {
   { to: '/organizations',   icon: IcUsers2,   label: 'Unternehmen' },
   { to: '/leads',           icon: IcUsers,    label: 'Kontakte' },
   { to: '/deals',           icon: IcBarChart, label: t('nav.deals') },
-  // Kampagne = zentrale CRM-Klammer (Partner-Feedback 2026-06-27): Kontakte/Unternehmen/
-  // Deals laufen über Kampagnen. Per-Item-Gating ans Sponsoring-Addon gebunden.
-  { to: '/sponsoring/kampagnen', icon: IcRocket, label: 'Kampagnen', module: 'sponsoring' },
+  // Aus Sponsoring in CRM verschoben; Per-Item-Gating ans Sponsoring-Addon gebunden.
+  { to: '/sponsoring/angebote',  icon: IcDoc,    label: 'Angebote',  module: 'sponsoring' },
+  { to: '/sponsoring/vertraege', icon: IcShield, label: 'Verträge',  module: 'sponsoring' },
   { to: '/reports',         icon: IcBarChart, label: t('nav.salesReporting') },
 
   // Projektumsetzung temporär ausgeblendet (2026-06-01 — kommt später zurück)
@@ -153,8 +153,7 @@ function getNav(t) {
   // SIDEBAR_DIVIDER_TO_MODULE die Section ohne sponsoring-Modul ausblendet.
   { divider: true, label: 'Sponsoring', tourId: 'nav-sponsoring' },
   { to: '/sponsoring',                 icon: IcRocket,        label: 'Übersicht' },
-  { to: '/sponsoring/angebote',        icon: IcDoc,           label: 'Angebote' },
-  { to: '/sponsoring/vertraege',       icon: IcShield,        label: 'Verträge' },
+  { to: '/sponsoring/kampagnen',       icon: IcRocket,        label: 'Kampagnen' },
   { to: '/sponsoring/branchenanalyse', icon: IcTarget,        label: 'Branchenanalyse' },
   { to: '/sponsoring/mockup',          icon: IcSparkles,      label: 'Mockup-Studio' },
   { to: '/sponsoring/aktivierung',     icon: IcZap,           label: 'Aktivierung' },
@@ -575,7 +574,9 @@ export default function Layout({ session, role, onLogout, children }) {
       const {data} = await supabase.from('leads').select('id,first_name,last_name,next_followup').eq('team_id',tid).lte('next_followup',today).not('next_followup','is',null).order('next_followup',{ascending:true}).limit(5)
       data?.forEach(l => {
         const name = l.first_name ? `${l.first_name} ${l.last_name||''}`.trim() : 'Lead'
-        const diff = Math.round((new Date()-new Date(l.next_followup))/86400000)
+        const fd = new Date(l.next_followup)
+        if (isNaN(fd.getTime())) return // kaputtes/leeres Datum überspringen
+        const diff = Math.round((new Date()-fd)/86400000)
         const label = diff<=0?'Heute':diff===1?'Gestern':`vor ${diff} Tagen`
         notifs.push({id:'f'+l.id, type:'followup', icon:'📅', title:`Follow-up ${label}: ${name}`, time:l.next_followup+'T09:00:00'})
       })
@@ -1027,7 +1028,7 @@ export default function Layout({ session, role, onLogout, children }) {
                       <div style={{ fontSize:20, flexShrink:0, lineHeight:1.3 }}>{n.icon}</div>
                       <div style={{ flex:1, minWidth:0 }}>
                         <div style={{ fontSize:13, fontWeight:600, color:'var(--text-primary)', whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis' }}>{n.title}</div>
-                        <div style={{ fontSize:11, color:'var(--text-soft)', marginTop:2 }}>{new Date(n.time).toLocaleDateString('de-DE',{day:'2-digit',month:'short',hour:'2-digit',minute:'2-digit'})}</div>
+                        <div style={{ fontSize:11, color:'var(--text-soft)', marginTop:2 }}>{(() => { const d=new Date(n.time); return isNaN(d.getTime()) ? '' : d.toLocaleDateString('de-DE',{day:'2-digit',month:'short',hour:'2-digit',minute:'2-digit'}) })()}</div>
                       </div>
                     </div>
                   ))}
