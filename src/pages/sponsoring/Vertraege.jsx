@@ -3,7 +3,7 @@
 // mit Laufzeit/Status. Schema 'sponsoring', team_id aus useTeam().
 
 import { useEffect, useMemo, useState, useCallback } from 'react'
-import { ScrollText, Loader2, ArrowRight, X, Pencil, FileDown } from 'lucide-react'
+import { ScrollText, Loader2, ArrowRight, X, Pencil, FileDown, Trash2 } from 'lucide-react'
 import { supabase } from '../../lib/supabase'
 import { useTeam } from '../../context/TeamContext'
 import PageHeader from '../../components/PageHeader'
@@ -24,6 +24,7 @@ const OPEN_OFFER = ['draft', 'sent', 'negotiation']
 const EMPTY_EDIT = {
   invoice_date: '', auto_renew: false, auto_renew_date: '',
   league_id: '', value_cash: 0, value_barter: 0, industry: '', notes: '',
+  payment_plan: [],   // V2: [{ date, amount }] — Zahlungsziele aufgesplittet
 }
 
 // CASH/BARTER-REGEL: total_price ist IMMER die abgeleitete Summe.
@@ -124,6 +125,7 @@ export default function Vertraege() {
       value_barter: c.value_barter != null ? c.value_barter : 0,
       industry: c.industry || '',
       notes: c.notes || '',
+      payment_plan: Array.isArray(c.payment_plan) ? c.payment_plan : [],
     })
   }
 
@@ -144,6 +146,9 @@ export default function Vertraege() {
       total_price: sumCashBarter(cash, barter),
       industry: ef.industry || null,
       notes: ef.notes || null,
+      payment_plan: (Array.isArray(ef.payment_plan) && ef.payment_plan.length)
+        ? ef.payment_plan.filter(p => p && (p.date || p.amount)).map(p => ({ date: p.date || null, amount: Number(p.amount) || 0 }))
+        : null,
       updated_at: new Date().toISOString(),
     }
     // CHECK/per-Row Update über .eq('id', id) (kein .in()-Bundle — Top-Fallstrick #1).
@@ -305,6 +310,42 @@ export default function Vertraege() {
             <Field label="Rechnungsdatum">
               <input type="date" value={ef.invoice_date} onChange={(e) => setEf({ ...ef, invoice_date: e.target.value })} style={input} />
             </Field>
+
+            {/* V2: Zahlungsziele aufsplitten (mehrere Termine mit Betrag) */}
+            <div style={{ marginTop: 12 }}>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 6 }}>
+                <span style={{ fontSize: 12, fontWeight: 600, color: 'var(--text-muted)' }}>Zahlungsziele (optional)</span>
+                <button type="button" onClick={() => setEf({ ...ef, payment_plan: [...(ef.payment_plan || []), { date: '', amount: '' }] })}
+                  style={{ fontSize: 12, fontWeight: 700, color: PRIMARY, background: 'none', border: 'none', cursor: 'pointer', padding: 0 }}>+ Zahlungsziel</button>
+              </div>
+              {(ef.payment_plan || []).length === 0 ? (
+                <div style={{ fontSize: 12, color: 'var(--text-muted)' }}>Keine Aufteilung — Rechnung zum Rechnungsdatum.</div>
+              ) : (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                  {(ef.payment_plan || []).map((p, i) => (
+                    <div key={i} style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+                      <input type="date" value={p.date || ''} style={{ ...input, flex: 1 }}
+                        onChange={(e) => setEf({ ...ef, payment_plan: ef.payment_plan.map((x, j) => j === i ? { ...x, date: e.target.value } : x) })} />
+                      <input type="number" min="0" step="0.01" placeholder="Betrag €" value={p.amount ?? ''} style={{ ...input, width: 120 }}
+                        onChange={(e) => setEf({ ...ef, payment_plan: ef.payment_plan.map((x, j) => j === i ? { ...x, amount: e.target.value } : x) })} />
+                      <button type="button" title="Entfernen" onClick={() => setEf({ ...ef, payment_plan: ef.payment_plan.filter((_, j) => j !== i) })}
+                        style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#DC2626', padding: 4 }}><Trash2 size={14} /></button>
+                    </div>
+                  ))}
+                  {(() => {
+                    const termSum = (ef.payment_plan || []).reduce((s, p) => s + (Number(p.amount) || 0), 0)
+                    const total = sumCashBarter(ef.value_cash, ef.value_barter)
+                    const diff = Math.round((total - termSum) * 100) / 100
+                    return (
+                      <div style={{ fontSize: 11, color: Math.abs(diff) < 0.01 ? '#059669' : '#B45309', marginTop: 2 }}>
+                        Summe Zahlungsziele: {fmt(termSum)} · Gesamtsumme: {fmt(total)}
+                        {Math.abs(diff) >= 0.01 && ` · Differenz: ${fmt(diff)}`}
+                      </div>
+                    )
+                  })()}
+                </div>
+              )}
+            </div>
 
             <label style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 10, fontSize: 13, color: 'var(--text-strong)' }}>
               <input type="checkbox" checked={ef.auto_renew} onChange={(e) => setEf({ ...ef, auto_renew: e.target.checked })} />
