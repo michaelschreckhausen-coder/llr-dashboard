@@ -39,15 +39,14 @@ import { useResponsive } from '../hooks/useResponsive';
 import { supabase } from '../lib/supabase';
 
 const TABS = [
-  { id: 'activity', label: 'Aktivitäten', countKey: 'activity_count' },
-  { id: 'messages', label: 'Nachrichten', countKey: 'message_count' },
+  { id: 'activity', label: 'Aktivitäten & Nachrichten', countKey: 'activity_count' },
   { id: 'notes', label: 'Notizen', countKey: 'note_count' },
   { id: 'tasks', label: 'Aufgaben', countKey: 'task_count' },
   { id: 'deals', label: 'Deals', countKey: 'deal_count' },
 ];
 
 // ─── Styles ───────────────────────────────────────────────────────────────
-const pageStyle = { display:'flex', flexDirection:'column', minHeight:'100vh', background: COLORS.surfaceCanvas, width:'100%', maxWidth:1100, margin:'0 auto' };
+const pageStyle = { display:'flex', flexDirection:'column', minHeight:'100vh', width:'100%', maxWidth:1100, margin:'0 auto' };
 const breadcrumbBarStyle = { display:'flex', alignItems:'center', justifyContent:'space-between', padding:'14px 28px', background: COLORS.surface, borderBottom:`0.5px solid ${COLORS.borderSubtle}` };
 const breadcrumbStyle = { display:'flex', alignItems:'center', gap:6, fontSize:13, color: COLORS.textSecondary };
 const iconBtnStyle = { width:34, height:34, border:`0.5px solid ${COLORS.borderSubtle}`, background: COLORS.surface, borderRadius: RADIUS.md, display:'flex', alignItems:'center', justifyContent:'center', color: COLORS.textSecondary, cursor:'pointer' };
@@ -64,7 +63,7 @@ const tabCountStyle = { fontSize:11, color: COLORS.textTertiary, marginLeft:4 };
 const contentStyle = { flex:1, padding:'24px 28px', overflow:'auto' };
 // 3-Spalten-Layout (HubSpot-Pattern): links Summary/Properties, Mitte Tabs/Timeline,
 // rechts verknuepfte Datensaetze. Phase 1 — Responsive (<1100px stapeln) folgt in Phase 3.
-const threeColStyle = { display:'grid', gridTemplateColumns:'250px minmax(0,1fr) 236px', gap:16, padding:'20px 28px 48px', alignItems:'start', flex:1, background: COLORS.surfaceCanvas };
+const threeColStyle = { display:'grid', gridTemplateColumns:'250px minmax(0,1fr) 236px', gap:16, padding:'20px 28px 48px', alignItems:'start', flex:1 };
 const railColStyle = { display:'flex', flexDirection:'column', gap:14, minWidth:0 };
 const centerColStyle = { display:'flex', flexDirection:'column', minWidth:0 };
 const railCardStyle = { background: COLORS.surface, borderRadius: RADIUS.lg, border:`0.5px solid ${COLORS.borderSubtle}`, padding:'14px 16px' };
@@ -421,11 +420,11 @@ export default function LeadDetail({ lead: leadProp }) {
     runAnalyze(true);
   }, [runAnalyze, analysisOverride, lead]);
 
-  // ─── Outreach-Draft an MessagesTab übergeben + auto-tab-switch ────────────
+  // ─── Outreach-Draft an den Aktivitäten-Composer übergeben + auto-tab-switch ──
   const handleUseOutreach = useCallback((outreach) => {
     if (!outreach) return;
     setComposerDraft(outreach);
-    setActiveTab('messages');
+    setActiveTab('activity');
   }, []);
 
   // Card-Quelle: frisches Override > persisted ai_last_analysis. 24h-Cache
@@ -573,7 +572,7 @@ export default function LeadDetail({ lead: leadProp }) {
               title="Lead bearbeiten">
               <Pencil size={16} /> Bearbeiten
             </button>
-            <button type="button" style={primaryBtnStyle} onClick={() => setActiveTab('messages')}>
+            <button type="button" style={primaryBtnStyle} onClick={() => setActiveTab('activity')}>
               <Send size={16} /> Nachricht senden
             </button>
             {lead.archived ? (
@@ -619,10 +618,10 @@ export default function LeadDetail({ lead: leadProp }) {
               );
             })}
           </div>
-          {activeTab === 'activity' && <ActivityTab leadId={lead.id} leadTeamId={lead.team_id} />}
-          {activeTab === 'messages' && (
-            <MessagesTab
+          {activeTab === 'activity' && (
+            <ActivityTab
               leadId={lead.id}
+              leadTeamId={lead.team_id}
               lead={lead}
               initialDraft={composerDraft}
               onDraftConsumed={() => setComposerDraft(null)}
@@ -852,12 +851,49 @@ function RelatedRail({ lead, navigate, refreshKey, analysis, analyzeLoading, onA
 //
 // Items aus dem View haben Shape:
 //   { source, id, type, timestamp, actor_id, payload (jsonb) }
-function ActivityTab({ leadId, leadTeamId }) {
+function ActivityTab({ leadId, leadTeamId, lead, initialDraft, onDraftConsumed }) {
   const { items, profilesById, isLoading, error: feedError, refetch } = useLeadActivities(leadId);
   const [adding, setAdding] = useState(false);
   const [newType, setNewType] = useState('note');
   const [newSubject, setNewSubject] = useState('');
   const [localErr, setLocalErr] = useState(null);
+
+  // Nachrichten-Composer (aus dem früheren MessagesTab zusammengeführt) — schreibt
+  // ebenfalls in activities, erscheint dann im selben Feed.
+  const [msgType, setMsgType] = useState('linkedin_message');
+  const [msgBody, setMsgBody] = useState('');
+  const [composing, setComposing] = useState(false);
+
+  // Composer-Hydratation aus initialDraft (LeadAnalysisCard → „Im Composer öffnen"
+  // / „Nachricht senden"). onDraftConsumed räumt den Parent-State wieder leer.
+  useEffect(() => {
+    if (!initialDraft) return;
+    const channel = initialDraft.channel === 'email' ? 'email' : 'linkedin_message';
+    setMsgType(channel);
+    const text = initialDraft.subject && channel === 'email'
+      ? `Betreff: ${initialDraft.subject}\n\n${initialDraft.body || ''}`
+      : (initialDraft.body || '');
+    setMsgBody(text);
+    if (typeof onDraftConsumed === 'function') onDraftConsumed();
+  }, [initialDraft, onDraftConsumed]);
+
+  const sendMessage = async () => {
+    if (!msgBody.trim()) return;
+    setComposing(true); setLocalErr(null);
+    const { data: sess } = await supabase.auth.getSession();
+    const userId = sess?.session?.user?.id;
+    const subject = msgType === 'email' ? 'E-Mail an Lead' : 'LinkedIn-Nachricht';
+    const { error: sendErr } = await supabase.from('activities').insert({
+      lead_id: leadId, user_id: userId, type: msgType,
+      subject, body: msgBody.trim(), direction: 'outbound',
+      occurred_at: new Date().toISOString(),
+      ...(leadTeamId ? { team_id: leadTeamId } : {}),
+    });
+    setComposing(false);
+    if (sendErr) { setLocalErr(sendErr.message); return; }
+    setMsgBody('');
+    refetch();
+  };
 
   const err = localErr || (feedError ? feedError.message : null);
   const grouped = useMemo(() => groupByDay(items, 'timestamp'), [items]);
@@ -920,6 +956,33 @@ function ActivityTab({ leadId, leadTeamId }) {
         <button type="button" style={primaryBtnStyle} onClick={submit} disabled={adding || !newSubject.trim()}>
           {adding ? 'Speichere…' : 'Hinzufügen'}
         </button>
+      </div>
+
+      {/* Nachricht verfassen (zusammengeführt aus dem früheren Nachrichten-Tab) */}
+      <div style={{ marginBottom: 22, padding:'14px', background: COLORS.surfaceMuted, borderRadius: RADIUS.md }}>
+        <div style={{ display:'flex', gap:8, marginBottom:8, alignItems:'center' }}>
+          <Send size={14} style={{ color: COLORS.textTertiary }} />
+          <select value={msgType} onChange={e => setMsgType(e.target.value)}
+            style={{ ...inputStyle, width: 200, flex: 'none' }}>
+            <option value="linkedin_message">LinkedIn-Nachricht</option>
+            <option value="email">E-Mail</option>
+            <option value="message">Sonstige Nachricht</option>
+          </select>
+          {lead && (lead.first_name || lead.last_name) && (
+            <span style={{ fontSize:12, color: COLORS.textTertiary }}>an {lead.first_name} {lead.last_name}</span>
+          )}
+        </div>
+        <textarea style={textareaStyle}
+          placeholder="Nachricht eingeben…"
+          value={msgBody} onChange={e => setMsgBody(e.target.value)} rows={4} />
+        <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', gap:8, marginTop:8 }}>
+          <span style={{ fontSize:11, color: COLORS.textTertiary }}>
+            Wird im Activity-Log protokolliert. Versand separat über LinkedIn / E-Mail-Client.
+          </span>
+          <button type="button" style={primaryBtnStyle} onClick={sendMessage} disabled={composing || !msgBody.trim()}>
+            <Send size={14} /> {composing ? 'Senden…' : 'Protokollieren'}
+          </button>
+        </div>
       </div>
 
       {err && <div style={{ color:'#B91C1C', fontSize:12, marginBottom:12 }}>{err}</div>}
