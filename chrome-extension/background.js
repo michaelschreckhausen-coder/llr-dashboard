@@ -563,7 +563,7 @@ async function scrapeConnectionsForWebApp() {
     // sobald content.js auf dem Tab bereit ist. Max 6 Versuche à 400ms.
     for (var ovi = 0; ovi < 6; ovi++) {
       await sleep(400)
-      try { var ovok = await chrome.tabs.sendMessage(tab.id, { type: 'SHOW_LOADING_OVERLAY' }); if (ovok && ovok.ok) break } catch (e) {}
+      try { var ovok = await chrome.tabs.sendMessage(tab.id, { type: 'SHOW_LOADING_OVERLAY', title: 'Leadesk prüft deine Vernetzungen…', subtitle: 'Wir lesen deine LinkedIn-Verbindungen, um angenommene Anfragen automatisch zu erkennen.' }); if (ovok && ovok.ok) break } catch (e) {}
     }
     await waitLoaded(tab.id, 30000)
     await sleep(1200)
