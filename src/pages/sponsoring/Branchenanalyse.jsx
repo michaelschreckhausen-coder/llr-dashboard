@@ -5,8 +5,8 @@
 // Liest/schreibt im Schema 'sponsoring' via supabase.schema('sponsoring').
 // team_id kommt aus useTeam().activeTeamId.
 
-import { useEffect, useState, useCallback } from 'react'
-import { Search, Plus, Loader2, RefreshCw, Trash2, ExternalLink } from 'lucide-react'
+import { Fragment, useEffect, useMemo, useState, useCallback } from 'react'
+import { Search, Plus, Loader2, RefreshCw, Trash2, ExternalLink, Wand2, Building2, Sparkles, ChevronDown } from 'lucide-react'
 import { supabase } from '../../lib/supabase'
 import { useTeam } from '../../context/TeamContext'
 import PageHeader from '../../components/PageHeader'
@@ -16,6 +16,20 @@ const PRIMARY = 'var(--wl-primary, rgb(49,90,231))'
 const sp = () => supabase.schema('sponsoring')
 
 const EMPTY_IND = { industry: '', is_boom: false, fits_sport: false, open_at_club: false, note: '' }
+
+const REGIONS = ['regional', 'national', 'international']
+const REGION_LABEL = { regional: 'Regional', national: 'National', international: 'International' }
+const REGION_PROMPT = { regional: 'regionaler', national: 'nationaler', international: 'internationaler' }
+
+// JSON-Array aus einer LLM-Antwort defensiv extrahieren (Code-Fences/Vorrede tolerieren).
+function parseJsonArray(text) {
+  if (!text) return []
+  let t = String(text).trim().replace(/^```(?:json)?/i, '').replace(/```$/, '').trim()
+  const start = t.indexOf('[')
+  const end = t.lastIndexOf(']')
+  if (start === -1 || end === -1 || end < start) return []
+  try { const arr = JSON.parse(t.slice(start, end + 1)); return Array.isArray(arr) ? arr : [] } catch { return [] }
+}
 
 export default function Branchenanalyse() {
   const { activeTeamId } = useTeam()
@@ -29,17 +43,31 @@ export default function Branchenanalyse() {
   const [adoptBusy, setAdoptBusy] = useState(false)
   const [sourceUrl, setSourceUrl] = useState('')
   const [form, setForm] = useState(EMPTY_IND)
+  // B-Block
+  const [targets, setTargets] = useState([])           // target_companies (B3/B4)
+  const [campaigns, setCampaigns] = useState([])        // sponsoring.campaigns (B4)
+  const [conceptBusy, setConceptBusy] = useState(null)  // acquisition_industries.id (B2)
+  const [expanded, setExpanded] = useState({})          // industryId -> Konzept aufgeklappt
+  const [tgt, setTgt] = useState({ industry: '', region: 'regional' }) // B3-Formular
+  const [tgtBusy, setTgtBusy] = useState(false)
+  const [prefillBusy, setPrefillBusy] = useState(false) // B1 KI-Vorbefüllung
+  const [adoptCoBusy, setAdoptCoBusy] = useState(null)   // target_companies.id (B4)
 
   const fetchAll = useCallback(async () => {
     if (!activeTeamId) return
     setLoading(true); setError(null)
-    const [{ data: scr, error: sErr }, { data: inds, error: iErr }] = await Promise.all([
+    const [scr, inds, tc, camp] = await Promise.all([
       sp().from('partner_screenings').select('*').eq('team_id', activeTeamId).order('run_at', { ascending: false }),
       sp().from('acquisition_industries').select('*').eq('team_id', activeTeamId).order('created_at', { ascending: false }),
+      sp().from('target_companies').select('*').eq('team_id', activeTeamId).order('created_at', { ascending: false }),
+      sp().from('campaigns').select('id, name').eq('team_id', activeTeamId).order('created_at', { ascending: false }),
     ])
-    if (sErr || iErr) { setError((sErr || iErr).message); setLoading(false); return }
-    setScreenings(scr || [])
-    setIndustries(inds || [])
+    const err = scr.error || inds.error || tc.error || camp.error
+    if (err) { setError(err.message); setLoading(false); return }
+    setScreenings(scr.data || [])
+    setIndustries(inds.data || [])
+    setTargets(tc.data || [])
+    setCampaigns(camp.data || [])
     setLoading(false)
   }, [activeTeamId])
 
@@ -148,6 +176,108 @@ export default function Branchenanalyse() {
     if (e) { setError(e.message); return }
     setIndustries((prev) => prev.filter((r) => r.id !== id))
   }
+
+  // ── B1: typische Sport-/Boom-Branchen per KI vorbefüllen ──────────────────
+  async function prefillIndustries() {
+    if (!activeTeamId) return
+    setPrefillBusy(true); setError(null); setNotice(null)
+    const prompt = 'Nenne 12 Branchen, die im Sport-Sponsoring (B2B) typischerweise als Sponsoren auftreten oder aktuell wirtschaftlich besonders stark sind ("Boom-Branchen"). '
+      + 'Antworte AUSSCHLIESSLICH als JSON-Array, jedes Element { "industry": string (kurz, Deutsch), "is_boom": boolean (true wenn aktuelle Boom-Branche) }. Keine Vorrede, kein Markdown.'
+    const { data, error: e } = await supabase.functions.invoke('generate', { body: { prompt } })
+    if (e) { setError(e.message || 'KI-Aufruf fehlgeschlagen.'); setPrefillBusy(false); return }
+    const arr = parseJsonArray(data?.text || data?.content || data?.output)
+    let added = 0, skipped = 0
+    for (const it of arr) {
+      const industry = (it?.industry || '').trim()
+      if (!industry) continue
+      const { error: ie } = await sp().from('acquisition_industries').insert({
+        team_id: activeTeamId, industry, is_boom: !!it?.is_boom, fits_sport: true, open_at_club: true, note: null,
+      })
+      if (ie) { if (ie.code === '23505') { skipped++; continue } setError(ie.message); break }
+      added++
+    }
+    await fetchAll(); setPrefillBusy(false)
+    setNotice(`${added} Branche(n) vorgeschlagen${skipped ? `, ${skipped} schon vorhanden` : ''}.`)
+  }
+
+  // ── B2: KI-Aktivierungskonzept je Branche (generate-EF injiziert Brand Voice/Zielgruppe serverseitig) ──
+  async function generateConcept(row) {
+    setConceptBusy(row.id); setError(null)
+    const prompt = `Du bist Sponsoring-Berater im Sport. Entwickle ein konkretes Aktivierungskonzept für ein Sponsoring mit einem Unternehmen aus der Branche "${row.industry}". `
+      + 'Berücksichtige Brand Voice, Zielgruppe und Wissensdatenbank. Gib 4–6 konkrete, umsetzbare Aktivierungsideen als kurze Stichpunkte (je 1 Satz, mit "- " beginnend), auf Deutsch, ohne Vorrede und ohne Überschrift.'
+    const { data, error: e } = await supabase.functions.invoke('generate', { body: { prompt } })
+    if (e) { setError(e.message || 'KI-Aufruf fehlgeschlagen.'); setConceptBusy(null); return }
+    const text = String(data?.text || data?.content || data?.output || '').trim()
+    if (!text) { setError('Keine KI-Antwort erhalten.'); setConceptBusy(null); return }
+    const { error: ue } = await sp().from('acquisition_industries').update({ activation_concept: text }).eq('id', row.id)
+    if (ue) { setError(ue.message); setConceptBusy(null); return }
+    setIndustries((prev) => prev.map((r) => (r.id === row.id ? { ...r, activation_concept: text } : r)))
+    setExpanded((prev) => ({ ...prev, [row.id]: true }))
+    setConceptBusy(null)
+  }
+
+  // ── B3: KI-Zielunternehmen je Branche + Region ────────────────────────────
+  async function findCompanies(e) {
+    e.preventDefault()
+    if (!activeTeamId || !tgt.industry.trim()) return
+    setTgtBusy(true); setError(null); setNotice(null)
+    const prompt = `Nenne 8 real existierende Unternehmen aus der Branche "${tgt.industry.trim()}" mit ${REGION_PROMPT[tgt.region]} Ausrichtung, die als Sponsoring-Partner für einen Sportverein interessant sind. `
+      + 'Antworte AUSSCHLIESSLICH als JSON-Array, jedes Element { "name": string, "rationale": string (max 12 Wörter, warum passend), "website": string oder null }. Keine Vorrede, kein Markdown.'
+    const { data, error: e2 } = await supabase.functions.invoke('generate', { body: { prompt } })
+    if (e2) { setError(e2.message || 'KI-Aufruf fehlgeschlagen.'); setTgtBusy(false); return }
+    const arr = parseJsonArray(data?.text || data?.content || data?.output)
+    if (arr.length === 0) { setError('Keine verwertbaren Vorschläge erhalten.'); setTgtBusy(false); return }
+    let added = 0
+    for (const c of arr) {
+      const name = (c?.name || '').trim()
+      if (!name) continue
+      const { error: ie } = await sp().from('target_companies').insert({
+        team_id: activeTeamId, industry: tgt.industry.trim(), region: tgt.region,
+        name, rationale: (c?.rationale || '').trim() || null,
+        website: (c?.website && String(c.website).trim()) || null, status: 'vorschlag',
+      })
+      if (!ie) added++
+    }
+    await fetchAll(); setTgtBusy(false)
+    setNotice(`${added} Zielunternehmen vorgeschlagen.`)
+  }
+
+  // ── B4: Vorschlag als echtes Unternehmen übernehmen ───────────────────────
+  async function adoptCompany(tc) {
+    setAdoptCoBusy(tc.id); setError(null)
+    const { data: { user } } = await supabase.auth.getUser()
+    const { data: org, error: oe } = await supabase.from('organizations').insert({
+      name: tc.name, user_id: activeTeamId ? null : user?.id, team_id: activeTeamId || null, created_by: user?.id,
+    }).select('id').single()
+    if (oe || !org) { setError(oe?.message || 'Unternehmen konnte nicht angelegt werden.'); setAdoptCoBusy(null); return }
+    const { error: ue } = await sp().from('target_companies').update({ status: 'uebernommen', organization_id: org.id }).eq('id', tc.id)
+    if (ue) { setError(ue.message); setAdoptCoBusy(null); return }
+    setTargets((prev) => prev.map((r) => (r.id === tc.id ? { ...r, status: 'uebernommen', organization_id: org.id } : r)))
+    setAdoptCoBusy(null)
+  }
+
+  // B4: übernommenes Unternehmen einer Kampagne zuordnen (campaign_organizations, n:m auf echtem Datensatz)
+  async function assignCampaign(tc, campaignId) {
+    if (!campaignId || !tc.organization_id) return
+    setError(null)
+    const { error: ce } = await sp().from('campaign_organizations').insert({
+      team_id: activeTeamId, campaign_id: campaignId, organization_id: tc.organization_id,
+    })
+    if (ce && ce.code !== '23505') { setError(ce.message); return }
+    const { error: ue } = await sp().from('target_companies').update({ campaign_id: campaignId }).eq('id', tc.id)
+    if (ue) { setError(ue.message); return }
+    setTargets((prev) => prev.map((r) => (r.id === tc.id ? { ...r, campaign_id: campaignId } : r)))
+    setNotice('Unternehmen der Kampagne zugeordnet.')
+  }
+
+  async function dismissCompany(tc) {
+    setError(null)
+    const { error: e } = await sp().from('target_companies').delete().eq('id', tc.id)
+    if (e) { setError(e.message); return }
+    setTargets((prev) => prev.filter((r) => r.id !== tc.id))
+  }
+
+  const chancenCount = useMemo(() => industries.filter((r) => r.open_at_club).length, [industries])
 
   if (!activeTeamId) {
     return <div style={{ padding: 32, color: 'var(--text-muted)' }}>Kein aktives Team.</div>
@@ -294,9 +424,21 @@ export default function Branchenanalyse() {
       )}
 
       {/* Akquise-Branchen */}
-      <h2 style={{ fontSize: 18, fontWeight: 800, color: 'var(--text-strong)', margin: '0 0 14px', letterSpacing: '-0.01em' }}>
-        Akquise-Branchen
-      </h2>
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap', margin: '0 0 6px' }}>
+        <h2 style={{ fontSize: 18, fontWeight: 800, color: 'var(--text-strong)', margin: 0, letterSpacing: '-0.01em' }}>
+          Akquise-Branchen
+        </h2>
+        <button type="button" onClick={prefillIndustries} disabled={prefillBusy}
+          title="Typische Sport- und Boom-Branchen per KI vorschlagen"
+          style={{ ...primaryBtn, padding: '7px 14px', fontSize: 12.5, opacity: prefillBusy ? 0.6 : 1 }}>
+          {prefillBusy ? <Loader2 size={13} className="spin" /> : <Wand2 size={13} />} Typische Branchen vorschlagen
+        </button>
+      </div>
+      <p style={{ fontSize: 13, color: 'var(--text-muted)', margin: '0 0 14px', lineHeight: 1.6 }}>
+        Stelle sport-relevante und Boom-Branchen den beim Club besetzten Branchen gegenüber.
+        {industries.length > 0 && <> Aktuell <strong style={{ color: PRIMARY }}>{chancenCount}</strong> Branche(n) als Chance markiert („beim Club offen").</>}
+        {' '}Pro Branche kannst du ein KI-Aktivierungskonzept erzeugen.
+      </p>
 
       {/* Anlegen */}
       <form onSubmit={createIndustry} style={{
@@ -343,7 +485,8 @@ export default function Branchenanalyse() {
             </thead>
             <tbody>
               {industries.map((r) => (
-                <tr key={r.id} style={{ borderTop: '1px solid var(--border)' }}>
+                <Fragment key={r.id}>
+                <tr style={{ borderTop: '1px solid var(--border)' }}>
                   <td style={{ ...td, fontWeight: 600, color: 'var(--text-strong)' }}>{r.industry}</td>
                   <td style={{ ...td, textAlign: 'center' }}>
                     <input type="checkbox" checked={!!r.is_boom} onChange={(e) => toggleIndustry(r.id, 'is_boom', e.target.checked)} style={checkbox} />
@@ -359,15 +502,118 @@ export default function Branchenanalyse() {
                            onBlur={(e) => { if ((e.target.value || '') !== (r.note || '')) updateNote(r.id, e.target.value) }}
                            placeholder="—" style={{ ...input, padding: '4px 8px' }} />
                   </td>
-                  <td style={{ ...td, textAlign: 'right' }}>
+                  <td style={{ ...td, textAlign: 'right', whiteSpace: 'nowrap' }}>
+                    <button onClick={() => (r.activation_concept ? setExpanded((p) => ({ ...p, [r.id]: !p[r.id] })) : generateConcept(r))}
+                            disabled={conceptBusy === r.id}
+                            title={r.activation_concept ? 'Aktivierungskonzept anzeigen' : 'KI-Aktivierungskonzept erzeugen'}
+                            style={{ ...iconBtn, marginRight: 6, color: r.activation_concept ? PRIMARY : 'var(--text-muted)' }}>
+                      {conceptBusy === r.id ? <Loader2 size={15} className="spin" /> : (r.activation_concept ? <ChevronDown size={15} style={{ transform: expanded[r.id] ? 'rotate(180deg)' : 'none', transition: 'transform .15s' }} /> : <Sparkles size={15} />)}
+                    </button>
                     <button onClick={() => deleteIndustry(r.id)} title="Löschen" style={iconBtn}>
                       <Trash2 size={15} />
                     </button>
                   </td>
                 </tr>
+                {r.activation_concept && expanded[r.id] && (
+                  <tr style={{ borderTop: '1px solid var(--border)', background: 'var(--surface-muted, #F8FAFC)' }}>
+                    <td colSpan={6} style={{ padding: '12px 16px' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 12, fontWeight: 700, color: PRIMARY, marginBottom: 6 }}>
+                        <Sparkles size={13} /> KI-Aktivierungskonzept
+                        <button type="button" onClick={() => generateConcept(r)} disabled={conceptBusy === r.id}
+                          title="Neu generieren" style={{ ...iconBtnSm, marginLeft: 4 }}>
+                          {conceptBusy === r.id ? <Loader2 size={12} className="spin" /> : <RefreshCw size={12} />}
+                        </button>
+                      </div>
+                      <div style={{ fontSize: 13, color: 'var(--text-strong)', lineHeight: 1.7, whiteSpace: 'pre-wrap' }}>{r.activation_concept}</div>
+                    </td>
+                  </tr>
+                )}
+                </Fragment>
               ))}
             </tbody>
           </table>
+        </div>
+      )}
+
+      {/* ── B3/B4: Zielunternehmen (KI) ─────────────────────────────────── */}
+      <h2 style={{ fontSize: 18, fontWeight: 800, color: 'var(--text-strong)', margin: '36px 0 6px', letterSpacing: '-0.01em' }}>
+        Zielunternehmen <span style={{ fontSize: 13, fontWeight: 600, color: 'var(--text-muted)' }}>(KI-Vorschläge)</span>
+      </h2>
+      <p style={{ fontSize: 13, color: 'var(--text-muted)', margin: '0 0 14px', lineHeight: 1.6 }}>
+        Lass dir je Branche und Region passende Unternehmen vorschlagen. Übernommene Unternehmen landen als echter
+        CRM-Datensatz (keine Duplikate beim erneuten Übernehmen vermeiden — prüfe vorab) und lassen sich einer Kampagne zuordnen.
+      </p>
+
+      <form onSubmit={findCompanies} style={{
+        display: 'grid', gridTemplateColumns: '1.6fr 1fr auto', gap: 10, alignItems: 'end',
+        border: '1px solid var(--border)', borderRadius: 14, background: 'var(--surface)', padding: 16, marginBottom: 18,
+      }}>
+        <Field label="Branche">
+          <input list="acq-industries" value={tgt.industry} onChange={(e) => setTgt({ ...tgt, industry: e.target.value })}
+                 placeholder="z.B. Handwerk" style={input} />
+          <datalist id="acq-industries">
+            {industries.map((r) => <option key={r.id} value={r.industry} />)}
+          </datalist>
+        </Field>
+        <Field label="Region">
+          <select value={tgt.region} onChange={(e) => setTgt({ ...tgt, region: e.target.value })} style={input}>
+            {REGIONS.map((rg) => <option key={rg} value={rg}>{REGION_LABEL[rg]}</option>)}
+          </select>
+        </Field>
+        <button type="submit" disabled={tgtBusy || !tgt.industry.trim()} style={{ ...primaryBtn, opacity: tgtBusy || !tgt.industry.trim() ? 0.6 : 1 }}>
+          {tgtBusy ? <Loader2 size={14} className="spin" /> : <Building2 size={14} />} Vorschläge holen
+        </button>
+      </form>
+
+      {targets.length === 0 ? (
+        <div style={{ color: 'var(--text-muted)', fontSize: 14 }}>Noch keine Zielunternehmen vorgeschlagen.</div>
+      ) : (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+          {targets.map((tc) => {
+            const adopted = tc.status === 'uebernommen'
+            const campaignName = campaigns.find((c) => c.id === tc.campaign_id)?.name
+            return (
+              <div key={tc.id} style={{ ...card, display: 'flex', alignItems: 'flex-start', gap: 12 }}>
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+                    <span style={{ fontSize: 14.5, fontWeight: 700, color: 'var(--text-strong)' }}>{tc.name}</span>
+                    <span style={{ ...badge }}>{REGION_LABEL[tc.region] || tc.region}</span>
+                    {tc.industry && <span style={{ ...badge, background: 'transparent', border: '1px solid var(--border)', color: 'var(--text-muted)' }}>{tc.industry}</span>}
+                    {adopted && <span style={{ ...badge, background: '#ECFDF5', color: '#065F46', border: '1px solid #A7F3D0' }}>übernommen</span>}
+                  </div>
+                  {tc.rationale && <div style={{ fontSize: 13, color: 'var(--text-muted)', marginTop: 4, lineHeight: 1.5 }}>{tc.rationale}</div>}
+                  {tc.website && (
+                    <a href={/^https?:\/\//.test(tc.website) ? tc.website : `https://${tc.website}`} target="_blank" rel="noopener noreferrer"
+                       style={{ display: 'inline-flex', alignItems: 'center', gap: 4, fontSize: 12.5, color: PRIMARY, textDecoration: 'none', marginTop: 4 }}>
+                      {tc.website} <ExternalLink size={12} />
+                    </a>
+                  )}
+                  {adopted && (
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 8 }}>
+                      <span style={{ fontSize: 12, color: 'var(--text-muted)' }}>Kampagne:</span>
+                      <select value={tc.campaign_id || ''} onChange={(e) => assignCampaign(tc, e.target.value)}
+                              style={{ ...input, width: 'auto', minWidth: 180, padding: '5px 8px', fontSize: 12.5 }}>
+                        <option value="">{campaigns.length ? '— zuordnen —' : '— keine Kampagnen —'}</option>
+                        {campaigns.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
+                      </select>
+                      {campaignName && <span style={{ fontSize: 12, color: '#065F46', fontWeight: 600 }}>→ {campaignName}</span>}
+                    </div>
+                  )}
+                </div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexShrink: 0 }}>
+                  {!adopted && (
+                    <button type="button" onClick={() => adoptCompany(tc)} disabled={adoptCoBusy === tc.id}
+                            style={{ ...primaryBtn, padding: '6px 12px', fontSize: 12, opacity: adoptCoBusy === tc.id ? 0.6 : 1 }}>
+                      {adoptCoBusy === tc.id ? <Loader2 size={12} className="spin" /> : <Plus size={12} />} Übernehmen
+                    </button>
+                  )}
+                  <button type="button" onClick={() => dismissCompany(tc)} title="Vorschlag entfernen" style={iconBtnSm}>
+                    <Trash2 size={14} />
+                  </button>
+                </div>
+              </div>
+            )
+          })}
         </div>
       )}
     </div>
@@ -426,6 +672,10 @@ const card = {
 const chip = {
   fontSize: 12.5, fontWeight: 600, color: 'var(--text-strong)', background: 'var(--surface-muted, #F1F5F9)',
   border: '1px solid var(--border)', padding: '4px 12px', borderRadius: 999,
+}
+const badge = {
+  fontSize: 11, fontWeight: 700, color: '#3730A3', background: '#EEF2FF',
+  padding: '2px 8px', borderRadius: 999, whiteSpace: 'nowrap',
 }
 const chipBtn = {
   display: 'inline-flex', alignItems: 'center', gap: 5, fontSize: 12.5, fontWeight: 600,
