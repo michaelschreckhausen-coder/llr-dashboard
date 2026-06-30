@@ -194,20 +194,6 @@ export default function ContentStudio({ session }) {
   const [panePct, setPanePct] = useState(52)   // Split-Breite der Pane in % (ziehbar)
   // Echte linke Kante der Pane messen, damit Switcher + Steuerung exakt anliegen
   // (in jedem Zustand: Split UND Vollbild — der schmale Chat-Streifen verschiebt sie).
-  const paneSecRef = useRef(null)
-  const [paneLeftPx, setPaneLeftPx] = useState(null)
-  useEffect(() => {
-    const sec = paneSecRef.current, cont = csRootRef.current
-    if (!sec || !cont) return
-    const update = () => {
-      const sr = sec.getBoundingClientRect(), cr = cont.getBoundingClientRect()
-      setPaneLeftPx(Math.round(sr.left - cr.left))
-    }
-    const raf = requestAnimationFrame(update)
-    const ro = new ResizeObserver(update); ro.observe(sec); ro.observe(cont)
-    window.addEventListener('resize', update)
-    return () => { cancelAnimationFrame(raf); ro.disconnect(); window.removeEventListener('resize', update) }
-  }, [editorOpen, paneView])
   const rightOpen = editorOpen                                                  // Kompat: rechtes Panel offen?
   // Visual-Composer (In-Chat-Bildgenerierung)
   const [visualMode, setVisualMode] = useState(false)
@@ -989,10 +975,11 @@ export default function ContentStudio({ session }) {
           flexGrow: (editorOpen && (paneView === 'suite' || paneView === 'page')) ? 0 : 1,
           flexShrink: 1,
           flexBasis: !editorOpen ? '100%' : ((paneView === 'suite' || paneView === 'page') ? '0%' : '48%'),
+          display: (editorOpen && (paneView === 'suite' || paneView === 'page')) ? 'none' : 'flex',
           minWidth:0, overflow:'hidden',
           opacity: (editorOpen && (paneView === 'suite' || paneView === 'page')) ? 0 : 1,
           pointerEvents: (editorOpen && (paneView === 'suite' || paneView === 'page')) ? 'none' : 'auto',
-          display:'flex', flexDirection:'column', position:'relative',
+          flexDirection:'column', position:'relative',
           transition:'opacity 0.2s ease' }}>
         {/* Floating Sidebar-Toggle wenn zu */}
         {!sidebarOpen && (
@@ -1087,7 +1074,7 @@ export default function ContentStudio({ session }) {
         const page = editorOpen && paneView === 'page'
         const basis = !editorOpen ? '0%' : ((paneView === 'suite' || page) ? '100%' : '52%')
         return (
-      <section ref={paneSecRef} data-tour-id="cs-doc-pane" style={{ display:'flex', flexDirection:'column', flexGrow:0, flexShrink:1, flexBasis: basis, minWidth:0, overflow:'hidden',
+      <section data-tour-id="cs-doc-pane" style={{ display:'flex', flexDirection:'column', flexGrow:0, flexShrink:1, flexBasis: basis, minWidth:0, overflow:'hidden',
         ...(page
           ? { position:'fixed', inset:0, zIndex:1000, margin:0, border:'none', borderRadius:0, boxShadow:'none', background:'var(--surface,#fff)' }
           : { marginTop: editorOpen ? 16 : 0, marginBottom: editorOpen ? 16 : 0,
@@ -1231,12 +1218,12 @@ export default function ContentStudio({ session }) {
             {/* Ausgeklappt (Split/Vollbild): Switcher oben + Ansicht-Steuerung mittig */}
             {editorOpen && !page && (
               <>
-                <div style={{ position:'absolute', top:44, zIndex:50, ...(paneLeftPx != null ? { left: paneLeftPx, transform:'translateX(-100%)' } : { right:'52%' }) }}>
+                <div style={{ position:'absolute', top:44, zIndex:50, ...(suite ? { left:16 } : { right:'52%' }) }}>
                   <Switcher/>
                 </div>
                 <div style={{ position:'absolute', top:'50%', zIndex:50, display:'flex', flexDirection:'column', overflow:'hidden',
                     background:'var(--surface,#fff)', border:'1px solid var(--border,#E9ECF2)', borderRadius:10, boxShadow:'0 2px 10px rgba(16,24,40,0.10)',
-                    ...(paneLeftPx != null ? { left: paneLeftPx, transform:'translate(-50%,-50%)' } : { right:'52%', transform:'translate(50%,-50%)' }) }}>
+                    ...(suite ? { left:16, transform:'translateY(-50%)' } : { right:'52%', transform:'translate(50%,-50%)' }) }}>
                   {suite ? (
                     <button onClick={() => setPaneView('split')} title="Splitscreen" style={ctrlBtn}><ChevronRight size={18} strokeWidth={2}/></button>
                   ) : (
