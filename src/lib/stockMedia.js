@@ -78,8 +78,11 @@ async function edgeTranslate(q) {
 export async function translateToEnglish(text) {
   const q = String(text || '').trim()
   if (!q) return q
-  if (!looksGerman(q)) return q          // schon englisch/neutral → unverändert
   if (_trCache.has(q)) return _trCache.get(q)
+  // Heuristik "schon Englisch?" ist unzuverlässig (viele dt. Wörter sind ASCII, z.B.
+  // "bier", "hund"). Wir übersetzen daher IMMER via Edge-LLM (idempotent: "beer"→"beer")
+  // und cachen das Ergebnis. Nur reine Zahlen/Sehr-kurz überspringen.
+  if (q.length < 2 || /^[0-9\s]+$/.test(q)) return q
   let tr = await edgeTranslate(q)        // primär: eigene Edge-Function (CSP-sicher)
   if (!tr) tr = await gTranslate(q)      // Fallback: Google
   if (!tr) tr = await myMemory(q)        // Fallback: MyMemory
