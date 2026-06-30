@@ -1359,7 +1359,7 @@ export default function DesignerCanvas({ visual, teamId, onSaved, onReplaceVisua
         return b
       })
       const prompt = `Du bist ein erfahrener Grafik-Designer und bearbeitest eine Design-Seite (Größe ${cw}x${ch} Pixel). Hintergrundfarbe aktuell: ${bgColor || 'transparent'}.\n\nElemente als JSON (Koordinaten sind die linke obere Ecke in Pixeln, bei Ellipse der Mittelpunkt):\n${JSON.stringify(slim)}\n\nNutzer-Befehl: "${c}"\n\nWende den Befehl gestalterisch sinnvoll auf die GESAMTE Seite an. Erlaubt: Texte umformulieren/kürzen, Schriftgröße & Schriftschnitt, Farben (immer als Hex #rrggbb), Positionen (x,y), Breiten, Ausrichtung, Form-/Rahmenfarben, Eckenradius und die Hintergrundfarbe. Achte auf Lesbarkeit, Kontrast und sauberes Layout. Regeln: ALLE ids und types unverändert lassen, KEINE Elemente löschen, KEINE neuen Elemente/Bilder erfinden, Bild-Inhalte nicht ändern, alle Elemente innerhalb 0..${cw} (x) und 0..${ch} (y) halten.\n\nAntworte AUSSCHLIESSLICH mit gültigem JSON, ohne Markdown, ohne Erklärung, exakt in dieser Form:\n{"bgColor":"#rrggbb oder null","objects":[{"id":"<id>", ...geänderte Felder...}]}`
-      const { data, error } = await supabase.functions.invoke('generate', { body: { model: 'claude-sonnet-4-6', prompt } })
+      const { data, error } = await supabase.functions.invoke('generate', { body: { type: 'raw', model: 'claude-sonnet-4-6', prompt } })
       if (error) throw new Error(error.message || 'KI fehlgeschlagen')
       let txt = String(data?.text || data?.content || data?.output || '').trim()
       txt = txt.replace(/^```(?:json)?/i, '').replace(/```\s*$/i, '').trim()

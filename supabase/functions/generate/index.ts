@@ -322,7 +322,7 @@ serve(async (req) => {
     // Dropdown-Auswahl der jeweiligen UI (als Teil von body.prompt bzw. in text-werkstatt-chat).
 
     let systemPrompt = '';
-    if (type !== 'brand_voice_summary' && type !== 'target_audience') {
+    if (type !== 'brand_voice_summary' && type !== 'target_audience' && type !== 'raw') {
       systemPrompt += HUMAN_STYLE_GUIDE + '\n\n';
       if (activeBV) systemPrompt += buildBrandPrompt(activeBV) + '\n\n';
 
