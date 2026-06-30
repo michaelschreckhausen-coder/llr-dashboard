@@ -466,17 +466,73 @@ async function pollQueue() {
 // Liest die eigene LinkedIn-Connections-Seite, um zu erkennen welche
 // gesendeten Vernetzungsanfragen angenommen wurden. Läuft IN der Seite
 // (executeScript). Liefert [{ name, profile_url }]. Muster: SSI-Scraper.
-async function scrapeConnectionsPage(maxScrolls) {
+// Scrollt eine LinkedIn-Profilseite Stück für Stück bis ans Ende (lädt alle
+// Lazy-Sections) und wieder nach oben. Läuft IN der Seite (executeScript).
+async function scrollProfilePage() {
+  function sleepP(ms) { return new Promise(function(r) { setTimeout(r, ms) }) }
+  // LinkedIn rendert das Profil in einem INNEREN Scroll-Container (<main> mit
+  // overflow), nicht am window. Den größten scrollbaren Container ermitteln und
+  // kleinschrittig durchscrollen, damit ALLE Lazy-Sections (Erfahrung, Ausbildung,
+  // Kenntnisse, Lizenzen …) tatsächlich nachgeladen werden.
+  function scroller() {
+    var best = document.scrollingElement || document.body, bs = (best && best.scrollHeight) || 0
+    var nodes = document.querySelectorAll('div, main, section')
+    for (var i = 0; i < nodes.length; i++) {
+      var e = nodes[i], ov = getComputedStyle(e).overflowY
+      if ((ov === 'auto' || ov === 'scroll') && e.scrollHeight > e.clientHeight + 200 && e.scrollHeight > bs) { best = e; bs = e.scrollHeight }
+    }
+    return best
+  }
+  var el = scroller(), pos = 0, guard = 0
+  while (guard < 60) {
+    pos += Math.max(300, Math.round(el.clientHeight * 0.7))
+    try { el.scrollTop = pos } catch (e) {}
+    window.scrollTo(0, pos)
+    await sleepP(350)
+    el = scroller()
+    if (pos >= el.scrollHeight - el.clientHeight) { await sleepP(700); if (pos >= el.scrollHeight - el.clientHeight) break }
+    guard++
+  }
+  await sleepP(600)
+  try { el.scrollTop = 0 } catch (e) {}
+  window.scrollTo(0, 0)
+  await sleepP(300)
+  return true
+}
+
+async function scrapeConnectionsPage() {
   function sleepP(ms) { return new Promise(function(r) { setTimeout(r, ms) }) }
   var href = window.location.href
   if (href.indexOf('/login') !== -1 || href.indexOf('/authwall') !== -1 || href.indexOf('/checkpoint') !== -1) {
     return { error: 'Nicht auf LinkedIn eingeloggt' }
   }
-  // Lazy-Load: mehrfach bis ans Seitenende scrollen, damit mehr Connections nachladen.
-  var scrolls = maxScrolls || 6
-  for (var i = 0; i < scrolls; i++) {
+  await sleepP(2500)
+  // Bis mindestens TARGET Verbindungen geladen sind nach unten scrollen (Lazy-Load).
+  // Zählt eindeutige Profile; bricht ab, wenn das Ziel erreicht ist oder 5× kein Zuwachs kommt.
+  function uniqCount() {
+    var seen = {}, n = 0, as = document.querySelectorAll('a[href*="/in/"]')
+    for (var i = 0; i < as.length; i++) {
+      var m = String(as[i].href).match(/\/in\/([^/?#]+)/)
+      if (m) { var k = m[1].toLowerCase(); if (!seen[k]) { seen[k] = 1; n++ } }
+    }
+    return n
+  }
+  var TARGET = 22, prev = 0, noGrow = 0, MAX = 10
+  for (var s = 0; s < MAX; s++) {
     window.scrollTo(0, document.body.scrollHeight)
-    await sleepP(1200)
+    await sleepP(900)
+    // Jiggle: kurz hoch und wieder ganz runter — triggert LinkedIns Lazy-Load erneut.
+    window.scrollBy(0, -800); await sleepP(200); window.scrollTo(0, document.body.scrollHeight); await sleepP(300)
+    // Manche Layouts laden über einen Button statt rein per Scroll.
+    var btns = document.querySelectorAll('button')
+    for (var b = 0; b < btns.length; b++) {
+      var bt = (btns[b].textContent || '').trim().toLowerCase()
+      if (bt === 'mehr anzeigen' || bt === 'show more' || bt === 'mehr laden') { btns[b].click(); break }
+    }
+    var cnt = uniqCount()
+    if (cnt >= TARGET) break
+    if (cnt <= prev) { noGrow++; if (noGrow >= 3) break } else { noGrow = 0 }
+    prev = cnt
   }
   window.scrollTo(0, 0)
   await sleepP(400)
@@ -491,34 +547,65 @@ async function scrapeConnectionsPage(maxScrolls) {
     } catch (e) { return null }
   }
 
-  var seen = {}
+  // LinkedIn rendert pro Kontakt ZWEI /in/-Anchors (Bild + Text). Der Name steht im
+  // Text-Anchor als Gesamttext OHNE die Headline (die in einem Kind-<span> liegt).
+  // Daher: ganzen Anchor-Text nehmen und die Span-Texte (Headline) herausschneiden.
+  function cardName(a) {
+    var full = (a.textContent || '').replace(/\s+/g, ' ').trim()
+    if (!full) return ''
+    var spans = a.querySelectorAll('span')
+    for (var i = 0; i < spans.length; i++) {
+      var st = (spans[i].textContent || '').replace(/\s+/g, ' ').trim()
+      if (st && st.length >= 3) full = full.split(st).join('')
+    }
+    full = full.replace(/\s+/g, ' ').trim()
+    return full.length > 80 ? '' : full
+  }
+
+  var idx = {}
   var out = []
   anchors.forEach(function(a) {
     var url = norm(a.href)
-    if (!url || seen[url]) return
-    // Sichtbarer Name steht bei LinkedIn meist in einem aria-hidden span; sonst Anchor-Text.
-    var nameEl = a.querySelector('span[aria-hidden="true"]')
-    var name = ((nameEl ? nameEl.textContent : a.textContent) || '').trim().split('\n')[0].trim()
-    if (!name || name.length > 80) name = ''
-    seen[url] = true
-    out.push({ name: name, profile_url: url })
+    if (!url) return
+    var name = cardName(a)
+    // Erste Sichtung des Profils anlegen; spätere Anchors nur nutzen, um einen
+    // noch leeren Namen nachzutragen (Bild-Anchor hat keinen Text, Text-Anchor schon).
+    if (idx[url] === undefined) { idx[url] = out.length; out.push({ name: name, profile_url: url }) }
+    else if (!out[idx[url]].name && name) { out[idx[url]].name = name }
   })
   return { connections: out }
 }
 
 async function scrapeConnectionsForWebApp() {
   var url = 'https://www.linkedin.com/mynetwork/invite-connect/connections/'
-  var win = null
+
+  // Aktiven Leadesk-Tab merken, um nachher dorthin zurückzukehren (wie Brand-Scraper).
+  var leadeskTabIdBefore = null
   try {
-    win = await chrome.windows.create({ url: url, focused: false, state: 'minimized' })
-    var tab = win.tabs[0]
-    await waitLoaded(tab.id, 25000)
-    await sleep(4000)
-    var result = await chrome.scripting.executeScript({ target: { tabId: tab.id }, func: scrapeConnectionsPage, args: [6] })
+    var pre = await chrome.tabs.query({ url: ['https://app.leadesk.de/*', 'https://staging.leadesk.de/*'] })
+    if (pre && pre.length > 0) leadeskTabIdBefore = pre[0].id
+  } catch (_) {}
+
+  var tab = null
+  try {
+    // Aktiver Vordergrund-Tab (wie Brand-/Profil-Scraper) — nur so lädt LinkedIn die
+    // komplette Verbindungsliste per Lazy-Load nach; unfokussierte/minimierte Fenster
+    // werden von Chrome/LinkedIn gedrosselt und laden nur den ersten Batch.
+    tab = await chrome.tabs.create({ url: url, active: true })
+    if (tab.windowId) { try { await chrome.windows.update(tab.windowId, { focused: true }) } catch (_) {} }
+    // Leadesk-Ladeanzeige einblenden (gleiches Overlay wie Brand-/Profil-Scraper),
+    // sobald content.js auf dem Tab bereit ist. Max 6 Versuche à 400ms.
+    for (var ovi = 0; ovi < 6; ovi++) {
+      await sleep(400)
+      try { var ovok = await chrome.tabs.sendMessage(tab.id, { type: 'SHOW_LOADING_OVERLAY', title: 'Leadesk prüft deine Vernetzungen…', subtitle: 'Wir lesen deine LinkedIn-Verbindungen, um angenommene Anfragen automatisch zu erkennen.' }); if (ovok && ovok.ok) break } catch (e) {}
+    }
+    await waitLoaded(tab.id, 30000)
+    await sleep(1200)
+    var result = await chrome.scripting.executeScript({ target: { tabId: tab.id }, func: scrapeConnectionsPage })
     var res = result && result[0] && result[0].result
     if (res && res.retry) {
       await sleep(3000)
-      result = await chrome.scripting.executeScript({ target: { tabId: tab.id }, func: scrapeConnectionsPage, args: [6] })
+      result = await chrome.scripting.executeScript({ target: { tabId: tab.id }, func: scrapeConnectionsPage })
       res = result && result[0] && result[0].result
     }
     if (res && res.error) return { error: res.error }
@@ -526,7 +613,15 @@ async function scrapeConnectionsForWebApp() {
   } catch (e) {
     return { error: e.message || String(e) }
   } finally {
-    if (win && win.id) setTimeout(function() { chrome.windows.remove(win.id).catch(function() {}) }, 1500)
+    // Tab schließen + zurück zur Leadesk-App fokussieren
+    if (tab && tab.id) { try { await chrome.tabs.remove(tab.id) } catch (_) {} }
+    try {
+      if (leadeskTabIdBefore) {
+        await chrome.tabs.update(leadeskTabIdBefore, { active: true })
+        var t = await chrome.tabs.get(leadeskTabIdBefore).catch(function () { return null })
+        if (t && t.windowId) await chrome.windows.update(t.windowId, { focused: true })
+      }
+    } catch (_) {}
   }
 }
 
@@ -553,6 +648,20 @@ chrome.runtime.onMessage.addListener(function(msg, sender, sendResponse) {
       return true
     }
     scrapeConnectionsForWebApp().then(sendResponse).catch(function(err) {
+      sendResponse({ error: String(err && err.message || err) })
+    })
+    return true
+  }
+  if (msg.type === 'BRIDGE_CHECK_PROFILE') {
+    var senderUrlP = (sender && sender.url) || ''
+    if (!/^https:\/\/(app|staging|[a-z0-9-]+)\.leadesk\.de\//.test(senderUrlP)) {
+      sendResponse({ error: 'Unbefugter Bridge-Aufruf' })
+      return true
+    }
+    scrapeLinkedInProfileForWebApp('https://www.linkedin.com/in/me/', false, {
+      title: 'Leadesk prüft dein Profil…',
+      subtitle: 'Wir prüfen Banner, Profilfoto, Slogan, Info-Box, Berufserfahrung und mehr.'
+    }).then(sendResponse).catch(function(err) {
       sendResponse({ error: String(err && err.message || err) })
     })
     return true
@@ -615,7 +724,7 @@ chrome.runtime.onInstalled.addListener(async function(details) {
 
   chrome.alarms.create('queuePoll', { periodInMinutes: 40/60 })
   chrome.alarms.create('ssiDaily', { when: getNext8AM(), periodInMinutes: 24*60 })
-  console.log('[Leadesk] v7.9 installiert')
+  console.log('[Leadesk] v' + ((chrome.runtime.getManifest && chrome.runtime.getManifest().version) || '?') + ' installiert')
   if (details.reason === 'install') chrome.tabs.create({ url: 'https://app.leadesk.de' })
 })
 
@@ -743,7 +852,7 @@ async function getActiveLinkedInIdentity() {
   }
 }
 
-async function scrapeLinkedInProfileForWebApp(rawUrl, includePosts) {
+async function scrapeLinkedInProfileForWebApp(rawUrl, includePosts, overlay) {
   console.log('[Leadesk Scrape] START', rawUrl)
   if (!rawUrl || typeof rawUrl !== 'string') return { error: 'URL fehlt' }
   var url
@@ -779,10 +888,11 @@ async function scrapeLinkedInProfileForWebApp(rawUrl, includePosts) {
     }
     // SHOW_LOADING_OVERLAY auf dem neuen Tab so frueh wie moeglich
     // (sobald content.js geladen ist). Wir versuchen alle 400ms, max 5x.
+    // overlay (optional) erlaubt eigenen Text, z.B. für den Profil-Checker.
     for (var ovi = 0; ovi < 5; ovi++) {
       await new Promise(function(r) { setTimeout(r, 400) })
       try {
-        var ok = await chrome.tabs.sendMessage(tab.id, { type: 'SHOW_LOADING_OVERLAY' })
+        var ok = await chrome.tabs.sendMessage(tab.id, { type: 'SHOW_LOADING_OVERLAY', title: overlay && overlay.title, subtitle: overlay && overlay.subtitle })
         if (ok && ok.ok) break
       } catch(e) {}
     }
@@ -791,6 +901,10 @@ async function scrapeLinkedInProfileForWebApp(rawUrl, includePosts) {
     return { error: 'Konnte LinkedIn-Tab nicht oeffnen: ' + e.message }
   }
   if (!tab || !tab.id) return { error: 'Kein Tab-Handle erhalten' }
+
+  // Profil Stück für Stück komplett durchscrollen, damit alle Lazy-Load-Sections
+  // (Berufserfahrung, Ausbildung, Kenntnisse …) geladen sind, BEVOR gescrapt wird.
+  try { await chrome.scripting.executeScript({ target: { tabId: tab.id }, func: scrollProfilePage }) } catch (e) {}
 
   var profile = null
   var lastErr = null

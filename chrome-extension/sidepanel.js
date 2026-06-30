@@ -170,6 +170,7 @@ function showProfile(profile) {
   $('noProfile').style.display    = 'none'
   $('profileSection').style.display = 'block'
   resetImportBtn()
+  loadCampaignsForImport()
 
   // KI-Nachricht Banner aktualisieren
   $('aiProfileBanner').style.display = 'block'
@@ -374,6 +375,46 @@ function renderMatchBanner(profile) {
   })
 }
 
+// Lädt die Kampagnen des Users für die direkte Zuordnung beim Import.
+async function loadCampaignsForImport() {
+  const wrap = $('campaignSelectorWrap'); const sel = $('campaignSelect')
+  if (!wrap || !sel) return
+  try {
+    const camps = await sbFetch('automation_campaigns?select=id,name,status&order=created_at.desc&limit=100')
+    if (!Array.isArray(camps) || !camps.length) { wrap.style.display = 'none'; return }
+    const cur = sel.value
+    const esc = s => String(s || '').replace(/</g, '&lt;')
+    sel.innerHTML = '<option value="">— Keine Kampagne —</option>' + camps.map(c =>
+      `<option value="${c.id}">${esc(c.name || 'Kampagne')}${c.status && c.status !== 'active' ? ' (' + esc(c.status) + ')' : ''}</option>`
+    ).join('')
+    if (cur) sel.value = cur
+    wrap.style.display = 'block'
+  } catch (_) { wrap.style.display = 'none' }
+}
+
+// Ordnet einen importierten Inbox-Kontakt einer Kampagne zu (automation_campaign_leads).
+async function assignToCampaign(campaignId) {
+  if (!campaignId) return false
+  const snid  = currentProfile.sales_nav_id
+  const liUrl = currentProfile.linkedin_url || currentProfile.profile_url
+  let q = 'linkedin_inbox?team_id=eq.' + currentTeamId + '&select=id&limit=1'
+  if (snid)       q += '&sales_nav_id=eq.' + encodeURIComponent(snid)
+  else if (liUrl) q += '&linkedin_url=eq.' + encodeURIComponent(liUrl)
+  else return false
+  const rows = await sbFetch(q)
+  const inboxId = Array.isArray(rows) && rows[0] && rows[0].id
+  if (!inboxId) return false
+  const res = await sbFetch('automation_campaign_leads', 'POST', {
+    campaign_id: campaignId,
+    inbox_id: inboxId,
+    user_id: currentUserId,
+    status: 'queued',
+    current_step: 0,
+    next_action_at: new Date().toISOString(),
+  })
+  return res !== null
+}
+
 async function importLead() {
   if (!currentProfile || !currentUserId) return
 
@@ -438,6 +479,14 @@ async function importLead() {
       btn.innerHTML = isNew ? '✓ In Import-Inbox!' : '✓ Schon in Inbox'
       btn.disabled = false
       setStatus('connected', isNew ? 'In Import-Inbox ✓' : 'Bereits in Inbox ✓')
+      // Optionale Kampagnen-Zuordnung direkt aus der Extension
+      const campId = $('campaignSelect') ? $('campaignSelect').value : ''
+      if (campId) {
+        try {
+          const ok = await assignToCampaign(campId)
+          if (ok) { btn.innerHTML = '✓ Importiert + Kampagne'; setStatus('connected', 'In Inbox + Kampagne ✓') }
+        } catch (_) { /* Zuordnung optional — Import bleibt erfolgreich */ }
+      }
     } else {
       throw new Error(window.__lastError || 'Fehler beim Speichern')
     }

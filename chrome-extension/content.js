@@ -292,7 +292,7 @@ function scrapeProfile() {
   if (li_about.length > 5000) li_about = li_about.slice(0, 5000)
 
   // ── Experience / Berufserfahrung ────────────────────────────────
-  var expSection = findSection(['Berufserfahrung', 'Experience'], ['experience'])
+  var expSection = findSection(['Berufserfahrung', 'Erfahrung', 'Experience'], ['experience'])
   var li_experience = expSection ? cleanSectionText(expSection) : ''
   if (li_experience.length > 10000) li_experience = li_experience.slice(0, 10000)
 
@@ -356,6 +356,10 @@ function scrapeProfile() {
   var degreeScore = degree === '1st' ? 60 : degree === '2nd' ? 40 : 20
   console.log('[Leadesk Content] degree:', degree, '→ status:', connectionStatus)
 
+  // Profil-Checker: Header-Banner + Profilfoto über die licdn-Media-Pfade erkennen.
+  var hasBanner = Array.prototype.some.call(document.querySelectorAll('img'), function(i){ return /profile-displaybackgroundimage/i.test(i.src || '') })
+  var hasPhoto  = Array.prototype.some.call(document.querySelectorAll('img'), function(i){ return /profile-displayphoto/i.test(i.src || '') })
+
   return {
     first_name: firstName,
     last_name: lastName,
@@ -364,6 +368,8 @@ function scrapeProfile() {
     company: company,
     headline: headline,
     avatar_url: avatarUrl || null,
+    has_banner: hasBanner,
+    has_photo: hasPhoto,
     profile_url: liUrl,
     linkedin_url: liUrl,
     city: city || null,
@@ -459,8 +465,10 @@ function scrapeOwnIdentity() {
 
 
 // ── Loading-Overlay (Full-Screen) waehrend Scrape ────────────────
-function showLoadingOverlay() {
+function showLoadingOverlay(title, subtitle) {
   if (document.getElementById('leadesk-loading-overlay')) return
+  var lskTitle = title || 'Leadesk extrahiert dein LinkedIn-Profil…'
+  var lskSubtitle = subtitle || 'Wir lesen Profilslogan, Info-Box, Berufserfahrung, Ausbildung, Kenntnisse und deine letzten Beiträge.'
   var overlay = document.createElement('div')
   overlay.id = 'leadesk-loading-overlay'
   overlay.style.cssText = [
@@ -481,8 +489,8 @@ function showLoadingOverlay() {
     '    <img src="' + LSK_LOGO_URL + '" width="48" height="48" alt="Leadesk" style="display:block">',
     '    <div id="leadesk-spinner" style="width:48px;height:48px;border:4px solid rgba(0,0,0,0.06);border-top:4px solid ' + LSK_BRAND.primary + ';border-radius:50%;animation:leadesk-spin 1s linear infinite"></div>',
     '  </div>',
-    '  <h2 style="font-size:20px;font-weight:500;margin:0 0 10px;color:' + LSK_BRAND.textPrimary + ';letter-spacing:-0.01em">Leadesk extrahiert dein LinkedIn-Profil…</h2>',
-    '  <p style="font-size:13px;color:#555550;margin:0 0 14px;line-height:1.6">Wir lesen Profilslogan, Info-Box, Berufserfahrung, Ausbildung, Kenntnisse und deine letzten Beiträge.</p>',
+    '  <h2 style="font-size:20px;font-weight:500;margin:0 0 10px;color:' + LSK_BRAND.textPrimary + ';letter-spacing:-0.01em">' + lskTitle + '</h2>',
+    '  <p style="font-size:13px;color:#555550;margin:0 0 14px;line-height:1.6">' + lskSubtitle + '</p>',
     '  <p style="font-size:12px;color:#8a8a85;margin:0;line-height:1.55">Du wirst in wenigen Sekunden automatisch zurück zu Leadesk geleitet.<br/>Bitte nicht wegklicken oder den Tab schließen.</p>',
     '</div>',
     '<style>@keyframes leadesk-spin{0%{transform:rotate(0deg)}100%{transform:rotate(360deg)}}</style>'
@@ -652,7 +660,7 @@ chrome.runtime.onMessage.addListener(function(msg, sender, sendResponse) {
     return true
   }
   if (msg.type === 'PING') sendResponse({ ok: true, url: window.location.href })
-  if (msg.type === 'SHOW_LOADING_OVERLAY') { showLoadingOverlay(); sendResponse({ ok: true }); return true }
+  if (msg.type === 'SHOW_LOADING_OVERLAY') { showLoadingOverlay(msg.title, msg.subtitle); sendResponse({ ok: true }); return true }
   if (msg.type === 'HIDE_LOADING_OVERLAY') { hideLoadingOverlay(); sendResponse({ ok: true }); return true }
   return true
 })
