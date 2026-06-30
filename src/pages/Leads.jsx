@@ -27,7 +27,7 @@ import {
   ArrowDownUp, X, Check, Flame, Briefcase, Star, Clock, AlertTriangle,
   Inbox, Users as UsersIcon, FolderPlus, Folder, Download, Upload,
   CheckSquare, Square, Archive, Trash2, MoreHorizontal,
-  Rows3, Rows2, FileUp, Puzzle, Pencil,
+  Rows3, Rows2, FileUp, Puzzle, Pencil, ChevronUp, ChevronDown,
 } from 'lucide-react';
 import { EXTENSION_WEBSTORE_URL } from '../lib/leadeskExtension';
 import { LeadsList } from '../components/leads/LeadsList';
@@ -247,6 +247,9 @@ export default function Leads() {
   const [bulkStagePicker, setBulkStagePicker] = useState(null);
   const [bulkListPicker,  setBulkListPicker]  = useState(null);
   const [bulkEditOpen,    setBulkEditOpen]    = useState(false);
+  // Dashboard-Block (KPIs + Grafiken) ein-/ausblendbar — persistiert in localStorage
+  const [showDash, setShowDash] = useState(() => { try { return localStorage.getItem('leadesk_leads_dashboard') !== '0'; } catch { return true; } });
+  const toggleDash = () => setShowDash(v => { const n = !v; try { localStorage.setItem('leadesk_leads_dashboard', n ? '1' : '0'); } catch {} return n; });
 
   // ─── Lists fetch ────────────────────────────────────────────────────
   const [lists, setLists] = useState([]);
@@ -761,6 +764,11 @@ export default function Leads() {
 
   const headerAction = (
     <div style={{ display:'flex', alignItems:'center', gap:10, flexWrap:'wrap', justifyContent:'flex-end' }}>
+      <button type="button" onClick={toggleDash}
+        title={showDash ? 'Dashboard ausblenden' : 'Dashboard einblenden'}
+        style={{ ...ghostBtnStyle, height:34 }}>
+        {showDash ? <ChevronUp size={15}/> : <ChevronDown size={15}/>} Dashboard
+      </button>
       <div style={searchWrapStyle}>
         <Search size={14} style={searchIconStyle} />
         <input type="text" style={{ ...searchInputStyle, width: 240 }}
@@ -786,6 +794,7 @@ export default function Leads() {
           action={headerAction}
         />
 
+        {showDash && (<>
         {/* KPI-Karten (Reports-Stil) — jede Card setzt den passenden Quick-Filter */}
         <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fit, minmax(150px, 1fr))', gap:12, marginBottom:16 }}>
           {kpis.map(k => {
@@ -834,6 +843,7 @@ export default function Leads() {
             ? sourceDist.map(s => <BarRow key={s.label} label={s.label} count={s.count} total={leads.length} color="#0C447C"/>)
             : <EmptyBars text="Keine Quellen erfasst."/>}
         </Panel>
+        </>)}
 
         {/* Saved Views ("Ansichten") als Tab-Leiste — Sprint B */}
         <LeadViewsTabs

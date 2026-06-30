@@ -3,7 +3,7 @@
 // Orientiert sich am Deals.jsx-Pattern (KPIs, Filter, Suche, Liste, Modal)
 
 import React, { useState, useEffect } from 'react'
-import { Building2, Users, BarChart3, Layers, Download } from 'lucide-react'
+import { Building2, Users, BarChart3, Layers, Download, ChevronUp, ChevronDown } from 'lucide-react'
 import { supabase } from '../lib/supabase'
 import { useNavigate } from 'react-router-dom'
 import { useTeam } from '../context/TeamContext'
@@ -351,6 +351,9 @@ export default function Organizations({ session }) {
   const [search,     setSearch]     = useState('')
   const [selected,   setSelected]   = useState(() => new Set()) // org-ids für Sponsor-Bulk
   const [bulkMarking, setBulkMarking] = useState(false)
+  // Dashboard-Block (KPIs + Grafiken) ein-/ausblendbar — persistiert in localStorage
+  const [showDash, setShowDash] = useState(() => { try { return localStorage.getItem('leadesk_orgs_dashboard') !== '0' } catch { return true } })
+  const toggleDash = () => setShowDash(v => { const n = !v; try { localStorage.setItem('leadesk_orgs_dashboard', n ? '1' : '0') } catch {} return n })
 
   const toggleSelect = (orgId) => setSelected(prev => {
     const next = new Set(prev)
@@ -476,10 +479,16 @@ export default function Organizations({ session }) {
   }
 
   const headerAction = (
-    <button onClick={() => setModal('new')}
-      style={{ padding: '9px 18px', borderRadius: 10, border: 'none', background: PRIMARY, color: '#fff', fontSize: 13, fontWeight: 700, cursor: 'pointer', whiteSpace: 'nowrap' }}>
-      + Neues Unternehmen
-    </button>
+    <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap', justifyContent: 'flex-end' }}>
+      <button onClick={toggleDash} title={showDash ? 'Dashboard ausblenden' : 'Dashboard einblenden'}
+        style={{ padding: '9px 14px', borderRadius: 10, border: '1.5px solid #E2E8F0', background: 'var(--surface-muted)', color: '#475569', fontSize: 13, fontWeight: 600, cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: 6, whiteSpace: 'nowrap' }}>
+        {showDash ? <ChevronUp size={15}/> : <ChevronDown size={15}/>}Dashboard
+      </button>
+      <button onClick={() => setModal('new')}
+        style={{ padding: '9px 18px', borderRadius: 10, border: 'none', background: PRIMARY, color: '#fff', fontSize: 13, fontWeight: 700, cursor: 'pointer', whiteSpace: 'nowrap' }}>
+        + Neues Unternehmen
+      </button>
+    </div>
   )
 
   return (
@@ -491,32 +500,36 @@ export default function Organizations({ session }) {
         action={headerAction}
       />
 
-      {/* KPI-Karten (Reports-Stil) */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))', gap: 12, marginBottom: 16 }}>
-        <KpiCard label="Unternehmen"   value={totalOrgs}        color={PRIMARY}   Icon={Building2}/>
-        <KpiCard label="Mit Kontakten" value={withContacts}     color="#0ea5e9"   Icon={Users}/>
-        <KpiCard label="Mit Deals"     value={withDeals}        color="#059669"   Icon={BarChart3}/>
-        <KpiCard label="Branchen"      value={uniqueIndustries} color="#D97706"   Icon={Layers}/>
-      </div>
+      {showDash && (
+        <>
+          {/* KPI-Karten (Reports-Stil) */}
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))', gap: 12, marginBottom: 16 }}>
+            <KpiCard label="Unternehmen"   value={totalOrgs}        color={PRIMARY}   Icon={Building2}/>
+            <KpiCard label="Mit Kontakten" value={withContacts}     color="#0ea5e9"   Icon={Users}/>
+            <KpiCard label="Mit Deals"     value={withDeals}        color="#059669"   Icon={BarChart3}/>
+            <KpiCard label="Branchen"      value={uniqueIndustries} color="#D97706"   Icon={Layers}/>
+          </div>
 
-      {/* Diagramme (Reports-Stil) — Branche groß + Größe daneben, Umsatz darunter */}
-      <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: 14 }}>
-        <Panel title="Verteilung nach Branche">
-          {industryStats.length > 0
-            ? industryStats.map(s => <BarRow key={s.label} label={s.label} count={s.count} total={totalOrgs} color="#0C447C"/>)
-            : <EmptyBars text="Noch keine Branchen erfasst."/>}
-        </Panel>
-        <Panel title="Größenverteilung">
-          {employeeStats.length > 0
-            ? employeeStats.map(s => <BarRow key={s.label} label={s.label} count={s.count} total={totalOrgs} color="#185FA5"/>)
-            : <EmptyBars text="Keine Angaben zur Mitarbeiterzahl."/>}
-        </Panel>
-      </div>
-      <Panel title="Umsatz-Verteilung">
-        {revenueStats.length > 0
-          ? revenueStats.map(s => <BarRow key={s.label} label={s.label} count={s.count} total={totalOrgs} color="#059669"/>)
-          : <EmptyBars text="Keine Umsatzangaben erfasst."/>}
-      </Panel>
+          {/* Diagramme (Reports-Stil) — Branche groß + Größe daneben, Umsatz darunter */}
+          <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: 14 }}>
+            <Panel title="Verteilung nach Branche">
+              {industryStats.length > 0
+                ? industryStats.map(s => <BarRow key={s.label} label={s.label} count={s.count} total={totalOrgs} color="#0C447C"/>)
+                : <EmptyBars text="Noch keine Branchen erfasst."/>}
+            </Panel>
+            <Panel title="Größenverteilung">
+              {employeeStats.length > 0
+                ? employeeStats.map(s => <BarRow key={s.label} label={s.label} count={s.count} total={totalOrgs} color="#185FA5"/>)
+                : <EmptyBars text="Keine Angaben zur Mitarbeiterzahl."/>}
+            </Panel>
+          </div>
+          <Panel title="Umsatz-Verteilung">
+            {revenueStats.length > 0
+              ? revenueStats.map(s => <BarRow key={s.label} label={s.label} count={s.count} total={totalOrgs} color="#059669"/>)
+              : <EmptyBars text="Keine Umsatzangaben erfasst."/>}
+          </Panel>
+        </>
+      )}
 
       {/* Tabs */}
       <TabBar tabs={TABS} active={filter} onChange={setFilter} style={{ marginBottom: 14 }}/>
