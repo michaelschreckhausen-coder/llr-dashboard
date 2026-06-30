@@ -11,9 +11,9 @@
 //     "Öffnen →"-Pfeil zur Source-Page. Klick auf die Card navigiert direkt.
 //   - SSI-Daily-Reminder: dismiss-Button (localStorage bis 0 Uhr).
 
-import React, { useState, useMemo } from 'react'
+import React, { useState, useMemo, useEffect } from 'react'
 import TaskSourceIcon from '../components/TaskSourceIcon'
-import { AlertTriangle, Search } from 'lucide-react'
+import { AlertTriangle, Search, ChevronDown, SlidersHorizontal, Check } from 'lucide-react'
 import { useNavigate } from 'react-router-dom'
 import { useTeam } from '../context/TeamContext'
 import { useAllTasks } from '../hooks/useAllTasks'
@@ -49,6 +49,7 @@ export default function Aufgaben({ session }) {
 
   const [statusFilter, setStatusFilter] = useState('all')
   const [activeSources, setActiveSources] = useState(new Set(ALL_SOURCE_KEYS))
+  const [showSourceMenu, setShowSourceMenu] = useState(false)
   const [search, setSearch] = useState('')
   const [profiles, setProfiles] = useState({})
   const [newTaskOpen, setNewTaskOpen] = useState(false)
@@ -160,6 +161,14 @@ export default function Aufgaben({ session }) {
 
   function selectAllSources() { setActiveSources(new Set(ALL_SOURCE_KEYS)) }
 
+  // Quellen-Dropdown: bei Klick außerhalb schließen
+  useEffect(() => {
+    if (!showSourceMenu) return
+    const h = (e) => { if (!e.target.closest('[data-source-menu]')) setShowSourceMenu(false) }
+    document.addEventListener('mousedown', h)
+    return () => document.removeEventListener('mousedown', h)
+  }, [showSourceMenu])
+
   // ─── Gruppierung nach Datum ─────────────────────────────────────────────
   const groups = useMemo(() => {
     const out = []
@@ -179,13 +188,14 @@ export default function Aufgaben({ session }) {
   }, [filtered, statusFilter, today])
 
   return (
-    <div style={{ width: '100%', margin: '0 auto', paddingBottom: 60 }}>
+    <div style={{ width: '100%', maxWidth: 1100, margin: '0 auto', padding: '24px 16px 40px' }}>
 
       {/* Header */}
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 24 }}>
+      <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: 24, gap: 16, flexWrap: 'wrap' }}>
         <div>
-          <h1 style={{ fontSize: 22, fontWeight: 800, color: '#111827', margin: 0 }}>Aufgaben</h1>
-          <div style={{ fontSize: 13, color: '#6B7280', marginTop: 4 }}>
+          <div style={{ fontSize: 20, color: '#30A0D0', fontFamily: '"Caveat", cursive', fontWeight: 600, marginBottom: 2 }}>Deine Aufgaben</div>
+          <h1 style={{ fontSize: 26, fontWeight: 700, color: '#111827', margin: 0, letterSpacing: '-0.3px', lineHeight: 1.2 }}>Alles an einem Ort.</h1>
+          <div style={{ fontSize: 13, color: '#6B7280', marginTop: 6 }}>
             <span style={{display:'inline-flex',alignItems:'center',gap:4,flexWrap:'wrap'}}>{team ? `Team: ${team.name}` : 'Meine Aufgaben'} · {counts.all} offen{counts.overdue > 0 && <> · <AlertTriangle size={12} strokeWidth={1.75}/> {counts.overdue} überfällig</>}</span>
           </div>
         </div>
@@ -199,42 +209,56 @@ export default function Aufgaben({ session }) {
         </button>
       </div>
 
-      {/* Quell-Filter (Toggle pro Source) */}
-      <div style={{ display: 'flex', gap: 6, marginBottom: 14, flexWrap: 'wrap', alignItems: 'center' }}>
-        <span style={{ fontSize: 11, fontWeight: 700, color: '#6B7280', textTransform: 'uppercase', letterSpacing: '0.06em', marginRight: 4 }}>
-          Quellen:
-        </span>
-        {ALL_SOURCE_KEYS.map(key => {
-          const cfg = TASK_SOURCES[key]
-          const isActive = activeSources.has(key)
-          const c = sourceCounts[key] || 0
-          return (
-            <button key={key} onClick={() => toggleSource(key)}
-              style={{
-                padding: '4px 10px', borderRadius: 99,
-                border: '1.5px solid ' + (isActive ? cfg.color : '#E5E7EB'),
-                background: isActive ? cfg.bg : '#fff',
-                color: isActive ? cfg.color : '#9CA3AF',
-                fontSize: 11, fontWeight: 600, cursor: 'pointer',
-                display: 'inline-flex', alignItems: 'center', gap: 4,
-                opacity: isActive ? 1 : 0.6,
-                transition: 'all 0.15s',
-              }}>
-              <TaskSourceIcon name={cfg.iconName} size={12} />
-              {cfg.label}
-              {c > 0 && (
-                <span style={{ background: isActive ? cfg.color : '#F3F4F6', color: isActive ? '#fff' : '#9CA3AF', borderRadius: 99, padding: '0 5px', fontSize: 10, fontWeight: 700, minWidth: 16, textAlign: 'center' }}>
-                  {c}
-                </span>
-              )}
+      {/* Quell-Filter — als Dropdown (kompakt statt langer Pill-Reihe) */}
+      <div style={{ position: 'relative', marginBottom: 14, display: 'inline-block' }} data-source-menu>
+        <button onClick={() => setShowSourceMenu(v => !v)}
+          style={{
+            display: 'inline-flex', alignItems: 'center', gap: 8,
+            padding: '7px 12px', borderRadius: 10,
+            border: '1.5px solid #E5E7EB', background: '#fff',
+            color: '#374151', fontSize: 12, fontWeight: 600, cursor: 'pointer',
+          }}>
+          <SlidersHorizontal size={14} strokeWidth={1.75} />
+          Quellen
+          <span style={{ background: 'var(--wl-primary, ' + PRIMARY + ')', color: '#fff', borderRadius: 99, padding: '0 7px', fontSize: 10, fontWeight: 700, minWidth: 16, textAlign: 'center' }}>
+            {activeSources.size}/{ALL_SOURCE_KEYS.length}
+          </span>
+          <ChevronDown size={14} strokeWidth={2} style={{ transform: showSourceMenu ? 'rotate(180deg)' : 'none', transition: 'transform 0.15s' }} />
+        </button>
+        {showSourceMenu && (
+          <div style={{ position: 'absolute', top: 'calc(100% + 6px)', left: 0, zIndex: 50, minWidth: 240, padding: 6, background: '#fff', border: '1px solid #E5E7EB', borderRadius: 12, boxShadow: '0 12px 32px rgba(15,23,42,0.16)' }}>
+            {ALL_SOURCE_KEYS.map(key => {
+              const cfg = TASK_SOURCES[key]
+              const isActive = activeSources.has(key)
+              const c = sourceCounts[key] || 0
+              return (
+                <button key={key} onClick={() => toggleSource(key)}
+                  style={{
+                    width: '100%', display: 'flex', alignItems: 'center', gap: 10,
+                    padding: '8px 10px', borderRadius: 8, border: 'none', cursor: 'pointer',
+                    background: 'transparent', fontSize: 13, fontWeight: 600, color: '#374151', textAlign: 'left',
+                  }}
+                  onMouseEnter={e => e.currentTarget.style.background = '#F3F4F6'}
+                  onMouseLeave={e => e.currentTarget.style.background = 'transparent'}>
+                  <span style={{ width: 16, height: 16, borderRadius: 4, border: '1.5px solid ' + (isActive ? cfg.color : '#D1D5DB'), background: isActive ? cfg.color : '#fff', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                    {isActive && <Check size={11} strokeWidth={3} color="#fff" />}
+                  </span>
+                  <TaskSourceIcon name={cfg.iconName} size={14} />
+                  <span style={{ flex: 1 }}>{cfg.label}</span>
+                  {c > 0 && (
+                    <span style={{ background: '#F3F4F6', color: '#6B7280', borderRadius: 99, padding: '0 6px', fontSize: 10, fontWeight: 700, minWidth: 16, textAlign: 'center' }}>{c}</span>
+                  )}
+                </button>
+              )
+            })}
+            <div style={{ height: 1, background: '#F3F4F6', margin: '4px 6px' }} />
+            <button onClick={selectAllSources}
+              style={{ width: '100%', padding: '8px 10px', borderRadius: 8, border: 'none', background: 'transparent', color: 'var(--wl-primary, ' + PRIMARY + ')', fontSize: 12, fontWeight: 700, cursor: 'pointer', textAlign: 'left' }}
+              onMouseEnter={e => e.currentTarget.style.background = '#F3F4F6'}
+              onMouseLeave={e => e.currentTarget.style.background = 'transparent'}>
+              Alle anzeigen
             </button>
-          )
-        })}
-        {activeSources.size < ALL_SOURCE_KEYS.length && (
-          <button onClick={selectAllSources}
-            style={{ marginLeft: 6, padding: '4px 10px', borderRadius: 99, border: '1.5px dashed #D1D5DB', background: 'transparent', color: '#6B7280', fontSize: 11, fontWeight: 600, cursor: 'pointer' }}>
-            Alle anzeigen
-          </button>
+          </div>
         )}
       </div>
 
