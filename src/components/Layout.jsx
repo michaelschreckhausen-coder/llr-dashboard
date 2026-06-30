@@ -1076,15 +1076,6 @@ export default function Layout({ session, role, onLogout, children }) {
                       <span style={{ fontWeight:500 }}>Marketplace</span>
                       <span style={{ marginLeft:'auto', fontSize:9, fontWeight:800, padding:'2px 6px', borderRadius:99, background:'#FEF3C7', color:'#92400E', letterSpacing:'0.04em' }}>NEU</span>
                     </button>
-                    <button onClick={() => { navigate('/profiltexte'); setShowMenu(false) }}
-                      style={{ width:'100%', display:'flex', alignItems:'center', gap:10, padding:'9px 12px', borderRadius:10, border:'none', background:'none', cursor:'pointer', fontSize:13, color:'var(--text-primary)', textAlign:'left' }}
-                      onMouseEnter={e => e.currentTarget.style.background='var(--surface-hover)'}
-                      onMouseLeave={e => e.currentTarget.style.background='none'}>
-                      <span style={{ width:22, display:'flex', alignItems:'center', justifyContent:'center', color: 'var(--primary)', flexShrink:0 }}>
-                        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M16 8a6 6 0 0 1 6 6v7h-4v-7a2 2 0 0 0-2-2 2 2 0 0 0-2 2v7h-4v-7a6 6 0 0 1 6-6z"/><rect x="2" y="9" width="4" height="12"/><circle cx="4" cy="4" r="2"/></svg>
-                      </span>
-                      <span style={{ fontWeight:500 }}>Mein LinkedIn</span>
-                    </button>
                     <button onClick={() => { navigate('/getting-started'); setShowMenu(false) }}
                       style={{ width:'100%', display:'flex', alignItems:'center', gap:10, padding:'9px 12px', borderRadius:10, border:'none', background:'none', cursor:'pointer', fontSize:13, color:'var(--text-primary)', textAlign:'left' }}
                       onMouseEnter={e => e.currentTarget.style.background='var(--surface-hover)'}
