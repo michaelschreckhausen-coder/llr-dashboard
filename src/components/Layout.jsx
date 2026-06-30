@@ -1062,15 +1062,7 @@ export default function Layout({ session, role, onLogout, children }) {
                       </span>
                       <span style={{ fontWeight:500 }}>Erste Schritte</span>
                     </button>
-                    <button onClick={()=>{navigate('/linkedin-connect');setShowMenu(false)}}
-                      style={{ width:'100%', display:'flex', alignItems:'center', gap:10, padding:'9px 12px', borderRadius:10, border:'none', background:'none', cursor:'pointer', fontSize:13, color:'var(--text-primary)', textAlign:'left' }}
-                      onMouseEnter={e => e.currentTarget.style.background='var(--surface-hover)'}
-                      onMouseLeave={e => e.currentTarget.style.background='none'}>
-                      <span style={{ width:22, display:'flex', alignItems:'center', justifyContent:'center', color: 'var(--primary)', flexShrink:0 }}>
-                        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M4.5 16.5c-1.5 1.26-2 5-2 5s3.74-.5 5-2c.71-.84.7-2.13-.09-2.91a2.18 2.18 0 0 0-2.91-.09z"/><path d="m12 15-3-3a22 22 0 0 1 2-3.95A12.88 12.88 0 0 1 22 2c0 2.72-.78 7.5-6 11a22.35 22.35 0 0 1-4 2z"/></svg>
-                      </span>
-                      <span style={{ fontWeight:500 }}>LinkedIn Cloud</span>
-                    </button>
+                    {/* LinkedIn-Cloud-Menüpunkt ausgeblendet — Seite (/linkedin-connect) bleibt erreichbar */}
                     {/* Kanbanboards-Menüpunkt entfernt — Board-Ansicht aktuell nicht nutzbar */}
                     {/* Phase 5A: Admin sidebar section disabled. Routes deactivated.
                         Migration to admin.leadesk.de in progress.
