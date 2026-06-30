@@ -112,7 +112,6 @@ function getNav(t) {
   { divider: true, label: t('nav.sales'), tourId: 'nav-sales' },
   { to: '/organizations',   icon: IcUsers2,   label: 'Unternehmen' },
   { to: '/leads',           icon: IcUsers,    label: 'Kontakte' },
-  { to: '/leads/imports',   icon: IcUsers,    label: 'Import-Historie', indent: true },
   { to: '/deals',           icon: IcBarChart, label: t('nav.deals') },
   // Aus Sponsoring in CRM verschoben; Per-Item-Gating ans Sponsoring-Addon gebunden.
   { to: '/sponsoring/angebote',  icon: IcDoc,    label: 'Angebote',  module: 'sponsoring' },
@@ -126,6 +125,7 @@ function getNav(t) {
   { to: '/automatisierung', icon: IcZap,      label: 'Automatisierung' },
   { to: '/messages',        icon: IcMail,     label: 'Nachrichten' },
   { to: '/ssi',             icon: IcTarget,   label: t('nav.ssiTracker') },
+  { to: '/profil-checker',  icon: IcLinkedIn, label: 'Profil-Checker' },
   { to: '/profiltexte',     icon: IcLinkedIn, label: t('nav.profiltexte') },
 
   { divider: true, label: t('nav.content'), tourId: 'nav-content' },

@@ -46,6 +46,7 @@ import SettingsInstagram from './pages/SettingsInstagram'
 import Instagram         from './pages/Instagram'
 import Pipeline      from './pages/Pipeline'
 import Vernetzungen  from './pages/Vernetzungen'
+import ProfilChecker from './pages/ProfilChecker'
 import LinkedInInbox from './pages/LinkedInInbox'
 import Reports       from './pages/Reports'
 import ICP           from './pages/ICP'
@@ -295,6 +296,7 @@ export default function App() {
             <Route path="/leads-v2/:id" element={<LeadV2DetailRedirect />} />
             <Route path="/comments" element={<ComingSoon title="Kommentare" />} />
             <Route path="/vernetzungen" element={<CompanyBrandGate feature="vernetzungen"><Vernetzungen session={session} /></CompanyBrandGate>} />
+            <Route path="/profil-checker" element={<ProfilChecker session={session} />} />
             <Route path="/linkedin-inbox" element={<ModuleGuard module="linkedin"><LinkedInInbox session={session} /></ModuleGuard>} />
             <Route path="/pipeline" element={<Navigate to="/deals?view=pipeline" replace />} />
             <Route path="/brand-voice" element={<Navigate to="/personal-brand" replace />} />

@@ -260,6 +260,28 @@ export async function scrapeLinkedInConnections() {
   }
 }
 
+// Öffnet das eigene LinkedIn-Profil (/in/me/) im Hintergrund, scrapt es und gibt
+// die Profildaten zurück (inkl. has_banner / has_photo) — für den Profil-Checker.
+// Returnt { profile, sourceUrl } oder { error }.
+export async function checkOwnLinkedInProfile() {
+  const det = await detectLeadeskExtension()
+  if (!det.installed) {
+    return {
+      error: 'Leadesk Chrome-Extension nicht aktiv. Bitte installiere oder aktiviere die Extension, um dein Profil zu prüfen.',
+      missingExtension: true,
+    }
+  }
+  try {
+    const resp = await sendBridgeMessage('check_own_profile', {}, BRIDGE_TIMEOUT_SCRAPE)
+    if (resp?.error && /Unbekannte Aktion/i.test(resp.error)) {
+      return { error: 'Deine Leadesk-Extension ist zu alt für den Profil-Checker. Bitte Extension aktualisieren.', outdatedExtension: true }
+    }
+    return resp || { error: 'Keine Antwort von der Extension' }
+  } catch (e) {
+    return { error: e.message || 'Fehler beim Profil-Check via Extension' }
+  }
+}
+
 // Normalisiert eine LinkedIn-Profil-URL auf den reinen Profil-Slug (Teil nach /in/).
 // Tolerant gegenüber Protokoll, www/Locale-Subdomain, Query, Hash und Trailing-Slash —
 // dadurch matcht z.B. "https://www.linkedin.com/in/pierredesaint-just/" gegen
