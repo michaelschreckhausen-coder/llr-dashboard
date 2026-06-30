@@ -349,7 +349,7 @@ export default function OrganizationProfile({ session }) {
   const inputS = { width: '100%', padding: '8px 12px', border: '1.5px solid #E4E7EC', borderRadius: 9, fontSize: 13, outline: 'none', background: 'var(--surface)', color: 'var(--text-primary, #111827)' }
 
   return (
-    <div style={{ paddingBottom: 60 }}>
+    <div style={{ width: '100%', maxWidth: 1100, margin: '0 auto', padding: '24px 16px 40px' }}>
       {/* Breadcrumb */}
       <div style={{ marginBottom: 16 }}>
         <Link to="/organizations" style={{ fontSize: 12, color: '#6B7280', textDecoration: 'none' }}>← Unternehmen</Link>
@@ -366,8 +366,9 @@ export default function OrganizationProfile({ session }) {
             ) : '🏢'}
           </div>
           <div style={{ flex: 1, minWidth: 0 }}>
+            <div style={{ fontSize: 18, color: '#30A0D0', fontFamily: '"Caveat", cursive', fontWeight: 600, marginBottom: 2 }}>CRM · Unternehmen</div>
             <div style={{ display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: 10, marginBottom: 4 }}>
-              <h1 style={{ fontSize: 24, fontWeight: 800, color: 'var(--text-primary, #111827)', margin: 0 }}>{org.name}</h1>
+              <h1 style={{ fontSize: 26, fontWeight: 700, letterSpacing: '-0.3px', lineHeight: 1.2, color: 'var(--text-primary, #111827)', margin: 0 }}>{org.name}</h1>
               {sponsoringActive && isSponsor && (
                 <span title="Als Sponsor markiert — erscheint in der Sponsoren-Lens"
                   style={{ display: 'inline-flex', alignItems: 'center', gap: 4, padding: '3px 10px', borderRadius: 99, background: '#ECFDF5', border: '1px solid #A7F3D0', color: '#065F46', fontSize: 12, fontWeight: 700, whiteSpace: 'nowrap' }}>★ Sponsor</span>
