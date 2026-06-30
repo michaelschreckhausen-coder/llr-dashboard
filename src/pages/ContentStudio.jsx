@@ -180,6 +180,51 @@ export default function ContentStudio({ session }) {
     main.style.setProperty('padding-right', '0px', 'important')
     return () => { main.style.removeProperty('padding-right') }
   }, [])
+
+  // ─── Ziehbarer Splitscreen-Strich ────────────────────────────────────────
+  const paneDragRef = useRef({ moved: false, suppressClick: false })
+  const edgeClickTimer = useRef(null)
+  const startPaneDrag = (e) => {
+    if (e.button != null && e.button !== 0) return
+    const cont = csRootRef.current; if (!cont) return
+    const rect = cont.getBoundingClientRect()
+    paneDragRef.current = { startX: e.clientX, moved: false, suppressClick: false, rect }
+    const onMove = (ev) => {
+      const d = paneDragRef.current; if (!d) return
+      if (!d.moved && Math.abs(ev.clientX - d.startX) < 5) return
+      d.moved = true
+      const pct = (d.rect.right - ev.clientX) / d.rect.width * 100
+      if (pct < 9) { if (editorOpenRef.current) setEditorOpen(false); return }
+      if (!editorOpenRef.current) { setEditorOpen(true); setSidebarOpen(false) }
+      setPaneView('split')
+      setPanePct(Math.max(26, Math.min(86, pct)))
+    }
+    const onUp = () => {
+      window.removeEventListener('mousemove', onMove)
+      window.removeEventListener('mouseup', onUp)
+      if (paneDragRef.current && paneDragRef.current.moved) {
+        paneDragRef.current.suppressClick = true
+        setTimeout(() => { if (paneDragRef.current) paneDragRef.current.suppressClick = false }, 80)
+      }
+    }
+    window.addEventListener('mousemove', onMove)
+    window.addEventListener('mouseup', onUp)
+  }
+  const onEdgeClick = () => {            // Einfachklick: Splitscreen ein/aus
+    if (paneDragRef.current && paneDragRef.current.suppressClick) return
+    if (edgeClickTimer.current) return
+    edgeClickTimer.current = setTimeout(() => {
+      edgeClickTimer.current = null
+      if (editorOpenRef.current) { setEditorOpen(false) }
+      else { setEditorOpen(true); setPaneView('split'); setPanePct(52); setSidebarOpen(false) }
+    }, 230)
+  }
+  const onEdgeDblClick = () => {         // Doppelklick: Vollbild ein/aus
+    if (edgeClickTimer.current) { clearTimeout(edgeClickTimer.current); edgeClickTimer.current = null }
+    if (paneDragRef.current && paneDragRef.current.suppressClick) return
+    setEditorOpen(true); setSidebarOpen(false)
+    setPaneView(v => (v === 'suite' ? 'split' : 'suite'))
+  }
   const [useEditorContext, setUseEditorContext] = useState(false)
   const [chatDocs, setChatDocs] = useState([])
   const [demoRailDocs, setDemoRailDocs] = useState(null) // Tour-Demo: rechte Dokument-Leiste mit Beispiel-Dokumenten
@@ -189,6 +234,7 @@ export default function ContentStudio({ session }) {
   const [splitMode, setSplitMode] = useState(visualParam ? 'design' : 'doc')   // 'doc' | 'design'
   // paneView leitet die 3 Fullscreen-Zustände ab (Chat | Split | Suite)
   const [paneView, setPaneView] = useState('split')                            // 'chat' | 'split' | 'suite'
+  const [panePct, setPanePct] = useState(52)   // Split-Breite der Pane in % (ziehbar)
   const rightOpen = editorOpen                                                  // Kompat: rechtes Panel offen?
   // Visual-Composer (In-Chat-Bildgenerierung)
   const [visualMode, setVisualMode] = useState(false)
@@ -269,6 +315,7 @@ export default function ContentStudio({ session }) {
         setSplitMode('doc'); setEditorOpen(true)
       }
       if (sess.paneView) setPaneView(sess.paneView)
+      if (typeof sess.panePct === 'number') setPanePct(sess.panePct)
     })()
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [activeBrandVoice?.id])
@@ -281,10 +328,10 @@ export default function ContentStudio({ session }) {
     try {
       localStorage.setItem(SESSION_KEY, JSON.stringify({
         brandId: bid, visualId: activeVisual?.id || null, chatId: activeChatId || null,
-        paneView, splitMode, editorOpen,
+        paneView, panePct, splitMode, editorOpen,
       }))
     } catch (_e) {}
-  }, [activeBrandVoice?.id, activeVisual?.id, activeChatId, paneView, splitMode, editorOpen])
+  }, [activeBrandVoice?.id, activeVisual?.id, activeChatId, paneView, panePct, splitMode, editorOpen])
   // Onboarding-Tour-Hooks: Dokumentansicht öffnen + Demo (Beispiel-Chat → ins
   // Dokument → KI-Werkzeugleiste). Alles rein lokal, kein LLM-Call, kein DB-Save.
   useEffect(() => {
@@ -968,7 +1015,7 @@ export default function ContentStudio({ session }) {
       <main style={{
           flexGrow: (editorOpen && paneView === 'suite') ? 0 : 1,
           flexShrink: 1,
-          flexBasis: !editorOpen ? '100%' : (paneView === 'suite' ? '0%' : '48%'),
+          flexBasis: !editorOpen ? '100%' : '0%',
           minWidth:0, overflow:'hidden',
           opacity: (editorOpen && paneView === 'suite') ? 0 : 1,
           pointerEvents: (editorOpen && paneView === 'suite') ? 'none' : 'auto',
@@ -1064,13 +1111,13 @@ export default function ContentStudio({ session }) {
 
       {/* RECHTS: Suite (Dokument-Editor ⇄ Designer) — animiert via flex-basis */}
       {(() => {
-        const basis = !editorOpen ? '0%' : (paneView === 'suite' ? '100%' : '52%')
+        const basis = !editorOpen ? '0%' : (paneView === 'suite' ? '100%' : panePct + '%')
         return (
       <section data-tour-id="cs-doc-pane" style={{ display:'flex', flexDirection:'column', flexGrow:0, flexShrink:1, flexBasis: basis, minWidth:0, overflow:'hidden',
-        marginTop: editorOpen ? 8 : 0, marginBottom: editorOpen ? 8 : 0,
+        marginTop: editorOpen ? 16 : 0, marginBottom: editorOpen ? 16 : 0,
         border: editorOpen ? '1px solid var(--border,#E9ECF2)' : 'none', borderRight: 'none',
         borderRadius: editorOpen ? '16px 0 0 16px' : 0,
-        boxShadow: editorOpen ? '-6px 0 18px rgba(16,24,40,0.07), 0 0 16px rgba(16,24,40,0.05)' : 'none',
+        boxShadow: editorOpen ? '-5px 0 13px rgba(16,24,40,0.07), 0 0 12px rgba(16,24,40,0.05)' : 'none',
         background: editorOpen ? 'var(--surface,#fff)' : 'var(--page-bg, #F7F8FA)' }}>
         <div style={{ display:'flex', flex:1, minHeight:0 }}>
           {splitMode === 'design' ? (
@@ -1140,118 +1187,85 @@ export default function ContentStudio({ session }) {
       </section>
       )})()}
 
-      {/* Bedienelement am Splitscreen-Strich: zwei direkt anliegende Hälften,
-          getrennt durch den Strich. Links = Vollbild-Toggle (bleibt wo er ist),
-          rechts (andere Seite des Strichs) = Editor einklappen. */}
-      {!editorOpen ? (
-        // Eingeklappter Splitscreen: sichtbarer weißer Balken am rechten Rand mit
-        // den beiden Umschalt-Buttons (Dokument/Designer). Links daneben je ein
-        // handgezeichneter Pfeil + Beschriftung in Marken-Schreibschrift, damit
-        // klar ist, dass sich hier ein Panel herausziehen lässt.
-        (() => {
-          const openTo = (mode) => {
-            if (mode) setSplitMode(mode)
-            setEditorOpen(true); setPaneView('split'); setSidebarOpen(false)
-            const m = mode || splitMode
-            if (m === 'doc' && !docParam && activeChatId && chatDocs.length) {
-              const last = chatDocs[0]
-              if (last) { const n = new URLSearchParams(searchParams); n.set('doc', last.id); setSearchParams(n, { replace: true }) }
-            }
+      {/* Splitscreen-Steuerung: EIN ziehbarer Strich (Klick = ein/aus, Doppelklick =
+          Vollbild, Ziehen = frei breit) + einheitlicher Dokument/Designer-Switcher
+          (immer oben, am Kärtchen anliegend; Beschriftung nur eingeklappt). */}
+      {(() => {
+        const suite = editorOpen && paneView === 'suite'
+        const chatPct = !editorOpen ? 100 : (suite ? 0 : (100 - panePct))
+        const SW_TOP = 44
+        const openTo = (mode) => {
+          if (mode) setSplitMode(mode)
+          if (!editorOpenRef.current) { setEditorOpen(true); setPaneView('split'); setSidebarOpen(false) }
+          const m = mode || splitMode
+          if (m === 'doc' && !docParam && activeChatId && chatDocs.length) {
+            const last = chatDocs[0]
+            if (last) { const n = new URLSearchParams(searchParams); n.set('doc', last.id); setSearchParams(n, { replace: true }) }
           }
-          const scriptHint = { fontFamily:"'Segoe Script','Bradley Hand','Brush Script MT','Comic Sans MS',cursive", fontStyle:'italic', fontSize:16, fontWeight:600, color:'var(--wl-primary, rgb(49,90,231))', whiteSpace:'nowrap', lineHeight:1 }
-          const hintRow = { flex:1, display:'flex', alignItems:'center', justifyContent:'flex-end', gap:7 }
-          const switchBtn = { width:46, height:50, display:'inline-flex', alignItems:'center', justifyContent:'center', border:'none', background:'transparent', cursor:'pointer', color:'var(--text-secondary,#475569)' }
-          const CurvedArrow = () => (
-            <svg width="34" height="24" viewBox="0 0 34 24" fill="none" style={{ color:'var(--wl-primary, rgb(49,90,231))', flexShrink:0 }} aria-hidden="true">
-              <path d="M3 5 C 14 3, 25 7, 30 14" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" fill="none"/>
-              <path d="M23 14.5 L 31 15 L 27 8" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" fill="none"/>
-            </svg>
-          )
-          // Labels + Pfeile schweben links. Die Umschalt-Buttons liegen mit flacher
-          // rechter Seite am großen, eingeklappten Splitscreen-Kasten an, der nur
-          // mit einem schmalen Streifen vom rechten Rand hereinschaut (Großteil
-          // ragt aus dem Viewport und wird vom Eltern-overflow:hidden geclippt).
-          return (
-            <>
-              {/* Großer eingeklappter Splitscreen-Kasten — volle Pane-Höhe, bündig
-                 am rechten Rand; ragt rechts raus und wird vom Container geclippt. */}
-              <button onClick={() => openTo(null)} title="Splitscreen ausziehen"
+        }
+        const swBtn = (active) => ({ width:46, height:50, display:'inline-flex', alignItems:'center', justifyContent:'center', border:'none', cursor:'pointer',
+          background: active ? 'rgba(49,90,231,0.08)' : 'transparent', color: active ? 'var(--wl-primary, rgb(49,90,231))' : 'var(--text-secondary,#475569)' })
+        const swCard = { display:'flex', flexDirection:'column', overflow:'hidden', background:'var(--surface,#fff)',
+          border:'1px solid var(--border,#E9ECF2)', borderRight:'none', borderRadius:'10px 0 0 10px', boxShadow:'-2px 0 8px rgba(16,24,40,0.08)' }
+        const Switcher = () => (
+          <div style={swCard}>
+            <button onClick={() => openTo('doc')} title="Dokument" style={swBtn(splitMode === 'doc')}
+              onMouseEnter={e => { if (splitMode !== 'doc') e.currentTarget.style.background = 'rgba(49,90,231,0.05)' }}
+              onMouseLeave={e => { if (splitMode !== 'doc') e.currentTarget.style.background = 'transparent' }}><FileText size={18} strokeWidth={1.9}/></button>
+            <div style={{ height:1, background:'var(--border,#E9ECF2)' }}/>
+            <button onClick={() => openTo('design')} title="Designer" style={swBtn(splitMode === 'design')}
+              onMouseEnter={e => { if (splitMode !== 'design') e.currentTarget.style.background = 'rgba(49,90,231,0.05)' }}
+              onMouseLeave={e => { if (splitMode !== 'design') e.currentTarget.style.background = 'transparent' }}><Brush size={18} strokeWidth={1.9}/></button>
+          </div>
+        )
+        const scriptHint = { fontFamily:"'Segoe Script','Bradley Hand','Brush Script MT','Comic Sans MS',cursive", fontStyle:'italic', fontSize:16, fontWeight:600, color:'var(--wl-primary, rgb(49,90,231))', whiteSpace:'nowrap', lineHeight:1 }
+        const CurvedArrow = () => (
+          <svg width="34" height="24" viewBox="0 0 34 24" fill="none" style={{ color:'var(--wl-primary, rgb(49,90,231))', flexShrink:0 }} aria-hidden="true">
+            <path d="M3 5 C 14 3, 25 7, 30 14" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" fill="none"/>
+            <path d="M23 14.5 L 31 15 L 27 8" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" fill="none"/>
+          </svg>
+        )
+        return (
+          <>
+            {/* Eingeklappt: großer Pull-out-Kasten — ziehbar / Klick öffnet / Doppelklick Vollbild */}
+            {!editorOpen && (
+              <div onMouseDown={startPaneDrag} onClick={onEdgeClick} onDoubleClick={onEdgeDblClick}
+                title="Ziehen oder klicken zum Öffnen · Doppelklick: Vollbild"
                 style={{ position:'absolute', top:0, bottom:0, right:-176, width:212, zIndex:49,
                   background:'var(--surface,#fff)', border:'1px solid var(--border,#E9ECF2)', borderRight:'none', borderRadius:'16px 0 0 16px',
-                  boxShadow:'-6px 0 18px rgba(16,24,40,0.07)', cursor:'pointer', padding:0,
+                  boxShadow:'-6px 0 18px rgba(16,24,40,0.07)', cursor:'col-resize', padding:0,
                   display:'flex', alignItems:'center', justifyContent:'flex-start' }}>
                 <span style={{ width:4, height:42, marginLeft:13, borderRadius:3, background:'var(--border,#D7DCE5)' }}/>
-              </button>
-              {/* Labels + Umschalt-Buttons, direkt links am Kasten anliegend */}
-              <div style={{ position:'absolute', top:'50%', right:36, transform:'translateY(-50%)', zIndex:50, display:'flex', alignItems:'stretch', gap:10, pointerEvents:'none' }}>
-                {/* Beschriftungen + Pfeile (frei, dekorativ) */}
-                <div style={{ display:'flex', flexDirection:'column' }}>
-                  <div style={hintRow}><span style={scriptHint}>ins Dokument</span><CurvedArrow/></div>
-                  <div style={{ height:1 }}/>
-                  <div style={hintRow}><span style={scriptHint}>zum Designer</span><CurvedArrow/></div>
-                </div>
-                {/* Umschalt-Buttons (wie zuvor) — links rund, rechts flach am Kasten */}
-                <div style={{ display:'flex', flexDirection:'column', overflow:'hidden', background:'var(--surface,#fff)',
-                    border:'1px solid var(--border,#E9ECF2)', borderRight:'none', borderRadius:'10px 0 0 10px', boxShadow:'-2px 0 8px rgba(16,24,40,0.08)', pointerEvents:'auto' }}>
-                  <button onClick={() => openTo('doc')} title="Dokument öffnen" style={switchBtn}
-                    onMouseEnter={e => { e.currentTarget.style.background='rgba(49,90,231,0.08)'; e.currentTarget.style.color='var(--wl-primary, rgb(49,90,231))' }}
-                    onMouseLeave={e => { e.currentTarget.style.background='transparent'; e.currentTarget.style.color='var(--text-secondary,#475569)' }}>
-                    <FileText size={18} strokeWidth={1.9}/>
-                  </button>
-                  <div style={{ height:1, background:'var(--border,#E9ECF2)' }}/>
-                  <button onClick={() => openTo('design')} title="Designer öffnen" style={switchBtn}
-                    onMouseEnter={e => { e.currentTarget.style.background='rgba(49,90,231,0.08)'; e.currentTarget.style.color='var(--wl-primary, rgb(49,90,231))' }}
-                    onMouseLeave={e => { e.currentTarget.style.background='transparent'; e.currentTarget.style.color='var(--text-secondary,#475569)' }}>
-                    <Brush size={18} strokeWidth={1.9}/>
-                  </button>
-                </div>
               </div>
-            </>
-          )
-        })()
-      ) : (
-        <>
-          {/* Dokument/Designer-Wechsler — gestapelt, oben, LINKS am Trennstrich
-             ANLIEGEND: rund nur links, flach rechts (gleiches Format wie die
-             Split-Steuerung). */}
-          <div style={{ position:'absolute', top:44, zIndex:50,
-              display:'flex', flexDirection:'column', overflow:'hidden',
-              border:'1px solid var(--border,#E9ECF2)', background:'var(--surface,#fff)', boxShadow:'0 2px 8px rgba(16,24,40,0.10)',
-              ...(paneView === 'suite' ? { left:16, borderRadius:10 } : { right:'52%', borderRadius:'10px 0 0 10px' }) }}>
-            <button onClick={() => setSplitMode('doc')} title="Dokument"
-              style={{ ...segBtn, color: splitMode === 'doc' ? 'var(--wl-primary, rgb(49,90,231))' : 'var(--text-muted)',
-                background: splitMode === 'doc' ? 'rgba(49,90,231,0.10)' : 'transparent' }}>
-              <FileText size={16} strokeWidth={1.9}/>
-            </button>
-            <div style={{ height:1, background:'var(--border,#E9ECF2)' }}/>
-            <button onClick={() => setSplitMode('design')} title="Designer"
-              style={{ ...segBtn, color: splitMode === 'design' ? 'var(--wl-primary, rgb(49,90,231))' : 'var(--text-muted)',
-                background: splitMode === 'design' ? 'rgba(49,90,231,0.10)' : 'transparent' }}>
-              <Brush size={16} strokeWidth={1.9}/>
-            </button>
-          </div>
-          {/* Split/Vollbild-Steuerung — vertikal mittig, der Strich läuft zwischen den
-             beiden Hälften (straddelnd, mittig auf dem Strich). */}
-          {paneView === 'suite' ? (
-            <button onClick={() => setPaneView('split')} title="Splitscreen"
-              style={{ ...edgeBtn, position:'absolute', top:'50%', left:16, transform:'translateY(-50%)', zIndex:50 }}>
-              <ChevronRight size={18} strokeWidth={2}/>
-            </button>
-          ) : (
-            <div style={{ position:'absolute', top:'50%', right:'52%', transform:'translate(50%,-50%)', zIndex:50,
-                display:'flex', alignItems:'center', overflow:'hidden', borderRadius:10,
-                border:'1px solid var(--border,#E9ECF2)', background:'var(--surface,#fff)', boxShadow:'0 2px 8px rgba(16,24,40,0.10)' }}>
-              <button onClick={() => setPaneView('suite')} title="Vollbild" style={segBtn}>
-                <ChevronLeft size={18} strokeWidth={2}/>
-              </button>
-              <div style={{ width:1, alignSelf:'stretch', background:'var(--border,#E9ECF2)' }}/>
-              <button onClick={() => { setEditorOpen(false); setPaneView('split') }} title="Editor einklappen" style={segBtn}>
-                <ChevronRight size={18} strokeWidth={2}/>
-              </button>
-            </div>
-          )}
-        </>
-      )}
+            )}
+            {/* Ausgeklappt: ziehbarer Strich am Pane-Rand */}
+            {editorOpen && (
+              <div onMouseDown={startPaneDrag} onClick={onEdgeClick} onDoubleClick={onEdgeDblClick}
+                title="Ziehen zum Anpassen · Klick: Splitscreen ein/aus · Doppelklick: Vollbild"
+                style={{ position:'absolute', top:0, bottom:0, left: chatPct + '%', transform:'translateX(-50%)', width:16, zIndex:48, cursor:'col-resize',
+                  display:'flex', alignItems:'center', justifyContent:'center' }}>
+                <span style={{ width:4, height:46, borderRadius:3, background:'var(--border,#D7DCE5)' }}/>
+              </div>
+            )}
+            {/* Einheitlicher Switcher — oben, am Kärtchen anliegend */}
+            {!editorOpen ? (
+              <div style={{ position:'absolute', top: SW_TOP, right:36, zIndex:50, display:'flex', alignItems:'flex-start', gap:10, pointerEvents:'none' }}>
+                <div style={{ display:'flex', flexDirection:'column' }}>
+                  <div style={{ height:50, display:'flex', alignItems:'center', justifyContent:'flex-end', gap:7 }}><span style={scriptHint}>ins Dokument</span><CurvedArrow/></div>
+                  <div style={{ height:1 }}/>
+                  <div style={{ height:50, display:'flex', alignItems:'center', justifyContent:'flex-end', gap:7 }}><span style={scriptHint}>zum Designer</span><CurvedArrow/></div>
+                </div>
+                <div style={{ pointerEvents:'auto' }}><Switcher/></div>
+              </div>
+            ) : (
+              <div style={{ position:'absolute', top: SW_TOP, zIndex:50,
+                  ...(suite ? { left:16 } : { left: chatPct + '%', transform:'translateX(-100%)' }) }}>
+                <Switcher/>
+              </div>
+            )}
+          </>
+        )
+      })()}
 
       {/* "Öffnen"-Picker: zuerst Dokument/Design wählen, dann Chat (oder ohne) */}
       {openPicker && (
