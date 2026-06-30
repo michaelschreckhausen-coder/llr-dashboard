@@ -1315,27 +1315,44 @@ export default function DesignerCanvas({ visual, teamId, onSaved, onReplaceVisua
 
   // Vorgefertigtes Text-Objekt einfügen (Textstil-Preset: Überschrift/Unterüberschrift/Fließtext).
   // Wenn ein Text-Objekt ausgewählt ist, wird stattdessen dessen Stil angepasst (kein Neueinfügen).
+  const TEXT_STYLES = {
+    heading:   { text: 'Überschrift', fontSize: 88, fontStyle: 'bold', fontFamily: 'Inter' },
+    subheading:{ text: 'Unterüberschrift', fontSize: 52, fontStyle: 'bold', fontFamily: 'Inter' },
+    body:      { text: 'Fließtext — hier deinen Inhalt schreiben.', fontSize: 34, fontStyle: 'normal', fontFamily: 'Inter' },
+    kicker:    { text: 'LABEL / KICKER', fontSize: 30, fontStyle: 'bold', fontFamily: 'Inter', letterSpacing: 4 },
+    quote:     { text: '„Ein starkes Zitat."', fontSize: 60, fontStyle: 'italic', fontFamily: 'Georgia' },
+  }
   function addTextPreset(preset) {
-    const styles = {
-      heading:   { text: 'Überschrift', fontSize: 88, fontStyle: 'bold' },
-      subheading:{ text: 'Unterüberschrift', fontSize: 52, fontStyle: 'bold' },
-      body:      { text: 'Fließtext — hier deinen Inhalt schreiben.', fontSize: 34, fontStyle: 'normal' },
-    }
-    const cfg = styles[preset] || styles.body
+    const cfg = TEXT_STYLES[preset] || TEXT_STYLES.body
     // Ausgewähltes Text-Objekt vorhanden? → nur Stil setzen.
     if (selectedIds.length === 1) {
       const sel = objects.find(o => o.id === selectedIds[0])
       if (sel && sel.type === 'text') {
         commitHistoryOnce()
-        updateObject(sel.id, { fontSize: cfg.fontSize, fontStyle: cfg.fontStyle }, false)
+        updateObject(sel.id, { fontSize: cfg.fontSize, fontStyle: cfg.fontStyle, fontFamily: cfg.fontFamily, letterSpacing: cfg.letterSpacing || 0 }, false)
         endInteraction()
         return
       }
     }
     const c = center()
     addObject({ type: 'text', x: c.x - 240, y: c.y - cfg.fontSize / 2, text: cfg.text,
-      fontSize: cfg.fontSize, fontFamily: 'Inter', fill: bgColor ? '#111827' : '#ffffff',
-      fontStyle: cfg.fontStyle, align: 'left', width: 480, rotation: 0 })
+      fontSize: cfg.fontSize, fontFamily: cfg.fontFamily || 'Inter', fill: bgColor ? '#111827' : '#ffffff',
+      fontStyle: cfg.fontStyle, align: 'left', width: 480, letterSpacing: cfg.letterSpacing || 0, rotation: 0 })
+  }
+
+  // Schrift-Kombination einfügen: Überschrift + Subline als abgestimmtes Paar.
+  function addTextCombo(combo) {
+    const COMBOS = {
+      modern:   { headFont: 'Inter',    subFont: 'Inter',    head: 'MODERNE ÜBERSCHRIFT', sub: 'Klare, reduzierte Subline', headStyle: 'bold', kicker: true },
+      elegant:  { headFont: 'Georgia',  subFont: 'Georgia',  head: 'Elegante Überschrift', sub: 'Mit ruhiger Serifen-Subline', headStyle: 'bold' },
+      verspielt:{ headFont: 'Caveat',   subFont: 'Inter',    head: 'Verspielte Headline', sub: 'mit klarer Subline', headStyle: 'bold' },
+      klassisch:{ headFont: 'Garamond', subFont: 'Garamond', head: 'Klassische Überschrift', sub: 'Zeitlos und seriös', headStyle: 'bold' },
+    }
+    const cfg = COMBOS[combo] || COMBOS.modern
+    const c = center(); const fill = bgColor ? '#111827' : '#ffffff'
+    const headSize = cfg.kicker ? 80 : 84
+    addObject({ type: 'text', x: c.x - 280, y: c.y - 70, text: cfg.head, fontSize: headSize, fontFamily: cfg.headFont, fill, fontStyle: cfg.headStyle, align: 'left', width: 560, letterSpacing: cfg.kicker ? 2 : 0, rotation: 0 })
+    addObject({ type: 'text', x: c.x - 280, y: c.y + 40, text: cfg.sub, fontSize: 40, fontFamily: cfg.subFont, fill, fontStyle: 'normal', align: 'left', width: 560, rotation: 0 })
   }
 
   // ─── Bild-Upload als Overlay-Objekt (type:'image') ─────────────────────────
@@ -3618,7 +3635,7 @@ export default function DesignerCanvas({ visual, teamId, onSaved, onReplaceVisua
           onAddAsset={addAsset}
           onInsertMedia={(dataUrl, meta) => addImageFromDataUrl(dataUrl, meta)}
           // Text
-          onAddText={addText} onAddTextPreset={addTextPreset}
+          onAddText={addText} onAddTextPreset={addTextPreset} onAddTextCombo={addTextCombo}
           // Uploads / Medien
           onTriggerUpload={triggerImageUpload} uploadThumbs={uploadThumbs}
           onInsertUpload={(url) => addImageFromDataUrl(url)}
@@ -4959,7 +4976,7 @@ function ElementsPanelBody({ elementTab, setElementTab, onAddRect, onAddEllipse,
 }
 
 // ─── Panel: Text ────────────────────────────────────────────────────────────
-function TextPanelBody({ onAddText, onAddTextPreset, brandData, onApplyBrandFont }) {
+function TextPanelBody({ onAddText, onAddTextPreset, onAddTextCombo, brandData, onApplyBrandFont }) {
   const brandFonts = extractBrandFonts(brandData)
   const presetCard = (sub, sample, size, weight) => (
     <button onClick={() => onAddTextPreset(sub)} style={presetBtn} title={`${sample} hinzufügen`}
@@ -4981,6 +4998,20 @@ function TextPanelBody({ onAddText, onAddTextPreset, brandData, onApplyBrandFont
         {presetCard('heading', 'Überschrift', 22, 800)}
         {presetCard('subheading', 'Unterüberschrift', 15, 700)}
         {presetCard('body', 'Fließtext', 13, 400)}
+        {presetCard('kicker', 'LABEL / KICKER', 11, 800)}
+        {presetCard('quote', '„Zitat"', 18, 400)}
+      </div>
+
+      <PanelLabel>Schrift-Kombinationen</PanelLabel>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: 8 }}>
+        {[['modern','Modern','Inter'],['elegant','Elegant','Georgia'],['verspielt','Verspielt','Caveat'],['klassisch','Klassisch','Garamond']].map(([id,lbl,fam]) => (
+          <button key={id} onClick={() => onAddTextCombo && onAddTextCombo(id)} title={`Kombination „${lbl}" einfügen`}
+            style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start', gap: 2, padding: '10px 11px', borderRadius: 10, border: '1px solid var(--border,#E9ECF2)', background: 'var(--surface,#fff)', cursor: 'pointer', fontFamily: 'inherit', textAlign: 'left' }}
+            onMouseEnter={e => { e.currentTarget.style.borderColor = P }} onMouseLeave={e => { e.currentTarget.style.borderColor = 'var(--border,#E9ECF2)' }}>
+            <span style={{ fontFamily: fam, fontSize: 16, fontWeight: 700, color: 'var(--text-primary)', lineHeight: 1.1 }}>{lbl}</span>
+            <span style={{ fontFamily: fam, fontSize: 11, color: 'var(--text-muted)', lineHeight: 1.1 }}>Subline</span>
+          </button>
+        ))}
       </div>
 
       {brandFonts.length > 0 && (
