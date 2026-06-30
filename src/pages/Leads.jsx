@@ -236,6 +236,20 @@ export default function Leads() {
     }
   }, [density]);
 
+  // Pagination (Listen-View) — 25/50/100 pro Seite. pageSize persistiert in localStorage.
+  const [pageSize, setPageSize] = useState(() => {
+    try {
+      const v = parseInt(window.localStorage?.getItem('leadesk_leads_pagesize'), 10);
+      return [25, 50, 100].includes(v) ? v : 50;
+    } catch { return 50; }
+  });
+  const [page, setPage] = useState(1);
+  const changePageSize = (n) => {
+    setPageSize(n);
+    setPage(1);
+    try { window.localStorage?.setItem('leadesk_leads_pagesize', String(n)); } catch { /* ignore */ }
+  };
+
   // Filter-State
   const [quickFilter, setQuickFilter] = useState('all');
   const [stageTab,    setStageTab]    = useState(null);   // null | 'Lead' | 'LQL' | ...
@@ -484,6 +498,11 @@ export default function Leads() {
       return next;
     });
   }, [filteredLeads]);
+
+  // Pagination: zurück auf Seite 1, wenn sich Filter/Suche/Sortierung ändern.
+  useEffect(() => {
+    setPage(1);
+  }, [search, quickFilter, stageTab, listFilter, tagsFilter, ownerFilter, sortBy, showArchived]);
 
   // ─── Handlers ───────────────────────────────────────────────────────
   // Click navigiert direkt auf die Detail-Page (Drawer entfernt).
@@ -777,6 +796,15 @@ export default function Leads() {
     { label:'Warm · 40–69', count: leads.filter(l => (l.lead_score || 0) >= 40 && (l.lead_score || 0) < 70).length, color:'#D97706' },
     { label:'Cold · < 40',  count: leads.filter(l => (l.lead_score || 0) < 40).length,                           color:'#185FA5' },
   ].filter(s => s.count > 0);
+
+  // Pagination (nur Listen-View) — Page-Slice über die gefilterte/sortierte Liste.
+  const totalPages = Math.max(1, Math.ceil(filteredLeads.length / pageSize));
+  const pageClamped = Math.min(page, totalPages);
+  const pageStartIdx = (pageClamped - 1) * pageSize;
+  const pagedLeads = view === 'list'
+    ? filteredLeads.slice(pageStartIdx, pageStartIdx + pageSize)
+    : filteredLeads;
+  const showPagination = view === 'list' && filteredLeads.length > 25;
 
   const subtitleText = [
     `${filteredLeads.length} von ${leads.length} sichtbar`,
@@ -1208,22 +1236,55 @@ export default function Leads() {
               </button>
             </div>
           ) : view === 'list' ? (
-            <SelectableLeadsList
-              leads={filteredLeads}
-              selectedIds={selectedIds}
-              onToggleSelect={toggleSelected}
-              onLeadClick={handleLeadClick}
-              onOwnerAdd={handleOwnerAdd}
-              onTagAdd={handleTagAdd}
-              onMenuClick={handleMenuClick}
-              onToggleFavorite={toggleFavorite}
-              ownerById={ownerById}
-              density={density}
-              /* onUpdate bewusst weggelassen (2026-05-29): Lead-Karten sind
-                 read-only, Bearbeiten nur in Detail-Page + Drawer. Die
-                 SelectableLeadRow-Branches haben read-only-Fallbacks.
-                 onToggleFavorite ist eine gezielte Ausnahme (nur is_favorite). */
-            />
+            <>
+              <SelectableLeadsList
+                leads={pagedLeads}
+                selectedIds={selectedIds}
+                onToggleSelect={toggleSelected}
+                onLeadClick={handleLeadClick}
+                onOwnerAdd={handleOwnerAdd}
+                onTagAdd={handleTagAdd}
+                onMenuClick={handleMenuClick}
+                onToggleFavorite={toggleFavorite}
+                ownerById={ownerById}
+                density={density}
+                /* onUpdate bewusst weggelassen (2026-05-29): Lead-Karten sind
+                   read-only, Bearbeiten nur in Detail-Page + Drawer. Die
+                   SelectableLeadRow-Branches haben read-only-Fallbacks.
+                   onToggleFavorite ist eine gezielte Ausnahme (nur is_favorite). */
+              />
+              {showPagination && (
+                <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', flexWrap:'wrap', gap:12, marginTop:18, paddingTop:14, borderTop:`1px solid ${COLORS.borderSubtle}` }}>
+                  <div style={{ display:'flex', alignItems:'center', gap:8 }}>
+                    <span style={{ fontSize:12, color: COLORS.textTertiary }}>Pro Seite:</span>
+                    {[25, 50, 100].map(n => (
+                      <button key={n} type="button" onClick={() => changePageSize(n)}
+                        style={{
+                          padding:'5px 11px', borderRadius:8, fontSize:12, fontWeight: pageSize===n ? 700 : 500,
+                          cursor:'pointer',
+                          border:`1.5px solid ${pageSize===n ? PRIMARY : '#E4E7EC'}`,
+                          background: pageSize===n ? PRIMARY : 'var(--surface)',
+                          color: pageSize===n ? '#fff' : COLORS.textSecondary,
+                        }}>{n}</button>
+                    ))}
+                  </div>
+                  <div style={{ display:'flex', alignItems:'center', gap:10 }}>
+                    <span style={{ fontSize:12, color: COLORS.textTertiary, fontVariantNumeric:'tabular-nums' }}>
+                      {pageStartIdx + 1}–{Math.min(pageStartIdx + pageSize, filteredLeads.length)} von {filteredLeads.length}
+                    </span>
+                    <button type="button" onClick={() => setPage(p => Math.max(1, p - 1))} disabled={pageClamped <= 1}
+                      style={{ ...ghostBtnStyle, padding:'6px 12px', opacity: pageClamped <= 1 ? 0.45 : 1, cursor: pageClamped <= 1 ? 'default' : 'pointer' }}>
+                      Zurück
+                    </button>
+                    <span style={{ fontSize:12, color: COLORS.textSecondary, fontVariantNumeric:'tabular-nums' }}>Seite {pageClamped} / {totalPages}</span>
+                    <button type="button" onClick={() => setPage(p => Math.min(totalPages, p + 1))} disabled={pageClamped >= totalPages}
+                      style={{ ...ghostBtnStyle, padding:'6px 12px', opacity: pageClamped >= totalPages ? 0.45 : 1, cursor: pageClamped >= totalPages ? 'default' : 'pointer' }}>
+                      Weiter
+                    </button>
+                  </div>
+                </div>
+              )}
+            </>
           ) : (
             <LeadsBoard
               leads={filteredLeads}
