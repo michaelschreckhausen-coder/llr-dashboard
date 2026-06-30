@@ -87,7 +87,7 @@ export default function SettingsMemory({ session }) {
   }
 
   return (
-    <div style={{ maxWidth:780 }}>
+    <div style={{ width:'100%', maxWidth:1100, margin:'0 auto' }}>
       <SettingsTabs />
 
       {/* Header */}

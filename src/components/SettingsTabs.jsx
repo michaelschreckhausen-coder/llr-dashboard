@@ -16,31 +16,39 @@ const TABS = [
 
 export default function SettingsTabs() {
   return (
-    <div style={{
-      display:'flex',
-      gap:4,
-      marginBottom:24,
-      borderBottom:'1px solid var(--border, #E5E7EB)',
-    }}>
-      {TABS.map(({ to, label }) => (
-        <NavLink
-          key={to}
-          to={to}
-          end
-          style={({ isActive }) => ({
-            padding:'10px 18px',
-            fontSize:13,
-            fontWeight:700,
-            textDecoration:'none',
-            color: isActive ? PRIMARY : 'var(--text-soft, #6B7280)',
-            borderBottom: isActive ? `2px solid ${PRIMARY}` : '2px solid transparent',
-            marginBottom:-1,
-            transition:'color 0.15s, border-color 0.15s',
-          })}
-        >
-          {label}
-        </NavLink>
-      ))}
-    </div>
+    <>
+      {/* CRM-Stil-Kopf (Caveat-Overline + Titel) — einheitlich über alle Settings-Seiten */}
+      <div style={{ marginBottom: 18 }}>
+        <div style={{ fontSize: 18, color: '#30A0D0', fontFamily: '"Caveat", cursive', fontWeight: 600, marginBottom: 2 }}>Konto &amp; Präferenzen</div>
+        <h1 style={{ fontSize: 26, fontWeight: 700, letterSpacing: '-0.3px', lineHeight: 1.2, margin: 0, color: 'var(--text-strong, #111827)' }}>Einstellungen</h1>
+      </div>
+      <div style={{
+        display:'flex',
+        gap:4,
+        marginBottom:24,
+        borderBottom:'1px solid var(--border, #E5E7EB)',
+        flexWrap:'wrap',
+      }}>
+        {TABS.map(({ to, label }) => (
+          <NavLink
+            key={to}
+            to={to}
+            end
+            style={({ isActive }) => ({
+              padding:'10px 18px',
+              fontSize:13,
+              fontWeight:700,
+              textDecoration:'none',
+              color: isActive ? PRIMARY : 'var(--text-soft, #6B7280)',
+              borderBottom: isActive ? `2px solid ${PRIMARY}` : '2px solid transparent',
+              marginBottom:-1,
+              transition:'color 0.15s, border-color 0.15s',
+            })}
+          >
+            {label}
+          </NavLink>
+        ))}
+      </div>
+    </>
   )
 }
