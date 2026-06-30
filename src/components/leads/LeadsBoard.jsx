@@ -107,7 +107,7 @@ const dropZoneStyle = {
   width: '100%',
 };
 
-export function LeadsBoard({ leads, profilesById, onLeadClick, onLeadStatusChange }) {
+export function LeadsBoard({ leads, profilesById, onLeadClick, onLeadStatusChange, onToggleFavorite }) {
   const [dragOverStatus, setDragOverStatus] = useState(null);
 
   const handleClick = useCallback(
@@ -191,6 +191,7 @@ export function LeadsBoard({ leads, profilesById, onLeadClick, onLeadStatusChang
                     lead={lead}
                     owner={profilesById?.get(lead.owner_id) ?? null}
                     onClick={handleClick}
+                    onToggleFavorite={onToggleFavorite}
                   />
                 </div>
               ))}

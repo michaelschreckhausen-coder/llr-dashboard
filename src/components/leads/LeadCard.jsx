@@ -8,7 +8,7 @@
 // Genau wie LeadRow: memo + statische Styles + Handler aus Parent.
 
 import { memo, useCallback } from 'react';
-import { Target, Calendar } from 'lucide-react';
+import { Target, Calendar, Star } from 'lucide-react';
 import { LeadAvatar } from './LeadAvatar';
 import { COLORS, RADIUS } from '../../lib/leadStyleTokens';
 import { getDisplayName, formatRelativeDate, isUrgent } from '../../lib/leadHelpers';
@@ -101,7 +101,7 @@ const scoreHotStyle = {
   fontWeight: 500,
 };
 
-function LeadCardBase({ lead, owner, onClick }) {
+function LeadCardBase({ lead, owner, onClick, onToggleFavorite }) {
   const handleClick = useCallback(() => {
     onClick?.(lead.id, lead);
   }, [onClick, lead]);
@@ -141,6 +141,18 @@ function LeadCardBase({ lead, owner, onClick }) {
           <div style={nameStyle}>{name}</div>
           {lead.company && <div style={companyStyle}>{lead.company}</div>}
         </div>
+        {onToggleFavorite && (
+          <span
+            role="button"
+            tabIndex={0}
+            title={lead.is_favorite ? 'Favorit entfernen' : 'Als Favorit markieren'}
+            onClick={(e) => { e.stopPropagation(); onToggleFavorite(lead.id, !lead.is_favorite); }}
+            onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); e.stopPropagation(); onToggleFavorite(lead.id, !lead.is_favorite); } }}
+            style={{ display: 'flex', flexShrink: 0, cursor: 'pointer' }}
+          >
+            <Star size={15} color={lead.is_favorite ? '#D97706' : '#CBD5E1'} fill={lead.is_favorite ? '#D97706' : 'none'} />
+          </span>
+        )}
       </div>
 
       {tagsToShow.length > 0 && (
