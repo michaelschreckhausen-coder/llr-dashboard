@@ -437,6 +437,13 @@ export default function Layout({ session, role, onLogout, children }) {
   const [seenNotifIds, setSeenNotifIds] = useState(() => {
     try { return JSON.parse(localStorage.getItem('leadesk.notif.seen') || '[]') } catch { return [] }
   })
+  // Gelöschte Benachrichtigungen dauerhaft merken (per ID) → kommen nach Reload nicht wieder.
+  const persistDismiss = (ids) => {
+    try {
+      const cur = JSON.parse(localStorage.getItem('leadesk.notif.dismissed') || '[]')
+      localStorage.setItem('leadesk.notif.dismissed', JSON.stringify([...new Set([...cur, ...ids])].slice(-1000)))
+    } catch {}
+  }
   const [extInstalled, setExtInstalled] = useState(false)
   useEffect(() => {
     let cancelled = false
@@ -550,6 +557,10 @@ export default function Layout({ session, role, onLogout, children }) {
     const tid = activeTeamId
     if (!tid) return // Team noch nicht geladen — Effekt feuert erneut sobald activeTeamId da ist
     const notifs = []
+    // Dauerhaft gelöschte Benachrichtigungen (per ID, persistiert) — werden nie
+    // wieder eingeblendet, auch nicht nach Reload/Polling.
+    let dismissed = []
+    try { dismissed = JSON.parse(localStorage.getItem('leadesk.notif.dismissed') || '[]') } catch {}
     const since = new Date(Date.now()-7*24*60*60*1000).toISOString()
     const today = new Date().toISOString().split('T')[0]
     const tomorrow = new Date(); tomorrow.setDate(tomorrow.getDate()+1)
@@ -629,7 +640,7 @@ export default function Layout({ session, role, onLogout, children }) {
     })
 
     notifs.sort((a,b)=>new Date(b.time)-new Date(a.time))
-    setNotifications(notifs.slice(0,12))
+    setNotifications(notifs.filter(n => !dismissed.includes(n.id)).slice(0,12))
   }
 
   useEffect(()=>{
@@ -1013,7 +1024,7 @@ export default function Layout({ session, role, onLogout, children }) {
                 <div data-notif style={{ position:'absolute', top:'calc(100% + 8px)', right:0, width:320, background:'var(--surface-glass-strong)', backdropFilter:'var(--glass-blur)', WebkitBackdropFilter:'var(--glass-blur)', borderRadius:16, boxShadow:'0 8px 32px rgba(15,23,42,0.18)', border:'1px solid var(--border)', zIndex:1000, overflow:'hidden' }}>
                   <div style={{ padding:'14px 16px 10px', borderBottom:'1px solid var(--surface)', display:'flex', justifyContent:'space-between', alignItems:'center' }}>
                     <div style={{ fontWeight:800, fontSize:14, color:'var(--text-primary)' }}>Benachrichtigungen</div>
-                    {notifications.length>0 && <button onClick={()=>{setNotifications([]);setShowNotif(false)}} style={{ fontSize:11, color:'var(--text-muted)', background:'none', border:'none', cursor:'pointer', padding:'2px 6px', borderRadius:6, fontWeight:600 }}>Alle löschen</button>}
+                    {notifications.length>0 && <button onClick={()=>{persistDismiss(notifications.map(n=>n.id));setNotifications([]);setShowNotif(false)}} style={{ fontSize:11, color:'var(--text-muted)', background:'none', border:'none', cursor:'pointer', padding:'2px 6px', borderRadius:6, fontWeight:600 }}>Alle löschen</button>}
                   </div>
                   {notifications.length===0 ? (
                     <div style={{ padding:'32px 16px', textAlign:'center', color:'var(--text-soft)' }}>
@@ -1030,6 +1041,10 @@ export default function Layout({ session, role, onLogout, children }) {
                         <div style={{ fontSize:13, fontWeight:600, color:'var(--text-primary)', whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis' }}>{n.title}</div>
                         <div style={{ fontSize:11, color:'var(--text-soft)', marginTop:2 }}>{(() => { const d=new Date(n.time); return isNaN(d.getTime()) ? '' : d.toLocaleDateString('de-DE',{day:'2-digit',month:'short',hour:'2-digit',minute:'2-digit'}) })()}</div>
                       </div>
+                      <button title="Löschen" onClick={(e)=>{ e.stopPropagation(); persistDismiss([n.id]); setNotifications(list=>list.filter(x=>x.id!==n.id)) }}
+                        style={{ flexShrink:0, background:'none', border:'none', cursor:'pointer', color:'var(--text-soft)', fontSize:15, lineHeight:1, padding:'2px 4px', borderRadius:6 }}
+                        onMouseEnter={e=>{ e.currentTarget.style.color='rgb(220,38,38)'; e.currentTarget.style.background='var(--surface-hover)' }}
+                        onMouseLeave={e=>{ e.currentTarget.style.color='var(--text-soft)'; e.currentTarget.style.background='none' }}>×</button>
                     </div>
                   ))}
                 </div>
