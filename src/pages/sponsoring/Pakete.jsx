@@ -86,29 +86,24 @@ export default function Pakete() {
     <div style={{ width: '100%', maxWidth: 1100, margin: '0 auto', padding: '24px 16px 40px' }}>
       <PageHeader
         overline="Sponsoring"
-        title="Pakete"
-        subtitle="Schnüre Sponsoring-Pakete aus deinen Rechten. Der Paketwert summiert die Listenpreise der enthaltenen Rechte."
+        title="Ebene Sponsorenpyramide"
+        subtitle="Definiere die Ebenen deiner Sponsorenpyramide aus deinen Rechten. Der Wert summiert die Listenpreise der enthaltenen Rechte."
       />
 
       {error && <div style={errBox}>{error}</div>}
 
-      <form onSubmit={createPackage} style={{ display: 'grid', gridTemplateColumns: '2fr 1fr 1fr auto', gap: 10, alignItems: 'end', ...card, marginBottom: 22 }}>
-        <Field label="Paketname"><input value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} placeholder="z.B. Gold" style={input} /></Field>
-        <Field label="Tier">
-          <select value={form.tier} onChange={(e) => setForm({ ...form, tier: e.target.value })} style={input}>
-            {TIERS.map((t) => <option key={t} value={t}>{t}</option>)}
-          </select>
-        </Field>
-        <Field label="Fixpreis (€, optional)"><input type="number" min="0" step="0.01" value={form.price} onChange={(e) => setForm({ ...form, price: e.target.value })} placeholder="leer = Listenwert" style={input} /></Field>
+      <form onSubmit={createPackage} style={{ display: 'grid', gridTemplateColumns: '2fr 1fr auto', gap: 10, alignItems: 'end', ...card, marginBottom: 22 }}>
+        <Field label="Name der Ebene"><input value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} placeholder="z.B. Gold" style={input} /></Field>
+        <Field label="Ebene ab Euro (€, optional)"><input type="number" min="0" step="0.01" value={form.price} onChange={(e) => setForm({ ...form, price: e.target.value })} placeholder="leer = Listenwert" style={input} /></Field>
         <button type="submit" disabled={busy || !form.name.trim()} style={{ ...primaryBtn, opacity: busy || !form.name.trim() ? 0.6 : 1 }}>
           {busy ? <Loader2 size={14} className="spin" /> : <Plus size={14} />} Anlegen
         </button>
       </form>
 
       {loading ? (
-        <div style={{ display: 'flex', alignItems: 'center', gap: 8, color: 'var(--text-muted)' }}><Loader2 size={16} className="spin" /> Lade Pakete…</div>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8, color: 'var(--text-muted)' }}><Loader2 size={16} className="spin" /> Lade Ebenen…</div>
       ) : packages.length === 0 ? (
-        <div style={{ color: 'var(--text-muted)', fontSize: 14 }}>Noch keine Pakete.</div>
+        <div style={{ color: 'var(--text-muted)', fontSize: 14 }}>Noch keine Ebenen.</div>
       ) : (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
           {packages.map((p) => {
@@ -122,7 +117,6 @@ export default function Pakete() {
                   <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
                     {open ? <ChevronDown size={18} /> : <ChevronRight size={18} />}
                     <span style={{ fontSize: 16, fontWeight: 700, color: 'var(--text-strong)' }}>{p.name}</span>
-                    {p.tier && <span style={chip}>{p.tier}</span>}
                   </div>
                   <div style={{ fontSize: 13, color: 'var(--text-muted)' }}>
                     {v?.rights_count || 0} Rechte ·{' '}

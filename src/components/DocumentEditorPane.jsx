@@ -81,7 +81,7 @@ function clamp(v, lo, hi) { return Math.max(lo, Math.min(hi, v)) }
 
 const DocumentEditorPane = forwardRef(function DocumentEditorPane({
   docId, teamId, brandVoiceId, brandVoiceName, audienceId, companyVoiceIds = [], sourceChatId = null, editorOpen = false,
-  onDocCreated, onClose, onAttachToPost, onNewDocument, initialText = null, onInitialConsumed,
+  onDocCreated, onClose, onAttachToPost, onNewDocument, initialText = null, onInitialConsumed, onLoaded,
 }, ref) {
   const [title, setTitle] = useState('')
   const titleRef = useRef('')
@@ -181,6 +181,7 @@ const DocumentEditorPane = forwardRef(function DocumentEditorPane({
       if (json && typeof json === 'object' && Object.keys(json).length) editor.commands.setContent(json)
       else editor.commands.clearContent()
       setIsEmpty(editor.isEmpty); setWordCount(countWords(editor.getText())); setSaveState('saved'); loadedRef.current = true
+      try { onLoaded && onLoaded(docId) } catch (_e) {}
     })()
     return () => { cancelled = true }
   }, [docId, editor])

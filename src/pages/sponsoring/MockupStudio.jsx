@@ -10,7 +10,7 @@
 // createSignedUrl(path, 3600).
 
 import { useEffect, useState, useCallback } from 'react'
-import { ImagePlus, Plus, Loader2, RefreshCw, Upload, Wand2, Building2 } from 'lucide-react'
+import { ImagePlus, Plus, Loader2, RefreshCw, Upload, Wand2, Building2, Trash2 } from 'lucide-react'
 import { supabase } from '../../lib/supabase'
 import { useTeam } from '../../context/TeamContext'
 import PageHeader from '../../components/PageHeader'
@@ -100,6 +100,17 @@ export default function MockupStudio() {
     } finally {
       setTplBusy(false)
     }
+  }
+
+  async function deleteTemplate(t) {
+    if (!window.confirm(`Vorlage „${t.name}" wirklich löschen?`)) return
+    // Erst Storage-Datei entfernen (best effort), dann DB-Row.
+    if (t.storage_path) {
+      await supabase.storage.from(BUCKET_STADIUM).remove([t.storage_path])
+    }
+    const { error: delErr } = await sp().from('stadium_templates').delete().eq('id', t.id)
+    if (delErr) { setError(delErr.message); return }
+    setTemplates((prev) => prev.filter((x) => x.id !== t.id))
   }
 
   async function createMockup(e) {
@@ -194,7 +205,11 @@ export default function MockupStudio() {
       ) : (
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(220px, 1fr))', gap: 14, marginBottom: 28 }}>
           {templates.map((t) => (
-            <div key={t.id} style={tileCard}>
+            <div key={t.id} style={{ ...tileCard, position: 'relative' }}>
+              <button type="button" onClick={() => deleteTemplate(t)} title="Vorlage löschen"
+                style={{ position: 'absolute', top: 8, right: 8, zIndex: 2, width: 28, height: 28, borderRadius: 8, border: 'none', background: 'rgba(15,23,42,0.55)', color: '#fff', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                <Trash2 size={14} />
+              </button>
               <div style={thumbBox}>
                 {tplUrls[t.id] ? (
                   <img src={tplUrls[t.id]} alt={t.name} style={thumbImg} />

@@ -113,9 +113,9 @@ function getNav(t) {
   { to: '/organizations',   icon: IcUsers2,   label: 'Unternehmen' },
   { to: '/leads',           icon: IcUsers,    label: 'Kontakte' },
   { to: '/deals',           icon: IcBarChart, label: t('nav.deals') },
-  // Aus Sponsoring in CRM verschoben; Per-Item-Gating ans Sponsoring-Addon gebunden.
-  { to: '/sponsoring/angebote',  icon: IcDoc,    label: 'Angebote',  module: 'sponsoring' },
-  { to: '/sponsoring/vertraege', icon: IcShield, label: 'Verträge',  module: 'sponsoring' },
+  // Kampagne = zentrale CRM-Klammer (Partner-Feedback 2026-06-27): Kontakte/Unternehmen/
+  // Deals laufen über Kampagnen. Per-Item-Gating ans Sponsoring-Addon gebunden.
+  { to: '/sponsoring/kampagnen', icon: IcRocket, label: 'Kampagnen', module: 'sponsoring' },
   { to: '/reports',         icon: IcBarChart, label: t('nav.salesReporting') },
 
   // Projektumsetzung temporär ausgeblendet (2026-06-01 — kommt später zurück)
@@ -153,7 +153,8 @@ function getNav(t) {
   // SIDEBAR_DIVIDER_TO_MODULE die Section ohne sponsoring-Modul ausblendet.
   { divider: true, label: 'Sponsoring', tourId: 'nav-sponsoring' },
   { to: '/sponsoring',                 icon: IcRocket,        label: 'Übersicht' },
-  { to: '/sponsoring/kampagnen',       icon: IcRocket,        label: 'Kampagnen' },
+  { to: '/sponsoring/angebote',        icon: IcDoc,           label: 'Angebote' },
+  { to: '/sponsoring/vertraege',       icon: IcShield,        label: 'Verträge' },
   { to: '/sponsoring/branchenanalyse', icon: IcTarget,        label: 'Branchenanalyse' },
   { to: '/sponsoring/mockup',          icon: IcSparkles,      label: 'Mockup-Studio' },
   { to: '/sponsoring/aktivierung',     icon: IcZap,           label: 'Aktivierung' },
