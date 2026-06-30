@@ -467,7 +467,9 @@ export default function ContentStudio({ session }) {
         setActiveVisual(null); setNewDocActive(false)
       } else if (tDes > tDoc) {
         n.delete('doc'); n.delete('visual'); setSearchParams(n, { replace: true })
-        setActiveVisual(topDesign); setSplitMode('design'); setNewDocActive(false)
+        setNewDocActive(false)
+        // Über die bewährte Funktion öffnen (lädt die volle Visual-Zeile + vermeidet Render-Race).
+        openVisualInDesigner(topDesign.id, { assignToChat: false })
       } else {
         n.set('doc', topDoc.id); n.delete('visual'); setSearchParams(n, { replace: true })
         setActiveVisual(null); setSplitMode('doc'); setNewDocActive(false)
@@ -629,7 +631,8 @@ export default function ContentStudio({ session }) {
 
   // ?visual=<id> aus URL (z.B. aus der Galerie): Bild laden + Designer öffnen.
   useEffect(() => {
-    if (!visualParam || visualParamHandledRef.current) return
+    if (!visualParam) { visualParamHandledRef.current = false; return }
+    if (visualParamHandledRef.current) return
     visualParamHandledRef.current = true
     ;(async () => {
       const { data: v } = await getVisual(visualParam)
@@ -1222,7 +1225,7 @@ export default function ContentStudio({ session }) {
           }
           if (m === 'design' && !activeVisual && activeChatId) {
             const lastDesign = (chatVisuals || []).find(v => v.kind === 'design')
-            if (lastDesign) setActiveVisual(lastDesign)
+            if (lastDesign) openVisualInDesigner(lastDesign.id, { assignToChat: false })
           }
         }
         const swBtn = (active) => ({ width:46, height:50, display:'inline-flex', alignItems:'center', justifyContent:'center', border:'none', cursor:'pointer',
