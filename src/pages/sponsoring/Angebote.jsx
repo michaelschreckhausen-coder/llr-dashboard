@@ -51,7 +51,7 @@ export default function Angebote() {
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState(null)
   const [notice, setNotice] = useState(null)        // Hinweis-Toast (z.B. PDF-Stub)
-  const [sponsorForm, setSponsorForm] = useState({ name: '', industry: '', deal_id: '', lead_id: '' })
+  const [sponsorForm, setSponsorForm] = useState({ name: '', organization_id: '', industry: '', deal_id: '', lead_id: '' })
   const [offerForm, setOfferForm] = useState({ sponsor_profile_id: '', package_id: '', discount_pct: 0 })
   // Cash/Barter-Split — beide werden gespeichert, total_price = Summe (abgeleitet).
   const [valueCash, setValueCash] = useState('')
@@ -128,14 +128,19 @@ export default function Angebote() {
 
   async function createSponsor(e) {
     e.preventDefault()
-    if (!activeTeamId || !sponsorForm.name.trim()) return
+    // O1: bestehendes Unternehmen wählen (keine Duplikate) ODER neu anlegen.
+    if (!activeTeamId || (!sponsorForm.organization_id && !sponsorForm.name.trim())) return
     setBusy(true); setError(null)
-    // Sponsor = Unternehmen (1:1-Extension): erst public.organizations anlegen,
-    // dann die Extension via Helper-RPC (setzt organization_id NOT NULL korrekt).
-    const { data: org, error: eOrg } = await supabase.from('organizations')
-      .insert({ name: sponsorForm.name.trim(), team_id: activeTeamId }).select('id').single()
-    if (eOrg) { setError(eOrg.message); setBusy(false); return }
-    const { data: ext, error: eExt } = await supabase.rpc('get_or_create_sponsor_profile', { p_organization_id: org.id })
+    // Sponsor = Unternehmen (1:1-Extension). Bestehendes Unternehmen direkt nutzen,
+    // sonst public.organizations neu anlegen; dann Extension via Helper-RPC.
+    let orgId = sponsorForm.organization_id
+    if (!orgId) {
+      const { data: org, error: eOrg } = await supabase.from('organizations')
+        .insert({ name: sponsorForm.name.trim(), team_id: activeTeamId }).select('id').single()
+      if (eOrg) { setError(eOrg.message); setBusy(false); return }
+      orgId = org.id
+    }
+    const { data: ext, error: eExt } = await supabase.rpc('get_or_create_sponsor_profile', { p_organization_id: orgId })
     if (eExt) { setError(eExt.message); setBusy(false); return }
     // Optionale Extension-Felder nachsetzen (industry bleibt Extension; deal_id/lead_id lose Refs).
     const patch = {}
@@ -147,7 +152,7 @@ export default function Angebote() {
       const { error: e3 } = await sp().from('sponsor_profiles').update(patch).eq('id', extId)
       if (e3) { setError(e3.message); setBusy(false); return }
     }
-    setSponsorForm({ name: '', industry: '', deal_id: '', lead_id: '' })
+    setSponsorForm({ name: '', organization_id: '', industry: '', deal_id: '', lead_id: '' })
     await fetchAll(); setBusy(false)
   }
 
@@ -241,13 +246,26 @@ export default function Angebote() {
         {/* Sponsor anlegen */}
         <form onSubmit={createSponsor} style={card}>
           <div style={cardTitle}><UserPlus size={16} color={PRIMARY} /> Sponsor anlegen</div>
-          <Field label="Name"><input value={sponsorForm.name} onChange={(e) => setSponsorForm({ ...sponsorForm, name: e.target.value })} placeholder="Firma GmbH" style={input} /></Field>
+          <Field label="Bestehendes Unternehmen (keine Duplikate)">
+            <select value={sponsorForm.organization_id} onChange={(e) => setSponsorForm({ ...sponsorForm, organization_id: e.target.value })} style={input}>
+              <option value="">— Neues Unternehmen anlegen —</option>
+              {orgs.map((o) => <option key={o.id} value={o.id}>{o.name}</option>)}
+            </select>
+          </Field>
+          {!sponsorForm.organization_id && (
+            <Field label="Name (neues Unternehmen)"><input value={sponsorForm.name} onChange={(e) => setSponsorForm({ ...sponsorForm, name: e.target.value })} placeholder="Firma GmbH" style={input} /></Field>
+          )}
           <Field label="Branche (optional)"><input value={sponsorForm.industry} onChange={(e) => setSponsorForm({ ...sponsorForm, industry: e.target.value })} style={input} /></Field>
           <Field label="Leadesk-Deal-ID (optional)"><input value={sponsorForm.deal_id} onChange={(e) => setSponsorForm({ ...sponsorForm, deal_id: e.target.value })} placeholder="Deal aufgreifen — UUID" style={input} /></Field>
           <Field label="Leadesk-Lead-ID (optional)"><input value={sponsorForm.lead_id} onChange={(e) => setSponsorForm({ ...sponsorForm, lead_id: e.target.value })} placeholder="Lead verknüpfen — UUID" style={input} /></Field>
-          <button type="submit" disabled={busy || !sponsorForm.name.trim()} style={{ ...primaryBtn, marginTop: 10, opacity: busy || !sponsorForm.name.trim() ? 0.6 : 1 }}>
-            {busy ? <Loader2 size={14} className="spin" /> : <Plus size={14} />} Sponsor anlegen
-          </button>
+          {(() => {
+            const canSubmit = !busy && (sponsorForm.organization_id || sponsorForm.name.trim())
+            return (
+              <button type="submit" disabled={!canSubmit} style={{ ...primaryBtn, marginTop: 10, opacity: canSubmit ? 1 : 0.6 }}>
+                {busy ? <Loader2 size={14} className="spin" /> : <Plus size={14} />} Sponsor anlegen
+              </button>
+            )
+          })()}
         </form>
 
         {/* Angebot erstellen */}
