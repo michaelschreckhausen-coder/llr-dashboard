@@ -318,7 +318,7 @@ export default function Leads() {
         setTeamMembers([]);
         return;
       }
-      // Profil-Shape kompatibel mit OwnerPicker + LeadPreviewDrawer:
+      // Profil-Shape kompatibel mit OwnerPicker:
       // expected { id, first_name, last_name, avatar_url }.
       // Hetzner-profiles hat nur full_name → into first_name/last_name splitten.
       const mapped = (profiles || []).map(p => {
@@ -1229,6 +1229,7 @@ export default function Leads() {
               leads={filteredLeads}
               onLeadClick={handleLeadClick}
               onLeadStatusChange={handleStatusChange}
+              onToggleFavorite={toggleFavorite}
             />
           )}
         </div>

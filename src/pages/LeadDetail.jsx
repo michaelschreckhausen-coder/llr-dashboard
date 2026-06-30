@@ -122,7 +122,6 @@ const ACTIVITY_VARIANTS = {
   connection_requested:     { bg:'#E6F1FB', fg:'#0C447C', Icon: Link2,       label:'Vernetzungsanfrage gesendet' },
   connection_responded:     { bg:'#DCFCE7', fg:'#166534', Icon: Link2,       label:'Vernetzung beantwortet' },
 };
-const MESSAGE_TYPES = new Set(['message', 'linkedin_message', 'email']);
 
 function variantFor(type) {
   return ACTIVITY_VARIANTS[type] || { bg:'#F1F5F9', fg:'#475569', Icon: FileText, label: type || 'Aktivität' };
@@ -278,7 +277,8 @@ export default function LeadDetail({ lead: leadProp }) {
   const [analysisOverride, setAnalysisOverride] = useState(null);
   const [analysisDismissed, setAnalysisDismissed] = useState(false);
   // composerDraft: { channel, subject, body } — wird beim "Im Composer öffnen"-
-  // Klick gesetzt + an MessagesTab via initialDraft-Prop weitergegeben.
+  // Klick gesetzt + an den Nachrichten-Composer im Aktivitäten-Tab (ActivityTab)
+  // via initialDraft-Prop weitergegeben.
   const [composerDraft, setComposerDraft] = useState(null);
   // Lead bearbeiten — zentrales Modal (Backlog 'Edit-Modal' 2026-05-26)
   const [editModalOpen, setEditModalOpen] = useState(false);
@@ -1065,145 +1065,6 @@ function ActivityRow({ item, author, onDelete }) {
           <Trash2 size={14} />
         </button>
       )}
-    </div>
-  );
-}
-
-// ─── MessagesTab ──────────────────────────────────────────────────────────
-function MessagesTab({ leadId, lead, initialDraft, onDraftConsumed }) {
-  const [items, setItems] = useState([]);
-  const [profilesById, setProfilesById] = useState(() => new Map());
-  const [loading, setLoading] = useState(true);
-  const [composing, setComposing] = useState(false);
-  const [msgType, setMsgType] = useState('linkedin_message');
-  const [msgBody, setMsgBody] = useState('');
-  const [err, setErr] = useState(null);
-
-  // Composer-Hydratation aus initialDraft (z.B. LeadAnalysisCard → "Im Composer öffnen").
-  // onDraftConsumed räumt den Parent-State wieder leer, damit Tab-Switch nicht erneut
-  // hydratiert wenn User die Felder zwischenzeitlich geändert hat.
-  useEffect(() => {
-    if (!initialDraft) return;
-    const channel = initialDraft.channel === 'email' ? 'email' : 'linkedin_message';
-    setMsgType(channel);
-    const text = initialDraft.subject && channel === 'email'
-      ? `Betreff: ${initialDraft.subject}\n\n${initialDraft.body || ''}`
-      : (initialDraft.body || '');
-    setMsgBody(text);
-    if (typeof onDraftConsumed === 'function') onDraftConsumed();
-  }, [initialDraft, onDraftConsumed]);
-
-  const load = useCallback(async () => {
-    setLoading(true); setErr(null);
-    const { data, error } = await supabase
-      .from('activities')
-      .select('id, type, subject, body, direction, outcome, occurred_at, user_id')
-      .eq('lead_id', leadId)
-      .in('type', Array.from(MESSAGE_TYPES))
-      .order('occurred_at', { ascending: false })
-      .limit(100);
-    if (error) { setErr(error.message); setLoading(false); return; }
-    setItems(data || []);
-    const map = await fetchProfilesMap((data || []).map(a => a.user_id));
-    setProfilesById(map);
-    setLoading(false);
-  }, [leadId]);
-
-  useEffect(() => { load(); }, [load]);
-
-  const send = async () => {
-    if (!msgBody.trim()) return;
-    setComposing(true); setErr(null);
-    const { data: sess } = await supabase.auth.getSession();
-    const userId = sess?.session?.user?.id;
-    const subject = msgType === 'email' ? 'E-Mail an Lead' : 'LinkedIn-Nachricht';
-    const { error } = await supabase.from('activities').insert({
-      lead_id: leadId, user_id: userId, type: msgType,
-      subject, body: msgBody.trim(), direction: 'outbound',
-      occurred_at: new Date().toISOString(),
-      ...(lead?.team_id ? { team_id: lead.team_id } : {}),
-    });
-    setComposing(false);
-    if (error) { setErr(error.message); return; }
-    setMsgBody('');
-    load();
-  };
-
-  return (
-    <div style={cardStyle}>
-      <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:16 }}>
-        <div style={{ fontSize:16, fontWeight:500 }}>Nachrichten</div>
-        <span style={{ fontSize:12, color: COLORS.textTertiary }}>
-          {loading ? 'Lade…' : `${items.length} Nachrichten`}
-        </span>
-      </div>
-
-      {/* Composer */}
-      <div style={{ marginBottom: 22, padding:'14px', background: COLORS.surfaceMuted, borderRadius: RADIUS.md }}>
-        <div style={{ display:'flex', gap:8, marginBottom:8 }}>
-          <select value={msgType} onChange={e => setMsgType(e.target.value)}
-            style={{ ...inputStyle, width: 200, flex: 'none' }}>
-            <option value="linkedin_message">LinkedIn-Nachricht</option>
-            <option value="email">E-Mail</option>
-            <option value="message">Sonstige Nachricht</option>
-          </select>
-          <span style={{ fontSize:12, color: COLORS.textTertiary, alignSelf:'center' }}>
-            an {lead?.first_name} {lead?.last_name}
-          </span>
-        </div>
-        <textarea style={textareaStyle}
-          placeholder="Nachricht eingeben…"
-          value={msgBody} onChange={e => setMsgBody(e.target.value)} rows={4} />
-        <div style={{ display:'flex', justifyContent:'flex-end', gap:8, marginTop:8 }}>
-          <button type="button" style={primaryBtnStyle} onClick={send} disabled={composing || !msgBody.trim()}>
-            <Send size={14} /> {composing ? 'Senden…' : 'Protokollieren'}
-          </button>
-        </div>
-        <div style={{ fontSize:11, color: COLORS.textTertiary, marginTop:6 }}>
-          Hinweis: speichert die Nachricht im Activity-Log. Versand muss aktuell separat über LinkedIn / E-Mail-Client erfolgen.
-        </div>
-      </div>
-
-      {err && <div style={{ color:'#B91C1C', fontSize:12, marginBottom:12 }}>{err}</div>}
-
-      {!loading && items.length === 0 && (
-        <div style={{ padding:'32px 0', textAlign:'center', color: COLORS.textTertiary, fontSize:13 }}>
-          Noch keine Nachrichten protokolliert.
-        </div>
-      )}
-
-      {items.map(m => <MessageRow key={m.id} msg={m} author={authorName(profilesById.get(m.user_id))} />)}
-    </div>
-  );
-}
-
-function MessageRow({ msg, author }) {
-  const v = variantFor(msg.type);
-  const Icon = v.Icon;
-  const dt = msg.occurred_at ? new Date(msg.occurred_at) : null;
-  const dateStr = dt ? dt.toLocaleString('de-DE', { day:'2-digit', month:'long', year:'numeric', hour:'2-digit', minute:'2-digit' }) : '';
-  const isOut = msg.direction !== 'inbound';
-  return (
-    <div style={{
-      display:'flex', flexDirection:'column',
-      alignItems: isOut ? 'flex-end' : 'flex-start',
-      marginBottom:14,
-    }}>
-      <div style={{
-        maxWidth: '75%',
-        background: isOut ? COLORS.primarySoft : COLORS.surfaceMuted,
-        color: isOut ? COLORS.primarySoftFg : COLORS.textPrimary,
-        padding:'10px 14px', borderRadius: 12, fontSize:13, lineHeight:1.5,
-        whiteSpace:'pre-wrap', wordBreak:'break-word',
-      }}>
-        {msg.body || msg.subject || '—'}
-      </div>
-      <div style={{ ...activityMetaStyle, marginTop:4, display:'flex', alignItems:'center', gap:6 }}>
-        <Icon size={11} color={v.fg} />
-        <span>{v.label}</span>
-        {author && <span>· {author}</span>}
-        <span>· {dateStr}</span>
-      </div>
     </div>
   );
 }
