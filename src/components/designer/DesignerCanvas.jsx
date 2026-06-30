@@ -127,11 +127,14 @@ const FONTS = [
 // ─── Text-Effekte (Stage 3) → Konva-Schatten/Stroke-Props ───────────────────
 // effect: 'none' | 'shadow' | 'glow' | 'lift' | 'neon'
 const TEXT_EFFECTS = [
-  { id: 'none',   label: 'Kein Effekt' },
-  { id: 'shadow', label: 'Schatten' },
-  { id: 'lift',   label: 'Lift' },
-  { id: 'glow',   label: 'Glühen' },
-  { id: 'neon',   label: 'Neon' },
+  { id: 'none',    label: 'Keiner',     css: {} },
+  { id: 'shadow',  label: 'Schatten',   css: { textShadow: '2px 3px 4px rgba(0,0,0,0.55)' } },
+  { id: 'lift',    label: 'Lift',       css: { textShadow: '0 7px 9px rgba(0,0,0,0.32)' } },
+  { id: 'hollow',  label: 'Hohl',       css: { color: 'transparent', WebkitTextStroke: '1.5px #111827' } },
+  { id: 'outline', label: 'Umriss',     css: { WebkitTextStroke: '1px #111827' } },
+  { id: 'echo',    label: 'Echo',       css: { textShadow: '4px 4px 0 rgba(17,24,39,0.32), 8px 8px 0 rgba(17,24,39,0.16)' } },
+  { id: 'glow',    label: 'Glühen',     css: { textShadow: '0 0 9px rgba(49,90,231,0.9)' } },
+  { id: 'neon',    label: 'Neon',       css: { color: '#39FF14', textShadow: '0 0 8px #39FF14, 0 0 14px #39FF14' } },
 ]
 function textEffectProps(o) {
   const fs = o.fontSize || 44
@@ -152,7 +155,19 @@ function textEffectProps(o) {
     return { shadowColor: o.fill || '#39FF14', shadowBlur: Math.round(fs * 0.7), shadowOffsetX: 0, shadowOffsetY: 0, shadowOpacity: 1,
       stroke: o.fill || '#39FF14', strokeWidth: Math.max(1, Math.round(fs * 0.03)) }
   }
-  return { shadowBlur: 0, shadowOpacity: 0 }
+  if (eff === 'hollow') {
+    // Hohle Buchstaben: transparente Füllung + Kontur in Textfarbe.
+    return { fill: 'transparent', stroke: o.fill || '#111827', strokeWidth: Math.max(1.2, Math.round(fs * 0.035)), fillAfterStrokeEnabled: true, shadowOpacity: 0 }
+  }
+  if (eff === 'outline') {
+    // Gefüllte Buchstaben mit dunkler Kontur (Füllung liegt über der Kontur).
+    return { stroke: '#111827', strokeWidth: Math.max(1, Math.round(fs * 0.03)), fillAfterStrokeEnabled: true, shadowOpacity: 0 }
+  }
+  if (eff === 'echo') {
+    // versetzte „Echo"-Kopie über einen harten Schatten in Textfarbe.
+    return { shadowColor: o.fill || '#111827', shadowBlur: 0, shadowOffsetX: Math.round(fs * 0.14), shadowOffsetY: Math.round(fs * 0.14), shadowOpacity: 0.32 }
+  }
+  return { shadowBlur: 0, shadowOpacity: 0, stroke: undefined, strokeWidth: 0 }
 }
 
 const HEAL_PROMPT = 'Entferne den Inhalt im markierten Bereich vollständig und fülle ihn natürlich und nahtlos passend zum Umfeld auf. Keine Artefakte, keine Kanten, fotorealistisch und stilistisch konsistent mit dem Rest des Bildes.'
@@ -3468,6 +3483,7 @@ export default function DesignerCanvas({ visual, teamId, onSaved, onReplaceVisua
           filters={filters} setFilters={setFilters}
           commitHistoryOnce={commitHistoryOnce} endInteraction={endInteraction}
           filterScope={(selected && selected.type === 'image') ? 'einzeln' : 'alle'}
+          filterPreviewSrc={(selected && selected.type === 'image' && selected.src) || (objects.find(o => o.type === 'image') || {}).src || null}
           // Ebenen
           objects={objects} selectedIds={selectedIds} setSelectedIds={setSelectedIds}
           reorderObjects={reorderObjects} toggleLayerFlag={toggleLayerFlag}
@@ -4070,10 +4086,24 @@ function ContextBar({
               {numField('Laufweite', o.letterSpacing || 0, v => setOnce({ letterSpacing: v || 0 }), { step: 0.5, w: 70 })}
             </div>
           </BarMenu>
-          <BarMenu title="Effekte" width={180} trigger={<span style={{ fontSize: 12.5, fontWeight: 600 }}>Effekte</span>}>
-            {TEXT_EFFECTS.map(ef => (
-              <BarMenuItem key={ef.id} label={ef.label} active={(o.effect || 'none') === ef.id} onClick={() => setOnce({ effect: ef.id })} />
-            ))}
+          <BarMenu title="Effekte" width={236} trigger={<span style={{ fontSize: 12.5, fontWeight: 600 }}>Effekte</span>}>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 8, padding: '4px 4px 2px' }}>
+              {TEXT_EFFECTS.map(ef => {
+                const on = (o.effect || 'none') === ef.id
+                return (
+                  <button key={ef.id} type="button" onClick={() => setOnce({ effect: ef.id })} title={ef.label}
+                    style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 5, padding: 0, border: 'none', background: 'transparent', cursor: 'pointer', fontFamily: 'inherit' }}>
+                    <span style={{ width: '100%', height: 44, borderRadius: 9, display: 'flex', alignItems: 'center', justifyContent: 'center',
+                      background: ef.id === 'neon' ? '#15171c' : '#F4F6FA',
+                      border: '1.5px solid ' + (on ? P : 'var(--border,#E9ECF2)'),
+                      boxShadow: on ? '0 0 0 2px rgba(49,90,231,0.18)' : 'none' }}>
+                      <span style={{ fontSize: 20, fontWeight: 800, color: ef.id === 'neon' ? '#39FF14' : '#111827', lineHeight: 1, ...ef.css }}>Ag</span>
+                    </span>
+                    <span style={{ fontSize: 10.5, fontWeight: on ? 700 : 600, color: on ? P : 'var(--text-muted,#667085)' }}>{ef.label}</span>
+                  </button>
+                )
+              })}
+            </div>
           </BarMenu>
         </>
       )}
@@ -4928,7 +4958,20 @@ function AiPanelBody({
 }
 
 // ─── Panel: Filter ──────────────────────────────────────────────────────────
-function FilterPanelBody({ filters, setFilters, commitHistoryOnce, endInteraction, filterScope }) {
+// Konva-Filterparameter grob als CSS-Filter abbilden (für Live-Vorschau-Thumbnails).
+function cssForFilter(f = {}) {
+  const parts = []
+  if (f.brightness) parts.push(`brightness(${(1 + f.brightness).toFixed(2)})`)
+  if (f.contrast) parts.push(`contrast(${(1 + f.contrast / 100).toFixed(2)})`)
+  if (f.grayscale) parts.push('grayscale(1)')
+  if (f.sepia) parts.push(`sepia(${Math.min(1, f.sepia)})`)
+  if (f.invert) parts.push('invert(1)')
+  if (typeof f.saturation === 'number' && f.saturation) parts.push(`saturate(${Math.max(0, 1 + f.saturation * 0.5).toFixed(2)})`)
+  if (f.warmth) parts.push(`sepia(${Math.min(0.5, Math.abs(f.warmth) / 120).toFixed(2)}) hue-rotate(${f.warmth > 0 ? -10 : 25}deg)`)
+  if (f.blur) parts.push(`blur(${Math.min(3, f.blur / 8).toFixed(1)}px)`)
+  return parts.join(' ') || 'none'
+}
+function FilterPanelBody({ filters, setFilters, commitHistoryOnce, endInteraction, filterScope, filterPreviewSrc }) {
   const set = (k, v) => setFilters({ ...filters, [k]: v })
   const applyPreset = (f) => { commitHistoryOnce(); setFilters({ ...EMPTY_FILTERS, ...f }); endInteraction() }
   const toggle = (k) => { commitHistoryOnce(); set(k, filters[k] ? 0 : 1); endInteraction() }
@@ -4946,12 +4989,16 @@ function FilterPanelBody({ filters, setFilters, commitHistoryOnce, endInteractio
       </div>
 
       <PanelLabel>Looks</PanelLabel>
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: 6, marginBottom: 16 }}>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 8, marginBottom: 16 }}>
         {FILTER_PRESETS.map(p => (
-          <button key={p.id} onClick={() => applyPreset(p.f)}
-            style={{ height: 30, borderRadius: 8, border: '1px solid var(--border,#E9ECF2)', background: 'var(--surface,#fff)',
-              color: 'var(--text-primary)', fontSize: 11.5, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit' }}>
-            {p.label}
+          <button key={p.id} onClick={() => applyPreset(p.f)} title={p.label}
+            style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 5, padding: 0, border: 'none', background: 'transparent', cursor: 'pointer', fontFamily: 'inherit' }}>
+            <span style={{ width: '100%', aspectRatio: '1 / 1', borderRadius: 9, overflow: 'hidden', border: '1.5px solid var(--border,#E9ECF2)', background: '#EEF1F6', display: 'block' }}>
+              {filterPreviewSrc
+                ? <img src={filterPreviewSrc} alt={p.label} style={{ width: '100%', height: '100%', objectFit: 'cover', filter: cssForFilter(p.f), display: 'block' }} />
+                : <span style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 10.5, color: 'var(--text-muted)', filter: cssForFilter(p.f), background: 'linear-gradient(135deg,#c7d2fe,#fbcfe8)' }} />}
+            </span>
+            <span style={{ fontSize: 10.5, fontWeight: 600, color: 'var(--text-muted,#667085)' }}>{p.label}</span>
           </button>
         ))}
       </div>
