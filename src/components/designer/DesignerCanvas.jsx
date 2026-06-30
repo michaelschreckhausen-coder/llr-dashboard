@@ -265,6 +265,7 @@ export default function DesignerCanvas({ visual, teamId, onSaved, onReplaceVisua
   const [cropMode, setCropMode] = useState(false)
   const [cropRect, setCropRect] = useState(null)      // {x,y,w,h} in Bühnenkoordinaten
   const cropDragRef = useRef(null)
+  const [cropRatio, setCropRatio] = useState(null)   // null = frei; sonst Seitenverhältnis (w/h)
 
   // ─── KI-Masken-Werkzeug ────────────────────────────────────────────────────
   // aiMode: 'edit' (freier Prompt) | 'heal' (Objekt entfernen) | null
@@ -1961,7 +1962,11 @@ export default function DesignerCanvas({ visual, teamId, onSaved, onReplaceVisua
     if (!p) return
     if (cropMode && cropDragRef.current) {
       const s = cropDragRef.current
-      setCropRect({ x: Math.min(s.x, p.x), y: Math.min(s.y, p.y), w: Math.abs(p.x - s.x), h: Math.abs(p.y - s.y) })
+      let w = Math.abs(p.x - s.x), h = Math.abs(p.y - s.y)
+      if (cropRatio) { if (w / cropRatio >= h) h = w / cropRatio; else w = h * cropRatio }
+      const x = p.x >= s.x ? s.x : s.x - w
+      const y = p.y >= s.y ? s.y : s.y - h
+      setCropRect({ x, y, w, h })
       return
     }
     if (marqueeStartRef.current) {
@@ -2007,6 +2012,18 @@ export default function DesignerCanvas({ visual, teamId, onSaved, onReplaceVisua
   // WHITEBOARD: Crop schneidet das AKTIVE Bild-Objekt zu. Das Crop-Rechteck wird in
   // Bühnenkoordinaten gezogen; wir rechnen es relativ zum Bild-Objekt in dessen
   // Bildpixel um und setzen Konva-crop-Felder + neue Position/Größe auf dem Objekt.
+  // Zuschnitt-Format wählen: zentriertes Rechteck mit dem Seitenverhältnis über das
+  // aktive Bild legen (oder ganzes Bild bei „Frei").
+  function setCropToRatio(ratio) {
+    setCropRatio(ratio)
+    const t = activeImageObj(); if (!t) return
+    const ox = t.x || 0, oy = t.y || 0, ow = t.width || 1, oh = t.height || 1
+    if (!ratio) { setCropRect({ x: ox, y: oy, w: ow, h: oh }); return }
+    let w = ow, h = w / ratio
+    if (h > oh) { h = oh; w = h * ratio }
+    setCropRect({ x: ox + (ow - w) / 2, y: oy + (oh - h) / 2, w, h })
+  }
+
   function applyCrop() {
     if (!cropRect || cropRect.w < 8 || cropRect.h < 8) { setCropMode(false); setCropRect(null); return }
     const target = activeImageObj()
@@ -3507,7 +3524,7 @@ export default function DesignerCanvas({ visual, teamId, onSaved, onReplaceVisua
         <ContextBar selected={selected} updateObject={updateObject}
           commitHistoryOnce={commitHistoryOnce} endInteraction={endInteraction}
           reorder={reorder} deleteSelected={deleteSelected} duplicateSelected={duplicateSelected}
-          onFlip={flipSelected} onCrop={() => setCropMode(true)}
+          onFlip={flipSelected} onCrop={() => { setCropMode(true); setCropRatio(null); setCropRect(null) }}
           onEditImage={() => setActiveTool('edit')} onOpenLayers={() => setActiveTool('layers')}
           onCopyStyle={startCopyStyle} copyStyleActive={copyStyleActive} onIconRecolor={recolorIcon}
           fonts={allFonts} selectedIds={selectedIds} brandColors={brandColors}
@@ -3539,12 +3556,18 @@ export default function DesignerCanvas({ visual, teamId, onSaved, onReplaceVisua
         </div>
       )}
       {cropMode && (
-        <div style={barStyle}>
-          <span style={{ fontSize: 12, color: 'var(--text-muted)' }}>Rechteck über den gewünschten Bildausschnitt ziehen.</span>
+        <div style={{ ...barStyle, flexWrap: 'wrap' }}>
+          <span style={{ fontSize: 12.5, fontWeight: 700, color: 'var(--text-primary)' }}>Zuschneiden</span>
+          <span style={{ fontSize: 11.5, color: 'var(--text-muted)' }}>Format:</span>
+          {[['Frei', null], ['Original', 'orig'], ['1:1', 1], ['4:5', 4 / 5], ['3:4', 3 / 4], ['16:9', 16 / 9], ['9:16', 9 / 16], ['3:2', 3 / 2]].map(([lbl, r]) => {
+            const ratio = r === 'orig' ? (() => { const t = activeImageObj(); return t ? (t.width || 1) / (t.height || 1) : 1 })() : r
+            const active = (r === null && cropRatio === null) || (typeof ratio === 'number' && Math.abs((cropRatio || 0) - ratio) < 0.001)
+            return <SmallBtn key={lbl} primary={active} onClick={() => setCropToRatio(ratio)}>{lbl}</SmallBtn>
+          })}
           <div style={{ flex: 1 }} />
-          <SmallBtn onClick={applyCrop} primary>Zuschnitt anwenden</SmallBtn>
+          <SmallBtn onClick={applyCrop} primary>Anwenden</SmallBtn>
           <SmallBtn onClick={resetCrop}>Zurücksetzen</SmallBtn>
-          <SmallBtn onClick={() => { setCropMode(false); setCropRect(null) }}>Abbrechen</SmallBtn>
+          <SmallBtn onClick={() => { setCropMode(false); setCropRect(null); setCropRatio(null) }}>Abbrechen</SmallBtn>
         </div>
       )}
 
