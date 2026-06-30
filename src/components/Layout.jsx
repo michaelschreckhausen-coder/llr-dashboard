@@ -1139,30 +1139,6 @@ export default function Layout({ session, role, onLogout, children }) {
                       </>
                     )}
                     <div style={{ height:1, background:'#F3F4F6', margin:'4px 6px' }}/>
-                    <div style={{ padding:'6px 12px 4px', fontSize:10, fontWeight:700, color:'var(--text-soft)', textTransform:'uppercase', letterSpacing:'0.08em' }}>{t('common.language')}</div>
-                    <div style={{ display:'flex', gap:6, padding:'4px 12px 8px' }}>
-                      {['de','en'].map(lang => (
-                        <button key={lang} onClick={() => setLanguage(lang)}
-                          style={{ flex:1, padding:'6px 10px', borderRadius:8, border:'1.5px solid '+(language===lang?'var(--wl-primary,rgb(0,48,96))':'#E5E7EB'), background:language===lang?'var(--wl-primary,rgb(0,48,96))':'#fff', color:language===lang?'#fff':'#374151', fontSize:12, fontWeight:language===lang?700:400, cursor:'pointer' }}>
-                          {lang === 'de' ? 'DE' : 'EN'}
-                        </button>
-                      ))}
-                    </div>
-                    <div style={{ height:1, background:'#F3F4F6', margin:'4px 6px' }}/>
-                    {/* Demo-Switch Button */}
-                    {!isDemo && (
-                      <button onClick={async () => {
-                        const { error } = await supabase.auth.signInWithPassword({ email:'demo@leadesk.de', password:'Demo1234!' })
-                        if (!error) localStorage.setItem('llr_onboarding_done', '1')
-                        setShowMenu(false)
-                        navigate('/dashboard')
-                      }} style={{ width:'100%', display:'flex', alignItems:'center', gap:10, padding:'9px 12px', borderRadius:10, border:'none', background:'none', cursor:'pointer', fontSize:13, color:'#f97316', textAlign:'left', fontWeight:600 }}
-                        onMouseEnter={e => e.currentTarget.style.background='#FFF7ED'}
-                        onMouseLeave={e => e.currentTarget.style.background='none'}>
-                        <span style={{ width:22, display:'flex', alignItems:'center', justifyContent:'center', color:'#f97316', flexShrink:0 }}>🎬</span>
-                        <span>{t('header.switchToDemo')}</span>
-                      </button>
-                    )}
                     <button onClick={() => { handleLogout(); setShowMenu(false) }}
                       style={{ width:'100%', display:'flex', alignItems:'center', gap:10, padding:'9px 12px', borderRadius:10, border:'none', background:'none', cursor:'pointer', fontSize:13, color:'#DC2626', textAlign:'left', fontWeight:600 }}
                       onMouseEnter={e => e.currentTarget.style.background='#FEF2F2'}
