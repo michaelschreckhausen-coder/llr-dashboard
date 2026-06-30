@@ -959,23 +959,26 @@ function ActivityTab({ leadId, leadTeamId, lead, initialDraft, onDraftConsumed }
       </div>
 
       {/* Nachricht verfassen (zusammengeführt aus dem früheren Nachrichten-Tab) */}
-      <div style={{ marginBottom: 22, padding:'14px', background: COLORS.surfaceMuted, borderRadius: RADIUS.md }}>
-        <div style={{ display:'flex', gap:8, marginBottom:8, alignItems:'center' }}>
-          <Send size={14} style={{ color: COLORS.textTertiary }} />
+      <div style={{ marginBottom: 22, padding:'16px', background: COLORS.surface, border:`1px solid ${COLORS.borderSubtle}`, borderRadius: RADIUS.lg, boxShadow:'0 1px 2px rgba(16,24,40,0.04)' }}>
+        <div style={{ display:'flex', gap:10, marginBottom:12, alignItems:'center' }}>
+          <span style={{ width:28, height:28, borderRadius:8, background:'rgba(49,90,231,0.10)', color: COLORS.primary, display:'grid', placeItems:'center', flexShrink:0 }}>
+            <Send size={15} />
+          </span>
+          <span style={{ fontSize:11, fontWeight:700, color: COLORS.textTertiary, textTransform:'uppercase', letterSpacing:'0.06em' }}>Nachricht verfassen</span>
+          {lead && (lead.first_name || lead.last_name) && (
+            <span style={{ fontSize:12, color: COLORS.textTertiary }}>· an {lead.first_name} {lead.last_name}</span>
+          )}
           <select value={msgType} onChange={e => setMsgType(e.target.value)}
-            style={{ ...inputStyle, width: 200, flex: 'none' }}>
+            style={{ ...inputStyle, width: 190, flex: 'none', marginLeft:'auto', height:32 }}>
             <option value="linkedin_message">LinkedIn-Nachricht</option>
             <option value="email">E-Mail</option>
             <option value="message">Sonstige Nachricht</option>
           </select>
-          {lead && (lead.first_name || lead.last_name) && (
-            <span style={{ fontSize:12, color: COLORS.textTertiary }}>an {lead.first_name} {lead.last_name}</span>
-          )}
         </div>
         <textarea style={textareaStyle}
           placeholder="Nachricht eingeben…"
           value={msgBody} onChange={e => setMsgBody(e.target.value)} rows={4} />
-        <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', gap:8, marginTop:8 }}>
+        <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', gap:8, marginTop:10 }}>
           <span style={{ fontSize:11, color: COLORS.textTertiary }}>
             Wird im Activity-Log protokolliert. Versand separat über LinkedIn / E-Mail-Client.
           </span>
