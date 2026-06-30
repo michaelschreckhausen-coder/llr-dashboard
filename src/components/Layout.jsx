@@ -396,14 +396,11 @@ export default function Layout({ session, role, onLogout, children }) {
     return () => window.removeEventListener('leadesk:start-area-tour', onStart)
   }, [])
 
-  // Sidebar-Collapse (Desktop only, persisted in localStorage)
-  const [collapsed, setCollapsed] = useState(() => {
-    try { return localStorage.getItem('leadesk.sidebar.collapsed') === '1' }
-    catch { return false }
-  })
-  useEffect(() => {
-    try { localStorage.setItem('leadesk.sidebar.collapsed', collapsed ? '1' : '0') } catch {}
-  }, [collapsed])
+  // Sidebar-Collapse deaktiviert — Seitenleiste bleibt immer ausgeklappt.
+  // (Einklapp-Pfeil entfernt; collapsed fest false, damit auch zuvor eingeklappte
+  //  User wieder die volle Leiste sehen.)
+  const [collapsed] = useState(false)
+  const setCollapsed = () => {}
 
   // Hover-Expand (Waalaxy-Pattern): Sidebar bleibt bei 68px Icon-Rail;
   // bei Maus-Hover klappt sie als Overlay auf 230px auf (position:absolute),
@@ -740,32 +737,7 @@ export default function Layout({ session, role, onLogout, children }) {
           )}
         </div>
 
-        {/* Collapse-Toggle — Desktop only, als Pill am oberen Rand direkt unter Logo */}
-        {!isMobile && (
-          <button
-            onClick={() => setCollapsed(v => !v)}
-            title={isCollapsed ? 'Seitenleiste ausklappen' : 'Seitenleiste einklappen'}
-            style={{
-              alignSelf: isCollapsed ? 'center' : 'flex-end',
-              margin: isCollapsed ? '0 auto 8px' : '0 12px 8px auto',
-              width: 28, height: 28, borderRadius: 8,
-              border: `1px solid ${T.border}`,
-              background: T.white,
-              cursor: 'pointer',
-              display: 'flex', alignItems: 'center', justifyContent: 'center',
-              color: T.navText,
-              transition: 'all 0.15s ease',
-              flexShrink: 0,
-            }}
-            onMouseEnter={e => { e.currentTarget.style.color = T.primary; e.currentTarget.style.borderColor = T.primary }}
-            onMouseLeave={e => { e.currentTarget.style.color = T.navText; e.currentTarget.style.borderColor = T.border }}
-          >
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"
-                 style={{ transform: isCollapsed ? 'rotate(180deg)' : 'rotate(0deg)', transition: 'transform 0.22s ease' }}>
-              <polyline points="15 18 9 12 15 6"/>
-            </svg>
-          </button>
-        )}
+        {/* Collapse-Toggle entfernt — Seitenleiste bleibt immer ausgeklappt (Pfeil wurde nicht genutzt) */}
 
         {/* Team-Switcher — nur sichtbar wenn ≥2 Teams und Sidebar nicht eingeklappt */}
         <TeamSwitcher isCollapsed={isCollapsed} />
