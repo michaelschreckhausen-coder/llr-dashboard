@@ -255,6 +255,8 @@ export default function DesignerCanvas({ visual, teamId, onSaved, onReplaceVisua
 
   // Hintergrund-Füllfarbe (für Vorlagen ohne Bild)
   const [bgColor, setBgColor] = useState(null)        // null = kein Farbgrund (Bild-Modus)
+  const [pageAiCmd, setPageAiCmd] = useState('')
+  const [pageAiBusy, setPageAiBusy] = useState(false)
 
   // Bild-Filter (auf Bild-Objekt[e])
   const [filters, setFilters] = useState({ ...EMPTY_FILTERS })
@@ -263,6 +265,11 @@ export default function DesignerCanvas({ visual, teamId, onSaved, onReplaceVisua
   const [cropMode, setCropMode] = useState(false)
   const [cropRect, setCropRect] = useState(null)      // {x,y,w,h} in Bühnenkoordinaten
   const cropDragRef = useRef(null)
+  const [cropRatio, setCropRatio] = useState(null)   // null = frei; sonst Seitenverhältnis (w/h)
+  const [penColor, setPenColor] = useState('#111827')
+  const [penWidth, setPenWidth] = useState(6)
+  const drawRef = useRef(null)
+  const [drawPreview, setDrawPreview] = useState(null)
 
   // ─── KI-Masken-Werkzeug ────────────────────────────────────────────────────
   // aiMode: 'edit' (freier Prompt) | 'heal' (Objekt entfernen) | null
@@ -1308,48 +1315,144 @@ export default function DesignerCanvas({ visual, teamId, onSaved, onReplaceVisua
 
   // Vorgefertigtes Text-Objekt einfügen (Textstil-Preset: Überschrift/Unterüberschrift/Fließtext).
   // Wenn ein Text-Objekt ausgewählt ist, wird stattdessen dessen Stil angepasst (kein Neueinfügen).
+  const TEXT_STYLES = {
+    heading:   { text: 'Überschrift', fontSize: 88, fontStyle: 'bold', fontFamily: 'Inter' },
+    subheading:{ text: 'Unterüberschrift', fontSize: 52, fontStyle: 'bold', fontFamily: 'Inter' },
+    body:      { text: 'Fließtext — hier deinen Inhalt schreiben.', fontSize: 34, fontStyle: 'normal', fontFamily: 'Inter' },
+    kicker:    { text: 'LABEL / KICKER', fontSize: 30, fontStyle: 'bold', fontFamily: 'Inter', letterSpacing: 4 },
+    quote:     { text: '„Ein starkes Zitat."', fontSize: 60, fontStyle: 'italic', fontFamily: 'Georgia' },
+  }
   function addTextPreset(preset) {
-    const styles = {
-      heading:   { text: 'Überschrift', fontSize: 88, fontStyle: 'bold' },
-      subheading:{ text: 'Unterüberschrift', fontSize: 52, fontStyle: 'bold' },
-      body:      { text: 'Fließtext — hier deinen Inhalt schreiben.', fontSize: 34, fontStyle: 'normal' },
-    }
-    const cfg = styles[preset] || styles.body
+    const cfg = TEXT_STYLES[preset] || TEXT_STYLES.body
     // Ausgewähltes Text-Objekt vorhanden? → nur Stil setzen.
     if (selectedIds.length === 1) {
       const sel = objects.find(o => o.id === selectedIds[0])
       if (sel && sel.type === 'text') {
         commitHistoryOnce()
-        updateObject(sel.id, { fontSize: cfg.fontSize, fontStyle: cfg.fontStyle }, false)
+        updateObject(sel.id, { fontSize: cfg.fontSize, fontStyle: cfg.fontStyle, fontFamily: cfg.fontFamily, letterSpacing: cfg.letterSpacing || 0 }, false)
         endInteraction()
         return
       }
     }
     const c = center()
     addObject({ type: 'text', x: c.x - 240, y: c.y - cfg.fontSize / 2, text: cfg.text,
-      fontSize: cfg.fontSize, fontFamily: 'Inter', fill: bgColor ? '#111827' : '#ffffff',
-      fontStyle: cfg.fontStyle, align: 'left', width: 480, rotation: 0 })
+      fontSize: cfg.fontSize, fontFamily: cfg.fontFamily || 'Inter', fill: bgColor ? '#111827' : '#ffffff',
+      fontStyle: cfg.fontStyle, align: 'left', width: 480, letterSpacing: cfg.letterSpacing || 0, rotation: 0 })
+  }
+
+  // Schrift-Kombination einfügen: Überschrift + Subline als abgestimmtes Paar.
+  function addTextCombo(combo) {
+    const COMBOS = {
+      modern:   { headFont: 'Inter',    subFont: 'Inter',    head: 'MODERNE ÜBERSCHRIFT', sub: 'Klare, reduzierte Subline', headStyle: 'bold', kicker: true },
+      elegant:  { headFont: 'Georgia',  subFont: 'Georgia',  head: 'Elegante Überschrift', sub: 'Mit ruhiger Serifen-Subline', headStyle: 'bold' },
+      verspielt:{ headFont: 'Caveat',   subFont: 'Inter',    head: 'Verspielte Headline', sub: 'mit klarer Subline', headStyle: 'bold' },
+      klassisch:{ headFont: 'Garamond', subFont: 'Garamond', head: 'Klassische Überschrift', sub: 'Zeitlos und seriös', headStyle: 'bold' },
+    }
+    const cfg = COMBOS[combo] || COMBOS.modern
+    const c = center(); const fill = bgColor ? '#111827' : '#ffffff'
+    const headSize = cfg.kicker ? 80 : 84
+    addObject({ type: 'text', x: c.x - 280, y: c.y - 70, text: cfg.head, fontSize: headSize, fontFamily: cfg.headFont, fill, fontStyle: cfg.headStyle, align: 'left', width: 560, letterSpacing: cfg.kicker ? 2 : 0, rotation: 0 })
+    addObject({ type: 'text', x: c.x - 280, y: c.y + 40, text: cfg.sub, fontSize: 40, fontFamily: cfg.subFont, fill, fontStyle: 'normal', align: 'left', width: 560, rotation: 0 })
   }
 
   // ─── Bild-Upload als Overlay-Objekt (type:'image') ─────────────────────────
   // Dekodiert die Datei zu einer DataURL, ermittelt die natürliche Größe und legt
   // ein image-Objekt an (auf max. ~50% der Bühne skaliert). HTMLImageElement wird
   // in imgCache gehalten und beim Render an die Konva-Image-Node gereicht.
-  function addImageFromDataUrl(dataUrl) {
+  // ─── KI für die GANZE Seite ──────────────────────────────────────────────────
+  // Schickt die editierbaren Elemente (Text/Formen/Bild-Geometrie) als JSON + den
+  // Befehl an die generate-Edge-Function und wendet die zurückgegebenen Änderungen
+  // an — Elemente bleiben editierbar (keine Pixel-Neugenerierung der ganzen Seite).
+  async function runPageAiCommand(cmd) {
+    const c = String(cmd || '').trim()
+    if (!c || pageAiBusy) return
+    setPageAiBusy(true)
+    try {
+      const cw = Math.round(baseCrop?.width || stageSize.width)
+      const ch = Math.round(baseCrop?.height || stageSize.height)
+      const slim = objects.filter(o => !o.hidden).map(o => {
+        const b = { id: o.id, type: o.type, x: Math.round(o.x || 0), y: Math.round(o.y || 0), rotation: Math.round(o.rotation || 0), opacity: o.opacity == null ? 1 : o.opacity }
+        if (o.type === 'text') Object.assign(b, { text: o.text, fontSize: o.fontSize, fontFamily: o.fontFamily, fill: o.fill, fontStyle: o.fontStyle || 'normal', align: o.align || 'left', width: Math.round(o.width || 360) })
+        else if (o.type === 'rect') Object.assign(b, { width: Math.round(o.width || 0), height: Math.round(o.height || 0), fill: o.fill, stroke: o.stroke, strokeWidth: o.strokeWidth || 0, cornerRadius: o.cornerRadius || 0 })
+        else if (o.type === 'ellipse') Object.assign(b, { radiusX: Math.round(o.radiusX || 0), radiusY: Math.round(o.radiusY || 0), fill: o.fill, stroke: o.stroke, strokeWidth: o.strokeWidth || 0 })
+        else if (o.type === 'sticker') Object.assign(b, { fill: o.fill, hinweis: 'Icon/Form – nur Farbe/Position/Größe' })
+        else if (o.type === 'image') Object.assign(b, { width: Math.round(o.width || 0), height: Math.round(o.height || 0), hinweis: 'Bild – Inhalt NICHT änderbar, nur Position/Größe' })
+        return b
+      })
+      const prompt = `Du bist ein erfahrener Grafik-Designer und bearbeitest eine Design-Seite (Größe ${cw}x${ch} Pixel). Hintergrundfarbe aktuell: ${bgColor || 'transparent'}.\n\nElemente als JSON (Koordinaten sind die linke obere Ecke in Pixeln, bei Ellipse der Mittelpunkt):\n${JSON.stringify(slim)}\n\nNutzer-Befehl: "${c}"\n\nWende den Befehl gestalterisch sinnvoll auf die GESAMTE Seite an. Erlaubt: Texte umformulieren/kürzen, Schriftgröße & Schriftschnitt, Farben (immer als Hex #rrggbb), Positionen (x,y), Breiten, Ausrichtung, Form-/Rahmenfarben, Eckenradius und die Hintergrundfarbe. Achte auf Lesbarkeit, Kontrast und sauberes Layout. Regeln: ALLE ids und types unverändert lassen, KEINE Elemente löschen, KEINE neuen Elemente/Bilder erfinden, Bild-Inhalte nicht ändern, alle Elemente innerhalb 0..${cw} (x) und 0..${ch} (y) halten.\n\nAntworte AUSSCHLIESSLICH mit gültigem JSON, ohne Markdown, ohne Erklärung, exakt in dieser Form:\n{"bgColor":"#rrggbb oder null","objects":[{"id":"<id>", ...geänderte Felder...}]}`
+      const { data, error } = await supabase.functions.invoke('generate', { body: { type: 'raw', model: 'claude-sonnet-4-6', prompt } })
+      if (error) throw new Error(error.message || 'KI fehlgeschlagen')
+      let txt = String(data?.text || data?.content || data?.output || '').trim()
+      txt = txt.replace(/^```(?:json)?/i, '').replace(/```\s*$/i, '').trim()
+      const a = txt.indexOf('{'), z = txt.lastIndexOf('}')
+      if (a >= 0 && z > a) txt = txt.slice(a, z + 1)
+      const parsed = JSON.parse(txt)
+      const byId = new Map((Array.isArray(parsed.objects) ? parsed.objects : []).map(o => [o.id, o]))
+      if (byId.size === 0 && parsed.bgColor === undefined) throw new Error('Keine Änderungen erhalten')
+      pushHistory()
+      setObjects(prev => prev.map(o => {
+        const u = byId.get(o.id); if (!u) return o
+        const allow = ({
+          text:    ['text','fontSize','fontFamily','fill','fontStyle','align','width','x','y','rotation','opacity'],
+          rect:    ['width','height','fill','stroke','strokeWidth','cornerRadius','x','y','rotation','opacity'],
+          ellipse: ['radiusX','radiusY','fill','stroke','strokeWidth','x','y','rotation','opacity'],
+          sticker: ['fill','x','y','rotation','opacity'],
+          image:   ['x','y','width','height','rotation','opacity'],
+        })[o.type] || ['x','y','rotation','opacity']
+        const patch = {}
+        allow.forEach(k => { if (u[k] !== undefined && u[k] !== null) patch[k] = u[k] })
+        return { ...o, ...patch }
+      }))
+      if (parsed.bgColor !== undefined && bgColor !== null) setBgColor(parsed.bgColor)
+      setPageAiCmd('')
+      setSavedMsg('Seite mit KI bearbeitet')
+    } catch (e) {
+      setSavedMsg('KI-Fehler: ' + (e?.message || 'fehlgeschlagen'))
+    } finally { setPageAiBusy(false) }
+  }
+
+  function addImageFromDataUrl(dataUrl, meta = {}) {
     if (!dataUrl) return
     const img = new window.Image()
     img.onload = () => {
       const nw = img.naturalWidth || 200
       const nh = img.naturalHeight || 200
-      const maxDim = Math.min(stageSize.width, stageSize.height) * 0.5
-      const sc = Math.min(1, maxDim / Math.max(nw, nh))
-      const w = Math.round(nw * sc), h = Math.round(nh * sc)
+      let w, h
+      if (meta.isIcon || meta.isGraphic) {
+        // Icons/Grafiken: feste Zielgröße (~32% der Bühne), unabhängig von der
+        // (oft winzigen) SVG-Pixelgröße — sonst werden sie mikrig eingefügt.
+        const target = Math.min(stageSize.width, stageSize.height) * 0.32
+        const ratio = (nw && nh) ? nw / nh : 1
+        if (ratio >= 1) { w = Math.round(target); h = Math.round(target / ratio) }
+        else { h = Math.round(target); w = Math.round(target * ratio) }
+      } else {
+        const maxDim = Math.min(stageSize.width, stageSize.height) * 0.5
+        const sc = Math.min(1, maxDim / Math.max(nw, nh))
+        w = Math.round(nw * sc); h = Math.round(nh * sc)
+      }
       const c = center()
       setImgCache(prev => ({ ...prev, [dataUrl]: img }))
-      addObject({ type: 'image', src: dataUrl, x: c.x - w / 2, y: c.y - h / 2, width: w, height: h, rotation: 0, opacity: 1 })
+      addObject({ type: 'image', src: dataUrl, x: c.x - w / 2, y: c.y - h / 2, width: w, height: h, rotation: 0, opacity: 1,
+        ...(meta.iconId ? { iconId: meta.iconId, iconColor: meta.iconColor || '#1f2937', isIcon: true } : {}) })
     }
     img.onerror = () => setSavedMsg('Bild konnte nicht geladen werden.')
     img.src = dataUrl
+  }
+
+  // Icon (als Bild-Objekt eingefügt) NACH der Auswahl umfärben: SVG mit neuer Farbe
+  // neu rendern und src tauschen. Ermöglicht Farbänderung in der oberen Leiste.
+  async function recolorIcon(obj, hex) {
+    if (!obj?.iconId) return
+    try {
+      const url = await iconToDataUrl(obj.iconId, hex)
+      if (!url) return
+      const img = new window.Image()
+      img.onload = () => {
+        setImgCache(prev => ({ ...prev, [url]: img }))
+        commitHistoryOnce(); updateObject(obj.id, { src: url, iconColor: hex }, false); endInteraction()
+      }
+      img.src = url
+    } catch (_e) {}
   }
   // Bild aus der Medien-Bibliothek (Storage-Pfad) als Objekt einfügen.
   async function insertMediaFromPath(storagePath) {
@@ -1863,6 +1966,7 @@ export default function DesignerCanvas({ visual, teamId, onSaved, onReplaceVisua
     if (spaceDownRef.current) return
     const p = stagePoint()
     if (!p) return
+    if (activeTool === 'draw') { drawRef.current = [p]; setDrawPreview([p]); return }
     if (cropMode) { cropDragRef.current = { x: p.x, y: p.y }; setCropRect({ x: p.x, y: p.y, w: 0, h: 0 }); return }
     // Klick auf leere Bühne → Marquee starten / Selektion lösen
     const onEmpty = e.target === stage || e.target.attrs?.id === '__bg__' || e.target.attrs?.id === '__bgfill__'
@@ -1878,9 +1982,14 @@ export default function DesignerCanvas({ visual, teamId, onSaved, onReplaceVisua
   function onStageMouseMove() {
     const p = stagePoint()
     if (!p) return
+    if (activeTool === 'draw' && drawRef.current) { drawRef.current = [...drawRef.current, p]; setDrawPreview(drawRef.current); return }
     if (cropMode && cropDragRef.current) {
       const s = cropDragRef.current
-      setCropRect({ x: Math.min(s.x, p.x), y: Math.min(s.y, p.y), w: Math.abs(p.x - s.x), h: Math.abs(p.y - s.y) })
+      let w = Math.abs(p.x - s.x), h = Math.abs(p.y - s.y)
+      if (cropRatio) { if (w / cropRatio >= h) h = w / cropRatio; else w = h * cropRatio }
+      const x = p.x >= s.x ? s.x : s.x - w
+      const y = p.y >= s.y ? s.y : s.y - h
+      setCropRect({ x, y, w, h })
       return
     }
     if (marqueeStartRef.current) {
@@ -1889,6 +1998,14 @@ export default function DesignerCanvas({ visual, teamId, onSaved, onReplaceVisua
     }
   }
   function onStageMouseUp() {
+    if (drawRef.current) {
+      const pts = drawRef.current; drawRef.current = null; setDrawPreview(null)
+      if (pts.length >= 2) {
+        const p0 = pts[0]; const flat = []; pts.forEach(pt => { flat.push(pt.x - p0.x, pt.y - p0.y) })
+        addObject({ type: 'line', x: p0.x, y: p0.y, points: flat, stroke: penColor, strokeWidth: penWidth, rotation: 0 })
+      }
+      return
+    }
     cropDragRef.current = null
     // Marquee abschließen → alle Objekte, deren Mittelpunkt im Rechteck liegt, selektieren.
     if (marqueeStartRef.current) {
@@ -1926,6 +2043,18 @@ export default function DesignerCanvas({ visual, teamId, onSaved, onReplaceVisua
   // WHITEBOARD: Crop schneidet das AKTIVE Bild-Objekt zu. Das Crop-Rechteck wird in
   // Bühnenkoordinaten gezogen; wir rechnen es relativ zum Bild-Objekt in dessen
   // Bildpixel um und setzen Konva-crop-Felder + neue Position/Größe auf dem Objekt.
+  // Zuschnitt-Format wählen: zentriertes Rechteck mit dem Seitenverhältnis über das
+  // aktive Bild legen (oder ganzes Bild bei „Frei").
+  function setCropToRatio(ratio) {
+    setCropRatio(ratio)
+    const t = activeImageObj(); if (!t) return
+    const ox = t.x || 0, oy = t.y || 0, ow = t.width || 1, oh = t.height || 1
+    if (!ratio) { setCropRect({ x: ox, y: oy, w: ow, h: oh }); return }
+    let w = ow, h = w / ratio
+    if (h > oh) { h = oh; w = h * ratio }
+    setCropRect({ x: ox + (ow - w) / 2, y: oy + (oh - h) / 2, w, h })
+  }
+
   function applyCrop() {
     if (!cropRect || cropRect.w < 8 || cropRect.h < 8) { setCropMode(false); setCropRect(null); return }
     const target = activeImageObj()
@@ -2587,12 +2716,15 @@ export default function DesignerCanvas({ visual, teamId, onSaved, onReplaceVisua
       layer.destroyChildren()
       const cw = baseCrop?.width || stageSize.width
       const ch = baseCrop?.height || stageSize.height
-      const sw = 1 / effScale
+      // Canva-typische, klar sichtbare Hilfslinien: kräftiges Magenta, durchgezogen,
+      // etwas dicker — damit Ausrichtung/Andocken sofort erkennbar ist.
+      const GUIDE = '#FF1F8F'
+      const sw = 1.6 / effScale
       for (const x of vLines) {
-        layer.add(new Konva.Line({ points: [x, -4 / effScale, x, ch + 4 / effScale], stroke: PRGB, strokeWidth: sw, dash: [4 / effScale, 4 / effScale], listening: false }))
+        layer.add(new Konva.Line({ points: [x, -6 / effScale, x, ch + 6 / effScale], stroke: GUIDE, strokeWidth: sw, listening: false }))
       }
       for (const y of hLines) {
-        layer.add(new Konva.Line({ points: [-4 / effScale, y, cw + 4 / effScale, y], stroke: PRGB, strokeWidth: sw, dash: [4 / effScale, 4 / effScale], listening: false }))
+        layer.add(new Konva.Line({ points: [-6 / effScale, y, cw + 6 / effScale, y], stroke: GUIDE, strokeWidth: sw, listening: false }))
       }
       layer.batchDraw()
     } catch (_e) {}
@@ -3061,8 +3193,8 @@ export default function DesignerCanvas({ visual, teamId, onSaved, onReplaceVisua
     const base = {
       id: o.id,
       // Gesperrte Ebenen: nicht ziehbar, nicht selektierbar (listening aus).
-      draggable: !locked && !cropMode && !aiMode && !editingTextId && !spaceActive,
-      listening: !locked && !spaceActive,
+      draggable: !locked && !cropMode && !aiMode && !editingTextId && !spaceActive && activeTool !== 'draw',
+      listening: !locked && !spaceActive && activeTool !== 'draw',
       x: (o.x ?? 0) - off.x,
       y: (o.y ?? 0) - off.y,
       rotation: o.rotation || 0,
@@ -3426,9 +3558,9 @@ export default function DesignerCanvas({ visual, teamId, onSaved, onReplaceVisua
         <ContextBar selected={selected} updateObject={updateObject}
           commitHistoryOnce={commitHistoryOnce} endInteraction={endInteraction}
           reorder={reorder} deleteSelected={deleteSelected} duplicateSelected={duplicateSelected}
-          onFlip={flipSelected} onCrop={() => setCropMode(true)}
+          onFlip={flipSelected} onCrop={() => { setCropMode(true); setCropRatio(null); setCropRect(null) }}
           onEditImage={() => setActiveTool('edit')} onOpenLayers={() => setActiveTool('layers')}
-          onCopyStyle={startCopyStyle} copyStyleActive={copyStyleActive}
+          onCopyStyle={startCopyStyle} copyStyleActive={copyStyleActive} onIconRecolor={recolorIcon}
           fonts={allFonts} selectedIds={selectedIds} brandColors={brandColors}
           alignObjects={alignObjects} distributeObjects={distributeObjects} />
       )}
@@ -3443,19 +3575,33 @@ export default function DesignerCanvas({ visual, teamId, onSaved, onReplaceVisua
       {selectedIds.length === 0 && !cropMode && !aiActive && !editingTextId && (
         <div style={barStyle}>
           <span style={{ fontSize: 12.5, fontWeight: 700, color: 'var(--text-primary)' }}>Seite</span>
-          <span style={{ fontSize: 12, color: 'var(--text-muted)' }}>Hintergrundfarbe</span>
+          <span style={{ fontSize: 12, color: 'var(--text-muted)' }}>Hintergrund</span>
           <ColorPopover value={bgColor || '#ffffff'} brandColors={brandColors} title="Seiten-Hintergrundfarbe"
             onStart={commitHistoryOnce} onChange={(hex) => setBgColor(hex)} onEnd={endInteraction} />
-          <span style={{ marginLeft: 'auto', fontSize: 11, color: 'var(--text-soft,#98a2b3)' }}>Klick auf ein Element, um es zu bearbeiten</span>
+          <Divider />
+          <div style={{ display: 'flex', alignItems: 'center', gap: 6, flex: 1, minWidth: 0, maxWidth: 560 }}>
+            <Sparkles size={15} strokeWidth={1.9} style={{ color: P, flexShrink: 0 }} />
+            <input value={pageAiCmd} onChange={e => setPageAiCmd(e.target.value)} disabled={pageAiBusy}
+              onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); runPageAiCommand(pageAiCmd) } }}
+              placeholder="KI: ganze Seite bearbeiten — z.B. „mach es wärmer & die Headline größer“"
+              style={{ flex: 1, minWidth: 0, height: 32, padding: '0 11px', borderRadius: 9, border: '1px solid var(--border,#E9ECF2)', fontSize: 12.5, outline: 'none', fontFamily: 'inherit', color: 'var(--text-primary)', background: '#fff' }} />
+            <SmallBtn primary disabled={pageAiBusy || !pageAiCmd.trim()} onClick={() => runPageAiCommand(pageAiCmd)}>{pageAiBusy ? 'KI…' : 'Anwenden'}</SmallBtn>
+          </div>
         </div>
       )}
       {cropMode && (
-        <div style={barStyle}>
-          <span style={{ fontSize: 12, color: 'var(--text-muted)' }}>Rechteck über den gewünschten Bildausschnitt ziehen.</span>
+        <div style={{ ...barStyle, flexWrap: 'wrap' }}>
+          <span style={{ fontSize: 12.5, fontWeight: 700, color: 'var(--text-primary)' }}>Zuschneiden</span>
+          <span style={{ fontSize: 11.5, color: 'var(--text-muted)' }}>Format:</span>
+          {[['Frei', null], ['Original', 'orig'], ['1:1', 1], ['4:5', 4 / 5], ['3:4', 3 / 4], ['16:9', 16 / 9], ['9:16', 9 / 16], ['3:2', 3 / 2]].map(([lbl, r]) => {
+            const ratio = r === 'orig' ? (() => { const t = activeImageObj(); return t ? (t.width || 1) / (t.height || 1) : 1 })() : r
+            const active = (r === null && cropRatio === null) || (typeof ratio === 'number' && Math.abs((cropRatio || 0) - ratio) < 0.001)
+            return <SmallBtn key={lbl} primary={active} onClick={() => setCropToRatio(ratio)}>{lbl}</SmallBtn>
+          })}
           <div style={{ flex: 1 }} />
-          <SmallBtn onClick={applyCrop} primary>Zuschnitt anwenden</SmallBtn>
+          <SmallBtn onClick={applyCrop} primary>Anwenden</SmallBtn>
           <SmallBtn onClick={resetCrop}>Zurücksetzen</SmallBtn>
-          <SmallBtn onClick={() => { setCropMode(false); setCropRect(null) }}>Abbrechen</SmallBtn>
+          <SmallBtn onClick={() => { setCropMode(false); setCropRect(null); setCropRatio(null) }}>Abbrechen</SmallBtn>
         </div>
       )}
 
@@ -3483,15 +3629,16 @@ export default function DesignerCanvas({ visual, teamId, onSaved, onReplaceVisua
           docked={dockPanel}
           tool={activeTool}
           onClose={() => setActiveTool(null)}
+          penColor={penColor} setPenColor={setPenColor} penWidth={penWidth} setPenWidth={setPenWidth} onDoneDraw={() => setActiveTool(null)} brandColors={brandColors}
           // Vorlagen
           onApplyTemplate={applyTemplate}
           // Elemente
           elementTab={elementTab} setElementTab={setElementTab}
           onAddRect={addRect} onAddEllipse={addEllipse} onAddLine={addLine} onAddArrow={addArrow}
           onAddAsset={addAsset}
-          onInsertMedia={(dataUrl) => addImageFromDataUrl(dataUrl)}
+          onInsertMedia={(dataUrl, meta) => addImageFromDataUrl(dataUrl, meta)}
           // Text
-          onAddText={addText} onAddTextPreset={addTextPreset}
+          onAddText={addText} onAddTextPreset={addTextPreset} onAddTextCombo={addTextCombo}
           // Uploads / Medien
           onTriggerUpload={triggerImageUpload} uploadThumbs={uploadThumbs}
           onInsertUpload={(url) => addImageFromDataUrl(url)}
@@ -3541,7 +3688,7 @@ export default function DesignerCanvas({ visual, teamId, onSaved, onReplaceVisua
         style={{
           flex: 1, minHeight: 0, overflow: 'hidden', position: 'relative',
           display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 16, background: '#EEF1F6',
-          cursor: spaceActive ? (isPanning ? 'grabbing' : 'grab') : 'default',
+          cursor: activeTool === 'draw' ? 'crosshair' : (spaceActive ? (isPanning ? 'grabbing' : 'grab') : 'default'),
         }}
       >
         {loading ? (
@@ -3584,6 +3731,9 @@ export default function DesignerCanvas({ visual, teamId, onSaved, onReplaceVisua
                 {marquee && (marquee.w > 1 || marquee.h > 1) && (
                   <Rect x={marquee.x - off.x} y={marquee.y - off.y} width={marquee.w} height={marquee.h}
                     stroke={PRGB} strokeWidth={1 / effScale} dash={[6 / effScale, 4 / effScale]} fill="rgba(49,90,231,0.10)" listening={false} />
+                )}
+                {drawPreview && drawPreview.length >= 2 && (
+                  <Line points={drawPreview.flatMap(p => [p.x - off.x, p.y - off.y])} stroke={penColor} strokeWidth={penWidth} lineCap="round" lineJoin="round" tension={0.4} listening={false} />
                 )}
               </Layer>
               {/* Transformer auf eigenem, NICHT geclipptem Layer: Rahmen/Anfasser
@@ -4037,7 +4187,7 @@ function BarMenuItem({ icon, label, active, onClick }) {
 function ContextBar({
   selected, updateObject, reorder, deleteSelected, duplicateSelected,
   commitHistoryOnce, endInteraction, fonts, onFlip, onCrop, onEditImage, onOpenLayers,
-  onCopyStyle, copyStyleActive = false,
+  onCopyStyle, copyStyleActive = false, onIconRecolor,
   selectedIds, alignObjects, distributeObjects, brandColors = [],
 }) {
   const FONT_LIST = (fonts && fonts.length) ? fonts : FONTS
@@ -4170,7 +4320,13 @@ function ContextBar({
       )}
 
       {/* ── BILD: Bearbeiten (Anpassen/Filter/KI) + Zuschneiden ── */}
-      {isImage && onEditImage && (
+      {isImage && o.isIcon && onIconRecolor && (
+        <div style={{ display: 'inline-flex', alignItems: 'center', gap: 7 }}>
+          <span style={{ fontSize: 12.5, fontWeight: 600, color: 'var(--text-primary)' }}>Farbe</span>
+          <ColorPopover value={o.iconColor || '#1f2937'} brandColors={brandColors} title="Icon-Farbe" round onChange={(hex) => onIconRecolor(o, hex)} size={30} />
+        </div>
+      )}
+      {isImage && !o.isIcon && onEditImage && (
         <button type="button" onClick={onEditImage} title="Bild bearbeiten (Anpassen, Filter, KI)"
           style={{ display: 'inline-flex', alignItems: 'center', gap: 6, height: 34, padding: '0 12px', borderRadius: 9, border: 'none',
             background: 'rgba(49,90,231,0.08)', color: P, fontSize: 12.5, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit' }}>
@@ -4195,7 +4351,7 @@ function ContextBar({
       )}
 
       {/* ── Position: Ebenen-Reihenfolge + Ausrichten (an Seite) ── */}
-      <BarMenu title="Position" width={232} trigger={<span style={{ fontSize: 12.5, fontWeight: 600 }}>Position</span>}>
+      <BarMenu title="Position" width={232} trigger={<span style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: 12.5, fontWeight: 600 }}><Layers size={14} strokeWidth={1.9} />Position</span>}>
         <div style={{ padding: '2px 4px' }}>
           <div style={{ fontSize: 10.5, fontWeight: 700, color: 'var(--text-soft,#98a2b3)', textTransform: 'uppercase', letterSpacing: '0.05em', padding: '4px 6px 6px' }}>Anordnen</div>
           <BarMenuItem icon={<BringToFront size={15} strokeWidth={1.9} />} label="In den Vordergrund" onClick={() => reorder('top')} />
@@ -4430,6 +4586,8 @@ const RAIL_TOOLS = [
   { id: 'uploads',   label: 'Medien',   Icon: ImageIcon },
   { id: 'div1', divider: true },
   { id: 'brand',     label: 'Marke',    Icon: Palette },
+  { id: 'div2', divider: true },
+  { id: 'draw',      label: 'Zeichnen', Icon: Brush },
 ]
 // Bild bearbeiten (Filter/Anpassen/KI), Ebenen & Ausrichten sind KEINE linken Tools mehr —
 // sie sind ausschließlich kontextuell über die obere Leiste erreichbar (wie Canva).
@@ -4514,7 +4672,7 @@ function IconsTab({ onInsert }) {
     setInserting(id)
     try {
       const dataUrl = await iconToDataUrl(id, color)
-      if (dataUrl) onInsert && onInsert(dataUrl)
+      if (dataUrl) onInsert && onInsert(dataUrl, { iconId: id, isIcon: true, iconColor: color })
     } finally {
       setInserting(null)
     }
@@ -4523,11 +4681,7 @@ function IconsTab({ onInsert }) {
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
       <MediaSearchInput value={q} onChange={setQ} placeholder="Icons suchen…" />
-      <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-        <span style={{ fontSize: 11.5, color: 'var(--text-muted)' }}>Farbe</span>
-        <input type="color" value={color} onChange={e => setColor(e.target.value)} title="Icon-Farbe"
-          style={{ width: 30, height: 26, padding: 0, border: '1px solid var(--border)', borderRadius: 6, cursor: 'pointer', background: '#fff' }} />
-      </div>
+      <div style={{ fontSize: 11, color: 'var(--text-muted)' }}>Farbe änderst du nach dem Einfügen oben in der Leiste.</div>
       {loading ? <MediaSpinner label="Suche Icons…" /> : (
         ids.length === 0 ? <MediaEmpty label="Keine Treffer." /> : (
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(44px, 1fr))', gap: 8 }}>
@@ -4567,7 +4721,7 @@ function GraphicsTab({ onInsert }) {
     setInserting(id)
     try {
       const dataUrl = await iconToDataUrl(id) // bereits farbig → kein color-Override
-      if (dataUrl) onInsert && onInsert(dataUrl)
+      if (dataUrl) onInsert && onInsert(dataUrl, { isGraphic: true })
     } finally {
       setInserting(null)
     }
@@ -4710,7 +4864,7 @@ function TemplateThumb({ tpl }) {
 // ─── Panel-Rahmen (docked sidebar oder Overlay-Popup) ───────────────────────
 function ToolPanel(props) {
   const { docked, tool, onClose } = props
-  const titleMap = { templates: 'Vorlagen', elements: 'Elemente', text: 'Text', uploads: 'Medien', brand: 'Marke', ai: 'KI-Werkzeuge', filter: 'Filter', layers: 'Ebenen', edit: 'Bild bearbeiten' }
+  const titleMap = { templates: 'Vorlagen', elements: 'Elemente', text: 'Text', uploads: 'Medien', brand: 'Marke', ai: 'KI-Werkzeuge', filter: 'Filter', layers: 'Ebenen', edit: 'Bild bearbeiten', draw: 'Zeichnen' }
   const frame = docked
     ? { width: 300, flexShrink: 0, borderRight: '1px solid var(--border)', background: 'var(--surface,#fff)', display: 'flex', flexDirection: 'column', height: '100%', overflow: 'hidden' }
     : { position: 'absolute', left: 8, top: 8, bottom: 8, zIndex: 90, width: 300, maxWidth: 'calc(100% - 16px)', borderRadius: 12,
@@ -4732,6 +4886,7 @@ function ToolPanel(props) {
         {tool === 'filter' && <FilterPanelBody {...props} />}
         {tool === 'edit' && <EditPanelBody {...props} />}
         {tool === 'layers' && <LayersPanelBody {...props} />}
+        {tool === 'draw' && <DrawPanelBody {...props} />}
       </div>
     </div>
   )
@@ -4824,7 +4979,7 @@ function ElementsPanelBody({ elementTab, setElementTab, onAddRect, onAddEllipse,
 }
 
 // ─── Panel: Text ────────────────────────────────────────────────────────────
-function TextPanelBody({ onAddText, onAddTextPreset, brandData, onApplyBrandFont }) {
+function TextPanelBody({ onAddText, onAddTextPreset, onAddTextCombo, brandData, onApplyBrandFont }) {
   const brandFonts = extractBrandFonts(brandData)
   const presetCard = (sub, sample, size, weight) => (
     <button onClick={() => onAddTextPreset(sub)} style={presetBtn} title={`${sample} hinzufügen`}
@@ -4846,6 +5001,20 @@ function TextPanelBody({ onAddText, onAddTextPreset, brandData, onApplyBrandFont
         {presetCard('heading', 'Überschrift', 22, 800)}
         {presetCard('subheading', 'Unterüberschrift', 15, 700)}
         {presetCard('body', 'Fließtext', 13, 400)}
+        {presetCard('kicker', 'LABEL / KICKER', 11, 800)}
+        {presetCard('quote', '„Zitat"', 18, 400)}
+      </div>
+
+      <PanelLabel>Schrift-Kombinationen</PanelLabel>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: 8 }}>
+        {[['modern','Modern','Inter'],['elegant','Elegant','Georgia'],['verspielt','Verspielt','Caveat'],['klassisch','Klassisch','Garamond']].map(([id,lbl,fam]) => (
+          <button key={id} onClick={() => onAddTextCombo && onAddTextCombo(id)} title={`Kombination „${lbl}" einfügen`}
+            style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start', gap: 2, padding: '10px 11px', borderRadius: 10, border: '1px solid var(--border,#E9ECF2)', background: 'var(--surface,#fff)', cursor: 'pointer', fontFamily: 'inherit', textAlign: 'left' }}
+            onMouseEnter={e => { e.currentTarget.style.borderColor = P }} onMouseLeave={e => { e.currentTarget.style.borderColor = 'var(--border,#E9ECF2)' }}>
+            <span style={{ fontFamily: fam, fontSize: 16, fontWeight: 700, color: 'var(--text-primary)', lineHeight: 1.1 }}>{lbl}</span>
+            <span style={{ fontFamily: fam, fontSize: 11, color: 'var(--text-muted)', lineHeight: 1.1 }}>Subline</span>
+          </button>
+        ))}
       </div>
 
       {brandFonts.length > 0 && (
@@ -5037,6 +5206,28 @@ function AiPanelBody({
         <PanelBtn full disabled={bgMenuBusy || !bgText.trim()} onClick={() => { if (bgText.trim()) { onBgReplace(bgText.trim()); setBgText('') } }}>Hintergrund ersetzen</PanelBtn>
       </div>
       {aiError && <div style={{ fontSize: 12, color: '#b91c1c', marginTop: 10 }}>{aiError}</div>}
+    </div>
+  )
+}
+
+// ─── Panel: Zeichnen (Freihand) ──────────────────────────────────────────────
+function DrawPanelBody({ penColor, setPenColor, penWidth, setPenWidth, onDoneDraw, brandColors = [] }) {
+  return (
+    <div>
+      <div style={{ fontSize: 12, color: 'var(--text-muted)', marginBottom: 12, lineHeight: 1.5 }}>
+        Zeichne frei auf der Fläche — halte die Maus gedrückt und ziehe. Jeder Strich wird ein eigenes Element, das du danach verschieben, färben oder löschen kannst.
+      </div>
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 14 }}>
+        <span style={{ fontSize: 12.5, fontWeight: 600, color: 'var(--text-primary)' }}>Stiftfarbe</span>
+        <ColorPopover value={penColor} brandColors={brandColors} title="Stiftfarbe" round onChange={(hex) => setPenColor(hex)} size={30} />
+      </div>
+      <div style={{ marginBottom: 16 }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12.5, fontWeight: 600, color: 'var(--text-primary)', marginBottom: 6 }}>
+          <span>Pinselstärke</span><span style={{ color: 'var(--text-muted)' }}>{penWidth} px</span>
+        </div>
+        <input type="range" min={1} max={60} step={1} value={penWidth} onChange={e => setPenWidth(parseInt(e.target.value, 10) || 1)} style={{ width: '100%', accentColor: P }} />
+      </div>
+      <PanelBtn full primary onClick={onDoneDraw}>Fertig</PanelBtn>
     </div>
   )
 }

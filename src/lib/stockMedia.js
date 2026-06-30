@@ -62,12 +62,29 @@ async function myMemory(q) {
   } catch (_e) { clearTimeout(t); return '' }
 }
 
+// Übersetzung über unsere generate-Edge-Function (server-seitig → keine CSP-Blockade).
+async function edgeTranslate(q) {
+  try {
+    const { data, error } = await supabase.functions.invoke('generate', {
+      body: { model: 'claude-haiku-4-5', prompt: `Übersetze diesen Suchbegriff für eine Icon-/Stockfoto-Suche ins Englische. Antworte AUSSCHLIESSLICH mit der englischen Übersetzung (1-3 Wörter, klein, ohne Satzzeichen, ohne Anführungszeichen, ohne Erklärung).\n\nBegriff: ${q}` },
+    })
+    if (error) return ''
+    const out = String(data?.text || data?.content || data?.output || '').trim().toLowerCase().replace(/^["'\s]+|["'\s.]+$/g, '').split('\n')[0]
+    if (!out || out.length > 60) return ''
+    return out
+  } catch (_e) { return '' }
+}
+
 export async function translateToEnglish(text) {
   const q = String(text || '').trim()
   if (!q) return q
-  if (!looksGerman(q)) return q          // schon englisch/neutral → unverändert
   if (_trCache.has(q)) return _trCache.get(q)
-  let tr = await gTranslate(q)           // primär: Google (sauber)
+  // Heuristik "schon Englisch?" ist unzuverlässig (viele dt. Wörter sind ASCII, z.B.
+  // "bier", "hund"). Wir übersetzen daher IMMER via Edge-LLM (idempotent: "beer"→"beer")
+  // und cachen das Ergebnis. Nur reine Zahlen/Sehr-kurz überspringen.
+  if (q.length < 2 || /^[0-9\s]+$/.test(q)) return q
+  let tr = await edgeTranslate(q)        // primär: eigene Edge-Function (CSP-sicher)
+  if (!tr) tr = await gTranslate(q)      // Fallback: Google
   if (!tr) tr = await myMemory(q)        // Fallback: MyMemory
   const out = tr ? stripArticles(tr).toLowerCase() : q
   _trCache.set(q, out)
