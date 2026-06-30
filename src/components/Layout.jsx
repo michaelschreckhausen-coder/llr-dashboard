@@ -1066,15 +1066,6 @@ export default function Layout({ session, role, onLogout, children }) {
                       </span>
                       <span style={{ fontWeight:500 }}>Einstellungen</span>
                     </button>
-                    <button onClick={() => { navigate('/integrations'); setShowMenu(false) }}
-                      style={{ width:'100%', display:'flex', alignItems:'center', gap:10, padding:'9px 12px', borderRadius:10, border:'none', background:'none', cursor:'pointer', fontSize:13, color:'var(--text-primary)', textAlign:'left' }}
-                      onMouseEnter={e => e.currentTarget.style.background='var(--surface-hover)'}
-                      onMouseLeave={e => e.currentTarget.style.background='none'}>
-                      <span style={{ width:22, display:'flex', alignItems:'center', justifyContent:'center', color: 'var(--primary)', flexShrink:0 }}>
-                        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="2" y="7" width="7" height="7" rx="1"/><rect x="15" y="7" width="7" height="7" rx="1"/><path d="M9 10.5h6"/><path d="M12 7V3"/><path d="M12 21v-4"/></svg>
-                      </span>
-                      <span style={{ fontWeight:500 }}>Integrationen</span>
-                    </button>
                     <button onClick={() => { navigate('/marketplace'); setShowMenu(false) }}
                       style={{ width:'100%', display:'flex', alignItems:'center', gap:10, padding:'9px 12px', borderRadius:10, border:'none', background:'none', cursor:'pointer', fontSize:13, color:'var(--text-primary)', textAlign:'left' }}
                       onMouseEnter={e => e.currentTarget.style.background='var(--surface-hover)'}
