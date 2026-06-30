@@ -6,6 +6,7 @@ import { useLang, setLang, t } from '../lib/i18n'
 import { useTheme } from '../context/ThemeContext'
 import { useEntitlements } from '../hooks/useEntitlements'
 import SettingsTabs from '../components/SettingsTabs'
+import MfaSetup from '../components/MfaSetup'
 
 const LI_BLUE  = '#0a66c2'
 const LI_HOVER = '#004182'
@@ -518,6 +519,9 @@ export default function Settings({ session }) {
           </button>
         </div>
       </div>
+
+      {/* ── Zwei-Faktor-Authentifizierung (TOTP) ── */}
+      <MfaSetup />
 
       {/* ── UI Language ── */}
       <div style={box}>
