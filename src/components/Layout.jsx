@@ -1094,15 +1094,7 @@ export default function Layout({ session, role, onLogout, children }) {
                       </span>
                       <span style={{ fontWeight:500 }}>LinkedIn Cloud</span>
                     </button>
-                    <button onClick={()=>{navigate('/projekte');setShowMenu(false)}}
-                      style={{ width:'100%', display:'flex', alignItems:'center', gap:10, padding:'9px 12px', borderRadius:10, border:'none', background:'none', cursor:'pointer', fontSize:13, color:'var(--text-primary)', textAlign:'left' }}
-                      onMouseEnter={e => e.currentTarget.style.background='var(--surface-hover)'}
-                      onMouseLeave={e => e.currentTarget.style.background='none'}>
-                      <span style={{ width:22, display:'flex', alignItems:'center', justifyContent:'center', color: 'var(--primary)', flexShrink:0 }}>
-                        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h18M9 21V9"/></svg>
-                      </span>
-                      <span style={{ fontWeight:500 }}>Kanbanboards</span>
-                    </button>
+                    {/* Kanbanboards-Menüpunkt entfernt — Board-Ansicht aktuell nicht nutzbar */}
                     {/* Phase 5A: Admin sidebar section disabled. Routes deactivated.
                         Migration to admin.leadesk.de in progress.
                         See docs/architecture/PHASE_5_DISCOVERY.md / PHASE_5_DECISIONS.md */}
