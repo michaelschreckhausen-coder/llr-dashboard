@@ -22,7 +22,7 @@ const OPEN_OFFER = ['draft', 'sent', 'negotiation']
 
 // Edit-Form-Defaults für die Zusatzfelder (Phase 5).
 const EMPTY_EDIT = {
-  invoice_date: '', auto_renew: false, auto_renew_date: '',
+  invoice_date: '', auto_renew: false, auto_renew_date: '', renewal_interval: 'once',
   league_id: '', value_cash: 0, value_barter: 0, industry: '', notes: '',
   payment_plan: [],   // V2: [{ date, amount }] — Zahlungsziele aufgesplittet
 }
@@ -120,6 +120,7 @@ export default function Vertraege() {
       invoice_date: c.invoice_date || '',
       auto_renew: !!c.auto_renew,
       auto_renew_date: c.auto_renew_date || '',
+      renewal_interval: c.renewal_interval || 'once',
       league_id: c.league_id || '',
       value_cash: c.value_cash != null ? c.value_cash : (c.total_price || 0),
       value_barter: c.value_barter != null ? c.value_barter : 0,
@@ -140,6 +141,7 @@ export default function Vertraege() {
       invoice_date: ef.invoice_date || null,
       auto_renew: !!ef.auto_renew,
       auto_renew_date: ef.auto_renew ? (ef.auto_renew_date || null) : null,
+      renewal_interval: ef.auto_renew ? (ef.renewal_interval || 'once') : null,
       league_id: ef.league_id || null,
       value_cash: cash,
       value_barter: barter,
@@ -352,9 +354,21 @@ export default function Vertraege() {
               Automatische Verlängerung
             </label>
             {ef.auto_renew && (
-              <Field label="Verlängerungs-/Stichtag">
-                <input type="date" value={ef.auto_renew_date} onChange={(e) => setEf({ ...ef, auto_renew_date: e.target.value })} style={input} />
-              </Field>
+              <div style={{ display: 'flex', gap: 10 }}>
+                <div style={{ flex: 1 }}>
+                  <Field label="Verlängerungs-/Stichtag">
+                    <input type="date" value={ef.auto_renew_date} onChange={(e) => setEf({ ...ef, auto_renew_date: e.target.value })} style={input} />
+                  </Field>
+                </div>
+                <div style={{ flex: 1 }}>
+                  <Field label="Intervall">
+                    <select value={ef.renewal_interval} onChange={(e) => setEf({ ...ef, renewal_interval: e.target.value })} style={input}>
+                      <option value="once">Einmalig</option>
+                      <option value="yearly">Jährlich</option>
+                    </select>
+                  </Field>
+                </div>
+              </div>
             )}
 
             <Field label="Liga">
