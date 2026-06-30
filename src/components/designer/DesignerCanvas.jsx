@@ -323,13 +323,18 @@ export default function DesignerCanvas({ visual, teamId, onSaved, onReplaceVisua
   useEffect(() => {
     if (!activeTool) return
     const onDocDown = (e) => {
+      // Während eines KI-Bereichs-/Maskenmodus darf ein Klick auf den Canvas das
+      // Panel NICHT schließen (man zeichnet ja gerade die Maske aufs Bild).
+      if (aiMode) return
       const t = e.target
       if (t && t.closest && t.closest('[data-tool-ui]')) return
+      // Klicks auf den Canvas-/Stage-Bereich nicht als "daneben" werten.
+      if (t && t.closest && t.closest('.konvajs-content')) return
       setActiveTool(null)
     }
     document.addEventListener('mousedown', onDocDown, true)
     return () => document.removeEventListener('mousedown', onDocDown, true)
-  }, [activeTool])
+  }, [activeTool, aiMode])
   const [elementTab, setElementTab] = useState('shapes')   // shapes | icons | graphics | images
   const [uploadThumbs, setUploadThumbs] = useState([])     // diese Sitzung hochgeladene DataURLs
   const [aiCommand, setAiCommand] = useState('')           // freier KI-Befehl (mask-free)
@@ -1295,7 +1300,7 @@ export default function DesignerCanvas({ visual, teamId, onSaved, onReplaceVisua
   // Asset aus der Asset-Bibliothek einfügen: gefüllte Silhouette in Primary-Farbe.
   function addAsset(asset) {
     const c = center()
-    const target = Math.min(stageSize.width, stageSize.height) * 0.25
+    const target = Math.min(stageSize.width, stageSize.height) * 0.42
     const sc = target / 100
     addObject({ type: 'sticker', d: asset.d, x: c.x - (50 * sc), y: c.y - (50 * sc), scaleX: sc, scaleY: sc,
       fill: PRGB, stroke: '#000000', strokeWidth: 0, rotation: 0 })
@@ -2095,7 +2100,7 @@ export default function DesignerCanvas({ visual, teamId, onSaved, onReplaceVisua
   function openPagesAction(mode) {
     setPageSel({ [activeIdxRef.current]: true })   // Standard: aktuelle Seite
     setPagesMsg(''); setPostSearch(''); setPagesAction(mode)
-    setPagesStep(mode === 'download' ? 'format' : 'pages')
+    setPagesStep('pages')
   }
   async function loadPostsForPicker() {
     setPostLoading(true)
@@ -3349,8 +3354,9 @@ export default function DesignerCanvas({ visual, teamId, onSaved, onReplaceVisua
                       </button>
                     ))}
                   </div>
-                  <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
-                    <PanelBtn primary onClick={() => setPagesStep('pages')}>Weiter</PanelBtn>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', gap: 8 }}>
+                    <SmallBtn onClick={() => setPagesStep('pages')}>Zurück</SmallBtn>
+                    <PanelBtn primary disabled={pagesBusy || !selCount} onClick={executeDownload}>{pagesBusy ? 'Erstelle…' : `Herunterladen (${dlFormat.toUpperCase()})`}</PanelBtn>
                   </div>
                 </>
               )}
@@ -3364,11 +3370,9 @@ export default function DesignerCanvas({ visual, teamId, onSaved, onReplaceVisua
                   {PageSelector}
                   {pagesMsg && <div style={{ fontSize: 12, fontWeight: 600, marginBottom: 10, color: pagesMsg.includes('Fehler') ? '#b91c1c' : '#15803d' }}>{pagesMsg}</div>}
                   <div style={{ display: 'flex', justifyContent: 'space-between', gap: 8 }}>
+                    <span />
                     {pagesAction === 'download'
-                      ? <SmallBtn onClick={() => setPagesStep('format')}>Zurück</SmallBtn>
-                      : <span />}
-                    {pagesAction === 'download'
-                      ? <PanelBtn primary disabled={pagesBusy || !selCount} onClick={executeDownload}>{pagesBusy ? 'Erstelle…' : `Herunterladen (${dlFormat.toUpperCase()})`}</PanelBtn>
+                      ? <PanelBtn primary disabled={!selCount} onClick={() => setPagesStep('format')}>Weiter</PanelBtn>
                       : pagesAction === 'media'
                       ? <PanelBtn primary disabled={pagesBusy || !selCount} onClick={executeMedia}>{pagesBusy ? 'Speichert…' : 'In Medien speichern'}</PanelBtn>
                       : <PanelBtn primary disabled={pagesBusy || !selCount} onClick={() => { setPagesStep('post'); loadPostsForPicker() }}>Weiter</PanelBtn>}
@@ -4174,14 +4178,17 @@ function ContextBar({
         </button>
       )}
       {isImage && onCrop && (
-        <ToolBtn onClick={onCrop} title="Zuschneiden"><Crop size={15} strokeWidth={1.9} /></ToolBtn>
+        <button type="button" onClick={onCrop} title="Zuschneiden"
+          style={{ display: 'inline-flex', alignItems: 'center', gap: 6, height: 34, padding: '0 12px', borderRadius: 9, border: '1px solid var(--border,#E9ECF2)', background: 'var(--surface,#fff)', color: 'var(--text-primary)', fontSize: 12.5, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit' }}>
+          <Crop size={14} strokeWidth={1.9} />Zuschneiden
+        </button>
       )}
 
       <Divider />
 
       {/* ── Spiegeln (nur Nicht-Text) ── */}
       {!isText && onFlip && (
-        <BarMenu title="Spiegeln" width={200} trigger={<FlipHorizontal size={16} strokeWidth={1.8} />}>
+        <BarMenu title="Spiegeln" width={200} trigger={isImage ? <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: 12.5, fontWeight: 600 }}><FlipHorizontal size={14} strokeWidth={1.8} />Spiegeln</span> : <FlipHorizontal size={16} strokeWidth={1.8} />}>
           <BarMenuItem icon={<FlipHorizontal size={16} strokeWidth={1.8} />} label="Horizontal spiegeln" onClick={() => onFlip('x')} />
           <BarMenuItem icon={<FlipVertical size={16} strokeWidth={1.8} />} label="Vertikal spiegeln" onClick={() => onFlip('y')} />
         </BarMenu>
@@ -4213,7 +4220,7 @@ function ContextBar({
       </BarMenu>
 
       {/* ── Deckkraft (Icon-Dropdown) ── */}
-      <BarMenu title="Deckkraft" width={200} trigger={<TransparencyIcon size={15} />}>
+      <BarMenu title="Deckkraft" width={200} trigger={isImage ? <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: 12.5, fontWeight: 600 }}><TransparencyIcon size={14} />Deckkraft</span> : <TransparencyIcon size={15} />}>
         <div onClick={e => e.stopPropagation()} style={{ padding: '6px 8px' }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 11.5, color: 'var(--text-muted)', marginBottom: 8 }}><span>Deckkraft</span><span>{opacityPct}%</span></div>
           <input type="range" min={0} max={100} step={1} value={opacityPct}
@@ -4662,9 +4669,6 @@ function ImagesTab({ onInsert }) {
                   </div>
                 )}
               </div>
-              <span style={{ fontSize: 9, lineHeight: 1.2, color: 'var(--text-muted)', padding: '2px 3px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', background: '#fff', textAlign: 'left' }}>
-                Foto: {p.photographer || 'Pexels'} / Pexels
-              </span>
             </button>
           ))}
         </div>
