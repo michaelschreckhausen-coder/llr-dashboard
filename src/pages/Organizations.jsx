@@ -3,14 +3,67 @@
 // Orientiert sich am Deals.jsx-Pattern (KPIs, Filter, Suche, Liste, Modal)
 
 import React, { useState, useEffect } from 'react'
+import { Building2, Users, BarChart3, Layers, Download } from 'lucide-react'
 import { supabase } from '../lib/supabase'
 import { useNavigate } from 'react-router-dom'
 import { useTeam } from '../context/TeamContext'
 import { useEntitlements } from '../hooks/useEntitlements'
 import SponsorPipelineList from '../components/SponsorPipelineList'
+import PageHeader from '../components/PageHeader'
+import TabBar from '../components/TabBar'
 import { EMPLOYEE_RANGES, EMPLOYEE_LABEL, REVENUE_RANGES, REVENUE_LABEL } from '../constants/orgLabels'
 
 const PRIMARY = 'var(--wl-primary, rgb(49,90,231))'
+const P = PRIMARY
+
+/* ── Reports-Stil Diagramm-Komponenten (gespiegelt aus Vernetzungen.jsx) ── */
+const RC = { surface:'var(--surface, #fff)', border:'#E4E7EC', text1:'var(--text-strong, #111827)', text2:'#374151', text3:'#6B7280' }
+const fmt = new Intl.NumberFormat('de-DE')
+
+function KpiCard({ label, value, sub, color, Icon }) {
+  return (
+    <div style={{ background:RC.surface, border:`1px solid ${RC.border}`, borderRadius:14, padding:'14px 16px', display:'flex', flexDirection:'column', gap:4 }}>
+      <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center' }}>
+        <span style={{ fontSize:10, fontWeight:700, color, textTransform:'uppercase', letterSpacing:'0.06em' }}>{label}</span>
+        {Icon && <Icon size={14} color={color}/>}
+      </div>
+      <div style={{ fontSize:22, fontWeight:800, color:RC.text1, fontVariantNumeric:'tabular-nums' }}>{value}</div>
+      {sub && <div style={{ fontSize:11, color:RC.text3 }}>{sub}</div>}
+    </div>
+  )
+}
+
+function Panel({ title, action, children }) {
+  return (
+    <div style={{ background:RC.surface, border:`1px solid ${RC.border}`, borderRadius:14, padding:18, marginBottom:16 }}>
+      {title && (
+        <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:14 }}>
+          <h3 style={{ fontSize:14, fontWeight:700, color:RC.text1, margin:0 }}>{title}</h3>{action}
+        </div>
+      )}
+      {children}
+    </div>
+  )
+}
+
+function BarRow({ label, count, total, color=P }) {
+  const pct = total > 0 ? Math.round((count/total)*100) : 0
+  return (
+    <div style={{ marginBottom:10 }}>
+      <div style={{ display:'flex', justifyContent:'space-between', alignItems:'baseline', marginBottom:4 }}>
+        <span style={{ fontSize:13, color:RC.text2, fontWeight:500 }}>{label}</span>
+        <span style={{ fontSize:12, color:RC.text3, fontVariantNumeric:'tabular-nums' }}><strong style={{ color:RC.text1 }}>{fmt.format(count)}</strong>{total>0 && <> · {pct}%</>}</span>
+      </div>
+      <div style={{ height:6, background:'#F3F4F6', borderRadius:3, overflow:'hidden' }}>
+        <div style={{ width:`${pct}%`, height:'100%', background:color, transition:'width 0.3s' }}/>
+      </div>
+    </div>
+  )
+}
+
+function EmptyBars({ text }) {
+  return <div style={{ fontSize:12, color:RC.text3, padding:'8px 0' }}>{text}</div>
+}
 
 // ── Modal "Neue / Bearbeiten" ──────────────────────────────────────────────────
 function OrganizationModal({ org, industries, teamId, uid, onSave, onClose }) {
@@ -383,77 +436,111 @@ export default function Organizations({ session }) {
   const withDeals    = orgs.filter(o => (o.deals?.[0]?.count ?? 0) > 0).length
   const uniqueIndustries = new Set(orgs.map(o => o.industry_slug).filter(Boolean)).size
 
-  const FILTERS = [
-    { id: 'all',            label: 'Alle',              count: orgs.length },
-    { id: 'with_contacts',  label: 'Mit Kontakten',     count: withContacts },
-    { id: 'with_deals',     label: 'Mit Deals',         count: withDeals },
-    { id: 'orphan',         label: 'Ohne Verknüpfung',  count: orgs.filter(o => (o.leads?.[0]?.count ?? 0) === 0 && (o.deals?.[0]?.count ?? 0) === 0).length },
+  // ── Diagramm-Daten (Reports-Stil, gespiegelt aus Vernetzungen.jsx) ──
+  // Branchen-Verteilung: Top-Branchen nach Anzahl Unternehmen
+  const industryStats = Object.entries(
+    orgs.reduce((acc, o) => { if (o.industry_slug) acc[o.industry_slug] = (acc[o.industry_slug] || 0) + 1; return acc }, {})
+  )
+    .map(([slug, count]) => ({ label: industryMap[slug] || slug, count }))
+    .sort((a, b) => b.count - a.count)
+    .slice(0, 7)
+  // Größenverteilung: nach Mitarbeiter-Range (in definierter Reihenfolge)
+  const employeeStats = EMPLOYEE_RANGES
+    .map(r => ({ label: EMPLOYEE_LABEL[r.id], count: orgs.filter(o => o.employee_range === r.id).length }))
+    .filter(s => s.count > 0)
+  // Umsatz-Verteilung: nach Umsatz-Range (in definierter Reihenfolge)
+  const revenueStats = REVENUE_RANGES
+    .map(r => ({ label: REVENUE_LABEL[r.id], count: orgs.filter(o => o.revenue_range === r.id).length }))
+    .filter(s => s.count > 0)
+  const orphanCount = orgs.filter(o => (o.leads?.[0]?.count ?? 0) === 0 && (o.deals?.[0]?.count ?? 0) === 0).length
+
+  const TABS = [
+    { v: 'all',           label: `Alle (${orgs.length})`,           color: 'brand' },
+    { v: 'with_contacts', label: `Mit Kontakten (${withContacts})`, color: 'blue'  },
+    { v: 'with_deals',    label: `Mit Deals (${withDeals})`,        color: 'green' },
+    { v: 'orphan',        label: `Ohne Verknüpfung (${orphanCount})`, color: 'amber' },
     // Addon-gegated: Sponsoring-Pipeline-Sicht (Unternehmen mit Sponsoring-Extension)
-    ...(sponsoringActive ? [{ id: 'sponsoren', label: 'Sponsoren', count: 0 }] : []),
+    ...(sponsoringActive ? [{ v: 'sponsoren', label: 'Sponsoren', color: 'purple' }] : []),
   ]
 
+  // CSV-Export der aktuell gefilterten Unternehmen
+  function exportCsv() {
+    const rows = [['Name','Branche','Ort','Land','Mitarbeiter','Umsatz','Kontakte','Deals']]
+    filtered.forEach(o => rows.push([
+      o.name || '', o.industry_slug ? (industryMap[o.industry_slug] || '') : '', o.city || '', o.country || '',
+      o.employee_range ? EMPLOYEE_LABEL[o.employee_range] : '', o.revenue_range ? REVENUE_LABEL[o.revenue_range] : '',
+      o.leads?.[0]?.count ?? 0, o.deals?.[0]?.count ?? 0,
+    ]))
+    const csv = rows.map(r => r.map(c => `"${String(c).replace(/"/g,'""')}"`).join(',')).join('\n')
+    const a = document.createElement('a'); a.href='data:text/csv;charset=utf-8,﻿'+encodeURIComponent(csv); a.download=`unternehmen-${new Date().toISOString().substring(0,10)}.csv`; a.click()
+  }
+
+  const headerAction = (
+    <button onClick={() => setModal('new')}
+      style={{ padding: '9px 18px', borderRadius: 10, border: 'none', background: PRIMARY, color: '#fff', fontSize: 13, fontWeight: 700, cursor: 'pointer', whiteSpace: 'nowrap' }}>
+      + Neues Unternehmen
+    </button>
+  )
+
   return (
-    <div style={{ width: '100%', margin: '0 auto', paddingBottom: 60 }}>
-      {/* Header */}
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 24 }}>
-        <div>
-          <h1 style={{ fontSize: 22, fontWeight: 800, color: 'var(--text-primary, #111827)', margin: 0 }}>Unternehmen</h1>
-          <div style={{ fontSize: 13, color: '#6B7280', marginTop: 4 }}>
-            {team ? `Team: ${team.name}` : 'Meine Unternehmen'} · {totalOrgs} Unternehmen
-          </div>
-        </div>
-        <button onClick={() => setModal('new')}
-          style={{ padding: '9px 20px', borderRadius: 10, border: 'none', background: PRIMARY, color: '#fff', fontSize: 13, fontWeight: 700, cursor: 'pointer' }}>
-          + Neues Unternehmen
+    <div style={{ width: '100%', maxWidth: 1100, margin: '0 auto', padding: '24px 16px 40px' }}>
+      <PageHeader
+        overline="CRM · Unternehmen"
+        title="Unternehmen"
+        subtitle={`${team ? `Team: ${team.name}` : 'Meine Unternehmen'} · Firmen verwalten, mit Kontakten und Deals verknüpfen und nach Branche, Größe und Umsatz auswerten.`}
+        action={headerAction}
+      />
+
+      {/* KPI-Karten (Reports-Stil) */}
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))', gap: 12, marginBottom: 16 }}>
+        <KpiCard label="Unternehmen"   value={totalOrgs}        color={PRIMARY}   Icon={Building2}/>
+        <KpiCard label="Mit Kontakten" value={withContacts}     color="#0ea5e9"   Icon={Users}/>
+        <KpiCard label="Mit Deals"     value={withDeals}        color="#059669"   Icon={BarChart3}/>
+        <KpiCard label="Branchen"      value={uniqueIndustries} color="#D97706"   Icon={Layers}/>
+      </div>
+
+      {/* Diagramme (Reports-Stil) — Branche groß + Größe daneben, Umsatz darunter */}
+      <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: 14 }}>
+        <Panel title="Verteilung nach Branche">
+          {industryStats.length > 0
+            ? industryStats.map(s => <BarRow key={s.label} label={s.label} count={s.count} total={totalOrgs} color="#0C447C"/>)
+            : <EmptyBars text="Noch keine Branchen erfasst."/>}
+        </Panel>
+        <Panel title="Größenverteilung">
+          {employeeStats.length > 0
+            ? employeeStats.map(s => <BarRow key={s.label} label={s.label} count={s.count} total={totalOrgs} color="#185FA5"/>)
+            : <EmptyBars text="Keine Angaben zur Mitarbeiterzahl."/>}
+        </Panel>
+      </div>
+      <Panel title="Umsatz-Verteilung">
+        {revenueStats.length > 0
+          ? revenueStats.map(s => <BarRow key={s.label} label={s.label} count={s.count} total={totalOrgs} color="#059669"/>)
+          : <EmptyBars text="Keine Umsatzangaben erfasst."/>}
+      </Panel>
+
+      {/* Tabs */}
+      <TabBar tabs={TABS} active={filter} onChange={setFilter} style={{ marginBottom: 14 }}/>
+
+      {/* Toolbar: Owner-Filter + Suche + CSV */}
+      <div style={{ display: 'flex', gap: 8, marginBottom: 16, flexWrap: 'wrap', alignItems: 'center' }}>
+        {teamMembers.length > 0 && (
+          <select value={ownerFilter || ''} onChange={e => setOwnerFilter(e.target.value || null)}
+            style={{ padding: '9px 12px', border: '1.5px solid ' + (ownerFilter ? PRIMARY : '#E2E8F0'), borderRadius: 10, fontSize: 13, outline: 'none', background: 'var(--surface)', color: 'var(--text-primary, #111827)', cursor: 'pointer' }}>
+            <option value="">Alle Owner</option>
+            {teamMembers.map(m => (
+              <option key={m.id} value={m.id}>
+                {m.full_name || m.first_name || m.id.slice(0,8)}
+                {m.id === uid ? ' (du)' : ''}
+              </option>
+            ))}
+          </select>
+        )}
+        <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Firma, Ort oder Branche suchen…"
+          style={{ flex: 1, minWidth: 180, padding: '9px 14px', borderRadius: 10, border: '1.5px solid #E2E8F0', fontSize: 13, outline: 'none', background: 'var(--surface)', color: 'var(--text-primary, #111827)' }}/>
+        <button onClick={exportCsv}
+          style={{ padding: '8px 14px', borderRadius: 10, border: '1.5px solid #E2E8F0', background: 'var(--surface-muted)', fontSize: 12, fontWeight: 600, color: 'var(--text-muted)', cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+          <Download size={13} strokeWidth={1.75}/>CSV
         </button>
-      </div>
-
-      {/* KPIs */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4,1fr)', gap: 12, marginBottom: 24 }}>
-        {[
-          { label: 'Unternehmen',     value: totalOrgs,         color: PRIMARY,    bg: 'rgba(49,90,231,0.06)' },
-          { label: 'Mit Kontakten',   value: withContacts,      color: '#0ea5e9',  bg: '#F0F9FF' },
-          { label: 'Mit Deals',       value: withDeals,         color: '#059669',  bg: '#ECFDF5' },
-          { label: 'Branchen',        value: uniqueIndustries,  color: '#D97706',  bg: '#FFFBEB' },
-        ].map(k => (
-          <div key={k.label} style={{ background: k.bg, borderRadius: 14, padding: '14px 18px', border: '1px solid ' + k.color + '22' }}>
-            <div style={{ fontSize: 10, fontWeight: 700, color: k.color, textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 4 }}>{k.label}</div>
-            <div style={{ fontSize: 20, fontWeight: 800, color: k.color }}>{k.value}</div>
-          </div>
-        ))}
-      </div>
-
-      {/* Filter + Suche */}
-      <div style={{ display: 'flex', gap: 10, marginBottom: 20, flexWrap: 'wrap', alignItems: 'center' }}>
-        <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
-          {FILTERS.map(f => (
-            <button key={f.id} onClick={() => setFilter(f.id)}
-              style={{ padding: '6px 12px', borderRadius: 20, border: '1.5px solid',
-                borderColor: filter === f.id ? PRIMARY : '#E5E7EB',
-                background: filter === f.id ? PRIMARY : 'var(--surface)',
-                color: filter === f.id ? '#fff' : '#374151',
-                fontSize: 12, fontWeight: 600, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 5 }}>
-              {f.label}
-              {f.count > 0 && <span style={{ background: filter===f.id?'rgba(255,255,255,0.3)':'#F3F4F6', color: filter===f.id?'#fff':'#6B7280', borderRadius: 99, padding: '0 6px', fontSize: 11, fontWeight: 700 }}>{f.count}</span>}
-            </button>
-          ))}
-        </div>
-        <div style={{ marginLeft: 'auto', display: 'flex', gap: 8, alignItems: 'center' }}>
-          {teamMembers.length > 0 && (
-            <select value={ownerFilter || ''} onChange={e => setOwnerFilter(e.target.value || null)}
-              style={{ padding: '7px 12px', border: '1.5px solid ' + (ownerFilter ? PRIMARY : '#E4E7EC'), borderRadius: 10, fontSize: 13, outline: 'none', background: 'var(--surface)', color: 'var(--text-primary, #111827)', cursor: 'pointer' }}>
-              <option value="">Alle Owner</option>
-              {teamMembers.map(m => (
-                <option key={m.id} value={m.id}>
-                  {m.full_name || m.first_name || m.id.slice(0,8)}
-                  {m.id === uid ? ' (du)' : ''}
-                </option>
-              ))}
-            </select>
-          )}
-          <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Firma, Ort, Branche…"
-            style={{ padding: '7px 12px', border: '1.5px solid #E4E7EC', borderRadius: 10, fontSize: 13, outline: 'none', width: 220, background: 'var(--surface)', color: 'var(--text-primary, #111827)' }}/>
-        </div>
       </div>
 
       {/* Sponsor-Bulk-Action-Bar (addon-gegated, bei Auswahl) */}
@@ -487,9 +574,9 @@ export default function Organizations({ session }) {
             return (
               <div key={o.id}
                 onClick={() => navigate(`/organizations/${o.id}`)}
-                style={{ background: 'var(--surface)', border: '1.5px solid #E4E7EC', borderRadius: 13, padding: '14px 16px', cursor: 'pointer', transition: 'all 0.15s', display: 'flex', alignItems: 'center', gap: 14 }}
+                style={{ background: 'var(--surface)', border: '1px solid #E8EDF2', borderRadius: 12, padding: '14px 18px', cursor: 'pointer', transition: 'all 0.15s', display: 'flex', alignItems: 'center', gap: 14 }}
                 onMouseEnter={e => e.currentTarget.style.borderColor = '#C7D2FE'}
-                onMouseLeave={e => e.currentTarget.style.borderColor = '#E4E7EC'}>
+                onMouseLeave={e => e.currentTarget.style.borderColor = '#E8EDF2'}>
                 {sponsoringActive && (
                   <input type="checkbox" checked={selected.has(o.id)}
                     onClick={e => e.stopPropagation()} onChange={() => toggleSelect(o.id)}
