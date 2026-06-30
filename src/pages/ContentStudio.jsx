@@ -11,7 +11,7 @@
 //   - Beim ersten Send im Clean-Modus → Sidebar klappt automatisch auf
 
 import React, { useState, useEffect, useRef } from 'react'
-import { Pencil, Pin, BookOpen, Target, Send, Loader2, Globe, Plus, FileText, ChevronLeft, ChevronRight, X, Mic, Square, Image as ImageIcon, Download, Sparkles, Wand2, FilePlus2, Brush, MessageSquare, CalendarPlus } from 'lucide-react'
+import { Pencil, Pin, BookOpen, Target, Send, Loader2, Globe, Plus, FileText, ChevronLeft, ChevronRight, X, Mic, Square, Image as ImageIcon, Download, Sparkles, Wand2, FilePlus2, Brush, MessageSquare, CalendarPlus, Maximize2, Minimize2 } from 'lucide-react'
 import { useVoiceInput } from '../hooks/useVoiceInput'
 import CompanyMultiSelect from '../components/CompanyMultiSelect'
 import AudienceSelect from '../components/AudienceSelect'
@@ -181,50 +181,7 @@ export default function ContentStudio({ session }) {
     return () => { main.style.removeProperty('padding-right') }
   }, [])
 
-  // ─── Ziehbarer Splitscreen-Strich ────────────────────────────────────────
-  const paneDragRef = useRef({ moved: false, suppressClick: false })
-  const edgeClickTimer = useRef(null)
-  const startPaneDrag = (e) => {
-    if (e.button != null && e.button !== 0) return
-    const cont = csRootRef.current; if (!cont) return
-    const rect = cont.getBoundingClientRect()
-    paneDragRef.current = { startX: e.clientX, moved: false, suppressClick: false, rect }
-    const onMove = (ev) => {
-      const d = paneDragRef.current; if (!d) return
-      if (!d.moved && Math.abs(ev.clientX - d.startX) < 5) return
-      d.moved = true
-      const pct = (d.rect.right - ev.clientX) / d.rect.width * 100
-      if (pct < 9) { if (editorOpenRef.current) setEditorOpen(false); return }
-      if (!editorOpenRef.current) { setEditorOpen(true); setSidebarOpen(false) }
-      setPaneView('split')
-      setPanePct(Math.max(26, Math.min(86, pct)))
-    }
-    const onUp = () => {
-      window.removeEventListener('mousemove', onMove)
-      window.removeEventListener('mouseup', onUp)
-      if (paneDragRef.current && paneDragRef.current.moved) {
-        paneDragRef.current.suppressClick = true
-        setTimeout(() => { if (paneDragRef.current) paneDragRef.current.suppressClick = false }, 80)
-      }
-    }
-    window.addEventListener('mousemove', onMove)
-    window.addEventListener('mouseup', onUp)
-  }
-  const onEdgeClick = () => {            // Einfachklick: Splitscreen ein/aus
-    if (paneDragRef.current && paneDragRef.current.suppressClick) return
-    if (edgeClickTimer.current) return
-    edgeClickTimer.current = setTimeout(() => {
-      edgeClickTimer.current = null
-      if (editorOpenRef.current) { setEditorOpen(false) }
-      else { setEditorOpen(true); setPaneView('split'); setPanePct(52); setSidebarOpen(false) }
-    }, 230)
-  }
-  const onEdgeDblClick = () => {         // Doppelklick: Vollbild ein/aus
-    if (edgeClickTimer.current) { clearTimeout(edgeClickTimer.current); edgeClickTimer.current = null }
-    if (paneDragRef.current && paneDragRef.current.suppressClick) return
-    setEditorOpen(true); setSidebarOpen(false)
-    setPaneView(v => (v === 'suite' ? 'split' : 'suite'))
-  }
+  // (Splitscreen-Steuerung: feste Zustände via Pfeil-Buttons, siehe unten)
   const [useEditorContext, setUseEditorContext] = useState(false)
   const [chatDocs, setChatDocs] = useState([])
   const [demoRailDocs, setDemoRailDocs] = useState(null) // Tour-Demo: rechte Dokument-Leiste mit Beispiel-Dokumenten
@@ -1013,12 +970,12 @@ export default function ContentStudio({ session }) {
 
       {/* Main */}
       <main style={{
-          flexGrow: (editorOpen && paneView === 'suite') ? 0 : 1,
+          flexGrow: (editorOpen && (paneView === 'suite' || paneView === 'page')) ? 0 : 1,
           flexShrink: 1,
-          flexBasis: !editorOpen ? '100%' : '0%',
+          flexBasis: !editorOpen ? '100%' : ((paneView === 'suite' || paneView === 'page') ? '0%' : '48%'),
           minWidth:0, overflow:'hidden',
-          opacity: (editorOpen && paneView === 'suite') ? 0 : 1,
-          pointerEvents: (editorOpen && paneView === 'suite') ? 'none' : 'auto',
+          opacity: (editorOpen && (paneView === 'suite' || paneView === 'page')) ? 0 : 1,
+          pointerEvents: (editorOpen && (paneView === 'suite' || paneView === 'page')) ? 'none' : 'auto',
           display:'flex', flexDirection:'column', position:'relative',
           transition:'opacity 0.2s ease' }}>
         {/* Floating Sidebar-Toggle wenn zu */}
@@ -1111,14 +1068,17 @@ export default function ContentStudio({ session }) {
 
       {/* RECHTS: Suite (Dokument-Editor ⇄ Designer) — animiert via flex-basis */}
       {(() => {
-        const basis = !editorOpen ? '0%' : (paneView === 'suite' ? '100%' : panePct + '%')
+        const page = editorOpen && paneView === 'page'
+        const basis = !editorOpen ? '0%' : ((paneView === 'suite' || page) ? '100%' : '52%')
         return (
       <section data-tour-id="cs-doc-pane" style={{ display:'flex', flexDirection:'column', flexGrow:0, flexShrink:1, flexBasis: basis, minWidth:0, overflow:'hidden',
-        marginTop: editorOpen ? 16 : 0, marginBottom: editorOpen ? 16 : 0,
-        border: editorOpen ? '1px solid var(--border,#E9ECF2)' : 'none', borderRight: 'none',
-        borderRadius: editorOpen ? '16px 0 0 16px' : 0,
-        boxShadow: editorOpen ? '-5px 0 13px rgba(16,24,40,0.07), 0 0 12px rgba(16,24,40,0.05)' : 'none',
-        background: editorOpen ? 'var(--surface,#fff)' : 'var(--page-bg, #F7F8FA)' }}>
+        ...(page
+          ? { position:'fixed', inset:0, zIndex:1000, margin:0, border:'none', borderRadius:0, boxShadow:'none', background:'var(--surface,#fff)' }
+          : { marginTop: editorOpen ? 16 : 0, marginBottom: editorOpen ? 16 : 0,
+              border: editorOpen ? '1px solid var(--border,#E9ECF2)' : 'none', borderRight: 'none',
+              borderRadius: editorOpen ? '16px 0 0 16px' : 0,
+              boxShadow: editorOpen ? '-5px 0 13px rgba(16,24,40,0.07), 0 0 12px rgba(16,24,40,0.05)' : 'none',
+              background: editorOpen ? 'var(--surface,#fff)' : 'var(--page-bg, #F7F8FA)' }) }}>
         <div style={{ display:'flex', flex:1, minHeight:0 }}>
           {splitMode === 'design' ? (
             <>
@@ -1187,13 +1147,11 @@ export default function ContentStudio({ session }) {
       </section>
       )})()}
 
-      {/* Splitscreen-Steuerung: EIN ziehbarer Strich (Klick = ein/aus, Doppelklick =
-          Vollbild, Ziehen = frei breit) + einheitlicher Dokument/Designer-Switcher
-          (immer oben, am Kärtchen anliegend; Beschriftung nur eingeklappt). */}
+      {/* Splitscreen-Steuerung: feste Zustände (Split / Vollbild / Seiten-Vollbild)
+          per Buttons + einheitlicher Dokument/Designer-Switcher (oben, anliegend). */}
       {(() => {
         const suite = editorOpen && paneView === 'suite'
-        const chatPct = !editorOpen ? 100 : (suite ? 0 : (100 - panePct))
-        const SW_TOP = 44
+        const page  = editorOpen && paneView === 'page'
         const openTo = (mode) => {
           if (mode) setSplitMode(mode)
           if (!editorOpenRef.current) { setEditorOpen(true); setPaneView('split'); setSidebarOpen(false) }
@@ -1207,17 +1165,14 @@ export default function ContentStudio({ session }) {
           background: active ? 'rgba(49,90,231,0.08)' : 'transparent', color: active ? 'var(--wl-primary, rgb(49,90,231))' : 'var(--text-secondary,#475569)' })
         const swCard = { display:'flex', flexDirection:'column', overflow:'hidden', background:'var(--surface,#fff)',
           border:'1px solid var(--border,#E9ECF2)', borderRight:'none', borderRadius:'10px 0 0 10px', boxShadow:'-2px 0 8px rgba(16,24,40,0.08)' }
-        const Switcher = () => (
-          <div style={swCard}>
-            <button onClick={() => openTo('doc')} title="Dokument" style={swBtn(splitMode === 'doc')}
-              onMouseEnter={e => { if (splitMode !== 'doc') e.currentTarget.style.background = 'rgba(49,90,231,0.05)' }}
-              onMouseLeave={e => { if (splitMode !== 'doc') e.currentTarget.style.background = 'transparent' }}><FileText size={18} strokeWidth={1.9}/></button>
+        const Switcher = ({ rounded } = {}) => (
+          <div style={{ ...swCard, ...(rounded ? { borderRight:'1px solid var(--border,#E9ECF2)', borderRadius:10 } : {}) }}>
+            <button onClick={() => openTo('doc')} title="Dokument" style={swBtn(splitMode === 'doc')}><FileText size={18} strokeWidth={1.9}/></button>
             <div style={{ height:1, background:'var(--border,#E9ECF2)' }}/>
-            <button onClick={() => openTo('design')} title="Designer" style={swBtn(splitMode === 'design')}
-              onMouseEnter={e => { if (splitMode !== 'design') e.currentTarget.style.background = 'rgba(49,90,231,0.05)' }}
-              onMouseLeave={e => { if (splitMode !== 'design') e.currentTarget.style.background = 'transparent' }}><Brush size={18} strokeWidth={1.9}/></button>
+            <button onClick={() => openTo('design')} title="Designer" style={swBtn(splitMode === 'design')}><Brush size={18} strokeWidth={1.9}/></button>
           </div>
         )
+        const ctrlBtn = { width:42, height:42, display:'inline-flex', alignItems:'center', justifyContent:'center', border:'none', background:'transparent', cursor:'pointer', color:'var(--text-secondary,#475569)' }
         const scriptHint = { fontFamily:"'Segoe Script','Bradley Hand','Brush Script MT','Comic Sans MS',cursive", fontStyle:'italic', fontSize:16, fontWeight:600, color:'var(--wl-primary, rgb(49,90,231))', whiteSpace:'nowrap', lineHeight:1 }
         const CurvedArrow = () => (
           <svg width="34" height="24" viewBox="0 0 34 24" fill="none" style={{ color:'var(--wl-primary, rgb(49,90,231))', flexShrink:0 }} aria-hidden="true">
@@ -1227,41 +1182,56 @@ export default function ContentStudio({ session }) {
         )
         return (
           <>
-            {/* Eingeklappt: großer Pull-out-Kasten — ziehbar / Klick öffnet / Doppelklick Vollbild */}
+            {/* SEITEN-VOLLBILD aktiv: schwebender Switcher + Verlassen-Button */}
+            {page && (
+              <>
+                <div style={{ position:'fixed', top:16, left:16, zIndex:1001 }}><Switcher rounded/></div>
+                <button onClick={() => setPaneView('split')} title="Seiten-Vollbild verlassen"
+                  style={{ position:'fixed', top:16, right:16, zIndex:1001, width:40, height:40, display:'inline-flex', alignItems:'center', justifyContent:'center',
+                    borderRadius:10, border:'1px solid var(--border,#E9ECF2)', background:'var(--surface,#fff)', cursor:'pointer', color:'var(--text-secondary,#475569)', boxShadow:'0 2px 10px rgba(16,24,40,0.12)' }}>
+                  <Minimize2 size={18} strokeWidth={2}/>
+                </button>
+              </>
+            )}
+            {/* Eingeklappt: Pull-out-Kasten (Klick öffnet) + Labels + Switcher */}
             {!editorOpen && (
-              <div onMouseDown={startPaneDrag} onClick={onEdgeClick} onDoubleClick={onEdgeDblClick}
-                title="Ziehen oder klicken zum Öffnen · Doppelklick: Vollbild"
-                style={{ position:'absolute', top:0, bottom:0, right:-176, width:212, zIndex:49,
-                  background:'var(--surface,#fff)', border:'1px solid var(--border,#E9ECF2)', borderRight:'none', borderRadius:'16px 0 0 16px',
-                  boxShadow:'-6px 0 18px rgba(16,24,40,0.07)', cursor:'col-resize', padding:0,
-                  display:'flex', alignItems:'center', justifyContent:'flex-start' }}>
-                <span style={{ width:4, height:42, marginLeft:13, borderRadius:3, background:'var(--border,#D7DCE5)' }}/>
-              </div>
-            )}
-            {/* Ausgeklappt: ziehbarer Strich am Pane-Rand */}
-            {editorOpen && (
-              <div onMouseDown={startPaneDrag} onClick={onEdgeClick} onDoubleClick={onEdgeDblClick}
-                title="Ziehen zum Anpassen · Klick: Splitscreen ein/aus · Doppelklick: Vollbild"
-                style={{ position:'absolute', top:0, bottom:0, left: chatPct + '%', transform:'translateX(-50%)', width:16, zIndex:48, cursor:'col-resize',
-                  display:'flex', alignItems:'center', justifyContent:'center' }}>
-                <span style={{ width:4, height:46, borderRadius:3, background:'var(--border,#D7DCE5)' }}/>
-              </div>
-            )}
-            {/* Einheitlicher Switcher — oben, am Kärtchen anliegend */}
-            {!editorOpen ? (
-              <div style={{ position:'absolute', top: SW_TOP, right:36, zIndex:50, display:'flex', alignItems:'flex-start', gap:10, pointerEvents:'none' }}>
-                <div style={{ display:'flex', flexDirection:'column' }}>
-                  <div style={{ height:50, display:'flex', alignItems:'center', justifyContent:'flex-end', gap:7 }}><span style={scriptHint}>ins Dokument</span><CurvedArrow/></div>
-                  <div style={{ height:1 }}/>
-                  <div style={{ height:50, display:'flex', alignItems:'center', justifyContent:'flex-end', gap:7 }}><span style={scriptHint}>zum Designer</span><CurvedArrow/></div>
+              <>
+                <div onClick={() => openTo(null)} title="Splitscreen öffnen"
+                  style={{ position:'absolute', top:0, bottom:0, right:-176, width:212, zIndex:49,
+                    background:'var(--surface,#fff)', border:'1px solid var(--border,#E9ECF2)', borderRight:'none', borderRadius:'16px 0 0 16px',
+                    boxShadow:'-6px 0 18px rgba(16,24,40,0.07)', cursor:'pointer', padding:0, display:'flex', alignItems:'center', justifyContent:'flex-start' }}>
+                  <span style={{ width:4, height:42, marginLeft:13, borderRadius:3, background:'var(--border,#D7DCE5)' }}/>
                 </div>
-                <div style={{ pointerEvents:'auto' }}><Switcher/></div>
-              </div>
-            ) : (
-              <div style={{ position:'absolute', top: SW_TOP, zIndex:50,
-                  ...(suite ? { left:16 } : { left: chatPct + '%', transform:'translateX(-100%)' }) }}>
-                <Switcher/>
-              </div>
+                <div style={{ position:'absolute', top:44, right:36, zIndex:50, display:'flex', alignItems:'flex-start', gap:10, pointerEvents:'none' }}>
+                  <div style={{ display:'flex', flexDirection:'column' }}>
+                    <div style={{ height:50, display:'flex', alignItems:'center', justifyContent:'flex-end', gap:7 }}><span style={scriptHint}>ins Dokument</span><CurvedArrow/></div>
+                    <div style={{ height:1 }}/>
+                    <div style={{ height:50, display:'flex', alignItems:'center', justifyContent:'flex-end', gap:7 }}><span style={scriptHint}>zum Designer</span><CurvedArrow/></div>
+                  </div>
+                  <div style={{ pointerEvents:'auto' }}><Switcher/></div>
+                </div>
+              </>
+            )}
+            {/* Ausgeklappt (Split/Vollbild): Switcher oben + Ansicht-Steuerung mittig */}
+            {editorOpen && !page && (
+              <>
+                <div style={{ position:'absolute', top:44, zIndex:50, ...(suite ? { left:16 } : { right:'52%', transform:'translateX(-100%)' }) }}>
+                  <Switcher/>
+                </div>
+                <div style={{ position:'absolute', top:'50%', zIndex:50, display:'flex', flexDirection:'column', overflow:'hidden',
+                    background:'var(--surface,#fff)', border:'1px solid var(--border,#E9ECF2)', borderRadius:10, boxShadow:'0 2px 10px rgba(16,24,40,0.10)',
+                    ...(suite ? { left:16, transform:'translateY(-50%)' } : { right:'52%', transform:'translate(50%,-50%)' }) }}>
+                  {suite ? (
+                    <button onClick={() => setPaneView('split')} title="Splitscreen" style={ctrlBtn}><ChevronRight size={18} strokeWidth={2}/></button>
+                  ) : (
+                    <button onClick={() => setPaneView('suite')} title="Vollbild" style={ctrlBtn}><ChevronLeft size={18} strokeWidth={2}/></button>
+                  )}
+                  <div style={{ height:1, background:'var(--border,#E9ECF2)' }}/>
+                  <button onClick={() => setPaneView('page')} title="Seiten-Vollbild" style={ctrlBtn}><Maximize2 size={17} strokeWidth={2}/></button>
+                  <div style={{ height:1, background:'var(--border,#E9ECF2)' }}/>
+                  <button onClick={() => { setEditorOpen(false); setPaneView('split') }} title="Einklappen" style={ctrlBtn}><ChevronRight size={18} strokeWidth={2}/></button>
+                </div>
+              </>
             )}
           </>
         )
