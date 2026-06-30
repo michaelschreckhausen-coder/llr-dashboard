@@ -473,21 +473,33 @@ async function scrapeConnectionsPage() {
     return { error: 'Nicht auf LinkedIn eingeloggt' }
   }
   await sleepP(2500)
-  // Robust bis ans Ende scrollen: solange die Seitenhöhe durch Lazy-Load wächst (max ~22 Schritte).
-  // Abbruch, sobald die Höhe 3× in Folge stabil bleibt = unten angekommen.
-  var lastH = 0, stable = 0, MAX = 22
+  // Bis mindestens TARGET Verbindungen geladen sind nach unten scrollen (Lazy-Load).
+  // Zählt eindeutige Profile; bricht ab, wenn das Ziel erreicht ist oder 5× kein Zuwachs kommt.
+  function uniqCount() {
+    var seen = {}, n = 0, as = document.querySelectorAll('a[href*="/in/"]')
+    for (var i = 0; i < as.length; i++) {
+      var m = String(as[i].href).match(/\/in\/([^/?#]+)/)
+      if (m) { var k = m[1].toLowerCase(); if (!seen[k]) { seen[k] = 1; n++ } }
+    }
+    return n
+  }
+  var TARGET = 22, prev = 0, noGrow = 0, MAX = 18
   for (var s = 0; s < MAX; s++) {
     window.scrollTo(0, document.body.scrollHeight)
-    await sleepP(900)
-    // Manche Layouts laden nicht rein per Scroll, sondern über einen Button.
+    await sleepP(1300)
+    // Jiggle: kurz hoch und wieder ganz runter — triggert LinkedIns Lazy-Load erneut
+    // (im unfokussierten Hintergrund-Fenster lädt reines Bottom-Scrollen oft zu wenig nach).
+    window.scrollBy(0, -800); await sleepP(250); window.scrollTo(0, document.body.scrollHeight); await sleepP(350)
+    // Manche Layouts laden über einen Button statt rein per Scroll.
     var btns = document.querySelectorAll('button')
     for (var b = 0; b < btns.length; b++) {
       var bt = (btns[b].textContent || '').trim().toLowerCase()
       if (bt === 'mehr anzeigen' || bt === 'show more' || bt === 'mehr laden') { btns[b].click(); break }
     }
-    var h = document.body.scrollHeight
-    if (h <= lastH) { stable++; if (stable >= 3) break } else { stable = 0 }
-    lastH = h
+    var cnt = uniqCount()
+    if (cnt >= TARGET) break
+    if (cnt <= prev) { noGrow++; if (noGrow >= 5) break } else { noGrow = 0 }
+    prev = cnt
   }
   window.scrollTo(0, 0)
   await sleepP(400)
