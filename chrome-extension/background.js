@@ -545,14 +545,23 @@ async function scrapeConnectionsPage() {
 
 async function scrapeConnectionsForWebApp() {
   var url = 'https://www.linkedin.com/mynetwork/invite-connect/connections/'
-  var win = null
+
+  // Aktiven Leadesk-Tab merken, um nachher dorthin zurückzukehren (wie Brand-Scraper).
+  var leadeskTabIdBefore = null
   try {
-    // WICHTIG: NICHT minimiert öffnen — LinkedIn lädt die Connections-Liste per
-    // Lazy-Load nur, wenn die Seite gerendert wird. focused:false = Hintergrund, aber gerendert.
-    win = await chrome.windows.create({ url: url, focused: false })
-    var tab = win.tabs[0]
+    var pre = await chrome.tabs.query({ url: ['https://app.leadesk.de/*', 'https://staging.leadesk.de/*'] })
+    if (pre && pre.length > 0) leadeskTabIdBefore = pre[0].id
+  } catch (_) {}
+
+  var tab = null
+  try {
+    // Aktiver Vordergrund-Tab (wie Brand-/Profil-Scraper) — nur so lädt LinkedIn die
+    // komplette Verbindungsliste per Lazy-Load nach; unfokussierte/minimierte Fenster
+    // werden von Chrome/LinkedIn gedrosselt und laden nur den ersten Batch.
+    tab = await chrome.tabs.create({ url: url, active: true })
+    if (tab.windowId) { try { await chrome.windows.update(tab.windowId, { focused: true }) } catch (_) {} }
     await waitLoaded(tab.id, 30000)
-    await sleep(2000)
+    await sleep(1500)
     var result = await chrome.scripting.executeScript({ target: { tabId: tab.id }, func: scrapeConnectionsPage })
     var res = result && result[0] && result[0].result
     if (res && res.retry) {
@@ -565,7 +574,15 @@ async function scrapeConnectionsForWebApp() {
   } catch (e) {
     return { error: e.message || String(e) }
   } finally {
-    if (win && win.id) setTimeout(function() { chrome.windows.remove(win.id).catch(function() {}) }, 1500)
+    // Tab schließen + zurück zur Leadesk-App fokussieren
+    if (tab && tab.id) { try { await chrome.tabs.remove(tab.id) } catch (_) {} }
+    try {
+      if (leadeskTabIdBefore) {
+        await chrome.tabs.update(leadeskTabIdBefore, { active: true })
+        var t = await chrome.tabs.get(leadeskTabIdBefore).catch(function () { return null })
+        if (t && t.windowId) await chrome.windows.update(t.windowId, { focused: true })
+      }
+    } catch (_) {}
   }
 }
 
