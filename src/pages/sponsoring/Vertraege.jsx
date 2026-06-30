@@ -3,7 +3,7 @@
 // mit Laufzeit/Status. Schema 'sponsoring', team_id aus useTeam().
 
 import { useEffect, useMemo, useState, useCallback } from 'react'
-import { ScrollText, Loader2, ArrowRight, X, Pencil, FileDown } from 'lucide-react'
+import { ScrollText, Loader2, ArrowRight, X, Pencil, FileDown, Trash2 } from 'lucide-react'
 import { supabase } from '../../lib/supabase'
 import { useTeam } from '../../context/TeamContext'
 import PageHeader from '../../components/PageHeader'
@@ -22,8 +22,22 @@ const OPEN_OFFER = ['draft', 'sent', 'negotiation']
 
 // Edit-Form-Defaults für die Zusatzfelder (Phase 5).
 const EMPTY_EDIT = {
-  invoice_date: '', auto_renew: false, auto_renew_date: '',
+  invoice_date: '', auto_renew: false, auto_renew_date: '', renewal_interval: 'once',
   league_id: '', value_cash: 0, value_barter: 0, industry: '', notes: '',
+  payment_plan: [],   // V2: [{ date, amount }] — Zahlungsziele aufgesplittet
+  discount_pct: 0, discount_scope: 'all', hospitality_value: 0,   // V4: Rabatt + Scope
+}
+
+// V4: Rabatt-Endsumme abhängig vom Scope berechnen.
+function discountedTotal({ value_cash, value_barter, discount_pct, discount_scope, hospitality_value }) {
+  const total = (Number(value_cash) || 0) + (Number(value_barter) || 0)
+  const pct = Number(discount_pct) || 0
+  if (!pct) return total
+  const hosp = Math.min(Number(hospitality_value) || 0, total)
+  const base = discount_scope === 'hospitality' ? hosp
+    : discount_scope === 'advertising' ? (total - hosp)
+    : total
+  return Math.round((total - base * pct / 100) * 100) / 100
 }
 
 // CASH/BARTER-REGEL: total_price ist IMMER die abgeleitete Summe.
@@ -58,7 +72,7 @@ export default function Vertraege() {
       sp().from('sponsor_profiles').select('id, organization_id').eq('team_id', activeTeamId),
       supabase.from('organizations').select('id, name').eq('team_id', activeTeamId),
       sp().from('packages').select('id, name').eq('team_id', activeTeamId),
-      sp().from('leagues').select('id, name').eq('team_id', activeTeamId).order('sort_order', { ascending: true }),
+      sp().from('leagues').select('id, name, adjust_pct').eq('team_id', activeTeamId).order('sort_order', { ascending: true }),
       sp().from('contract_templates').select('*').eq('team_id', activeTeamId).order('is_default', { ascending: false }),
     ])
     const err = off.error || ctr.error || spn.error || org.error || pk.error || lg.error || tpl.error
@@ -119,11 +133,16 @@ export default function Vertraege() {
       invoice_date: c.invoice_date || '',
       auto_renew: !!c.auto_renew,
       auto_renew_date: c.auto_renew_date || '',
+      renewal_interval: c.renewal_interval || 'once',
       league_id: c.league_id || '',
       value_cash: c.value_cash != null ? c.value_cash : (c.total_price || 0),
       value_barter: c.value_barter != null ? c.value_barter : 0,
       industry: c.industry || '',
       notes: c.notes || '',
+      payment_plan: Array.isArray(c.payment_plan) ? c.payment_plan : [],
+      discount_pct: c.discount_pct != null ? c.discount_pct : 0,
+      discount_scope: c.discount_scope || 'all',
+      hospitality_value: c.hospitality_value != null ? c.hospitality_value : 0,
     })
   }
 
@@ -138,12 +157,19 @@ export default function Vertraege() {
       invoice_date: ef.invoice_date || null,
       auto_renew: !!ef.auto_renew,
       auto_renew_date: ef.auto_renew ? (ef.auto_renew_date || null) : null,
+      renewal_interval: ef.auto_renew ? (ef.renewal_interval || 'once') : null,
       league_id: ef.league_id || null,
       value_cash: cash,
       value_barter: barter,
       total_price: sumCashBarter(cash, barter),
       industry: ef.industry || null,
       notes: ef.notes || null,
+      payment_plan: (Array.isArray(ef.payment_plan) && ef.payment_plan.length)
+        ? ef.payment_plan.filter(p => p && (p.date || p.amount)).map(p => ({ date: p.date || null, amount: Number(p.amount) || 0 }))
+        : null,
+      discount_pct: Number(ef.discount_pct) || null,
+      discount_scope: (Number(ef.discount_pct) || 0) ? (ef.discount_scope || 'all') : null,
+      hospitality_value: Number(ef.hospitality_value) || null,
       updated_at: new Date().toISOString(),
     }
     // CHECK/per-Row Update über .eq('id', id) (kein .in()-Bundle — Top-Fallstrick #1).
@@ -306,14 +332,62 @@ export default function Vertraege() {
               <input type="date" value={ef.invoice_date} onChange={(e) => setEf({ ...ef, invoice_date: e.target.value })} style={input} />
             </Field>
 
+            {/* V2: Zahlungsziele aufsplitten (mehrere Termine mit Betrag) */}
+            <div style={{ marginTop: 12 }}>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 6 }}>
+                <span style={{ fontSize: 12, fontWeight: 600, color: 'var(--text-muted)' }}>Zahlungsziele (optional)</span>
+                <button type="button" onClick={() => setEf({ ...ef, payment_plan: [...(ef.payment_plan || []), { date: '', amount: '' }] })}
+                  style={{ fontSize: 12, fontWeight: 700, color: PRIMARY, background: 'none', border: 'none', cursor: 'pointer', padding: 0 }}>+ Zahlungsziel</button>
+              </div>
+              {(ef.payment_plan || []).length === 0 ? (
+                <div style={{ fontSize: 12, color: 'var(--text-muted)' }}>Keine Aufteilung — Rechnung zum Rechnungsdatum.</div>
+              ) : (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                  {(ef.payment_plan || []).map((p, i) => (
+                    <div key={i} style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+                      <input type="date" value={p.date || ''} style={{ ...input, flex: 1 }}
+                        onChange={(e) => setEf({ ...ef, payment_plan: ef.payment_plan.map((x, j) => j === i ? { ...x, date: e.target.value } : x) })} />
+                      <input type="number" min="0" step="0.01" placeholder="Betrag €" value={p.amount ?? ''} style={{ ...input, width: 120 }}
+                        onChange={(e) => setEf({ ...ef, payment_plan: ef.payment_plan.map((x, j) => j === i ? { ...x, amount: e.target.value } : x) })} />
+                      <button type="button" title="Entfernen" onClick={() => setEf({ ...ef, payment_plan: ef.payment_plan.filter((_, j) => j !== i) })}
+                        style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#DC2626', padding: 4 }}><Trash2 size={14} /></button>
+                    </div>
+                  ))}
+                  {(() => {
+                    const termSum = (ef.payment_plan || []).reduce((s, p) => s + (Number(p.amount) || 0), 0)
+                    const total = sumCashBarter(ef.value_cash, ef.value_barter)
+                    const diff = Math.round((total - termSum) * 100) / 100
+                    return (
+                      <div style={{ fontSize: 11, color: Math.abs(diff) < 0.01 ? '#059669' : '#B45309', marginTop: 2 }}>
+                        Summe Zahlungsziele: {fmt(termSum)} · Gesamtsumme: {fmt(total)}
+                        {Math.abs(diff) >= 0.01 && ` · Differenz: ${fmt(diff)}`}
+                      </div>
+                    )
+                  })()}
+                </div>
+              )}
+            </div>
+
             <label style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 10, fontSize: 13, color: 'var(--text-strong)' }}>
               <input type="checkbox" checked={ef.auto_renew} onChange={(e) => setEf({ ...ef, auto_renew: e.target.checked })} />
               Automatische Verlängerung
             </label>
             {ef.auto_renew && (
-              <Field label="Verlängerungs-/Stichtag">
-                <input type="date" value={ef.auto_renew_date} onChange={(e) => setEf({ ...ef, auto_renew_date: e.target.value })} style={input} />
-              </Field>
+              <div style={{ display: 'flex', gap: 10 }}>
+                <div style={{ flex: 1 }}>
+                  <Field label="Verlängerungs-/Stichtag">
+                    <input type="date" value={ef.auto_renew_date} onChange={(e) => setEf({ ...ef, auto_renew_date: e.target.value })} style={input} />
+                  </Field>
+                </div>
+                <div style={{ flex: 1 }}>
+                  <Field label="Intervall">
+                    <select value={ef.renewal_interval} onChange={(e) => setEf({ ...ef, renewal_interval: e.target.value })} style={input}>
+                      <option value="once">Einmalig</option>
+                      <option value="yearly">Jährlich</option>
+                    </select>
+                  </Field>
+                </div>
+              </div>
             )}
 
             <Field label="Liga">
@@ -322,6 +396,24 @@ export default function Vertraege() {
                 {leagues.map((l) => <option key={l.id} value={l.id}>{l.name}</option>)}
               </select>
             </Field>
+            {/* V1: %-Auf-/Abschlag der gewählten Spielklasse — Vorschlag + auf Volumen anwenden */}
+            {(() => {
+              const lg = leagues.find((l) => l.id === ef.league_id)
+              const pct = lg && lg.adjust_pct != null ? Number(lg.adjust_pct) : null
+              if (pct == null || pct === 0) return null
+              const adjusted = Math.round(((Number(ef.value_cash) || 0) * (1 + pct / 100)) * 100) / 100
+              return (
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10, marginTop: 6, padding: '8px 12px', borderRadius: 8, background: 'var(--surface-muted, #F8FAFC)', border: '1px solid var(--border)' }}>
+                  <span style={{ fontSize: 12, color: 'var(--text-muted)' }}>
+                    Liga-Auf-/Abschlag: <strong style={{ color: pct >= 0 ? '#059669' : '#B45309' }}>{pct > 0 ? '+' : ''}{pct}%</strong> → Cash {fmt(adjusted)}
+                  </span>
+                  <button type="button" onClick={() => setEf({ ...ef, value_cash: adjusted })}
+                    style={{ fontSize: 12, fontWeight: 700, color: PRIMARY, background: 'none', border: '1px solid ' + PRIMARY, borderRadius: 8, padding: '4px 10px', cursor: 'pointer' }}>
+                    Auf Volumen anwenden
+                  </button>
+                </div>
+              )
+            })()}
 
             <div style={{ display: 'flex', gap: 10 }}>
               <div style={{ flex: 1 }}>
@@ -340,6 +432,35 @@ export default function Vertraege() {
               <input type="text" readOnly value={fmt(sumCashBarter(ef.value_cash, ef.value_barter))}
                      style={{ ...input, background: 'var(--surface-muted, #F8FAFC)', color: 'var(--text-muted)' }} />
             </Field>
+
+            {/* V4: Rabatt mit Scope (Gesamt / Hospitality / Werbeleistungen) */}
+            <div style={{ display: 'flex', gap: 10 }}>
+              <div style={{ flex: 1 }}>
+                <Field label="Rabatt (%)">
+                  <input type="number" min="0" max="100" step="0.01" value={ef.discount_pct} onChange={(e) => setEf({ ...ef, discount_pct: e.target.value })} style={input} />
+                </Field>
+              </div>
+              <div style={{ flex: 1.4 }}>
+                <Field label="Rabatt gilt für">
+                  <select value={ef.discount_scope} onChange={(e) => setEf({ ...ef, discount_scope: e.target.value })} style={input}>
+                    <option value="all">Gesamtsumme</option>
+                    <option value="hospitality">Nur Hospitality</option>
+                    <option value="advertising">Nur Werbeleistungen</option>
+                  </select>
+                </Field>
+              </div>
+            </div>
+            {ef.discount_scope !== 'all' && (
+              <Field label="Hospitality-Wert (€) — Basis für den Scope (Werbeleistungen = Gesamt − Hospitality)">
+                <input type="number" min="0" step="0.01" value={ef.hospitality_value} onChange={(e) => setEf({ ...ef, hospitality_value: e.target.value })} style={input} />
+              </Field>
+            )}
+            {(Number(ef.discount_pct) || 0) > 0 && (
+              <Field label="Endsumme nach Rabatt">
+                <input type="text" readOnly value={fmt(discountedTotal(ef))}
+                       style={{ ...input, background: 'var(--surface-muted, #F8FAFC)', color: '#059669', fontWeight: 700 }} />
+              </Field>
+            )}
 
             <Field label="Branche">
               <input type="text" value={ef.industry} onChange={(e) => setEf({ ...ef, industry: e.target.value })} style={input} placeholder="z.B. Finanzen, Handel …" />

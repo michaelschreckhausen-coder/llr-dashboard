@@ -14,7 +14,7 @@ import PageHeader from '../../components/PageHeader'
 const PRIMARY = 'var(--wl-primary, rgb(49,90,231))'
 const sp = () => supabase.schema('sponsoring')
 
-const EMPTY_FORM = { name: '', short_code: '', sort_order: 0 }
+const EMPTY_FORM = { name: '', short_code: '', sort_order: 0, adjust_pct: '' }
 
 export default function Ligen() {
   const { activeTeamId } = useTeam()
@@ -57,6 +57,7 @@ export default function Ligen() {
       name: form.name.trim(),
       short_code: form.short_code.trim() || null,
       sort_order: Number(form.sort_order) || 0,
+      adjust_pct: form.adjust_pct === '' ? null : Number(form.adjust_pct),
     })
     if (e2) { setError(e2.message); setBusy(false); return }
     setForm(EMPTY_FORM)
@@ -65,7 +66,7 @@ export default function Ligen() {
 
   function startEdit(l) {
     setEditId(l.id)
-    setEditForm({ name: l.name || '', short_code: l.short_code || '', sort_order: l.sort_order ?? 0 })
+    setEditForm({ name: l.name || '', short_code: l.short_code || '', sort_order: l.sort_order ?? 0, adjust_pct: l.adjust_pct ?? '' })
   }
 
   function cancelEdit() {
@@ -81,6 +82,7 @@ export default function Ligen() {
         name: editForm.name.trim(),
         short_code: editForm.short_code.trim() || null,
         sort_order: Number(editForm.sort_order) || 0,
+        adjust_pct: editForm.adjust_pct === '' ? null : Number(editForm.adjust_pct),
       })
       .eq('id', id)
     if (e) { setError(e.message); setBusy(false); return }
@@ -122,7 +124,7 @@ export default function Ligen() {
 
       {/* Anlegen */}
       <form onSubmit={createLeague} style={{
-        display: 'grid', gridTemplateColumns: '2fr 1fr 0.8fr auto', gap: 10, alignItems: 'end',
+        display: 'grid', gridTemplateColumns: '2fr 1fr 0.8fr 0.9fr auto', gap: 10, alignItems: 'end',
         border: '1px solid var(--border)', borderRadius: 14, background: 'var(--surface)', padding: 16, marginBottom: 22,
       }}>
         <Field label="Name">
@@ -136,6 +138,10 @@ export default function Ligen() {
         <Field label="Sortierung">
           <input type="number" value={form.sort_order}
                  onChange={(e) => setForm({ ...form, sort_order: e.target.value })} style={input} />
+        </Field>
+        <Field label="Auf-/Abschlag %">
+          <input type="number" step="0.01" value={form.adjust_pct}
+                 onChange={(e) => setForm({ ...form, adjust_pct: e.target.value })} placeholder="z.B. 15 / -20" style={input} />
         </Field>
         <button type="submit" disabled={busy || !form.name.trim()} style={{ ...primaryBtn, opacity: busy || !form.name.trim() ? 0.6 : 1 }}>
           {busy ? <Loader2 size={14} className="spin" /> : <Plus size={14} />} Anlegen

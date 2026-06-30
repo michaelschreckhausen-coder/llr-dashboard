@@ -33,7 +33,7 @@ import {
   Bold, Italic, Sliders, Loader2, X, ChevronUp, ChevronDown, Brush, Lasso,
   Eraser, Image as ImageIcon, LayoutTemplate, Copy, ZoomIn, ZoomOut, Maximize2,
   Upload, Frame, Eye, EyeOff, Lock, Unlock, Layers, GripVertical, Underline,
-  FlipHorizontal2, FlipVertical2, FlipHorizontal, FlipVertical, Scaling, Send, CalendarPlus, FileText, Search,
+  FlipHorizontal2, FlipVertical2, FlipHorizontal, FlipVertical, Scaling, Send, CalendarPlus, FileText, Search, Paintbrush,
   AlignLeft, AlignCenter, AlignRight, Baseline, MoveVertical,
   AlignStartVertical, AlignCenterVertical, AlignEndVertical,
   AlignStartHorizontal, AlignCenterHorizontal, AlignEndHorizontal,
@@ -237,6 +237,8 @@ export default function DesignerCanvas({ visual, teamId, onSaved, onReplaceVisua
   const selectedId = selectedIds.length === 1 ? selectedIds[0] : null  // Abwärtskompatibel (Einzel-Selektion)
   const setSelectedId = useCallback((id) => setSelectedIds(id ? [id] : []), [])
   const [editingTextId, setEditingTextId] = useState(null)
+  const copyStyleRef = useRef(null)              // Format-Painter: kopierter Stil {type, style}
+  const [copyStyleActive, setCopyStyleActive] = useState(false)
   // "Verzerren"-Modus: per Doppelklick auf ein Objekt (kein Text) aktiviert. Solange
   // null, ist das Skalieren proportional (kein Verzerren); ist eine ID gesetzt, darf
   // dieses Objekt frei (nicht-proportional) skaliert werden. Rahmenfarbe + Anker-Form
@@ -314,20 +316,25 @@ export default function DesignerCanvas({ visual, teamId, onSaved, onReplaceVisua
   // Bug-Fix: KI-Masken-Modus IMMER verlassen, sobald man das KI-Werkzeug/Panel wechselt
   // oder schließt — sonst „klebt" das Auswahl-Overlay und man kommt nicht mehr weg.
   useEffect(() => {
-    if (activeTool !== 'ai') { setAiMode(null); clearMask(); setAiPreview(null) }
+    if (activeTool !== 'edit') { setAiMode(null); clearMask(); setAiPreview(null) }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [activeTool])
   // Werkzeug-Panel schließt sich, sobald man irgendwo daneben klickt (nicht nur via X).
   useEffect(() => {
     if (!activeTool) return
     const onDocDown = (e) => {
+      // Während eines KI-Bereichs-/Maskenmodus darf ein Klick auf den Canvas das
+      // Panel NICHT schließen (man zeichnet ja gerade die Maske aufs Bild).
+      if (aiMode) return
       const t = e.target
       if (t && t.closest && t.closest('[data-tool-ui]')) return
+      // Klicks auf den Canvas-/Stage-Bereich nicht als "daneben" werten.
+      if (t && t.closest && t.closest('.konvajs-content')) return
       setActiveTool(null)
     }
     document.addEventListener('mousedown', onDocDown, true)
     return () => document.removeEventListener('mousedown', onDocDown, true)
-  }, [activeTool])
+  }, [activeTool, aiMode])
   const [elementTab, setElementTab] = useState('shapes')   // shapes | icons | graphics | images
   const [uploadThumbs, setUploadThumbs] = useState([])     // diese Sitzung hochgeladene DataURLs
   const [aiCommand, setAiCommand] = useState('')           // freier KI-Befehl (mask-free)
@@ -1012,7 +1019,7 @@ export default function DesignerCanvas({ visual, teamId, onSaved, onReplaceVisua
       if (mod && e.key.toLowerCase() === 'c') { e.preventDefault(); copySelected(); return }
       if (mod && e.key.toLowerCase() === 'v') { e.preventDefault(); pasteClipboard(); return }
       if (mod && e.key.toLowerCase() === 'a') { e.preventDefault(); setSelectedIds(objects.map(o => o.id)); return }
-      if (e.key === 'Escape') { setSelectedIds([]); return }
+      if (e.key === 'Escape') { if (copyStyleRef.current) { copyStyleRef.current = null; setCopyStyleActive(false) } setSelectedIds([]); return }
       if ((e.key === 'Delete' || e.key === 'Backspace') && selectedIds.length) {
         e.preventDefault(); deleteSelected(); return
       }
@@ -1293,7 +1300,7 @@ export default function DesignerCanvas({ visual, teamId, onSaved, onReplaceVisua
   // Asset aus der Asset-Bibliothek einfügen: gefüllte Silhouette in Primary-Farbe.
   function addAsset(asset) {
     const c = center()
-    const target = Math.min(stageSize.width, stageSize.height) * 0.25
+    const target = Math.min(stageSize.width, stageSize.height) * 0.42
     const sc = target / 100
     addObject({ type: 'sticker', d: asset.d, x: c.x - (50 * sc), y: c.y - (50 * sc), scaleX: sc, scaleY: sc,
       fill: PRGB, stroke: '#000000', strokeWidth: 0, rotation: 0 })
@@ -2093,7 +2100,7 @@ export default function DesignerCanvas({ visual, teamId, onSaved, onReplaceVisua
   function openPagesAction(mode) {
     setPageSel({ [activeIdxRef.current]: true })   // Standard: aktuelle Seite
     setPagesMsg(''); setPostSearch(''); setPagesAction(mode)
-    setPagesStep(mode === 'download' ? 'format' : 'pages')
+    setPagesStep('pages')
   }
   async function loadPostsForPicker() {
     setPostLoading(true)
@@ -3007,9 +3014,38 @@ export default function DesignerCanvas({ visual, teamId, onSaved, onReplaceVisua
     setDistortId(prev => (prev === o.id ? null : o.id))
   }
 
+  // ─── Format-Painter (Stil kopieren) ────────────────────────────────────────
+  function captureStyle(o) {
+    const KEYS = ['fill','stroke','strokeWidth','cornerRadius','opacity','shadowColor','shadowBlur','shadowOffsetX','shadowOffsetY','effect','fontFamily','fontSize','fontStyle','align','lineHeight','letterSpacing','textDecoration']
+    const style = {}; KEYS.forEach(k => { if (o[k] !== undefined) style[k] = o[k] })
+    return { type: o.type, style }
+  }
+  function startCopyStyle() {
+    const o = objects.find(x => x.id === selectedId); if (!o) return
+    copyStyleRef.current = captureStyle(o); setCopyStyleActive(true)
+  }
+  function applyCopiedStyle(targetId) {
+    const src = copyStyleRef.current; if (!src) return
+    const target = objects.find(o => o.id === targetId); if (!target) return
+    const ALLOW = {
+      text:    ['fill','effect','opacity','fontFamily','fontSize','fontStyle','align','lineHeight','letterSpacing','textDecoration','shadowColor','shadowBlur','shadowOffsetX','shadowOffsetY'],
+      rect:    ['fill','stroke','strokeWidth','cornerRadius','opacity','shadowColor','shadowBlur','shadowOffsetX','shadowOffsetY'],
+      ellipse: ['fill','stroke','strokeWidth','opacity','shadowColor','shadowBlur','shadowOffsetX','shadowOffsetY'],
+      line:    ['stroke','strokeWidth','opacity'],
+      arrow:   ['fill','stroke','strokeWidth','opacity'],
+      sticker: ['fill','stroke','strokeWidth','opacity'],
+      image:   ['opacity','cornerRadius','shadowColor','shadowBlur','shadowOffsetX','shadowOffsetY'],
+    }[target.type] || ['opacity']
+    const patch = {}; ALLOW.forEach(k => { if (src.style[k] !== undefined) patch[k] = src.style[k] })
+    if (Object.keys(patch).length) { commitHistoryOnce(); updateObject(targetId, patch, false); endInteraction() }
+  }
+
   // Klick auf ein Objekt: Shift → zur Auswahl togglen, sonst Einzel-Auswahl.
   function selectFromClick(id, e) {
     if (cropMode || aiMode) return
+    if (copyStyleRef.current && !e?.evt?.shiftKey) {
+      applyCopiedStyle(id); copyStyleRef.current = null; setCopyStyleActive(false); setSelectedIds([id]); return
+    }
     const shift = e?.evt?.shiftKey
     if (shift) {
       setSelectedIds(prev => prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id])
@@ -3318,8 +3354,9 @@ export default function DesignerCanvas({ visual, teamId, onSaved, onReplaceVisua
                       </button>
                     ))}
                   </div>
-                  <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
-                    <PanelBtn primary onClick={() => setPagesStep('pages')}>Weiter</PanelBtn>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', gap: 8 }}>
+                    <SmallBtn onClick={() => setPagesStep('pages')}>Zurück</SmallBtn>
+                    <PanelBtn primary disabled={pagesBusy || !selCount} onClick={executeDownload}>{pagesBusy ? 'Erstelle…' : `Herunterladen (${dlFormat.toUpperCase()})`}</PanelBtn>
                   </div>
                 </>
               )}
@@ -3333,11 +3370,9 @@ export default function DesignerCanvas({ visual, teamId, onSaved, onReplaceVisua
                   {PageSelector}
                   {pagesMsg && <div style={{ fontSize: 12, fontWeight: 600, marginBottom: 10, color: pagesMsg.includes('Fehler') ? '#b91c1c' : '#15803d' }}>{pagesMsg}</div>}
                   <div style={{ display: 'flex', justifyContent: 'space-between', gap: 8 }}>
+                    <span />
                     {pagesAction === 'download'
-                      ? <SmallBtn onClick={() => setPagesStep('format')}>Zurück</SmallBtn>
-                      : <span />}
-                    {pagesAction === 'download'
-                      ? <PanelBtn primary disabled={pagesBusy || !selCount} onClick={executeDownload}>{pagesBusy ? 'Erstelle…' : `Herunterladen (${dlFormat.toUpperCase()})`}</PanelBtn>
+                      ? <PanelBtn primary disabled={!selCount} onClick={() => setPagesStep('format')}>Weiter</PanelBtn>
                       : pagesAction === 'media'
                       ? <PanelBtn primary disabled={pagesBusy || !selCount} onClick={executeMedia}>{pagesBusy ? 'Speichert…' : 'In Medien speichern'}</PanelBtn>
                       : <PanelBtn primary disabled={pagesBusy || !selCount} onClick={() => { setPagesStep('post'); loadPostsForPicker() }}>Weiter</PanelBtn>}
@@ -3392,6 +3427,8 @@ export default function DesignerCanvas({ visual, teamId, onSaved, onReplaceVisua
           commitHistoryOnce={commitHistoryOnce} endInteraction={endInteraction}
           reorder={reorder} deleteSelected={deleteSelected} duplicateSelected={duplicateSelected}
           onFlip={flipSelected} onCrop={() => setCropMode(true)}
+          onEditImage={() => setActiveTool('edit')} onOpenLayers={() => setActiveTool('layers')}
+          onCopyStyle={startCopyStyle} copyStyleActive={copyStyleActive}
           fonts={allFonts} selectedIds={selectedIds} brandColors={brandColors}
           alignObjects={alignObjects} distributeObjects={distributeObjects} />
       )}
@@ -3788,8 +3825,8 @@ function humanizeProviderError(msg) {
 
 // ─── kleine UI-Bausteine ──────────────────────────────────────────────────────
 const barStyle = {
-  display: 'flex', alignItems: 'center', gap: 8, padding: '8px 12px',
-  borderBottom: '1px solid var(--border,#E9ECF2)', background: 'var(--page-bg,#F7F8FA)', flexShrink: 0,
+  display: 'flex', alignItems: 'center', gap: 8, padding: '9px 12px',
+  borderBottom: '1px solid var(--border,#E9ECF2)', background: 'var(--surface,#fff)', flexShrink: 0,
 }
 
 function Divider() {
@@ -3999,7 +4036,8 @@ function BarMenuItem({ icon, label, active, onClick }) {
 
 function ContextBar({
   selected, updateObject, reorder, deleteSelected, duplicateSelected,
-  commitHistoryOnce, endInteraction, fonts, onFlip, onCrop,
+  commitHistoryOnce, endInteraction, fonts, onFlip, onCrop, onEditImage, onOpenLayers,
+  onCopyStyle, copyStyleActive = false,
   selectedIds, alignObjects, distributeObjects, brandColors = [],
 }) {
   const FONT_LIST = (fonts && fonts.length) ? fonts : FONTS
@@ -4110,7 +4148,7 @@ function ContextBar({
 
       {/* ── FORMEN: Füllung (Swatch) + Stil-Menü ── */}
       {!isText && hasFill && (
-        <ColorPopover value={o.fill} brandColors={brandColors} title="Füllfarbe" round onStart={startEdit} onChange={(hex) => liveEdit({ fill: hex })} onEnd={endInteraction} size={30} />
+        <ColorPopover value={o.fill} brandColors={brandColors} title="Füllfarbe" round allowNone onStart={startEdit} onChange={(hex) => liveEdit({ fill: hex })} onEnd={endInteraction} size={30} />
       )}
       {!isText && (hasStroke || isRect || hasFill) && (hasStroke || isRect) && (
         <BarMenu title="Stil" width={210} trigger={<Sliders size={15} strokeWidth={2} />}>
@@ -4131,23 +4169,58 @@ function ContextBar({
         </BarMenu>
       )}
 
-      {/* ── BILD: Zuschneiden ── */}
+      {/* ── BILD: Bearbeiten (Anpassen/Filter/KI) + Zuschneiden ── */}
+      {isImage && onEditImage && (
+        <button type="button" onClick={onEditImage} title="Bild bearbeiten (Anpassen, Filter, KI)"
+          style={{ display: 'inline-flex', alignItems: 'center', gap: 6, height: 34, padding: '0 12px', borderRadius: 9, border: 'none',
+            background: 'rgba(49,90,231,0.08)', color: P, fontSize: 12.5, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit' }}>
+          <Wand2 size={14} strokeWidth={2} />Bearbeiten
+        </button>
+      )}
       {isImage && onCrop && (
-        <ToolBtn onClick={onCrop} title="Zuschneiden"><Crop size={15} strokeWidth={1.9} /></ToolBtn>
+        <button type="button" onClick={onCrop} title="Zuschneiden"
+          style={{ display: 'inline-flex', alignItems: 'center', gap: 6, height: 34, padding: '0 12px', borderRadius: 9, border: '1px solid var(--border,#E9ECF2)', background: 'var(--surface,#fff)', color: 'var(--text-primary)', fontSize: 12.5, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit' }}>
+          <Crop size={14} strokeWidth={1.9} />Zuschneiden
+        </button>
       )}
 
       <Divider />
 
       {/* ── Spiegeln (nur Nicht-Text) ── */}
       {!isText && onFlip && (
-        <BarMenu title="Spiegeln" width={200} trigger={<FlipHorizontal size={16} strokeWidth={1.8} />}>
+        <BarMenu title="Spiegeln" width={200} trigger={isImage ? <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: 12.5, fontWeight: 600 }}><FlipHorizontal size={14} strokeWidth={1.8} />Spiegeln</span> : <FlipHorizontal size={16} strokeWidth={1.8} />}>
           <BarMenuItem icon={<FlipHorizontal size={16} strokeWidth={1.8} />} label="Horizontal spiegeln" onClick={() => onFlip('x')} />
           <BarMenuItem icon={<FlipVertical size={16} strokeWidth={1.8} />} label="Vertikal spiegeln" onClick={() => onFlip('y')} />
         </BarMenu>
       )}
 
+      {/* ── Position: Ebenen-Reihenfolge + Ausrichten (an Seite) ── */}
+      <BarMenu title="Position" width={232} trigger={<span style={{ fontSize: 12.5, fontWeight: 600 }}>Position</span>}>
+        <div style={{ padding: '2px 4px' }}>
+          <div style={{ fontSize: 10.5, fontWeight: 700, color: 'var(--text-soft,#98a2b3)', textTransform: 'uppercase', letterSpacing: '0.05em', padding: '4px 6px 6px' }}>Anordnen</div>
+          <BarMenuItem icon={<BringToFront size={15} strokeWidth={1.9} />} label="In den Vordergrund" onClick={() => reorder('top')} />
+          <BarMenuItem icon={<ChevronUp size={15} strokeWidth={1.9} />} label="Eine Ebene nach vorne" onClick={() => reorder('up')} />
+          <BarMenuItem icon={<ChevronDown size={15} strokeWidth={1.9} />} label="Eine Ebene nach hinten" onClick={() => reorder('down')} />
+          <BarMenuItem icon={<SendToBack size={15} strokeWidth={1.9} />} label="In den Hintergrund" onClick={() => reorder('bottom')} />
+          <div style={{ height: 1, background: 'var(--border,#E9ECF2)', margin: '6px 4px' }} />
+          <div style={{ fontSize: 10.5, fontWeight: 700, color: 'var(--text-soft,#98a2b3)', textTransform: 'uppercase', letterSpacing: '0.05em', padding: '2px 6px 6px' }}>An Seite ausrichten</div>
+          <div style={{ display: 'flex', gap: 4, padding: '0 4px 4px' }}>
+            <ToolBtn onClick={() => alignObjects('left')} title="Links"><AlignStartVertical size={14} strokeWidth={1.9} /></ToolBtn>
+            <ToolBtn onClick={() => alignObjects('hcenter')} title="Horizontal zentrieren"><AlignCenterVertical size={14} strokeWidth={1.9} /></ToolBtn>
+            <ToolBtn onClick={() => alignObjects('right')} title="Rechts"><AlignEndVertical size={14} strokeWidth={1.9} /></ToolBtn>
+            <ToolBtn onClick={() => alignObjects('top')} title="Oben"><AlignStartHorizontal size={14} strokeWidth={1.9} /></ToolBtn>
+            <ToolBtn onClick={() => alignObjects('vcenter')} title="Vertikal zentrieren"><AlignCenterHorizontal size={14} strokeWidth={1.9} /></ToolBtn>
+            <ToolBtn onClick={() => alignObjects('bottom')} title="Unten"><AlignEndHorizontal size={14} strokeWidth={1.9} /></ToolBtn>
+          </div>
+          {onOpenLayers && (<>
+            <div style={{ height: 1, background: 'var(--border,#E9ECF2)', margin: '6px 4px' }} />
+            <BarMenuItem icon={<Layers size={15} strokeWidth={1.9} />} label="Alle Ebenen verwalten" onClick={onOpenLayers} />
+          </>)}
+        </div>
+      </BarMenu>
+
       {/* ── Deckkraft (Icon-Dropdown) ── */}
-      <BarMenu title="Deckkraft" width={200} trigger={<TransparencyIcon size={15} />}>
+      <BarMenu title="Deckkraft" width={200} trigger={isImage ? <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: 12.5, fontWeight: 600 }}><TransparencyIcon size={14} />Deckkraft</span> : <TransparencyIcon size={15} />}>
         <div onClick={e => e.stopPropagation()} style={{ padding: '6px 8px' }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 11.5, color: 'var(--text-muted)', marginBottom: 8 }}><span>Deckkraft</span><span>{opacityPct}%</span></div>
           <input type="range" min={0} max={100} step={1} value={opacityPct}
@@ -4157,6 +4230,9 @@ function ContextBar({
       </BarMenu>
 
       <div style={{ flex: 1, minWidth: 8 }} />
+      {onCopyStyle && (
+        <ToolBtn onClick={onCopyStyle} active={copyStyleActive} title={copyStyleActive ? 'Stil kopiert — jetzt Zielelement anklicken' : 'Stil kopieren'}><Paintbrush size={14} strokeWidth={1.9} /></ToolBtn>
+      )}
       <ToolBtn onClick={duplicateSelected} title="Duplizieren (Strg+D)"><Copy size={14} strokeWidth={1.9} /></ToolBtn>
       <ToolBtn onClick={deleteSelected} title="Löschen (Entf)"><Trash2 size={14} strokeWidth={1.9} /></ToolBtn>
     </div>
@@ -4276,7 +4352,7 @@ function ColorSwatch({ c, current, onPick }) {
         boxShadow: on ? '0 0 0 2px var(--surface,#fff), 0 0 0 4px ' + P : 'none', outline: 'none' }} />
   )
 }
-function ColorPopover({ value, onChange, onStart, onEnd, brandColors = [], title = 'Farbe', size = 30, triggerContent = null, triggerStyle = null, round = false }) {
+function ColorPopover({ value, onChange, onStart, onEnd, brandColors = [], title = 'Farbe', size = 30, triggerContent = null, triggerStyle = null, round = false, allowNone = false }) {
   const [open, setOpen] = React.useState(false)
   const [openUp, setOpenUp] = React.useState(true)
   const ref = React.useRef(null)
@@ -4303,7 +4379,10 @@ function ColorPopover({ value, onChange, onStart, onEnd, brandColors = [], title
         </button>
       ) : (
         <button ref={btnRef} type="button" title={title} onClick={toggle}
-          style={{ width: size, height: size, borderRadius: round ? '50%' : 8, border: '1px solid var(--border,#E9ECF2)', background: cur, cursor: 'pointer', padding: 0, boxShadow: 'inset 0 0 0 2px var(--surface,#fff)' }} />
+          style={{ width: size, height: size, borderRadius: round ? '50%' : 8, border: '1px solid var(--border,#E9ECF2)', cursor: 'pointer', padding: 0, boxShadow: 'inset 0 0 0 2px var(--surface,#fff)',
+            background: (allowNone && (value === 'transparent' || !value))
+              ? 'linear-gradient(135deg, #fff 43%, #EF4444 44%, #EF4444 56%, #fff 57%)'
+              : cur }} />
       )}
       {open && (
         <div style={{ position: 'absolute', zIndex: 130, ...(openUp ? { bottom: 'calc(100% + 8px)' } : { top: 'calc(100% + 8px)' }), left: 0, width: 214, background: 'var(--surface,#fff)', border: '1px solid var(--border,#E9ECF2)', borderRadius: 12, boxShadow: '0 16px 44px rgba(16,24,40,0.20)', padding: 12 }}>
@@ -4315,6 +4394,15 @@ function ColorPopover({ value, onChange, onStart, onEnd, brandColors = [], title
           )}
           <div style={{ ...swLabel, marginTop: brandColors.length ? 10 : 0 }}>Standardfarben</div>
           <div style={swGrid}>{STD_SWATCHES.map((c, i) => <ColorSwatch key={i} c={c} current={cur} onPick={pick} />)}</div>
+          {allowNone && (
+            <button type="button" onClick={() => pick('transparent')}
+              style={{ display: 'flex', alignItems: 'center', gap: 8, width: '100%', marginTop: 9, padding: '7px 8px', borderRadius: 8, cursor: 'pointer', fontFamily: 'inherit', fontSize: 12.5, fontWeight: 600,
+                border: '1px solid ' + ((value === 'transparent' || !value) ? P : 'var(--border,#E9ECF2)'),
+                background: (value === 'transparent' || !value) ? 'rgba(49,90,231,0.06)' : 'var(--surface,#fff)', color: 'var(--text-primary)' }}>
+              <span style={{ width: 18, height: 18, borderRadius: 5, flexShrink: 0, border: '1px solid var(--border,#E9ECF2)', background: 'linear-gradient(135deg, #fff 43%, #EF4444 44%, #EF4444 56%, #fff 57%)' }} />
+              Keine Füllung
+            </button>
+          )}
           <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 10, paddingTop: 10, borderTop: '1px solid var(--border,#E9ECF2)' }}>
             <label style={{ position: 'relative', width: 30, height: 30, borderRadius: 7, overflow: 'hidden', border: '1px solid var(--border,#E9ECF2)', cursor: 'pointer', flexShrink: 0 }} title="Eigene Farbe">
               <input type="color" value={cur} onChange={e => { onStart && onStart(); onChange(e.target.value) }} onBlur={() => onEnd && onEnd()}
@@ -4342,11 +4430,9 @@ const RAIL_TOOLS = [
   { id: 'uploads',   label: 'Medien',   Icon: ImageIcon },
   { id: 'div1', divider: true },
   { id: 'brand',     label: 'Marke',    Icon: Palette },
-  { id: 'div2', divider: true },
-  { id: 'ai',        label: 'KI',       Icon: Wand2 },
-  { id: 'filter',    label: 'Filter',   Icon: Sliders },
-  { id: 'layers',    label: 'Ebenen',   Icon: Layers },
 ]
+// Bild bearbeiten (Filter/Anpassen/KI), Ebenen & Ausrichten sind KEINE linken Tools mehr —
+// sie sind ausschließlich kontextuell über die obere Leiste erreichbar (wie Canva).
 
 function ToolRail({ active, onSelect }) {
   return (
@@ -4583,9 +4669,6 @@ function ImagesTab({ onInsert }) {
                   </div>
                 )}
               </div>
-              <span style={{ fontSize: 9, lineHeight: 1.2, color: 'var(--text-muted)', padding: '2px 3px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', background: '#fff', textAlign: 'left' }}>
-                Foto: {p.photographer || 'Pexels'} / Pexels
-              </span>
             </button>
           ))}
         </div>
@@ -4627,7 +4710,7 @@ function TemplateThumb({ tpl }) {
 // ─── Panel-Rahmen (docked sidebar oder Overlay-Popup) ───────────────────────
 function ToolPanel(props) {
   const { docked, tool, onClose } = props
-  const titleMap = { templates: 'Vorlagen', elements: 'Elemente', text: 'Text', uploads: 'Medien', brand: 'Marke', ai: 'KI-Werkzeuge', filter: 'Filter', layers: 'Ebenen' }
+  const titleMap = { templates: 'Vorlagen', elements: 'Elemente', text: 'Text', uploads: 'Medien', brand: 'Marke', ai: 'KI-Werkzeuge', filter: 'Filter', layers: 'Ebenen', edit: 'Bild bearbeiten' }
   const frame = docked
     ? { width: 300, flexShrink: 0, borderRight: '1px solid var(--border)', background: 'var(--surface,#fff)', display: 'flex', flexDirection: 'column', height: '100%', overflow: 'hidden' }
     : { position: 'absolute', left: 8, top: 8, bottom: 8, zIndex: 90, width: 300, maxWidth: 'calc(100% - 16px)', borderRadius: 12,
@@ -4647,6 +4730,7 @@ function ToolPanel(props) {
         {tool === 'brand' && <BrandPanelBody {...props} />}
         {tool === 'ai' && <AiPanelBody {...props} />}
         {tool === 'filter' && <FilterPanelBody {...props} />}
+        {tool === 'edit' && <EditPanelBody {...props} />}
         {tool === 'layers' && <LayersPanelBody {...props} />}
       </div>
     </div>
@@ -4957,6 +5041,20 @@ function AiPanelBody({
   )
 }
 
+// ─── Panel: Bild bearbeiten (kombiniert Anpassen/Filter + KI) ────────────────
+// Wird NUR kontextuell geöffnet (Bild ausgewählt → „Bearbeiten" in der oberen
+// Leiste). Bündelt Filter/Anpassungen und die KI-Werkzeuge in einem Panel — wie
+// Canvas „Bild bearbeiten".
+function EditPanelBody(props) {
+  return (
+    <div>
+      <AiPanelBody {...props} />
+      <div style={{ height: 1, background: 'var(--border,#E9ECF2)', margin: '16px 0' }} />
+      <FilterPanelBody {...props} />
+    </div>
+  )
+}
+
 // ─── Panel: Filter ──────────────────────────────────────────────────────────
 // Konva-Filterparameter grob als CSS-Filter abbilden (für Live-Vorschau-Thumbnails).
 function cssForFilter(f = {}) {
@@ -4984,10 +5082,6 @@ function FilterPanelBody({ filters, setFilters, commitHistoryOnce, endInteractio
   )
   return (
     <div>
-      <div style={{ fontSize: 11.5, color: 'var(--text-muted)', marginBottom: 10 }}>
-        Filter gelten {filterScope === 'einzeln' ? 'für das ausgewählte Bild.' : 'für alle Bild-Ebenen (nichts ausgewählt).'}
-      </div>
-
       <PanelLabel>Looks</PanelLabel>
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 8, marginBottom: 16 }}>
         {FILTER_PRESETS.map(p => (
