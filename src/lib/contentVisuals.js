@@ -181,7 +181,7 @@ export async function addImagePageToDesign(designId, imageVisual) {
     const pages = [...dj.pages, page]
     const next = { ...dj, pages, activePageIndex: pages.length - 1 }
     const { data: row, error } = await supabase.from('visuals')
-      .update({ design_json: next, updated_at: new Date().toISOString() }).eq('id', designId).select().single()
+      .update({ design_json: next }).eq('id', designId).select().single()
     if (error) return { error }
     return { data: row }
   } catch (e) { return { error: e } }
