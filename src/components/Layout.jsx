@@ -546,6 +546,23 @@ export default function Layout({ session, role, onLogout, children }) {
     return () => clearInterval(iv)
   }, [session, activeTeamId])
 
+  // Echtzeit: Postgres-Changes der benachrichtigungsrelevanten Tabellen abonnieren
+  // (team-scoped) → Glocke aktualisiert sofort statt erst beim 60s-Poll. Degradiert
+  // sicher: sind die Tabellen serverseitig nicht in der Realtime-Publication, feuert
+  // das Abo einfach nicht und das Polling oben bleibt der Fallback.
+  useEffect(() => {
+    if (!session?.user || !activeTeamId) return
+    let debounce
+    const trigger = () => { clearTimeout(debounce); debounce = setTimeout(() => loadNotifications(session.user.id), 1500) }
+    const tables = ['leads', 'deals', 'lead_tasks', 'pm_tasks', 'linkedin_inbox', 'content_posts']
+    const ch = supabase.channel('notif-rt-' + activeTeamId)
+    tables.forEach(tbl => {
+      ch.on('postgres_changes', { event: '*', schema: 'public', table: tbl, filter: `team_id=eq.${activeTeamId}` }, trigger)
+    })
+    ch.subscribe()
+    return () => { clearTimeout(debounce); try { supabase.removeChannel(ch) } catch {} }
+  }, [session, activeTeamId])
+
   // Auf Profil-Updates hören (von der Profilseite gefeuert)
   useEffect(() => {
     const handler = () => loadProfile()
