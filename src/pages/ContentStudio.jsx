@@ -205,7 +205,6 @@ export default function ContentStudio({ session }) {
   const [visualMode, setVisualMode] = useState(false)
   const [imageModel, setImageModel] = useState(DEFAULT_IMAGE_MODEL)
   const [imageFormat, setImageFormat] = useState(PRESET_BY_ID[DEFAULT_PRESET_ID])   // Format-Preset (Plattform/Freiform)
-  const [forceNewImage, setForceNewImage] = useState(false)
   const [useBrandImages, setUseBrandImages] = useState(true)   // Brand-Bilder als Referenz für Bildgenerierung
   // Bild<->Chat-Leiste + aktives Designer-Bild
   const [chatVisuals, setChatVisuals] = useState([])
@@ -825,8 +824,22 @@ export default function ContentStudio({ session }) {
     try { await supabase.from('content_chat_messages').insert({ chat_id: chatIdForSend, role:'user', content: prompt, metadata: { type:'image_request' } }) } catch (_e) {}
     setTimeout(() => messagesEndRef.current?.scrollIntoView({ behavior:'smooth' }), 30)
 
-    // Folge-Edit-Logik: letztes Bild im Chat als Referenz, außer „Neues Bild" aktiv
-    const prevVisual = !forceNewImage ? lastChatVisual() : null
+    // Bearbeiten vs. neues Bild — automatisch per KI erkannt (kein manueller Toggle mehr).
+    // Mit Anhängen: immer neues Bild (Anhänge sind die Referenz). Sonst letztes Chat-Bild
+    // nur als Referenz nutzen, wenn die Anfrage eine Änderung beschreibt.
+    let prevVisual = null
+    const lastVisual = lastChatVisual()
+    if (lastVisual && atts.length === 0) {
+      let editIntent = true
+      try {
+        const { data: cls } = await supabase.functions.invoke('generate', {
+          body: { type:'raw', model:'claude-haiku-4-5', prompt: `Im Chat existiert bereits ein generiertes Bild. Will die folgende Nutzer-Anfrage das BESTEHENDE Bild bearbeiten/anpassen, oder ein KOMPLETT NEUES, eigenständiges Bild erzeugen? Antworte mit genau einem Wort: BEARBEITEN oder NEU.\n\nAnfrage: "${prompt}"` },
+        })
+        const ans = String(cls?.text || '').trim().toUpperCase()
+        if (ans.includes('NEU') && !ans.includes('BEARBEIT')) editIntent = false
+      } catch (_e) {}
+      prevVisual = editIntent ? lastVisual : null
+    }
     const { model, quality } = splitModelValue(imageModel)
     // Mit Redaktionsplan-Beitrag verknüpft → Beitragstext als Bild-Kontext mitgeben
     // (nur Erstgenerierung, nicht bei iterativen Edits auf ein bestehendes Bild).
@@ -1069,7 +1082,7 @@ export default function ContentStudio({ session }) {
             visualMode={visualMode} setVisualMode={setVisualMode}
             imageModel={imageModel} setImageModel={setImageModel}
             imageFormat={imageFormat} setImageFormat={setImageFormat}
-            forceNewImage={forceNewImage} setForceNewImage={setForceNewImage} useBrandImages={useBrandImages} setUseBrandImages={setUseBrandImages}
+            useBrandImages={useBrandImages} setUseBrandImages={setUseBrandImages}
             hasChatVisuals={chatVisuals.length > 0}
             handleFiles={handleFiles}
             fileInputRef={fileInputRef}
@@ -1137,7 +1150,7 @@ export default function ContentStudio({ session }) {
             visualMode={visualMode} setVisualMode={setVisualMode}
             imageModel={imageModel} setImageModel={setImageModel}
             imageFormat={imageFormat} setImageFormat={setImageFormat}
-            forceNewImage={forceNewImage} setForceNewImage={setForceNewImage} useBrandImages={useBrandImages} setUseBrandImages={setUseBrandImages}
+            useBrandImages={useBrandImages} setUseBrandImages={setUseBrandImages}
             hasChatVisuals={chatVisuals.length > 0}
             handleFiles={handleFiles}
             fileInputRef={fileInputRef}
@@ -1461,7 +1474,7 @@ function CleanView({
   companyVoices = [], showCompanyPicker = false, selectedCompanyVoiceIds = [], setSelectedCompanyVoiceIds = () => {},
   useWebSearch, setUseWebSearch, editorOpen = false, useEditorContext = false, setUseEditorContext = () => {},
   visualMode = false, setVisualMode = () => {}, imageModel, setImageModel = () => {}, imageFormat, setImageFormat = () => {},
-  forceNewImage = false, setForceNewImage = () => {}, useBrandImages = true, setUseBrandImages = () => {}, hasChatVisuals = false,
+  useBrandImages = true, setUseBrandImages = () => {}, hasChatVisuals = false,
   handleFiles, fileInputRef, sendMessage, navigate,
 }) {
   return (
@@ -1517,7 +1530,7 @@ function CleanView({
           useWebSearch={useWebSearch} setUseWebSearch={setUseWebSearch} editorOpen={editorOpen} useEditorContext={useEditorContext} setUseEditorContext={setUseEditorContext}
           visualMode={visualMode} setVisualMode={setVisualMode}
           imageModel={imageModel} setImageModel={setImageModel} imageFormat={imageFormat} setImageFormat={setImageFormat}
-          forceNewImage={forceNewImage} setForceNewImage={setForceNewImage} useBrandImages={useBrandImages} setUseBrandImages={setUseBrandImages} hasChatVisuals={hasChatVisuals}
+          useBrandImages={useBrandImages} setUseBrandImages={setUseBrandImages} hasChatVisuals={hasChatVisuals}
           handleFiles={handleFiles} fileInputRef={fileInputRef}
           sendMessage={sendMessage}
           enabled={!!activeBrandVoice?.id}
@@ -1539,7 +1552,7 @@ function ChatView({
   companyVoices = [], showCompanyPicker = false, selectedCompanyVoiceIds = [], setSelectedCompanyVoiceIds = () => {},
   useWebSearch, setUseWebSearch, editorOpen = false, useEditorContext = false, setUseEditorContext = () => {},
   visualMode = false, setVisualMode = () => {}, imageModel, setImageModel = () => {}, imageFormat, setImageFormat = () => {},
-  forceNewImage = false, setForceNewImage = () => {}, useBrandImages = true, setUseBrandImages = () => {}, hasChatVisuals = false,
+  useBrandImages = true, setUseBrandImages = () => {}, hasChatVisuals = false,
   handleFiles, fileInputRef, sendMessage, navigate, error, hasOpenDoc = false, chatDocs = [], chatDesigns = [],
 }) {
   return (
@@ -1608,7 +1621,7 @@ function ChatView({
             useWebSearch={useWebSearch} setUseWebSearch={setUseWebSearch} editorOpen={editorOpen} useEditorContext={useEditorContext} setUseEditorContext={setUseEditorContext}
             visualMode={visualMode} setVisualMode={setVisualMode}
             imageModel={imageModel} setImageModel={setImageModel} imageFormat={imageFormat} setImageFormat={setImageFormat}
-            forceNewImage={forceNewImage} setForceNewImage={setForceNewImage} useBrandImages={useBrandImages} setUseBrandImages={setUseBrandImages} hasChatVisuals={hasChatVisuals}
+            useBrandImages={useBrandImages} setUseBrandImages={setUseBrandImages} hasChatVisuals={hasChatVisuals}
             handleFiles={handleFiles} fileInputRef={fileInputRef}
             sendMessage={sendMessage}
             enabled={true}
@@ -1648,7 +1661,7 @@ function ChatInput({
   companyVoices = [], showCompanyPicker = false, selectedCompanyVoiceIds = [], setSelectedCompanyVoiceIds = () => {},
   useWebSearch, setUseWebSearch, editorOpen = false, useEditorContext = false, setUseEditorContext = () => {},
   visualMode = false, setVisualMode = () => {}, imageModel = DEFAULT_IMAGE_MODEL, setImageModel = () => {},
-  imageFormat = PRESET_BY_ID[DEFAULT_PRESET_ID], setImageFormat = () => {}, forceNewImage = false, setForceNewImage = () => {}, useBrandImages = true, setUseBrandImages = () => {}, hasChatVisuals = false,
+  imageFormat = PRESET_BY_ID[DEFAULT_PRESET_ID], setImageFormat = () => {}, useBrandImages = true, setUseBrandImages = () => {}, hasChatVisuals = false,
   handleFiles, fileInputRef, sendMessage, enabled,
 }) {
   const voice = useVoiceInput({
@@ -1695,7 +1708,7 @@ function ChatInput({
         value={input}
         onChange={e => setInput(e.target.value)}
         onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey && !e.nativeEvent?.isComposing) { e.preventDefault(); sendMessage() } }}
-        placeholder={!enabled ? 'Wähle erst oben eine Brand Voice…' : (visualMode ? ((hasChatVisuals && !forceNewImage) ? 'Was soll am Bild geändert werden? (z.B. „mach den Hintergrund blau“)' : 'Beschreibe das Bild, das erstellt werden soll…') : 'Was möchtest du schreiben? (Enter zum Senden · Shift+Enter für Absatz)')}
+        placeholder={!enabled ? 'Wähle erst oben eine Brand Voice…' : (visualMode ? (hasChatVisuals ? 'Neues Bild beschreiben – oder Änderung am letzten (z.B. „mach den Hintergrund blau“)' : 'Beschreibe das Bild, das erstellt werden soll…') : 'Was möchtest du schreiben? (Enter zum Senden · Shift+Enter für Absatz)')}
         disabled={!enabled}
         rows={3}
         style={{ width:'100%', padding:'4px 4px 8px', border:'none', fontSize:14, fontFamily:'inherit', resize:'none', outline:'none', background:'transparent', boxSizing:'border-box' }}/>
@@ -1795,15 +1808,9 @@ function ChatInput({
       {visualMode && (
         <div style={{ display:'flex', alignItems:'center', gap:6, flexWrap:'wrap' }}>
           <ModelDropdown value={imageModel} onChange={setImageModel} />
-          <span title="Format / Seitenverhältnis" style={{ display:'inline-flex', ...(hasChatVisuals && !forceNewImage ? { opacity:0.5, pointerEvents:'none' } : {}) }}>
+          <span title="Format / Seitenverhältnis" style={{ display:'inline-flex' }}>
             <FormatPicker value={imageFormat} onChange={setImageFormat} />
           </span>
-          {hasChatVisuals && (
-            <Tip label={forceNewImage ? 'Neues, unabhängiges Bild' : 'Folge-Bearbeitung des letzten Bildes'}><button onClick={() => setForceNewImage(v => !v)}
-              style={{ ...IconBtn(forceNewImage), padding:'0 10px', gap:6 }}>
-              <FilePlus2 size={14} strokeWidth={1.75}/>Neues Bild
-            </button></Tip>
-          )}
           <Tip label={useBrandImages ? 'Brand-Bilder werden als Referenz genutzt — klicken zum Ausschalten' : 'Brand-Bilder werden NICHT als Referenz genutzt — klicken zum Einschalten'}><button onClick={() => setUseBrandImages(v => !v)}
             style={{ ...IconBtn(useBrandImages), padding:'0 10px', gap:6 }}>
             <ImageIcon size={14} strokeWidth={1.75}/>Brand-Bilder {useBrandImages ? 'an' : 'aus'}
