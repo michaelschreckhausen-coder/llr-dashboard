@@ -23,6 +23,7 @@ import CreditsBar from './credits/CreditsBar'
 import CreditsBanner from './credits/CreditsBanner'
 import CreditsExhaustedModal from './credits/CreditsExhaustedModal'
 import { detectLeadeskExtension, EXTENSION_WEBSTORE_URL } from '../lib/leadeskExtension'
+import { loadUiState, patchUiState } from '../lib/uiPrefs'
 import { useOnboarding } from '../hooks/useOnboarding'
 import { tipForRoute, AREA_TOURS, areaForRoute } from '../lib/onboardingSteps'
 import TourGuide from './onboarding/TourGuide'
@@ -439,10 +440,14 @@ export default function Layout({ session, role, onLogout, children }) {
   })
   // Gelöschte Benachrichtigungen dauerhaft merken (per ID) → kommen nach Reload nicht wieder.
   const persistDismiss = (ids) => {
+    let merged = []
     try {
       const cur = JSON.parse(localStorage.getItem('leadesk.notif.dismissed') || '[]')
-      localStorage.setItem('leadesk.notif.dismissed', JSON.stringify([...new Set([...cur, ...ids])].slice(-1000)))
+      merged = [...new Set([...cur, ...ids])].slice(-1000)
+      localStorage.setItem('leadesk.notif.dismissed', JSON.stringify(merged))
     } catch {}
+    // geräteübergreifend spiegeln (best-effort)
+    patchUiState({ notif_dismissed: merged }).catch(() => {})
   }
   const [extInstalled, setExtInstalled] = useState(false)
   useEffect(() => {
@@ -562,6 +567,25 @@ export default function Layout({ session, role, onLogout, children }) {
     ch.subscribe()
     return () => { clearTimeout(debounce); try { supabase.removeChannel(ch) } catch {} }
   }, [session, activeTeamId])
+
+  // Geräteübergreifend: gesehene/gelöschte Benachrichtigungen aus user_preferences.ui_state
+  // holen und in State/localStorage spiegeln, damit „gelöscht" auch auf anderen Geräten gilt.
+  useEffect(() => {
+    if (!session?.user) return
+    let cancelled = false
+    loadUiState().then(st => {
+      if (cancelled || !st) return
+      if (Array.isArray(st.notif_seen)) {
+        setSeenNotifIds(st.notif_seen)
+        try { localStorage.setItem('leadesk.notif.seen', JSON.stringify(st.notif_seen)) } catch {}
+      }
+      if (Array.isArray(st.notif_dismissed)) {
+        try { localStorage.setItem('leadesk.notif.dismissed', JSON.stringify(st.notif_dismissed)) } catch {}
+        if (activeTeamId) loadNotifications(session.user.id) // mit Server-Dismissed neu filtern
+      }
+    }).catch(() => {})
+    return () => { cancelled = true }
+  }, [session])
 
   // Auf Profil-Updates hören (von der Profilseite gefeuert)
   useEffect(() => {
@@ -1029,7 +1053,7 @@ export default function Layout({ session, role, onLogout, children }) {
           {/* Glocke — Pill */}
           <div style={{ position:'relative' }}>
             <button data-notif style={{ position:'relative', background: notifications.some(n=>!seenNotifIds.includes(n.id)) ? 'rgba(239,68,68,0.10)' : 'var(--surface)', backdropFilter:'var(--glass-blur)', WebkitBackdropFilter:'var(--glass-blur)', border:'1px solid '+(notifications.some(n=>!seenNotifIds.includes(n.id)) ? 'rgba(239,68,68,0.55)' : 'var(--border)'), cursor:'pointer', width:38, height:38, borderRadius:11, display:'flex', alignItems:'center', justifyContent:'center', color: notifications.some(n=>!seenNotifIds.includes(n.id)) ? 'rgb(220,38,38)' : 'var(--text-muted)', transition:'all 0.15s' }}
-              onClick={()=>{ setShowNotif(v=>{ const next=!v; if(next){ const ids=notifications.map(n=>n.id); setSeenNotifIds(ids); try{localStorage.setItem('leadesk.notif.seen',JSON.stringify(ids))}catch{} } return next }) }}
+              onClick={()=>{ setShowNotif(v=>{ const next=!v; if(next){ const ids=notifications.map(n=>n.id); setSeenNotifIds(ids); try{localStorage.setItem('leadesk.notif.seen',JSON.stringify(ids))}catch{} patchUiState({ notif_seen: ids }).catch(()=>{}) } return next }) }}
               onMouseEnter={e=>{ e.currentTarget.style.color='var(--text-primary)' }}
               onMouseLeave={e=>{ e.currentTarget.style.color = notifications.some(n=>!seenNotifIds.includes(n.id)) ? 'rgb(220,38,38)' : 'var(--text-muted)' }}>
               <IcBell/>
