@@ -11,7 +11,7 @@
 //   - Beim ersten Send im Clean-Modus → Sidebar klappt automatisch auf
 
 import React, { useState, useEffect, useRef } from 'react'
-import { Pencil, Pin, BookOpen, Target, Send, Loader2, Globe, Plus, FileText, ChevronLeft, ChevronRight, X, Mic, Square, Image as ImageIcon, Download, Sparkles, Wand2, FilePlus2, Brush, MessageSquare, CalendarPlus, Maximize2, Minimize2 } from 'lucide-react'
+import { Pencil, Pin, BookOpen, Target, Send, Loader2, Globe, Plus, FileText, ChevronLeft, ChevronRight, ChevronsRight, X, Mic, Square, Image as ImageIcon, Download, Sparkles, Wand2, FilePlus2, Brush, MessageSquare, CalendarPlus, Maximize2, Minimize2 } from 'lucide-react'
 import { useVoiceInput } from '../hooks/useVoiceInput'
 import CompanyMultiSelect from '../components/CompanyMultiSelect'
 import AudienceSelect from '../components/AudienceSelect'
@@ -1274,11 +1274,13 @@ export default function ContentStudio({ session }) {
                   <span style={{ width:4, height:42, marginLeft:13, borderRadius:3, background:'var(--border,#D7DCE5)' }}/>
                 </div>
                 <div style={{ position:'absolute', top:44, right:36, zIndex:50, display:'flex', alignItems:'flex-start', gap:10, pointerEvents:'none' }}>
+                  {viewMode === 'clean' && (
                   <div style={{ display:'flex', flexDirection:'column' }}>
                     <div style={{ height:50, display:'flex', alignItems:'center', justifyContent:'flex-end', gap:7 }}><span style={scriptHint}>ins Dokument</span><CurvedArrow/></div>
                     <div style={{ height:1 }}/>
                     <div style={{ height:50, display:'flex', alignItems:'center', justifyContent:'flex-end', gap:7 }}><span style={scriptHint}>zum Designer</span><CurvedArrow/></div>
                   </div>
+                  )}
                   <div style={{ pointerEvents:'auto' }}><Switcher/></div>
                 </div>
               </>
@@ -1300,7 +1302,7 @@ export default function ContentStudio({ session }) {
                   <div style={{ height:1, background:'var(--border,#E9ECF2)' }}/>
                   <button onClick={() => setPaneView('page')} title="Seiten-Vollbild" style={ctrlBtn}><Maximize2 size={17} strokeWidth={2}/></button>
                   <div style={{ height:1, background:'var(--border,#E9ECF2)' }}/>
-                  <button onClick={() => { setEditorOpen(false); setPaneView('split') }} title="Einklappen" style={ctrlBtn}><ChevronRight size={18} strokeWidth={2}/></button>
+                  <button onClick={() => { setEditorOpen(false); setPaneView('split') }} title="Einklappen" style={ctrlBtn}><ChevronsRight size={18} strokeWidth={2}/></button>
                 </div>
               </>
             )}
