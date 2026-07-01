@@ -62,7 +62,7 @@ export default function CompanyMultiSelect({
       )}
       {open && (
         <div style={{
-          position:'absolute', zIndex:60, top:'calc(100% + 4px)', left:0, minWidth:220, maxHeight:280, overflowY:'auto',
+          position:'absolute', zIndex:60, bottom:'calc(100% + 6px)', left:0, minWidth:220, maxHeight:280, overflowY:'auto',
           background:'#fff', border:'1px solid var(--border)', borderRadius:10, boxShadow:'0 12px 32px rgba(15,23,42,0.16)', padding:6,
         }}>
           <div style={{ fontSize:10, fontWeight:700, color:'var(--text-muted)', textTransform:'uppercase', letterSpacing:'0.05em', padding:'6px 8px 4px' }}>

@@ -11,7 +11,7 @@
 //   - Beim ersten Send im Clean-Modus → Sidebar klappt automatisch auf
 
 import React, { useState, useEffect, useRef } from 'react'
-import { Pencil, Pin, BookOpen, Target, Send, Loader2, Globe, Plus, FileText, ChevronLeft, ChevronRight, ChevronsRight, X, Mic, Square, Image as ImageIcon, Download, Sparkles, Wand2, FilePlus2, Brush, MessageSquare, CalendarPlus, Maximize2, Minimize2 } from 'lucide-react'
+import { Pencil, Pin, BookOpen, Target, Send, Loader2, Globe, Plus, FileText, ChevronLeft, ChevronRight, ChevronsRight, ChevronDown, X, Mic, Square, Image as ImageIcon, Download, Sparkles, Wand2, FilePlus2, Brush, MessageSquare, CalendarPlus, Maximize2, Minimize2 } from 'lucide-react'
 import { useVoiceInput } from '../hooks/useVoiceInput'
 import CompanyMultiSelect from '../components/CompanyMultiSelect'
 import AudienceSelect from '../components/AudienceSelect'
@@ -1791,21 +1791,18 @@ function ChatInput({
       {/* Zeile 2 — Bild-Optionen (nur im Visual-Modus): Modell + Format + „Neues Bild" */}
       {visualMode && (
         <div style={{ display:'flex', alignItems:'center', gap:6, flexWrap:'wrap' }}>
-          <select value={imageModel} onChange={e => setImageModel(e.target.value)} title="Bildmodell"
-            style={{ height:32, padding:'0 8px', borderRadius:9, border:'1.5px solid var(--border)', background:'#fff', color:'var(--text-primary)', fontSize:12, fontWeight:600, fontFamily:'inherit', cursor:'pointer', outline:'none', maxWidth:200 }}>
-            {IMAGE_MODELS.map(m => <option key={m.value} value={m.value}>{m.label}</option>)}
-          </select>
+          <ModelDropdown value={imageModel} onChange={setImageModel} />
           <span title="Format / Seitenverhältnis" style={{ display:'inline-flex', ...(hasChatVisuals && !forceNewImage ? { opacity:0.5, pointerEvents:'none' } : {}) }}>
             <FormatPicker value={imageFormat} onChange={setImageFormat} />
           </span>
           {hasChatVisuals && (
             <Tip label={forceNewImage ? 'Neues, unabhängiges Bild' : 'Folge-Bearbeitung des letzten Bildes'}><button onClick={() => setForceNewImage(v => !v)}
-              style={{ ...IconBtn(forceNewImage), height:32, padding:'0 10px', gap:6 }}>
+              style={{ ...IconBtn(forceNewImage), padding:'0 10px', gap:6 }}>
               <FilePlus2 size={14} strokeWidth={1.75}/>Neues Bild
             </button></Tip>
           )}
           <Tip label={useBrandImages ? 'Brand-Bilder werden als Referenz genutzt — klicken zum Ausschalten' : 'Brand-Bilder werden NICHT als Referenz genutzt — klicken zum Einschalten'}><button onClick={() => setUseBrandImages(v => !v)}
-            style={{ ...IconBtn(useBrandImages), height:32, padding:'0 10px', gap:6 }}>
+            style={{ ...IconBtn(useBrandImages), padding:'0 10px', gap:6 }}>
             <ImageIcon size={14} strokeWidth={1.75}/>Brand-Bilder {useBrandImages ? 'an' : 'aus'}
           </button></Tip>
         </div>
@@ -1842,6 +1839,40 @@ function parseImageMessage(msg) {
     try { const j = JSON.parse(msg.content); if (j && j.type === 'image' && j.storage_path) return { visual_id: j.visual_id, storage_path: j.storage_path, prompt: j.prompt } } catch (_e) {}
   }
   return null
+}
+
+// Einheitliches Modell-Dropdown (ersetzt das native <select>, das fett/abweichend aussah).
+function ModelDropdown({ value, onChange }) {
+  const [open, setOpen] = useState(false)
+  const ref = useRef(null)
+  useEffect(() => {
+    if (!open) return
+    const onDoc = (e) => { if (ref.current && !ref.current.contains(e.target)) setOpen(false) }
+    document.addEventListener('mousedown', onDoc)
+    return () => document.removeEventListener('mousedown', onDoc)
+  }, [open])
+  return (
+    <div ref={ref} style={{ position:'relative', display:'inline-block' }}>
+      <button type="button" onClick={() => setOpen(o => !o)} title="Bildmodell"
+        style={{ height:34, padding:'0 11px', borderRadius:9, boxSizing:'border-box', border:'1.5px solid var(--border)', background:'#fff', color:'var(--text-primary)', fontSize:12.5, fontWeight:600, lineHeight:1, cursor:'pointer', whiteSpace:'nowrap', display:'inline-flex', alignItems:'center', gap:6, fontFamily:'inherit', flexShrink:0, maxWidth:210 }}>
+        <span style={{ flex:1, minWidth:0, overflow:'hidden', textOverflow:'ellipsis', textAlign:'left' }}>{imageModelLabel(value)}</span>
+        <ChevronDown size={14} strokeWidth={2} style={{ opacity:0.5, marginLeft:2, flexShrink:0 }}/>
+      </button>
+      {open && (
+        <div style={{ position:'absolute', zIndex:60, bottom:'calc(100% + 6px)', left:0, minWidth:230, maxHeight:280, overflowY:'auto', background:'#fff', border:'1px solid var(--border)', borderRadius:10, boxShadow:'0 12px 32px rgba(15,23,42,0.16)', padding:6 }}>
+          {IMAGE_MODELS.map(m => (
+            <button key={m.value} type="button" onClick={() => { onChange(m.value); setOpen(false) }}
+              style={{ display:'flex', alignItems:'center', gap:8, width:'100%', textAlign:'left', padding:'7px 9px', borderRadius:7, border:'none', background: m.value === value ? 'rgba(49,90,231,0.06)' : 'transparent', cursor:'pointer', fontSize:13, color:'var(--text-primary)', fontFamily:'inherit' }}
+              onMouseEnter={e => { if (m.value !== value) e.currentTarget.style.background = 'var(--page-bg,#F2F4F8)' }}
+              onMouseLeave={e => { if (m.value !== value) e.currentTarget.style.background = 'transparent' }}>
+              <span style={{ flex:1, overflow:'hidden', textOverflow:'ellipsis' }}>{m.label}</span>
+              <span style={{ fontSize:10.5, color:'var(--text-muted)', flexShrink:0 }}>{m.provider}</span>
+            </button>
+          ))}
+        </div>
+      )}
+    </div>
+  )
 }
 
 function ImageBubble({ meta, chatDesigns = [], onOpenInDesigner, onDownloadVisual, onImageToPost, loadExistingPosts, signedVisualUrlFn }) {

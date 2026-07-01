@@ -61,19 +61,19 @@ export default function FormatPicker({ value, onChange }) {
     <div ref={rootRef} style={{ position: 'relative', display: 'inline-block' }}>
       <button type="button" onClick={() => setOpen((v) => !v)}
         style={{
-          display: 'inline-flex', alignItems: 'center', gap: 8, height: 38, padding: '0 12px',
-          borderRadius: 9, border: '1px solid var(--border, #D7DCE5)', background: 'var(--surface, #FFFFFF)',
-          color: 'var(--text-primary, #1B2333)', fontSize: 13.5, cursor: 'pointer', maxWidth: 320,
+          display: 'inline-flex', alignItems: 'center', gap: 6, height: 34, padding: '0 11px',
+          borderRadius: 9, border: '1.5px solid var(--border, #D7DCE5)', background: 'var(--surface, #FFFFFF)',
+          color: 'var(--text-primary, #1B2333)', fontSize: 12.5, fontWeight: 600, cursor: 'pointer', maxWidth: 320,
         }}>
         <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{valLabel}</span>
-        <ChevronDown size={16} style={{ color: 'var(--text-muted, #6B7686)', flexShrink: 0 }} />
+        <ChevronDown size={14} strokeWidth={2} style={{ opacity: 0.5, marginLeft: 2, flexShrink: 0 }} />
       </button>
 
       {open && (
         <div style={{
-          position: 'absolute', bottom: 44, left: 0, zIndex: 50, width: 460, display: 'flex',
-          borderRadius: 12, overflow: 'hidden', border: '1px solid var(--border, #D7DCE5)',
-          background: 'var(--surface, #FFFFFF)', boxShadow: '0 18px 48px rgba(16,24,40,0.18)',
+          position: 'absolute', bottom: 'calc(100% + 6px)', left: 0, zIndex: 60, width: 460, display: 'flex',
+          borderRadius: 10, overflow: 'hidden', border: '1px solid var(--border, #D7DCE5)',
+          background: 'var(--surface, #FFFFFF)', boxShadow: '0 12px 32px rgba(15,23,42,0.16)',
         }}>
           <div style={{ width: 158, padding: 6, background: 'var(--page-bg, #F2F4F8)', borderRight: '1px solid var(--border, #D7DCE5)' }}>
             {FORMAT_CATEGORIES.map((c) => {
