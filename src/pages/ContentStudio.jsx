@@ -29,6 +29,20 @@ import FormatPicker from '../components/FormatPicker'
 import { PRESET_BY_ID, DEFAULT_PRESET_ID } from '../lib/formatPresets'
 import { listVisualsForChat, linkVisualToChat, getVisual, signedVisualUrl, downloadVisualBlob, visualDataUrl, uploadImageBlob, listTeamVisuals, listChatsForVisual, createEmptyDesign as createEmptyDesignRow, addImagePageToDesign } from '../lib/contentVisuals'
 
+// ─── Hintergrund-Generierungen (überlebt Navigation/Unmount) ────────────────
+// Map chatId -> { kind:'image'|'text', startedAt, expectedSeconds, ratio }. Liegt auf
+// Modul-Ebene, damit laufende Generierungen nicht abbrechen wenn der User die Seite
+// verlässt und woanders in Leadesk weiterarbeitet.
+const pendingGens = new Map()
+function emitGenChange() { try { window.dispatchEvent(new CustomEvent('leadesk:gen-change')) } catch (_e) {} }
+function emitGenDone(chatId) { try { window.dispatchEvent(new CustomEvent('leadesk:gen-done', { detail: { chatId } })) } catch (_e) {} }
+// Höhe des Inline-Lade-Fensters aus dem Bildseitenverhältnis (Breite 320), begrenzt.
+function inlineLoaderHeight(ratio) {
+  const W = 320; let h = 320
+  try { const parts = String(ratio || '1:1').split(':').map(Number); if (parts[0] > 0 && parts[1] > 0) h = Math.round(W * parts[1] / parts[0]) } catch (_e) {}
+  return Math.max(300, Math.min(460, h))
+}
+
 const P = 'var(--wl-primary, rgb(49,90,231))'
 const ACCENT = '#30A0D0'
 
@@ -148,7 +162,29 @@ export default function ContentStudio({ session }) {
 
   // Eingabe-State
   const [input, setInput] = useState('')
-  const [sending, setSending] = useState(false)
+  const [genTick, setGenTick] = useState(0)   // Re-Render bei Änderung laufender Generierungen (pendingGens)
+  const activeChatIdRef = useRef(activeChatId)
+  useEffect(() => { activeChatIdRef.current = activeChatId }, [activeChatId])
+  const loadChatVisualsRef = useRef(null)
+  useEffect(() => { loadChatVisualsRef.current = loadChatVisuals })
+  useEffect(() => {
+    function onGenChange() { setGenTick(t => t + 1) }
+    async function onGenDone(e) {
+      setGenTick(t => t + 1)
+      const cid = e && e.detail && e.detail.chatId
+      if (!cid || cid !== activeChatIdRef.current) return
+      try {
+        const { data: msgs } = await supabase.from('content_chat_messages').select('*').eq('chat_id', cid).order('created_at', { ascending:true })
+        setMessages(msgs || [])
+      } catch (_e) {}
+      try { if (loadChatVisualsRef.current) await loadChatVisualsRef.current(cid) } catch (_e) {}
+      setTimeout(() => messagesEndRef.current?.scrollIntoView({ behavior:'smooth' }), 60)
+    }
+    window.addEventListener('leadesk:gen-change', onGenChange)
+    window.addEventListener('leadesk:gen-done', onGenDone)
+    return () => { window.removeEventListener('leadesk:gen-change', onGenChange); window.removeEventListener('leadesk:gen-done', onGenDone) }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
   const [audiences, setAudiences] = useState([])
   const [selectedAudienceId, setSelectedAudienceId] = useState('')
   const [selectedCompanyVoiceIds, setSelectedCompanyVoiceIds] = useState([])
@@ -345,6 +381,9 @@ export default function ContentStudio({ session }) {
 
   // ─── ViewMode: clean wenn kein Chat aktiv und keine Messages ──────────────
   const viewMode = (activeChatId || messages.length > 0) ? 'chat' : 'clean'
+  // Läuft im aktiven Chat gerade eine Generierung? (genTick triggert Neuberechnung)
+  const activePending = activeChatId ? pendingGens.get(activeChatId) : null
+  const activeGenerating = !!activePending
 
   // ─── Chats laden für aktive BV ────────────────────────────────────────────
   async function loadChats() {
@@ -711,9 +750,10 @@ export default function ContentStudio({ session }) {
 
   // ─── Senden ───────────────────────────────────────────────────────────────
   async function sendMessage() {
-    if (!input.trim() || sending) return
+    if (!input.trim()) return
+    if (activeChatId && pendingGens.has(activeChatId)) return
     if (!activeBrandVoice?.id) { setError('Keine aktive Brand Voice'); return }
-    setSending(true); setError('')
+    setError('')
     const userMsgText = input.trim()
     const atts = attachments   // Anhänge festhalten (State wird gleich geleert)
     const wasClean = viewMode === 'clean'
@@ -735,7 +775,7 @@ export default function ContentStudio({ session }) {
       }).select().single()
       if (chatErr) {
         setError('Chat-Erstellung fehlgeschlagen: ' + chatErr.message)
-        setSending(false); return
+        return
       }
       chatIdForSend = newChat.id
       // Offenes Dokument an den neuen Chat binden (vor State-Update → Reconciliation findet es)
@@ -758,6 +798,7 @@ export default function ContentStudio({ session }) {
     setMessages(prev => [...prev, tempUser])
     setInput(''); setAttachments([])
     setTimeout(() => messagesEndRef.current?.scrollIntoView({ behavior:'smooth' }), 30)
+    pendingGens.set(chatIdForSend, { kind:'text', startedAt:Date.now(), expectedSeconds:20 }); emitGenChange()
 
     try {
       const { data, error: fnErr } = await supabase.functions.invoke('text-werkstatt-chat', {
@@ -778,23 +819,20 @@ export default function ContentStudio({ session }) {
       if (fnErr) throw fnErr
       if (data?.error) throw new Error(data.error)
 
-      const { data: msgs } = await supabase.from('content_chat_messages')
-        .select('*').eq('chat_id', data.chat_id).order('created_at', { ascending:true })
-      setMessages(msgs || [])
       loadChats()
-      setTimeout(() => messagesEndRef.current?.scrollIntoView({ behavior:'smooth' }), 50)
     } catch (e) {
-      setError('Fehler: ' + (e?.message || String(e)))
+      if (chatIdForSend === activeChatIdRef.current) setError('Fehler: ' + (e?.message || String(e)))
     } finally {
-      setSending(false)
+      pendingGens.delete(chatIdForSend); emitGenChange(); emitGenDone(chatIdForSend)
     }
   }
 
   // ─── In-Chat-Bildgenerierung ──────────────────────────────────────────────
   async function sendVisualMessage() {
-    if (!input.trim() || sending) return
+    if (!input.trim()) return
+    if (activeChatId && pendingGens.has(activeChatId)) return
     if (!activeBrandVoice?.id) { setError('Keine aktive Brand Voice'); return }
-    setSending(true); setError('')
+    setError('')
     const prompt = input.trim()
     const atts = attachments.filter(a => (a.type || '').startsWith('image/'))   // angehängte Bilder als Referenz
     const wasClean = viewMode === 'clean'
@@ -812,7 +850,7 @@ export default function ContentStudio({ session }) {
         post_id: linkedPost?.id || activeChat?.post_id || null,
         title: 'Neuer Chat',
       }).select().single()
-      if (chatErr) { setError('Chat-Erstellung fehlgeschlagen: ' + chatErr.message); setSending(false); return }
+      if (chatErr) { setError('Chat-Erstellung fehlgeschlagen: ' + chatErr.message); return }
       chatIdForSend = nc.id
       setActiveChatId(nc.id); setActiveChat(nc); setChats(prev => [nc, ...prev])
       const next = new URLSearchParams(searchParams); next.set('chat_id', nc.id); next.delete('post_id'); next.delete('refdoc'); setSearchParams(next, { replace:true })
@@ -824,6 +862,7 @@ export default function ContentStudio({ session }) {
     setInput(''); setAttachments([])
     try { await supabase.from('content_chat_messages').insert({ chat_id: chatIdForSend, role:'user', content: prompt, metadata: { type:'image_request' } }) } catch (_e) {}
     setTimeout(() => messagesEndRef.current?.scrollIntoView({ behavior:'smooth' }), 30)
+    pendingGens.set(chatIdForSend, { kind:'image', startedAt:Date.now(), expectedSeconds:(/(-pro-|\|high)/i.test(imageModel||'') ? 45 : 22), ratio:(imageFormat?.ratio||'1:1') }); emitGenChange()
 
     // Bearbeiten vs. neues Bild — automatisch per KI erkannt (kein manueller Toggle mehr).
     // Mit Anhängen: immer neues Bild (Anhänge sind die Referenz). Sonst letztes Chat-Bild
@@ -880,18 +919,13 @@ export default function ContentStudio({ session }) {
       try {
         await supabase.from('content_chat_messages').insert({ chat_id: chatIdForSend, role:'assistant', content: markerContent, metadata: imgMeta })
       } catch (_e) {}
-      if (data?.notice) setError(data.notice)
+      if (data?.notice && chatIdForSend === activeChatIdRef.current) setError(data.notice)
 
-      // Verlauf frisch laden (zeigt User-Frage + Bild-Antwort)
-      const { data: msgs } = await supabase.from('content_chat_messages').select('*').eq('chat_id', chatIdForSend).order('created_at', { ascending:true })
-      setMessages(msgs || [])
-      await loadChatVisuals(chatIdForSend)
       loadChats()
-      setTimeout(() => messagesEndRef.current?.scrollIntoView({ behavior:'smooth' }), 60)
     } catch (e) {
-      setError('Bild-Fehler: ' + (e?.message || String(e)))
+      if (chatIdForSend === activeChatIdRef.current) setError('Bild-Fehler: ' + (e?.message || String(e)))
     } finally {
-      setSending(false)
+      pendingGens.delete(chatIdForSend); emitGenChange(); emitGenDone(chatIdForSend)
     }
   }
 
@@ -1002,13 +1036,6 @@ export default function ContentStudio({ session }) {
   // ─── Render ───────────────────────────────────────────────────────────────
   return (
     <div ref={csRootRef} style={{ display:'flex', position:'relative', height:'100%', minHeight:0, overflow:'hidden', background:'var(--page-bg, #F7F8FA)' }}>
-      {/* Bild-Generierung: Vollbild-Ladeanimation mit Fortschritt + Mini-Snake zur Ueberbrueckung */}
-      {sending && visualMode && (
-        <GenerationLoading
-          title="Bild wird erstellt"
-          expectedSeconds={/(-pro-|\|high)/i.test(imageModel || '') ? 45 : 22}
-        />
-      )}
       {/* Sidebar */}
       {sidebarOpen && (
         <aside style={{ width:264, borderRight:'1px solid var(--border,#E9ECF2)', background:'var(--page-bg, #F7F8FA)', display:'flex', flexDirection:'column', flexShrink:0 }}>
@@ -1076,7 +1103,7 @@ export default function ContentStudio({ session }) {
             refDoc={refDoc}
             activeBrandVoice={activeBrandVoice}
             input={input} setInput={setInput}
-            sending={sending}
+            sending={activeGenerating}
             attachments={attachments} setAttachments={setAttachments}
             plusOpen={plusOpen} setPlusOpen={setPlusOpen}
             knowledgeBase={knowledgeBase}
@@ -1103,7 +1130,11 @@ export default function ContentStudio({ session }) {
             refDoc={refDoc}
             messages={messages}
             messagesLoading={messagesLoading}
-            sending={sending}
+            sending={activeGenerating}
+            genKind={activePending?.kind}
+            genRatio={activePending?.ratio || '1:1'}
+            genExpectedSeconds={activePending?.expectedSeconds}
+            genStartedAt={activePending?.startedAt}
             messagesEndRef={messagesEndRef}
             attachToPost={attachToPost}
             loadExistingPosts={loadExistingPosts}
@@ -1549,7 +1580,7 @@ function CleanView({
 
 // ─── CHAT VIEW (klassisches Layout) ─────────────────────────────────────────
 function ChatView({
-  linkedPost, refDoc, messages, messagesLoading, sending, messagesEndRef, attachToPost, loadExistingPosts,
+  linkedPost, refDoc, messages, messagesLoading, sending, genKind, genRatio, genExpectedSeconds, genStartedAt, messagesEndRef, attachToPost, loadExistingPosts,
   onInsertToDoc, onOpenInDesigner, onDownloadVisual, onImageToPost, signedVisualUrlFn,
   input, setInput,
   attachments, setAttachments,
@@ -1598,11 +1629,13 @@ function ChatView({
               onOpenInDesigner={onOpenInDesigner} onDownloadVisual={onDownloadVisual} onImageToPost={onImageToPost} signedVisualUrlFn={signedVisualUrlFn} />
           ))}
           {/* Loading-Indicator wenn letzter Turn user war */}
-          {sending && messages.length > 0 && messages[messages.length - 1]?.role === 'user' && (
-            <div style={{ alignSelf:'flex-start' }}>
-              {visualMode
-                ? <div style={{ display:'inline-flex', alignItems:'center', gap:8, padding:'12px 14px', background:'#fff', border:'1px solid var(--border)', borderRadius:12, fontSize:13, color:'var(--text-muted)' }}><Loader2 size={15} className='lk-spin'/>Bild wird erstellt…</div>
-                : <TypingIndicator />}
+          {sending && (
+            <div style={{ alignSelf:'flex-start', maxWidth:'100%' }}>
+              {genKind === 'text'
+                ? <TypingIndicator />
+                : <div style={{ width:320, maxWidth:'100%', height: inlineLoaderHeight(genRatio), border:'1px solid var(--border)', borderRadius:14, overflow:'hidden', background:'#fff', boxShadow:'0 1px 4px rgba(15,23,42,0.06)' }}>
+                    <GenerationLoading embedded title="Bild wird erstellt" expectedSeconds={genExpectedSeconds || 22} startedAt={genStartedAt} />
+                  </div>}
             </div>
           )}
           <div ref={messagesEndRef} />
