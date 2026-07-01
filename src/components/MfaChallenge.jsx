@@ -11,6 +11,7 @@ import { supabase } from '../lib/supabase'
 const PRIMARY = 'var(--wl-primary, rgb(49,90,231))'
 
 export default function MfaChallenge({ onVerified }) {
+  const [mode, setMode] = useState('totp') // totp | backup
   const [code, setCode] = useState('')
   const [busy, setBusy] = useState(false)
   const [err, setErr]   = useState(null)
@@ -26,6 +27,7 @@ export default function MfaChallenge({ onVerified }) {
   }, [])
 
   async function verify() {
+    if (mode === 'backup') return verifyBackup()
     const c = code.replace(/\s/g, '')
     if (c.length !== 6) { setErr('Bitte den 6-stelligen Code eingeben.'); return }
     if (!factorId) { setErr('Kein 2FA-Faktor gefunden.'); return }
@@ -41,6 +43,28 @@ export default function MfaChallenge({ onVerified }) {
     onVerified?.()
   }
 
+  // Backup-Code einlösen: Edge Function prüft den Code, verbraucht ihn und entfernt
+  // den TOTP-Faktor → danach ist die Session (aal1) ausreichend, das Gate fällt weg.
+  async function verifyBackup() {
+    const c = code.trim()
+    if (c.replace(/[^A-Za-z0-9]/g, '').length < 8) { setErr('Bitte einen gültigen Backup-Code eingeben.'); return }
+    setBusy(true); setErr(null)
+    try {
+      const { data, error } = await supabase.functions.invoke('mfa-recovery', { body: { mode: 'consume', code: c } })
+      if (error || !data?.success) {
+        setErr('Backup-Code ungültig oder bereits verwendet.')
+        setBusy(false); setCode(''); inputRef.current?.focus()
+        return
+      }
+      onVerified?.()
+    } catch (e) {
+      setErr('Etwas ist schiefgelaufen. Bitte erneut versuchen.')
+      setBusy(false)
+    }
+  }
+
+  function switchMode(m) { setMode(m); setCode(''); setErr(null); setTimeout(() => inputRef.current?.focus(), 50) }
+
   return (
     <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'var(--surface, #fff)', padding: 24 }}>
       <div style={{ width: '100%', maxWidth: 380, textAlign: 'center' }}>
@@ -50,7 +74,9 @@ export default function MfaChallenge({ onVerified }) {
         </div>
         <h1 style={{ fontSize: 22, fontWeight: 800, margin: '0 0 6px', color: 'var(--text-primary)' }}>Zwei-Faktor-Bestätigung</h1>
         <p style={{ fontSize: 14, color: 'var(--text-muted)', margin: '0 0 24px', lineHeight: 1.5 }}>
-          Gib den 6-stelligen Code aus deiner Authenticator-App ein.
+          {mode === 'totp'
+            ? 'Gib den 6-stelligen Code aus deiner Authenticator-App ein.'
+            : 'Gib einen deiner Backup-Codes ein. Jeder Code funktioniert nur einmal — danach ist 2FA deaktiviert und du kannst sie neu einrichten.'}
         </p>
 
         {err && (
@@ -62,13 +88,13 @@ export default function MfaChallenge({ onVerified }) {
         <input
           ref={inputRef}
           value={code}
-          inputMode="numeric"
+          inputMode={mode === 'totp' ? 'numeric' : 'text'}
           autoComplete="one-time-code"
-          maxLength={6}
-          placeholder="000000"
-          onChange={e => setCode(e.target.value.replace(/[^0-9]/g, ''))}
+          maxLength={mode === 'totp' ? 6 : 9}
+          placeholder={mode === 'totp' ? '000000' : 'XXXX-XXXX'}
+          onChange={e => setCode(mode === 'totp' ? e.target.value.replace(/[^0-9]/g, '') : e.target.value.toUpperCase())}
           onKeyDown={e => e.key === 'Enter' && verify()}
-          style={{ width: '100%', padding: '14px', borderRadius: 10, border: '1.5px solid var(--border)', fontSize: 26, letterSpacing: '0.4em', textAlign: 'center', fontFamily: 'monospace', boxSizing: 'border-box', marginBottom: 16 }}
+          style={{ width: '100%', padding: '14px', borderRadius: 10, border: '1.5px solid var(--border)', fontSize: mode === 'totp' ? 26 : 20, letterSpacing: mode === 'totp' ? '0.4em' : '0.15em', textAlign: 'center', fontFamily: 'monospace', boxSizing: 'border-box', marginBottom: 16 }}
         />
 
         <button onClick={verify} disabled={busy}
@@ -76,10 +102,17 @@ export default function MfaChallenge({ onVerified }) {
           {busy ? 'Prüfe…' : 'Bestätigen'}
         </button>
 
-        <button onClick={() => supabase.auth.signOut()}
-          style={{ marginTop: 18, background: 'none', border: 'none', color: 'var(--text-muted)', fontSize: 13, fontWeight: 600, cursor: 'pointer' }}>
-          Abmelden
+        <button onClick={() => switchMode(mode === 'totp' ? 'backup' : 'totp')}
+          style={{ marginTop: 16, background: 'none', border: 'none', color: PRIMARY, fontSize: 13, fontWeight: 600, cursor: 'pointer' }}>
+          {mode === 'totp' ? 'Kein Zugriff auf die App? Backup-Code verwenden' : '← Zurück zum App-Code'}
         </button>
+
+        <div>
+          <button onClick={() => supabase.auth.signOut()}
+            style={{ marginTop: 14, background: 'none', border: 'none', color: 'var(--text-muted)', fontSize: 13, fontWeight: 600, cursor: 'pointer' }}>
+            Abmelden
+          </button>
+        </div>
       </div>
     </div>
   )
