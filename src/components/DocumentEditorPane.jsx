@@ -17,29 +17,55 @@ import EmojiPicker from './EmojiPicker'
 const SAVE_DEBOUNCE = 900
 const P = 'var(--wl-primary, rgb(49,90,231))'
 
+// ── KI-Editor: gemeinsamer Rahmen für alle Inline-Aktionen ──────────────────
+// Bewusst OHNE den schweren Post-Generierungs-Prompt (HUMAN_STYLE_GUIDE + Brand
+// Voice + Memory-Korpus). Der homogenisiert und bremst die eigentliche
+// Bearbeitung aus. Anker ist der markierte Text selbst; jede Aktion liefert nur
+// eine konkrete AUFGABE, wrapEdit baut daraus den vollständigen Prompt.
+const EDIT_SYSTEM = `Du bist ein präziser Text-Editor für professionellen deutschen LinkedIn-Content. Du bekommst einen markierten Textabschnitt und genau EINE Bearbeitungsaufgabe. Du führst nur diese Aufgabe aus.
+
+Bevor du schreibst, überleg kurz: Was genau verlangt die Aufgabe, und woran würde man das fertige Ergebnis erkennen? Dann schreib die überarbeitete Fassung.
+
+So arbeitest du:
+- Setz die Aufgabe konsequent und deutlich sichtbar um. Ein Ergebnis, das fast wortgleich zum Original ist, ist ein Fehler. Trau dich, Wortwahl, Satzbau und Rhythmus wirklich zu verändern.
+- Ändere NUR die in der Aufgabe verlangte Dimension. Kernaussage, Fakten, Zahlen und Eigennamen bleiben inhaltlich erhalten.
+- Behalte die Sprache des Originals (Deutsch bleibt Deutsch), außer die Aufgabe verlangt ausdrücklich eine Übersetzung.
+- Behalte die Perspektive (z. B. Ich-Form) und die Absatz- und Zeilenstruktur, außer die Aufgabe sagt etwas anderes.
+- Schreib wie ein Mensch: natürlich, idiomatisch, konkret. Keine KI-Floskeln, keine aufgeblähten Übergänge, kein Marketing-Sprech, keine Meta-Kommentare.
+- Gib AUSSCHLIESSLICH den fertig überarbeiteten Text zurück: kein Vorspann, keine Anführungszeichen um das Ganze, keine Erklärung, keine Alternativen.`
+
+const wrapEdit = (task, t) => `${EDIT_SYSTEM}
+
+AUFGABE: ${task}
+
+MARKIERTER TEXT:
+"""
+${t}
+"""`
+
 // ── Eingebaute Flash-Actions ────────────────────────────────────────────────
 const FLASH_ACTIONS = [
-  { key:'shorter',  label:'Kürzer',          build:(t)=>`Kürze den folgenden Text deutlich, ohne die Kernaussage zu verlieren. Gib NUR den gekürzten Text zurück:\n\n${t}` },
-  { key:'longer',   label:'Länger',          build:(t)=>`Formuliere den folgenden Text ausführlicher und konkreter, gleiche Sprache und Brand Voice. Gib NUR den Text zurück:\n\n${t}` },
-  { key:'dusie',    label:'Du/Sie wechseln', build:(t)=>`Wechsle die Anrede im folgenden Text (von Du zu Sie bzw. von Sie zu Du). Behalte Bedeutung und Brand Voice. Gib NUR den Text zurück:\n\n${t}` },
-  { key:'nodash',   label:'Gedankenstriche entfernen', build:(t)=>`Entferne alle Gedankenstriche (— und –) aus dem folgenden Text. Ersetze sie kontextabhängig durch Komma, Punkt oder Doppelpunkt, sodass es natürlich liest. Behalte Bedeutung, Sprache und Brand Voice. Gib NUR den Text zurück, ohne Einleitung:\n\n${t}` },
+  { key:'shorter', label:'Kürzer', build:(t)=>wrapEdit('Kürze den Text spürbar, Ziel etwa 30 bis 50 Prozent kürzer. Streiche Füllwörter, Wiederholungen und Nebensächliches, fass Gedanken zusammen. Jeder verbleibende Satz muss tragen. Kernaussage und Tonfall bleiben.', t) },
+  { key:'longer', label:'Länger', build:(t)=>wrapEdit('Bau den Text aus und mach ihn konkreter: ergänze ein anschauliches Detail, ein kurzes Beispiel oder eine Begründung mit echter Substanz. Kein Aufblähen mit Floskeln, kein Wiederholen des schon Gesagten. Ziel etwa 50 bis 80 Prozent länger, gleicher Tonfall.', t) },
+  { key:'dusie', label:'Du/Sie wechseln', build:(t)=>wrapEdit('Wechsle die Anrede konsequent von Du zu Sie oder von Sie zu Du, inklusive Possessivpronomen, Verbformen und Grußformeln. Kommt keine direkte Anrede vor, formuliere so, dass die gewechselte Anrede natürlich auftaucht.', t) },
+  { key:'nodash', label:'Gedankenstriche entfernen', build:(t)=>wrapEdit('Entferne alle Gedankenstriche (— und –). Ersetze sie kontextabhängig durch Komma, Punkt oder Doppelpunkt, sodass der Text natürlich liest. Sonst nichts verändern.', t) },
 ]
-// Untermenü „Umschreiben" — Stil-Adjektive
+// Untermenü „Umschreiben" — konkrete Stil-Definitionen (nicht nur Adjektive)
 const REWRITE_STYLES = [
-  { key:'pro',        label:'Professioneller', how:'professioneller und seriöser' },
-  { key:'casual',     label:'Lockerer',        how:'lockerer und nahbarer' },
-  { key:'happy',      label:'Fröhlicher',      how:'fröhlicher und positiver' },
-  { key:'factual',    label:'Sachlicher',      how:'sachlicher und nüchterner' },
-  { key:'confident',  label:'Selbstbewusster', how:'selbstbewusster und überzeugender' },
-  { key:'concise',    label:'Prägnanter',      how:'prägnanter und auf den Punkt' },
-  { key:'inspiring',  label:'Inspirierender',  how:'inspirierender und motivierender' },
-  { key:'empathic',   label:'Empathischer',    how:'empathischer und wärmer' },
+  { key:'pro',       label:'Professioneller', how:'Mach ihn seriöser und professioneller: klare Struktur, präzise Begriffe, ruhiger souveräner Ton, keine Umgangssprache und kein Slang. Trotzdem menschlich, nicht steif oder bürokratisch.' },
+  { key:'casual',    label:'Lockerer',        how:'Mach ihn deutlich lockerer und nahbarer: kürzere Sätze, direkte Ansprache, Alltagssprache statt Fachjargon, ruhig mal ein umgangssprachlicher Ausdruck. Es soll klingen wie gesprochen, nicht wie geschrieben, aber weiterhin professionell und nicht albern.' },
+  { key:'happy',     label:'Fröhlicher',      how:'Mach ihn fröhlicher und positiver: optimistische Wortwahl, Leichtigkeit und Energie, Fokus aufs Positive. Ohne ins Kitschige oder Übertriebene zu kippen.' },
+  { key:'factual',   label:'Sachlicher',      how:'Mach ihn sachlicher und nüchterner: Fakten statt Emotion, neutrale Formulierungen, keine wertenden Adjektive, keine Ausrufezeichen. Klar und unaufgeregt.' },
+  { key:'confident', label:'Selbstbewusster', how:'Mach ihn selbstbewusster und überzeugender: klare Aussagen statt Weichmacher wie vielleicht, eigentlich oder ich glaube, aktive Verben, Haltung zeigen. Selbstbewusst, nicht arrogant.' },
+  { key:'concise',   label:'Prägnanter',      how:'Mach ihn prägnanter und auf den Punkt: dieselbe Aussage in weniger, stärkeren Worten. Weg mit Umschweifen und Weichmachern. Jeder Satz ein Treffer.' },
+  { key:'inspiring', label:'Inspirierender',  how:'Mach ihn inspirierender und motivierender: ein Bild oder ein Gedanke, der hängen bleibt, ein Blick nach vorn. Bewegend, aber ehrlich, keine hohlen Motivationsphrasen.' },
+  { key:'empathic',  label:'Empathischer',    how:'Mach ihn empathischer und wärmer: zeig Verständnis, nimm die Perspektive des Lesers ernst, wärmere Wortwahl. Nah, aber nicht anbiedernd.' },
 ]
-const rewriteBuild = (how) => (t) => `Schreibe den folgenden Text um und formuliere ihn ${how}. Behalte Bedeutung, Sprache und Brand Voice. Gib NUR den überarbeiteten Text zurück, ohne Einleitung:\n\n${t}`
+const rewriteBuild = (how) => (t) => wrapEdit(`Schreib den markierten Text stilistisch um. ${how}`, t)
 // Untermenü „Emojis" — raus / rein
 const EMOJI_ACTIONS = [
-  { key:'emoji_out', label:'Emojis entfernen',   build:(t)=>`Entferne alle Emojis aus dem folgenden Text. Behalte Bedeutung, Sprache und Brand Voice unverändert. Gib NUR den Text zurück, ohne Einleitung:\n\n${t}` },
-  { key:'emoji_in',  label:'Emojis hinzufügen',  build:(t)=>`Füge dem folgenden Text passende, sparsame Emojis hinzu (dezent und professionell, nur an sinnvollen Stellen — nicht übertreiben). Behalte Bedeutung, Sprache und Brand Voice. Gib NUR den Text zurück, ohne Einleitung:\n\n${t}` },
+  { key:'emoji_out', label:'Emojis entfernen',  build:(t)=>wrapEdit('Entferne alle Emojis. Wortlaut und Tonfall bleiben sonst exakt gleich.', t) },
+  { key:'emoji_in',  label:'Emojis hinzufügen', build:(t)=>wrapEdit('Füge dezente, professionelle Emojis an sinnvollen Stellen hinzu: sparsam, nicht in jede Zeile, nicht übertreiben. Der Wortlaut bleibt sonst unverändert.', t) },
 ]
 const TRANSLATE_LANGS = [
   { code:'en', label:'Englisch' }, { code:'de', label:'Deutsch' },
@@ -264,10 +290,9 @@ const DocumentEditorPane = forwardRef(function DocumentEditorPane({
     const finalPrompt = stripRef.current ? (promptText + NO_DASH_DIRECTIVE) : promptText
     const { data, error } = await supabase.functions.invoke('generate', {
       body: {
-        type: 'inline_edit', prompt: finalPrompt,
-        brand_voice_id: brandVoiceId || undefined,
-        company_voice_ids: companyVoiceIds && companyVoiceIds.length ? companyVoiceIds : undefined,
-        target_audience_id: audienceId || undefined,
+        // Inline-Edits laufen bewusst als 'raw' (kein Post-Generierungs-System-Prompt).
+        // Der Editor-Rahmen steckt komplett in prompt (siehe EDIT_SYSTEM/wrapEdit).
+        type: 'raw', model: 'claude-sonnet-4-6', prompt: finalPrompt,
       },
     })
     if (error || !data?.text) throw new Error(error?.message || data?.error || 'Keine Antwort')
@@ -296,13 +321,13 @@ const DocumentEditorPane = forwardRef(function DocumentEditorPane({
 
   function runCustomInstruction() {
     const instr = aiInstruction.trim(); if (!instr) return
-    runAction((t) => `Wende die folgende Anweisung auf den markierten Text an. Anweisung: "${instr}". Behalte Sprache und Brand Voice. Gib NUR den überarbeiteten Text zurück, ohne Einleitung:\n\n${t}`, instr)
+    runAction((t) => wrapEdit(`Wende diese Anweisung sinngemäß und konsequent auf den markierten Text an: "${instr}".`, t), instr)
   }
   function runTranslate(lang) {
-    runAction((t) => `Übersetze den folgenden Text nach ${lang.label}. Gib NUR die Übersetzung zurück, ohne Einleitung:\n\n${t}`, 'Übersetzen: ' + lang.label)
+    runAction((t) => wrapEdit(`Übersetze den markierten Text vollständig und natürlich klingend nach ${lang.label}. Nicht wörtlich Wort für Wort, sondern so, wie es ein Muttersprachler formulieren würde.`, t), 'Übersetzen: ' + lang.label)
   }
   function runCustomAction(a) {
-    runAction((t) => `${a.prompt}\n\nBehalte Sprache und Brand Voice. Gib NUR den überarbeiteten Text zurück, ohne Einleitung:\n\n${t}`, a.label)
+    runAction((t) => wrapEdit(a.prompt, t), a.label)
   }
 
   // ── Vorschau anwenden ─────────────────────────────────────────────────────
