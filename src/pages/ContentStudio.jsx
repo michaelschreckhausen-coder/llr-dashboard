@@ -253,6 +253,10 @@ export default function ContentStudio({ session }) {
   // hergestellt — egal ob Split- oder Vollbild. Läuft genau EINMAL pro Seitenladen
   // (nicht beim Brand-Wechsel, der bewusst auf den Start-Screen zurücksetzt).
   const restoredRef = useRef(false)
+  // Beim Laden mit ?newdoc=1 (z. B. „Ohne Chat öffnen“ aus der Bibliothek) darf die
+  // gespeicherte Sitzung NICHT den zuletzt offenen Chat wiederherstellen. Der newdoc-
+  // Effekt löscht den Param später aus der URL, daher beim ersten Render festhalten.
+  const initialNewDocRef = useRef(typeof window !== 'undefined' && new URLSearchParams(window.location.search).get('newdoc') === '1')
   const SESSION_KEY = 'tw_designer_session_v1'
   useEffect(() => {
     if (restoredRef.current) return
@@ -260,7 +264,7 @@ export default function ContentStudio({ session }) {
     if (!bid) return                                  // auf Brand warten
     restoredRef.current = true
     // Deep-Link (?visual=/?chat_id=/?doc=) hat Vorrang vor der gespeicherten Sitzung.
-    if (visualParam || searchParams.get('chat_id') || searchParams.get('post_id') || docParam) return
+    if (initialNewDocRef.current || visualParam || searchParams.get('chat_id') || searchParams.get('post_id') || docParam) return
     let sess = null
     try { sess = JSON.parse(localStorage.getItem(SESSION_KEY) || 'null') } catch { sess = null }
     if (!sess || sess.brandId !== bid) return
