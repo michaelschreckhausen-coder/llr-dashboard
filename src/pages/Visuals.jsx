@@ -16,6 +16,7 @@ import { Image as ImageIcon, Pencil, Pin, Sparkles, Star, Trash2, Upload, X } fr
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
 import { sharedBrandVoiceIds, scopeContentByTeamOrSharedBV } from '../lib/teamShares'
+import { listTeamVisuals, addImagePageToDesign } from '../lib/contentVisuals'
 import { useTeam } from '../context/TeamContext'
 import { useBrandVoice } from '../context/BrandVoiceContext'
 
@@ -35,6 +36,11 @@ export default function Visuals({ session, kindFilter = null, embedded = false }
   const [librarySearch, setLibrarySearch] = useState('')
   const [libraryShowAllBVs, setLibraryShowAllBVs] = useState(false)
   const [libraryFavOnly, setLibraryFavOnly] = useState(false)
+  // "Im Designer öffnen": neues ODER bestehendes Design wählen
+  const [designerPick, setDesignerPick] = useState(null)   // Bild-Visual
+  const [designs, setDesigns] = useState([])
+  const [designsLoading, setDesignsLoading] = useState(false)
+  const [designBusy, setDesignBusy] = useState(false)
 
   // "Zu Post hinzufügen"-Modal
   const [attachModal, setAttachModal] = useState(null)   // visual-object
@@ -119,8 +125,30 @@ export default function Visuals({ session, kindFilter = null, embedded = false }
     }
   }
   async function toggleFavorite(id, cur) {
-    await supabase.from('visuals').update({ is_favorite: !cur }).eq('id', id)
-    setLibrary(prev => prev.map(v => v.id === id ? { ...v, is_favorite: !cur } : v))
+    setLibrary(prev => prev.map(v => v.id === id ? { ...v, is_favorite: !cur } : v))   // optimistisch
+    const { error } = await supabase.from('visuals').update({ is_favorite: !cur }).eq('id', id)
+    if (error) {   // Fehlschlag → zurückdrehen + melden (vorher Silent-Fail ohne Fehlerprüfung)
+      setLibrary(prev => prev.map(v => v.id === id ? { ...v, is_favorite: cur } : v))
+      alert('Favorit konnte nicht gespeichert werden: ' + (error.message || error))
+    }
+  }
+  // Bild im Designer öffnen — erst fragen: neues Design ODER in ein bestehendes (als neue Seite)
+  async function openDesignerPicker(v) {
+    setDesignerPick(v); setDesigns([]); setDesignsLoading(true)
+    const { data } = await listTeamVisuals({ teamId: activeTeamId, brandVoiceId: activeBrandVoice?.id, kind: 'design', limit: 100 })
+    setDesigns(data || []); setDesignsLoading(false)
+  }
+  function openInNewDesign(v) {
+    setDesignerPick(null)
+    navigate('/content-studio?visual=' + v.id)   // wird als neues Design geöffnet
+  }
+  async function openInExistingDesign(v, designId) {
+    if (designBusy) return
+    setDesignBusy(true)
+    const { error } = await addImagePageToDesign(designId, v)   // Bild als neue Seite anhängen
+    setDesignBusy(false); setDesignerPick(null)
+    if (error) { alert('Konnte nicht ins Design übernehmen: ' + (error.message || error)); return }
+    navigate('/content-studio?visual=' + designId)
   }
   async function archiveVisual(id) {
     await supabase.from('visuals').update({ is_archived: true }).eq('id', id)
@@ -314,7 +342,7 @@ export default function Visuals({ session, kindFilter = null, embedded = false }
           <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fill, minmax(190px, 1fr))', gap:14 }}>
             {library.map(v => (
               <GalleryCard key={v.id} v={v} linkedMode={!!linkedPostId}
-                onOpenStudio={() => navigate('/content-studio?visual=' + v.id)}
+                onOpenStudio={() => openDesignerPicker(v)}
                 onLightbox={() => setLightbox(v)}
                 onDownload={() => downloadImage(v)}
                 onAttach={() => quickAttachToLinkedPost(v)}
@@ -338,7 +366,7 @@ export default function Visuals({ session, kindFilter = null, embedded = false }
                 <ImageIcon size={13} strokeWidth={1.9}/>Zu Beitrag hinzufügen
               </button>
               <button onClick={() => downloadImage(lightbox)} style={{ padding:'6px 14px', borderRadius:8, border:'1px solid var(--border)', background:'#fff', cursor:'pointer', fontSize:12, fontWeight:600 }}><Upload size={12} strokeWidth={1.9} style={{ transform:'rotate(180deg)', marginRight:6 }}/>Download</button>
-              <button onClick={() => { navigate('/content-studio?visual=' + lightbox.id); setLightbox(null) }} style={{ padding:'6px 14px', borderRadius:8, border:'1px solid var(--border)', background:'#fff', cursor:'pointer', fontSize:12, fontWeight:600 }}><Pencil size={12} strokeWidth={1.75} style={{ marginRight:6 }} />In Content-Werkstatt öffnen</button>
+              <button onClick={() => { openDesignerPicker(lightbox); setLightbox(null) }} style={{ padding:'6px 14px', borderRadius:8, border:'1px solid var(--border)', background:'#fff', cursor:'pointer', fontSize:12, fontWeight:600 }}><Pencil size={12} strokeWidth={1.75} style={{ marginRight:6 }} />Im Designer öffnen</button>
               <button onClick={() => { archiveVisual(lightbox.id); setLightbox(null) }} style={{ padding:'6px 12px', borderRadius:8, border:'1px solid #FCA5A5', background:'#FEF2F2', color:'#b91c1c', cursor:'pointer', fontSize:12, fontWeight:600 }}><Trash2 size={12} strokeWidth={1.75} style={{ marginRight:6 }} />Löschen</button>
               <button onClick={() => setLightbox(null)} style={{ background:'none', border:'none', fontSize:18, cursor:'pointer', color:'var(--text-muted)' }}><X size={14} strokeWidth={1.75}/></button>
             </div>
@@ -348,6 +376,37 @@ export default function Visuals({ session, kindFilter = null, embedded = false }
             <div style={{ padding:'14px 18px', background:'#F8FAFC' }}>
               <div style={{ fontSize:11, fontWeight:700, color:'var(--text-muted)', textTransform:'uppercase', letterSpacing:'0.05em', marginBottom:6 }}>Prompt</div>
               <div style={{ fontSize:13, color:'rgb(20,20,43)', lineHeight:1.6 }}>{lightbox.prompt}</div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* "Im Designer öffnen": neues ODER bestehendes Design (als neue Seite) */}
+      {designerPick && (
+        <div onClick={() => setDesignerPick(null)} style={{ position:'fixed', inset:0, background:'rgba(15,23,42,0.45)', backdropFilter:'blur(2px)', zIndex:400, display:'flex', alignItems:'flex-start', justifyContent:'center', paddingTop:'12vh' }}>
+          <div onClick={e => e.stopPropagation()} style={{ width:460, maxWidth:'92vw', maxHeight:'72vh', display:'flex', flexDirection:'column', background:'#fff', borderRadius:14, border:'1px solid var(--border)', boxShadow:'0 20px 60px rgba(16,24,40,0.28)', overflow:'hidden', textAlign:'left' }}>
+            <div style={{ display:'flex', alignItems:'flex-start', justifyContent:'space-between', gap:10, padding:'16px 16px 6px' }}>
+              <div style={{ fontSize:15, fontWeight:800, color:'var(--text-primary)' }}>Im Designer öffnen</div>
+              <button onClick={() => setDesignerPick(null)} style={{ border:'none', background:'transparent', cursor:'pointer', color:'var(--text-muted)', padding:4, display:'inline-flex', flexShrink:0 }}><X size={18}/></button>
+            </div>
+            <div style={{ flex:1, overflowY:'auto', padding:'8px 14px 14px' }}>
+              <button onClick={() => openInNewDesign(designerPick)}
+                style={{ width:'100%', display:'flex', alignItems:'center', gap:8, padding:'11px 12px', borderRadius:10, border:'none', background:P, color:'#fff', fontSize:13, fontWeight:700, cursor:'pointer', fontFamily:'inherit', marginBottom:10 }}>
+                <Sparkles size={15} strokeWidth={2}/>Als neues Design öffnen
+              </button>
+              <div style={{ fontSize:10.5, fontWeight:700, color:'var(--text-soft,#98a2b3)', textTransform:'uppercase', letterSpacing:'0.06em', padding:'2px 2px 6px' }}>In bestehendes Design (als neue Seite)</div>
+              {designsLoading ? (
+                <div style={{ padding:14, fontSize:12.5, color:'var(--text-muted)', textAlign:'center' }}>Lädt…</div>
+              ) : designs.length === 0 ? (
+                <div style={{ padding:'4px 4px 8px', fontSize:12.5, color:'var(--text-muted)' }}>Noch keine Designs vorhanden.</div>
+              ) : designs.map(d => (
+                <button key={d.id} onClick={() => openInExistingDesign(designerPick, d.id)} disabled={designBusy} title={d.title || 'Design'}
+                  style={{ width:'100%', textAlign:'left', display:'flex', alignItems:'center', gap:10, padding:'9px 10px', borderRadius:9, border:'none', background:'transparent', cursor: designBusy ? 'wait' : 'pointer', fontFamily:'inherit' }}
+                  onMouseEnter={e => e.currentTarget.style.background='#F4F6FA'} onMouseLeave={e => e.currentTarget.style.background='transparent'}>
+                  <span style={{ width:30, height:30, borderRadius:8, flexShrink:0, display:'flex', alignItems:'center', justifyContent:'center', background:'rgba(49,90,231,0.07)', color:P }}><ImageIcon size={15} strokeWidth={1.9}/></span>
+                  <span style={{ minWidth:0, flex:1, fontSize:13, fontWeight:600, color:'var(--text-primary)', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{d.title || 'Unbenanntes Design'}</span>
+                </button>
+              ))}
             </div>
           </div>
         </div>
@@ -521,7 +580,7 @@ function GalleryCard({ v, linkedMode, onOpenStudio, onLightbox, onDownload, onAt
         )}
         <button onClick={e => { e.stopPropagation(); onOpenStudio() }}
           style={{ padding:'7px 10px', borderRadius:8, border:'none', background: linkedMode ? 'rgba(255,255,255,0.92)' : P, color: linkedMode ? '#111' : '#fff', fontSize:11.5, fontWeight:700, cursor:'pointer', display:'inline-flex', alignItems:'center', justifyContent:'center', gap:5 }}>
-          <Pencil size={12} strokeWidth={1.9}/>In Content-Werkstatt öffnen
+          <Pencil size={12} strokeWidth={1.9}/>Im Designer öffnen
         </button>
         <div style={{ display:'flex', gap:6 }}>
           <button onClick={e => { e.stopPropagation(); onDownload() }} title="Herunterladen"
