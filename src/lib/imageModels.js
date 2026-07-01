@@ -3,12 +3,12 @@
 // Genutzt in der Content-Werkstatt (In-Chat-Bilder + Designer) und in der Visuals-Galerie.
 
 export const IMAGE_MODELS = [
-  { value: 'gemini-2.5-flash-image|medium',         label: 'Nano Banana — schnell',          provider: 'Google' },
-  { value: 'gemini-3.1-flash-image-preview|medium', label: 'Nano Banana 2 — neuer',          provider: 'Google' },
-  { value: 'gemini-3-pro-image-preview|medium',     label: 'Nano Banana Pro — beste Qualität', provider: 'Google' },
-  { value: 'gpt-image-1-mini|low',                  label: 'GPT Image Mini — schnell',       provider: 'OpenAI' },
-  { value: 'gpt-image-1|medium',                    label: 'GPT Image — Standard',           provider: 'OpenAI' },
-  { value: 'gpt-image-1|high',                      label: 'GPT Image — Premium',            provider: 'OpenAI' },
+  { value: 'gemini-2.5-flash-image|medium',         name: 'Nano Banana',     label: 'Nano Banana — schnell',          provider: 'Google' },
+  { value: 'gemini-3.1-flash-image-preview|medium', name: 'Nano Banana 2',   label: 'Nano Banana 2 — neuer',          provider: 'Google' },
+  { value: 'gemini-3-pro-image-preview|medium',     name: 'Nano Banana Pro', label: 'Nano Banana Pro — beste Qualität', provider: 'Google' },
+  { value: 'gpt-image-1-mini|low',                  name: 'GPT Image Mini',  label: 'GPT Image Mini — schnell',       provider: 'OpenAI' },
+  { value: 'gpt-image-1|medium',                    name: 'GPT Image',       label: 'GPT Image — Standard',           provider: 'OpenAI' },
+  { value: 'gpt-image-1|high',                      name: 'GPT Image Pro',   label: 'GPT Image — Premium',            provider: 'OpenAI' },
 ]
 
 // Default: Nano Banana (schnell, günstig, gutes Image-Editing für Folge-Edits im Chat).
@@ -23,6 +23,12 @@ export function splitModelValue(v) {
 export function imageModelLabel(v) {
   const m = IMAGE_MODELS.find(x => x.value === v)
   return m ? m.label : 'Bildmodell'
+}
+
+// Nur der Modellname (ohne Speed/Qualitäts-Beschreibung), für das Composer-Dropdown.
+export function imageModelName(v) {
+  const m = IMAGE_MODELS.find(x => x.value === v)
+  return m ? (m.name || m.label) : 'Bildmodell'
 }
 
 // Seitenverhältnis-Presets für die Bildgenerierung im Chat / Designer.
