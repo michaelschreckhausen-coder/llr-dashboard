@@ -45,12 +45,12 @@ const FUN_STATUS_MESSAGES = [
   'Letzter Feinschliff am Geschenk…',
 ]
 
-export default function GenerationLoading({ premium = false, expectedSeconds, title, compact = false }) {
+export default function GenerationLoading({ premium = false, expectedSeconds, title, compact = false, embedded = false, startedAt }) {
   const expectedMax = expectedSeconds || (premium ? 90 : 25)
   const [statusIdx, setStatusIdx] = useState(() => Math.floor(Math.random() * FUN_STATUS_MESSAGES.length))
   const [mode, setMode] = useState('art')
   const [elapsedSec, setElapsedSec] = useState(0)
-  const startRef = useRef(Date.now())
+  const startRef = useRef(startedAt || Date.now())
 
   useEffect(() => {
     const tick = setInterval(() => setStatusIdx(i => (i + 1) % FUN_STATUS_MESSAGES.length), 3500)
@@ -62,14 +62,28 @@ export default function GenerationLoading({ premium = false, expectedSeconds, ti
   const progress = Math.min(99, Math.round((elapsedSec / expectedMax) * 100))
 
   return (
-    <div style={{
+    <div style={embedded ? {
+      position: 'relative', width: '100%', height: '100%',
+      display: 'flex', alignItems: 'stretch', justifyContent: 'center',
+      boxSizing: 'border-box',
+    } : {
       position: 'fixed', inset: 0, zIndex: 9000,
       background: 'rgba(248,250,252,0.90)',
       backdropFilter: 'blur(3px)', WebkitBackdropFilter: 'blur(3px)',
       display: 'flex', alignItems: 'flex-start', justifyContent: 'center',
       padding: '7vh 20px 24px', overflowY: 'auto', boxSizing: 'border-box',
     }}>
-    <section style={{
+    <section style={embedded ? {
+      width: '100%', height: '100%',
+      padding: 12,
+      borderRadius: 12,
+      background: '#fff',
+      border: '1px solid rgba(49,90,231,0.18)',
+      boxShadow: '0 1px 6px rgba(15,23,42,0.08)',
+      overflow: 'hidden',
+      display: 'flex', flexDirection: 'column',
+      boxSizing: 'border-box',
+    } : {
       width: '100%', maxWidth: 680,
       padding: compact ? 16 : 24,
       borderRadius: 16,
@@ -81,12 +95,12 @@ export default function GenerationLoading({ premium = false, expectedSeconds, ti
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12, gap: 10, flexWrap: 'wrap' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
           <div style={{
-            width: 28, height: 28, borderRadius: '50%',
+            width: embedded ? 20 : 28, height: embedded ? 20 : 28, borderRadius: '50%', flexShrink: 0,
             border: '3px solid rgba(49,90,231,0.18)', borderTopColor: P,
             animation: 'genLoadSpin 0.9s linear infinite',
           }} />
           <div>
-            <div style={{ fontSize: 14, fontWeight: 700, color: 'var(--text-primary)' }}>
+            <div style={{ fontSize: embedded ? 12.5 : 14, fontWeight: 700, color: 'var(--text-primary)' }}>
               {title || 'KI denkt nach'}
             </div>
             <div style={{ fontSize: 11, color: 'var(--text-muted)' }}>
@@ -97,14 +111,16 @@ export default function GenerationLoading({ premium = false, expectedSeconds, ti
         <button
           onClick={() => setMode(m => m === 'art' ? 'game' : 'art')}
           style={{
-            padding: '7px 14px', borderRadius: 8, border: '1.5px solid rgba(49,90,231,0.3)',
+            padding: embedded ? '5px 10px' : '7px 14px', borderRadius: 8, border: '1.5px solid rgba(49,90,231,0.3)',
             background: mode === 'game' ? P : 'transparent',
             color: mode === 'game' ? '#fff' : P,
-            fontSize: 12, fontWeight: 600, cursor: 'pointer',
+            fontSize: embedded ? 11 : 12, fontWeight: 600, cursor: 'pointer', flexShrink: 0, whiteSpace: 'nowrap',
             display: 'inline-flex', alignItems: 'center', gap: 6,
           }}
         >
-          {mode === 'art' ? 'Mini-Spiel zur Überbrückung' : 'Zurück zur Animation'}
+          {mode === 'art'
+            ? (embedded ? '🎮 Mini-Spiel' : 'Mini-Spiel zur Überbrückung')
+            : (embedded ? '← Animation' : 'Zurück zur Animation')}
         </button>
       </div>
 
@@ -122,11 +138,13 @@ export default function GenerationLoading({ premium = false, expectedSeconds, ti
         }} />
       </div>
 
-      {mode === 'art' ? (
-        <ArtScene status={FUN_STATUS_MESSAGES[statusIdx]} />
-      ) : (
-        <SnakeGame primaryColor={P} />
-      )}
+      <div style={{ flex: embedded ? 1 : 'none', display: 'flex', flexDirection: 'column', justifyContent: 'center', minHeight: 0, overflow: embedded ? 'auto' : 'visible' }}>
+        {mode === 'art' ? (
+          <ArtScene status={FUN_STATUS_MESSAGES[statusIdx]} compact={embedded} />
+        ) : (
+          <SnakeGame primaryColor={P} />
+        )}
+      </div>
 
       <style>{`
         @keyframes genLoadSpin { to { transform: rotate(360deg); } }
@@ -152,7 +170,7 @@ export default function GenerationLoading({ premium = false, expectedSeconds, ti
   )
 }
 
-function ArtScene({ status }) {
+function ArtScene({ status, compact = false }) {
   const dots = []
   const palette = ['#1F3EAF', '#2A4ECC', '#315ae7', '#5478ED', '#7B8FF2', '#9D8FF5', '#8B5CF6', '#A78BFA']
   for (let i = 0; i < 22; i++) {
@@ -171,7 +189,7 @@ function ArtScene({ status }) {
   }
   return (
     <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 14, padding: '14px 0' }}>
-      <div style={{ position: 'relative', width: 280, height: 140 }}>
+      <div style={{ position: 'relative', width: compact ? 210 : 280, height: compact ? 100 : 140 }}>
         {dots.map((d, i) => (
           <div key={i}
             style={{
