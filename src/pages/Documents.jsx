@@ -27,6 +27,10 @@ export default function Documents({ embedded = false }) {
   // Neues-Dokument-Dialog (Chat-Auswahl beim Anlegen)
   const [newDocOpen, setNewDocOpen] = useState(false)
   const [newDocPick, setNewDocPick] = useState(false)
+  // Beitrag-Auswahl beim „In Beitrag": neuer oder bestehender Beitrag
+  const [postPickDoc, setPostPickDoc] = useState(null)
+  const [existingPosts, setExistingPosts] = useState([])
+  const [postsLoading, setPostsLoading] = useState(false)
 
   const load = useCallback(async () => {
     if (!activeTeamId || !activeBrandVoice?.id) { setDocs([]); setLoading(false); return }
@@ -99,9 +103,19 @@ export default function Documents({ embedded = false }) {
     await deleteDocument(id); load()
   }
 
-  // Dokument als Beitrag in den Redaktionsplan übernehmen
+  // Dokument in einen Beitrag übernehmen — erst fragen: neu oder bestehend
   async function addToRedaktionsplan(e, d) {
     e.stopPropagation()
+    if (busyId) return
+    setPostPickDoc(d); setExistingPosts([]); setPostsLoading(true)
+    const { data } = await supabase.from('content_posts')
+      .select('id, title, status, updated_at')
+      .eq('brand_voice_id', activeBrandVoice?.id)
+      .order('updated_at', { ascending: false }).limit(50)
+    setExistingPosts(data || []); setPostsLoading(false)
+  }
+  // „+ Als neuen Beitrag anlegen"
+  async function createPostFromDoc(d) {
     if (busyId) return
     setBusyId(d.id)
     const { data: { user } } = await supabase.auth.getUser()
@@ -114,15 +128,24 @@ export default function Documents({ embedded = false }) {
       platform: 'linkedin',
       status: 'draft',
     }).select().single()
-    setBusyId(null)
-    if (error) { console.warn('[Documents] addToRedaktionsplan:', error); alert('Konnte nicht angelegt werden: ' + (error.message || error)); return }
+    setBusyId(null); setPostPickDoc(null)
+    if (error) { console.warn('[Documents] createPostFromDoc:', error); alert('Konnte nicht angelegt werden: ' + (error.message || error)); return }
     navigate('/redaktionsplan?open=' + post.id)
   }
+  // „Zu bestehendem Beitrag" — Dokumenttext in den gewählten Beitrag übernehmen
+  async function addDocToExistingPost(d, postId) {
+    if (busyId) return
+    setBusyId(d.id)
+    const { error } = await supabase.from('content_posts').update({ content: d.content_text || '' }).eq('id', postId)
+    setBusyId(null); setPostPickDoc(null)
+    if (error) { console.warn('[Documents] addDocToExistingPost:', error); alert('Konnte nicht übernommen werden: ' + (error.message || error)); return }
+    navigate('/redaktionsplan?open=' + postId)
+  }
 
-  // Dokument als Referenz für ein Visual nutzen (Text landet im Beitragstextfeld)
+  // Dokument als Referenz für die Bilderstellung in der Content-Werkstatt nutzen
   function useAsVisualReference(e, d) {
     e.stopPropagation()
-    navigate('/visuals?doc_id=' + d.id)
+    navigate('/content-studio?refdoc=' + d.id)
   }
 
   return (
@@ -272,6 +295,39 @@ export default function Documents({ embedded = false }) {
                   </div>
                 </>
               )}
+            </div>
+          </div>
+        </div>
+      )}
+      {/* Beitrag-Auswahl: neuen Beitrag anlegen ODER zu bestehendem hinzufügen */}
+      {postPickDoc && (
+        <div onClick={() => setPostPickDoc(null)} style={{ position:'fixed', inset:0, background:'rgba(15,23,42,0.45)', backdropFilter:'blur(2px)', zIndex:400, display:'flex', alignItems:'flex-start', justifyContent:'center', paddingTop:'12vh' }}>
+          <div onClick={e => e.stopPropagation()} style={{ width:460, maxWidth:'92vw', maxHeight:'72vh', display:'flex', flexDirection:'column', background:'#fff', borderRadius:14, border:'1px solid var(--border)', boxShadow:'0 20px 60px rgba(16,24,40,0.28)', overflow:'hidden', textAlign:'left' }}>
+            <div style={{ display:'flex', alignItems:'flex-start', justifyContent:'space-between', gap:10, padding:'16px 16px 6px' }}>
+              <div style={{ minWidth:0 }}>
+                <div style={{ fontSize:15, fontWeight:800, color:'var(--text-primary)' }}>In welchen Beitrag übernehmen?</div>
+                <div style={{ fontSize:12.5, color:'var(--text-muted)', marginTop:3, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{postPickDoc.title || 'Unbenanntes Dokument'}</div>
+              </div>
+              <button onClick={() => setPostPickDoc(null)} style={{ border:'none', background:'transparent', cursor:'pointer', color:'var(--text-muted)', padding:4, display:'inline-flex', flexShrink:0 }}><X size={18}/></button>
+            </div>
+            <div style={{ flex:1, overflowY:'auto', padding:'8px 14px 14px' }}>
+              <button onClick={() => createPostFromDoc(postPickDoc)} disabled={busyId===postPickDoc.id}
+                style={{ width:'100%', display:'flex', alignItems:'center', gap:8, padding:'11px 12px', borderRadius:10, border:'none', background:P, color:'#fff', fontSize:13, fontWeight:700, cursor: busyId===postPickDoc.id ? 'wait' : 'pointer', fontFamily:'inherit', marginBottom:10 }}>
+                <Plus size={15} strokeWidth={2.4}/>Als neuen Beitrag anlegen
+              </button>
+              <div style={{ fontSize:10.5, fontWeight:700, color:'var(--text-soft,#98a2b3)', textTransform:'uppercase', letterSpacing:'0.06em', padding:'2px 2px 6px' }}>Zu bestehendem Beitrag</div>
+              {postsLoading ? (
+                <div style={{ padding:14, fontSize:12.5, color:'var(--text-muted)', textAlign:'center' }}>Lädt…</div>
+              ) : existingPosts.length === 0 ? (
+                <div style={{ padding:'4px 4px 8px', fontSize:12.5, color:'var(--text-muted)' }}>Noch keine Beiträge vorhanden.</div>
+              ) : existingPosts.map(pp => (
+                <button key={pp.id} onClick={() => addDocToExistingPost(postPickDoc, pp.id)} disabled={busyId===postPickDoc.id} title={pp.title || '(ohne Titel)'}
+                  style={{ width:'100%', textAlign:'left', display:'flex', alignItems:'center', gap:10, padding:'9px 10px', borderRadius:9, border:'none', background:'transparent', cursor:'pointer', fontFamily:'inherit' }}
+                  onMouseEnter={e => e.currentTarget.style.background='#F4F6FA'} onMouseLeave={e => e.currentTarget.style.background='transparent'}>
+                  <span style={{ width:30, height:30, borderRadius:8, flexShrink:0, display:'flex', alignItems:'center', justifyContent:'center', background:'rgba(49,90,231,0.07)', color:P }}><CalendarPlus size={15} strokeWidth={1.9}/></span>
+                  <span style={{ minWidth:0, flex:1, fontSize:13, fontWeight:600, color:'var(--text-primary)', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{pp.title || '(ohne Titel)'}</span>
+                </button>
+              ))}
             </div>
           </div>
         </div>

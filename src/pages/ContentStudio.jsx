@@ -158,6 +158,7 @@ export default function ContentStudio({ session }) {
 
   // Linked Post
   const [linkedPost, setLinkedPost] = useState(null)
+  const [refDoc, setRefDoc] = useState(null)   // Dokument als Bild-Referenz (aus Bibliothek)
 
   const messagesEndRef = useRef(null)
   const fileInputRef = useRef(null)
@@ -238,7 +239,7 @@ export default function ContentStudio({ session }) {
     setEditorOpen(false); setVisualMode(false); setForceNewImage(false)
     setNewDocActive(false); setPendingDocText(null)
     setSplitMode('doc'); setPaneView('split'); setSidebarOpen(false)
-    setActiveChatId(null); setActiveChat(null); setMessages([]); setLinkedPost(null)
+    setActiveChatId(null); setActiveChat(null); setMessages([]); setLinkedPost(null); setRefDoc(null)
     setChatDocs([]); setDemoRailDocs(null); setChatVisuals([]); setActiveVisual(null)
     setSelectedCompanyVoiceIds([]); setSelectedAudienceId(''); setSelectedKnowledgeIds([])
     setInput(''); setError('')
@@ -264,7 +265,7 @@ export default function ContentStudio({ session }) {
     if (!bid) return                                  // auf Brand warten
     restoredRef.current = true
     // Deep-Link (?visual=/?chat_id=/?doc=) hat Vorrang vor der gespeicherten Sitzung.
-    if (initialNewDocRef.current || visualParam || searchParams.get('chat_id') || searchParams.get('post_id') || docParam) return
+    if (initialNewDocRef.current || searchParams.get('refdoc') || visualParam || searchParams.get('chat_id') || searchParams.get('post_id') || docParam) return
     let sess = null
     try { sess = JSON.parse(localStorage.getItem(SESSION_KEY) || 'null') } catch { sess = null }
     if (!sess || sess.brandId !== bid) return
@@ -400,8 +401,10 @@ export default function ContentStudio({ session }) {
       return
     }
     if (pId) { handlePostIdFlow(pId, genImage); return }
+    const rId = searchParams.get('refdoc')
+    if (rId) { handleRefDocFlow(rId); return }
     // Kein Param → leerer Clean-State
-    setActiveChatId(null); setActiveChat(null); setMessages([]); setLinkedPost(null)
+    setActiveChatId(null); setActiveChat(null); setMessages([]); setLinkedPost(null); setRefDoc(null)
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [searchParams, activeBrandVoice?.id])
 
@@ -410,7 +413,7 @@ export default function ContentStudio({ session }) {
       .select('id, title, content, brand_voice_id, text_werkstatt_chat_id, company_voice_ids, company_voice_id')
       .eq('id', postId).maybeSingle()
     if (!post) return
-    setLinkedPost(post)
+    setLinkedPost(post); setRefDoc(null)
     if (genImage) setVisualMode(true)
     // Wenn schon ein Chat existiert → öffne ihn (Sidebar geht auf für Chat-View)
     if (post.text_werkstatt_chat_id) {
@@ -429,6 +432,17 @@ export default function ContentStudio({ session }) {
     } else {
       setInput('Bitte schreibe einen Text für den angehängten Beitrag.')
     }
+  }
+
+  // Dokument als Bild-Referenz: neuer Clean-Chat, Bildmodus an, Dokument als Kontext.
+  async function handleRefDocFlow(docId) {
+    const { data: doc } = await supabase.from('content_documents')
+      .select('id, title, content_text').eq('id', docId).maybeSingle()
+    if (!doc) return
+    setActiveChatId(null); setActiveChat(null); setMessages([]); setLinkedPost(null)
+    setRefDoc(doc)
+    setVisualMode(true)
+    setInput('Erstelle ein passendes Bild zum Inhalt dieses Dokuments.')
   }
 
   async function loadChatDocs(chatId) {
@@ -665,7 +679,7 @@ export default function ContentStudio({ session }) {
 
   async function openChat(chatId) {
     setActiveChatId(chatId)
-    setNewDocActive(false); setPendingDocText(null)
+    setNewDocActive(false); setPendingDocText(null); setRefDoc(null)
     setMessages([]); setMessagesLoading(true)
     const { data: c } = await supabase.from('content_chats').select('*').eq('id', chatId).maybeSingle()
     setActiveChat(c)
@@ -686,7 +700,7 @@ export default function ContentStudio({ session }) {
   function newChat() {
     setActiveChatId(null); setActiveChat(null); setMessages([])
     setInput(''); setAttachments([]); setSelectedKnowledgeIds([])
-    setLinkedPost(null); setError('')
+    setLinkedPost(null); setRefDoc(null); setError('')
     const next = new URLSearchParams(searchParams)
     next.delete('chat_id'); next.delete('post_id'); next.delete('doc'); next.delete('visual')
     setSearchParams(next, { replace:true })
@@ -732,7 +746,7 @@ export default function ContentStudio({ session }) {
           .eq('id', newChat.post_id).is('text_werkstatt_chat_id', null)
       }
       const next = new URLSearchParams(searchParams)
-      next.set('chat_id', newChat.id); next.delete('post_id')
+      next.set('chat_id', newChat.id); next.delete('post_id'); next.delete('refdoc')
       setSearchParams(next, { replace:true })
     }
 
@@ -797,7 +811,7 @@ export default function ContentStudio({ session }) {
       if (chatErr) { setError('Chat-Erstellung fehlgeschlagen: ' + chatErr.message); setSending(false); return }
       chatIdForSend = nc.id
       setActiveChatId(nc.id); setActiveChat(nc); setChats(prev => [nc, ...prev])
-      const next = new URLSearchParams(searchParams); next.set('chat_id', nc.id); next.delete('post_id'); setSearchParams(next, { replace:true })
+      const next = new URLSearchParams(searchParams); next.set('chat_id', nc.id); next.delete('post_id'); next.delete('refdoc'); setSearchParams(next, { replace:true })
     }
 
     // User-Nachricht speichern + optimistisch anzeigen
@@ -815,6 +829,8 @@ export default function ContentStudio({ session }) {
     let promptForGen = prompt
     if (!prevVisual && linkedPost?.content && linkedPost.content.trim()) {
       promptForGen = `Erstelle ein Bild, das visuell zu diesem LinkedIn-Beitrag passt.\nBeitrag-Titel: "${linkedPost.title || ''}"\nBeitrag-Text:\n${linkedPost.content.trim()}\n\nKonkreter Bildwunsch: ${prompt}`
+    } else if (!prevVisual && refDoc?.content_text && refDoc.content_text.trim()) {
+      promptForGen = `Erstelle ein Bild, das visuell zum Inhalt dieses Dokuments passt.\nDokument-Titel: "${refDoc.title || ''}"\nDokument-Inhalt:\n${refDoc.content_text.trim().slice(0, 2000)}\n\nKonkreter Bildwunsch: ${prompt}`
     }
 
     try {
@@ -1031,6 +1047,7 @@ export default function ContentStudio({ session }) {
           // === CLEAN VIEW ===
           <CleanView
             linkedPost={linkedPost}
+            refDoc={refDoc}
             activeBrandVoice={activeBrandVoice}
             input={input} setInput={setInput}
             sending={sending}
@@ -1057,6 +1074,7 @@ export default function ContentStudio({ session }) {
           // === CHAT VIEW ===
           <ChatView
             linkedPost={linkedPost}
+            refDoc={refDoc}
             messages={messages}
             messagesLoading={messagesLoading}
             sending={sending}
@@ -1428,7 +1446,7 @@ const segBtn = {
 
 // ─── CLEAN VIEW (Hero oder Post-Banner + zentrales Eingabefeld) ──────────────
 function CleanView({
-  linkedPost, activeBrandVoice,
+  linkedPost, refDoc, activeBrandVoice,
   input, setInput, sending,
   attachments, setAttachments,
   plusOpen, setPlusOpen,
@@ -1443,6 +1461,15 @@ function CleanView({
   return (
     <div style={{ flex:1, display:'flex', flexDirection:'column', alignItems:'center', justifyContent:'center', padding:'40px 24px', overflowY:'auto' }}>
       <div style={{ width:'100%', maxWidth:680 }}>
+        {refDoc && (
+          <div style={{ marginBottom:24, padding:'14px 18px', background:'rgba(49,90,231,0.06)', border:'1.5px solid rgba(49,90,231,0.20)', borderRadius:12, display:'flex', alignItems:'center', gap:12, flexWrap:'wrap' }}>
+            <FileText size={18} strokeWidth={1.75} style={{ color:'var(--wl-primary, rgb(49,90,231))' }}/>
+            <div style={{ flex:1, minWidth:200 }}>
+              <div style={{ fontSize:10, fontWeight:700, color:P, textTransform:'uppercase', letterSpacing:'0.05em' }}>Dokument als Referenz</div>
+              <div style={{ fontSize:13, fontWeight:600, color:'var(--text-primary)' }}>{refDoc.title || '(ohne Titel)'}</div>
+            </div>
+          </div>
+        )}
         {linkedPost ? (
           // Banner statt Hero wenn aus Post heraus
           <div style={{
@@ -1496,7 +1523,7 @@ function CleanView({
 
 // ─── CHAT VIEW (klassisches Layout) ─────────────────────────────────────────
 function ChatView({
-  linkedPost, messages, messagesLoading, sending, messagesEndRef, attachToPost, loadExistingPosts,
+  linkedPost, refDoc, messages, messagesLoading, sending, messagesEndRef, attachToPost, loadExistingPosts,
   onInsertToDoc, onOpenInDesigner, onDownloadVisual, onImageToPost, signedVisualUrlFn,
   input, setInput,
   attachments, setAttachments,
@@ -1511,6 +1538,16 @@ function ChatView({
 }) {
   return (
     <>
+      {/* Banner: Dokument als Referenz */}
+      {refDoc && (
+        <div style={{ padding:'10px 18px 10px 52px', borderBottom:'1px solid var(--border)', background:'rgba(49,90,231,0.05)', display:'flex', alignItems:'center', gap:12, flexWrap:'wrap', flexShrink:0 }}>
+          <FileText size={14} strokeWidth={1.75} style={{ color:'var(--wl-primary, rgb(49,90,231))' }}/>
+          <div style={{ flex:1, minWidth:200 }}>
+            <div style={{ fontSize:10, fontWeight:700, color:P, textTransform:'uppercase', letterSpacing:'0.05em' }}>Dokument als Referenz</div>
+            <div style={{ fontSize:13, fontWeight:600, color:'var(--text-primary)' }}>{refDoc.title || '(ohne Titel)'}</div>
+          </div>
+        </div>
+      )}
       {/* Banner wenn aus Post */}
       {linkedPost && (
         <div style={{ padding:'10px 18px 10px 52px', borderBottom:'1px solid var(--border)', background:'rgba(49,90,231,0.05)', display:'flex', alignItems:'center', gap:12, flexWrap:'wrap', flexShrink:0 }}>
