@@ -237,7 +237,7 @@ export default function ContentStudio({ session }) {
     const had = prevBrandRef.current                    // vorheriger Brand (null = Erst-Laden)
     prevBrandRef.current = id
     if (!had) return                                    // Erst-Initialisierung → nicht resetten
-    setEditorOpen(false); setVisualMode(false); setForceNewImage(false)
+    setEditorOpen(false); setVisualMode(false)
     setNewDocActive(false); setPendingDocText(null)
     setSplitMode('doc'); setPaneView('split'); setSidebarOpen(false)
     setActiveChatId(null); setActiveChat(null); setMessages([]); setLinkedPost(null); setRefDoc(null)
@@ -884,7 +884,6 @@ export default function ContentStudio({ session }) {
       // Verlauf frisch laden (zeigt User-Frage + Bild-Antwort)
       const { data: msgs } = await supabase.from('content_chat_messages').select('*').eq('chat_id', chatIdForSend).order('created_at', { ascending:true })
       setMessages(msgs || [])
-      setForceNewImage(false)
       await loadChatVisuals(chatIdForSend)
       loadChats()
       setTimeout(() => messagesEndRef.current?.scrollIntoView({ behavior:'smooth' }), 60)
