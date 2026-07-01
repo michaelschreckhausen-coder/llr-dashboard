@@ -71,7 +71,7 @@ export default function FormatPicker({ value, onChange }) {
 
       {open && (
         <div style={{
-          position: 'absolute', top: 44, left: 0, zIndex: 50, width: 460, display: 'flex',
+          position: 'absolute', bottom: 44, left: 0, zIndex: 50, width: 460, display: 'flex',
           borderRadius: 12, overflow: 'hidden', border: '1px solid var(--border, #D7DCE5)',
           background: 'var(--surface, #FFFFFF)', boxShadow: '0 18px 48px rgba(16,24,40,0.18)',
         }}>

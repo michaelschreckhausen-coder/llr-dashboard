@@ -24,6 +24,8 @@ import DocumentEditorPane from '../components/DocumentEditorPane'
 import { listDocumentsForChat, listDocuments, addDocumentToChat, listChatsForDocument } from '../lib/contentDocuments'
 import DesignerPane from '../components/designer/DesignerPane'
 import { IMAGE_MODELS, DEFAULT_IMAGE_MODEL, splitModelValue, imageModelLabel, ASPECT_PRESETS, DEFAULT_ASPECT } from '../lib/imageModels'
+import FormatPicker from '../components/FormatPicker'
+import { PRESET_BY_ID, DEFAULT_PRESET_ID } from '../lib/formatPresets'
 import { listVisualsForChat, linkVisualToChat, getVisual, signedVisualUrl, downloadVisualBlob, visualDataUrl, uploadImageBlob, listTeamVisuals, listChatsForVisual, createEmptyDesign as createEmptyDesignRow, addImagePageToDesign } from '../lib/contentVisuals'
 
 const P = 'var(--wl-primary, rgb(49,90,231))'
@@ -202,7 +204,7 @@ export default function ContentStudio({ session }) {
   // Visual-Composer (In-Chat-Bildgenerierung)
   const [visualMode, setVisualMode] = useState(false)
   const [imageModel, setImageModel] = useState(DEFAULT_IMAGE_MODEL)
-  const [imageAspect, setImageAspect] = useState(DEFAULT_ASPECT)
+  const [imageFormat, setImageFormat] = useState(PRESET_BY_ID[DEFAULT_PRESET_ID])   // Format-Preset (Plattform/Freiform)
   const [forceNewImage, setForceNewImage] = useState(false)
   const [useBrandImages, setUseBrandImages] = useState(true)   // Brand-Bilder als Referenz für Bildgenerierung
   // Bild<->Chat-Leiste + aktives Designer-Bild
@@ -838,7 +840,8 @@ export default function ContentStudio({ session }) {
         body: {
           prompt: promptForGen,
           model, quality,
-          aspectRatio: prevVisual?.aspect_ratio || imageAspect,
+          aspectRatio: prevVisual?.aspect_ratio || imageFormat?.ratio || '1:1',
+          ...(prevVisual ? {} : { targetWidth: imageFormat?.w || undefined, targetHeight: imageFormat?.h || undefined }),
           variants: 1,
           brandVoiceId: activeBrandVoice?.id || null,
           companyVoiceIds: selectedCompanyVoiceIds,
@@ -1062,7 +1065,7 @@ export default function ContentStudio({ session }) {
             useWebSearch={useWebSearch} setUseWebSearch={setUseWebSearch} editorOpen={editorOpen} useEditorContext={useEditorContext} setUseEditorContext={setUseEditorContext}
             visualMode={visualMode} setVisualMode={setVisualMode}
             imageModel={imageModel} setImageModel={setImageModel}
-            imageAspect={imageAspect} setImageAspect={setImageAspect}
+            imageFormat={imageFormat} setImageFormat={setImageFormat}
             forceNewImage={forceNewImage} setForceNewImage={setForceNewImage} useBrandImages={useBrandImages} setUseBrandImages={setUseBrandImages}
             hasChatVisuals={chatVisuals.length > 0}
             handleFiles={handleFiles}
@@ -1130,7 +1133,7 @@ export default function ContentStudio({ session }) {
             useWebSearch={useWebSearch} setUseWebSearch={setUseWebSearch} editorOpen={editorOpen} useEditorContext={useEditorContext} setUseEditorContext={setUseEditorContext}
             visualMode={visualMode} setVisualMode={setVisualMode}
             imageModel={imageModel} setImageModel={setImageModel}
-            imageAspect={imageAspect} setImageAspect={setImageAspect}
+            imageFormat={imageFormat} setImageFormat={setImageFormat}
             forceNewImage={forceNewImage} setForceNewImage={setForceNewImage} useBrandImages={useBrandImages} setUseBrandImages={setUseBrandImages}
             hasChatVisuals={chatVisuals.length > 0}
             handleFiles={handleFiles}
@@ -1454,7 +1457,7 @@ function CleanView({
   audiences, selectedAudienceId, setSelectedAudienceId,
   companyVoices = [], showCompanyPicker = false, selectedCompanyVoiceIds = [], setSelectedCompanyVoiceIds = () => {},
   useWebSearch, setUseWebSearch, editorOpen = false, useEditorContext = false, setUseEditorContext = () => {},
-  visualMode = false, setVisualMode = () => {}, imageModel, setImageModel = () => {}, imageAspect, setImageAspect = () => {},
+  visualMode = false, setVisualMode = () => {}, imageModel, setImageModel = () => {}, imageFormat, setImageFormat = () => {},
   forceNewImage = false, setForceNewImage = () => {}, useBrandImages = true, setUseBrandImages = () => {}, hasChatVisuals = false,
   handleFiles, fileInputRef, sendMessage, navigate,
 }) {
@@ -1510,7 +1513,7 @@ function CleanView({
           selectedCompanyVoiceIds={selectedCompanyVoiceIds} setSelectedCompanyVoiceIds={setSelectedCompanyVoiceIds}
           useWebSearch={useWebSearch} setUseWebSearch={setUseWebSearch} editorOpen={editorOpen} useEditorContext={useEditorContext} setUseEditorContext={setUseEditorContext}
           visualMode={visualMode} setVisualMode={setVisualMode}
-          imageModel={imageModel} setImageModel={setImageModel} imageAspect={imageAspect} setImageAspect={setImageAspect}
+          imageModel={imageModel} setImageModel={setImageModel} imageFormat={imageFormat} setImageFormat={setImageFormat}
           forceNewImage={forceNewImage} setForceNewImage={setForceNewImage} useBrandImages={useBrandImages} setUseBrandImages={setUseBrandImages} hasChatVisuals={hasChatVisuals}
           handleFiles={handleFiles} fileInputRef={fileInputRef}
           sendMessage={sendMessage}
@@ -1532,7 +1535,7 @@ function ChatView({
   audiences, selectedAudienceId, setSelectedAudienceId,
   companyVoices = [], showCompanyPicker = false, selectedCompanyVoiceIds = [], setSelectedCompanyVoiceIds = () => {},
   useWebSearch, setUseWebSearch, editorOpen = false, useEditorContext = false, setUseEditorContext = () => {},
-  visualMode = false, setVisualMode = () => {}, imageModel, setImageModel = () => {}, imageAspect, setImageAspect = () => {},
+  visualMode = false, setVisualMode = () => {}, imageModel, setImageModel = () => {}, imageFormat, setImageFormat = () => {},
   forceNewImage = false, setForceNewImage = () => {}, useBrandImages = true, setUseBrandImages = () => {}, hasChatVisuals = false,
   handleFiles, fileInputRef, sendMessage, navigate, error, hasOpenDoc = false, chatDocs = [], chatDesigns = [],
 }) {
@@ -1601,7 +1604,7 @@ function ChatView({
             selectedCompanyVoiceIds={selectedCompanyVoiceIds} setSelectedCompanyVoiceIds={setSelectedCompanyVoiceIds}
             useWebSearch={useWebSearch} setUseWebSearch={setUseWebSearch} editorOpen={editorOpen} useEditorContext={useEditorContext} setUseEditorContext={setUseEditorContext}
             visualMode={visualMode} setVisualMode={setVisualMode}
-            imageModel={imageModel} setImageModel={setImageModel} imageAspect={imageAspect} setImageAspect={setImageAspect}
+            imageModel={imageModel} setImageModel={setImageModel} imageFormat={imageFormat} setImageFormat={setImageFormat}
             forceNewImage={forceNewImage} setForceNewImage={setForceNewImage} useBrandImages={useBrandImages} setUseBrandImages={setUseBrandImages} hasChatVisuals={hasChatVisuals}
             handleFiles={handleFiles} fileInputRef={fileInputRef}
             sendMessage={sendMessage}
@@ -1642,7 +1645,7 @@ function ChatInput({
   companyVoices = [], showCompanyPicker = false, selectedCompanyVoiceIds = [], setSelectedCompanyVoiceIds = () => {},
   useWebSearch, setUseWebSearch, editorOpen = false, useEditorContext = false, setUseEditorContext = () => {},
   visualMode = false, setVisualMode = () => {}, imageModel = DEFAULT_IMAGE_MODEL, setImageModel = () => {},
-  imageAspect = DEFAULT_ASPECT, setImageAspect = () => {}, forceNewImage = false, setForceNewImage = () => {}, useBrandImages = true, setUseBrandImages = () => {}, hasChatVisuals = false,
+  imageFormat = PRESET_BY_ID[DEFAULT_PRESET_ID], setImageFormat = () => {}, forceNewImage = false, setForceNewImage = () => {}, useBrandImages = true, setUseBrandImages = () => {}, hasChatVisuals = false,
   handleFiles, fileInputRef, sendMessage, enabled,
 }) {
   const voice = useVoiceInput({
@@ -1792,11 +1795,9 @@ function ChatInput({
             style={{ height:32, padding:'0 8px', borderRadius:9, border:'1.5px solid var(--border)', background:'#fff', color:'var(--text-primary)', fontSize:12, fontWeight:600, fontFamily:'inherit', cursor:'pointer', outline:'none', maxWidth:200 }}>
             {IMAGE_MODELS.map(m => <option key={m.value} value={m.value}>{m.label}</option>)}
           </select>
-          <select value={imageAspect} onChange={e => setImageAspect(e.target.value)} title="Format / Seitenverhältnis"
-            style={{ height:32, padding:'0 8px', borderRadius:9, border:'1.5px solid var(--border)', background:'#fff', color:'var(--text-primary)', fontSize:12, fontWeight:600, fontFamily:'inherit', cursor:'pointer', outline:'none' }}
-            disabled={hasChatVisuals && !forceNewImage}>
-            {ASPECT_PRESETS.map(a => <option key={a.value} value={a.value}>{a.label}</option>)}
-          </select>
+          <span title="Format / Seitenverhältnis" style={{ display:'inline-flex', ...(hasChatVisuals && !forceNewImage ? { opacity:0.5, pointerEvents:'none' } : {}) }}>
+            <FormatPicker value={imageFormat} onChange={setImageFormat} />
+          </span>
           {hasChatVisuals && (
             <Tip label={forceNewImage ? 'Neues, unabhängiges Bild' : 'Folge-Bearbeitung des letzten Bildes'}><button onClick={() => setForceNewImage(v => !v)}
               style={{ ...IconBtn(forceNewImage), height:32, padding:'0 10px', gap:6 }}>
