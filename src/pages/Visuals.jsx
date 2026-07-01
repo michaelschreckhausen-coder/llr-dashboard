@@ -563,7 +563,7 @@ function GalleryCard({ v, linkedMode, onOpenStudio, onLightbox, onDownload, onAt
       {/* Favorit (immer sichtbar) */}
       <button onClick={e => { e.stopPropagation(); onToggleFav() }}
         title={v.is_favorite ? 'Aus Favoriten entfernen' : 'Als Favorit markieren'}
-        style={{ position:'absolute', top:6, right:6, width:28, height:28, borderRadius:'50%', border:'none', background: v.is_favorite ? '#F59E0B' : 'rgba(0,0,0,0.5)', color:'#fff', cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'center', boxShadow:'0 1px 4px rgba(0,0,0,.3)' }}>
+        style={{ position:'absolute', zIndex:2, top:6, right:6, width:28, height:28, borderRadius:'50%', border:'none', background: v.is_favorite ? '#F59E0B' : 'rgba(0,0,0,0.5)', color:'#fff', cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'center', boxShadow:'0 1px 4px rgba(0,0,0,.3)' }}>
         <Star size={14} strokeWidth={1.75} fill={v.is_favorite ? 'currentColor' : 'none'}/>
       </button>
 
