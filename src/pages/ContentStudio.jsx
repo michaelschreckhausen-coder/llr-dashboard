@@ -715,6 +715,7 @@ export default function ContentStudio({ session }) {
     if (!activeBrandVoice?.id) { setError('Keine aktive Brand Voice'); return }
     setSending(true); setError('')
     const userMsgText = input.trim()
+    const atts = attachments   // Anhänge festhalten (State wird gleich geleert)
     const wasClean = viewMode === 'clean'
 
     // Wenn Sidebar zu war und wir im Clean-Modus senden → aufklappen
@@ -755,7 +756,7 @@ export default function ContentStudio({ session }) {
     // User-Bubble optimistisch
     const tempUser = { id:'temp-' + Date.now(), role:'user', content:userMsgText, metadata:{}, created_at:new Date().toISOString() }
     setMessages(prev => [...prev, tempUser])
-    setInput('')
+    setInput(''); setAttachments([])
     setTimeout(() => messagesEndRef.current?.scrollIntoView({ behavior:'smooth' }), 30)
 
     try {
@@ -771,7 +772,7 @@ export default function ContentStudio({ session }) {
           knowledge_resource_ids: selectedKnowledgeIds,
           use_web_search: useWebSearch,
           document_context: (useEditorContext && editorOpen) ? (editorRef.current?.getText?.() || undefined) : undefined,
-          attachments,
+          attachments: atts,
         },
       })
       if (fnErr) throw fnErr
@@ -795,6 +796,7 @@ export default function ContentStudio({ session }) {
     if (!activeBrandVoice?.id) { setError('Keine aktive Brand Voice'); return }
     setSending(true); setError('')
     const prompt = input.trim()
+    const atts = attachments.filter(a => (a.type || '').startsWith('image/'))   // angehängte Bilder als Referenz
     const wasClean = viewMode === 'clean'
     if (wasClean && !sidebarOpen && !editorOpen) setSidebarOpen(true)
 
@@ -819,7 +821,7 @@ export default function ContentStudio({ session }) {
     // User-Nachricht speichern + optimistisch anzeigen
     const tempUser = { id:'temp-' + Date.now(), role:'user', content:prompt, metadata:{}, created_at:new Date().toISOString() }
     setMessages(prev => [...prev, tempUser])
-    setInput('')
+    setInput(''); setAttachments([])
     try { await supabase.from('content_chat_messages').insert({ chat_id: chatIdForSend, role:'user', content: prompt, metadata: { type:'image_request' } }) } catch (_e) {}
     setTimeout(() => messagesEndRef.current?.scrollIntoView({ behavior:'smooth' }), 30)
 
@@ -848,6 +850,7 @@ export default function ContentStudio({ session }) {
           useBrandVoiceRefs: useBrandImages,
           parentVisualId: prevVisual?.id || undefined,
           referenceImagePaths: prevVisual?.storage_path ? [prevVisual.storage_path] : [],
+          referenceImagesInline: atts.map(a => ({ data: a.base64, mimeType: a.type || 'image/png' })),
         },
       })
       if (fnErr) throw new Error(fnErr.message || 'Bildgenerierung fehlgeschlagen')
@@ -1884,6 +1887,7 @@ function ImageBubble({ meta, chatDesigns = [], onOpenInDesigner, onDownloadVisua
   const [postsLoading, setPostsLoading] = useState(false)
   const [busy, setBusy] = useState(false)
   const [done, setDone] = useState(false)
+  const [lightbox, setLightbox] = useState(false)
   useEffect(() => {
     let cancelled = false
     setUrl(null); setErr(false)
@@ -1913,11 +1917,16 @@ function ImageBubble({ meta, chatDesigns = [], onOpenInDesigner, onDownloadVisua
         {err ? (
           <div style={{ padding:'30px 24px', fontSize:12, color:'var(--text-muted)' }}>Bild konnte nicht geladen werden.</div>
         ) : url ? (
-          <img src={url} alt={meta.prompt || 'Generiertes Bild'} style={{ display:'block', maxWidth:'100%', borderRadius:8 }} />
+          <img src={url} alt={meta.prompt || 'Generiertes Bild'} onClick={() => setLightbox(true)} style={{ display:'block', maxWidth:'100%', borderRadius:8, cursor:'zoom-in' }} />
         ) : (
           <div style={{ width:240, height:240, display:'flex', alignItems:'center', justifyContent:'center', color:'var(--text-muted)' }}><Loader2 size={18} className='lk-spin'/></div>
         )}
       </div>
+      {lightbox && url && (
+        <div onClick={() => setLightbox(false)} style={{ position:'fixed', inset:0, background:'rgba(0,0,0,0.82)', zIndex:1000, display:'flex', alignItems:'center', justifyContent:'center', padding:24, cursor:'zoom-out' }}>
+          <img src={url} alt={meta.prompt || 'Bild'} style={{ maxWidth:'95vw', maxHeight:'95vh', borderRadius:8, boxShadow:'0 20px 60px rgba(0,0,0,0.5)' }} />
+        </div>
+      )}
       <div style={{ display:'flex', gap:8, flexWrap:'wrap', alignItems:'center' }}>
         <div style={{ position:'relative' }}>
           <Tip label="In den Designer öffnen"><button onClick={() => { if ((chatDesigns||[]).length) setDesignMenuOpen(o => !o); else onOpenInDesigner && onOpenInDesigner(meta) }}
