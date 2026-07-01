@@ -384,7 +384,7 @@ const DocumentEditorPane = forwardRef(function DocumentEditorPane({
   const placeBelow = bubble ? bubble.top < 380 : false
   const popLeft = bubble ? clamp(bubble.left, 220, (typeof window!=='undefined'?window.innerWidth:1200) - 220) : 0
   const popStyle = bubble ? {
-    position:'fixed', left: popLeft, zIndex:50,
+    position:'fixed', left: popLeft, zIndex:120,
     top: placeBelow ? bubble.bottom + 10 : bubble.top - 10,
     transform: placeBelow ? 'translate(-50%, 0)' : 'translate(-50%, -100%)',
     width:380, maxWidth:'92vw',
