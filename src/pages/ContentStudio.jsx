@@ -864,31 +864,58 @@ export default function ContentStudio({ session }) {
     setTimeout(() => messagesEndRef.current?.scrollIntoView({ behavior:'smooth' }), 30)
     pendingGens.set(chatIdForSend, { kind:'image', startedAt:Date.now(), expectedSeconds:(/(-pro-|\|high)/i.test(imageModel||'') ? 45 : 22), ratio:(imageFormat?.ratio||'1:1') }); emitGenChange()
 
-    // Bearbeiten vs. neues Bild — automatisch per KI erkannt (kein manueller Toggle mehr).
-    // Mit Anhängen: immer neues Bild (Anhänge sind die Referenz). Sonst letztes Chat-Bild
-    // nur als Referenz nutzen, wenn die Anfrage eine Änderung beschreibt.
-    let prevVisual = null
+    // ── Bild-Direktor (wie ChatGPT/Claude): ein Sprachmodell liest den GANZEN Chat
+    // (inkl. geschriebener Beiträge + vorheriger Bilder) und formuliert daraus einen
+    // eigenständigen, kontextbewussten Bild-Prompt + entscheidet, ob das letzte Bild als
+    // Referenz mitläuft. Der Bildgenerator sieht den Chat NICHT — nur diesen Prompt.
     const lastVisual = lastChatVisual()
-    if (lastVisual && atts.length === 0) {
-      let editIntent = true
+    let prevVisual = null
+    let promptForGen = prompt
+    const hasPriorContext = (messages && messages.length > 0) || !!lastVisual || !!(linkedPost?.content?.trim()) || !!(refDoc?.content_text?.trim())
+    if (hasPriorContext) {
+      const transcript = (messages || []).slice(-24).map(m => {
+        if (m.role === 'user') return `NUTZER: ${String(m.content || '').slice(0, 600)}`
+        const meta = (m.metadata && typeof m.metadata === 'object') ? m.metadata : null
+        if (meta?.type === 'image') return `ASSISTENT [Bild erzeugt]: ${meta.prompt || '(ohne Beschreibung)'}`
+        return `ASSISTENT: ${String(m.content || '').replace(/<\/?beitragstext>/gi, '').slice(0, 700)}`
+      }).join('\n')
+      const extra = []
+      if (linkedPost?.content?.trim()) extra.push(`VERKNÜPFTER BEITRAG — Titel: "${linkedPost.title || ''}"\n${linkedPost.content.trim().slice(0, 1500)}`)
+      if (refDoc?.content_text?.trim()) extra.push(`REFERENZ-DOKUMENT — Titel: "${refDoc.title || ''}"\n${refDoc.content_text.trim().slice(0, 1500)}`)
+      const directorInstr = `Du bist der Bild-Direktor einer LinkedIn-Content-Werkstatt — wie ChatGPT, wenn es aus einem Gespräch heraus ein Bild erzeugt. Du liest den gesamten bisherigen Verlauf plus die neue Anfrage und schreibst daraus EINEN eigenständigen, detaillierten Bild-Prompt. Der Bildgenerator sieht den Chat NICHT, nur deinen Prompt — er muss also alles Nötige selbst enthalten (Motiv, Szene, Bildausschnitt, Stil, Stimmung, Licht).
+
+Regeln:
+- Beziehe frühere Motive aktiv ein. Bezieht sich die Anfrage auf etwas Vorheriges ("der Camper", "aus einer anderen Perspektive", "mach es wärmer", "dazu ein Bild", "näher ran"), übernimm dieses Motiv explizit und ausführlich statt es zu verwerfen.
+- "aus einer anderen Perspektive / anderem Blickwinkel / Winkel / näher dran / weiter weg" = GLEICHES Motiv, nur andere Kamera → reference_last_image = true.
+- Kleine Änderung am letzten Bild (Farbe, Licht, Detail, Hintergrund) → gleiches Motiv beschreiben + reference_last_image = true.
+- Nur bei einem thematisch KOMPLETT anderen, unabhängigen Bild → reference_last_image = false.
+- Wurde im Chat ein Beitrag geschrieben und der Nutzer will "ein Bild dazu", leite das Bildmotiv inhaltlich aus dem Beitrag ab.
+${lastVisual ? '- Es gibt bereits ein zuletzt erzeugtes Bild (siehe Verlauf, letzte "[Bild erzeugt]"-Zeile) — dessen Motiv ist der Bezugspunkt für Perspektiv-/Änderungswünsche.' : '- Es gibt noch kein vorheriges Bild → reference_last_image = false.'}
+${atts.length ? '- Der Nutzer hat eigene Referenzbilder angehängt → reference_last_image = false.' : ''}
+
+Antworte AUSSCHLIESSLICH mit JSON, ohne Erklärung, in genau diesem Format:
+{"reference_last_image": true|false, "prompt": "<detaillierter, eigenständiger Bild-Prompt auf Deutsch>"}
+
+=== CHAT-VERLAUF ===
+${transcript || '(noch leer)'}${extra.length ? '\n\n=== ZUSATZKONTEXT ===\n' + extra.join('\n\n') : ''}
+
+=== NEUE ANFRAGE DES NUTZERS ===
+"${prompt}"`
       try {
-        const { data: cls } = await supabase.functions.invoke('generate', {
-          body: { type:'raw', model:'claude-haiku-4-5', prompt: `Im Chat existiert bereits ein generiertes Bild. Will die folgende Nutzer-Anfrage das BESTEHENDE Bild bearbeiten/anpassen, oder ein KOMPLETT NEUES, eigenständiges Bild erzeugen? Antworte mit genau einem Wort: BEARBEITEN oder NEU.\n\nAnfrage: "${prompt}"` },
+        const { data: dir } = await supabase.functions.invoke('generate', {
+          body: { type:'raw', model:'claude-sonnet-4-6', prompt: directorInstr },
         })
-        const ans = String(cls?.text || '').trim().toUpperCase()
-        if (ans.includes('NEU') && !ans.includes('BEARBEIT')) editIntent = false
-      } catch (_e) {}
-      prevVisual = editIntent ? lastVisual : null
+        const raw = String(dir?.text || '')
+        const a = raw.indexOf('{'); const b = raw.lastIndexOf('}')
+        const parsed = (a >= 0 && b > a) ? JSON.parse(raw.slice(a, b + 1)) : null
+        if (parsed && String(parsed.prompt || '').trim()) promptForGen = String(parsed.prompt).trim()
+        if (parsed?.reference_last_image === true && lastVisual && atts.length === 0) prevVisual = lastVisual
+      } catch (_e) {
+        if (linkedPost?.content?.trim()) promptForGen = `Erstelle ein Bild, das visuell zu diesem LinkedIn-Beitrag passt.\nBeitrag-Titel: "${linkedPost.title || ''}"\nBeitrag-Text:\n${linkedPost.content.trim()}\n\nKonkreter Bildwunsch: ${prompt}`
+        else if (refDoc?.content_text?.trim()) promptForGen = `Erstelle ein Bild, das visuell zum Inhalt dieses Dokuments passt.\nDokument-Titel: "${refDoc.title || ''}"\nDokument-Inhalt:\n${refDoc.content_text.trim().slice(0, 2000)}\n\nKonkreter Bildwunsch: ${prompt}`
+      }
     }
     const { model, quality } = splitModelValue(imageModel)
-    // Mit Redaktionsplan-Beitrag verknüpft → Beitragstext als Bild-Kontext mitgeben
-    // (nur Erstgenerierung, nicht bei iterativen Edits auf ein bestehendes Bild).
-    let promptForGen = prompt
-    if (!prevVisual && linkedPost?.content && linkedPost.content.trim()) {
-      promptForGen = `Erstelle ein Bild, das visuell zu diesem LinkedIn-Beitrag passt.\nBeitrag-Titel: "${linkedPost.title || ''}"\nBeitrag-Text:\n${linkedPost.content.trim()}\n\nKonkreter Bildwunsch: ${prompt}`
-    } else if (!prevVisual && refDoc?.content_text && refDoc.content_text.trim()) {
-      promptForGen = `Erstelle ein Bild, das visuell zum Inhalt dieses Dokuments passt.\nDokument-Titel: "${refDoc.title || ''}"\nDokument-Inhalt:\n${refDoc.content_text.trim().slice(0, 2000)}\n\nKonkreter Bildwunsch: ${prompt}`
-    }
 
     try {
       const { data, error: fnErr } = await supabase.functions.invoke('generate-image', {
