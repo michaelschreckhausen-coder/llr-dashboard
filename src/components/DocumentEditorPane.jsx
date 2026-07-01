@@ -13,6 +13,7 @@ import {
   listFlashActions, createFlashAction, deleteFlashAction,
 } from '../lib/contentDocuments'
 import EmojiPicker from './EmojiPicker'
+import { useModel } from '../context/ModelContext'
 
 const SAVE_DEBOUNCE = 900
 const P = 'var(--wl-primary, rgb(49,90,231))'
@@ -107,8 +108,9 @@ function clamp(v, lo, hi) { return Math.max(lo, Math.min(hi, v)) }
 
 const DocumentEditorPane = forwardRef(function DocumentEditorPane({
   docId, teamId, brandVoiceId, brandVoiceName, audienceId, companyVoiceIds = [], sourceChatId = null, editorOpen = false,
-  onDocCreated, onClose, onAttachToPost, onNewDocument, initialText = null, onInitialConsumed, onLoaded,
+  onDocCreated, onClose, onAttachToPost, loadExistingPosts, onNewDocument, initialText = null, onInitialConsumed, onLoaded,
 }, ref) {
+  const { model: selectedModel } = useModel()
   const [title, setTitle] = useState('')
   const titleRef = useRef('')
   const [saveState, setSaveState] = useState('idle')
@@ -123,6 +125,9 @@ const DocumentEditorPane = forwardRef(function DocumentEditorPane({
   const [wordCount, setWordCount] = useState(0)
   const [continuing, setContinuing] = useState(false)
   const [exportOpen, setExportOpen] = useState(false)
+  const [postMenuOpen, setPostMenuOpen] = useState(false)
+  const [posts, setPosts] = useState(null)
+  const [postsLoading, setPostsLoading] = useState(false)
   const [customActions, setCustomActions] = useState([])
   const [showActionForm, setShowActionForm] = useState(false)
   const [newLabel, setNewLabel] = useState('')
@@ -292,7 +297,8 @@ const DocumentEditorPane = forwardRef(function DocumentEditorPane({
       body: {
         // Inline-Edits laufen bewusst als 'raw' (kein Post-Generierungs-System-Prompt).
         // Der Editor-Rahmen steckt komplett in prompt (siehe EDIT_SYSTEM/wrapEdit).
-        type: 'raw', model: 'claude-sonnet-4-6', prompt: finalPrompt,
+        // Modell = global oben rechts gewaehltes (ModelContext), NICHT fest.
+        type: 'raw', model: selectedModel, prompt: finalPrompt,
       },
     })
     if (error || !data?.text) throw new Error(error?.message || data?.error || 'Keine Antwort')
@@ -399,12 +405,6 @@ const DocumentEditorPane = forwardRef(function DocumentEditorPane({
     setTimeout(() => { iframe.contentWindow.print(); setTimeout(() => document.body.removeChild(iframe), 1500) }, 300)
     setExportOpen(false)
   }
-  function handleAttach() {
-    if (!editor || !onAttachToPost) return
-    const text = editor.getText().trim(); if (!text) { alert('Das Dokument ist leer.'); return }
-    onAttachToPost(text)
-  }
-
   // ── Popover-Positionierung ────────────────────────────────────────────────
   const placeBelow = bubble ? bubble.top < 380 : false
   const popLeft = bubble ? clamp(bubble.left, 220, (typeof window!=='undefined'?window.innerWidth:1200) - 220) : 0
@@ -442,11 +442,36 @@ const DocumentEditorPane = forwardRef(function DocumentEditorPane({
             </button>
             {onAttachToPost && <span style={{ width:1, height:18, background:'var(--border,#E9ECF2)', margin:'0 4px' }}/>}
             {onAttachToPost && (
-              <button onClick={handleAttach} title="Inhalt als LinkedIn-Beitrag übernehmen"
-                style={{ display:'inline-flex', alignItems:'center', gap:6, height:30, padding:'0 11px', borderRadius:7, border:'none', background:'transparent', color:'var(--text-muted,#475467)', fontSize:12.5, fontWeight:500, cursor:'pointer', whiteSpace:'nowrap', fontFamily:'inherit' }}
-                onMouseEnter={e=>{ e.currentTarget.style.background='#EEF1F6' }} onMouseLeave={e=>{ e.currentTarget.style.background='transparent' }}>
-                <CalendarPlus size={15} strokeWidth={2}/>In Beitrag
-              </button>
+              <div style={{ position:'relative' }}>
+                <button title="Inhalt als LinkedIn-Beitrag übernehmen"
+                  onClick={async () => {
+                    const text = editor ? editor.getText().trim() : ''
+                    if (!text) { alert('Das Dokument ist leer.'); return }
+                    const open = !postMenuOpen; setPostMenuOpen(open)
+                    if (open && posts === null && loadExistingPosts) { setPostsLoading(true); const r = await loadExistingPosts(); setPosts(r || []); setPostsLoading(false) }
+                  }}
+                  style={{ display:'inline-flex', alignItems:'center', gap:6, height:30, padding:'0 11px', borderRadius:7, border:'none', background:'transparent', color:'var(--text-muted,#475467)', fontSize:12.5, fontWeight:500, cursor:'pointer', whiteSpace:'nowrap', fontFamily:'inherit' }}
+                  onMouseEnter={e=>{ e.currentTarget.style.background='#EEF1F6' }} onMouseLeave={e=>{ e.currentTarget.style.background='transparent' }}>
+                  <CalendarPlus size={15} strokeWidth={2}/>In Beitrag
+                </button>
+                {postMenuOpen && (
+                  <>
+                    <div onClick={() => setPostMenuOpen(false)} style={{ position:'fixed', inset:0, zIndex:80 }}/>
+                    <div style={{ position:'absolute', top:'calc(100% + 6px)', right:0, zIndex:81, background:'#fff', border:'1px solid var(--border)', borderRadius:10, boxShadow:'0 10px 30px rgba(0,0,0,.12)', minWidth:270, maxHeight:340, overflowY:'auto', padding:6 }}>
+                      <button onClick={() => { const text = editor ? editor.getText().trim() : ''; if (text) onAttachToPost(text, '__new__'); setPostMenuOpen(false) }} style={{ ...MenuItem, color:P, fontWeight:700 }}>+ Als neuen Beitrag anlegen</button>
+                      <div style={{ height:1, background:'var(--border)', margin:'4px 0' }}/>
+                      <div style={{ padding:'6px 11px', fontSize:10, fontWeight:700, color:'var(--text-muted)', textTransform:'uppercase', letterSpacing:'0.04em' }}>Zu bestehendem Beitrag</div>
+                      {postsLoading && <div style={{ padding:'6px 11px', fontSize:12, color:'var(--text-muted)' }}>Lädt…</div>}
+                      {!postsLoading && posts && posts.length === 0 && <div style={{ padding:'6px 11px', fontSize:12, color:'var(--text-muted)' }}>Noch keine Beiträge vorhanden</div>}
+                      {!postsLoading && posts && posts.map(pp => (
+                        <button key={pp.id} onClick={() => { const text = editor ? editor.getText().trim() : ''; if (text) onAttachToPost(text, pp.id); setPostMenuOpen(false) }} style={{ ...MenuItem, display:'block', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }} title={pp.title || '(ohne Titel)'}>
+                          {pp.title || '(ohne Titel)'}
+                        </button>
+                      ))}
+                    </div>
+                  </>
+                )}
+              </div>
             )}
             <span style={{ width:1, height:18, background:'var(--border,#E9ECF2)', margin:'0 4px' }}/>
             <div style={{ position:'relative' }}>
@@ -458,7 +483,7 @@ const DocumentEditorPane = forwardRef(function DocumentEditorPane({
               {exportOpen && (
                 <>
                   <div onClick={() => setExportOpen(false)} style={{ position:'fixed', inset:0, zIndex:80 }}/>
-                  <div style={{ position:'absolute', top:'calc(100% + 6px)', left:0, zIndex:81, background:'#fff', border:'1px solid var(--border)', borderRadius:10, boxShadow:'0 10px 30px rgba(0,0,0,.12)', minWidth:212, padding:6 }}>
+                  <div style={{ position:'absolute', top:'calc(100% + 6px)', right:0, zIndex:81, background:'#fff', border:'1px solid var(--border)', borderRadius:10, boxShadow:'0 10px 30px rgba(0,0,0,.12)', minWidth:212, padding:6 }}>
                   <button onClick={copyToClipboard} style={MenuItem}><Copy size={15} strokeWidth={1.75}/><span>Text kopieren</span></button>
                   <button onClick={downloadPdf} style={MenuItem}><FileText size={15} strokeWidth={1.75}/><span>Als PDF herunterladen</span></button>
                   <button onClick={downloadWord} style={MenuItem}><FileText size={15} strokeWidth={1.75}/><span>Als Word (.doc)</span></button>
