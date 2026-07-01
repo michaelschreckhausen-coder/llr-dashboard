@@ -23,7 +23,7 @@ import { useBrandVoice } from '../context/BrandVoiceContext'
 import DocumentEditorPane from '../components/DocumentEditorPane'
 import { listDocumentsForChat, listDocuments, addDocumentToChat, listChatsForDocument } from '../lib/contentDocuments'
 import DesignerPane from '../components/designer/DesignerPane'
-import { IMAGE_MODELS, DEFAULT_IMAGE_MODEL, splitModelValue, imageModelLabel, ASPECT_PRESETS, DEFAULT_ASPECT } from '../lib/imageModels'
+import { IMAGE_MODELS, DEFAULT_IMAGE_MODEL, splitModelValue, imageModelLabel, imageModelName, ASPECT_PRESETS, DEFAULT_ASPECT } from '../lib/imageModels'
 import FormatPicker from '../components/FormatPicker'
 import { PRESET_BY_ID, DEFAULT_PRESET_ID } from '../lib/formatPresets'
 import { listVisualsForChat, linkVisualToChat, getVisual, signedVisualUrl, downloadVisualBlob, visualDataUrl, uploadImageBlob, listTeamVisuals, listChatsForVisual, createEmptyDesign as createEmptyDesignRow, addImagePageToDesign } from '../lib/contentVisuals'
@@ -1855,7 +1855,7 @@ function ModelDropdown({ value, onChange }) {
     <div ref={ref} style={{ position:'relative', display:'inline-block' }}>
       <button type="button" onClick={() => setOpen(o => !o)} title="Bildmodell"
         style={{ height:34, padding:'0 11px', borderRadius:9, boxSizing:'border-box', border:'1.5px solid var(--border)', background:'#fff', color:'var(--text-primary)', fontSize:12.5, fontWeight:600, lineHeight:1, cursor:'pointer', whiteSpace:'nowrap', display:'inline-flex', alignItems:'center', gap:6, fontFamily:'inherit', flexShrink:0, maxWidth:210 }}>
-        <span style={{ flex:1, minWidth:0, overflow:'hidden', textOverflow:'ellipsis', textAlign:'left' }}>{imageModelLabel(value)}</span>
+        <span style={{ flex:1, minWidth:0, overflow:'hidden', textOverflow:'ellipsis', textAlign:'left' }}>{imageModelName(value)}</span>
         <ChevronDown size={14} strokeWidth={2} style={{ opacity:0.5, marginLeft:2, flexShrink:0 }}/>
       </button>
       {open && (
@@ -1865,7 +1865,7 @@ function ModelDropdown({ value, onChange }) {
               style={{ display:'flex', alignItems:'center', gap:8, width:'100%', textAlign:'left', padding:'7px 9px', borderRadius:7, border:'none', background: m.value === value ? 'rgba(49,90,231,0.06)' : 'transparent', cursor:'pointer', fontSize:13, color:'var(--text-primary)', fontFamily:'inherit' }}
               onMouseEnter={e => { if (m.value !== value) e.currentTarget.style.background = 'var(--page-bg,#F2F4F8)' }}
               onMouseLeave={e => { if (m.value !== value) e.currentTarget.style.background = 'transparent' }}>
-              <span style={{ flex:1, overflow:'hidden', textOverflow:'ellipsis' }}>{m.label}</span>
+              <span style={{ flex:1, overflow:'hidden', textOverflow:'ellipsis' }}>{m.name}</span>
               <span style={{ fontSize:10.5, color:'var(--text-muted)', flexShrink:0 }}>{m.provider}</span>
             </button>
           ))}
