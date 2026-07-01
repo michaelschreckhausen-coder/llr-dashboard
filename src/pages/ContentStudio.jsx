@@ -23,6 +23,7 @@ import { useBrandVoice } from '../context/BrandVoiceContext'
 import DocumentEditorPane from '../components/DocumentEditorPane'
 import { listDocumentsForChat, listDocuments, addDocumentToChat, listChatsForDocument } from '../lib/contentDocuments'
 import DesignerPane from '../components/designer/DesignerPane'
+import GenerationLoading from '../components/GenerationLoading'
 import { IMAGE_MODELS, DEFAULT_IMAGE_MODEL, splitModelValue, imageModelLabel, imageModelName, ASPECT_PRESETS, DEFAULT_ASPECT } from '../lib/imageModels'
 import FormatPicker from '../components/FormatPicker'
 import { PRESET_BY_ID, DEFAULT_PRESET_ID } from '../lib/formatPresets'
@@ -1001,6 +1002,13 @@ export default function ContentStudio({ session }) {
   // ─── Render ───────────────────────────────────────────────────────────────
   return (
     <div ref={csRootRef} style={{ display:'flex', position:'relative', height:'100%', minHeight:0, overflow:'hidden', background:'var(--page-bg, #F7F8FA)' }}>
+      {/* Bild-Generierung: Vollbild-Ladeanimation mit Fortschritt + Mini-Snake zur Ueberbrueckung */}
+      {sending && visualMode && (
+        <GenerationLoading
+          title="Bild wird erstellt"
+          expectedSeconds={/(-pro-|\|high)/i.test(imageModel || '') ? 45 : 22}
+        />
+      )}
       {/* Sidebar */}
       {sidebarOpen && (
         <aside style={{ width:264, borderRight:'1px solid var(--border,#E9ECF2)', background:'var(--page-bg, #F7F8FA)', display:'flex', flexDirection:'column', flexShrink:0 }}>
