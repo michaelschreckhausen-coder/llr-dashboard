@@ -1380,7 +1380,40 @@ export default function DesignerCanvas({ visual, teamId, onSaved, onReplaceVisua
         else if (o.type === 'image') Object.assign(b, { width: Math.round(o.width || 0), height: Math.round(o.height || 0), hinweis: 'Bild – Inhalt NICHT änderbar, nur Position/Größe' })
         return b
       })
-      const prompt = `Du bist ein erfahrener Grafik-Designer und bearbeitest eine Design-Seite (Größe ${cw}x${ch} Pixel). Hintergrundfarbe aktuell: ${bgColor || 'transparent'}.\n\nElemente als JSON (Koordinaten sind die linke obere Ecke in Pixeln, bei Ellipse der Mittelpunkt):\n${JSON.stringify(slim)}\n\nNutzer-Befehl: "${c}"\n\nWende den Befehl gestalterisch sinnvoll auf die GESAMTE Seite an. Erlaubt: Texte umformulieren/kürzen, Schriftgröße & Schriftschnitt, Farben (immer als Hex #rrggbb), Positionen (x,y), Breiten, Ausrichtung, Form-/Rahmenfarben, Eckenradius und die Hintergrundfarbe. Achte auf Lesbarkeit, Kontrast und sauberes Layout. Regeln: ALLE ids und types unverändert lassen, KEINE Elemente löschen, KEINE neuen Elemente/Bilder erfinden, Bild-Inhalte nicht ändern, alle Elemente innerhalb 0..${cw} (x) und 0..${ch} (y) halten.\n\nAntworte AUSSCHLIESSLICH mit gültigem JSON, ohne Markdown, ohne Erklärung, exakt in dieser Form:\n{"bgColor":"#rrggbb oder null","objects":[{"id":"<id>", ...geänderte Felder...}]}`
+      // Marken-/Personen-Kontext für den Agenten (Name, Farben, Schriften, Stil)
+      const bv = activeBrandVoice || {}
+      const brandName = bv.name || ''
+      const _pal = Array.isArray(bv.visual_color_palette) ? bv.visual_color_palette : []
+      const _bc = (bv.brand_colors && typeof bv.brand_colors === 'object') ? bv.brand_colors : null
+      const brandColors = [_bc?.primary, _bc?.secondary, _bc?.accent, ...(Array.isArray(_bc?.additional) ? _bc.additional : []), ..._pal].filter(Boolean)
+      const brandFonts = (bv.brand_fonts && typeof bv.brand_fonts === 'object') ? [bv.brand_fonts.primary, bv.brand_fonts.secondary].filter(Boolean) : []
+      const brandCtx = [
+        brandName ? `Name der Person/Marke (verwende genau diesen, wenn der Nutzer "mein Name"/"meinem Namen"/"mich" o.Ä. meint): "${brandName}"` : '',
+        brandColors.length ? `Markenfarben (bevorzugt verwenden, Hex): ${brandColors.join(', ')}` : '',
+        brandFonts.length ? `Marken-Schriften: ${brandFonts.join(', ')}` : '',
+        bv.visual_style_description ? `Visueller Stil: ${bv.visual_style_description}` : '',
+      ].filter(Boolean).join('\n')
+
+      const prompt = `Du bist ein agentischer Grafik-Design-Assistent und bearbeitest eine Design-Seite (Größe ${cw}x${ch} Pixel; Koordinaten = linke obere Ecke in Pixeln, bei Ellipse ist x,y der Mittelpunkt). Aktuelle Hintergrundfarbe: ${bgColor || 'transparent'}.
+
+Aktuelle Elemente als JSON:
+${JSON.stringify(slim)}
+
+${brandCtx ? 'Marken-Kontext:\n' + brandCtx + '\n\n' : ''}Nutzer-Befehl: "${c}"
+
+Setze den Befehl vollständig und gestalterisch sauber um. Du DARFST: neue Elemente hinzufügen (z.B. eine Headline), bestehende ändern, löschen, den Hintergrund ändern und das Basisbild inhaltlich bearbeiten. Achte auf Lesbarkeit, Kontrast, sinnvolle Größen/Positionen und ein sauberes Layout; halte alle Elemente innerhalb 0..${cw} (x) und 0..${ch} (y). Farben immer als Hex #rrggbb. Bevorzuge Marken-Farben/Schriften, wenn vorhanden. Bei "Headline mit meinem Namen" o.Ä.: lege ein neues, großes Text-Element mit dem oben genannten Namen an und platziere es gut lesbar.
+
+Gib AUSSCHLIESSLICH gültiges JSON zurück (kein Markdown, keine Erklärung) – eine Liste von Operationen in Ausführungsreihenfolge:
+{"operations":[
+  {"op":"add_text","text":"...","x":<int>,"y":<int>,"fontSize":<int>,"fill":"#rrggbb","fontFamily":"Inter","fontStyle":"normal|bold|italic","align":"left|center|right","width":<int>},
+  {"op":"add_rect","x":<int>,"y":<int>,"width":<int>,"height":<int>,"fill":"#rrggbb","cornerRadius":<int>},
+  {"op":"add_ellipse","x":<int>,"y":<int>,"radiusX":<int>,"radiusY":<int>,"fill":"#rrggbb"},
+  {"op":"update","id":"<vorhandene id>","props":{ ...nur zu ändernde Felder... }},
+  {"op":"delete","id":"<vorhandene id>"},
+  {"op":"set_background","color":"#rrggbb"},
+  {"op":"edit_image","instruction":"was am Bild geändert werden soll"}
+]}
+Nutze nur Operationen, die für den Befehl nötig sind. "edit_image" nur, wenn der Befehl das Bild selbst betrifft.`
       const genCall = supabase.functions.invoke('generate', { body: { type: 'raw', model: 'claude-sonnet-4-6', prompt } })
       const timeout = new Promise((_, rej) => setTimeout(() => rej(new Error('Zeitüberschreitung – bitte erneut versuchen')), 75000))
       const { data, error } = await Promise.race([genCall, timeout])
@@ -1390,23 +1423,36 @@ export default function DesignerCanvas({ visual, teamId, onSaved, onReplaceVisua
       const a = txt.indexOf('{'), z = txt.lastIndexOf('}')
       if (a >= 0 && z > a) txt = txt.slice(a, z + 1)
       const parsed = JSON.parse(txt)
-      const byId = new Map((Array.isArray(parsed.objects) ? parsed.objects : []).map(o => [o.id, o]))
-      if (byId.size === 0 && parsed.bgColor === undefined) throw new Error('Keine Änderungen erhalten')
+      const ops = Array.isArray(parsed.operations) ? parsed.operations : (Array.isArray(parsed) ? parsed : [])
+      if (!ops.length) throw new Error('Keine Änderungen erhalten')
       pushHistory()
-      setObjects(prev => prev.map(o => {
-        const u = byId.get(o.id); if (!u) return o
-        const allow = ({
-          text:    ['text','fontSize','fontFamily','fill','fontStyle','align','width','x','y','rotation','opacity'],
-          rect:    ['width','height','fill','stroke','strokeWidth','cornerRadius','x','y','rotation','opacity'],
-          ellipse: ['radiusX','radiusY','fill','stroke','strokeWidth','x','y','rotation','opacity'],
-          sticker: ['fill','x','y','rotation','opacity'],
-          image:   ['x','y','width','height','rotation','opacity'],
-        })[o.type] || ['x','y','rotation','opacity']
-        const patch = {}
-        allow.forEach(k => { if (u[k] !== undefined && u[k] !== null) patch[k] = u[k] })
-        return { ...o, ...patch }
-      }))
-      if (parsed.bgColor !== undefined && bgColor !== null) setBgColor(parsed.bgColor)
+      const clamp = (v, max) => Math.max(0, Math.min(Math.round(Number(v) || 0), max))
+      let imageEdited = false
+      for (const op of ops) {
+        const t = op && op.op
+        if (t === 'add_text' && op.text) {
+          setObjects(prev => [...prev, { id: nextId(), type:'text', text:String(op.text), x:clamp(op.x,cw), y:clamp(op.y,ch), fontSize: Math.max(8, Math.round(Number(op.fontSize))||48), fontFamily: op.fontFamily || 'Inter', fill: op.fill || '#111111', fontStyle: op.fontStyle || 'normal', align: op.align || 'left', width: Math.round(Number(op.width)) || Math.min(560, cw - 40), rotation:0, opacity:1 }])
+        } else if (t === 'add_rect') {
+          setObjects(prev => [...prev, { id: nextId(), type:'rect', x:clamp(op.x,cw), y:clamp(op.y,ch), width: Math.round(Number(op.width))||200, height: Math.round(Number(op.height))||120, fill: op.fill || '#315AE7', stroke: op.stroke || null, strokeWidth: Math.round(Number(op.strokeWidth))||0, cornerRadius: Math.round(Number(op.cornerRadius))||0, rotation:0, opacity:1 }])
+        } else if (t === 'add_ellipse') {
+          setObjects(prev => [...prev, { id: nextId(), type:'ellipse', x:clamp(op.x,cw), y:clamp(op.y,ch), radiusX: Math.round(Number(op.radiusX))||80, radiusY: Math.round(Number(op.radiusY))||80, fill: op.fill || '#315AE7', stroke: op.stroke || null, strokeWidth: Math.round(Number(op.strokeWidth))||0, rotation:0, opacity:1 }])
+        } else if (t === 'update' && op.id && op.props && typeof op.props === 'object') {
+          const allow = ['text','fontSize','fontFamily','fill','fontStyle','align','width','x','y','rotation','opacity','height','stroke','strokeWidth','cornerRadius','radiusX','radiusY']
+          const patch = {}; allow.forEach(k => { if (op.props[k] !== undefined && op.props[k] !== null) patch[k] = op.props[k] })
+          if (Object.keys(patch).length) setObjects(prev => prev.map(o => o.id === op.id ? { ...o, ...patch } : o))
+        } else if (t === 'delete' && op.id) {
+          setObjects(prev => prev.filter(o => o.id !== op.id))
+        } else if (t === 'set_background' && op.color) {
+          setBgColor(op.color)
+        } else if (t === 'edit_image' && op.instruction && !imageEdited && visual?.storage_path) {
+          imageEdited = true
+          try {
+            const nv = await callGenerateImage(`Bearbeite das Referenzbild: ${op.instruction}. Behalte Bildstil, Beleuchtung und Perspektive konsistent, fotorealistisch.`)
+            const url = await visualDataUrl(nv.storage_path)
+            if (url) await applyResultDirect(url, 'free')
+          } catch (_e) {}
+        }
+      }
       setPageAiCmd('')
       setSavedMsg('Seite mit KI bearbeitet')
     } catch (e) {
