@@ -1430,9 +1430,10 @@ Bild-Befehle nach Absicht (NICHT verwechseln — das ist wichtig):
 - Inhaltliche Bildänderung (andere Szene/Objekte/Perspektive) → edit_image.
 - Hintergrund durch ein NEUES (generiertes) Bild ersetzen — z.B. "generiere ein Büro im Hintergrund", "setz mich vor einen anderen Hintergrund" → replace_background mit instruction. Die Person wird per Matting freigestellt UND der neue Hintergrund generiert und dahintergelegt — Person bleibt EXAKT erhalten. NICHT edit_image, NICHT set_background-Farbe.
 - Logo einer Company-Marke einfügen → add_logo mit company="<Markenname>" (+ optional corner). Nutze IMMER das echte hinterlegte Logo, erzeuge NIEMALS ein Text-/Wortmarken-Logo.
+- Fotos/Bilder ins Design holen, Moodboards, Bild-Collagen („Bilder von X", „Moodboard mit …") → add_stock_image mit konkreten (am besten englischen) Suchbegriffen. Das sind ECHTE Fotos aus der Stock-Datenbank (Pexels) — NICHT edit_image/generieren. Für ein Moodboard MEHRERE add_stock_image in einem sauberen Raster (z.B. 2x2 oder 3x2, kleine Abstände, füllen die Seite), dazu passende Hintergrundfarbe (set_background) und optional eine Überschrift. Beispiel-Suchbegriffe „sommerliches Frucht-/Natur-Moodboard": "fresh summer fruit", "citrus fruit", "berries", "watermelon", "green tropical leaves", "sunny nature".
 - GRUNDPRINZIP: Nutze IMMER zuerst die eingebauten Designer-Funktionen (set_filter, remove_background, replace_background, add_logo — sie erhalten die Person/nutzen echte Assets). Nur edit_image erzeugt das Basisbild generativ NEU — ausschließlich für inhaltliche Änderungen am Motiv, die keine eingebaute Funktion leisten kann.
 
-Gib AUSSCHLIESSLICH gültiges JSON zurück (kein Markdown, keine Erklärung) – Operationen in Ausführungsreihenfolge (Balken VOR zugehörigem Text):
+Gib AUSSCHLIESSLICH gültiges JSON zurück (kein Markdown, keine Erklärung, KEINE Kommentare, KEINE trailing commas, alle Klammern geschlossen) – Operationen in Ausführungsreihenfolge (Balken VOR zugehörigem Text):
 {"operations":[
   {"op":"add_text","text":"...","x":<int>,"y":<int>,"fontSize":<int>,"fill":"#rrggbb","fontFamily":"Inter","fontStyle":"normal|bold|italic","align":"left|center|right","width":<int>},
   {"op":"add_rect","x":<int>,"y":<int>,"width":<int>,"height":<int>,"fill":"#rrggbb","cornerRadius":<int>},
@@ -1443,6 +1444,7 @@ Gib AUSSCHLIESSLICH gültiges JSON zurück (kein Markdown, keine Erklärung) –
   {"op":"set_filter","filters":{"grayscale":"0-1","contrast":"-50..50","brightness":"-1..1","saturation":"-1..1","sepia":"0-1"}},
   {"op":"remove_background"},
   {"op":"replace_background","instruction":"Beschreibung des neuen Hintergrunds, z.B. modernes helles Büro"},
+  {"op":"add_stock_image","query":"<engl. Suchbegriff, z.B. fresh summer fruit>","x":<int>,"y":<int>,"width":<int>,"height":<int>,"orientation":"square|landscape|portrait"},
   {"op":"add_logo","company":"<Company-Markenname>","corner":"top-right|top-left|bottom-right|bottom-left"},
   {"op":"edit_image","instruction":"inhaltliche Bildänderung am Motiv"}
 ]}
@@ -1455,7 +1457,23 @@ Nutze nur die für den Befehl nötigen Operationen.`
       txt = txt.replace(/^```(?:json)?/i, '').replace(/```\s*$/i, '').trim()
       const a = txt.indexOf('{'), z = txt.lastIndexOf('}')
       if (a >= 0 && z > a) txt = txt.slice(a, z + 1)
-      const parsed = JSON.parse(txt)
+      let parsed
+      try { parsed = JSON.parse(txt) }
+      catch (_pe1) {
+        // Häufigster Fehler: trailing commas → entfernen und erneut versuchen.
+        let rep = txt.replace(/,\s*([\]}])/g, '$1')
+        try { parsed = JSON.parse(rep) }
+        catch (_pe2) {
+          // Abgeschnittenes JSON reparieren: bis zum letzten vollständigen '}' kürzen + Array/Objekt schließen.
+          try {
+            const oi = rep.indexOf('"operations"')
+            const arrStart = oi >= 0 ? rep.indexOf('[', oi) : -1
+            const lastClose = rep.lastIndexOf('}')
+            if (arrStart > 0 && lastClose > arrStart) { parsed = JSON.parse(rep.slice(0, lastClose + 1) + ']}') }
+          } catch (_pe3) {}
+          if (!parsed) throw new Error('Die KI-Antwort war unvollständig/ungültig — bitte den Befehl etwas einfacher oder kürzer formulieren.')
+        }
+      }
       const ops = Array.isArray(parsed.operations) ? parsed.operations : (Array.isArray(parsed) ? parsed : [])
       if (!ops.length) throw new Error('Keine Änderungen erhalten')
       pushHistory()
@@ -1493,7 +1511,7 @@ Nutze nur die für den Befehl nötigen Operationen.`
       // Wendet eine Operations-Liste rein auf ein Objekt-Array an, inkl. Passform-,
       // Kontrast-, Scrim- und Ebenen-Leitplanken. Gibt neuen Zustand zurück (keine Seiteneffekte).
       const computeApplied = (opsList, baseObjects, baseBg) => {
-        let arr = baseObjects.map(o => ({ ...o })); let bg = baseBg; let imgInstr = null; let cutout = false; let fPatch = null; let replaceBg = null; const logos = []
+        let arr = baseObjects.map(o => ({ ...o })); let bg = baseBg; let imgInstr = null; let cutout = false; let fPatch = null; let replaceBg = null; const logos = []; const stockImages = []
         for (const op of opsList) {
           const t = op && op.op
           if (t === 'add_text' && op.text) { const bx = clamp(op.x, cw); arr.push(fitText({ id: nextId(), type:'text', text:String(op.text), x: bx, y: clamp(op.y, ch), fontSize: Math.max(8, Math.round(Number(op.fontSize)) || 48), fontFamily: op.fontFamily || 'Inter', fill: op.fill || '#111111', fontStyle: op.fontStyle || 'normal', align: op.align || 'left', width: Math.round(Number(op.width)) || (cw - bx - margin), rotation:0, opacity:1 })) }
@@ -1505,6 +1523,7 @@ Nutze nur die für den Befehl nötigen Operationen.`
           else if (t === 'set_filter' && op.filters && typeof op.filters === 'object') { const fa = ['grayscale','contrast','brightness','saturation','sepia','hue','blur','invert','vignette','warmth','enhance']; const fp = {}; fa.forEach(k => { const v = Number(op.filters[k]); if (op.filters[k] !== undefined && op.filters[k] !== null && !isNaN(v)) fp[k] = v }); if (Object.keys(fp).length) fPatch = { ...(fPatch || {}), ...fp } }
           else if (t === 'remove_background') { cutout = true }
           else if (t === 'replace_background' && op.instruction) { replaceBg = String(op.instruction) }
+          else if (t === 'add_stock_image' && op.query) { stockImages.push({ query: String(op.query), x: clamp(op.x, cw), y: clamp(op.y, ch), width: Math.max(40, Math.round(Number(op.width)) || Math.round(cw * 0.42)), height: Math.max(40, Math.round(Number(op.height)) || Math.round(ch * 0.42)), orientation: op.orientation || undefined }) }
           else if (t === 'add_logo') { logos.push({ company: op.company || '', corner: op.corner || 'top-right' }) }
           else if (t === 'edit_image' && op.instruction && imgInstr === null && visual?.storage_path) { imgInstr = String(op.instruction) }
         }
@@ -1527,7 +1546,7 @@ Nutze nur die für den Befehl nötigen Operationen.`
           })
           const rebuilt = [...nonText]; fixed.forEach(t2 => { const s = scrims.find(sc => sc.__scrimFor === t2.id); if (s) rebuilt.push(s); rebuilt.push(t2) }); arr = rebuilt
         } catch (_e) {}
-        return { objects: arr, nextBg: bg, filterPatch: fPatch, imageInstruction: imgInstr, wantCutout: cutout, replaceBg, logos }
+        return { objects: arr, nextBg: bg, filterPatch: fPatch, imageInstruction: imgInstr, wantCutout: cutout, replaceBg, logos, stockImages }
       }
 
       // Vision-Prüfung (Stufe 2): rendert das Ergebnis, bildfähiges Modell begutachtet + bessert nach.
@@ -1598,6 +1617,12 @@ Antworte AUSSCHLIESSLICH mit JSON: {"ok":<bool>,"issues":["..."],"operations":[.
         const compList = Array.isArray(brandData?.companies) ? brandData.companies : ((brandData && brandData.logos) ? [{ name: activeBrandVoice?.name, logos: brandData.logos }] : [])
         const resolveLogo = (name) => { if (!compList.length) return null; const w = String(name || '').trim().toLowerCase(); let cm = w ? compList.find(x => { const n = String(x.name || '').toLowerCase(); return n && (n.includes(w) || w.includes(n)) }) : null; if (!cm) cm = compList.find(x => x.logos && x.logos.length); return (cm && cm.logos && cm.logos[0] && cm.logos[0].url) || null }
         for (const lr of r1.logos) { const lu = resolveLogo(lr.company); if (lu) { try { await insertLogoAt(lu, lr.corner) } catch (_e) {} } else if (!opError) opError = 'Kein Logo für „' + (lr.company || 'Marke') + '" hinterlegt.' }
+      }
+      if (r1.stockImages && r1.stockImages.length) {
+        setSavedMsg('Stock-Bilder werden geladen …')
+        let anyStock = false
+        for (const si of r1.stockImages) { try { const ok = await insertStockImage(si.query, si.x, si.y, si.width, si.height, si.orientation); if (ok) anyStock = true } catch (_e) {} }
+        if (!anyStock && !opError) opError = 'Keine passenden Stock-Bilder gefunden (oder Bilder-Suche nicht konfiguriert).'
       }
       setPageAiCmd('')
       let reviewNote = ''
@@ -1687,6 +1712,21 @@ Antworte AUSSCHLIESSLICH mit JSON: {"ok":<bool>,"issues":["..."],"operations":[.
         addImageFromDataUrl(url)
       }
     })()
+  }
+  // Stock-Foto (Pexels) suchen und einfügen — für Moodboards/Collagen im Design-Agenten.
+  async function insertStockImage(query, x, y, w, h, orientation) {
+    try {
+      const res = await searchPhotos({ query, perPage: 12, orientation })
+      const photo = (res && res.photos ? res.photos : [])[0]
+      if (!photo) return false
+      const dataUrl = await photoToDataUrl(photo.src?.large || photo.src?.medium || photo.src?.original)
+      if (!dataUrl) return false
+      const img = await loadHtmlImage(dataUrl)
+      setImgCache(prev => ({ ...prev, [dataUrl]: img }))
+      pushHistory()
+      setObjects(prev => [...prev, { id: nextId(), type: 'image', src: dataUrl, x: Math.round(x), y: Math.round(y), width: Math.round(w), height: Math.round(h), rotation: 0, opacity: 1 }])
+      return true
+    } catch (_e) { return false }
   }
   // Logo an einer Ecke platzieren (für den Design-Agenten: echtes Company-Logo einfügen).
   async function insertLogoAt(logoUrl, corner) {
