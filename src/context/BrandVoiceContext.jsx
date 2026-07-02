@@ -21,6 +21,9 @@ const BrandVoiceContext = createContext({
   reload: () => {},
 })
 
+// Sentinel für den markenlosen Modus (persönlich, nutzer-privat)
+export const NO_BRAND = { id: null, noBrand: true, name: 'Ohne Marke', account_type: 'none' }
+
 export function BrandVoiceProvider({ session, children }) {
   const { activeTeamId } = useTeam()
   const [brandVoices, setBrandVoices] = useState([])
@@ -46,10 +49,11 @@ export function BrandVoiceProvider({ session, children }) {
     // User-Präferenz lesen
     const { data: prefs } = await supabase
       .from('user_preferences')
-      .select('active_brand_voice_id')
+      .select('active_brand_voice_id, content_no_brand')
       .eq('user_id', session.user.id)
       .maybeSingle()
 
+    if (prefs?.content_no_brand) { setActiveBV(NO_BRAND); setLoading(false); return }
     let active = null
     if (prefs?.active_brand_voice_id) {
       active = list.find(bv => bv.id === prefs.active_brand_voice_id)
@@ -66,18 +70,21 @@ export function BrandVoiceProvider({ session, children }) {
   useReloadOnNavigate(load, !!(session?.user?.id && activeTeamId))
 
   const switchBrandVoice = useCallback(async (bvId) => {
+    if (bvId === '__none__') {
+      setActiveBV(NO_BRAND)
+      await supabase.from('user_preferences').upsert({ user_id: session.user.id, content_no_brand: true }, { onConflict: 'user_id' })
+      return
+    }
     const next = brandVoices.find(bv => bv.id === bvId)
     if (!next) return
     setActiveBV(next)
-    // Persistieren
-    await supabase
-      .from('user_preferences')
-      .upsert({ user_id: session.user.id, active_brand_voice_id: bvId }, { onConflict: 'user_id' })
+    await supabase.from('user_preferences').upsert({ user_id: session.user.id, active_brand_voice_id: bvId, content_no_brand: false }, { onConflict: 'user_id' })
   }, [brandVoices, session?.user?.id])
 
   return (
     <BrandVoiceContext.Provider value={{
       activeBrandVoice,
+      noBrand: !!activeBrandVoice?.noBrand,
       brandVoices,
       loading,
       switchBrandVoice,

@@ -11,7 +11,7 @@ const ACCOUNT_ICONS = { personal: <User size={14} strokeWidth={1.75}/>, company_
 const ACCOUNT_LABELS = { personal: 'Personal Brand', company_page: 'Company Brand', other: 'Sonstiges' }
 
 export default function BrandVoiceSwitcher({ session, compact = false }) {
-  const { activeBrandVoice, brandVoices, loading, switchBrandVoice } = useBrandVoice()
+  const { activeBrandVoice, brandVoices, loading, switchBrandVoice, noBrand } = useBrandVoice()
   const [open, setOpen] = useState(false)
   const ref = useRef(null)
   const navigate = useNavigate()
@@ -23,21 +23,12 @@ export default function BrandVoiceSwitcher({ session, compact = false }) {
   }, [open])
 
   if (loading) return null
-  if (!brandVoices.length) {
-    return (
-      <button onClick={() => navigate('/personal-brand')}
-        style={{ padding:'6px 14px', borderRadius:9, border:'1.5px dashed var(--border)', background:'transparent',
-          color:'var(--text-muted)', fontSize:13, fontWeight:600, cursor:'pointer' }}>
-        + Brand anlegen
-      </button>
-    )
-  }
 
   const own  = brandVoices.filter(bv => bv.user_id === session?.user?.id)
   const team = brandVoices.filter(bv => bv.user_id !== session?.user?.id && bv.is_shared)
 
-  const activeIcon = ACCOUNT_ICONS[activeBrandVoice?.account_type] || <Sparkles size={14} strokeWidth={1.75}/>
-  const activeName = activeBrandVoice?.name || 'Brand Voice'
+  const activeIcon = noBrand ? <User size={14} strokeWidth={1.75}/> : (ACCOUNT_ICONS[activeBrandVoice?.account_type] || <Sparkles size={14} strokeWidth={1.75}/>)
+  const activeName = noBrand ? 'Ohne Marke' : (activeBrandVoice?.name || 'Marke wählen')
 
   return (
     <div ref={ref} style={{ position:'relative' }}>
@@ -72,6 +63,13 @@ export default function BrandVoiceSwitcher({ session, compact = false }) {
           padding: 6,
           maxHeight: '70vh', overflowY: 'auto',
         }}>
+          <button onClick={() => { switchBrandVoice('__none__'); setOpen(false) }}
+            style={{ width:'100%', textAlign:'left', display:'flex', alignItems:'center', gap:10, padding:'9px 12px', borderRadius:9, border:'none', cursor:'pointer', background: noBrand ? 'rgba(49,90,231,0.08)' : 'transparent', color:'var(--text-primary)', fontSize:13, fontWeight:600 }}>
+            <User size={14} strokeWidth={1.75}/>
+            <span style={{ flex:1 }}>Ohne Marke <span style={{ fontSize:11, color:'var(--text-muted)', fontWeight:500 }}>· persönlich</span></span>
+            {noBrand && <span style={{ color:'var(--wl-primary, rgb(49,90,231))', fontSize:12 }}>✓</span>}
+          </button>
+          <div style={{ borderTop:'1px solid var(--border-soft, #F1F5F9)', margin:'4px 0' }}/>
           {own.length > 0 && (
             <>
               <div style={{ padding:'8px 12px 4px', fontSize:10, fontWeight:700, color:'var(--text-muted)', textTransform:'uppercase', letterSpacing:'0.08em' }}>

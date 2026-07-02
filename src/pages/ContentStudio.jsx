@@ -144,7 +144,9 @@ export default function ContentStudio({ session }) {
   const navigate = useNavigate()
   const [searchParams, setSearchParams] = useSearchParams()
   const { activeTeamId } = useTeam()
-  const { activeBrandVoice, brandVoices } = useBrandVoice()
+  const { activeBrandVoice, brandVoices, noBrand } = useBrandVoice()
+  const bvId = noBrand ? null : (activeBrandVoice?.id || null)
+  const contentReady = noBrand || !!bvId
 
   // Sidebar State (persistiert)
   const [sidebarOpen, setSidebarOpen] = useState(() => {
@@ -387,17 +389,15 @@ export default function ContentStudio({ session }) {
 
   // ─── Chats laden für aktive BV ────────────────────────────────────────────
   async function loadChats() {
-    if (!activeBrandVoice?.id) { setChats([]); setChatsLoading(false); return }
+    if (!contentReady) { setChats([]); setChatsLoading(false); return }
     setChatsLoading(true)
-    const { data } = await supabase.from('content_chats')
-      .select('id, title, post_id, updated_at')
-      .eq('brand_voice_id', activeBrandVoice.id)
-      .order('updated_at', { ascending: false })
-      .limit(100)
+    let _q = supabase.from('content_chats').select('id, title, post_id, updated_at')
+    _q = noBrand ? _q.eq('no_brand', true).eq('created_by', session.user.id) : _q.eq('brand_voice_id', bvId)
+    const { data } = await _q.order('updated_at', { ascending: false }).limit(100)
     setChats(data || [])
     setChatsLoading(false)
   }
-  useEffect(() => { loadChats() }, [activeBrandVoice?.id])
+  useEffect(() => { loadChats() }, [activeBrandVoice?.id, noBrand])
 
   // ─── Audiences + Knowledge Base laden ─────────────────────────────────────
   useEffect(() => {
@@ -602,7 +602,7 @@ export default function ContentStudio({ session }) {
       let userId = null
       try { const { data } = await supabase.auth.getUser(); userId = data?.user?.id || null } catch (_e) {}
       const { data: row, error } = await supabase.from('visuals').insert({
-        user_id: userId, team_id: activeTeamId, brand_voice_id: activeBrandVoice?.id || v.brand_voice_id || null,
+        user_id: userId, team_id: activeTeamId, brand_voice_id: noBrand ? null : (activeBrandVoice?.id || v.brand_voice_id || null), no_brand: noBrand,
         kind: 'design', media_type: 'image', title: v.title || 'Design', aspect_ratio: v.aspect_ratio || '1:1',
         prompt: v.prompt || 'Design', storage_path: v.storage_path, design_json,
       }).select().single()
@@ -752,7 +752,7 @@ export default function ContentStudio({ session }) {
   async function sendMessage() {
     if (!input.trim()) return
     if (activeChatId && pendingGens.has(activeChatId)) return
-    if (!activeBrandVoice?.id) { setError('Keine aktive Brand Voice'); return }
+    if (!contentReady) { setError('Wähle oben eine Marke oder „Ohne Marke"'); return }
     setError('')
     const userMsgText = input.trim()
     const atts = attachments   // Anhänge festhalten (State wird gleich geleert)
@@ -765,7 +765,8 @@ export default function ContentStudio({ session }) {
     let chatIdForSend = activeChatId
     if (!chatIdForSend) {
       const { data: newChat, error: chatErr } = await supabase.from('content_chats').insert({
-        brand_voice_id: activeBrandVoice.id,
+        brand_voice_id: bvId,
+        no_brand: noBrand,
         team_id: activeTeamId,
         created_by: session.user.id,
         ...splitAudienceRef(selectedAudienceId),
@@ -804,7 +805,9 @@ export default function ContentStudio({ session }) {
       const { data, error: fnErr } = await supabase.functions.invoke('text-werkstatt-chat', {
         body: {
           chat_id: chatIdForSend,
-          brand_voice_id: activeBrandVoice.id,
+          brand_voice_id: bvId,
+          no_brand: noBrand,
+          team_id: activeTeamId,
           post_id: linkedPost?.id || activeChat?.post_id || undefined,
           target_audience_id: splitAudienceRef(selectedAudienceId).target_audience_id || undefined,
           strike2_persona_id: splitAudienceRef(selectedAudienceId).strike2_persona_id || undefined,
@@ -831,7 +834,7 @@ export default function ContentStudio({ session }) {
   async function sendVisualMessage() {
     if (!input.trim()) return
     if (activeChatId && pendingGens.has(activeChatId)) return
-    if (!activeBrandVoice?.id) { setError('Keine aktive Brand Voice'); return }
+    if (!contentReady) { setError('Wähle oben eine Marke oder „Ohne Marke"'); return }
     setError('')
     const prompt = input.trim()
     const atts = attachments.filter(a => (a.type || '').startsWith('image/'))   // angehängte Bilder als Referenz
@@ -842,7 +845,8 @@ export default function ContentStudio({ session }) {
     let chatIdForSend = activeChatId
     if (!chatIdForSend) {
       const { data: nc, error: chatErr } = await supabase.from('content_chats').insert({
-        brand_voice_id: activeBrandVoice.id,
+        brand_voice_id: bvId,
+        no_brand: noBrand,
         team_id: activeTeamId,
         created_by: session.user.id,
         ...splitAudienceRef(selectedAudienceId),
@@ -974,11 +978,10 @@ ${transcript || '(noch leer)'}${extra.length ? '\n\n=== ZUSATZKONTEXT ===\n' + e
 
   // Bestehende Beiträge der aktiven Brand laden (für „zu bestehendem Beitrag")
   async function loadExistingPosts() {
-    if (!activeBrandVoice?.id) return []
-    const { data } = await supabase.from('content_posts')
-      .select('id, title, status, updated_at')
-      .eq('brand_voice_id', activeBrandVoice.id)
-      .order('updated_at', { ascending: false }).limit(50)
+    if (!contentReady) return []
+    let _q = supabase.from('content_posts').select('id, title, status, updated_at')
+    _q = noBrand ? _q.eq('no_brand', true).eq('user_id', session.user.id) : _q.eq('brand_voice_id', bvId)
+    const { data } = await _q.order('updated_at', { ascending: false }).limit(50)
     return data || []
   }
 
@@ -987,12 +990,12 @@ ${transcript || '(noch leer)'}${extra.length ? '\n\n=== ZUSATZKONTEXT ===\n' + e
     const forceNew = postId === '__new__'
     const targetId = forceNew ? null : (postId || linkedPost?.id || activeChat?.post_id)
     if (!targetId) {
-      if (!activeBrandVoice?.id) { alert('Keine aktive Brand Voice'); return }
+      if (!contentReady) { alert('Wähle oben eine Marke oder „Ohne Marke"'); return }
       if (!activeTeamId) { alert('Kein Team aktiv'); return }
       const title = beitragstext.split('\n')[0].slice(0, 80) || 'Neuer Beitrag'
       const { data: post, error } = await supabase.from('content_posts').insert({
         user_id: session.user.id, team_id: activeTeamId,
-        brand_voice_id: activeBrandVoice.id, title, content: beitragstext,
+        brand_voice_id: bvId, no_brand: noBrand, title, content: beitragstext,
         platform: 'linkedin', status: 'draft',
         text_werkstatt_chat_id: activeChatId,
       }).select().single()
@@ -1019,10 +1022,10 @@ ${transcript || '(noch leer)'}${extra.length ? '\n\n=== ZUSATZKONTEXT ===\n' + e
       try { const { data } = await supabase.auth.getUser(); userId = data?.user?.id || null } catch (_e) {}
       let pid = postId
       if (postId === '__new__') {
-        if (!activeBrandVoice?.id || !activeTeamId) { setError('Keine aktive Brand Voice / Team'); return false }
+        if (!contentReady || !activeTeamId) { setError('Kein Content-Kontext / Team'); return false }
         const title = (meta.prompt || 'Bild').split('\n')[0].slice(0, 80) || 'Neuer Beitrag'
         const { data: post, error } = await supabase.from('content_posts').insert({
-          user_id: userId, team_id: activeTeamId, brand_voice_id: activeBrandVoice.id,
+          user_id: userId, team_id: activeTeamId, brand_voice_id: bvId, no_brand: noBrand,
           title, content: '', platform: 'linkedin', status: 'draft',
         }).select().single()
         if (error || !post) { setError('Beitrag konnte nicht erstellt werden'); return false }
@@ -1033,7 +1036,7 @@ ${transcript || '(noch leer)'}${extra.length ? '\n\n=== ZUSATZKONTEXT ===\n' + e
         if (error) { setError('Zuordnung fehlgeschlagen: ' + error.message); return false }
       } else {
         const { error } = await supabase.from('visuals').insert({
-          user_id: userId, team_id: activeTeamId, brand_voice_id: activeBrandVoice?.id || null,
+          user_id: userId, team_id: activeTeamId, brand_voice_id: bvId, no_brand: noBrand,
           kind: 'image', media_type: 'image', title: (meta.prompt || 'Bild').slice(0, 120),
           aspect_ratio: '1:1', prompt: meta.prompt || 'Bild', storage_path: meta.storage_path, post_id: pid,
         })
@@ -1598,7 +1601,7 @@ function CleanView({
           useBrandImages={useBrandImages} setUseBrandImages={setUseBrandImages} hasChatVisuals={hasChatVisuals}
           handleFiles={handleFiles} fileInputRef={fileInputRef}
           sendMessage={sendMessage}
-          enabled={!!activeBrandVoice?.id}
+          enabled={contentReady}
         />
       </div>
     </div>
