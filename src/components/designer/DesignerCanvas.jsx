@@ -49,6 +49,7 @@ import { useBrandVoice } from '../../context/BrandVoiceContext'
 import { listBrandFonts, loadBrandFonts } from '../../lib/brandFonts'
 import { loadGoogleFont, isGoogleFont, isFontLoaded } from '../../lib/googleFonts'
 import FontPicker from './FontPicker'
+import { ColorPopover, toHex, gradientCss } from './ColorPicker'
 import { searchIcons, searchGraphics, iconSvgUrl, iconToDataUrl, searchPhotos, photoToDataUrl } from '../../lib/stockMedia'
 import {
   Palette, Sparkles, Plus as PlusIcon, Image as ImagePlus,
@@ -100,6 +101,22 @@ function isDarkBg(bg) {
 
 function rectsIntersect(a, b) {
   return !(a.x > b.x + b.w || a.x + a.w < b.x || a.y > b.y + b.h || a.y + a.h < b.y)
+}
+
+// Fill-Props für Konva: Verlauf (o.fillGrad) → lineare Gradient-Props, sonst solide
+// Farbe. w/h = Objektmaße; centered=true für Ellipse (lokale Koords um 0).
+function fillKonvaProps(o, w, h, centered) {
+  const g = o.fillGrad
+  if (g && Array.isArray(g.stops) && g.stops.length >= 2) {
+    const a = ((g.angle || 0) * Math.PI) / 180
+    const cx = centered ? 0 : w / 2, cy = centered ? 0 : h / 2
+    const len = (Math.abs(w * Math.cos(a)) + Math.abs(h * Math.sin(a))) || Math.max(w, h)
+    const hx = Math.cos(a) * len / 2, hy = Math.sin(a) * len / 2
+    const stops = []
+    g.stops.forEach(st => { stops.push(st[0], st[1]) })
+    return { fillPriority: 'linear-gradient', fillLinearGradientStartPoint: { x: cx - hx, y: cy - hy }, fillLinearGradientEndPoint: { x: cx + hx, y: cy + hy }, fillLinearGradientColorStops: stops, fill: undefined }
+  }
+  return { fillPriority: 'color', fill: o.fill, fillLinearGradientColorStops: undefined }
 }
 // Akzentfarbe für den "Verzerren"-Modus (nach Doppelklick): klar abgesetzt von der
 // primären Auswahl-Farbe, damit der freie Transform-Modus sofort erkennbar ist.
@@ -304,6 +321,7 @@ export default function DesignerCanvas({ visual, teamId, onSaved, onReplaceVisua
 
   // Hintergrund-Füllfarbe (für Vorlagen ohne Bild)
   const [bgColor, setBgColor] = useState(null)        // null = kein Farbgrund (Bild-Modus)
+  const [bgGrad, setBgGrad] = useState(null)          // optionaler Hintergrund-Verlauf {type,angle,stops}
   const [pageAiCmd, setPageAiCmd] = useState('')
   const [pageAiBusy, setPageAiBusy] = useState(false)
 
@@ -462,6 +480,7 @@ export default function DesignerCanvas({ visual, teamId, onSaved, onReplaceVisua
             filters: { ...EMPTY_FILTERS, ...(p.filters || {}) },
             baseCrop: p.baseCrop || null,
             bgColor: p.bgColor || '#ffffff',
+            bgGrad: p.bgGrad || null,
             stage: p.stage || { width: 1080, height: 1080 },
             primaryImageId: p.primaryImageId || null,
           }))
@@ -480,6 +499,7 @@ export default function DesignerCanvas({ visual, teamId, onSaved, onReplaceVisua
               const h = dj.stage?.height || 1080
               setBgImage(null)
               setBgColor(dj.bgColor || '#ffffff')
+              setBgGrad(dj.bgGrad || null)
               setStageSize({ width: w, height: h })
               setBaseCrop(null)
               const objs0 = Array.isArray(dj.objects) ? dj.objects : []
@@ -488,7 +508,7 @@ export default function DesignerCanvas({ visual, teamId, onSaved, onReplaceVisua
               setFilters(flt0)
               resetMaskCanvas(w, h)
               historyRef.current = []; futureRef.current = []
-              setPages([{ id: nextId(), objects: objs0, filters: flt0, baseCrop: null, bgColor: dj.bgColor || '#ffffff', stage: { width: w, height: h }, primaryImageId: null }])
+              setPages([{ id: nextId(), objects: objs0, filters: flt0, baseCrop: null, bgColor: dj.bgColor || '#ffffff', bgGrad: dj.bgGrad || null, stage: { width: w, height: h }, primaryImageId: null }])
               setActivePageIdx(0)
             } catch (_e) { /* noop */ }
             setLoading(false)
@@ -536,8 +556,9 @@ export default function DesignerCanvas({ visual, teamId, onSaved, onReplaceVisua
               setFilters(flt)
               if (dj2.baseCrop) setBaseCrop(dj2.baseCrop)
               setBgColor(dj2.bgColor || '#ffffff')
+              setBgGrad(dj2.bgGrad || null)
               setStageSize({ width: stW, height: stH })
-              setPages([{ id: nextId(), objects: objs, filters: flt, baseCrop: dj2.baseCrop || null, bgColor: dj2.bgColor || '#ffffff', stage: { width: stW, height: stH }, primaryImageId: primaryImageIdRef.current || null }])
+              setPages([{ id: nextId(), objects: objs, filters: flt, baseCrop: dj2.baseCrop || null, bgColor: dj2.bgColor || '#ffffff', bgGrad: dj2.bgGrad || null, stage: { width: stW, height: stH }, primaryImageId: primaryImageIdRef.current || null }])
               setActivePageIdx(0)
               restored = true
             }
@@ -551,9 +572,10 @@ export default function DesignerCanvas({ visual, teamId, onSaved, onReplaceVisua
               x: 0, y: 0, width: w, height: h, rotation: 0, opacity: 1 }]
             setObjects(objs0)
             setBgColor('#ffffff')
+            setBgGrad(null)
             setStageSize({ width: w, height: h })
             setFilters({ ...EMPTY_FILTERS })
-            setPages([{ id: nextId(), objects: objs0, filters: { ...EMPTY_FILTERS }, baseCrop: null, bgColor: '#ffffff', stage: { width: w, height: h }, primaryImageId: pid }])
+            setPages([{ id: nextId(), objects: objs0, filters: { ...EMPTY_FILTERS }, baseCrop: null, bgColor: '#ffffff', bgGrad: null, stage: { width: w, height: h }, primaryImageId: pid }])
             setActivePageIdx(0)
           }
           resetMaskCanvas(w, h)
@@ -596,7 +618,7 @@ export default function DesignerCanvas({ visual, teamId, onSaved, onReplaceVisua
   // ─── Mehrseiten-Helfer ──────────────────────────────────────────────────────
   const currentStage = () => ({ width: stageSize.width, height: stageSize.height })
   function snapshotActivePage() {
-    return { objects, filters, baseCrop, bgColor, stage: currentStage(), primaryImageId: primaryImageIdRef.current || null }
+    return { objects, filters, baseCrop, bgColor, bgGrad, stage: currentStage(), primaryImageId: primaryImageIdRef.current || null }
   }
   // Alle Seiten mit der aktiven Seite frisch hineinserialisiert.
   function withCommittedPages() {
@@ -615,6 +637,7 @@ export default function DesignerCanvas({ visual, teamId, onSaved, onReplaceVisua
     setFilters({ ...EMPTY_FILTERS, ...(p.filters || {}) })
     setBaseCrop(p.baseCrop || null)
     setBgColor(p.bgColor || '#ffffff')
+    setBgGrad(p.bgGrad || null)
     setStageSize(p.stage || { width: 1080, height: 1080 })
     primaryImageIdRef.current = p.primaryImageId || null
     historyRef.current = []; futureRef.current = []
@@ -629,7 +652,7 @@ export default function DesignerCanvas({ visual, teamId, onSaved, onReplaceVisua
   }
   function addPage() {
     const arr = withCommittedPages()
-    const blank = { id: nextId(), objects: [], filters: { ...EMPTY_FILTERS }, baseCrop: null, bgColor: '#ffffff', stage: currentStage(), primaryImageId: null }
+    const blank = { id: nextId(), objects: [], filters: { ...EMPTY_FILTERS }, baseCrop: null, bgColor: '#ffffff', bgGrad: null, stage: currentStage(), primaryImageId: null }
     arr.push(blank)
     setPages(arr); setActivePageIdx(arr.length - 1); hydrateFromPage(blank)
   }
@@ -998,8 +1021,9 @@ export default function DesignerCanvas({ visual, teamId, onSaved, onReplaceVisua
     filters: { ...filters },
     baseCrop: baseCrop ? { ...baseCrop } : null,
     bgColor,
+    bgGrad,
     stageSize: { ...stageSize },
-  }), [objects, filters, baseCrop, bgColor, stageSize])
+  }), [objects, filters, baseCrop, bgColor, bgGrad, stageSize])
 
   const pushHistory = useCallback(() => {
     if (skipHistoryRef.current) return
@@ -1026,6 +1050,7 @@ export default function DesignerCanvas({ visual, teamId, onSaved, onReplaceVisua
     setFilters({ ...EMPTY_FILTERS, ...(st.filters || {}) })
     setBaseCrop(st.baseCrop || null)
     if (st.bgColor !== undefined) setBgColor(st.bgColor)
+    if (st.bgGrad !== undefined) setBgGrad(st.bgGrad)
     if (st.stageSize) setStageSize(st.stageSize)
     setSelectedIds([])
     setTimeout(() => { skipHistoryRef.current = false }, 0)
@@ -3653,7 +3678,7 @@ Antworte AUSSCHLIESSLICH mit JSON: {"ok":<bool>,"issues":["..."],"operations":[.
         // optional ein manuell gesetzter Schatten (shadowBlur am Objekt).
         const effProps = (o.effect && o.effect !== 'none') ? textEffectProps(o) : {}
         return <KText key={o.id} {...base} text={o.text} fontSize={o.fontSize} fontFamily={o.fontFamily}
-          fill={o.fill} fontStyle={o.fontStyle || 'normal'} align={o.align || 'left'} width={o.width || 360}
+          {...fillKonvaProps(o, o.width || 360, (o.fontSize || 44) * 1.35, false)} fontStyle={o.fontStyle || 'normal'} align={o.align || 'left'} width={o.width || 360}
           lineHeight={o.lineHeight || 1.2} letterSpacing={o.letterSpacing || 0} textDecoration={o.textDecoration || ''}
           shadowColor={o.shadowColor} shadowBlur={o.shadowBlur || 0} shadowOffsetX={o.shadowOffsetX || 0} shadowOffsetY={o.shadowOffsetY || 0}
           {...effProps}
@@ -3661,9 +3686,9 @@ Antworte AUSSCHLIESSLICH mit JSON: {"ok":<bool>,"issues":["..."],"operations":[.
           onDblClick={() => startTextEdit(o.id)} onDblTap={() => startTextEdit(o.id)} />
       }
       case 'rect':
-        return <Rect key={o.id} {...base} width={o.width} height={o.height} fill={o.fill} stroke={o.stroke} strokeWidth={o.strokeWidth || 0} cornerRadius={o.cornerRadius || 0} />
+        return <Rect key={o.id} {...base} width={o.width} height={o.height} {...fillKonvaProps(o, o.width, o.height, false)} stroke={o.stroke} strokeWidth={o.strokeWidth || 0} cornerRadius={o.cornerRadius || 0} />
       case 'ellipse':
-        return <Ellipse key={o.id} {...base} radiusX={o.radiusX} radiusY={o.radiusY} fill={o.fill} stroke={o.stroke} strokeWidth={o.strokeWidth || 0} />
+        return <Ellipse key={o.id} {...base} radiusX={o.radiusX} radiusY={o.radiusY} {...fillKonvaProps(o, 2 * (o.radiusX || 90), 2 * (o.radiusY || 90), true)} stroke={o.stroke} strokeWidth={o.strokeWidth || 0} />
       case 'line':
         return <Line key={o.id} {...base} points={o.points} stroke={o.stroke} strokeWidth={o.strokeWidth || 6} lineCap="round" scaleX={(o.flipX ? -1 : 1) * (o.scaleX || 1)} scaleY={(o.flipY ? -1 : 1) * (o.scaleY || 1)} />
       case 'arrow':
@@ -3908,8 +3933,8 @@ Antworte AUSSCHLIESSLICH mit JSON: {"ok":<bool>,"issues":["..."],"operations":[.
         <div style={barStyle}>
           <span style={{ fontSize: 12.5, fontWeight: 700, color: 'var(--text-primary)' }}>Seite</span>
           <span style={{ fontSize: 12, color: 'var(--text-muted)' }}>Hintergrund</span>
-          <ColorPopover value={bgColor || '#ffffff'} brandColors={brandColors} title="Seiten-Hintergrundfarbe"
-            onStart={commitHistoryOnce} onChange={(hex) => setBgColor(hex)} onEnd={endInteraction} />
+          <ColorPopover value={bgColor || '#ffffff'} gradient={bgGrad || null} allowGradient brandColors={brandColors} title="Seiten-Hintergrundfarbe"
+            onStart={commitHistoryOnce} onChange={(hex) => { setBgColor(hex); setBgGrad(null) }} onGradient={(g) => setBgGrad(g)} onEnd={endInteraction} />
           <Divider />
           <div style={{ display: 'flex', alignItems: 'center', gap: 6, flex: 1, minWidth: 0, maxWidth: 560 }}>
             <Sparkles size={15} strokeWidth={1.9} style={{ color: P, flexShrink: 0 }} />
@@ -4059,7 +4084,7 @@ Antworte AUSSCHLIESSLICH mit JSON: {"ok":<bool>,"issues":["..."],"operations":[.
             >
               <Layer ref={layerRef} clipX={0} clipY={0} clipWidth={stageSize.width} clipHeight={stageSize.height}>
                 {/* Weiße Artboard (Whiteboard) — IMMER als Stage-Hintergrund. */}
-                <Rect id="__bgfill__" x={0} y={0} width={stageSize.width} height={stageSize.height} fill={bgColor || '#ffffff'} listening />
+                <Rect id="__bgfill__" x={0} y={0} width={stageSize.width} height={stageSize.height} {...fillKonvaProps({ fillGrad: bgGrad, fill: bgColor || '#ffffff' }, stageSize.width, stageSize.height, false)} listening />
                 {objects.map(renderObject)}
                 {/* Crop-Overlay */}
                 {cropMode && cropRect && (
@@ -4599,9 +4624,9 @@ function ContextBar({
             <button type="button" title="Größer" style={stepBtn} onClick={() => setOnce({ fontSize: Math.min(400, fs + 1) })}><PlusIcon size={13} strokeWidth={2} /></button>
           </div>
           {/* Textfarbe als A-Swatch */}
-          <ColorPopover value={o.fill} brandColors={brandColors} title="Textfarbe" onStart={startEdit} onChange={(hex) => liveEdit({ fill: hex })} onEnd={endInteraction}
+          <ColorPopover value={o.fill} gradient={o.fillGrad || null} allowGradient brandColors={brandColors} title="Textfarbe" onStart={startEdit} onChange={(hex) => liveEdit({ fill: hex, fillGrad: null })} onGradient={(g) => liveEdit(g ? { fillGrad: g, fill: (g.stops[0] && g.stops[0][1]) || o.fill } : { fillGrad: null })} onEnd={endInteraction}
             triggerStyle={{ width: 32, height: 32, flexShrink: 0, display: 'inline-flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 1, borderRadius: 8, border: '1px solid var(--border,#E9ECF2)', background: 'var(--surface,#fff)', cursor: 'pointer', padding: 0 }}
-            triggerContent={<><Baseline size={15} strokeWidth={2} color="var(--text-muted,#475467)" style={{ marginBottom: -2 }} /><span style={{ width: 16, height: 3, borderRadius: 2, background: toHex(o.fill || '#000000') }} /></>} />
+            triggerContent={<><Baseline size={15} strokeWidth={2} color="var(--text-muted,#475467)" style={{ marginBottom: -2 }} /><span style={{ width: 16, height: 3, borderRadius: 2, background: o.fillGrad ? gradientCss(o.fillGrad) : toHex(o.fill || '#000000') }} /></>} />
           <Divider />
           <ToolBtn onClick={() => setStyleFlag('bold')} active={isBold} title="Fett"><Bold size={14} strokeWidth={2.4} /></ToolBtn>
           <ToolBtn onClick={() => setStyleFlag('italic')} active={isItalic} title="Kursiv"><Italic size={14} strokeWidth={2.4} /></ToolBtn>
@@ -4642,7 +4667,7 @@ function ContextBar({
 
       {/* ── FORMEN: Füllung (Swatch) + Stil-Menü ── */}
       {!isText && hasFill && (
-        <ColorPopover value={o.fill} brandColors={brandColors} title="Füllfarbe" round allowNone onStart={startEdit} onChange={(hex) => liveEdit({ fill: hex })} onEnd={endInteraction} size={30} />
+        <ColorPopover value={o.fill} gradient={o.fillGrad || null} allowGradient={o.type === 'rect' || o.type === 'ellipse'} brandColors={brandColors} title="Füllfarbe" round allowNone onStart={startEdit} onChange={(hex) => liveEdit({ fill: hex, fillGrad: null })} onGradient={(g) => liveEdit(g ? { fillGrad: g, fill: (g.stops[0] && g.stops[0][1]) || o.fill } : { fillGrad: null })} onEnd={endInteraction} size={30} />
       )}
       {!isText && (hasStroke || isRect || hasFill) && (hasStroke || isRect) && (
         <BarMenu title="Stil" width={210} trigger={<Sliders size={15} strokeWidth={2} />}>
@@ -4806,16 +4831,6 @@ const lblStyle = { display: 'inline-flex', alignItems: 'center', gap: 6 }
 const colorStyle = { width: 30, height: 28, padding: 0, border: '1px solid var(--border)', borderRadius: 6, background: '#fff', cursor: 'pointer' }
 
 // rgba/named → #hex (für <input type=color>). Fallback weiß.
-function toHex(c) {
-  if (!c) return '#ffffff'
-  if (typeof c === 'string' && c.startsWith('#')) return c.length === 7 ? c : '#ffffff'
-  const m = /rgba?\((\d+),\s*(\d+),\s*(\d+)/.exec(c || '')
-  if (m) {
-    const h = (n) => parseInt(n, 10).toString(16).padStart(2, '0')
-    return '#' + h(m[1]) + h(m[2]) + h(m[3])
-  }
-  return '#ffffff'
-}
 
 // Marken-Schriften aus brandData ziehen (Company- ODER Personal-Brand-Form).
 function extractBrandFonts(brandData) {
@@ -4834,86 +4849,6 @@ function extractBrandColors(brandData) {
     ? brandData.companies.flatMap(c => c.palette || [])
     : (brandData.palette || [])
   return [...new Set(src.filter(Boolean))].slice(0, 18)
-}
-
-// ─── Schöne Farbauswahl (Swatch-Button + Popover mit Marken- & Standardfarben) ─
-const STD_SWATCHES = [
-  '#000000', '#475467', '#98A2B3', '#D0D5DD', '#FFFFFF',
-  '#B91C1C', '#EF4444', '#F97316', '#F59E0B', '#FACC15',
-  '#16A34A', '#22C55E', '#10B981', '#06B6D4', '#3B82F6',
-  '#1D4ED8', '#6366F1', '#8B5CF6', '#D946EF', '#EC4899',
-]
-function ColorSwatch({ c, current, onPick }) {
-  const on = toHex(current).toLowerCase() === toHex(c).toLowerCase()
-  return (
-    <button type="button" onClick={() => onPick(c)} title={c}
-      style={{ width: 24, height: 24, borderRadius: 6, cursor: 'pointer', background: c,
-        border: '1px solid ' + (c.toLowerCase() === '#ffffff' ? 'var(--border,#E9ECF2)' : 'rgba(0,0,0,0.10)'),
-        boxShadow: on ? '0 0 0 2px var(--surface,#fff), 0 0 0 4px ' + P : 'none', outline: 'none' }} />
-  )
-}
-function ColorPopover({ value, onChange, onStart, onEnd, brandColors = [], title = 'Farbe', size = 30, triggerContent = null, triggerStyle = null, round = false, allowNone = false }) {
-  const [open, setOpen] = React.useState(false)
-  const [openUp, setOpenUp] = React.useState(true)
-  const ref = React.useRef(null)
-  const btnRef = React.useRef(null)
-  React.useEffect(() => {
-    function onDoc(e) { if (ref.current && !ref.current.contains(e.target)) setOpen(false) }
-    if (open) document.addEventListener('mousedown', onDoc)
-    return () => document.removeEventListener('mousedown', onDoc)
-  }, [open])
-  const toggle = () => {
-    const willOpen = !open
-    if (willOpen && btnRef.current) { const r = btnRef.current.getBoundingClientRect(); setOpenUp(r.top > window.innerHeight * 0.5) }
-    setOpen(willOpen)
-  }
-  const cur = toHex(value || '#ffffff')
-  const pick = (hex) => { onStart && onStart(); onChange(hex); onEnd && onEnd() }
-  const swGrid = { display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gap: 7, marginBottom: 4 }
-  const swLabel = { fontSize: 10.5, fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em', margin: '8px 2px 7px' }
-  return (
-    <div ref={ref} style={{ position: 'relative', display: 'inline-flex' }}>
-      {triggerContent ? (
-        <button ref={btnRef} type="button" title={title} onClick={toggle} style={triggerStyle || { height: 32, padding: '0 6px', borderRadius: 8, border: '1px solid var(--border,#E9ECF2)', background: 'var(--surface,#fff)', cursor: 'pointer' }}>
-          {triggerContent}
-        </button>
-      ) : (
-        <button ref={btnRef} type="button" title={title} onClick={toggle}
-          style={{ width: size, height: size, borderRadius: round ? '50%' : 8, border: '1px solid var(--border,#E9ECF2)', cursor: 'pointer', padding: 0, boxShadow: 'inset 0 0 0 2px var(--surface,#fff)',
-            background: (allowNone && (value === 'transparent' || !value))
-              ? 'linear-gradient(135deg, #fff 43%, #EF4444 44%, #EF4444 56%, #fff 57%)'
-              : cur }} />
-      )}
-      {open && (
-        <div style={{ position: 'absolute', zIndex: 130, ...(openUp ? { bottom: 'calc(100% + 8px)' } : { top: 'calc(100% + 8px)' }), left: 0, width: 214, background: 'var(--surface,#fff)', border: '1px solid var(--border,#E9ECF2)', borderRadius: 12, boxShadow: '0 16px 44px rgba(16,24,40,0.20)', padding: 12 }}>
-          {brandColors.length > 0 && (
-            <>
-              <div style={{ ...swLabel, marginTop: 0 }}>Markenfarben</div>
-              <div style={swGrid}>{brandColors.map((c, i) => <ColorSwatch key={'b' + i} c={c} current={cur} onPick={pick} />)}</div>
-            </>
-          )}
-          <div style={{ ...swLabel, marginTop: brandColors.length ? 10 : 0 }}>Standardfarben</div>
-          <div style={swGrid}>{STD_SWATCHES.map((c, i) => <ColorSwatch key={i} c={c} current={cur} onPick={pick} />)}</div>
-          {allowNone && (
-            <button type="button" onClick={() => pick('transparent')}
-              style={{ display: 'flex', alignItems: 'center', gap: 8, width: '100%', marginTop: 9, padding: '7px 8px', borderRadius: 8, cursor: 'pointer', fontFamily: 'inherit', fontSize: 12.5, fontWeight: 600,
-                border: '1px solid ' + ((value === 'transparent' || !value) ? P : 'var(--border,#E9ECF2)'),
-                background: (value === 'transparent' || !value) ? 'rgba(49,90,231,0.06)' : 'var(--surface,#fff)', color: 'var(--text-primary)' }}>
-              <span style={{ width: 18, height: 18, borderRadius: 5, flexShrink: 0, border: '1px solid var(--border,#E9ECF2)', background: 'linear-gradient(135deg, #fff 43%, #EF4444 44%, #EF4444 56%, #fff 57%)' }} />
-              Keine Füllung
-            </button>
-          )}
-          <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 10, paddingTop: 10, borderTop: '1px solid var(--border,#E9ECF2)' }}>
-            <label style={{ position: 'relative', width: 30, height: 30, borderRadius: 7, overflow: 'hidden', border: '1px solid var(--border,#E9ECF2)', cursor: 'pointer', flexShrink: 0 }} title="Eigene Farbe">
-              <input type="color" value={cur} onChange={e => { onStart && onStart(); onChange(e.target.value) }} onBlur={() => onEnd && onEnd()}
-                style={{ position: 'absolute', inset: '-6px', width: '150%', height: '150%', border: 'none', padding: 0, cursor: 'pointer', background: 'none' }} />
-            </label>
-            <span style={{ fontSize: 12.5, fontWeight: 600, color: 'var(--text-primary)', fontVariantNumeric: 'tabular-nums', textTransform: 'uppercase' }}>{cur}</span>
-          </div>
-        </div>
-      )}
-    </div>
-  )
 }
 
 // ════════════════════════════════════════════════════════════════════════════
