@@ -13,6 +13,7 @@ import { useAddons } from '../hooks/useAddons'
 import { useEntitlements } from '../hooks/useEntitlements'
 import { MarketplaceCard } from '../components/marketplace/MarketplaceCard'
 import CreditsTopupSection from '../components/marketplace/CreditsTopupSection'
+import { getAddonSettingsComponent } from '../components/marketplace/addonSettingsRegistry'
 import { ADDON_CATEGORIES, WAITLIST_RESULT_MESSAGES } from '../lib/addons'
 
 // Add-on-spezifische Redirect-Pfade nach erfolgreicher Stripe-Subscription.
@@ -93,6 +94,7 @@ export default function Marketplace() {
   const [activating, setActivating]     = useState(false)
   const [pendingCancel, setPendingCancel] = useState(null) // Cancel-Confirmation (Pattern B)
   const [canceling, setCanceling]         = useState(false)
+  const [settingsAddon, setSettingsAddon] = useState(null) // ⋮ → "Einstellungen" (In-Place-Panel)
 
   // Success/Cancel-URL-Handler — Stripe-Checkout redirected mit ?addon_subscribed=<slug>
   // bzw. ?addon_canceled=<slug> zurück.
@@ -102,6 +104,24 @@ export default function Marketplace() {
     const canceled   = params.get('addon_canceled')
     const topupPurchased = params.get('topup_purchased')
     const topupCancelled = params.get('topup_cancelled')
+
+    // Rückkehr vom Asana-OAuth-Callback (/integrations/asana/callback leitet
+    // hierher: ?asana_connected=1 bzw. ?asana_error=...). Flash + Settings-Panel
+    // öffnen, damit der (neue) Verbindungsstatus sofort sichtbar ist.
+    const asanaConnected = params.get('asana_connected')
+    const asanaError     = params.get('asana_error')
+    if (asanaConnected || asanaError) {
+      setFlash(asanaConnected
+        ? { msg: 'Asana erfolgreich verbunden.', type: 'ok' }
+        : { msg: 'Asana-Verbindung fehlgeschlagen: ' + asanaError, type: 'err' })
+      setSettingsAddon({ slug: 'asana-integration', name: 'Asana Integration' })
+      params.delete('asana_connected')
+      params.delete('asana_error')
+      const ns = params.toString()
+      window.history.replaceState({}, '', window.location.pathname + (ns ? `?${ns}` : ''))
+      const t = setTimeout(() => setFlash(null), 5000)
+      return () => clearTimeout(t)
+    }
 
     // Credit-Top-Up Success/Cancel-Handler (Phase J.2 B)
     if (topupPurchased) {
@@ -348,7 +368,11 @@ export default function Marketplace() {
                 onCancel={onCancel}
                 onManageBilling={onManageBilling}
                 settingsRoute={POST_SUBSCRIBE_REDIRECTS[addon.slug]}
-                onOpenSettings={(a) => navigate(POST_SUBSCRIBE_REDIRECTS[a.slug] || '/integrations')}
+                hasSettings={!!getAddonSettingsComponent(addon.slug)}
+                onOpenSettings={(a) => {
+                  if (getAddonSettingsComponent(a.slug)) setSettingsAddon(a)
+                  else navigate(POST_SUBSCRIBE_REDIRECTS[a.slug] || '/integrations')
+                }}
               />
             ))}
           </div>
@@ -414,6 +438,29 @@ export default function Marketplace() {
           </div>
         </div>
       )}
+
+      {settingsAddon && (() => {
+        const SettingsComp = getAddonSettingsComponent(settingsAddon.slug)
+        if (!SettingsComp) return null
+        return (
+          <div onClick={() => setSettingsAddon(null)}
+            style={{ position: 'fixed', inset: 0, background: 'rgba(15,23,42,0.5)', backdropFilter: 'blur(4px)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000 }}>
+            <div onClick={(e) => e.stopPropagation()}
+              style={{ background: '#fff', borderRadius: 16, boxShadow: '0 24px 64px rgba(15,23,42,0.18)', width: 520, maxWidth: '94vw', maxHeight: '88vh', overflowY: 'auto', padding: 26 }}>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 18 }}>
+                <div style={{ fontSize: 17, fontWeight: 700, color: 'var(--text-strong, #111827)' }}>
+                  {settingsAddon.name} — Einstellungen
+                </div>
+                <button onClick={() => setSettingsAddon(null)} aria-label="Schließen"
+                  style={{ border: 'none', background: 'transparent', fontSize: 20, lineHeight: 1, cursor: 'pointer', color: '#94A3B8', padding: 4 }}>
+                  ×
+                </button>
+              </div>
+              <SettingsComp addon={settingsAddon} onFlash={showFlash} onClose={() => setSettingsAddon(null)} />
+            </div>
+          </div>
+        )
+      })()}
     </div>
   )
 }

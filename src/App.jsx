@@ -26,6 +26,7 @@ import AdminUsers    from './pages/AdminUsers'
 import WhiteLabel    from './pages/WhiteLabel'
 import Aufgaben      from './pages/Aufgaben'
 import IntegrationSettings from './pages/IntegrationSettings'
+import AsanaCallback from './pages/auth/AsanaCallback'
 import Marketplace from './pages/Marketplace'
 import Deals         from './pages/Deals'
 import DealsContainer from './pages/DealsContainer'
@@ -403,6 +404,7 @@ export default function App() {
             <Route path="/profile"  element={<Navigate to="/settings/profil" replace />} />
             <Route path="/aufgaben" element={<Aufgaben session={session} />} />
             <Route path="/integrations" element={<IntegrationSettings session={session} />} />
+            <Route path="/integrations/asana/callback" element={<AsanaCallback />} />
             <Route path="/marketplace"  element={<Marketplace />} />
             <Route path="/deals"    element={<DealsContainer session={session} />} />
             <Route path="/deals/:id" element={<DealDetail session={session} />} />
