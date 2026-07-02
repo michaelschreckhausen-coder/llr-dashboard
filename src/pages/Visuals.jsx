@@ -128,7 +128,8 @@ export default function Visuals({ session, kindFilter = null, embedded = false, 
         const ext = (file.name.split('.').pop() || 'bin').toLowerCase()
         const visualId = crypto.randomUUID()
         const path = `${activeTeamId}/uploads/${visualId}.${ext}`
-        const contentType = file.type || 'application/octet-stream'
+        const EXT_MIME = { pdf:'application/pdf', doc:'application/msword', docx:'application/vnd.openxmlformats-officedocument.wordprocessingml.document', xls:'application/vnd.ms-excel', xlsx:'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', ppt:'application/vnd.ms-powerpoint', pptx:'application/vnd.openxmlformats-officedocument.presentationml.presentation', txt:'text/plain', csv:'text/csv', png:'image/png', jpg:'image/jpeg', jpeg:'image/jpeg', webp:'image/webp', gif:'image/gif', svg:'image/svg+xml', mp4:'video/mp4', mov:'video/quicktime', webm:'video/webm' }
+        const contentType = file.type || EXT_MIME[ext] || 'application/octet-stream'
         const { error: upErr } = await supabase.storage.from('visuals').upload(path, uploadFile, { contentType, upsert: false })
         if (upErr) { alert(`Upload ${file.name}: ${upErr.message}`); continue }
         const { error: insErr } = await supabase.from('visuals').insert({
