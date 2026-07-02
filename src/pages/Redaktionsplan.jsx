@@ -633,7 +633,8 @@ function PostModal({ post, onClose, onSave, onDelete, session, activeTeamId, mem
         user_id: session.user.id,
         team_id: form.team_id || activeTeamId,
         workspace: form.workspace || workspace,
-        brand_voice_id: form.brand_voice_id || activeBrandVoice?.id || null,
+        brand_voice_id: activeBrandVoice?.noBrand ? null : (form.brand_voice_id || activeBrandVoice?.id || null),
+        no_brand: !!activeBrandVoice?.noBrand,
         title: form.title.trim(),
         content: form.content || '',
         platform: 'linkedin',
@@ -704,7 +705,8 @@ function PostModal({ post, onClose, onSave, onDelete, session, activeTeamId, mem
     payload.user_id        = user.id
     payload.team_id        = form.team_id || activeTeamId
     payload.workspace      = form.workspace || workspace
-    payload.brand_voice_id = form.brand_voice_id || activeBrandVoice?.id || null
+    payload.brand_voice_id = activeBrandVoice?.noBrand ? null : (form.brand_voice_id || activeBrandVoice?.id || null)
+    payload.no_brand = !!activeBrandVoice?.noBrand
     payload.platform       = form.platform || 'linkedin'
     payload.status         = form.status || 'idee'
     payload.tags           = typeof form.tags === 'string'
@@ -1691,7 +1693,7 @@ export default function Redaktionsplan({ session }) {
   const [searchParams] = useSearchParams()
 
   const { activeTeamId, members } = useTeam()
-  const { activeBrandVoice, brandVoices, switchBrandVoice } = useBrandVoice()
+  const { activeBrandVoice, brandVoices, switchBrandVoice, noBrand } = useBrandVoice()
   const brainstormCompanyVoices = (brandVoices || []).filter(v => v.account_type === 'company_page')
   const [posts, setPosts]         = useState([])
   const [loading, setLoading]     = useState(true)
@@ -1917,7 +1919,8 @@ Danke für den Austausch! 🤝`,
       .select('*, post_publish_queue ( status, scheduled_for, attempts, error_message, last_response_status, created_at )'), activeTeamId, _sharedBv)
       .order('created_at', { ascending: false })
     // BV-Multi-Filter: ausgewaehlte BVs
-    if (selectedBVIds.length > 0) q = q.in('brand_voice_id', selectedBVIds)
+    if (noBrand) q = q.eq('no_brand', true).eq('user_id', session.user.id)
+    else if (selectedBVIds.length > 0) q = q.in('brand_voice_id', selectedBVIds)
     const { data } = await q
     const bvNameMap = Object.fromEntries((availableBVs || []).map(b => [b.id, b.name]))
     const flattened = (data || []).map(p => {
@@ -1936,7 +1939,7 @@ Danke für den Austausch! 🤝`,
   }
 
   // Re-load wenn sich BV-Selection / Team / Workspace / BV-Liste ändert
-  useEffect(() => { if (activeTeamId && selectedBVIds.length > 0) loadPosts() }, [selectedBVIds.join(','), activeTeamId, workspace, availableBVs.length])
+  useEffect(() => { if (activeTeamId && (noBrand || selectedBVIds.length > 0)) loadPosts() }, [selectedBVIds.join(','), noBrand, activeTeamId, workspace, availableBVs.length])
 
     function openNew(defaults = {}) { setModal({ ...defaults }) }
   function openEdit(post) { setModal(post) }
