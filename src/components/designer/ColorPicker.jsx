@@ -195,7 +195,7 @@ function GradientControls({ gradient, cur, onStart, onEnd, onGradient, brandColo
 
 export function ColorPopover({ value, gradient = null, onChange, onGradient, onStart, onEnd, brandColors = [], title = 'Farbe', size = 30, triggerContent = null, triggerStyle = null, round = false, allowNone = false, allowGradient = false }) {
   const [open, setOpen] = useState(false)
-  const [openUp, setOpenUp] = useState(true)
+  const [pos, setPos] = useState(null)
   const [tab, setTab] = useState(gradient ? 'grad' : 'solid')
   const ref = useRef(null); const btnRef = useRef(null)
   useEffect(() => {
@@ -205,7 +205,18 @@ export function ColorPopover({ value, gradient = null, onChange, onGradient, onS
   }, [open])
   const toggle = () => {
     const willOpen = !open
-    if (willOpen) { if (btnRef.current) { const r = btnRef.current.getBoundingClientRect(); setOpenUp(r.top > window.innerHeight * 0.5) } setTab(gradient ? 'grad' : 'solid') }
+    if (willOpen) {
+      if (btnRef.current) {
+        const r = btnRef.current.getBoundingClientRect()
+        const W = 236, H = 432
+        let left = r.left
+        if (left + W > window.innerWidth - 8) left = Math.max(8, window.innerWidth - 8 - W)
+        let top = r.bottom + 8
+        if (top + H > window.innerHeight - 8) top = Math.max(8, r.top - H - 8)
+        setPos({ top, left })
+      }
+      setTab(gradient ? 'grad' : 'solid')
+    }
     setOpen(willOpen)
   }
   const cur = toHex(value || '#ffffff')
@@ -229,8 +240,8 @@ export function ColorPopover({ value, gradient = null, onChange, onGradient, onS
         <button ref={btnRef} type="button" title={title} onClick={toggle}
           style={{ width: size, height: size, borderRadius: round ? '50%' : 8, border: '1px solid var(--border,#E9ECF2)', cursor: 'pointer', padding: 0, boxShadow: 'inset 0 0 0 2px var(--surface,#fff)', background: triggerBg }} />
       )}
-      {open && (
-        <div style={{ position: 'absolute', zIndex: 130, ...(openUp ? { bottom: 'calc(100% + 8px)' } : { top: 'calc(100% + 8px)' }), left: 0, width: 236, maxHeight: '78vh', overflowY: 'auto', background: 'var(--surface,#fff)', border: '1px solid var(--border,#E9ECF2)', borderRadius: 12, boxShadow: '0 16px 44px rgba(16,24,40,0.20)', padding: 12 }}>
+      {open && pos && (
+        <div style={{ position: 'fixed', zIndex: 4000, top: pos.top, left: pos.left, width: 236, maxHeight: 'min(432px, calc(100vh - 16px))', overflowY: 'auto', background: 'var(--surface,#fff)', border: '1px solid var(--border,#E9ECF2)', borderRadius: 12, boxShadow: '0 16px 44px rgba(16,24,40,0.20)', padding: 12 }}>
           {allowGradient && (
             <div style={{ display: 'flex', marginBottom: 10, borderBottom: '1px solid var(--border,#EEF1F5)' }}>
               {tabBtn('solid', 'Volltonfarbe')}{tabBtn('grad', 'Verlauf')}
