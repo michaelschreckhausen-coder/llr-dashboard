@@ -47,6 +47,8 @@ import { DESIGN_TEMPLATES } from '../../lib/designTemplates'
 import { DESIGN_ASSETS, ASSET_CATEGORIES } from '../../lib/designAssets'
 import { useBrandVoice } from '../../context/BrandVoiceContext'
 import { listBrandFonts, loadBrandFonts } from '../../lib/brandFonts'
+import { loadGoogleFont, isGoogleFont, isFontLoaded } from '../../lib/googleFonts'
+import FontPicker from './FontPicker'
 import { searchIcons, searchGraphics, iconSvgUrl, iconToDataUrl, searchPhotos, photoToDataUrl } from '../../lib/stockMedia'
 import {
   Palette, Sparkles, Plus as PlusIcon, Image as ImagePlus,
@@ -349,6 +351,7 @@ export default function DesignerCanvas({ visual, teamId, onSaved, onReplaceVisua
   // Brand-Identität (Logos/Farben/Fonts) der aktiven Company Brand
   const [brandData, setBrandData] = useState(null)         // { palette, logos:[{path,url}], fonts:[{family,...}] }
   const [brandFontFamilies, setBrandFontFamilies] = useState([])
+  const [fontRev, setFontRev] = useState(0)                // Redraw-Trigger nach Google-Font-Load
   const [brandLoading, setBrandLoading] = useState(false)
   // Medien-Bibliothek (Team-Bilder, brand-scoped) für den Medien-Tab
   const [mediaLib, setMediaLib] = useState([])             // [{ id, url, storage_path }]
@@ -2363,9 +2366,32 @@ Antworte AUSSCHLIESSLICH mit JSON: {"ok":<bool>,"issues":["..."],"operations":[.
   //                 damit das PNG einen Alpha-Kanal bekommt.
   // Die Transformer-Auswahl wird (wie zuvor) temporär entfernt und im finally
   // wiederhergestellt; bei transparent wird zusätzlich der Bg-Rect ausgeblendet.
+  // Google-Fonts aus dem aktuellen Design bei Bedarf nachladen + neu zeichnen
+  // (damit gespeicherte / per KI gesetzte Schriften korrekt rendern).
+  useEffect(() => {
+    const fams = [...new Set(objects.filter(o => o.type === 'text' && o.fontFamily).map(o => o.fontFamily))]
+    const toLoad = fams.filter(f => isGoogleFont(f) && !isFontLoaded(f))
+    if (!toLoad.length) return
+    let alive = true
+    Promise.all(toLoad.map(f => loadGoogleFont(f).catch(() => {}))).then(() => {
+      if (!alive) return
+      try { stageRef.current?.getLayers().forEach(l => l.batchDraw()) } catch (_e) {}
+      setFontRev(r => r + 1)
+    })
+    return () => { alive = false }
+  }, [objects])
+
+  // Nach Auswahl im FontPicker: Schrift laden und Canvas neu zeichnen.
+  async function handleFontLoad(family) {
+    try { await loadGoogleFont(family) } catch (_e) {}
+    try { stageRef.current?.getLayers().forEach(l => l.batchDraw()) } catch (_e) {}
+    setFontRev(r => r + 1)
+  }
+
   async function renderBlobOpts({ pixelRatio = 2, mimeType = 'image/png', quality = 0.92 } = {}) {
     const stage = stageRef.current
     if (!stage) throw new Error('Stage nicht bereit')
+    try { await document.fonts.ready } catch (_e) {}
     const tr = trRef.current
     const hadNodes = tr ? tr.nodes() : []
     try { if (tr) { tr.nodes([]); tr.getLayer()?.batchDraw() } } catch (_e) {}
@@ -3820,7 +3846,7 @@ Antworte AUSSCHLIESSLICH mit JSON: {"ok":<bool>,"issues":["..."],"operations":[.
           onFlip={flipSelected} onCrop={() => { setCropMode(true); setCropRatio(null); setCropRect(null) }}
           onEditImage={() => setActiveTool('edit')} onOpenLayers={() => setActiveTool('layers')}
           onCopyStyle={startCopyStyle} copyStyleActive={copyStyleActive} onIconRecolor={recolorIcon}
-          fonts={allFonts} selectedIds={selectedIds} brandColors={brandColors}
+          fonts={allFonts} brandFonts={brandFontFamilies} onFontLoad={handleFontLoad} selectedIds={selectedIds} brandColors={brandColors}
           alignObjects={alignObjects} distributeObjects={distributeObjects} />
       )}
       {selectedIds.length > 1 && !cropMode && !aiActive && (
@@ -4454,7 +4480,7 @@ function ContextBar({
   selected, updateObject, reorder, deleteSelected, duplicateSelected,
   commitHistoryOnce, endInteraction, fonts, onFlip, onCrop, onEditImage, onOpenLayers,
   onCopyStyle, copyStyleActive = false, onIconRecolor,
-  selectedIds, alignObjects, distributeObjects, brandColors = [],
+  selectedIds, alignObjects, distributeObjects, brandColors = [], brandFonts = [], onFontLoad,
 }) {
   const FONT_LIST = (fonts && fonts.length) ? fonts : FONTS
   const o = selected
@@ -4508,9 +4534,8 @@ function ContextBar({
       {/* ── TEXT ── */}
       {isText && (
         <>
-          <select value={o.fontFamily || 'Inter'} onChange={e => setOnce({ fontFamily: e.target.value })} style={{ ...selStyle, minWidth: 104, maxWidth: 132, flexShrink: 0 }} title="Schriftart">
-            {FONT_LIST.map(f => <option key={f} value={f}>{f}</option>)}
-          </select>
+          <FontPicker value={o.fontFamily || 'Inter'} brandFonts={brandFonts}
+            onPick={fam => { setOnce({ fontFamily: fam }); onFontLoad && onFontLoad(fam) }} />
           {/* Schriftgröße mit −/+ Stepper */}
           <div style={{ display: 'inline-flex', alignItems: 'center', height: 32, flexShrink: 0, border: '1px solid var(--border,#E9ECF2)', borderRadius: 8, background: '#fff', overflow: 'hidden' }}>
             <button type="button" title="Kleiner" style={stepBtn} onClick={() => setOnce({ fontSize: Math.max(6, fs - 1) })}><Minus size={13} strokeWidth={2} /></button>
