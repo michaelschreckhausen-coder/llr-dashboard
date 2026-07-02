@@ -1416,10 +1416,11 @@ Farb-/Lesbarkeits-Regeln (SEHR WICHTIG, sonst unlesbar):
 - Headline auf einem Foto: ZUERST einen deckenden Balken (add_rect, Markenfarbe oder dunkel) anlegen, DANN den Text (Text-Operation NACH dem Balken); der Text sitzt auf dem Balken.
 - Marken-Farben bevorzugen, aber Lesbarkeit geht IMMER vor.
 
-Bild-Befehle nach Absicht (nicht verwechseln):
-- Schwarz-Weiß / Graustufen / entsättigen → set_filter mit {"grayscale":1}. NICHT edit_image.
-- Hintergrund entfernen / freistellen → remove_background.
-- Inhaltliche Bildänderung (Szene, Objekte, Stil, Licht) → edit_image.
+Bild-Befehle nach Absicht (NICHT verwechseln — das ist wichtig):
+- Reine Farb-/Ton-/Helligkeits-Anpassungen (Schwarz-Weiß, Graustufen, entsättigen, heller, dunkler, mehr/weniger Kontrast, wärmer/kühler) → IMMER set_filter (z.B. {"grayscale":1}). Das ist ein nicht-destruktiver Filter — es wird NICHTS neu generiert. NIEMALS edit_image/remove_background dafür verwenden.
+- Hintergrund entfernen / freistellen → remove_background (die Person bleibt erhalten, nur der Hintergrund wird transparent).
+- Inhaltliche Bildänderung (andere Szene/Objekte/Perspektive) → edit_image.
+- WICHTIG: remove_background und edit_image erzeugen das Bild per KI neu — nutze sie nur, wenn der Befehl das wirklich erfordert. Für alles, was ein Filter kann, nimm set_filter.
 
 Gib AUSSCHLIESSLICH gültiges JSON zurück (kein Markdown, keine Erklärung) – Operationen in Ausführungsreihenfolge (Balken VOR zugehörigem Text):
 {"operations":[
@@ -1493,6 +1494,10 @@ Nutze nur die für den Befehl nötigen Operationen.`
           else if (t === 'remove_background') { cutout = true }
           else if (t === 'edit_image' && op.instruction && imgInstr === null && visual?.storage_path) { imgInstr = String(op.instruction) }
         }
+        // Sicherung: reine Farb-/Ton-Befehle (schwarz-weiß) sind IMMER ein Filter, NIE eine Neu-Generierung.
+        const bwIntent = /schwarz.?wei|graustuf|monochrom|black.?and.?white|entsätt/i.test(String(c || ''))
+        const bgIntent = /hintergrund|background|freistell|freigestellt|ausschneid|cut.?out/i.test(String(c || ''))
+        if (bwIntent) { fPatch = { ...(fPatch || {}), grayscale: 1 }; if (!bgIntent) imgInstr = null }
         arr = arr.map(o => o.type === 'text' ? fitText(o) : o)
         try {
           const nonText = arr.filter(o => o.type !== 'text'); const textEls = arr.filter(o => o.type === 'text'); const scrims = []
@@ -1557,7 +1562,7 @@ Antworte AUSSCHLIESSLICH mit JSON: {"ok":<bool>,"issues":["..."],"operations":[.
         try { const nv = await callGenerateImage(`Bearbeite das Referenzbild: ${r1.imageInstruction}. Behalte Bildstil, Beleuchtung und Perspektive konsistent, fotorealistisch.`); const url = await visualDataUrl(nv.storage_path); if (url) await applyResultDirect(url, 'free') } catch (e) { opError = 'Bild-Bearbeitung fehlgeschlagen: ' + (e?.message || 'Fehler') }
       }
       if (r1.wantCutout && visual?.storage_path) {
-        try { const nv = await callGenerateImage('Stelle das Hauptmotiv sauber frei und entferne den Hintergrund vollständig. Sauberer Freisteller mit transparentem Hintergrund.', { model: 'gpt-image-1', quality: 'high', background: 'transparent' }); const url = await visualDataUrl(nv.storage_path); if (url) await applyResultDirect(url, 'cutout') } catch (e) { opError = 'Freistellen fehlgeschlagen: ' + (e?.message || 'Fehler') }
+        try { const nv = await callGenerateImage('Entferne AUSSCHLIESSLICH den Hintergrund und mache ihn vollständig transparent. Die Person bzw. das Hauptmotiv bleibt dabei EXAKT unverändert: Gesicht, Frisur, Hautton, Kleidung, Pose, Ausdruck und Beleuchtung pixelgenau wie im Original. Zeichne NICHTS neu, verändere das Motiv NICHT — stelle es nur sauber frei.', { model: 'gpt-image-1', quality: 'high', background: 'transparent' }); const url = await visualDataUrl(nv.storage_path); if (url) await applyResultDirect(url, 'cutout') } catch (e) { opError = 'Freistellen fehlgeschlagen: ' + (e?.message || 'Fehler') }
       }
       setPageAiCmd('')
       let reviewNote = ''
