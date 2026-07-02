@@ -260,9 +260,12 @@ Deno.serve(async (req) => {
     const useWebSearch: boolean = !!body.use_web_search;
     const documentContext: string = (body.document_context || "").trim();
     const model: string = body.model || DEFAULT_MODEL;
+    const noBrand: boolean = !!body.no_brand;
+    const bodyTeamId: string | null = body.team_id || null;
 
     if (!userMessage) return json({ error: "user_message ist Pflicht" }, 400);
-    if (!brandVoiceId && !chatId) return json({ error: "brand_voice_id beim ersten Turn erforderlich" }, 400);
+    if (!brandVoiceId && !chatId && !noBrand) return json({ error: "brand_voice_id beim ersten Turn erforderlich" }, 400);
+    if (noBrand && !chatId && !bodyTeamId) return json({ error: "team_id fuer markenlosen Chat erforderlich" }, 400);
 
     // ─── Chat anlegen oder laden ───────────────────────────────────────────
     let chat: any;
@@ -277,17 +280,21 @@ Deno.serve(async (req) => {
         chat.company_voice_id = companyVoiceIds[0] || null;
       }
     } else {
-      // Team aus BV ableiten (denormalisiert)
-      const { data: bvRow } = await admin.from("brand_voices").select("team_id").eq("id", brandVoiceId).maybeSingle();
-      const teamId = bvRow?.team_id || null;
+      // Team aus BV ableiten (denormalisiert); markenlos: team_id aus Body
+      let teamId = bodyTeamId;
+      if (!noBrand) {
+        const { data: bvRow } = await admin.from("brand_voices").select("team_id").eq("id", brandVoiceId).maybeSingle();
+        teamId = bvRow?.team_id || null;
+      }
       const { data: newChat, error: insErr } = await userClient.from("content_chats").insert({
-        brand_voice_id: brandVoiceId,
+        brand_voice_id: noBrand ? null : brandVoiceId,
+        no_brand: noBrand,
         team_id: teamId,
         created_by: user.id,
-        target_audience_id: targetAudienceId || null,
-        strike2_persona_id: strike2PersonaId || null,
-        company_voice_id: companyVoiceIds[0] || null,
-        company_voice_ids: companyVoiceIds,
+        target_audience_id: noBrand ? null : (targetAudienceId || null),
+        strike2_persona_id: noBrand ? null : (strike2PersonaId || null),
+        company_voice_id: noBrand ? null : (companyVoiceIds[0] || null),
+        company_voice_ids: noBrand ? [] : companyVoiceIds,
         post_id: postId || null,
         title: "Neuer Chat", // Platzhalter — wird nach 1. Antwort durch KI-Titel ersetzt
       }).select().single();
@@ -305,7 +312,7 @@ Deno.serve(async (req) => {
 
     // ─── Kontext laden (BV, Zielgruppe, Wissen, Post) ──────────────────────
     const [bvRes, audRes, knowRes, postRes, s2Res] = await Promise.all([
-      admin.from("brand_voices").select("*").eq("id", chat.brand_voice_id).maybeSingle(),
+      chat.brand_voice_id ? admin.from("brand_voices").select("*").eq("id", chat.brand_voice_id).maybeSingle() : Promise.resolve({ data: null }),
       chat.target_audience_id || targetAudienceId
         ? admin.from("target_audiences").select("*").eq("id", chat.target_audience_id || targetAudienceId).maybeSingle()
         : Promise.resolve({ data: null }),
@@ -363,7 +370,7 @@ Deno.serve(async (req) => {
     let memEnabled = false;
     try { const { data: _pf } = await admin.from("user_preferences").select("memory_enabled").eq("user_id", user.id).maybeSingle(); memEnabled = _pf?.memory_enabled !== false; } catch (_e) { memEnabled = true; }  // Memory standardmäßig AN (nur explizit false = aus)
     if (memEnabled) {
-      const corpus = await buildBrandCorpus(admin, chat.brand_voice_id);
+      const corpus = await buildBrandCorpus(admin, chat.brand_voice_id, { noBrand: !!chat.no_brand, userId: user.id });
       if (corpus) systemParts.push(corpus);
     }
     const systemPrompt = systemParts.join("\n\n");
