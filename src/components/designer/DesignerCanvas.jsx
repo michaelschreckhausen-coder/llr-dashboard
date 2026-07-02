@@ -32,7 +32,7 @@ import {
   Type, Square as SquareIcon, Circle as CircleIcon, Minus, ArrowRight, Star as StarIcon,
   Trash2, Undo2, Redo2, Save, Download, BringToFront, SendToBack, Crop, Wand2,
   Bold, Italic, Sliders, Loader2, X, ChevronUp, ChevronDown, Brush, Lasso,
-  Eraser, Image as ImageIcon, LayoutTemplate, Copy, ZoomIn, ZoomOut, Maximize2,
+  Eraser, Pen, Pencil, Highlighter, PenTool, Image as ImageIcon, LayoutTemplate, Copy, ZoomIn, ZoomOut, Maximize2,
   Upload, Frame, Eye, EyeOff, Lock, Unlock, Layers, GripVertical, Underline,
   FlipHorizontal2, FlipVertical2, FlipHorizontal, FlipVertical, Scaling, Send, CalendarPlus, FileText, Search, Paintbrush,
   AlignLeft, AlignCenter, AlignRight, Baseline, MoveVertical,
@@ -118,6 +118,17 @@ function fillKonvaProps(o, w, h, centered) {
   }
   return { fillPriority: 'color', fill: o.fill, fillLinearGradientColorStops: undefined }
 }
+
+// Pinsel-Typen fürs Zeichnen. Jeder Strich = Konva-Linie mit diesen Eigenschaften.
+const BRUSHES = [
+  { id: 'pen',      label: 'Stift',     Icon: Pen,         width: 5,  cap: 'round', tension: 0.4, opacity: 1,    gco: 'source-over' },
+  { id: 'pencil',   label: 'Bleistift', Icon: Pencil,      width: 2,  cap: 'round', tension: 0.1, opacity: 0.85, gco: 'source-over' },
+  { id: 'marker',   label: 'Marker',    Icon: Highlighter, width: 22, cap: 'round', tension: 0.4, opacity: 0.35, gco: 'multiply' },
+  { id: 'brush',    label: 'Pinsel',    Icon: Brush,       width: 14, cap: 'round', tension: 0.6, opacity: 1,    gco: 'source-over' },
+  { id: 'fountain', label: 'Füller',    Icon: PenTool,     width: 7,  cap: 'round', tension: 0.5, opacity: 1,    gco: 'source-over' },
+  { id: 'eraser',   label: 'Radierer',  Icon: Eraser,      width: 20, cap: 'round', tension: 0,   opacity: 1,    gco: 'source-over', eraser: true },
+]
+const brushById = (id) => BRUSHES.find(b => b.id === id) || BRUSHES[0]
 // Akzentfarbe für den "Verzerren"-Modus (nach Doppelklick): klar abgesetzt von der
 // primären Auswahl-Farbe, damit der freie Transform-Modus sofort erkennbar ist.
 const DISTORT_RGB = 'rgb(245,158,11)'
@@ -337,6 +348,9 @@ export default function DesignerCanvas({ visual, teamId, onSaved, onReplaceVisua
   const [penWidth, setPenWidth] = useState(6)
   const drawRef = useRef(null)
   const [drawPreview, setDrawPreview] = useState(null)
+  const [activeBrush, setActiveBrush] = useState('pen')
+  const eraseRef = useRef(false)
+  const pickBrush = (id) => { const b = brushById(id); setActiveBrush(id); setPenWidth(b.width) }
 
   // ─── KI-Masken-Werkzeug ────────────────────────────────────────────────────
   // aiMode: 'edit' (freier Prompt) | 'heal' (Objekt entfernen) | null
@@ -2293,6 +2307,19 @@ Antworte AUSSCHLIESSLICH mit JSON: {"ok":<bool>,"issues":["..."],"operations":[.
     const offY = baseCrop ? baseCrop.y : 0
     return { x: (pos.x - CANVAS_PAD) / effScale + offX, y: (pos.y - CANVAS_PAD) / effScale + offY }
   }
+  // Objekt-Radierer: entfernt Zeichen-Striche (type 'line') nahe dem Cursor.
+  function eraseStrokesAt(p) {
+    const R = Math.max(8, penWidth)
+    setObjects(prev => prev.filter(o => {
+      if (o.type !== 'line') return true
+      const pts = o.points || []
+      for (let i = 0; i < pts.length; i += 2) {
+        const ax = (o.x || 0) + pts[i], ay = (o.y || 0) + pts[i + 1]
+        if ((ax - p.x) * (ax - p.x) + (ay - p.y) * (ay - p.y) <= R * R) return false
+      }
+      return true
+    }))
+  }
   function onStageMouseDown(e) {
     const stage = stageRef.current
     if (!stage) return
@@ -2300,7 +2327,11 @@ Antworte AUSSCHLIESSLICH mit JSON: {"ok":<bool>,"issues":["..."],"operations":[.
     if (spaceDownRef.current) return
     const p = stagePoint()
     if (!p) return
-    if (activeTool === 'draw') { drawRef.current = [p]; setDrawPreview([p]); return }
+    if (activeTool === 'draw') {
+      if (brushById(activeBrush).eraser) { eraseRef.current = true; commitHistoryOnce(); eraseStrokesAt(p) }
+      else { drawRef.current = [p]; setDrawPreview([p]) }
+      return
+    }
     if (cropMode) { cropDragRef.current = { x: p.x, y: p.y }; setCropRect({ x: p.x, y: p.y, w: 0, h: 0 }); return }
     // Klick auf leere Bühne → Marquee starten / Selektion lösen
     const onEmpty = e.target === stage || e.target.attrs?.id === '__bg__' || e.target.attrs?.id === '__bgfill__'
@@ -2317,6 +2348,7 @@ Antworte AUSSCHLIESSLICH mit JSON: {"ok":<bool>,"issues":["..."],"operations":[.
   function onStageMouseMove() {
     const p = stagePoint()
     if (!p) return
+    if (activeTool === 'draw' && eraseRef.current) { eraseStrokesAt(p); return }
     if (activeTool === 'draw' && drawRef.current) { drawRef.current = [...drawRef.current, p]; setDrawPreview(drawRef.current); return }
     if (cropMode && cropDragRef.current) {
       const s = cropDragRef.current
@@ -2335,11 +2367,13 @@ Antworte AUSSCHLIESSLICH mit JSON: {"ok":<bool>,"issues":["..."],"operations":[.
     }
   }
   function onStageMouseUp() {
+    if (eraseRef.current) { eraseRef.current = false; endInteraction(); return }
     if (drawRef.current) {
       const pts = drawRef.current; drawRef.current = null; setDrawPreview(null)
       if (pts.length >= 2) {
         const p0 = pts[0]; const flat = []; pts.forEach(pt => { flat.push(pt.x - p0.x, pt.y - p0.y) })
-        addObject({ type: 'line', x: p0.x, y: p0.y, points: flat, stroke: penColor, strokeWidth: penWidth, rotation: 0 })
+        const br = brushById(activeBrush)
+        addObject({ type: 'line', x: p0.x, y: p0.y, points: flat, stroke: penColor, strokeWidth: penWidth, lineCap: br.cap, tension: br.tension, opacity: br.opacity, gco: br.gco, rotation: 0 })
       }
       return
     }
@@ -3690,7 +3724,7 @@ Antworte AUSSCHLIESSLICH mit JSON: {"ok":<bool>,"issues":["..."],"operations":[.
       case 'ellipse':
         return <Ellipse key={o.id} {...base} radiusX={o.radiusX} radiusY={o.radiusY} {...fillKonvaProps(o, 2 * (o.radiusX || 90), 2 * (o.radiusY || 90), true)} stroke={o.stroke} strokeWidth={o.strokeWidth || 0} />
       case 'line':
-        return <Line key={o.id} {...base} points={o.points} stroke={o.stroke} strokeWidth={o.strokeWidth || 6} lineCap="round" scaleX={(o.flipX ? -1 : 1) * (o.scaleX || 1)} scaleY={(o.flipY ? -1 : 1) * (o.scaleY || 1)} />
+        return <Line key={o.id} {...base} points={o.points} stroke={o.stroke} strokeWidth={o.strokeWidth || 6} lineCap={o.lineCap || 'round'} lineJoin="round" tension={o.tension ?? 0} globalCompositeOperation={o.gco || 'source-over'} scaleX={(o.flipX ? -1 : 1) * (o.scaleX || 1)} scaleY={(o.flipY ? -1 : 1) * (o.scaleY || 1)} />
       case 'arrow':
         return <Arrow key={o.id} {...base} points={o.points} stroke={o.stroke} fill={o.fill} strokeWidth={o.strokeWidth || 6} pointerLength={o.pointerLength || 18} pointerWidth={o.pointerWidth || 18} scaleX={(o.flipX ? -1 : 1) * (o.scaleX || 1)} scaleY={(o.flipY ? -1 : 1) * (o.scaleY || 1)} />
       case 'sticker':
@@ -3987,6 +4021,7 @@ Antworte AUSSCHLIESSLICH mit JSON: {"ok":<bool>,"issues":["..."],"operations":[.
           tool={activeTool}
           onClose={() => setActiveTool(null)}
           penColor={penColor} setPenColor={setPenColor} penWidth={penWidth} setPenWidth={setPenWidth} onDoneDraw={() => setActiveTool(null)} brandColors={brandColors}
+          activeBrush={activeBrush} onPickBrush={pickBrush}
           // Vorlagen
           onApplyTemplate={applyTemplate}
           // Elemente
@@ -4103,7 +4138,7 @@ Antworte AUSSCHLIESSLICH mit JSON: {"ok":<bool>,"issues":["..."],"operations":[.
                     stroke={PRGB} strokeWidth={1.5 / effScale} cornerRadius={3 / effScale} fill="rgba(49,90,231,0.06)" listening={false} />
                 })}
                 {drawPreview && drawPreview.length >= 2 && (
-                  <Line points={drawPreview.flatMap(p => [p.x - off.x, p.y - off.y])} stroke={penColor} strokeWidth={penWidth} lineCap="round" lineJoin="round" tension={0.4} listening={false} />
+                  <Line points={drawPreview.flatMap(p => [p.x - off.x, p.y - off.y])} stroke={penColor} strokeWidth={penWidth} lineCap={brushById(activeBrush).cap} lineJoin="round" tension={brushById(activeBrush).tension} opacity={brushById(activeBrush).opacity} globalCompositeOperation={brushById(activeBrush).gco} listening={false} />
                 )}
               </Layer>
               {/* Transformer auf eigenem, NICHT geclipptem Layer: Rahmen/Anfasser
@@ -5496,19 +5531,36 @@ function AiPanelBody({
 }
 
 // ─── Panel: Zeichnen (Freihand) ──────────────────────────────────────────────
-function DrawPanelBody({ penColor, setPenColor, penWidth, setPenWidth, onDoneDraw, brandColors = [] }) {
+function DrawPanelBody({ penColor, setPenColor, penWidth, setPenWidth, onDoneDraw, brandColors = [], activeBrush = 'pen', onPickBrush }) {
+  const isEraser = (activeBrush || 'pen') === 'eraser'
   return (
     <div>
       <div style={{ fontSize: 12, color: 'var(--text-muted)', marginBottom: 12, lineHeight: 1.5 }}>
-        Zeichne frei auf der Fläche — halte die Maus gedrückt und ziehe. Jeder Strich wird ein eigenes Element, das du danach verschieben, färben oder löschen kannst.
+        Zeichne frei auf der Fläche — Werkzeug wählen, Maus gedrückt halten und ziehen. Jeder Strich wird ein eigenes Element, das du danach verschieben, färben oder löschen kannst.
       </div>
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 14 }}>
-        <span style={{ fontSize: 12.5, fontWeight: 600, color: 'var(--text-primary)' }}>Stiftfarbe</span>
-        <ColorPopover value={penColor} brandColors={brandColors} title="Stiftfarbe" round onChange={(hex) => setPenColor(hex)} size={30} />
+      <div style={{ fontSize: 12.5, fontWeight: 600, color: 'var(--text-primary)', marginBottom: 7 }}>Werkzeug</div>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 8, marginBottom: 16 }}>
+        {BRUSHES.map(b => {
+          const on = (activeBrush || 'pen') === b.id
+          return (
+            <button key={b.id} type="button" onClick={() => onPickBrush && onPickBrush(b.id)} title={b.label}
+              style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 5, padding: '9px 4px', borderRadius: 10, cursor: 'pointer', fontFamily: 'inherit',
+                border: '1.5px solid ' + (on ? P : 'var(--border,#E9ECF2)'), background: on ? 'rgba(49,90,231,0.06)' : 'var(--surface,#fff)', color: on ? P : 'var(--text-secondary,#475467)' }}>
+              <b.Icon size={18} strokeWidth={1.9} />
+              <span style={{ fontSize: 11, fontWeight: on ? 700 : 600 }}>{b.label}</span>
+            </button>
+          )
+        })}
       </div>
+      {!isEraser && (
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 14 }}>
+          <span style={{ fontSize: 12.5, fontWeight: 600, color: 'var(--text-primary)' }}>Farbe</span>
+          <ColorPopover value={penColor} brandColors={brandColors} title="Stiftfarbe" round onChange={(hex) => setPenColor(hex)} size={30} />
+        </div>
+      )}
       <div style={{ marginBottom: 16 }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12.5, fontWeight: 600, color: 'var(--text-primary)', marginBottom: 6 }}>
-          <span>Pinselstärke</span><span style={{ color: 'var(--text-muted)' }}>{penWidth} px</span>
+          <span>{isEraser ? 'Radierer-Größe' : 'Pinselstärke'}</span><span style={{ color: 'var(--text-muted)' }}>{penWidth} px</span>
         </div>
         <input type="range" min={1} max={60} step={1} value={penWidth} onChange={e => setPenWidth(parseInt(e.target.value, 10) || 1)} style={{ width: '100%', accentColor: P }} />
       </div>
