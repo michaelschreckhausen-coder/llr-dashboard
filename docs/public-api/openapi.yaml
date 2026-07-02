@@ -1,0 +1,426 @@
+openapi: 3.1.0
+info:
+  title: Leadesk Public API
+  version: "1.0.0"
+  description: >
+    Externe REST-Schnittstelle für Leadesk. Alle Daten sind team-scoped:
+    ein Credential (API-Key oder OAuth2-Client) gehört genau zu einem Team
+    und sieht ausschließlich dessen Daten.
+
+
+    **Authentifizierung** – eine der drei Varianten:
+
+    - `X-API-Key: lk_live_...`
+
+    - `Authorization: Bearer lk_live_...`
+
+    - `Authorization: Bearer <oauth_access_token>` (via `/v1/oauth/token`)
+
+
+    **Rate Limit:** pro Credential (Default 120 Requests/Minute, fixed window).
+    Antwort-Header `X-RateLimit-Limit`, `X-RateLimit-Remaining`,
+    `X-RateLimit-Reset` (Unix-Sekunden). Bei Überschreitung: `429`.
+servers:
+  - url: https://supabase.leadesk.de/functions/v1/public-api
+    description: Production
+  - url: https://staging.supabase.leadesk.de/functions/v1/public-api
+    description: Staging (URL ggf. anpassen)
+
+security:
+  - ApiKeyAuth: []
+  - BearerAuth: []
+
+tags:
+  - name: OAuth
+  - name: Contacts
+  - name: Companies
+  - name: Deals
+  - name: Content
+  - name: Reports
+
+paths:
+  /v1/oauth/token:
+    post:
+      tags: [OAuth]
+      summary: OAuth2 Access-Token ausstellen (client_credentials)
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [client_id, client_secret]
+              properties:
+                grant_type: { type: string, enum: [client_credentials], default: client_credentials }
+                client_id: { type: string, example: lk_client_ab12cd34 }
+                client_secret: { type: string, example: lk_secret_... }
+          application/x-www-form-urlencoded:
+            schema:
+              type: object
+              required: [client_id, client_secret]
+              properties:
+                grant_type: { type: string }
+                client_id: { type: string }
+                client_secret: { type: string }
+      responses:
+        "200":
+          description: Token ausgestellt
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  access_token: { type: string }
+                  token_type: { type: string, example: Bearer }
+                  expires_in: { type: integer, example: 3600 }
+                  scope: { type: string, example: "contacts:read deals:read" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+
+  /v1/contacts:
+    get:
+      tags: [Contacts]
+      summary: Kontakte auflisten
+      parameters:
+        - { $ref: "#/components/parameters/Limit" }
+        - { $ref: "#/components/parameters/Offset" }
+        - { name: q, in: query, schema: { type: string }, description: Volltext über name/email/company }
+        - { name: status, in: query, schema: { $ref: "#/components/schemas/LeadStatus" } }
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data: { type: array, items: { $ref: "#/components/schemas/Contact" } }
+                  pagination: { $ref: "#/components/schemas/Pagination" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "429": { $ref: "#/components/responses/RateLimited" }
+    post:
+      tags: [Contacts]
+      summary: Kontakt anlegen
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/ContactWrite" }
+      responses:
+        "201":
+          description: Angelegt
+          content: { application/json: { schema: { type: object, properties: { data: { $ref: "#/components/schemas/Contact" } } } } }
+        "422": { $ref: "#/components/responses/ValidationError" }
+
+  /v1/contacts/{id}:
+    parameters:
+      - { $ref: "#/components/parameters/Id" }
+    get:
+      tags: [Contacts]
+      summary: Kontakt abrufen
+      responses:
+        "200": { description: OK, content: { application/json: { schema: { type: object, properties: { data: { $ref: "#/components/schemas/Contact" } } } } } }
+        "404": { $ref: "#/components/responses/NotFound" }
+    patch:
+      tags: [Contacts]
+      summary: Kontakt aktualisieren
+      requestBody:
+        required: true
+        content: { application/json: { schema: { $ref: "#/components/schemas/ContactWrite" } } }
+      responses:
+        "200": { description: OK, content: { application/json: { schema: { type: object, properties: { data: { $ref: "#/components/schemas/Contact" } } } } } }
+        "404": { $ref: "#/components/responses/NotFound" }
+    delete:
+      tags: [Contacts]
+      summary: Kontakt löschen
+      responses:
+        "204": { description: Gelöscht }
+        "404": { $ref: "#/components/responses/NotFound" }
+
+  /v1/companies:
+    get:
+      tags: [Companies]
+      summary: Unternehmen auflisten
+      parameters:
+        - { $ref: "#/components/parameters/Limit" }
+        - { $ref: "#/components/parameters/Offset" }
+        - { name: q, in: query, schema: { type: string } }
+      responses:
+        "200": { description: OK, content: { application/json: { schema: { type: object, properties: { data: { type: array, items: { $ref: "#/components/schemas/Company" } }, pagination: { $ref: "#/components/schemas/Pagination" } } } } } }
+    post:
+      tags: [Companies]
+      summary: Unternehmen anlegen
+      requestBody: { required: true, content: { application/json: { schema: { $ref: "#/components/schemas/CompanyWrite" } } } }
+      responses:
+        "201": { description: Angelegt, content: { application/json: { schema: { type: object, properties: { data: { $ref: "#/components/schemas/Company" } } } } } }
+        "422": { $ref: "#/components/responses/ValidationError" }
+
+  /v1/companies/{id}:
+    parameters: [ { $ref: "#/components/parameters/Id" } ]
+    get: { tags: [Companies], summary: Unternehmen abrufen, responses: { "200": { description: OK }, "404": { $ref: "#/components/responses/NotFound" } } }
+    patch:
+      tags: [Companies]
+      summary: Unternehmen aktualisieren
+      requestBody: { required: true, content: { application/json: { schema: { $ref: "#/components/schemas/CompanyWrite" } } } }
+      responses: { "200": { description: OK }, "404": { $ref: "#/components/responses/NotFound" } }
+    delete: { tags: [Companies], summary: Unternehmen löschen, responses: { "204": { description: Gelöscht }, "404": { $ref: "#/components/responses/NotFound" } } }
+
+  /v1/deals:
+    get:
+      tags: [Deals]
+      summary: Deals auflisten
+      parameters:
+        - { $ref: "#/components/parameters/Limit" }
+        - { $ref: "#/components/parameters/Offset" }
+        - { name: q, in: query, schema: { type: string } }
+        - { name: stage, in: query, schema: { $ref: "#/components/schemas/DealStage" } }
+      responses:
+        "200": { description: OK, content: { application/json: { schema: { type: object, properties: { data: { type: array, items: { $ref: "#/components/schemas/Deal" } }, pagination: { $ref: "#/components/schemas/Pagination" } } } } } }
+    post:
+      tags: [Deals]
+      summary: Deal anlegen
+      requestBody: { required: true, content: { application/json: { schema: { $ref: "#/components/schemas/DealWrite" } } } }
+      responses:
+        "201": { description: Angelegt, content: { application/json: { schema: { type: object, properties: { data: { $ref: "#/components/schemas/Deal" } } } } } }
+        "422": { $ref: "#/components/responses/ValidationError" }
+
+  /v1/deals/{id}:
+    parameters: [ { $ref: "#/components/parameters/Id" } ]
+    get: { tags: [Deals], summary: Deal abrufen, responses: { "200": { description: OK }, "404": { $ref: "#/components/responses/NotFound" } } }
+    patch:
+      tags: [Deals]
+      summary: Deal aktualisieren
+      requestBody: { required: true, content: { application/json: { schema: { $ref: "#/components/schemas/DealWrite" } } } }
+      responses: { "200": { description: OK }, "404": { $ref: "#/components/responses/NotFound" } }
+    delete: { tags: [Deals], summary: Deal löschen, responses: { "204": { description: Gelöscht }, "404": { $ref: "#/components/responses/NotFound" } } }
+
+  /v1/content:
+    get:
+      tags: [Content]
+      summary: Content-Posts auflisten (scope content:read)
+      parameters:
+        - { $ref: "#/components/parameters/Limit" }
+        - { $ref: "#/components/parameters/Offset" }
+      responses: { "200": { description: OK } }
+    post:
+      tags: [Content]
+      summary: Content-Post anlegen (scope content:write)
+      requestBody: { required: true, content: { application/json: { schema: { $ref: "#/components/schemas/ContentWrite" } } } }
+      responses: { "201": { description: Angelegt } }
+
+  /v1/content/{id}:
+    parameters: [ { $ref: "#/components/parameters/Id" } ]
+    get: { tags: [Content], summary: Content-Post abrufen, responses: { "200": { description: OK }, "404": { $ref: "#/components/responses/NotFound" } } }
+    patch: { tags: [Content], summary: Content-Post aktualisieren, requestBody: { required: true, content: { application/json: { schema: { $ref: "#/components/schemas/ContentWrite" } } } }, responses: { "200": { description: OK } } }
+    delete: { tags: [Content], summary: Content-Post löschen, responses: { "204": { description: Gelöscht } } }
+
+  /v1/reports/summary:
+    get:
+      tags: [Reports]
+      summary: Aggregierte Kennzahlen (scope reports:read)
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: object
+                    properties:
+                      contacts: { type: object, properties: { total: { type: integer }, by_status: { type: object, additionalProperties: { type: integer } } } }
+                      deals: { type: object, properties: { total: { type: integer }, by_stage: { type: object, additionalProperties: { type: integer } }, open_pipeline_value: { type: number } } }
+                      weekly_activity: { type: array, items: { type: object } }
+
+components:
+  securitySchemes:
+    ApiKeyAuth:
+      type: apiKey
+      in: header
+      name: X-API-Key
+    BearerAuth:
+      type: http
+      scheme: bearer
+    OAuth2:
+      type: oauth2
+      flows:
+        clientCredentials:
+          tokenUrl: /v1/oauth/token
+          scopes:
+            contacts:read: Kontakte lesen
+            contacts:write: Kontakte schreiben
+            companies:read: Unternehmen lesen
+            companies:write: Unternehmen schreiben
+            deals:read: Deals lesen
+            deals:write: Deals schreiben
+            content:read: Content lesen
+            content:write: Content schreiben
+            reports:read: Reports lesen
+
+  parameters:
+    Id: { name: id, in: path, required: true, schema: { type: string, format: uuid } }
+    Limit: { name: limit, in: query, schema: { type: integer, default: 50, maximum: 200 } }
+    Offset: { name: offset, in: query, schema: { type: integer, default: 0 } }
+
+  responses:
+    Unauthorized: { description: Fehlendes/ungültiges Credential, content: { application/json: { schema: { $ref: "#/components/schemas/Error" } } } }
+    Forbidden: { description: Scope fehlt, content: { application/json: { schema: { $ref: "#/components/schemas/Error" } } } }
+    NotFound: { description: Nicht gefunden, content: { application/json: { schema: { $ref: "#/components/schemas/Error" } } } }
+    ValidationError: { description: Validierung fehlgeschlagen, content: { application/json: { schema: { $ref: "#/components/schemas/Error" } } } }
+    RateLimited: { description: Rate Limit überschritten, content: { application/json: { schema: { $ref: "#/components/schemas/Error" } } } }
+
+  schemas:
+    Error:
+      type: object
+      properties:
+        error:
+          type: object
+          properties:
+            code: { type: string, example: validation_error }
+            message: { type: string }
+            details: {}
+    Pagination:
+      type: object
+      properties:
+        limit: { type: integer }
+        offset: { type: integer }
+        total: { type: integer, nullable: true }
+    LeadStatus:
+      type: string
+      enum: [new, open, in_progress, open_deal, unqualified, attempted_to_contact, connected, bad_timing]
+    LeadSource:
+      type: string
+      enum: [linkedin, website, referral, cold_outreach, event, import, inbound, paid_social, organic_search, other]
+    LifecycleStage:
+      type: string
+      enum: [subscriber, lead, marketing_qualified, sales_qualified, opportunity, customer, evangelist, other]
+    DealStage:
+      type: string
+      enum: [kein_deal, prospect, opportunity, angebot, verhandlung, gewonnen, verloren, stage_custom1, stage_custom2, stage_custom3]
+    Contact:
+      type: object
+      properties:
+        id: { type: string, format: uuid }
+        team_id: { type: string, format: uuid }
+        first_name: { type: string }
+        last_name: { type: string }
+        name: { type: string }
+        email: { type: string }
+        phone: { type: string }
+        linkedin_url: { type: string }
+        job_title: { type: string }
+        company: { type: string }
+        industry: { type: string }
+        city: { type: string }
+        country: { type: string }
+        status:
+          allOf: [ { $ref: "#/components/schemas/LeadStatus" } ]
+          description: Gemappt auf DB-Spalte lead_status.
+        qualification:
+          type: string
+          readOnly: true
+          description: "Deutsche Qualifizierungsstufe (DB-Spalte status): Lead|LQL|MQL|MQN|SQL. Read-only."
+          enum: [Lead, LQL, MQL, MQN, SQL]
+        lifecycle_stage: { $ref: "#/components/schemas/LifecycleStage" }
+        lead_source: { $ref: "#/components/schemas/LeadSource" }
+        tags: { type: array, items: { type: string } }
+        notes: { type: string }
+        organization_id: { type: string, format: uuid, nullable: true }
+        created_at: { type: string, format: date-time }
+        updated_at: { type: string, format: date-time }
+    ContactWrite:
+      type: object
+      properties:
+        first_name: { type: string }
+        last_name: { type: string }
+        name: { type: string }
+        email: { type: string }
+        phone: { type: string }
+        linkedin_url: { type: string }
+        profile_url: { type: string }
+        headline: { type: string }
+        job_title: { type: string }
+        company: { type: string }
+        industry: { type: string }
+        city: { type: string }
+        country: { type: string }
+        status: { $ref: "#/components/schemas/LeadStatus" }
+        lifecycle_stage: { $ref: "#/components/schemas/LifecycleStage" }
+        lead_source: { $ref: "#/components/schemas/LeadSource" }
+        tags: { type: array, items: { type: string } }
+        notes: { type: string }
+        organization_id: { type: string, format: uuid }
+    Company:
+      type: object
+      properties:
+        id: { type: string, format: uuid }
+        name: { type: string }
+        website: { type: string }
+        linkedin_company_url: { type: string }
+        email_central: { type: string }
+        phone_central: { type: string }
+        street: { type: string }
+        zip: { type: string }
+        city: { type: string }
+        country: { type: string }
+        industry_slug: { type: string }
+        notes: { type: string }
+        created_at: { type: string, format: date-time }
+    CompanyWrite:
+      type: object
+      required: [name]
+      properties:
+        name: { type: string }
+        website: { type: string }
+        linkedin_company_url: { type: string }
+        email_central: { type: string }
+        phone_central: { type: string }
+        street: { type: string }
+        zip: { type: string }
+        city: { type: string }
+        state: { type: string }
+        country: { type: string }
+        industry_slug: { type: string }
+        notes: { type: string }
+    Deal:
+      type: object
+      properties:
+        id: { type: string, format: uuid }
+        title: { type: string }
+        description: { type: string }
+        value: { type: number }
+        currency: { type: string, example: EUR }
+        stage: { $ref: "#/components/schemas/DealStage" }
+        probability: { type: integer }
+        expected_close_date: { type: string, format: date }
+        lead_id: { type: string, format: uuid, nullable: true }
+        organization_id: { type: string, format: uuid, nullable: true }
+        custom_fields: { type: object }
+        created_at: { type: string, format: date-time }
+    DealWrite:
+      type: object
+      required: [title]
+      properties:
+        title: { type: string }
+        description: { type: string }
+        value: { type: number }
+        currency: { type: string }
+        stage: { $ref: "#/components/schemas/DealStage" }
+        probability: { type: integer }
+        expected_close_date: { type: string, format: date }
+        lead_id: { type: string, format: uuid }
+        organization_id: { type: string, format: uuid }
+        custom_fields: { type: object }
+    ContentWrite:
+      type: object
+      properties:
+        title: { type: string }
+        content: { type: string }
+        type: { type: string }
+        status: { type: string }
+        scheduled_at: { type: string, format: date-time }
+        published_at: { type: string, format: date-time }
+        platform: { type: string }
+        metadata: { type: object }
