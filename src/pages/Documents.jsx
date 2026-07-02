@@ -11,7 +11,7 @@ const P = 'var(--wl-primary, rgb(49,90,231))'
 export default function Documents({ embedded = false }) {
   const navigate = useNavigate()
   const { activeTeamId } = useTeam()
-  const { activeBrandVoice } = useBrandVoice()
+  const { activeBrandVoice, noBrand } = useBrandVoice()
   const [docs, setDocs] = useState([])
   const [loading, setLoading] = useState(true)
   const [creating, setCreating] = useState(false)
@@ -33,9 +33,9 @@ export default function Documents({ embedded = false }) {
   const [postsLoading, setPostsLoading] = useState(false)
 
   const load = useCallback(async () => {
-    if (!activeTeamId || !activeBrandVoice?.id) { setDocs([]); setLoading(false); return }
+    if (!activeTeamId || (!activeBrandVoice?.id && !noBrand)) { setDocs([]); setLoading(false); return }
     setLoading(true)
-    const { data } = await listDocuments(activeTeamId, activeBrandVoice.id)
+    const { data } = await listDocuments(activeTeamId, noBrand ? null : activeBrandVoice.id, { noBrand })
     setDocs(data || []); setLoading(false)
     const ids = (data || []).map(d => d.id)
     if (ids.length) {
@@ -43,7 +43,7 @@ export default function Documents({ embedded = false }) {
       const counts = {}; (links || []).forEach(l => { counts[l.document_id] = (counts[l.document_id] || 0) + 1 })
       setChatCounts(counts)
     } else setChatCounts({})
-  }, [activeTeamId, activeBrandVoice?.id])
+  }, [activeTeamId, activeBrandVoice?.id, noBrand])
 
   useEffect(() => { load() }, [load])
 
@@ -76,7 +76,7 @@ export default function Documents({ embedded = false }) {
   async function createInNewChat() {
     if (creating) return
     setCreating(true)
-    const { data, error } = await createDocument({ teamId: activeTeamId, brandVoiceId: activeBrandVoice?.id })
+    const { data, error } = await createDocument({ teamId: activeTeamId, brandVoiceId: noBrand ? null : activeBrandVoice?.id, noBrand })
     setCreating(false); setNewDocOpen(false)
     if (error || !data) { alert('Dokument konnte nicht angelegt werden: ' + (error?.message || error)); return }
     navigate(`/content-studio?doc=${data.id}`)  // Clean-View; Chat entsteht + bindet bei 1. Nachricht
@@ -84,7 +84,7 @@ export default function Documents({ embedded = false }) {
   async function createInExistingChat(chatId) {
     if (creating) return
     setCreating(true)
-    const { data, error } = await createDocument({ teamId: activeTeamId, brandVoiceId: activeBrandVoice?.id, sourceChatId: chatId })
+    const { data, error } = await createDocument({ teamId: activeTeamId, brandVoiceId: noBrand ? null : activeBrandVoice?.id, sourceChatId: chatId, noBrand })
     setCreating(false); setNewDocOpen(false)
     if (error || !data) { alert('Dokument konnte nicht angelegt werden: ' + (error?.message || error)); return }
     navigate(`/content-studio?chat_id=${chatId}&doc=${data.id}`)

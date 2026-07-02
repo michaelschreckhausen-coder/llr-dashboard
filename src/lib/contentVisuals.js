@@ -50,14 +50,15 @@ export async function getVisual(id) {
 
 // Medien-Bibliothek: alle Bilder des Teams (brand-scoped, neueste zuerst) — für den
 // Medien-Tab im Designer. RLS scoped zusätzlich über visuals.team_id.
-export async function listTeamVisuals({ teamId, brandVoiceId, kind = null, limit = 80 } = {}) {
+export async function listTeamVisuals({ teamId, brandVoiceId, kind = null, limit = 80, noBrand = false } = {}) {
   let q = supabase
     .from('visuals')
     .select('id, title, prompt, storage_path, thumbnail_path, created_at, kind, aspect_ratio')
     .order('created_at', { ascending: false })
     .limit(limit)
   if (kind) q = q.eq('kind', kind)
-  if (brandVoiceId) q = q.eq('brand_voice_id', brandVoiceId)
+  if (noBrand) q = q.eq('no_brand', true).eq('team_id', teamId)
+  else if (brandVoiceId) q = q.eq('brand_voice_id', brandVoiceId)
   else if (teamId) q = q.eq('team_id', teamId)
   const { data, error } = await q
   if (error) return { data: [] }
@@ -136,7 +137,7 @@ const ridFrag = () => Math.random().toString(36).slice(2, 10)
 
 // Leeres Design (kind='design') anlegen + Zeile zurückgeben. Geteilter Helfer für
 // Content-Werkstatt-Rail UND Bibliothek ("Neues Design").
-export async function createEmptyDesign({ teamId, brandVoiceId = null, title = 'Neues Design' }) {
+export async function createEmptyDesign({ teamId, brandVoiceId = null, title = 'Neues Design', noBrand = false }) {
   try {
     const page = { id: 'p' + ridFrag(), objects: [], filters: {}, baseCrop: null, bgColor: '#ffffff', stage: { width: 1080, height: 1080 }, primaryImageId: null }
     const design_json = { version: 2, pages: [page], activePageIndex: 0 }
@@ -146,7 +147,7 @@ export async function createEmptyDesign({ teamId, brandVoiceId = null, title = '
     const up = await uploadImageBlob(teamId, blob)
     if (up.error || !up.path) return { error: up.error || new Error('upload failed') }
     const { data: row, error } = await supabase.from('visuals').insert({
-      user_id: userId, team_id: teamId, brand_voice_id: brandVoiceId || null,
+      user_id: userId, team_id: teamId, brand_voice_id: noBrand ? null : (brandVoiceId || null), no_brand: noBrand,
       kind: 'design', media_type: 'image', title, aspect_ratio: '1:1', prompt: 'Design',
       storage_path: up.path, design_json,
     }).select().single()

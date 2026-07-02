@@ -75,7 +75,7 @@ export default function Bibliothek({ session }) {
 function NewArtifactDialog({ kind, onClose, onCreatedDesign }) {
   const navigate = useNavigate()
   const { activeTeamId } = useTeam()
-  const { activeBrandVoice } = useBrandVoice()
+  const { activeBrandVoice, noBrand } = useBrandVoice()
   const [chats, setChats] = useState([])
   const [loading, setLoading] = useState(true)
   const [search, setSearch] = useState('')
@@ -99,7 +99,7 @@ function NewArtifactDialog({ kind, onClose, onCreatedDesign }) {
     if (busy) return
     setBusy(true)
     if (isDesign) {
-      const { data: row, error } = await createEmptyDesign({ teamId: activeTeamId, brandVoiceId: activeBrandVoice?.id || null })
+      const { data: row, error } = await createEmptyDesign({ teamId: activeTeamId, brandVoiceId: noBrand ? null : (activeBrandVoice?.id || null), noBrand })
       if (error || !row) { setBusy(false); alert('Design konnte nicht erstellt werden.'); return }
       onCreatedDesign && onCreatedDesign()
       navigate(chatId ? `/content-studio?chat_id=${chatId}&visual=${row.id}` : `/content-studio?visual=${row.id}`)
@@ -150,7 +150,7 @@ function NewArtifactDialog({ kind, onClose, onCreatedDesign }) {
 function DesignsTab({ reloadKey = 0 } = {}) {
   const navigate = useNavigate()
   const { activeTeamId } = useTeam()
-  const { activeBrandVoice } = useBrandVoice()
+  const { activeBrandVoice, noBrand } = useBrandVoice()
   const [designs, setDesigns] = useState([])
   const [loading, setLoading] = useState(true)
   const [choose, setChoose] = useState(null)        // Design, das geöffnet wird
@@ -163,7 +163,7 @@ function DesignsTab({ reloadKey = 0 } = {}) {
   const load = useCallback(async () => {
     if (!activeTeamId) return
     setLoading(true)
-    const { data } = await listTeamVisuals({ teamId: activeTeamId, brandVoiceId: activeBrandVoice?.id, kind: 'design', limit: 100 })
+    const { data } = await listTeamVisuals({ teamId: activeTeamId, brandVoiceId: noBrand ? null : activeBrandVoice?.id, kind: 'design', limit: 100, noBrand })
     const withUrls = await Promise.all((data || []).map(async (v) => ({ ...v, signed_url: await signedVisualUrl(v.storage_path, 3600) })))
     setDesigns(withUrls); setLoading(false)
   }, [activeTeamId, activeBrandVoice?.id])

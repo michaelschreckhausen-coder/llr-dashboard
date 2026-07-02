@@ -28,7 +28,7 @@ export default function Visuals({ session, kindFilter = null, embedded = false, 
   const navigate = useNavigate()
   const [searchParams] = useSearchParams()
   const { activeTeamId } = useTeam()
-  const { activeBrandVoice } = useBrandVoice()
+  const { activeBrandVoice, noBrand } = useBrandVoice()
 
   // Library-State
   const [library, setLibrary]        = useState([])
@@ -96,7 +96,8 @@ export default function Visuals({ session, kindFilter = null, embedded = false, 
       .order('is_favorite', { ascending: false })
       .order('created_at',  { ascending: false })
       .limit(100)
-    if (activeBrandVoice?.id && !libraryShowAllBVs) q = q.eq('brand_voice_id', activeBrandVoice.id)
+    if (noBrand) q = q.eq('no_brand', true)
+    else if (activeBrandVoice?.id && !libraryShowAllBVs) q = q.eq('brand_voice_id', activeBrandVoice.id)
     if (libraryFavOnly) q = q.eq('is_favorite', true)
     if (librarySearch.trim()) q = q.ilike('prompt', '%' + librarySearch.trim() + '%')
     const { data } = await q
@@ -106,14 +107,14 @@ export default function Visuals({ session, kindFilter = null, embedded = false, 
     }))
     setLibrary(withUrls); setLibLoading(false)
   }
-  useEffect(() => { if (activeTeamId) loadLibrary() }, [activeTeamId, activeBrandVoice?.id, libraryShowAllBVs, libraryFavOnly, librarySearch])
+  useEffect(() => { if (activeTeamId) loadLibrary() }, [activeTeamId, activeBrandVoice?.id, noBrand, libraryShowAllBVs, libraryFavOnly, librarySearch])
 
   // ─── Datei-Upload (Bilder, PDFs, docx, xlsx …) → visuals-Bucket + Tabelle ───
   async function uploadFiles(fileList) {
     const arr = Array.from(fileList || [])
     if (!arr.length) return
     if (!activeTeamId) { alert('Kein Team aktiv'); return }
-    if (!activeBrandVoice?.id) { alert('Bitte oben eine Brand Voice wählen, um Medien hochzuladen.'); return }
+    if (!activeBrandVoice?.id && !noBrand) { alert('Bitte oben eine Marke oder „Ohne Marke" wählen.'); return }
     setUploading(true)
     try {
       for (const file of arr) {
@@ -133,7 +134,7 @@ export default function Visuals({ session, kindFilter = null, embedded = false, 
         const { error: upErr } = await supabase.storage.from('visuals').upload(path, uploadFile, { contentType, upsert: false })
         if (upErr) { alert(`Upload ${file.name}: ${upErr.message}`); continue }
         const { error: insErr } = await supabase.from('visuals').insert({
-          id: visualId, user_id: session?.user?.id, team_id: activeTeamId, brand_voice_id: activeBrandVoice.id,
+          id: visualId, user_id: session?.user?.id, team_id: activeTeamId, brand_voice_id: noBrand ? null : activeBrandVoice.id, no_brand: noBrand,
           prompt: file.name, resolved_prompt: file.name, aspect_ratio: '1:1', model: 'upload',
           storage_path: path, media_type: mediaType, original_filename: file.name,
           file_size_bytes: file.size, mime_type: file.type,
@@ -176,7 +177,7 @@ export default function Visuals({ session, kindFilter = null, embedded = false, 
   // Bild im Designer öffnen — erst fragen: neues Design ODER in ein bestehendes (als neue Seite)
   async function openDesignerPicker(v) {
     setDesignerPick(v); setDesigns([]); setDesignsLoading(true)
-    const { data } = await listTeamVisuals({ teamId: activeTeamId, brandVoiceId: activeBrandVoice?.id, kind: 'design', limit: 100 })
+    const { data } = await listTeamVisuals({ teamId: activeTeamId, brandVoiceId: noBrand ? null : activeBrandVoice?.id, kind: 'design', limit: 100, noBrand })
     setDesigns(data || []); setDesignsLoading(false)
   }
   function openInNewDesign(v) {

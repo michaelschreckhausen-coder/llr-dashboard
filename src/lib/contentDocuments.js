@@ -16,6 +16,7 @@ export async function createDocument({
   contentText = '',
   sourceChatId = null,
   brandVoiceId = null,
+  noBrand = false,
 }) {
   const { data: { user } } = await supabase.auth.getUser()
   const res = await supabase
@@ -27,7 +28,8 @@ export async function createDocument({
       content_json: contentJson,
       content_text: contentText,
       source_chat_id: sourceChatId,
-      brand_voice_id: brandVoiceId,
+      brand_voice_id: noBrand ? null : brandVoiceId,
+      no_brand: noBrand,
     })
     .select()
     .single()
@@ -76,9 +78,10 @@ export async function getDocument(id) {
   return supabase.from('content_documents').select('*').eq('id', id).maybeSingle()
 }
 
-export async function listDocuments(teamId, brandVoiceId = null) {
+export async function listDocuments(teamId, brandVoiceId = null, opts = {}) {
   let q = supabase.from('content_documents').select(LIST_COLS).eq('team_id', teamId)
-  if (brandVoiceId) q = q.eq('brand_voice_id', brandVoiceId)
+  if (opts.noBrand) q = q.eq('no_brand', true)
+  else if (brandVoiceId) q = q.eq('brand_voice_id', brandVoiceId)
   return q.order('updated_at', { ascending: false })
 }
 
