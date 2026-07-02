@@ -23,8 +23,6 @@ info:
 servers:
   - url: https://supabase.leadesk.de/functions/v1/public-api
     description: Production
-  - url: https://staging.supabase.leadesk.de/functions/v1/public-api
-    description: Staging (URL ggf. anpassen)
 
 security:
   - ApiKeyAuth: []
