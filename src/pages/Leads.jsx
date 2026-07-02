@@ -41,6 +41,7 @@ import OrganizationPicker from '../components/OrganizationPicker';
 import PageHeader from '../components/PageHeader';
 import { tagColor } from '../lib/tagColors';
 import { useTagRegistry } from '../hooks/useTagRegistry';
+import { useResponsive } from '../hooks/useResponsive';
 import { TagManagerModal } from '../components/leads/TagManagerModal';
 import { COLORS, RADIUS, STATUS_ORDER, STATUS_CONFIG } from '../lib/leadStyleTokens';
 import { useLeads } from '../hooks/useLeads';
@@ -199,6 +200,7 @@ function filterJsonEqual(a, b) {
 
 export default function Leads() {
   const navigate = useNavigate();
+  const { isMobile } = useResponsive();
   const { activeTeamId } = useTeam() || {};
   const [searchParams, setSearchParams] = useSearchParams();
   const showArchived = searchParams.get('archived') === '1';
@@ -881,7 +883,7 @@ export default function Leads() {
         </div>
 
         {/* Diagramme (Reports-Stil) — Stage breit + Score daneben, Quellen darunter */}
-        <div style={{ display:'grid', gridTemplateColumns:'2fr 1fr', gap:14 }}>
+        <div style={{ display:'grid', gridTemplateColumns: isMobile ? '1fr' : '2fr 1fr', gap:14 }}>
           <Panel title="Verteilung nach Stage">
             {stageDist.length > 0
               ? stageDist.map(s => <BarRow key={s.label} label={s.label} count={s.count} total={leads.length} color={s.color}/>)
@@ -1565,6 +1567,7 @@ function SelectableLeadsList({ leads, selectedIds, onToggleSelect, onLeadClick, 
 }
 
 function SelectableLeadRow({ lead, selected, onToggle, onLeadClick, onOwnerAdd, ownerById, onTagAdd, onMenuClick, onUpdate, onToggleFavorite, density = 'comfortable' }) {
+  const { isMobile } = useResponsive();
   const isCompact = density === 'compact';
   // Inline-Edit-Handler — wenn kein onUpdate-Prop, kein Inline-Edit, sondern read-only.
   const handleUpdate = (field, value) =>
@@ -1704,7 +1707,7 @@ function SelectableLeadRow({ lead, selected, onToggle, onLeadClick, onOwnerAdd, 
             </strong>
           </div>
         )}
-        {onTagAdd && (
+        {!isMobile && onTagAdd && (
           <div data-no-row-click
             onClick={(e) => { e.stopPropagation(); onTagAdd(lead.id, e.currentTarget); }}
             style={{
@@ -1715,7 +1718,7 @@ function SelectableLeadRow({ lead, selected, onToggle, onLeadClick, onOwnerAdd, 
             <Tag size={13} />
           </div>
         )}
-        {(() => {
+        {!isMobile && (() => {
           const owner = lead.owner_id ? (ownerById?.get?.(lead.owner_id)) : null;
           const initials = owner
             ? `${(owner.first_name || '')[0] || ''}${(owner.last_name || '')[0] || ''}`.toUpperCase() || (owner.full_name || '?')[0]?.toUpperCase()

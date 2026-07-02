@@ -182,6 +182,7 @@ function PostCard({ post, onClick, compact, showBVBadge }) {
 
 // ─── PostModal ────────────────────────────────────────────────────────────────
 function PostModal({ post, onClose, onSave, onDelete, session, activeTeamId, members, workspace, selectedModel, activeBrandVoice, navigate }) {
+  const { isMobile } = useResponsive()
   const { brandVoices: __allBVs } = useBrandVoice()
   const companyVoices = (__allBVs || []).filter(v => v.account_type === 'company_page')
   const isNew = !post?.id
@@ -766,7 +767,7 @@ function PostModal({ post, onClose, onSave, onDelete, session, activeTeamId, mem
         </div>
 
         {/* Body */}
-        <div style={{ flex:1, overflow:'auto', padding:'20px 24px', display:'grid', gridTemplateColumns:'1fr 320px', gap:20 }}>
+        <div style={{ flex:1, overflow:'auto', padding: isMobile ? '16px' : '20px 24px', display:'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr 320px', gap: isMobile ? 16 : 20 }}>
 
           {/* Left — Content */}
           <div>
@@ -2224,6 +2225,76 @@ Danke für den Austausch! 🤝`,
               style={{ padding:'6px 12px', borderRadius:8, border:'1px solid var(--border)', background:'var(--surface)', cursor:'pointer', fontSize:16 }}>›</button>
           </div>
 
+          {/* ── MOBILE: Agenda-Liste statt 7-Spalten-Raster ── */}
+          {isMobile && (() => {
+            const monthPosts = filtered
+              .filter(p => p.scheduled_at)
+              .map(p => ({ p, d: new Date(p.scheduled_at) }))
+              .filter(({ d }) => d.getFullYear() === calYear && d.getMonth() === calMonth)
+              .sort((a, b) => a.d - b.d)
+            if (monthPosts.length === 0) {
+              return (
+                <div style={{ flex:1, display:'flex', flexDirection:'column', alignItems:'center', justifyContent:'center', gap:12, padding:'40px 16px', color:'var(--text-muted)', textAlign:'center' }}>
+                  <div style={{ fontSize:14 }}>Keine Beiträge im {MONTHS[calMonth]} {calYear}.</div>
+                  <button onClick={() => openNew()}
+                    style={{ padding:'10px 18px', borderRadius:10, border:'none', background:'var(--wl-primary, rgb(49,90,231))', color:'#fff', fontWeight:700, cursor:'pointer', fontSize:13 }}>
+                    Beitrag planen
+                  </button>
+                </div>
+              )
+            }
+            const groups = []
+            let curKey = null
+            monthPosts.forEach(({ p, d }) => {
+              const key = d.toDateString()
+              if (key !== curKey) { groups.push({ date: d, posts: [] }); curKey = key }
+              groups[groups.length - 1].posts.push(p)
+            })
+            return (
+              <div style={{ flex:1, overflowY:'auto', display:'flex', flexDirection:'column', gap:16, paddingBottom:24 }}>
+                {groups.map((g, gi) => {
+                  const isToday = isSameDay(g.date, today)
+                  return (
+                    <div key={gi}>
+                      <div style={{ display:'flex', alignItems:'baseline', gap:8, marginBottom:8 }}>
+                        <span style={{ fontSize:16, fontWeight:800, color: isToday ? 'var(--wl-primary, rgb(49,90,231))' : 'rgb(20,20,43)' }}>
+                          {g.date.getDate()}. {MONTHS[g.date.getMonth()]}
+                        </span>
+                        <span style={{ fontSize:12, color:'var(--text-muted)', textTransform:'capitalize' }}>
+                          {g.date.toLocaleDateString('de-DE', { weekday:'long' })}
+                        </span>
+                        {isToday && (
+                          <span style={{ fontSize:10, fontWeight:700, color:'#fff', background:'var(--wl-primary, rgb(49,90,231))', padding:'1px 8px', borderRadius:999 }}>Heute</span>
+                        )}
+                      </div>
+                      <div style={{ display:'flex', flexDirection:'column', gap:6 }}>
+                        {g.posts.map(p => {
+                          const plt = PLATFORMS[p.platform] || PLATFORMS.linkedin
+                          return (
+                            <div key={p.id} onClick={() => openEdit(p)}
+                              style={{ display:'flex', alignItems:'center', gap:10, padding:'11px 12px', borderRadius:10, border:'1px solid var(--border)', background:'var(--surface)', cursor:'pointer' }}>
+                              <span style={{ fontSize:17, flexShrink:0 }}>{plt.icon}</span>
+                              <div style={{ flex:1, minWidth:0 }}>
+                                <div style={{ fontSize:13, fontWeight:700, color:'rgb(20,20,43)', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>
+                                  {p.title || '(Kein Titel)'}
+                                </div>
+                                <div style={{ fontSize:11, color:'var(--text-muted)', marginTop:2 }}>
+                                  {new Date(p.scheduled_at).toLocaleTimeString('de-DE', { hour:'2-digit', minute:'2-digit' })} Uhr · {plt.label}
+                                </div>
+                              </div>
+                            </div>
+                          )
+                        })}
+                      </div>
+                    </div>
+                  )
+                })}
+              </div>
+            )
+          })()}
+
+          {/* ── DESKTOP/TABLET: 7-Spalten-Monatsraster ── */}
+          {!isMobile && (<>
           {/* Wochentage Header */}
           <div style={{ display:'grid', gridTemplateColumns:'repeat(7,1fr)', gap:2, marginBottom:2, flexShrink:0 }}>
             {DAYS.map(d => (
@@ -2266,6 +2337,7 @@ Danke für den Austausch! 🤝`,
               )
             })}
           </div>
+          </>)}
         </div>
       )}
 

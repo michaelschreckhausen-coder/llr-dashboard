@@ -401,7 +401,7 @@ export default function OrganizationProfile({ session }) {
         </div>
 
         {/* KPI-Row */}
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4,1fr)', gap: 10, marginTop: 18 }}>
+        <div className="col-4" style={{ gap: 10, marginTop: 18 }}>
           <div style={{ background: '#F9FAFB', borderRadius: 10, padding: '10px 14px' }}>
             <div style={{ fontSize: 10, fontWeight: 700, color: '#6B7280', textTransform: 'uppercase', letterSpacing: '0.04em' }}>Kontakte</div>
             <div style={{ fontSize: 18, fontWeight: 800, color: '#111827' }}>{leads.length}</div>
@@ -441,7 +441,7 @@ export default function OrganizationProfile({ session }) {
 
       {/* Übersicht */}
       {tab === 'overview' && (
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
+        <div className="col-2" style={{ gap: 16 }}>
           <Section title="Kontakt Zentrale">
             {editing ? (
               <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
@@ -707,7 +707,7 @@ export default function OrganizationProfile({ session }) {
         ) : !ext ? (
           <div style={{ padding: 40, textAlign: 'center', color: '#9CA3AF' }}>Kein Sponsoring-Profil verfügbar.</div>
         ) : (
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
+          <div className="col-2" style={{ gap: 16 }}>
             <Section title="KI-Fit-Score">
               <div style={{ display: 'flex', alignItems: 'center', gap: 16, marginBottom: 12 }}>
                 <div style={{ fontSize: 36, fontWeight: 800, color: typeof ext.fit_score === 'number' ? PRIMARY : '#D1D5DB', lineHeight: 1 }}>

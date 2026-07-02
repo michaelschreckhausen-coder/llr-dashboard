@@ -647,7 +647,7 @@ export default function LeadProfile({ session }) {
             {activeTab === 'crm' && (
               <div style={{ display:'flex', flexDirection:'column', gap:16 }}>
                 {saveError && <div style={{ padding:'8px 12px', background:'#FEF2F2', border:'1px solid #FECACA', borderRadius:6, fontSize:12, color:'#991B1B' }}>{saveError}</div>}
-                <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:12 }}>
+                <div className="col-2" style={{ gap:12 }}>
                   <div><label style={{ fontSize:11, fontWeight:600, color:'var(--text-muted)', display:'block', marginBottom:4, textTransform:'uppercase', letterSpacing:'0.05em' }}>Deal-Wert (€)</label>
                     <input type="number" value={form.deal_value} onChange={e => setField('deal_value',e.target.value)} placeholder="z.B. 4800" className="lp-inp"/></div>
                   <div><label style={{ fontSize:11, fontWeight:600, color:'var(--text-muted)', display:'block', marginBottom:4, textTransform:'uppercase', letterSpacing:'0.05em' }}>Wahrscheinlichkeit (%)</label>
@@ -697,7 +697,7 @@ export default function LeadProfile({ session }) {
                 {/* PERSON */}
                 <div>
                   <div style={{ fontSize:11, fontWeight:700, color:'#9CA3AF', textTransform:'uppercase', letterSpacing:'0.07em', marginBottom:12, paddingBottom:6, borderBottom:'1px solid #F3F4F6' }}>Person</div>
-                  <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:12 }}>
+                  <div className="col-2" style={{ gap:12 }}>
                     {[
                       { key:'first_name', label:'Vorname',    col:1 },
                       { key:'last_name',  label:'Nachname',   col:1 },
@@ -719,7 +719,7 @@ export default function LeadProfile({ session }) {
                 {/* KONTAKT */}
                 <div>
                   <div style={{ fontSize:11, fontWeight:700, color:'#9CA3AF', textTransform:'uppercase', letterSpacing:'0.07em', marginBottom:12, paddingBottom:6, borderBottom:'1px solid #F3F4F6' }}>Kontakt</div>
-                  <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:12 }}>
+                  <div className="col-2" style={{ gap:12 }}>
                     {[
                       { key:'email',       label:'E-Mail',      type:'email', col:1 },
                       { key:'phone',       label:'Telefon',     type:'tel',   col:1 },
@@ -751,7 +751,7 @@ export default function LeadProfile({ session }) {
                       placeholder="Firma suchen oder neu anlegen…"
                     />
                   </div>
-                  <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:12 }}>
+                  <div className="col-2" style={{ gap:12 }}>
                     {[
                       { key:'industry',         label:'Branche',     col:1 },
                       { key:'city',             label:'Stadt',       col:1 },

@@ -20,6 +20,7 @@ import {
 } from 'lucide-react'
 import { supabase } from '../lib/supabase'
 import { useTeam } from '../context/TeamContext'
+import { useResponsive } from '../hooks/useResponsive'
 import WizardLayout from '../components/WizardLayout'
 import { EXTENSION_WEBSTORE_URL } from '../lib/leadeskExtension'
 
@@ -164,6 +165,7 @@ function fullName(l) {
 // ─── Component ────────────────────────────────────────────────────────────
 export default function Automatisierung({ session }) {
   const navigate = useNavigate()
+  const { isMobile } = useResponsive()
   const { activeTeamId } = useTeam() || {}
   const [sponsoringCampaigns, setSponsoringCampaigns] = useState([]) // K3: für die Zuordnung
   const [view, setView]               = useState('campaigns')   // campaigns | queue
@@ -472,7 +474,7 @@ export default function Automatisierung({ session }) {
         </div>
 
         {/* KPI-Tiles */}
-        <div style={kpiRowStyle}>
+        <div style={{ ...kpiRowStyle, gridTemplateColumns: isMobile ? 'repeat(2, 1fr)' : 'repeat(4, 1fr)' }}>
           <KpiTile Icon={Play}        label="Aktive Kampagnen"   value={kpis.active}      tint="#16a34a" tintBg="#ECFDF5" />
           <KpiTile Icon={Pause}       label="Pausiert"           value={kpis.paused}      tint="#f59e0b" tintBg="#FFFBEB" />
           <KpiTile Icon={Send}        label="Heute gesendet"     value={kpis.sentToday}   tint="#2563eb" tintBg="#EFF6FF" />
@@ -725,8 +727,8 @@ function QueueView({ jobs, onCancel, onReload }) {
           Keine Jobs in der Warteschlange — Extension ist bereit
         </div>
       ) : (
-        <div style={{ background:'var(--surface)', borderRadius:12, border:'1px solid var(--border, #E4E7EC)', overflow:'hidden' }}>
-          <div style={{ display:'grid', gridTemplateColumns:'140px 1fr 110px 140px 60px', padding:'10px 16px', background:'var(--surface-muted, #F8FAFC)', borderBottom:'1px solid var(--border)', fontSize:10, fontWeight:700, color:'var(--text-muted)', textTransform:'uppercase', letterSpacing:'0.06em', gap:8 }}>
+        <div style={{ background:'var(--surface)', borderRadius:12, border:'1px solid var(--border, #E4E7EC)', overflowX:'auto' }}>
+          <div style={{ display:'grid', gridTemplateColumns:'140px 1fr 110px 140px 60px', minWidth:560, padding:'10px 16px', background:'var(--surface-muted, #F8FAFC)', borderBottom:'1px solid var(--border)', fontSize:10, fontWeight:700, color:'var(--text-muted)', textTransform:'uppercase', letterSpacing:'0.06em', gap:8 }}>
             <div>Typ</div><div>Details</div><div>Status</div><div>Geplant</div><div></div>
           </div>
           {jobs.map((job, i) => {
@@ -734,7 +736,7 @@ function QueueView({ jobs, onCancel, onReload }) {
             const Icon = info.Icon
             const detail = job.payload?.linkedin_url?.replace('https://www.linkedin.com/in/', '@') || job.target_url || ''
             return (
-              <div key={job.id} style={{ display:'grid', gridTemplateColumns:'140px 1fr 110px 140px 60px', padding:'10px 16px', borderBottom: i < jobs.length - 1 ? '1px solid #F1F5F9' : 'none', alignItems:'center', gap:8, fontSize:12 }}>
+              <div key={job.id} style={{ display:'grid', gridTemplateColumns:'140px 1fr 110px 140px 60px', minWidth:560, padding:'10px 16px', borderBottom: i < jobs.length - 1 ? '1px solid #F1F5F9' : 'none', alignItems:'center', gap:8, fontSize:12 }}>
                 <div style={{ display:'inline-flex', alignItems:'center', gap:6, fontWeight:600, color:info.color }}>
                   <span style={{ width:22, height:22, borderRadius:6, background:info.bg, display:'inline-flex', alignItems:'center', justifyContent:'center' }}>
                     <Icon size={12} />
@@ -847,6 +849,7 @@ function NewCampaignWizard({
   addStep, removeStep, updateStep,
   onClose, onCreate,
 }) {
+  const { isMobile } = useResponsive()
   const linkedinLeads = leads.filter(l => l.linkedin_url)
   const [leadSearch, setLeadSearch] = useState('')
   const filteredLeads = useMemo(() => {
@@ -977,7 +980,7 @@ function NewCampaignWizard({
       {step === 'configure' && (
         <>
           <WSc title="Schritt 2: Kampagne benennen" hint="Der Name hilft dir, die Kampagne in der Liste wiederzufinden. Beschreibung ist optional.">
-            <div style={{ display:'grid', gridTemplateColumns:'2fr 3fr', gap:14 }}>
+            <div style={{ display:'grid', gridTemplateColumns: isMobile ? '1fr' : '2fr 3fr', gap:14 }}>
               <div>
                 <WLb label="Kampagnenname *" />
                 <WIn value={newCamp.name} onChange={v => setNewCamp(p => ({ ...p, name:v }))}
@@ -1002,7 +1005,7 @@ function NewCampaignWizard({
           </WSc>
 
           <WSc title="Limits & Arbeitszeit" hint="Wie viele Aktionen pro Tag und wann darf die Extension senden? Sinnvolle Defaults sind 20/Tag, 8–20 Uhr.">
-            <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr 1fr', gap:14 }}>
+            <div style={{ display:'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr 1fr', gap:14 }}>
               <div>
                 <WLb label="Tageslimit pro Aktion" />
                 <WIn type="number" value={newCamp.settings.daily_limit}

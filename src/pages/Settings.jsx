@@ -379,7 +379,7 @@ export default function Settings({ session }) {
       <div style={box}>
         <div style={hdr}>Persönliche Daten</div>
         <div style={bdy}>
-          <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:14 }}>
+          <div className="col-2" style={{ gap:14 }}>
             <div>
               <label style={lbl}>Vollständiger Name</label>
               <input value={form.full_name} onChange={e => setForm(f => ({ ...f, full_name: e.target.value }))} placeholder="Max Mustermann" style={inp}/>

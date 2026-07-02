@@ -299,12 +299,50 @@ main { padding: 24px !important; }
 @media (max-width: 1279px) { main { padding: 16px !important; } }
 @media (max-width: 1099px) { main { padding: 12px !important; } }
 
+/* ── TABLET (768–1023px) — iPad Portrait/Landscape ─ */
+@media (min-width: 768px) and (max-width: 1023px) {
+  main { padding: 16px !important; }
+  /* Zwei-Spalten-Grids auf Tablet einspaltig, drei-spaltige auf zwei */
+  .grid-desktop-2 { grid-template-columns: 1fr !important; }
+  .grid-desktop-3 { grid-template-columns: repeat(2, 1fr) !important; }
+}
+
 /* ── MOBILE (< 768px) ──────────────────────────── */
 @media (max-width: 767px) {
-  main { padding: 12px !important; }
+  main {
+    padding: 12px !important;
+    /* iOS Safe-Areas (Notch / Home-Indicator) berücksichtigen */
+    padding-left:  max(12px, env(safe-area-inset-left))  !important;
+    padding-right: max(12px, env(safe-area-inset-right)) !important;
+  }
   body, #root { overflow-x: hidden; }
-  button { min-height: 40px; }
+  button { min-height: 44px; }              /* Apple HIG Touch-Target */
   .card { border-radius: 12px !important; }
+  /* Mehrspaltige Grids einspaltig stapeln */
+  .grid-desktop-2, .grid-desktop-3 { grid-template-columns: 1fr !important; }
+  /* iOS: Verhindert Auto-Zoom beim Fokus, wenn Font < 16px */
+  input, textarea, select { font-size: 16px !important; }
+}
+
+/* Touch-Geräte: kein blauer Tap-Highlight, sauberes Antippen */
+@media (hover: none) and (pointer: coarse) {
+  a, button, [role="button"] { -webkit-tap-highlight-color: transparent; }
+}
+
+/* Safe-Area-Utility für fixierte Elemente (Drawer, Topbar, Bottom-Bars) */
+.safe-top    { padding-top:    env(safe-area-inset-top); }
+.safe-bottom { padding-bottom: env(safe-area-inset-bottom); }
+
+/* ── Reusable Grid-Spalten-Utilities (stacken auf Mobile) ──────────
+   Nutzung: className="col-2" statt inline gridTemplateColumns, damit
+   die Media-Query greift (Inline-Styles überschreiben Media-Queries). */
+.col-2    { display:grid; grid-template-columns:1fr 1fr; }
+.col-2to1 { display:grid; grid-template-columns:2fr 1fr; }
+.col-3    { display:grid; grid-template-columns:1fr 1fr 1fr; }
+.col-4    { display:grid; grid-template-columns:repeat(4, 1fr); }
+@media (max-width: 767px) {
+  .col-2, .col-2to1, .col-3 { grid-template-columns:1fr; }
+  .col-4 { grid-template-columns:repeat(2, 1fr); }
 }
 
 /* ═══════════════════════════════════════════════

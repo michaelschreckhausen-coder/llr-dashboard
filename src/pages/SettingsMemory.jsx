@@ -167,7 +167,7 @@ export default function SettingsMemory({ session }) {
       </div>
 
       {/* Stats */}
-      <div style={{ display:'grid', gridTemplateColumns:'repeat(4, 1fr)', gap:10, marginBottom:22 }}>
+      <div className="col-4" style={{ gap:10, marginBottom:22 }}>
         <StatCard icon={<PenLine size={18} strokeWidth={1.75}/>} label="KI-Generations" val={stats.generations} />
         <StatCard icon={<Pin size={18} strokeWidth={1.75}/>} label="Behalten" val={stats.picked} />
         <StatCard icon={<Brain size={18} strokeWidth={1.75}/>} label="Brainstorm-Sessions" val={stats.brainstorms} />

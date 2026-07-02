@@ -214,7 +214,7 @@ export default function SSI({ session }) {
         <div style={{ background:'var(--surface)', borderRadius:18, border:'1px solid var(--border)', padding:'22px 24px', marginBottom:24, boxShadow:'0 4px 20px rgba(0,0,0,0.06)' }}>
           <div style={{ fontSize:16, fontWeight:800, color:'rgb(20,20,43)', marginBottom:18 }}>SSI-Werte eintragen</div>
           <form onSubmit={handleSave}>
-            <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:14, marginBottom:14 }}>
+            <div className="col-2" style={{ gap:14, marginBottom:14 }}>
               <div>
                 <label style={{ display:'block', fontSize:11, fontWeight:700, color:'var(--text-muted)', textTransform:'uppercase', letterSpacing:'0.07em', marginBottom:5 }}>Datum</label>
                 <input type="datetime-local" value={form.recorded_at} onChange={e=>setForm(f=>({...f,recorded_at:e.target.value}))} style={inp}/>
@@ -224,7 +224,7 @@ export default function SSI({ session }) {
                 <input type="number" value={form.total_score} onChange={e=>setForm(f=>({...f,total_score:e.target.value}))} style={{...inp, fontWeight:800, fontSize:20, color:'var(--wl-primary, rgb(49,90,231))'}} placeholder="z.B. 72" min="0" max="100" required/>
               </div>
             </div>
-            <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:12, marginBottom:14 }}>
+            <div className="col-2" style={{ gap:12, marginBottom:14 }}>
               {SUBSCORES.map(s => (
                 <div key={s.key}>
                   <label style={{ display:'block', fontSize:11, fontWeight:700, color:s.color, textTransform:'uppercase', letterSpacing:'0.07em', marginBottom:5 }}>{s.label}</label>
@@ -232,7 +232,7 @@ export default function SSI({ session }) {
                 </div>
               ))}
             </div>
-            <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:12, marginBottom:14 }}>
+            <div className="col-2" style={{ gap:12, marginBottom:14 }}>
               <div><label style={{ display:'block', fontSize:11, fontWeight:700, color:'var(--text-muted)', textTransform:'uppercase', letterSpacing:'0.07em', marginBottom:5 }}>Branchenranking (%)</label><input type="number" value={form.industry_rank} onChange={e=>setForm(f=>({...f,industry_rank:e.target.value}))} style={inp} placeholder="z.B. 1" min="0" max="100"/></div>
               <div><label style={{ display:'block', fontSize:11, fontWeight:700, color:'var(--text-muted)', textTransform:'uppercase', letterSpacing:'0.07em', marginBottom:5 }}>Netzwerkranking (%)</label><input type="number" value={form.network_rank} onChange={e=>setForm(f=>({...f,network_rank:e.target.value}))} style={inp} placeholder="z.B. 2" min="0" max="100"/></div>
             </div>
@@ -259,7 +259,7 @@ export default function SSI({ session }) {
       ) : (
         <div>
           {/* Hero — Reports-Karten-Layout (clean, kein Gradient) */}
-          <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:16, marginBottom:16 }}>
+          <div className="col-2" style={{ gap:16, marginBottom:16 }}>
 
             {/* Aktueller SSI — cleaner Donut + Score + Trend + Ranking */}
             <div style={{ background:'var(--surface)', border:'1px solid var(--border)', borderRadius:14, padding:18 }}>
