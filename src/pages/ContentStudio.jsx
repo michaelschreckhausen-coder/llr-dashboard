@@ -1601,7 +1601,7 @@ function CleanView({
           useBrandImages={useBrandImages} setUseBrandImages={setUseBrandImages} hasChatVisuals={hasChatVisuals}
           handleFiles={handleFiles} fileInputRef={fileInputRef}
           sendMessage={sendMessage}
-          enabled={contentReady}
+          enabled={!!activeBrandVoice?.id || !!activeBrandVoice?.noBrand}
         />
       </div>
     </div>
