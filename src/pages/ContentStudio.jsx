@@ -1746,6 +1746,7 @@ function ChatInput({
   imageFormat = PRESET_BY_ID[DEFAULT_PRESET_ID], setImageFormat = () => {}, useBrandImages = true, setUseBrandImages = () => {}, hasChatVisuals = false,
   handleFiles, fileInputRef, sendMessage, enabled,
 }) {
+  const [dragOver, setDragOver] = useState(false)
   const voice = useVoiceInput({
     language: 'de-DE',
     onFinalTranscript: (t) => {
@@ -1755,7 +1756,16 @@ function ChatInput({
     },
   })
   return (
-    <div data-tour-id="cs-composer" style={{ border:'1.5px solid var(--border)', borderRadius:14, background:'#fff', padding:'12px 14px 10px', boxShadow:'0 1px 3px rgba(15,23,42,.04)' }}>
+    <div data-tour-id="cs-composer"
+      onDragOver={e => { if (Array.from(e.dataTransfer?.types || []).includes('Files')) { e.preventDefault(); setDragOver(true) } }}
+      onDragLeave={e => { if (e.currentTarget === e.target) setDragOver(false) }}
+      onDrop={e => { e.preventDefault(); setDragOver(false); if (e.dataTransfer?.files?.length) handleFiles(e.dataTransfer.files) }}
+      style={{ position:'relative', border:'1.5px solid ' + (dragOver ? P : 'var(--border)'), borderRadius:14, background:'#fff', padding:'12px 14px 10px', boxShadow:'0 1px 3px rgba(15,23,42,.04)' }}>
+      {dragOver && (
+        <div style={{ position:'absolute', inset:0, zIndex:6, borderRadius:14, background:'rgba(49,90,231,0.06)', border:'2px dashed ' + P, display:'flex', alignItems:'center', justifyContent:'center', pointerEvents:'none' }}>
+          <span style={{ fontSize:13, fontWeight:700, color:P }}>Dateien hier ablegen zum Anhängen</span>
+        </div>
+      )}
       {/* Attachment-Strip */}
       {attachments.length > 0 && (
         <div style={{ display:'flex', gap:6, marginBottom:8, flexWrap:'wrap' }}>

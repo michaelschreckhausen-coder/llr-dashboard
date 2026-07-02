@@ -60,7 +60,7 @@ export default function Bibliothek({ session }) {
       <div>
         {tab === 'dokumente' && <Documents embedded />}
         {tab === 'designs' && <DesignsTab reloadKey={designsReloadKey} />}
-        {tab === 'medien' && <Visuals session={session} kindFilter="image" embedded />}
+        {tab === 'medien' && <Visuals session={session} kindFilter="image" embedded allowUpload />}
       </div>
 
       {newKind && (
