@@ -23,6 +23,37 @@ function json(body: unknown, status = 200) {
   });
 }
 
+// Pexels ist vom Server aus gelegentlich flaky (transiente Connection-Timeouts /
+// vereinzelte 5xx). Ein einzelner fetch ohne Timeout lässt dann eine ganze
+// Bild-Suche (bzw. im Moodboard eine von mehreren) sofort scheitern. Deshalb:
+// kurzer Per-Versuch-Timeout + bis zu 3 Versuche mit kleinem Backoff.
+async function fetchPexels(url: string, key: string, attempts = 3): Promise<Response> {
+  let lastErr: unknown = null;
+  for (let i = 0; i < attempts; i++) {
+    const ctrl = new AbortController();
+    const timer = setTimeout(() => ctrl.abort(), 7000);
+    try {
+      const r = await fetch(url, { headers: { Authorization: key }, signal: ctrl.signal });
+      clearTimeout(timer);
+      // 5xx / 429 sind transient → nochmal versuchen. 4xx (z.B. schlechte Query) sofort zurück.
+      if ((r.status >= 500 || r.status === 429) && i < attempts - 1) {
+        lastErr = new Error(`Pexels ${r.status}`);
+        await new Promise((res) => setTimeout(res, 350 * (i + 1)));
+        continue;
+      }
+      return r;
+    } catch (e) {
+      clearTimeout(timer);
+      lastErr = e; // AbortError (Timeout) oder Netzfehler → retry
+      if (i < attempts - 1) {
+        await new Promise((res) => setTimeout(res, 350 * (i + 1)));
+        continue;
+      }
+    }
+  }
+  throw lastErr || new Error("Pexels nicht erreichbar");
+}
+
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: CORS });
   if (req.method !== "POST") return json({ error: "Method not allowed" }, 405);
@@ -61,7 +92,7 @@ Deno.serve(async (req) => {
   }
 
   try {
-    const resp = await fetch(url, { headers: { Authorization: KEY } });
+    const resp = await fetchPexels(url, KEY);
     if (!resp.ok) {
       const txt = await resp.text().catch(() => "");
       return json({ photos: [], total: 0, page,
