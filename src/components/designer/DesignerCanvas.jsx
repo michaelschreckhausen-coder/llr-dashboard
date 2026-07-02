@@ -1401,7 +1401,15 @@ ${JSON.stringify(slim)}
 
 ${brandCtx ? 'Marken-Kontext:\n' + brandCtx + '\n\n' : ''}Nutzer-Befehl: "${c}"
 
-Setze den Befehl vollständig und gestalterisch sauber um. Du DARFST: neue Elemente hinzufügen (z.B. eine Headline), bestehende ändern, löschen, den Hintergrund ändern und das Basisbild inhaltlich bearbeiten. Achte auf Lesbarkeit, Kontrast, sinnvolle Größen/Positionen und ein sauberes Layout; halte alle Elemente innerhalb 0..${cw} (x) und 0..${ch} (y). Farben immer als Hex #rrggbb. Bevorzuge Marken-Farben/Schriften, wenn vorhanden. Bei "Headline mit meinem Namen" o.Ä.: lege ein neues, großes Text-Element mit dem oben genannten Namen an und platziere es gut lesbar.
+Setze den Befehl vollständig und gestalterisch sauber um. Du DARFST: neue Elemente hinzufügen (z.B. eine Headline), bestehende ändern, löschen, den Hintergrund ändern und das Basisbild inhaltlich bearbeiten. Achte auf Lesbarkeit, Kontrast, sinnvolle Größen/Positionen und ein sauberes Layout.
+
+WICHTIG – LAYOUT & PASSFORM (sonst wird Text abgeschnitten):
+- Halte einen Sicherheitsrand von ca. 5% der Seitengröße zu ALLEN Kanten. Kein Element darf über den Rand hinausragen oder abgeschnitten werden.
+- Jedes Text-Element MUSS eine 'width' bekommen, die ab seiner x-Position bis zum rechten Sicherheitsrand passt (width ≤ ${cw} − x − Rand). Text bricht innerhalb dieser Breite um.
+- Wähle 'fontSize' so, dass der GESAMTE Text vollständig in diese width UND in die Seitenhöhe passt – lieber kleiner als abgeschnitten. Für Headlines auf ${cw}×${ch}px ist fontSize ≈ 6–9% der Seitenhöhe ein guter Startwert.
+- Prüfe vor der Ausgabe jede Operation gedanklich: Passt der komplette Inhalt sichtbar auf die Seite? Wenn nicht, korrigiere Größe/Position/Breite.
+- Farben immer als Hex #rrggbb. Bevorzuge Marken-Farben/Schriften, wenn vorhanden.
+- Bei "Headline mit meinem Namen" o.Ä.: lege EIN neues Text-Element mit dem oben genannten Namen an, mit passender width (bis zum Rand) und einer fontSize, bei der der ganze Name sichtbar bleibt.
 
 Gib AUSSCHLIESSLICH gültiges JSON zurück (kein Markdown, keine Erklärung) – eine Liste von Operationen in Ausführungsreihenfolge:
 {"operations":[
@@ -1427,31 +1435,73 @@ Nutze nur Operationen, die für den Befehl nötig sind. "edit_image" nur, wenn d
       if (!ops.length) throw new Error('Keine Änderungen erhalten')
       pushHistory()
       const clamp = (v, max) => Math.max(0, Math.min(Math.round(Number(v) || 0), max))
-      let imageEdited = false
+      const margin = Math.max(24, Math.round(Math.min(cw, ch) * 0.05))
+      // Deterministische Passform-Prüfung: verhindert abgeschnittene/überlaufende Texte,
+      // egal was die KI liefert (misst mit Konva, verkleinert fontSize + klemmt in die Seite).
+      const fitText = (o) => {
+        try {
+          const text = String(o.text || '')
+          if (!text) return o
+          const fontFamily = o.fontFamily || 'Inter'
+          const fontStyle = o.fontStyle || 'normal'
+          const align = o.align || 'left'
+          let fontSize = Math.max(8, Math.round(Number(o.fontSize) || 48))
+          let x = Math.max(margin, Math.min(Math.round(Number(o.x) || margin), cw - margin - 40))
+          let width = Math.round(Number(o.width) || (cw - x - margin))
+          width = Math.max(40, Math.min(width, cw - x - margin))
+          const longestWord = text.split(/\s+/).sort((a, b) => b.length - a.length)[0] || text
+          for (let i = 0; i < 16; i++) {
+            const node = new Konva.Text({ text, fontSize, fontFamily, fontStyle, width, align, lineHeight: 1.15 })
+            const h = node.height()
+            const wnode = new Konva.Text({ text: longestWord, fontSize, fontFamily, fontStyle })
+            const wordW = wnode.width()
+            try { node.destroy() } catch (_e) {}
+            try { wnode.destroy() } catch (_e) {}
+            const fits = wordW <= width && (Math.round(Number(o.y) || margin) + h) <= (ch - margin)
+            if (fits || fontSize <= 8) break
+            fontSize = Math.max(8, Math.round(fontSize * 0.86))
+          }
+          const fnode = new Konva.Text({ text, fontSize, fontFamily, fontStyle, width, align, lineHeight: 1.15 })
+          const fh = fnode.height()
+          try { fnode.destroy() } catch (_e) {}
+          let y = Math.max(margin, Math.min(Math.round(Number(o.y) || margin), Math.max(margin, ch - margin - fh)))
+          return { ...o, x, y, width, fontSize }
+        } catch (_e) { return o }
+      }
+      let next = objects.map(o => ({ ...o }))
+      let nextBg = bgColor
+      let imageInstruction = null
       for (const op of ops) {
         const t = op && op.op
         if (t === 'add_text' && op.text) {
-          setObjects(prev => [...prev, { id: nextId(), type:'text', text:String(op.text), x:clamp(op.x,cw), y:clamp(op.y,ch), fontSize: Math.max(8, Math.round(Number(op.fontSize))||48), fontFamily: op.fontFamily || 'Inter', fill: op.fill || '#111111', fontStyle: op.fontStyle || 'normal', align: op.align || 'left', width: Math.round(Number(op.width)) || Math.min(560, cw - 40), rotation:0, opacity:1 }])
+          const bx = clamp(op.x, cw)
+          next.push(fitText({ id: nextId(), type:'text', text:String(op.text), x: bx, y: clamp(op.y, ch), fontSize: Math.max(8, Math.round(Number(op.fontSize)) || 48), fontFamily: op.fontFamily || 'Inter', fill: op.fill || '#111111', fontStyle: op.fontStyle || 'normal', align: op.align || 'left', width: Math.round(Number(op.width)) || (cw - bx - margin), rotation:0, opacity:1 }))
         } else if (t === 'add_rect') {
-          setObjects(prev => [...prev, { id: nextId(), type:'rect', x:clamp(op.x,cw), y:clamp(op.y,ch), width: Math.round(Number(op.width))||200, height: Math.round(Number(op.height))||120, fill: op.fill || '#315AE7', stroke: op.stroke || null, strokeWidth: Math.round(Number(op.strokeWidth))||0, cornerRadius: Math.round(Number(op.cornerRadius))||0, rotation:0, opacity:1 }])
+          next.push({ id: nextId(), type:'rect', x: clamp(op.x, cw), y: clamp(op.y, ch), width: Math.min(Math.round(Number(op.width)) || 200, cw), height: Math.min(Math.round(Number(op.height)) || 120, ch), fill: op.fill || '#315AE7', stroke: op.stroke || null, strokeWidth: Math.round(Number(op.strokeWidth)) || 0, cornerRadius: Math.round(Number(op.cornerRadius)) || 0, rotation:0, opacity:1 })
         } else if (t === 'add_ellipse') {
-          setObjects(prev => [...prev, { id: nextId(), type:'ellipse', x:clamp(op.x,cw), y:clamp(op.y,ch), radiusX: Math.round(Number(op.radiusX))||80, radiusY: Math.round(Number(op.radiusY))||80, fill: op.fill || '#315AE7', stroke: op.stroke || null, strokeWidth: Math.round(Number(op.strokeWidth))||0, rotation:0, opacity:1 }])
+          next.push({ id: nextId(), type:'ellipse', x: clamp(op.x, cw), y: clamp(op.y, ch), radiusX: Math.round(Number(op.radiusX)) || 80, radiusY: Math.round(Number(op.radiusY)) || 80, fill: op.fill || '#315AE7', stroke: op.stroke || null, strokeWidth: Math.round(Number(op.strokeWidth)) || 0, rotation:0, opacity:1 })
         } else if (t === 'update' && op.id && op.props && typeof op.props === 'object') {
           const allow = ['text','fontSize','fontFamily','fill','fontStyle','align','width','x','y','rotation','opacity','height','stroke','strokeWidth','cornerRadius','radiusX','radiusY']
           const patch = {}; allow.forEach(k => { if (op.props[k] !== undefined && op.props[k] !== null) patch[k] = op.props[k] })
-          if (Object.keys(patch).length) setObjects(prev => prev.map(o => o.id === op.id ? { ...o, ...patch } : o))
+          if (Object.keys(patch).length) next = next.map(o => o.id === op.id ? { ...o, ...patch } : o)
         } else if (t === 'delete' && op.id) {
-          setObjects(prev => prev.filter(o => o.id !== op.id))
+          next = next.filter(o => o.id !== op.id)
         } else if (t === 'set_background' && op.color) {
-          setBgColor(op.color)
-        } else if (t === 'edit_image' && op.instruction && !imageEdited && visual?.storage_path) {
-          imageEdited = true
-          try {
-            const nv = await callGenerateImage(`Bearbeite das Referenzbild: ${op.instruction}. Behalte Bildstil, Beleuchtung und Perspektive konsistent, fotorealistisch.`)
-            const url = await visualDataUrl(nv.storage_path)
-            if (url) await applyResultDirect(url, 'free')
-          } catch (_e) {}
+          nextBg = op.color
+        } else if (t === 'edit_image' && op.instruction && imageInstruction === null && visual?.storage_path) {
+          imageInstruction = String(op.instruction)
         }
+      }
+      // Finale Passform-Prüfung über ALLE Texte (fixt add_text UND geänderte/vorhandene)
+      next = next.map(o => o.type === 'text' ? fitText(o) : o)
+      setObjects(next)
+      if (nextBg !== bgColor) setBgColor(nextBg)
+      if (imageInstruction) {
+        try {
+          const nv = await callGenerateImage(`Bearbeite das Referenzbild: ${imageInstruction}. Behalte Bildstil, Beleuchtung und Perspektive konsistent, fotorealistisch.`)
+          const url = await visualDataUrl(nv.storage_path)
+          if (url) await applyResultDirect(url, 'free')
+        } catch (_e) {}
       }
       setPageAiCmd('')
       setSavedMsg('Seite mit KI bearbeitet')
