@@ -56,6 +56,51 @@ import {
 
 const P = 'var(--wl-primary, rgb(49,90,231))'
 const PRGB = 'rgb(49,90,231)'
+
+// Schrift-Kombinationen: Font-Paar + abgestimmte, coole Farbpalette (hell/dunkel).
+const TEXT_COMBOS = [
+  { id: 'modern', label: 'Modern', kicker: 'INSIGHT', head: 'Modern & Klar', sub: 'Reduziert, präzise, zeitgemäß.',
+    headFont: 'Montserrat', subFont: 'Inter', kickerFont: 'Inter', headStyle: 'bold',
+    light: { head: '#0F172A', sub: '#64748B', kicker: '#4F46E5' }, dark: { head: '#F1F5F9', sub: '#CBD5E1', kicker: '#818CF8' } },
+  { id: 'editorial', label: 'Editorial', kicker: 'MAGAZIN', head: 'Editorial Stil', sub: 'Serifen-Headline trifft klare Subline.',
+    headFont: 'Playfair Display', subFont: 'Inter', kickerFont: 'Inter', headStyle: 'bold',
+    light: { head: '#1A1A1A', sub: '#57534E', kicker: '#9F1239' }, dark: { head: '#FAFAF9', sub: '#D6D3D1', kicker: '#FB7185' } },
+  { id: 'bold', label: 'Bold', kicker: 'STARK', head: 'BOLD STATEMENT', sub: 'Maximale Wirkung, klare Kante.',
+    headFont: 'Anton', subFont: 'Barlow', kickerFont: 'Barlow', headStyle: 'normal',
+    light: { head: '#111111', sub: '#4B5563', kicker: '#EA580C' }, dark: { head: '#FAFAFA', sub: '#D1D5DB', kicker: '#FB923C' } },
+  { id: 'luxe', label: 'Luxe', kicker: 'PREMIUM', head: 'Elegant & Edel', sub: 'Ruhige Serifen für einen edlen Auftritt.',
+    headFont: 'Cormorant Garamond', subFont: 'Jost', kickerFont: 'Jost', headStyle: 'bold',
+    light: { head: '#14342B', sub: '#6B7A70', kicker: '#B08D57' }, dark: { head: '#ECFDF5', sub: '#A7C4B5', kicker: '#D4AF6A' } },
+  { id: 'verspielt', label: 'Verspielt', kicker: 'HALLO', head: 'Verspielt', sub: 'Locker, freundlich, mit Charakter.',
+    headFont: 'Pacifico', subFont: 'Quicksand', kickerFont: 'Quicksand', headStyle: 'normal',
+    light: { head: '#E4572E', sub: '#4A5568', kicker: '#0D9488' }, dark: { head: '#FDBA74', sub: '#CBD5E1', kicker: '#5EEAD4' } },
+  { id: 'tech', label: 'Tech', kicker: 'SYSTEM', head: 'Tech & Grotesk', sub: 'Modern, technisch, aufgeräumt.',
+    headFont: 'Space Grotesk', subFont: 'DM Sans', kickerFont: 'DM Sans', headStyle: 'bold',
+    light: { head: '#0B1F3A', sub: '#5B6B7B', kicker: '#2563EB' }, dark: { head: '#E0F2FE', sub: '#93A4B5', kicker: '#38BDF8' } },
+  { id: 'klassisch', label: 'Klassisch', kicker: 'SEIT 1998', head: 'Klassisch & Zeitlos', sub: 'Traditionell, seriös, vertrauensvoll.',
+    headFont: 'EB Garamond', subFont: 'EB Garamond', kickerFont: 'EB Garamond', headStyle: 'bold',
+    light: { head: '#292524', sub: '#78716C', kicker: '#9A3412' }, dark: { head: '#FAFAF9', sub: '#D6D3D1', kicker: '#FDBA74' } },
+  { id: 'statement', label: 'Statement', kicker: 'NEU', head: 'Statement Serif', sub: 'Auffällig und stilsicher zugleich.',
+    headFont: 'DM Serif Display', subFont: 'DM Sans', kickerFont: 'DM Sans', headStyle: 'normal',
+    light: { head: '#1E293B', sub: '#64748B', kicker: '#0D9488' }, dark: { head: '#F1F5F9', sub: '#CBD5E1', kicker: '#2DD4BF' } },
+  { id: 'poster', label: 'Poster', kicker: 'EVENT', head: 'POSTER LOOK', sub: 'Condensed Headline mit ruhiger Subline.',
+    headFont: 'Bebas Neue', subFont: 'Inter', kickerFont: 'Inter', headStyle: 'normal',
+    light: { head: '#111827', sub: '#6B7280', kicker: '#DC2626' }, dark: { head: '#F9FAFB', sub: '#D1D5DB', kicker: '#F87171' } },
+]
+
+function isDarkBg(bg) {
+  if (!bg || typeof bg !== 'string') return false
+  const t = bg.trim().replace('#', '')
+  let r, g, b
+  if (/^[0-9a-f]{6}$/i.test(t)) { r = parseInt(t.slice(0, 2), 16); g = parseInt(t.slice(2, 4), 16); b = parseInt(t.slice(4, 6), 16) }
+  else if (/^[0-9a-f]{3}$/i.test(t)) { r = parseInt(t[0] + t[0], 16); g = parseInt(t[1] + t[1], 16); b = parseInt(t[2] + t[2], 16) }
+  else { const m = bg.match(/\d+(\.\d+)?/g); if (!m || m.length < 3) return false; r = +m[0]; g = +m[1]; b = +m[2] }
+  return (0.2126 * r + 0.7152 * g + 0.0722 * b) / 255 < 0.45
+}
+
+function rectsIntersect(a, b) {
+  return !(a.x > b.x + b.w || a.x + a.w < b.x || a.y > b.y + b.h || a.y + a.h < b.y)
+}
 // Akzentfarbe für den "Verzerren"-Modus (nach Doppelklick): klar abgesetzt von der
 // primären Auswahl-Farbe, damit der freie Transform-Modus sofort erkennbar ist.
 const DISTORT_RGB = 'rgb(245,158,11)'
@@ -248,6 +293,7 @@ export default function DesignerCanvas({ visual, teamId, onSaved, onReplaceVisua
   // wechseln im Verzerren-Modus.
   const [distortId, setDistortId] = useState(null)
   const [marquee, setMarquee] = useState(null)        // {x,y,w,h} Rubberband in Bühnenkoordinaten
+  const [marqueeHits, setMarqueeHits] = useState([])  // Ids der vom Kästchen berührten Elemente (Live-Rahmen)
   const marqueeStartRef = useRef(null)
   const clipboardRef = useRef([])                     // kopierte Objekte (intern)
   const [loading, setLoading] = useState(true)
@@ -1346,17 +1392,18 @@ export default function DesignerCanvas({ visual, teamId, onSaved, onReplaceVisua
 
   // Schrift-Kombination einfügen: Überschrift + Subline als abgestimmtes Paar.
   function addTextCombo(combo) {
-    const COMBOS = {
-      modern:   { headFont: 'Inter',    subFont: 'Inter',    head: 'MODERNE ÜBERSCHRIFT', sub: 'Klare, reduzierte Subline', headStyle: 'bold', kicker: true },
-      elegant:  { headFont: 'Georgia',  subFont: 'Georgia',  head: 'Elegante Überschrift', sub: 'Mit ruhiger Serifen-Subline', headStyle: 'bold' },
-      verspielt:{ headFont: 'Caveat',   subFont: 'Inter',    head: 'Verspielte Headline', sub: 'mit klarer Subline', headStyle: 'bold' },
-      klassisch:{ headFont: 'Garamond', subFont: 'Garamond', head: 'Klassische Überschrift', sub: 'Zeitlos und seriös', headStyle: 'bold' },
+    const cfg = TEXT_COMBOS.find(x => x.id === combo) || TEXT_COMBOS[0]
+    const pal = isDarkBg(bgColor) ? cfg.dark : cfg.light
+    const c = center(); const x = c.x - 300, w = 600
+    let y = c.y - 155
+    if (cfg.kicker) {
+      addObject({ type: 'text', x, y, text: cfg.kicker, fontSize: 26, fontFamily: cfg.kickerFont || 'Inter', fill: pal.kicker, fontStyle: 'bold', align: 'left', width: w, letterSpacing: 3, rotation: 0 })
+      y += 42
     }
-    const cfg = COMBOS[combo] || COMBOS.modern
-    const c = center(); const fill = bgColor ? '#111827' : '#ffffff'
-    const headSize = cfg.kicker ? 80 : 84
-    addObject({ type: 'text', x: c.x - 280, y: c.y - 70, text: cfg.head, fontSize: headSize, fontFamily: cfg.headFont, fill, fontStyle: cfg.headStyle, align: 'left', width: 560, letterSpacing: cfg.kicker ? 2 : 0, rotation: 0 })
-    addObject({ type: 'text', x: c.x - 280, y: c.y + 40, text: cfg.sub, fontSize: 40, fontFamily: cfg.subFont, fill, fontStyle: 'normal', align: 'left', width: 560, rotation: 0 })
+    addObject({ type: 'text', x, y, text: cfg.head, fontSize: 82, fontFamily: cfg.headFont, fill: pal.head, fontStyle: cfg.headStyle || 'bold', align: 'left', width: w, letterSpacing: 0, rotation: 0 })
+    y += 112
+    addObject({ type: 'text', x, y, text: cfg.sub, fontSize: 34, fontFamily: cfg.subFont, fill: pal.sub, fontStyle: 'normal', align: 'left', width: w, lineHeight: 1.3, rotation: 0 })
+    try { loadGoogleFont(cfg.headFont); loadGoogleFont(cfg.subFont); if (cfg.kickerFont) loadGoogleFont(cfg.kickerFont) } catch (_e) {}
   }
 
   // ─── Bild-Upload als Overlay-Objekt (type:'image') ─────────────────────────
@@ -2237,6 +2284,7 @@ Antworte AUSSCHLIESSLICH mit JSON: {"ok":<bool>,"issues":["..."],"operations":[.
       if (!aiMode) {
         marqueeStartRef.current = { x: p.x, y: p.y, additive: e.evt?.shiftKey }
         setMarquee({ x: p.x, y: p.y, w: 0, h: 0 })
+        setMarqueeHits([])
         if (!e.evt?.shiftKey) setSelectedIds([])
       }
     }
@@ -2256,7 +2304,9 @@ Antworte AUSSCHLIESSLICH mit JSON: {"ok":<bool>,"issues":["..."],"operations":[.
     }
     if (marqueeStartRef.current) {
       const s = marqueeStartRef.current
-      setMarquee({ x: Math.min(s.x, p.x), y: Math.min(s.y, p.y), w: Math.abs(p.x - s.x), h: Math.abs(p.y - s.y) })
+      const m = { x: Math.min(s.x, p.x), y: Math.min(s.y, p.y), w: Math.abs(p.x - s.x), h: Math.abs(p.y - s.y) }
+      setMarquee(m)
+      setMarqueeHits((m.w > 2 || m.h > 2) ? objects.filter(o => rectsIntersect(objBounds(o), m)).map(o => o.id) : [])
     }
   }
   function onStageMouseUp() {
@@ -2269,20 +2319,17 @@ Antworte AUSSCHLIESSLICH mit JSON: {"ok":<bool>,"issues":["..."],"operations":[.
       return
     }
     cropDragRef.current = null
-    // Marquee abschließen → alle Objekte, deren Mittelpunkt im Rechteck liegt, selektieren.
+    // Marquee abschließen → alle Objekte, die das Rechteck berühren, selektieren.
     if (marqueeStartRef.current) {
       const m = marquee
       const additive = marqueeStartRef.current.additive
       marqueeStartRef.current = null
       setMarquee(null)
       if (m && (m.w > 4 || m.h > 4)) {
-        const hits = objects.filter(o => {
-          const b = objBounds(o)
-          const cx = b.x + b.w / 2, cy = b.y + b.h / 2
-          return cx >= m.x && cx <= m.x + m.w && cy >= m.y && cy <= m.y + m.h
-        }).map(o => o.id)
+        const hits = objects.filter(o => rectsIntersect(objBounds(o), m)).map(o => o.id)
         setSelectedIds(prev => additive ? Array.from(new Set([...prev, ...hits])) : hits)
       }
+      setMarqueeHits([])
     }
   }
   // Grobe Bounding-Box eines Objekts in Bühnenkoordinaten (für Marquee-Treffer).
@@ -4024,6 +4071,12 @@ Antworte AUSSCHLIESSLICH mit JSON: {"ok":<bool>,"issues":["..."],"operations":[.
                   <Rect x={marquee.x - off.x} y={marquee.y - off.y} width={marquee.w} height={marquee.h}
                     stroke={PRGB} strokeWidth={1 / effScale} dash={[6 / effScale, 4 / effScale]} fill="rgba(49,90,231,0.10)" listening={false} />
                 )}
+                {/* Live-Rahmen: Elemente, die das Kästchen gerade berührt */}
+                {marquee && marqueeHits.length > 0 && objects.filter(o => marqueeHits.includes(o.id)).map(o => {
+                  const hb = objBounds(o)
+                  return <Rect key={'mh-' + o.id} x={hb.x - off.x} y={hb.y - off.y} width={hb.w} height={hb.h}
+                    stroke={PRGB} strokeWidth={1.5 / effScale} cornerRadius={3 / effScale} fill="rgba(49,90,231,0.06)" listening={false} />
+                })}
                 {drawPreview && drawPreview.length >= 2 && (
                   <Line points={drawPreview.flatMap(p => [p.x - off.x, p.y - off.y])} stroke={penColor} strokeWidth={penWidth} lineCap="round" lineJoin="round" tension={0.4} listening={false} />
                 )}
@@ -5272,6 +5325,7 @@ function ElementsPanelBody({ elementTab, setElementTab, onAddRect, onAddEllipse,
 // ─── Panel: Text ────────────────────────────────────────────────────────────
 function TextPanelBody({ onAddText, onAddTextPreset, onAddTextCombo, brandData, onApplyBrandFont }) {
   const brandFonts = extractBrandFonts(brandData)
+  useEffect(() => { TEXT_COMBOS.forEach(c => { loadGoogleFont(c.headFont); loadGoogleFont(c.subFont) }) }, [])
   const presetCard = (sub, sample, size, weight) => (
     <button onClick={() => onAddTextPreset(sub)} style={presetBtn} title={`${sample} hinzufügen`}
       onMouseEnter={e => { e.currentTarget.style.borderColor = P; e.currentTarget.style.background = 'rgba(49,90,231,0.04)' }}
@@ -5298,12 +5352,17 @@ function TextPanelBody({ onAddText, onAddTextPreset, onAddTextCombo, brandData, 
 
       <PanelLabel>Schrift-Kombinationen</PanelLabel>
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: 8 }}>
-        {[['modern','Modern','Inter'],['elegant','Elegant','Georgia'],['verspielt','Verspielt','Caveat'],['klassisch','Klassisch','Garamond']].map(([id,lbl,fam]) => (
-          <button key={id} onClick={() => onAddTextCombo && onAddTextCombo(id)} title={`Kombination „${lbl}" einfügen`}
-            style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start', gap: 2, padding: '10px 11px', borderRadius: 10, border: '1px solid var(--border,#E9ECF2)', background: 'var(--surface,#fff)', cursor: 'pointer', fontFamily: 'inherit', textAlign: 'left' }}
+        {TEXT_COMBOS.map(cfg => (
+          <button key={cfg.id} onClick={() => onAddTextCombo && onAddTextCombo(cfg.id)} title={`Kombination „${cfg.label}" einfügen`}
+            style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start', gap: 3, padding: '10px 11px', borderRadius: 10, border: '1px solid var(--border,#E9ECF2)', background: 'var(--surface,#fff)', cursor: 'pointer', fontFamily: 'inherit', textAlign: 'left', overflow: 'hidden' }}
             onMouseEnter={e => { e.currentTarget.style.borderColor = P }} onMouseLeave={e => { e.currentTarget.style.borderColor = 'var(--border,#E9ECF2)' }}>
-            <span style={{ fontFamily: fam, fontSize: 16, fontWeight: 700, color: 'var(--text-primary)', lineHeight: 1.1 }}>{lbl}</span>
-            <span style={{ fontFamily: fam, fontSize: 11, color: 'var(--text-muted)', lineHeight: 1.1 }}>Subline</span>
+            <span style={{ fontFamily: `"${cfg.headFont}", sans-serif`, fontSize: 16, fontWeight: 700, color: cfg.light.head, lineHeight: 1.05, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', maxWidth: '100%' }}>{cfg.label}</span>
+            <span style={{ fontFamily: `"${cfg.subFont}", sans-serif`, fontSize: 11, color: cfg.light.sub, lineHeight: 1.05 }}>Subline &amp; Text</span>
+            <div style={{ display: 'flex', gap: 3, marginTop: 3 }}>
+              {[cfg.light.head, cfg.light.kicker, cfg.light.sub].map((col, i) => (
+                <span key={i} style={{ width: 11, height: 11, borderRadius: 3, background: col, border: '1px solid rgba(0,0,0,0.06)' }} />
+              ))}
+            </div>
           </button>
         ))}
       </div>
