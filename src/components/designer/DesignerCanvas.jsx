@@ -1448,39 +1448,27 @@ Nutze nur die für den Befehl nötigen Operationen.`
       pushHistory()
       const clamp = (v, max) => Math.max(0, Math.min(Math.round(Number(v) || 0), max))
       const margin = Math.max(24, Math.round(Math.min(cw, ch) * 0.05))
-      // Deterministische Passform-Prüfung: verhindert abgeschnittene/überlaufende Texte,
-      // egal was die KI liefert (misst mit Konva, verkleinert fontSize + klemmt in die Seite).
       const fitText = (o) => {
         try {
-          const text = String(o.text || '')
-          if (!text) return o
-          const fontFamily = o.fontFamily || 'Inter'
-          const fontStyle = o.fontStyle || 'normal'
-          const align = o.align || 'left'
+          const text = String(o.text || ''); if (!text) return o
+          const fontFamily = o.fontFamily || 'Inter'; const fontStyle = o.fontStyle || 'normal'; const align = o.align || 'left'
           let fontSize = Math.max(8, Math.round(Number(o.fontSize) || 48))
           let x = Math.max(margin, Math.min(Math.round(Number(o.x) || margin), cw - margin - 40))
-          let width = Math.round(Number(o.width) || (cw - x - margin))
-          width = Math.max(40, Math.min(width, cw - x - margin))
+          let width = Math.round(Number(o.width) || (cw - x - margin)); width = Math.max(40, Math.min(width, cw - x - margin))
           const longestWord = text.split(/\s+/).sort((a, b) => b.length - a.length)[0] || text
           for (let i = 0; i < 16; i++) {
-            const node = new Konva.Text({ text, fontSize, fontFamily, fontStyle, width, align, lineHeight: 1.15 })
-            const h = node.height()
-            const wnode = new Konva.Text({ text: longestWord, fontSize, fontFamily, fontStyle })
-            const wordW = wnode.width()
-            try { node.destroy() } catch (_e) {}
-            try { wnode.destroy() } catch (_e) {}
+            const node = new Konva.Text({ text, fontSize, fontFamily, fontStyle, width, align, lineHeight: 1.15 }); const h = node.height()
+            const wnode = new Konva.Text({ text: longestWord, fontSize, fontFamily, fontStyle }); const wordW = wnode.width()
+            try { node.destroy() } catch (_e) {} try { wnode.destroy() } catch (_e) {}
             const fits = wordW <= width && (Math.round(Number(o.y) || margin) + h) <= (ch - margin)
             if (fits || fontSize <= 8) break
             fontSize = Math.max(8, Math.round(fontSize * 0.86))
           }
-          const fnode = new Konva.Text({ text, fontSize, fontFamily, fontStyle, width, align, lineHeight: 1.15 })
-          const fh = fnode.height()
-          try { fnode.destroy() } catch (_e) {}
+          const fnode = new Konva.Text({ text, fontSize, fontFamily, fontStyle, width, align, lineHeight: 1.15 }); const fh = fnode.height(); try { fnode.destroy() } catch (_e) {}
           let y = Math.max(margin, Math.min(Math.round(Number(o.y) || margin), Math.max(margin, ch - margin - fh)))
           return { ...o, x, y, width, fontSize }
         } catch (_e) { return o }
       }
-      // Farb-/Kontrast-Helfer für garantiert lesbaren Text
       const parseHex = (h) => { try { let s=String(h||'').trim().replace('#',''); if(s.length===3) s=s.split('').map(c=>c+c).join(''); if(s.length!==6||/[^0-9a-f]/i.test(s)) return null; return [parseInt(s.slice(0,2),16),parseInt(s.slice(2,4),16),parseInt(s.slice(4,6),16)] } catch(_e){ return null } }
       const relLum = (rgb) => { if(!rgb) return null; const a=rgb.map(v=>{ v/=255; return v<=0.03928 ? v/12.92 : Math.pow((v+0.055)/1.055,2.4) }); return 0.2126*a[0]+0.7152*a[1]+0.0722*a[2] }
       const contrastRatio = (h1,h2) => { const l1=relLum(parseHex(h1)), l2=relLum(parseHex(h2)); if(l1==null||l2==null) return 21; const hi=Math.max(l1,l2), lo=Math.min(l1,l2); return (hi+0.05)/(lo+0.05) }
@@ -1489,88 +1477,92 @@ Nutze nur die für den Befehl nötigen Operationen.`
       const ebbox = (o, th) => { if(o.type==='ellipse') return { x:(o.x||0)-(o.radiusX||0), y:(o.y||0)-(o.radiusY||0), w:2*(o.radiusX||0), h:2*(o.radiusY||0) }; return { x:o.x||0, y:o.y||0, w:o.width||0, h:(o.type==='text'?(th||measureTextH(o)):(o.height||0)) } }
       const centerInside = (t, e, th) => { const tb=ebbox(t,th), eb=ebbox(e); const cx=tb.x+tb.w/2, cy=tb.y+tb.h/2; return eb.w>0 && eb.h>0 && cx>=eb.x && cx<=eb.x+eb.w && cy>=eb.y && cy<=eb.y+eb.h }
 
-      let next = objects.map(o => ({ ...o }))
-      let nextBg = bgColor
-      let imageInstruction = null
-      let filterPatch = null
-      let wantCutout = false
-      for (const op of ops) {
-        const t = op && op.op
-        if (t === 'add_text' && op.text) {
-          const bx = clamp(op.x, cw)
-          next.push(fitText({ id: nextId(), type:'text', text:String(op.text), x: bx, y: clamp(op.y, ch), fontSize: Math.max(8, Math.round(Number(op.fontSize)) || 48), fontFamily: op.fontFamily || 'Inter', fill: op.fill || '#111111', fontStyle: op.fontStyle || 'normal', align: op.align || 'left', width: Math.round(Number(op.width)) || (cw - bx - margin), rotation:0, opacity:1 }))
-        } else if (t === 'add_rect') {
-          next.push({ id: nextId(), type:'rect', x: clamp(op.x, cw), y: clamp(op.y, ch), width: Math.min(Math.round(Number(op.width)) || 200, cw), height: Math.min(Math.round(Number(op.height)) || 120, ch), fill: op.fill || '#315AE7', stroke: op.stroke || null, strokeWidth: Math.round(Number(op.strokeWidth)) || 0, cornerRadius: Math.round(Number(op.cornerRadius)) || 0, rotation:0, opacity:1 })
-        } else if (t === 'add_ellipse') {
-          next.push({ id: nextId(), type:'ellipse', x: clamp(op.x, cw), y: clamp(op.y, ch), radiusX: Math.round(Number(op.radiusX)) || 80, radiusY: Math.round(Number(op.radiusY)) || 80, fill: op.fill || '#315AE7', stroke: op.stroke || null, strokeWidth: Math.round(Number(op.strokeWidth)) || 0, rotation:0, opacity:1 })
-        } else if (t === 'update' && op.id && op.props && typeof op.props === 'object') {
-          const allow = ['text','fontSize','fontFamily','fill','fontStyle','align','width','x','y','rotation','opacity','height','stroke','strokeWidth','cornerRadius','radiusX','radiusY']
-          const patch = {}; allow.forEach(k => { if (op.props[k] !== undefined && op.props[k] !== null) patch[k] = op.props[k] })
-          if (Object.keys(patch).length) next = next.map(o => o.id === op.id ? { ...o, ...patch } : o)
-        } else if (t === 'delete' && op.id) {
-          next = next.filter(o => o.id !== op.id)
-        } else if (t === 'set_background' && op.color) {
-          nextBg = op.color
-        } else if (t === 'set_filter' && op.filters && typeof op.filters === 'object') {
-          const fa = ['grayscale','contrast','brightness','saturation','sepia','hue','blur','invert','vignette','warmth','enhance']
-          const fp = {}; fa.forEach(k => { const v = Number(op.filters[k]); if (op.filters[k] !== undefined && op.filters[k] !== null && !isNaN(v)) fp[k] = v })
-          if (Object.keys(fp).length) filterPatch = { ...(filterPatch || {}), ...fp }
-        } else if (t === 'remove_background') {
-          wantCutout = true
-        } else if (t === 'edit_image' && op.instruction && imageInstruction === null && visual?.storage_path) {
-          imageInstruction = String(op.instruction)
+      // Wendet eine Operations-Liste rein auf ein Objekt-Array an, inkl. Passform-,
+      // Kontrast-, Scrim- und Ebenen-Leitplanken. Gibt neuen Zustand zurück (keine Seiteneffekte).
+      const computeApplied = (opsList, baseObjects, baseBg) => {
+        let arr = baseObjects.map(o => ({ ...o })); let bg = baseBg; let imgInstr = null; let cutout = false; let fPatch = null
+        for (const op of opsList) {
+          const t = op && op.op
+          if (t === 'add_text' && op.text) { const bx = clamp(op.x, cw); arr.push(fitText({ id: nextId(), type:'text', text:String(op.text), x: bx, y: clamp(op.y, ch), fontSize: Math.max(8, Math.round(Number(op.fontSize)) || 48), fontFamily: op.fontFamily || 'Inter', fill: op.fill || '#111111', fontStyle: op.fontStyle || 'normal', align: op.align || 'left', width: Math.round(Number(op.width)) || (cw - bx - margin), rotation:0, opacity:1 })) }
+          else if (t === 'add_rect') { arr.push({ id: nextId(), type:'rect', x: clamp(op.x, cw), y: clamp(op.y, ch), width: Math.min(Math.round(Number(op.width)) || 200, cw), height: Math.min(Math.round(Number(op.height)) || 120, ch), fill: op.fill || '#315AE7', stroke: op.stroke || null, strokeWidth: Math.round(Number(op.strokeWidth)) || 0, cornerRadius: Math.round(Number(op.cornerRadius)) || 0, rotation:0, opacity:1 }) }
+          else if (t === 'add_ellipse') { arr.push({ id: nextId(), type:'ellipse', x: clamp(op.x, cw), y: clamp(op.y, ch), radiusX: Math.round(Number(op.radiusX)) || 80, radiusY: Math.round(Number(op.radiusY)) || 80, fill: op.fill || '#315AE7', stroke: op.stroke || null, strokeWidth: Math.round(Number(op.strokeWidth)) || 0, rotation:0, opacity:1 }) }
+          else if (t === 'update' && op.id && op.props && typeof op.props === 'object') { const allow = ['text','fontSize','fontFamily','fill','fontStyle','align','width','x','y','rotation','opacity','height','stroke','strokeWidth','cornerRadius','radiusX','radiusY']; const patch = {}; allow.forEach(k => { if (op.props[k] !== undefined && op.props[k] !== null) patch[k] = op.props[k] }); if (Object.keys(patch).length) arr = arr.map(o => o.id === op.id ? { ...o, ...patch } : o) }
+          else if (t === 'delete' && op.id) { arr = arr.filter(o => o.id !== op.id) }
+          else if (t === 'set_background' && op.color) { bg = op.color }
+          else if (t === 'set_filter' && op.filters && typeof op.filters === 'object') { const fa = ['grayscale','contrast','brightness','saturation','sepia','hue','blur','invert','vignette','warmth','enhance']; const fp = {}; fa.forEach(k => { const v = Number(op.filters[k]); if (op.filters[k] !== undefined && op.filters[k] !== null && !isNaN(v)) fp[k] = v }); if (Object.keys(fp).length) fPatch = { ...(fPatch || {}), ...fp } }
+          else if (t === 'remove_background') { cutout = true }
+          else if (t === 'edit_image' && op.instruction && imgInstr === null && visual?.storage_path) { imgInstr = String(op.instruction) }
         }
+        arr = arr.map(o => o.type === 'text' ? fitText(o) : o)
+        try {
+          const nonText = arr.filter(o => o.type !== 'text'); const textEls = arr.filter(o => o.type === 'text'); const scrims = []
+          const fixed = textEls.map(t2 => {
+            const th = measureTextH(t2); const existingScrim = nonText.find(e => e.__scrimFor === t2.id)
+            if (existingScrim) return { ...t2, fill: '#FFFFFF' }
+            const behind = [...nonText].reverse().find(e => (e.type==='rect'||e.type==='image'||e.type==='ellipse') && (e.opacity==null||e.opacity>0.6) && centerInside(t2, e, th))
+            let fill = t2.fill || '#111111'
+            if (behind && behind.type === 'rect' && typeof behind.fill === 'string' && behind.fill.startsWith('#')) { if (contrastRatio(fill, behind.fill) < 3) fill = readableOn(behind.fill) }
+            else if (behind && behind.type === 'image') { const pad = Math.round((t2.fontSize || 40) * 0.35); scrims.push({ id: nextId(), type:'rect', x: Math.max(0, (t2.x||0) - pad), y: Math.max(0, (t2.y||0) - pad), width: Math.min(cw, (t2.width||0) + pad*2), height: Math.min(ch, th + pad*2), fill: '#0f172a', cornerRadius: 12, rotation:0, opacity:0.5, __scrimFor: t2.id }); fill = '#FFFFFF' }
+            else { const b = (typeof bg === 'string' && bg.startsWith('#')) ? bg : '#ffffff'; if (contrastRatio(fill, b) < 3) fill = readableOn(b) }
+            return { ...t2, fill }
+          })
+          const rebuilt = [...nonText]; fixed.forEach(t2 => { const s = scrims.find(sc => sc.__scrimFor === t2.id); if (s) rebuilt.push(s); rebuilt.push(t2) }); arr = rebuilt
+        } catch (_e) {}
+        return { objects: arr, nextBg: bg, filterPatch: fPatch, imageInstruction: imgInstr, wantCutout: cutout }
       }
-      // Passform über ALLE Texte (nichts abgeschnitten)
-      next = next.map(o => o.type === 'text' ? fitText(o) : o)
-      // Kontrast + Ebenen-Reihenfolge: Text IMMER über seinem Untergrund + lesbare Farbe;
-      // über einem Foto ohne Balken → dezenten Scrim einziehen. Defensiv (Fehler → next unverändert).
-      try {
-        const nonText = next.filter(o => o.type !== 'text')
-        const textEls = next.filter(o => o.type === 'text')
-        const scrims = []
-        const fixedTexts = textEls.map(t => {
-          const th = measureTextH(t)
-          const existingScrim = nonText.find(e => e.__scrimFor === t.id)
-          if (existingScrim) return { ...t, fill: '#FFFFFF' }
-          const behind = [...nonText].reverse().find(e => (e.type==='rect'||e.type==='image'||e.type==='ellipse') && (e.opacity==null||e.opacity>0.6) && centerInside(t, e, th))
-          let fill = t.fill || '#111111'
-          if (behind && behind.type === 'rect' && typeof behind.fill === 'string' && behind.fill.startsWith('#')) {
-            if (contrastRatio(fill, behind.fill) < 3) fill = readableOn(behind.fill)
-          } else if (behind && behind.type === 'image') {
-            const pad = Math.round((t.fontSize || 40) * 0.35)
-            scrims.push({ id: nextId(), type:'rect', x: Math.max(0, (t.x||0) - pad), y: Math.max(0, (t.y||0) - pad), width: Math.min(cw, (t.width||0) + pad*2), height: Math.min(ch, th + pad*2), fill: '#0f172a', cornerRadius: 12, rotation:0, opacity:0.5, __scrimFor: t.id })
-            fill = '#FFFFFF'
-          } else {
-            const bg = (typeof nextBg === 'string' && nextBg.startsWith('#')) ? nextBg : '#ffffff'
-            if (contrastRatio(fill, bg) < 3) fill = readableOn(bg)
-          }
-          return { ...t, fill }
-        })
-        const rebuilt = [...nonText]
-        fixedTexts.forEach(t => { const s = scrims.find(sc => sc.__scrimFor === t.id); if (s) rebuilt.push(s); rebuilt.push(t) })
-        next = rebuilt
-      } catch (_e) { /* Guardrail-Fehler ignorieren, next bleibt wie es ist */ }
-      setObjects(next)
-      if (nextBg !== bgColor) setBgColor(nextBg)
-      if (filterPatch) setFilters(prev => ({ ...prev, ...filterPatch }))
+
+      // Vision-Prüfung (Stufe 2): rendert das Ergebnis, bildfähiges Modell begutachtet + bessert nach.
+      const slimFor = (list) => list.filter(o => !o.hidden).map(o => { const b = { id:o.id, type:o.type, x:Math.round(o.x||0), y:Math.round(o.y||0) }; if (o.type==='text') Object.assign(b,{ text:o.text, fontSize:o.fontSize, fill:o.fill, align:o.align||'left', width:Math.round(o.width||360) }); else if (o.type==='rect') Object.assign(b,{ width:Math.round(o.width||0), height:Math.round(o.height||0), fill:o.fill, opacity:o.opacity==null?1:o.opacity }); else if (o.type==='ellipse') Object.assign(b,{ radiusX:Math.round(o.radiusX||0), radiusY:Math.round(o.radiusY||0), fill:o.fill }); else if (o.type==='image') Object.assign(b,{ width:Math.round(o.width||0), height:Math.round(o.height||0), hinweis:'Bild – Inhalt nicht änderbar' }); return b })
+      const runVisionReview = async (userCmd, currentObjs, currentBg) => {
+        try {
+          if (!teamId) return ''
+          await new Promise(r => setTimeout(r, 450))
+          let blob; try { blob = await renderBlobOpts({ pixelRatio: 1, mimeType: 'image/png' }) } catch (_e) { return '' }
+          if (!blob || blob.size > 4.8 * 1024 * 1024) return ''
+          const up = await uploadImageBlob(teamId, blob); if (!up || !up.path) return ''
+          const reviewPrompt = `Du bist der strenge Qualitäts-Prüfer eines Grafik-Designers und SIEHST das gerenderte Design (angehängtes Bild). Ursprünglicher Nutzer-Befehl: "${userCmd}". Seitengröße ${cw}x${ch}px.
+
+Prüfe kritisch anhand des Bildes: (1) Ist ALLE Schrift gut lesbar (klarer Kontrast zum Untergrund) und nirgends abgeschnitten oder verdeckt? (2) Überlappen oder verdecken sich Elemente ungewollt? (3) Sitzt alles sauber (Ränder, Ausrichtung, sinnvolle Größen)? (4) Ist der Befehl erfüllt und wirkt es professionell?
+
+Editierbare Elemente (JSON, Koordinaten = linke obere Ecke):
+${JSON.stringify(slimFor(currentObjs))}
+
+Wenn alles gut ist, antworte {"ok":true,"operations":[]}. Sonst gib gezielte KORREKTUR-Operationen zurück, die die Mängel beheben — NUR diese Typen: update (id+props), add_text, add_rect, add_ellipse, delete, set_background, set_filter. KEINE Bild-Neugenerierung. Farben als Hex #rrggbb, alles innerhalb der Seite.
+
+Antworte AUSSCHLIESSLICH mit JSON: {"ok":<bool>,"issues":["..."],"operations":[...]}`
+          const { data: rev } = await Promise.race([
+            supabase.functions.invoke('generate', { body: { type:'raw', model:'claude-sonnet-4-6', prompt: reviewPrompt, referenceMediaPaths: [up.path] } }),
+            new Promise((_, rej) => setTimeout(() => rej(new Error('review-timeout')), 45000)),
+          ])
+          try { supabase.storage.from('visuals').remove([up.path]) } catch (_e) {}
+          let rtxt = String(rev?.text || rev?.content || rev?.output || '').trim().replace(/^```(?:json)?/i,'').replace(/```\s*$/i,'').trim()
+          const ra = rtxt.indexOf('{'), rz = rtxt.lastIndexOf('}'); if (ra>=0 && rz>ra) rtxt = rtxt.slice(ra, rz+1)
+          const parsedRev = JSON.parse(rtxt)
+          const revOps = (Array.isArray(parsedRev.operations) ? parsedRev.operations : []).filter(o => o && o.op && o.op !== 'edit_image' && o.op !== 'remove_background')
+          if (!revOps.length) return 'Von der KI geprüft ✓'
+          const r2 = computeApplied(revOps, currentObjs, currentBg)
+          setObjects(r2.objects)
+          if (r2.nextBg !== currentBg) setBgColor(r2.nextBg)
+          if (r2.filterPatch) setFilters(prev => ({ ...prev, ...r2.filterPatch }))
+          return 'Von der KI geprüft & nachgebessert ✓'
+        } catch (_e) { return '' }
+      }
+
+      const r1 = computeApplied(ops, objects, bgColor)
+      setObjects(r1.objects)
+      if (r1.nextBg !== bgColor) setBgColor(r1.nextBg)
+      if (r1.filterPatch) setFilters(prev => ({ ...prev, ...r1.filterPatch }))
       let opError = null
-      if (imageInstruction) {
-        try {
-          const nv = await callGenerateImage(`Bearbeite das Referenzbild: ${imageInstruction}. Behalte Bildstil, Beleuchtung und Perspektive konsistent, fotorealistisch.`)
-          const url = await visualDataUrl(nv.storage_path)
-          if (url) await applyResultDirect(url, 'free')
-        } catch (e) { opError = 'Bild-Bearbeitung fehlgeschlagen: ' + (e?.message || 'Fehler') }
+      if (r1.imageInstruction) {
+        try { const nv = await callGenerateImage(`Bearbeite das Referenzbild: ${r1.imageInstruction}. Behalte Bildstil, Beleuchtung und Perspektive konsistent, fotorealistisch.`); const url = await visualDataUrl(nv.storage_path); if (url) await applyResultDirect(url, 'free') } catch (e) { opError = 'Bild-Bearbeitung fehlgeschlagen: ' + (e?.message || 'Fehler') }
       }
-      if (wantCutout && visual?.storage_path) {
-        try {
-          const nv = await callGenerateImage('Stelle das Hauptmotiv sauber frei und entferne den Hintergrund vollständig. Sauberer Freisteller mit transparentem Hintergrund.', { model: 'gpt-image-1', quality: 'high', background: 'transparent' })
-          const url = await visualDataUrl(nv.storage_path)
-          if (url) await applyResultDirect(url, 'cutout')
-        } catch (e) { opError = 'Freistellen fehlgeschlagen: ' + (e?.message || 'Fehler') }
+      if (r1.wantCutout && visual?.storage_path) {
+        try { const nv = await callGenerateImage('Stelle das Hauptmotiv sauber frei und entferne den Hintergrund vollständig. Sauberer Freisteller mit transparentem Hintergrund.', { model: 'gpt-image-1', quality: 'high', background: 'transparent' }); const url = await visualDataUrl(nv.storage_path); if (url) await applyResultDirect(url, 'cutout') } catch (e) { opError = 'Freistellen fehlgeschlagen: ' + (e?.message || 'Fehler') }
       }
       setPageAiCmd('')
-      setSavedMsg(opError || 'Seite mit KI bearbeitet')
+      let reviewNote = ''
+      if (!opError && r1.objects.some(o => o.type === 'text')) { reviewNote = await runVisionReview(c, r1.objects, r1.nextBg) }
+      setSavedMsg(opError || reviewNote || 'Seite mit KI bearbeitet')
     } catch (e) {
       setSavedMsg('KI-Fehler: ' + (e?.message || 'fehlgeschlagen'))
     } finally { setPageAiBusy(false) }
