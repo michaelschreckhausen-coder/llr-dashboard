@@ -11,8 +11,9 @@
 // entfernt — die wiederverwendbaren Start-Layouts leben jetzt im Designer
 // (src/lib/designTemplates.js).
 
-import React, { useState, useEffect } from 'react'
-import { Image as ImageIcon, Pencil, Pin, Sparkles, Star, Trash2, Upload, X } from 'lucide-react'
+import React, { useState, useEffect, useRef } from 'react'
+import { Image as ImageIcon, Pencil, Pin, Sparkles, Star, Trash2, Upload, X, FileText, FileUp } from 'lucide-react'
+import { resizeImageBeforeUpload } from '../lib/imageResize'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
 import { sharedBrandVoiceIds, scopeContentByTeamOrSharedBV } from '../lib/teamShares'
@@ -23,7 +24,7 @@ import { useBrandVoice } from '../context/BrandVoiceContext'
 const P = 'var(--wl-primary, rgb(49,90,231))'
 
 // ─── Hauptkomponente ────────────────────────────────────────────────────────
-export default function Visuals({ session, kindFilter = null, embedded = false }) {
+export default function Visuals({ session, kindFilter = null, embedded = false, allowUpload = false }) {
   const navigate = useNavigate()
   const [searchParams] = useSearchParams()
   const { activeTeamId } = useTeam()
@@ -36,6 +37,9 @@ export default function Visuals({ session, kindFilter = null, embedded = false }
   const [librarySearch, setLibrarySearch] = useState('')
   const [libraryShowAllBVs, setLibraryShowAllBVs] = useState(false)
   const [libraryFavOnly, setLibraryFavOnly] = useState(false)
+  const [uploading, setUploading] = useState(false)
+  const [dragOver, setDragOver] = useState(false)
+  const fileInputRef = useRef(null)
   // "Im Designer öffnen": neues ODER bestehendes Design wählen
   const [designerPick, setDesignerPick] = useState(null)   // Bild-Visual
   const [designs, setDesigns] = useState([])
@@ -83,7 +87,8 @@ export default function Visuals({ session, kindFilter = null, embedded = false }
       .eq('is_archived', false)
     if (kindFilter) {
       // Bibliothek: exakt nach Art filtern (Designs bzw. alle Bild-Medien inkl. Uploads).
-      q = q.eq('kind', kindFilter)
+      // Medien-Bibliothek: generierte Bilder (kind=image) UND alle Uploads (auch PDFs/Docs)
+      q = kindFilter === 'image' ? q.or('kind.eq.image,model.eq.upload') : q.eq('kind', kindFilter)
     } else {
       q = q.neq('model', 'upload').or('media_type.is.null,media_type.eq.image')
     }
@@ -102,6 +107,41 @@ export default function Visuals({ session, kindFilter = null, embedded = false }
     setLibrary(withUrls); setLibLoading(false)
   }
   useEffect(() => { if (activeTeamId) loadLibrary() }, [activeTeamId, activeBrandVoice?.id, libraryShowAllBVs, libraryFavOnly, librarySearch])
+
+  // ─── Datei-Upload (Bilder, PDFs, docx, xlsx …) → visuals-Bucket + Tabelle ───
+  async function uploadFiles(fileList) {
+    const arr = Array.from(fileList || [])
+    if (!arr.length) return
+    if (!activeTeamId) { alert('Kein Team aktiv'); return }
+    if (!activeBrandVoice?.id) { alert('Bitte oben eine Brand Voice wählen, um Medien hochzuladen.'); return }
+    setUploading(true)
+    try {
+      for (const file of arr) {
+        if (file.size > 100 * 1024 * 1024) { alert(`${file.name}: max 100 MB`); continue }
+        let mediaType = 'document'
+        if (file.type.startsWith('image/')) mediaType = 'image'
+        else if (file.type.startsWith('video/')) mediaType = 'video'
+        else if (/\.(png|jpe?g|webp|gif|svg)$/i.test(file.name)) mediaType = 'image'
+        else if (/\.(mp4|mov|webm|avi)$/i.test(file.name)) mediaType = 'video'
+        let uploadFile = file
+        if (mediaType === 'image') { try { uploadFile = await resizeImageBeforeUpload(file, 1600, 0.85) } catch (_e) {} }
+        const ext = (file.name.split('.').pop() || 'bin').toLowerCase()
+        const visualId = crypto.randomUUID()
+        const path = `${activeTeamId}/uploads/${visualId}.${ext}`
+        const contentType = file.type || 'application/octet-stream'
+        const { error: upErr } = await supabase.storage.from('visuals').upload(path, uploadFile, { contentType, upsert: false })
+        if (upErr) { alert(`Upload ${file.name}: ${upErr.message}`); continue }
+        const { error: insErr } = await supabase.from('visuals').insert({
+          id: visualId, user_id: session?.user?.id, team_id: activeTeamId, brand_voice_id: activeBrandVoice.id,
+          prompt: file.name, resolved_prompt: file.name, aspect_ratio: '1:1', model: 'upload',
+          storage_path: path, media_type: mediaType, original_filename: file.name,
+          file_size_bytes: file.size, mime_type: file.type,
+        })
+        if (insErr) alert(`Speichern ${file.name}: ${insErr.message}`)
+      }
+      await loadLibrary()
+    } finally { setUploading(false) }
+  }
 
   // Download via Blob: signed URLs sind cross-origin, das download-Attribut
   // wird vom Browser ignoriert → Bild öffnet sich statt downzuloaden.
@@ -307,12 +347,28 @@ export default function Visuals({ session, kindFilter = null, embedded = false }
       )}
 
       {/* Library */}
-      <section>
+      <section
+        onDragOver={allowUpload ? (e => { if (Array.from(e.dataTransfer?.types||[]).includes('Files')) { e.preventDefault(); setDragOver(true) } }) : undefined}
+        onDragLeave={allowUpload ? (e => { if (e.currentTarget === e.target) setDragOver(false) }) : undefined}
+        onDrop={allowUpload ? (e => { e.preventDefault(); setDragOver(false); if (e.dataTransfer?.files?.length) uploadFiles(e.dataTransfer.files) }) : undefined}
+        style={{ position:'relative' }}>
+        {allowUpload && dragOver && (
+          <div style={{ position:'absolute', inset:-6, zIndex:20, borderRadius:14, background:'rgba(49,90,231,0.07)', border:'2px dashed '+P, display:'flex', alignItems:'center', justifyContent:'center', pointerEvents:'none' }}>
+            <span style={{ fontSize:14, fontWeight:700, color:P }}>Dateien hier ablegen zum Hochladen</span>
+          </div>
+        )}
         <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', flexWrap:'wrap', gap:10, marginBottom:12 }}>
           <h3 style={{ fontSize:14, fontWeight:700, color:'var(--text-primary)', margin:0 }}>
             Bibliothek
           </h3>
           <div style={{ display:'flex', alignItems:'center', gap:8, flexWrap:'wrap' }}>
+            {allowUpload && (<>
+              <input ref={fileInputRef} type="file" multiple accept="image/*,application/pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.csv,.txt" style={{ display:'none' }} onChange={e => { uploadFiles(e.target.files); e.target.value='' }} />
+              <button onClick={() => fileInputRef.current?.click()} disabled={uploading}
+                style={{ padding:'7px 14px', borderRadius:8, border:'none', background:P, color:'#fff', fontSize:12.5, fontWeight:700, cursor: uploading?'default':'pointer', display:'inline-flex', alignItems:'center', gap:6, opacity: uploading?0.7:1 }}>
+                <FileUp size={14} strokeWidth={2}/>{uploading ? 'Lädt…' : 'Dateien hochladen'}
+              </button>
+            </>)}
             <input type="text" value={librarySearch} onChange={e => setLibrarySearch(e.target.value)}
               placeholder="Prompt durchsuchen…"
               style={{ padding:'7px 10px', borderRadius:8, border:'1.5px solid var(--border)', fontSize:12, fontFamily:'inherit', outline:'none', minWidth:200 }}/>
@@ -549,15 +605,23 @@ function aspectToCss(ar) {
 // ─── Galerie-Karte ──────────────────────────────────────────────────────────
 function GalleryCard({ v, linkedMode, onOpenStudio, onLightbox, onDownload, onAttach, onToggleFav, onDelete }) {
   const [hover, setHover] = useState(false)
+  const isImage = (v.media_type || 'image') === 'image'
+  const fname = v.original_filename || v.prompt || 'Datei'
+  const ext = (fname.split('.').pop() || 'DATEI').toUpperCase().slice(0, 5)
   return (
     <div onMouseEnter={() => setHover(true)} onMouseLeave={() => setHover(false)}
       style={{ position:'relative', borderRadius:12, overflow:'hidden', background:'var(--surface)',
         border:'1px solid ' + (v.is_favorite ? '#F59E0B' : 'var(--border)'), boxShadow:'0 1px 3px rgba(0,0,0,0.06)' }}>
-      <div onClick={onLightbox} style={{ cursor:'pointer', aspectRatio: aspectToCss(v.aspect_ratio), background:'#0b0b0b' }}>
-        {v.signed_url
-          ? <img src={v.signed_url} alt={v.prompt} style={{ width:'100%', height:'100%', objectFit:'cover', display:'block' }}/>
-          : <div style={{ width:'100%', height:'100%', display:'flex', alignItems:'center', justifyContent:'center', color:'var(--text-muted)', fontSize:11 }}>Kein Bild</div>
-        }
+      <div onClick={isImage ? onLightbox : onDownload} style={{ cursor:'pointer', aspectRatio: aspectToCss(v.aspect_ratio), background: isImage ? '#0b0b0b' : '#F1F5F9', display:'flex', alignItems:'center', justifyContent:'center' }}>
+        {isImage
+          ? (v.signed_url
+              ? <img src={v.signed_url} alt={v.prompt} style={{ width:'100%', height:'100%', objectFit:'cover', display:'block' }}/>
+              : <div style={{ color:'var(--text-muted)', fontSize:11 }}>Kein Bild</div>)
+          : <div style={{ display:'flex', flexDirection:'column', alignItems:'center', gap:8, padding:14, textAlign:'center' }}>
+              <FileText size={38} strokeWidth={1.3} style={{ color:P }}/>
+              <span style={{ fontSize:11, fontWeight:800, color:P, letterSpacing:'0.06em' }}>{ext}</span>
+              <span style={{ fontSize:11, color:'var(--text-muted)', maxWidth:'92%', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{fname}</span>
+            </div>}
       </div>
 
       {/* Favorit (immer sichtbar) */}
@@ -578,10 +642,12 @@ function GalleryCard({ v, linkedMode, onOpenStudio, onLightbox, onDownload, onAt
             <Pin size={12} strokeWidth={1.9}/>Zu Beitrag hinzufügen
           </button>
         )}
+        {isImage && (
         <button onClick={e => { e.stopPropagation(); onOpenStudio() }}
           style={{ padding:'7px 10px', borderRadius:8, border:'none', background: linkedMode ? 'rgba(255,255,255,0.92)' : P, color: linkedMode ? '#111' : '#fff', fontSize:11.5, fontWeight:700, cursor:'pointer', display:'inline-flex', alignItems:'center', justifyContent:'center', gap:5 }}>
           <Pencil size={12} strokeWidth={1.9}/>Im Designer öffnen
         </button>
+        )}
         <div style={{ display:'flex', gap:6 }}>
           <button onClick={e => { e.stopPropagation(); onDownload() }} title="Herunterladen"
             style={{ flex:1, padding:'6px 10px', borderRadius:8, border:'none', background:'rgba(255,255,255,0.92)', color:'#111', fontSize:11.5, fontWeight:700, cursor:'pointer', display:'inline-flex', alignItems:'center', justifyContent:'center', gap:5 }}>
