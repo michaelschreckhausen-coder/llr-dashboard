@@ -3,6 +3,52 @@ import { BarChart3, Bot, ClipboardList, Handshake, Palette, Users } from 'lucide
 
 const RELEASES = [
   {
+    version: 'v1.1',
+    date: '2. Juli 2026',
+    label: 'Sicherheit, Benachrichtigungen & UI-Feinschliff',
+    color: '#0A66C2',
+    badge: 'Neu',
+    entries: [
+      {
+        cat: 'Zwei-Faktor-Authentifizierung',
+        icon: '🔐',
+        items: [
+          'Optionale 2FA per Authenticator-App (TOTP) — Einrichtung in den Einstellungen mit QR-Code',
+          'Backup-Codes für den Notfall: einmalig anzeigen, sicher gehasht gespeichert, jederzeit neu generierbar',
+          'Login fragt bei aktiver 2FA nach dem Einmalcode; alternativ Backup-Code verwenden',
+          'Admin kann 2FA eines Users bei Verlust des Geräts zurücksetzen',
+        ],
+      },
+      {
+        cat: 'Benachrichtigungen',
+        icon: '🔔',
+        items: [
+          'Glocke durchsucht jetzt 8 Bereiche: Leads, Follow-ups, CRM-Aufgaben, Deals, Projekt-Aufgaben, Vernetzungen, geplante Posts, Einladungen',
+          'Rote Zähler-Badge, sobald etwas Ungelesenes da ist',
+          'Echtzeit-Aktualisierung statt Verzögerung',
+          'Einträge einzeln oder gesammelt löschen — bleibt geräteübergreifend gelöscht',
+        ],
+      },
+      {
+        cat: 'Aufgaben & Kontakte',
+        icon: <ClipboardList size={16} strokeWidth={1.75}/>,
+        items: [
+          'Aufgaben-Seite im einheitlichen Branding/CRM-Design; Quellen kompakt im Dropdown',
+          'Kontaktdetail: LinkedIn, E-Mail und Telefon als saubere Links statt abgeschnittener URLs',
+        ],
+      },
+      {
+        cat: 'Oberfläche',
+        icon: <Palette size={16} strokeWidth={1.75}/>,
+        items: [
+          'Marketplace & „Erste Schritte" auf einheitliche Breite und Optik gebracht',
+          'Aufgeräumtes Kopf-Menü (funktionslose Einträge entfernt), Seitenleiste bleibt voll sichtbar',
+          'Nicht funktionierende Kanban-Board-Ansicht vorübergehend ausgeblendet',
+        ],
+      },
+    ],
+  },
+  {
     version: 'v1.0',
     date: '13. April 2026',
     label: 'Chrome Extension & LinkedIn-Automation',
