@@ -1411,7 +1411,17 @@ WICHTIG – LAYOUT & PASSFORM (sonst wird Text abgeschnitten):
 - Farben immer als Hex #rrggbb. Bevorzuge Marken-Farben/Schriften, wenn vorhanden.
 - Bei "Headline mit meinem Namen" o.Ä.: lege EIN neues Text-Element mit dem oben genannten Namen an, mit passender width (bis zum Rand) und einer fontSize, bei der der ganze Name sichtbar bleibt.
 
-Gib AUSSCHLIESSLICH gültiges JSON zurück (kein Markdown, keine Erklärung) – eine Liste von Operationen in Ausführungsreihenfolge:
+Farb-/Lesbarkeits-Regeln (SEHR WICHTIG, sonst unlesbar):
+- Text braucht klaren Kontrast zum Untergrund. Heller Untergrund → dunkler Text; dunkler Untergrund → heller Text. NIE weißen Text auf hellem Foto/Hintergrund.
+- Headline auf einem Foto: ZUERST einen deckenden Balken (add_rect, Markenfarbe oder dunkel) anlegen, DANN den Text (Text-Operation NACH dem Balken); der Text sitzt auf dem Balken.
+- Marken-Farben bevorzugen, aber Lesbarkeit geht IMMER vor.
+
+Bild-Befehle nach Absicht (nicht verwechseln):
+- Schwarz-Weiß / Graustufen / entsättigen → set_filter mit {"grayscale":1}. NICHT edit_image.
+- Hintergrund entfernen / freistellen → remove_background.
+- Inhaltliche Bildänderung (Szene, Objekte, Stil, Licht) → edit_image.
+
+Gib AUSSCHLIESSLICH gültiges JSON zurück (kein Markdown, keine Erklärung) – Operationen in Ausführungsreihenfolge (Balken VOR zugehörigem Text):
 {"operations":[
   {"op":"add_text","text":"...","x":<int>,"y":<int>,"fontSize":<int>,"fill":"#rrggbb","fontFamily":"Inter","fontStyle":"normal|bold|italic","align":"left|center|right","width":<int>},
   {"op":"add_rect","x":<int>,"y":<int>,"width":<int>,"height":<int>,"fill":"#rrggbb","cornerRadius":<int>},
@@ -1419,9 +1429,11 @@ Gib AUSSCHLIESSLICH gültiges JSON zurück (kein Markdown, keine Erklärung) –
   {"op":"update","id":"<vorhandene id>","props":{ ...nur zu ändernde Felder... }},
   {"op":"delete","id":"<vorhandene id>"},
   {"op":"set_background","color":"#rrggbb"},
-  {"op":"edit_image","instruction":"was am Bild geändert werden soll"}
+  {"op":"set_filter","filters":{"grayscale":"0-1","contrast":"-50..50","brightness":"-1..1","saturation":"-1..1","sepia":"0-1"}},
+  {"op":"remove_background"},
+  {"op":"edit_image","instruction":"inhaltliche Bildänderung"}
 ]}
-Nutze nur Operationen, die für den Befehl nötig sind. "edit_image" nur, wenn der Befehl das Bild selbst betrifft.`
+Nutze nur die für den Befehl nötigen Operationen.`
       const genCall = supabase.functions.invoke('generate', { body: { type: 'raw', model: 'claude-sonnet-4-6', prompt } })
       const timeout = new Promise((_, rej) => setTimeout(() => rej(new Error('Zeitüberschreitung – bitte erneut versuchen')), 75000))
       const { data, error } = await Promise.race([genCall, timeout])
@@ -1468,9 +1480,20 @@ Nutze nur Operationen, die für den Befehl nötig sind. "edit_image" nur, wenn d
           return { ...o, x, y, width, fontSize }
         } catch (_e) { return o }
       }
+      // Farb-/Kontrast-Helfer für garantiert lesbaren Text
+      const parseHex = (h) => { try { let s=String(h||'').trim().replace('#',''); if(s.length===3) s=s.split('').map(c=>c+c).join(''); if(s.length!==6||/[^0-9a-f]/i.test(s)) return null; return [parseInt(s.slice(0,2),16),parseInt(s.slice(2,4),16),parseInt(s.slice(4,6),16)] } catch(_e){ return null } }
+      const relLum = (rgb) => { if(!rgb) return null; const a=rgb.map(v=>{ v/=255; return v<=0.03928 ? v/12.92 : Math.pow((v+0.055)/1.055,2.4) }); return 0.2126*a[0]+0.7152*a[1]+0.0722*a[2] }
+      const contrastRatio = (h1,h2) => { const l1=relLum(parseHex(h1)), l2=relLum(parseHex(h2)); if(l1==null||l2==null) return 21; const hi=Math.max(l1,l2), lo=Math.min(l1,l2); return (hi+0.05)/(lo+0.05) }
+      const readableOn = (bgHex) => { const l=relLum(parseHex(bgHex)); return (l==null||l>0.5) ? '#111111' : '#FFFFFF' }
+      const measureTextH = (o) => { try { const n=new Konva.Text({ text:String(o.text||''), fontSize:o.fontSize||40, fontFamily:o.fontFamily||'Inter', fontStyle:o.fontStyle||'normal', width:o.width||300, lineHeight:1.15 }); const h=n.height(); try{n.destroy()}catch(_e){} return h } catch(_e){ return (o.fontSize||40)*1.3 } }
+      const ebbox = (o, th) => { if(o.type==='ellipse') return { x:(o.x||0)-(o.radiusX||0), y:(o.y||0)-(o.radiusY||0), w:2*(o.radiusX||0), h:2*(o.radiusY||0) }; return { x:o.x||0, y:o.y||0, w:o.width||0, h:(o.type==='text'?(th||measureTextH(o)):(o.height||0)) } }
+      const centerInside = (t, e, th) => { const tb=ebbox(t,th), eb=ebbox(e); const cx=tb.x+tb.w/2, cy=tb.y+tb.h/2; return eb.w>0 && eb.h>0 && cx>=eb.x && cx<=eb.x+eb.w && cy>=eb.y && cy<=eb.y+eb.h }
+
       let next = objects.map(o => ({ ...o }))
       let nextBg = bgColor
       let imageInstruction = null
+      let filterPatch = null
+      let wantCutout = false
       for (const op of ops) {
         const t = op && op.op
         if (t === 'add_text' && op.text) {
@@ -1488,23 +1511,66 @@ Nutze nur Operationen, die für den Befehl nötig sind. "edit_image" nur, wenn d
           next = next.filter(o => o.id !== op.id)
         } else if (t === 'set_background' && op.color) {
           nextBg = op.color
+        } else if (t === 'set_filter' && op.filters && typeof op.filters === 'object') {
+          const fa = ['grayscale','contrast','brightness','saturation','sepia','hue','blur','invert','vignette','warmth','enhance']
+          const fp = {}; fa.forEach(k => { const v = Number(op.filters[k]); if (op.filters[k] !== undefined && op.filters[k] !== null && !isNaN(v)) fp[k] = v })
+          if (Object.keys(fp).length) filterPatch = { ...(filterPatch || {}), ...fp }
+        } else if (t === 'remove_background') {
+          wantCutout = true
         } else if (t === 'edit_image' && op.instruction && imageInstruction === null && visual?.storage_path) {
           imageInstruction = String(op.instruction)
         }
       }
-      // Finale Passform-Prüfung über ALLE Texte (fixt add_text UND geänderte/vorhandene)
+      // Passform über ALLE Texte (nichts abgeschnitten)
       next = next.map(o => o.type === 'text' ? fitText(o) : o)
+      // Kontrast + Ebenen-Reihenfolge: Text IMMER über seinem Untergrund + lesbare Farbe;
+      // über einem Foto ohne Balken → dezenten Scrim einziehen. Defensiv (Fehler → next unverändert).
+      try {
+        const nonText = next.filter(o => o.type !== 'text')
+        const textEls = next.filter(o => o.type === 'text')
+        const scrims = []
+        const fixedTexts = textEls.map(t => {
+          const th = measureTextH(t)
+          const existingScrim = nonText.find(e => e.__scrimFor === t.id)
+          if (existingScrim) return { ...t, fill: '#FFFFFF' }
+          const behind = [...nonText].reverse().find(e => (e.type==='rect'||e.type==='image'||e.type==='ellipse') && (e.opacity==null||e.opacity>0.6) && centerInside(t, e, th))
+          let fill = t.fill || '#111111'
+          if (behind && behind.type === 'rect' && typeof behind.fill === 'string' && behind.fill.startsWith('#')) {
+            if (contrastRatio(fill, behind.fill) < 3) fill = readableOn(behind.fill)
+          } else if (behind && behind.type === 'image') {
+            const pad = Math.round((t.fontSize || 40) * 0.35)
+            scrims.push({ id: nextId(), type:'rect', x: Math.max(0, (t.x||0) - pad), y: Math.max(0, (t.y||0) - pad), width: Math.min(cw, (t.width||0) + pad*2), height: Math.min(ch, th + pad*2), fill: '#0f172a', cornerRadius: 12, rotation:0, opacity:0.5, __scrimFor: t.id })
+            fill = '#FFFFFF'
+          } else {
+            const bg = (typeof nextBg === 'string' && nextBg.startsWith('#')) ? nextBg : '#ffffff'
+            if (contrastRatio(fill, bg) < 3) fill = readableOn(bg)
+          }
+          return { ...t, fill }
+        })
+        const rebuilt = [...nonText]
+        fixedTexts.forEach(t => { const s = scrims.find(sc => sc.__scrimFor === t.id); if (s) rebuilt.push(s); rebuilt.push(t) })
+        next = rebuilt
+      } catch (_e) { /* Guardrail-Fehler ignorieren, next bleibt wie es ist */ }
       setObjects(next)
       if (nextBg !== bgColor) setBgColor(nextBg)
+      if (filterPatch) setFilters(prev => ({ ...prev, ...filterPatch }))
+      let opError = null
       if (imageInstruction) {
         try {
           const nv = await callGenerateImage(`Bearbeite das Referenzbild: ${imageInstruction}. Behalte Bildstil, Beleuchtung und Perspektive konsistent, fotorealistisch.`)
           const url = await visualDataUrl(nv.storage_path)
           if (url) await applyResultDirect(url, 'free')
-        } catch (_e) {}
+        } catch (e) { opError = 'Bild-Bearbeitung fehlgeschlagen: ' + (e?.message || 'Fehler') }
+      }
+      if (wantCutout && visual?.storage_path) {
+        try {
+          const nv = await callGenerateImage('Stelle das Hauptmotiv sauber frei und entferne den Hintergrund vollständig. Sauberer Freisteller mit transparentem Hintergrund.', { model: 'gpt-image-1', quality: 'high', background: 'transparent' })
+          const url = await visualDataUrl(nv.storage_path)
+          if (url) await applyResultDirect(url, 'cutout')
+        } catch (e) { opError = 'Freistellen fehlgeschlagen: ' + (e?.message || 'Fehler') }
       }
       setPageAiCmd('')
-      setSavedMsg('Seite mit KI bearbeitet')
+      setSavedMsg(opError || 'Seite mit KI bearbeitet')
     } catch (e) {
       setSavedMsg('KI-Fehler: ' + (e?.message || 'fehlgeschlagen'))
     } finally { setPageAiBusy(false) }
