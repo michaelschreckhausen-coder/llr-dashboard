@@ -1393,13 +1393,21 @@ export default function DesignerCanvas({ visual, teamId, onSaved, onReplaceVisua
         brandFonts.length ? `Marken-Schriften: ${brandFonts.join(', ')}` : '',
         bv.visual_style_description ? `Visueller Stil: ${bv.visual_style_description}` : '',
       ].filter(Boolean).join('\n')
+      // Company-Marken (echte Corporate Identity: Farben, Schriften, Logos) aus brandData.
+      const companyList = Array.isArray(brandData?.companies) ? brandData.companies
+        : (brandData && (brandData.palette || brandData.logos || brandData.fonts) ? [{ name: brandName || 'Marke', palette: brandData.palette, logos: brandData.logos, fonts: brandData.fonts }] : [])
+      const companyCtx = (companyList || []).filter(cc => cc && (((cc.palette||[]).length) || ((cc.logos||[]).length) || ((cc.fonts||[]).length))).map(cc => {
+        const pal = (cc.palette || []).slice(0, 8).join(', ')
+        const fnts = (cc.fonts || []).map(f => (f && (f.family || f.name)) || (typeof f === 'string' ? f : '')).filter(Boolean).slice(0, 4).join(', ')
+        return `- "${cc.name}": ${pal ? 'Farben ' + pal + '. ' : ''}${fnts ? 'Schriften ' + fnts + '. ' : ''}${(cc.logos && cc.logos.length) ? 'Logo vorhanden (mit add_logo company:"' + cc.name + '" einfügen).' : 'kein Logo hinterlegt.'}`
+      }).join('\n')
 
       const prompt = `Du bist ein agentischer Grafik-Design-Assistent und bearbeitest eine Design-Seite (Größe ${cw}x${ch} Pixel; Koordinaten = linke obere Ecke in Pixeln, bei Ellipse ist x,y der Mittelpunkt). Aktuelle Hintergrundfarbe: ${bgColor || 'transparent'}.
 
 Aktuelle Elemente als JSON:
 ${JSON.stringify(slim)}
 
-${brandCtx ? 'Marken-Kontext:\n' + brandCtx + '\n\n' : ''}Nutzer-Befehl: "${c}"
+${brandCtx ? 'Marken-Kontext (Person):\n' + brandCtx + '\n\n' : ''}${companyCtx ? 'Company-Marken (ECHTE Corporate Identity — verwende deren echte Farben/Schriften/Logos; erfinde NIEMALS Marken-Claims, Taglines oder Logo-Texte):\n' + companyCtx + '\n\n' : ''}Nutzer-Befehl: "${c}"
 
 Setze den Befehl vollständig und gestalterisch sauber um. Du DARFST: neue Elemente hinzufügen (z.B. eine Headline), bestehende ändern, löschen, den Hintergrund ändern und das Basisbild inhaltlich bearbeiten. Achte auf Lesbarkeit, Kontrast, sinnvolle Größen/Positionen und ein sauberes Layout.
 
@@ -1420,7 +1428,9 @@ Bild-Befehle nach Absicht (NICHT verwechseln — das ist wichtig):
 - Reine Farb-/Ton-/Helligkeits-Anpassungen (Schwarz-Weiß, Graustufen, entsättigen, heller, dunkler, mehr/weniger Kontrast, wärmer/kühler) → IMMER set_filter (z.B. {"grayscale":1}). Das ist ein nicht-destruktiver Filter — es wird NICHTS neu generiert. NIEMALS edit_image/remove_background dafür verwenden.
 - Hintergrund entfernen / freistellen → remove_background (die Person bleibt erhalten, nur der Hintergrund wird transparent).
 - Inhaltliche Bildänderung (andere Szene/Objekte/Perspektive) → edit_image.
-- GRUNDPRINZIP: Nutze IMMER zuerst die eingebauten Designer-Funktionen. set_filter (Farbe/Ton) und remove_background (Freistellen per lokalem Matting) verändern die Person NICHT und sind zu bevorzugen. Nur edit_image erzeugt das Bild generativ NEU — verwende es ausschließlich für inhaltliche Änderungen, die weder Filter noch Freisteller leisten können (z.B. andere Szene/Objekte/Perspektive im Bild).
+- Hintergrund durch ein NEUES (generiertes) Bild ersetzen — z.B. "generiere ein Büro im Hintergrund", "setz mich vor einen anderen Hintergrund" → replace_background mit instruction. Die Person wird per Matting freigestellt UND der neue Hintergrund generiert und dahintergelegt — Person bleibt EXAKT erhalten. NICHT edit_image, NICHT set_background-Farbe.
+- Logo einer Company-Marke einfügen → add_logo mit company="<Markenname>" (+ optional corner). Nutze IMMER das echte hinterlegte Logo, erzeuge NIEMALS ein Text-/Wortmarken-Logo.
+- GRUNDPRINZIP: Nutze IMMER zuerst die eingebauten Designer-Funktionen (set_filter, remove_background, replace_background, add_logo — sie erhalten die Person/nutzen echte Assets). Nur edit_image erzeugt das Basisbild generativ NEU — ausschließlich für inhaltliche Änderungen am Motiv, die keine eingebaute Funktion leisten kann.
 
 Gib AUSSCHLIESSLICH gültiges JSON zurück (kein Markdown, keine Erklärung) – Operationen in Ausführungsreihenfolge (Balken VOR zugehörigem Text):
 {"operations":[
@@ -1432,7 +1442,9 @@ Gib AUSSCHLIESSLICH gültiges JSON zurück (kein Markdown, keine Erklärung) –
   {"op":"set_background","color":"#rrggbb"},
   {"op":"set_filter","filters":{"grayscale":"0-1","contrast":"-50..50","brightness":"-1..1","saturation":"-1..1","sepia":"0-1"}},
   {"op":"remove_background"},
-  {"op":"edit_image","instruction":"inhaltliche Bildänderung"}
+  {"op":"replace_background","instruction":"Beschreibung des neuen Hintergrunds, z.B. modernes helles Büro"},
+  {"op":"add_logo","company":"<Company-Markenname>","corner":"top-right|top-left|bottom-right|bottom-left"},
+  {"op":"edit_image","instruction":"inhaltliche Bildänderung am Motiv"}
 ]}
 Nutze nur die für den Befehl nötigen Operationen.`
       const genCall = supabase.functions.invoke('generate', { body: { type: 'raw', model: 'claude-sonnet-4-6', prompt } })
@@ -1481,7 +1493,7 @@ Nutze nur die für den Befehl nötigen Operationen.`
       // Wendet eine Operations-Liste rein auf ein Objekt-Array an, inkl. Passform-,
       // Kontrast-, Scrim- und Ebenen-Leitplanken. Gibt neuen Zustand zurück (keine Seiteneffekte).
       const computeApplied = (opsList, baseObjects, baseBg) => {
-        let arr = baseObjects.map(o => ({ ...o })); let bg = baseBg; let imgInstr = null; let cutout = false; let fPatch = null
+        let arr = baseObjects.map(o => ({ ...o })); let bg = baseBg; let imgInstr = null; let cutout = false; let fPatch = null; let replaceBg = null; const logos = []
         for (const op of opsList) {
           const t = op && op.op
           if (t === 'add_text' && op.text) { const bx = clamp(op.x, cw); arr.push(fitText({ id: nextId(), type:'text', text:String(op.text), x: bx, y: clamp(op.y, ch), fontSize: Math.max(8, Math.round(Number(op.fontSize)) || 48), fontFamily: op.fontFamily || 'Inter', fill: op.fill || '#111111', fontStyle: op.fontStyle || 'normal', align: op.align || 'left', width: Math.round(Number(op.width)) || (cw - bx - margin), rotation:0, opacity:1 })) }
@@ -1492,6 +1504,8 @@ Nutze nur die für den Befehl nötigen Operationen.`
           else if (t === 'set_background' && op.color) { bg = op.color }
           else if (t === 'set_filter' && op.filters && typeof op.filters === 'object') { const fa = ['grayscale','contrast','brightness','saturation','sepia','hue','blur','invert','vignette','warmth','enhance']; const fp = {}; fa.forEach(k => { const v = Number(op.filters[k]); if (op.filters[k] !== undefined && op.filters[k] !== null && !isNaN(v)) fp[k] = v }); if (Object.keys(fp).length) fPatch = { ...(fPatch || {}), ...fp } }
           else if (t === 'remove_background') { cutout = true }
+          else if (t === 'replace_background' && op.instruction) { replaceBg = String(op.instruction) }
+          else if (t === 'add_logo') { logos.push({ company: op.company || '', corner: op.corner || 'top-right' }) }
           else if (t === 'edit_image' && op.instruction && imgInstr === null && visual?.storage_path) { imgInstr = String(op.instruction) }
         }
         // Sicherung: reine Farb-/Ton-Befehle (schwarz-weiß) sind IMMER ein Filter, NIE eine Neu-Generierung.
@@ -1513,7 +1527,7 @@ Nutze nur die für den Befehl nötigen Operationen.`
           })
           const rebuilt = [...nonText]; fixed.forEach(t2 => { const s = scrims.find(sc => sc.__scrimFor === t2.id); if (s) rebuilt.push(s); rebuilt.push(t2) }); arr = rebuilt
         } catch (_e) {}
-        return { objects: arr, nextBg: bg, filterPatch: fPatch, imageInstruction: imgInstr, wantCutout: cutout }
+        return { objects: arr, nextBg: bg, filterPatch: fPatch, imageInstruction: imgInstr, wantCutout: cutout, replaceBg, logos }
       }
 
       // Vision-Prüfung (Stufe 2): rendert das Ergebnis, bildfähiges Modell begutachtet + bessert nach.
@@ -1561,7 +1575,7 @@ Antworte AUSSCHLIESSLICH mit JSON: {"ok":<bool>,"issues":["..."],"operations":[.
       if (r1.imageInstruction) {
         try { const nv = await callGenerateImage(`Bearbeite das Referenzbild: ${r1.imageInstruction}. Behalte Bildstil, Beleuchtung und Perspektive konsistent, fotorealistisch.`); const url = await visualDataUrl(nv.storage_path); if (url) await applyResultDirect(url, 'free') } catch (e) { opError = 'Bild-Bearbeitung fehlgeschlagen: ' + (e?.message || 'Fehler') }
       }
-      if (r1.wantCutout) {
+      if (r1.wantCutout && !r1.replaceBg) {
         // Freistellen über die EINGEBAUTE Designer-Funktion: lokales MODNet-Matting
         // (removeBackgroundLocal) — stellt das Motiv aus den ORIGINAL-Pixeln frei,
         // die Person bleibt pixelgenau erhalten (kein generatives Neu-Malen).
@@ -1576,6 +1590,14 @@ Antworte AUSSCHLIESSLICH mit JSON: {"ok":<bool>,"issues":["..."],"operations":[.
             if (cutoutUrl) await applyResultDirect(cutoutUrl, 'bg')
           }
         } catch (e) { opError = 'Freistellen fehlgeschlagen: ' + (e?.message || 'Fehler') }
+      }
+      if (r1.replaceBg) {
+        try { await runBackgroundReplace('replace', r1.replaceBg) } catch (e) { opError = 'Hintergrund ersetzen fehlgeschlagen: ' + (e?.message || 'Fehler') }
+      }
+      if (r1.logos && r1.logos.length) {
+        const compList = Array.isArray(brandData?.companies) ? brandData.companies : ((brandData && brandData.logos) ? [{ name: activeBrandVoice?.name, logos: brandData.logos }] : [])
+        const resolveLogo = (name) => { if (!compList.length) return null; const w = String(name || '').trim().toLowerCase(); let cm = w ? compList.find(x => { const n = String(x.name || '').toLowerCase(); return n && (n.includes(w) || w.includes(n)) }) : null; if (!cm) cm = compList.find(x => x.logos && x.logos.length); return (cm && cm.logos && cm.logos[0] && cm.logos[0].url) || null }
+        for (const lr of r1.logos) { const lu = resolveLogo(lr.company); if (lu) { try { await insertLogoAt(lu, lr.corner) } catch (_e) {} } else if (!opError) opError = 'Kein Logo für „' + (lr.company || 'Marke') + '" hinterlegt.' }
       }
       setPageAiCmd('')
       let reviewNote = ''
@@ -1665,6 +1687,28 @@ Antworte AUSSCHLIESSLICH mit JSON: {"ok":<bool>,"issues":["..."],"operations":[.
         addImageFromDataUrl(url)
       }
     })()
+  }
+  // Logo an einer Ecke platzieren (für den Design-Agenten: echtes Company-Logo einfügen).
+  async function insertLogoAt(logoUrl, corner) {
+    if (!logoUrl) return
+    try {
+      let dataUrl = logoUrl
+      try { const blob = await (await fetch(logoUrl)).blob(); dataUrl = await blobToDataUrl(blob) } catch (_e) {}
+      const img = await loadHtmlImage(dataUrl)
+      const stW = stageSize.width, stH = stageSize.height
+      const cwl = Math.round(baseCrop?.width || stW), chl = Math.round(baseCrop?.height || stH)
+      const targetH = Math.min(stW, stH) * 0.16
+      const ratio = (img.naturalWidth || 1) / (img.naturalHeight || 1)
+      let w, h; if (ratio >= 1) { w = targetH * ratio; h = targetH } else { w = targetH; h = targetH / ratio }
+      w = Math.round(Math.min(w, cwl * 0.5)); h = Math.round(h)
+      const m = Math.max(24, Math.round(Math.min(cwl, chl) * 0.05))
+      let x = m, y = m
+      if (/right|rechts/i.test(corner || '')) x = cwl - w - m
+      if (/bottom|unten/i.test(corner || '')) y = chl - h - m
+      setImgCache(prev => ({ ...prev, [dataUrl]: img }))
+      pushHistory()
+      setObjects(prev => [...prev, { id: nextId(), type: 'image', src: dataUrl, x, y, width: w, height: h, rotation: 0, opacity: 1, isGraphic: true }])
+    } catch (_e) {}
   }
   // Marke: Farbe anwenden — auf Füllung des ausgewählten Objekts, sonst Artboard-Bg.
   function applyBrandColor(hex) {
