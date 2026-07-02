@@ -1420,7 +1420,7 @@ Bild-Befehle nach Absicht (NICHT verwechseln — das ist wichtig):
 - Reine Farb-/Ton-/Helligkeits-Anpassungen (Schwarz-Weiß, Graustufen, entsättigen, heller, dunkler, mehr/weniger Kontrast, wärmer/kühler) → IMMER set_filter (z.B. {"grayscale":1}). Das ist ein nicht-destruktiver Filter — es wird NICHTS neu generiert. NIEMALS edit_image/remove_background dafür verwenden.
 - Hintergrund entfernen / freistellen → remove_background (die Person bleibt erhalten, nur der Hintergrund wird transparent).
 - Inhaltliche Bildänderung (andere Szene/Objekte/Perspektive) → edit_image.
-- WICHTIG: remove_background und edit_image erzeugen das Bild per KI neu — nutze sie nur, wenn der Befehl das wirklich erfordert. Für alles, was ein Filter kann, nimm set_filter.
+- GRUNDPRINZIP: Nutze IMMER zuerst die eingebauten Designer-Funktionen. set_filter (Farbe/Ton) und remove_background (Freistellen per lokalem Matting) verändern die Person NICHT und sind zu bevorzugen. Nur edit_image erzeugt das Bild generativ NEU — verwende es ausschließlich für inhaltliche Änderungen, die weder Filter noch Freisteller leisten können (z.B. andere Szene/Objekte/Perspektive im Bild).
 
 Gib AUSSCHLIESSLICH gültiges JSON zurück (kein Markdown, keine Erklärung) – Operationen in Ausführungsreihenfolge (Balken VOR zugehörigem Text):
 {"operations":[
@@ -1561,8 +1561,21 @@ Antworte AUSSCHLIESSLICH mit JSON: {"ok":<bool>,"issues":["..."],"operations":[.
       if (r1.imageInstruction) {
         try { const nv = await callGenerateImage(`Bearbeite das Referenzbild: ${r1.imageInstruction}. Behalte Bildstil, Beleuchtung und Perspektive konsistent, fotorealistisch.`); const url = await visualDataUrl(nv.storage_path); if (url) await applyResultDirect(url, 'free') } catch (e) { opError = 'Bild-Bearbeitung fehlgeschlagen: ' + (e?.message || 'Fehler') }
       }
-      if (r1.wantCutout && visual?.storage_path) {
-        try { const nv = await callGenerateImage('Entferne AUSSCHLIESSLICH den Hintergrund und mache ihn vollständig transparent. Die Person bzw. das Hauptmotiv bleibt dabei EXAKT unverändert: Gesicht, Frisur, Hautton, Kleidung, Pose, Ausdruck und Beleuchtung pixelgenau wie im Original. Zeichne NICHTS neu, verändere das Motiv NICHT — stelle es nur sauber frei.', { model: 'gpt-image-1', quality: 'high', background: 'transparent' }); const url = await visualDataUrl(nv.storage_path); if (url) await applyResultDirect(url, 'cutout') } catch (e) { opError = 'Freistellen fehlgeschlagen: ' + (e?.message || 'Fehler') }
+      if (r1.wantCutout) {
+        // Freistellen über die EINGEBAUTE Designer-Funktion: lokales MODNet-Matting
+        // (removeBackgroundLocal) — stellt das Motiv aus den ORIGINAL-Pixeln frei,
+        // die Person bleibt pixelgenau erhalten (kein generatives Neu-Malen).
+        try {
+          const imgObj = r1.objects.find(o => o.type === 'image' && o.__primary) || r1.objects.find(o => o.type === 'image')
+          const el = imgObj && imgCache[imgObj.src]
+          if (!el) { opError = 'Freistellen: kein Bild im Design gefunden.' }
+          else {
+            setSavedMsg('Motiv wird freigestellt …')
+            const { removeBackgroundLocal } = await import('../../lib/bgRemoval')
+            const cutoutUrl = await removeBackgroundLocal(el, (pr) => { if (pr && pr.status === 'progress' && typeof pr.progress === 'number' && /\.onnx/i.test(pr.file || '')) setSavedMsg('Freistell-Modell wird geladen … ' + Math.round(pr.progress) + '%') })
+            if (cutoutUrl) await applyResultDirect(cutoutUrl, 'bg')
+          }
+        } catch (e) { opError = 'Freistellen fehlgeschlagen: ' + (e?.message || 'Fehler') }
       }
       setPageAiCmd('')
       let reviewNote = ''
