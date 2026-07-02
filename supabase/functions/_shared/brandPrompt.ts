@@ -199,25 +199,23 @@ export function buildKnowledgePrompt(items: BV[]): string {
 // Zieht die letzten Posts (veröffentlichte zuerst) + Dokumente der Brand und
 // baut daraus eine Few-Shot-Sektion. So lernt jede Generierung aus allem, was
 // die Brand schon produziert hat (Beitragsthemen, Tonalität, Stil).
-export async function buildBrandCorpus(admin: any, brandVoiceId: string): Promise<string> {
-  if (!admin || !brandVoiceId) return "";
+export async function buildBrandCorpus(admin: any, brandVoiceId: string, opts: { noBrand?: boolean; userId?: string } = {}): Promise<string> {
+  const noBrand = !!opts.noBrand; const userId = opts.userId;
+  if (!admin) return "";
+  if (!noBrand && !brandVoiceId) return "";
+  if (noBrand && !userId) return "";
+  const scope = (q: any) => noBrand ? q.eq("no_brand", true).eq("user_id", userId) : q.eq("brand_voice_id", brandVoiceId);
   try {
     const [postsRes, docsRes, memRes] = await Promise.all([
-      admin.from("content_posts")
-        .select("content, status, created_at")
-        .eq("brand_voice_id", brandVoiceId)
+      scope(admin.from("content_posts").select("content, status, created_at"))
         .not("content", "is", null)
         .order("created_at", { ascending: false })
         .limit(12),
-      admin.from("content_documents")
-        .select("content_text, updated_at")
-        .eq("brand_voice_id", brandVoiceId)
+      scope(admin.from("content_documents").select("content_text, updated_at"))
         .not("content_text", "is", null)
         .order("updated_at", { ascending: false })
         .limit(6),
-      admin.from("brand_memory")
-        .select("content, created_at")
-        .eq("brand_voice_id", brandVoiceId)
+      scope(admin.from("brand_memory").select("content, created_at"))
         .order("created_at", { ascending: false })
         .limit(25),
     ]);
