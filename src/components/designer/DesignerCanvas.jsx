@@ -425,6 +425,7 @@ export default function DesignerCanvas({ visual, teamId, onSaved, onReplaceVisua
   const [distortId, setDistortId] = useState(null)
   const [marquee, setMarquee] = useState(null)        // {x,y,w,h} Rubberband in Bühnenkoordinaten
   const [marqueeHits, setMarqueeHits] = useState([])  // Ids der vom Kästchen berührten Elemente (Live-Rahmen)
+  const [frameDropTarget, setFrameDropTarget] = useState(null)  // Rahmen/Mockup, über dem gerade ein Bild schwebt (Drag-to-fill)
   const marqueeStartRef = useRef(null)
   const clipboardRef = useRef([])                     // kopierte Objekte (intern)
   const [loading, setLoading] = useState(true)
@@ -3739,9 +3740,15 @@ Antworte AUSSCHLIESSLICH mit JSON: {"ok":<bool>,"issues":["..."],"operations":[.
         const node = e.target
         const ids = selectedIds.includes(o.id) && selectedIds.length > 1 ? selectedIds : [o.id]
         applyDragSnap(node, ids)
+        if (o.type === 'image' && ids.length === 1) {
+          const cx = node.x() + off.x + (o.width || 0) / 2, cy = node.y() + off.y + (o.height || 0) / 2
+          const hit = [...objects].reverse().find(t => (t.type === 'frame' || t.type === 'mockup') && t.id !== o.id && cx >= t.x && cx <= t.x + (t.width || 0) && cy >= t.y && cy <= t.y + (t.height || 0))
+          setFrameDropTarget(hit ? hit.id : null)
+        }
       },
       onDragEnd: (e) => {
         clearGuides()
+        setFrameDropTarget(null)
         // Bei Gruppen-Drag bewegt der Transformer mehrere Nodes — jede Node hier
         // einzeln in ihren Objekt-State zurückschreiben.
         const dxNode = e.target
@@ -3756,7 +3763,20 @@ Antworte AUSSCHLIESSLICH mit JSON: {"ok":<bool>,"issues":["..."],"operations":[.
           })
           setTimeout(() => { skipHistoryRef.current = false }, 0)
         } else {
-          updateObject(o.id, { x: node.x() + off.x, y: node.y() + off.y }, false)
+          const nx = node.x() + off.x, ny = node.y() + off.y
+          // Bild über einen Rahmen/Mockup fallen gelassen? → Bild einsetzen (cover), Bild-Objekt entfernen.
+          if (o.type === 'image' && o.src) {
+            const cx = nx + (o.width || 0) / 2, cy = ny + (o.height || 0) / 2
+            const frame = [...objects].reverse().find(t => (t.type === 'frame' || t.type === 'mockup') && t.id !== o.id && cx >= t.x && cx <= t.x + (t.width || 0) && cy >= t.y && cy <= t.y + (t.height || 0))
+            if (frame) {
+              pushHistory()
+              const srcVal = o.src
+              setObjects(prev => prev.filter(p => p.id !== o.id).map(p => p.id === frame.id ? { ...p, src: srcVal } : p))
+              setSelectedIds([frame.id])
+              return
+            }
+          }
+          updateObject(o.id, { x: nx, y: ny }, false)
         }
       },
       onTransformStart: () => {
@@ -3890,6 +3910,7 @@ Antworte AUSSCHLIESSLICH mit JSON: {"ok":<bool>,"issues":["..."],"operations":[.
                   <Rect width={o.width} height={o.height} fill="#EEF2F7" />
                   <KText text="Bild einsetzen" width={o.width} y={o.height / 2 - 9} align="center" fontSize={Math.max(11, Math.min(16, o.width * 0.06))} fill="#93A2B5" listening={false} />
                 </>)}
+            {o.id === frameDropTarget && <Rect width={o.width} height={o.height} fill="rgba(49,90,231,0.32)" listening={false} />}
           </Group>
         )
       }
@@ -3910,6 +3931,7 @@ Antworte AUSSCHLIESSLICH mit JSON: {"ok":<bool>,"issues":["..."],"operations":[.
                   </>)}
             </Group>
             {dev.front ? dev.front(o.width, o.height) : null}
+            {o.id === frameDropTarget && <Rect x={scr.x} y={scr.y} width={scr.w} height={scr.h} fill="rgba(49,90,231,0.32)" listening={false} />}
           </Group>
         )
       }
