@@ -6,18 +6,11 @@ export const ASANA_TOKEN_URL = "https://app.asana.com/-/oauth_token";
 export const ASANA_REVOKE_URL = "https://app.asana.com/-/oauth_revoke";
 export const ASANA_API_BASE = "https://app.asana.com/api/1.0";
 
-// Für die Integration benötigte Scopes.
-export const ASANA_SCOPES = [
-  "projects:read",
-  "projects:write",
-  "tasks:read",
-  "tasks:write",
-  "tasks:delete",
-  "users:read",
-  "openid",
-  "email",
-  "profile",
-];
+// Hinweis Scopes: Die Asana-App nutzt den Default-Scope (Full Access).
+// Granulare Scopes (projects:read, tasks:write, …) werden NICHT angefragt —
+// sie erfordern eine explizite Freischaltung in der Asana-App-Konfiguration,
+// sonst lehnt Asana den Authorize-Request mit `forbidden_scopes` ab.
+// Bei Bedarf granulare Scopes hier definieren UND in der App aktivieren.
 
 export interface AsanaTokenResponse {
   access_token: string;
@@ -63,7 +56,8 @@ export function buildAuthorizeUrl(params: {
     state: params.state,
     code_challenge_method: "S256",
     code_challenge: params.codeChallenge,
-    scope: ASANA_SCOPES.join(" "),
+    // Kein scope-Param => Asana vergibt den Default-Scope (Full Access).
+    // Siehe Hinweis oben: granulare Scopes würden forbidden_scopes auslösen.
   });
   return `${ASANA_AUTHORIZE_URL}?${q.toString()}`;
 }
