@@ -1102,8 +1102,19 @@ Neue Anfrage: "${p}"` },
   async function handleFiles(fileList) {
     const files = Array.from(fileList || [])
     const out = []
-    for (const f of files) {
+    for (let f of files) {
       if (f.size > 10 * 1024 * 1024) { alert(f.name + ': max 10 MB'); continue }
+      // HEIC/HEIF (iPhone) kann Chrome weder anzeigen noch an die Bild-KI senden →
+      // clientseitig zu JPEG konvertieren (lazy-geladene Lib), damit Vorschau + Referenz funktionieren.
+      const isHeic = /image\/hei[cf]/i.test(f.type || '') || /\.(heic|heif)$/i.test(f.name || '')
+      if (isHeic) {
+        try {
+          const heic2any = (await import('heic2any')).default
+          const jpg = await heic2any({ blob: f, toType: 'image/jpeg', quality: 0.9 })
+          const blob = Array.isArray(jpg) ? jpg[0] : jpg
+          f = new File([blob], (f.name || 'bild').replace(/\.(heic|heif)$/i, '') + '.jpg', { type: 'image/jpeg' })
+        } catch (_e) { /* Konvertierung fehlgeschlagen → als generische Datei behandeln */ }
+      }
       const buf = await f.arrayBuffer()
       let bin = ''
       const arr = new Uint8Array(buf)
@@ -1791,6 +1802,7 @@ function ChatInput({
   const [dragOver, setDragOver] = useState(false)
   const voice = useVoiceInput({
     language: 'de-DE',
+    initialMode: 'web',
     onFinalTranscript: (t) => {
       const tr = (t || '').trim()
       if (!tr) return
@@ -1813,7 +1825,7 @@ function ChatInput({
         <div style={{ display:'flex', gap:8, marginBottom:8, flexWrap:'wrap' }}>
           {attachments.map((a, i) => {
             const isImg = (a.type || '').startsWith('image/')
-            const src = a.preview || (a.base64 ? 'data:' + (a.type || 'image/png') + ';base64,' + a.base64 : null)
+            const src = a.preview || null
             const remove = (
               <button onClick={() => setAttachments(prev => prev.filter((_, j) => j !== i))} title="Entfernen"
                 style={{ position:'absolute', top:-6, right:-6, width:18, height:18, borderRadius:9, border:'1px solid var(--border)', background:'#fff', color:'#64748B', cursor:'pointer', fontSize:12, lineHeight:'16px', padding:0, display:'flex', alignItems:'center', justifyContent:'center', boxShadow:'0 1px 3px rgba(0,0,0,.12)' }}>×</button>
@@ -1861,6 +1873,17 @@ function ChatInput({
         rows={3}
         style={{ width:'100%', padding:'4px 4px 8px', border:'none', fontSize:14, fontFamily:'inherit', resize:'none', outline:'none', background:'transparent', boxSizing:'border-box' }}/>
 
+      {/* Sprach-Status: Live-Transkript / Fehler sichtbar machen (sonst wirkt das Mikro "tot") */}
+      {(voice.isRecording || voice.liveTranscript || voice.error) && (
+        <div style={{ margin:'2px 2px 8px', fontSize:12, display:'flex', alignItems:'flex-start', gap:8, color: voice.error ? '#DC2626' : 'var(--text-muted)' }}>
+          {voice.isRecording && (
+            <span style={{ display:'inline-flex', alignItems:'center', gap:5, color:'#DC2626', fontWeight:700, flexShrink:0 }}>
+              <span style={{ width:8, height:8, borderRadius:4, background:'#DC2626', display:'inline-block' }} className="lk-spin"/>Aufnahme…
+            </span>
+          )}
+          <span style={{ minWidth:0 }}>{voice.error ? voice.error : (voice.liveTranscript || (voice.isRecording ? 'Sprich jetzt – dein Text erscheint hier und landet im Eingabefeld.' : ''))}</span>
+        </div>
+      )}
       {/* Bottom Toolbar — Zeile 1 einzeilig; Visual-Optionen (Format + Modell) erscheinen in Zeile 2 */}
       <div style={{ display:'flex', flexDirection:'column', gap:6 }}>
       <div style={{ display:'flex', alignItems:'center', gap:6, justifyContent:'space-between' }}>
