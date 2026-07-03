@@ -326,7 +326,7 @@ export default function App() {
             <Route path="/leads-v2/:id" element={<LeadV2DetailRedirect />} />
             <Route path="/comments" element={<ComingSoon title="Kommentare" />} />
             <Route path="/vernetzungen" element={<CompanyBrandGate feature="vernetzungen"><Vernetzungen session={session} /></CompanyBrandGate>} />
-            <Route path="/profil-checker" element={<ProfilChecker session={session} />} />
+            <Route path="/profil-checker" element={<ModuleGuard module="linkedin"><ProfilChecker session={session} /></ModuleGuard>} />
             <Route path="/linkedin-inbox" element={<ModuleGuard module="linkedin"><LinkedInInbox session={session} /></ModuleGuard>} />
             <Route path="/pipeline" element={<Navigate to="/deals?view=pipeline" replace />} />
             <Route path="/brand-voice" element={<Navigate to="/personal-brand" replace />} />
@@ -355,7 +355,7 @@ export default function App() {
               {/* <Route path="/admin" element={<AdminPanel session={session} />} /> */}
               <Route path="/settings/team" element={<TeamSettings session={session} />} />
             <Route path="/profiltexte" element={
-              <ModuleGuard module="branding">
+              <ModuleGuard module="linkedin">
                 <Profiltexte session={session} />
               </ModuleGuard>
             } />
