@@ -59,8 +59,9 @@ function ratingFor(score) {
 const fmtDate = d => { try { return new Date(d).toLocaleString('de-DE', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' }) } catch { return '' } }
 const scoreColor = s => s >= 85 ? '#059669' : s >= 65 ? '#2563eb' : s >= 40 ? '#D97706' : '#DC2626'
 
-export default function ProfilChecker() {
+export default function ProfilChecker({ session }) {
   const { activeTeamId } = useTeam() || {}
+  const userId = session?.user?.id
   const [loading, setLoading] = useState(false)
   const [error, setError]     = useState(null)
   const [result, setResult]   = useState(null)
@@ -68,15 +69,21 @@ export default function ProfilChecker() {
   const [viewingId, setViewingId] = useState(null) // welche Verlaufs-Analyse gerade angezeigt wird
 
   const loadHistory = useCallback(async () => {
+    if (!userId) { setHistory([]); return }
     try {
-      const { data } = await supabase
+      // Team-scoped + nur eigene Analysen (Solo-Fallback team_id IS NULL).
+      // RLS allein reichte nicht: pc_own liefert eigene Rows teamuebergreifend.
+      let q = supabase
         .from('profile_checks')
         .select('id,profile_name,score,passed,total,results,created_at')
+        .eq('user_id', userId)
+      q = activeTeamId ? q.eq('team_id', activeTeamId) : q.is('team_id', null)
+      const { data } = await q
         .order('created_at', { ascending: false })
         .limit(20)
       setHistory(data || [])
     } catch (_) { /* Tabelle evtl. noch nicht migriert — Verlauf bleibt leer */ }
-  }, [])
+  }, [activeTeamId, userId])
 
   useEffect(() => { loadHistory() }, [loadHistory])
 
