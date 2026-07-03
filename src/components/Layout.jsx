@@ -1026,9 +1026,10 @@ export default function Layout({ session, role, onLogout, children }) {
           {/* Einrichtung — Branding & Wissen (aus der linken Leiste hierher verschoben) */}
           <div style={{ position:'relative' }} data-setup-menu>
             <button data-setup-menu onClick={()=>setShowSetup(v=>!v)} title="Einrichtung — Branding & Wissen"
-              style={{ display:'flex', alignItems:'center', gap:6, height:38, boxSizing:'border-box', padding:'0 12px', borderRadius:11, border:'1px solid var(--border)', background: showSetup ? 'var(--surface-hover)' : 'var(--surface)', backdropFilter:'var(--glass-blur)', WebkitBackdropFilter:'var(--glass-blur)', cursor:'pointer', color: showSetup ? 'var(--text-primary)' : 'var(--text-muted)', fontSize:13, fontWeight:600, fontFamily:'inherit', whiteSpace:'nowrap', transition:'all 0.15s' }}
-              onMouseEnter={e=>{ e.currentTarget.style.color='var(--text-primary)' }}
-              onMouseLeave={e=>{ if(!showSetup) e.currentTarget.style.color='var(--text-muted)' }}>
+              style={{ display:'flex', alignItems:'center', gap:7, height:38, boxSizing:'border-box', padding:'0 13px', borderRadius:11, border:'1px solid ' + (showSetup ? 'var(--wl-primary, rgb(49,90,231))' : 'rgba(49,90,231,0.30)'), background: showSetup ? 'rgba(49,90,231,0.14)' : 'rgba(49,90,231,0.07)', backdropFilter:'var(--glass-blur)', WebkitBackdropFilter:'var(--glass-blur)', cursor:'pointer', color:'var(--wl-primary, rgb(49,90,231))', fontSize:13, fontWeight:700, fontFamily:'inherit', whiteSpace:'nowrap', transition:'all 0.15s' }}
+              onMouseEnter={e=>{ e.currentTarget.style.background='rgba(49,90,231,0.14)' }}
+              onMouseLeave={e=>{ if(!showSetup) e.currentTarget.style.background='rgba(49,90,231,0.07)' }}>
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/><rect x="14" y="14" width="7" height="7" rx="1.5"/></svg>
               Einrichtung
               <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" style={{ transform: showSetup ? 'rotate(180deg)' : 'none', transition:'transform 0.15s' }}><polyline points="6 9 12 15 18 9"/></svg>
             </button>
