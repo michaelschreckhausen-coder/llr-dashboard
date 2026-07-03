@@ -909,7 +909,7 @@ export default function Layout({ session, role, onLogout, children }) {
                 ))}
                 {opsSections.map((sec, i) => renderSection(sec, i))}
                 {!isCollapsed && setupSections.length > 0 && (
-                  <div style={{ marginTop: 10, paddingTop: 6, paddingBottom: 4, borderTop: '1px solid var(--border)', background: 'rgba(2,6,23,0.035)' }}>
+                  <div style={{ marginTop: 14, paddingTop: 8, paddingBottom: 6, background: 'rgba(2,6,23,0.035)' }}>
                     {setupSections.map((sec, i) => renderSection(sec, i))}
                   </div>
                 )}
