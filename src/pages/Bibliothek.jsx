@@ -164,7 +164,7 @@ function DesignsTab({ reloadKey = 0 } = {}) {
     if (!activeTeamId) return
     setLoading(true)
     const { data } = await listTeamVisuals({ teamId: activeTeamId, brandVoiceId: noBrand ? null : activeBrandVoice?.id, kind: 'design', limit: 100, noBrand })
-    const withUrls = await Promise.all((data || []).map(async (v) => ({ ...v, signed_url: await signedVisualUrl(v.storage_path, 3600) })))
+    const withUrls = await Promise.all((data || []).map(async (v) => ({ ...v, signed_url: await signedThumbUrl(v.storage_path, { width: 600, height: 600, resize: 'contain' }) })))
     setDesigns(withUrls); setLoading(false)
   }, [activeTeamId, activeBrandVoice?.id])
   useEffect(() => { load() }, [load, reloadKey])
