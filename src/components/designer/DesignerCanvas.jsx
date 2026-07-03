@@ -1854,7 +1854,7 @@ export default function DesignerCanvas({ visual, teamId, onSaved, onReplaceVisua
     setMediaLoading(true)
     ;(async () => {
       try {
-        const { data } = await listTeamVisuals({ teamId, brandVoiceId: activeBrandVoice?.id, limit: 80 })
+        const { data } = await listTeamVisuals({ teamId, brandVoiceId: activeBrandVoice?.id, kind: 'image', limit: 80 })
         const items = (data || [])
         // Parallel + serverseitig verkleinert (statt 80 sequentielle Voll-Bild-Signaturen).
         const signed = await Promise.all(items.map(v => signedThumbUrl(v.storage_path, { width: 300, height: 300, resize: 'contain' })))
