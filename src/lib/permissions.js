@@ -1,6 +1,6 @@
 // Permission-Registry (Phase 5 Block 5.1)
 //
-// Single Source of Truth fuer alle 25 Permission-Keys, gruppiert nach 8 Modulen.
+// Single Source of Truth fuer alle 26 Permission-Keys, gruppiert nach 8 Modulen.
 // Wird in spaeteren Sub-Phasen verwendet:
 //   - 5.4 ProtectedRoute: requiredPermission-Prop matched gegen ALL_PERMISSION_KEYS
 //   - 5.5 Plan-Editor in admin.leadesk.de: Permission-Matrix-Editor rendert
@@ -11,7 +11,7 @@
 // (DB-side) uebereinstimmen. Migration 20260504201508_block_5_1_*.sql hat
 // existing Plaene mit Initial-Matrix befuellt.
 //
-// Total: 25 Permissions, 8 Modul-Gruppen.
+// Total: 26 Permissions, 8 Modul-Gruppen.
 
 export const PERMISSIONS_REGISTRY = {
   branding: {
@@ -39,11 +39,12 @@ export const PERMISSIONS_REGISTRY = {
   },
   linkedin: {
     label: 'LinkedIn',
-    description: 'SSI-Tracker, Profiltexte, Vernetzungen, Nachrichten, Automatisierung',
+    description: 'SSI-Tracker, Profiltexte, Profil-Checker, Vernetzungen, Nachrichten, Automatisierung',
     color: '#0077B5',
     permissions: {
       ssi_tracker:   { label: 'SSI-Tracker',     description: 'Social-Selling-Index-Monitoring' },
       profile_texts: { label: 'Profiltexte',     description: 'LinkedIn-Profilslogan, Info-Box, Position' },
+      profil_checker:{ label: 'Profil-Checker',  description: 'LinkedIn-Profil-Analyse' },
       connections:   { label: 'Vernetzungen',    description: 'LinkedIn-Connection-Verwaltung' },
       messages:      { label: 'Nachrichten',     description: 'LinkedIn-Messaging' },
       automation:    { label: 'Automatisierung', description: 'Automatisierte Sequenzen (Premium)' },
@@ -113,10 +114,10 @@ export const PERMISSION_MODULES_ORDER = [
 // Sanity-Check: total = 25 (Initial-Matrix-Soll).
 // Wirft beim Modul-Import wenn die Konstanten nicht zur Migration matchen.
 if (typeof process === 'undefined' || process.env?.NODE_ENV !== 'test') {
-  if (ALL_PERMISSION_KEYS.length !== 25) {
+  if (ALL_PERMISSION_KEYS.length !== 26) {
     // eslint-disable-next-line no-console
     console.warn(
-      `[permissions.js] expected 25 keys, got ${ALL_PERMISSION_KEYS.length}. ` +
+      `[permissions.js] expected 26 keys, got ${ALL_PERMISSION_KEYS.length}. ` +
       `If intentional, update Migration 20260504201508 + this assertion.`
     )
   }

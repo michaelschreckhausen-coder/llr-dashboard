@@ -57,6 +57,7 @@ const ROUTE_PERMISSIONS = {
   '/linkedin-connect': 'linkedin.connections',
   '/messages':         'linkedin.messages',
   '/automatisierung':  'linkedin.automation',
+  '/profil-checker':   'linkedin.profil_checker',
   '/content-studio':   'content.studio',
   '/redaktionsplan':   'content.calendar',
   '/projekte':         'delivery.projects',

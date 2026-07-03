@@ -11,8 +11,8 @@ export const MODULES = {
   branding: {
     key:   'branding',
     label: 'Branding',
-    description: 'Brand Voice, Zielgruppen, Wissensdatenbank, Profiltexte',
-    routes: ['/brand-voice', '/zielgruppen', '/wissensdatenbank', '/profiltexte', '/icp', '/ki-sichtbarkeit'],
+    description: 'Brand Voice, Zielgruppen, Wissensdatenbank',
+    routes: ['/brand-voice', '/zielgruppen', '/wissensdatenbank', '/icp', '/ki-sichtbarkeit'],
     color: '#8B5CF6',
   },
   crm: {
@@ -25,8 +25,8 @@ export const MODULES = {
   linkedin: {
     key:   'linkedin',
     label: 'LinkedIn',
-    description: 'Vernetzungen, Nachrichten, Automatisierung',
-    routes: ['/vernetzungen', '/messages', '/automatisierung', '/linkedin-connect'],
+    description: 'Vernetzungen, Nachrichten, Automatisierung, Profiltexte, Profil-Checker',
+    routes: ['/vernetzungen', '/messages', '/automatisierung', '/linkedin-connect', '/profiltexte', '/profil-checker'],
     color: '#0077B5',
   },
   content: {
