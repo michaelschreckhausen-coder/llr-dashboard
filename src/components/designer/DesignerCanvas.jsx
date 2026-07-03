@@ -344,14 +344,160 @@ const DEVICE_MOCKUPS = [
     screen: (w, h) => { const p = Math.round(w * 0.06), s = w - 2 * p; return { x: p, y: p, w: s, h: s, r: 0 } },
     behind: (w, h) => [<Rect key="paper" width={w} height={h} fill="#FFFFFF" cornerRadius={4} shadowColor="#0f172a" shadowBlur={14} shadowOpacity={0.16} shadowOffsetY={5} />],
   },
+  {
+    id: 'tablet', label: 'Tablet', aspect: 0.75,
+    screen: (w, h) => { const bez = Math.round(w * 0.055); return { x: bez, y: bez, w: w - 2 * bez, h: h - 2 * bez, r: Math.round(w * 0.03) } },
+    behind: (w, h) => [<Rect key="body" width={w} height={h} fill="#0B0B0F" cornerRadius={Math.round(w * 0.06)} />],
+  },
+  {
+    id: 'tablet_ls', label: 'Tablet quer', aspect: 1.33,
+    screen: (w, h) => { const bez = Math.round(h * 0.055); return { x: bez, y: bez, w: w - 2 * bez, h: h - 2 * bez, r: Math.round(h * 0.03) } },
+    behind: (w, h) => [<Rect key="body" width={w} height={h} fill="#0B0B0F" cornerRadius={Math.round(h * 0.06)} />],
+  },
+  {
+    id: 'monitor', label: 'Monitor', aspect: 1.55,
+    screen: (w, h) => { const p = Math.round(w * 0.02), sh = h * 0.8; return { x: p, y: p, w: w - 2 * p, h: sh - 2 * p, r: Math.max(2, Math.round(w * 0.004)) } },
+    behind: (w, h) => { const sh = h * 0.8, r = Math.max(6, Math.round(w * 0.012)); return [
+      <Rect key="scr" width={w} height={sh} fill="#0B0B0F" cornerRadius={r} />,
+      <Rect key="neck" x={w * 0.45} y={sh} width={w * 0.1} height={h * 0.12} fill="#C7CDD4" />,
+      <Rect key="base" x={w * 0.32} y={h * 0.92} width={w * 0.36} height={h * 0.05} cornerRadius={6} fill="#AEB6BF" />,
+    ] },
+  },
+  {
+    id: 'tv', label: 'TV', aspect: 1.78,
+    screen: (w, h) => { const p = Math.round(w * 0.012), sh = h * 0.9; return { x: p, y: p, w: w - 2 * p, h: sh - 2 * p, r: 2 } },
+    behind: (w, h) => { const sh = h * 0.9; return [
+      <Rect key="scr" width={w} height={sh} fill="#0B0B0F" cornerRadius={4} />,
+      <Rect key="stand" x={w * 0.44} y={sh} width={w * 0.12} height={h * 0.05} fill="#AEB6BF" />,
+      <Line key="feet" points={[w * 0.3, h, w * 0.7, h]} stroke="#AEB6BF" strokeWidth={Math.max(3, h * 0.02)} lineCap="round" />,
+    ] },
+  },
+  {
+    id: 'watch', label: 'Smartwatch', aspect: 0.82,
+    screen: (w, h) => { const bx = Math.round(w * 0.14), by = Math.round(h * 0.2); return { x: bx, y: by, w: w - 2 * bx, h: h - 2 * by, r: Math.round(w * 0.16) } },
+    behind: (w, h) => { const bw = w * 0.34; return [
+      <Rect key="bandT" x={(w - bw) / 2} y={0} width={bw} height={h * 0.24} fill="#334155" cornerRadius={6} />,
+      <Rect key="bandB" x={(w - bw) / 2} y={h * 0.76} width={bw} height={h * 0.24} fill="#334155" cornerRadius={6} />,
+      <Rect key="body" x={w * 0.08} y={h * 0.16} width={w * 0.84} height={h * 0.68} fill="#0B0B0F" cornerRadius={Math.round(w * 0.2)} />,
+      <Rect key="crown" x={w * 0.93} y={h * 0.42} width={w * 0.05} height={h * 0.16} fill="#C7CDD4" cornerRadius={3} />,
+    ] },
+  },
+  {
+    id: 'ig_post', label: 'Instagram', aspect: 0.6,
+    screen: (w, h) => { const bez = Math.round(w * 0.045), top = bez + h * 0.1, sq = w - 2 * bez; return { x: bez, y: top, w: sq, h: sq, r: 0 } },
+    behind: (w, h) => { const bez = Math.round(w * 0.045), r = Math.round(w * 0.11); return [
+      <Rect key="body" width={w} height={h} fill="#FFFFFF" cornerRadius={r} stroke="#0B0B0F" strokeWidth={Math.max(2, w * 0.02)} />,
+      <Circle key="av" x={bez + h * 0.045} y={bez + h * 0.05} radius={h * 0.028} fill="#CBD5E1" />,
+      <Rect key="name" x={bez + h * 0.09} y={bez + h * 0.038} width={w * 0.4} height={h * 0.022} cornerRadius={3} fill="#CBD5E1" />,
+    ] },
+    front: (w, h) => { const bez = Math.round(w * 0.045), top = bez + h * 0.1, sq = w - 2 * bez, ay = top + sq + h * 0.035; return [
+      <Circle key="like" x={bez + h * 0.03} y={ay} radius={h * 0.022} fill="none" stroke="#0B0B0F" strokeWidth={2} />,
+      <Circle key="cmt" x={bez + h * 0.1} y={ay} radius={h * 0.022} fill="none" stroke="#0B0B0F" strokeWidth={2} />,
+      <Circle key="share" x={bez + h * 0.17} y={ay} radius={h * 0.022} fill="none" stroke="#0B0B0F" strokeWidth={2} />,
+    ] },
+  },
+  {
+    id: 'ig_story', label: 'Story', aspect: 0.5,
+    screen: (w, h) => { const bez = Math.round(w * 0.05); return { x: bez, y: bez, w: w - 2 * bez, h: h - 2 * bez, r: Math.round(w * 0.1) } },
+    behind: (w, h) => [<Rect key="body" width={w} height={h} fill="#0B0B0F" cornerRadius={Math.round(w * 0.16)} />],
+    front: (w, h) => { const bez = Math.round(w * 0.05); return [
+      <Rect key="prog" x={bez + w * 0.06} y={bez + h * 0.02} width={w - 2 * bez - w * 0.12} height={Math.max(2, h * 0.006)} cornerRadius={2} fill="rgba(255,255,255,0.75)" />,
+    ] },
+  },
+  {
+    id: 'poster', label: 'Poster', aspect: 0.7,
+    screen: (w, h) => { const p = Math.round(w * 0.03); return { x: p, y: p, w: w - 2 * p, h: h - 2 * p, r: 0 } },
+    behind: (w, h) => [<Rect key="frame" width={w} height={h} fill="#111827" shadowColor="#0f172a" shadowBlur={18} shadowOpacity={0.22} shadowOffsetY={8} />],
+  },
+  {
+    id: 'billboard', label: 'Plakatwand', aspect: 1.9,
+    screen: (w, h) => { const p = Math.round(w * 0.015), bh = h * 0.72; return { x: p, y: p, w: w - 2 * p, h: bh - 2 * p, r: 0 } },
+    behind: (w, h) => { const bh = h * 0.72; return [
+      <Rect key="board" width={w} height={bh} fill="#FFFFFF" stroke="#94A3B8" strokeWidth={Math.max(2, w * 0.008)} />,
+      <Rect key="p1" x={w * 0.2} y={bh} width={w * 0.03} height={h - bh} fill="#94A3B8" />,
+      <Rect key="p2" x={w * 0.77} y={bh} width={w * 0.03} height={h - bh} fill="#94A3B8" />,
+    ] },
+  },
+  {
+    id: 'card', label: 'Visitenkarte', aspect: 1.72,
+    screen: (w, h) => ({ x: 0, y: 0, w, h, r: Math.round(w * 0.03) }),
+    behind: (w, h) => [<Rect key="sh" width={w} height={h} cornerRadius={Math.round(w * 0.03)} fill="#fff" shadowColor="#0f172a" shadowBlur={16} shadowOpacity={0.18} shadowOffsetY={6} />],
+  },
+  {
+    id: 'book', label: 'Buchcover', aspect: 0.68,
+    screen: (w, h) => { const sp = Math.round(w * 0.06); return { x: sp, y: 0, w: w - sp, h, r: 0 } },
+    behind: (w, h) => [<Rect key="sh" width={w} height={h} fill="#fff" cornerRadius={[2, 6, 6, 2]} shadowColor="#0f172a" shadowBlur={16} shadowOpacity={0.2} shadowOffsetX={6} shadowOffsetY={6} />],
+    front: (w, h) => { const sp = Math.round(w * 0.06); return [<Rect key="spine" x={sp} y={0} width={Math.max(3, w * 0.015)} height={h} fill="rgba(0,0,0,0.12)" />] },
+  },
+  {
+    id: 'frame_wall', label: 'Wandrahmen', aspect: 0.8,
+    screen: (w, h) => { const fr = Math.round(w * 0.08); return { x: fr, y: fr, w: w - 2 * fr, h: h - 2 * fr, r: 0 } },
+    behind: (w, h) => { const fr = Math.round(w * 0.08); return [
+      <Rect key="fr" width={w} height={h} fill="#3f3f46" shadowColor="#0f172a" shadowBlur={16} shadowOpacity={0.22} shadowOffsetY={7} />,
+      <Rect key="mat" x={fr * 0.5} y={fr * 0.5} width={w - fr} height={h - fr} fill="#FFFFFF" />,
+    ] },
+  },
+  {
+    id: 'tshirt', label: 'T-Shirt', aspect: 0.95,
+    screen: (w, h) => ({ x: w * 0.32, y: h * 0.3, w: w * 0.36, h: h * 0.42, r: 0 }),
+    behind: (w, h) => [<Line key="shirt" closed fill="#EEF2F6" stroke="#CBD5E1" strokeWidth={2}
+      points={[w * 0.28, h * 0.08, w * 0.4, h * 0.02, w * 0.6, h * 0.02, w * 0.72, h * 0.08, w * 0.9, h * 0.2, w * 0.8, h * 0.34, w * 0.7, h * 0.28, w * 0.7, h, w * 0.3, h, w * 0.3, h * 0.28, w * 0.2, h * 0.34, w * 0.1, h * 0.2]} />],
+  },
+  {
+    id: 'mug', label: 'Tasse', aspect: 1.25,
+    screen: (w, h) => ({ x: w * 0.14, y: h * 0.16, w: w * 0.5, h: h * 0.68, r: 0 }),
+    behind: (w, h) => [
+      <Circle key="handle" x={w * 0.68} y={h * 0.5} radius={h * 0.2} fill="none" stroke="#CBD5E1" strokeWidth={Math.max(6, w * 0.05)} />,
+      <Rect key="body" x={w * 0.08} y={h * 0.08} width={w * 0.6} height={h * 0.84} cornerRadius={Math.round(w * 0.03)} fill="#FFFFFF" stroke="#CBD5E1" strokeWidth={2} />,
+    ],
+  },
+  {
+    id: 'tote', label: 'Tasche', aspect: 0.85,
+    screen: (w, h) => ({ x: w * 0.2, y: h * 0.34, w: w * 0.6, h: h * 0.5, r: 0 }),
+    behind: (w, h) => [
+      <Line key="h1" points={[w * 0.32, h * 0.24, w * 0.36, h * 0.05, w * 0.46, h * 0.05, w * 0.48, h * 0.24]} stroke="#CBD5E1" strokeWidth={Math.max(4, w * 0.02)} fill="" lineCap="round" lineJoin="round" />,
+      <Line key="h2" points={[w * 0.52, h * 0.24, w * 0.54, h * 0.05, w * 0.64, h * 0.05, w * 0.68, h * 0.24]} stroke="#CBD5E1" strokeWidth={Math.max(4, w * 0.02)} fill="" lineCap="round" lineJoin="round" />,
+      <Rect key="bag" x={w * 0.14} y={h * 0.22} width={w * 0.72} height={h * 0.72} fill="#F4F1EA" stroke="#CBD5E1" strokeWidth={2} cornerRadius={4} />,
+    ],
+  },
+  {
+    id: 'sticker', label: 'Sticker', aspect: 1,
+    screen: (w, h) => { const b = Math.round(w * 0.08); return { x: b, y: b, w: w - 2 * b, h: h - 2 * b, r: Math.round(w * 0.12) } },
+    behind: (w, h) => [<Rect key="wh" width={w} height={h} cornerRadius={Math.round(w * 0.18)} fill="#FFFFFF" shadowColor="#0f172a" shadowBlur={14} shadowOpacity={0.18} shadowOffsetY={5} />],
+  },
+  {
+    id: 'postcard', label: 'Postkarte', aspect: 1.48,
+    screen: (w, h) => ({ x: 0, y: 0, w, h, r: Math.round(w * 0.02) }),
+    behind: (w, h) => [<Rect key="sh" width={w} height={h} cornerRadius={Math.round(w * 0.02)} fill="#fff" shadowColor="#0f172a" shadowBlur={16} shadowOpacity={0.18} shadowOffsetY={6} />],
+  },
 ]
 const deviceById = id => DEVICE_MOCKUPS.find(d => d.id === id) || DEVICE_MOCKUPS[0]
 function mockupPreview(id) {
   const c = '#CBD5E1', s = '#94A3B8'
-  if (id === 'phone') return <svg width="26" height="26" viewBox="0 0 100 100"><rect x="34" y="8" width="32" height="84" rx="9" fill={c} stroke={s} strokeWidth="3" /></svg>
-  if (id === 'browser') return <svg width="30" height="30" viewBox="0 0 100 100"><rect x="8" y="24" width="84" height="56" rx="5" fill={c} stroke={s} strokeWidth="3" /><rect x="8" y="24" width="84" height="13" rx="2" fill={s} /></svg>
-  if (id === 'laptop') return <svg width="32" height="32" viewBox="0 0 100 100"><rect x="18" y="22" width="64" height="42" rx="3" fill={c} stroke={s} strokeWidth="3" /><path d="M10 76 L90 76 L98 88 L2 88 Z" fill={c} stroke={s} strokeWidth="3" /></svg>
-  return <svg width="26" height="26" viewBox="0 0 100 100"><rect x="16" y="10" width="68" height="80" rx="3" fill="#fff" stroke={s} strokeWidth="3" /><rect x="24" y="18" width="52" height="52" fill={c} /></svg>
+  const P = { width: 28, height: 28, viewBox: '0 0 100 100' }
+  switch (id) {
+    case 'phone': return <svg {...P}><rect x="34" y="8" width="32" height="84" rx="9" fill={c} stroke={s} strokeWidth="3" /></svg>
+    case 'browser': return <svg {...P}><rect x="8" y="24" width="84" height="56" rx="5" fill={c} stroke={s} strokeWidth="3" /><rect x="8" y="24" width="84" height="13" rx="2" fill={s} /></svg>
+    case 'laptop': return <svg {...P}><rect x="18" y="22" width="64" height="42" rx="3" fill={c} stroke={s} strokeWidth="3" /><path d="M10 76 L90 76 L98 88 L2 88 Z" fill={c} stroke={s} strokeWidth="3" /></svg>
+    case 'tablet': return <svg {...P}><rect x="28" y="10" width="44" height="80" rx="6" fill={c} stroke={s} strokeWidth="3" /></svg>
+    case 'tablet_ls': return <svg {...P}><rect x="10" y="28" width="80" height="44" rx="6" fill={c} stroke={s} strokeWidth="3" /></svg>
+    case 'monitor': return <svg {...P}><rect x="12" y="16" width="76" height="50" rx="3" fill={c} stroke={s} strokeWidth="3" /><rect x="45" y="66" width="10" height="14" fill={s} /><rect x="34" y="80" width="32" height="6" rx="2" fill={s} /></svg>
+    case 'tv': return <svg {...P}><rect x="8" y="16" width="84" height="58" rx="3" fill={c} stroke={s} strokeWidth="3" /><rect x="44" y="74" width="12" height="7" fill={s} /><rect x="30" y="81" width="40" height="5" rx="2" fill={s} /></svg>
+    case 'watch': return <svg {...P}><rect x="40" y="6" width="20" height="22" rx="4" fill={s} /><rect x="40" y="72" width="20" height="22" rx="4" fill={s} /><rect x="30" y="26" width="40" height="48" rx="12" fill={c} stroke={s} strokeWidth="3" /></svg>
+    case 'ig_post': return <svg {...P}><rect x="30" y="8" width="40" height="84" rx="8" fill="#fff" stroke={s} strokeWidth="3" /><rect x="35" y="34" width="30" height="30" fill={c} /></svg>
+    case 'ig_story': return <svg {...P}><rect x="30" y="8" width="40" height="84" rx="8" fill={c} stroke={s} strokeWidth="3" /><rect x="37" y="14" width="26" height="3" rx="1" fill="#fff" /></svg>
+    case 'poster': return <svg {...P}><rect x="24" y="8" width="52" height="84" fill="#111827" /><rect x="28" y="12" width="44" height="76" fill={c} /></svg>
+    case 'billboard': return <svg {...P}><rect x="8" y="20" width="84" height="42" fill={c} stroke={s} strokeWidth="3" /><rect x="26" y="62" width="5" height="24" fill={s} /><rect x="69" y="62" width="5" height="24" fill={s} /></svg>
+    case 'card': return <svg {...P}><rect x="14" y="34" width="72" height="32" rx="4" fill={c} stroke={s} strokeWidth="3" /></svg>
+    case 'book': return <svg {...P}><rect x="26" y="10" width="50" height="80" rx="3" fill={c} stroke={s} strokeWidth="3" /><rect x="30" y="10" width="4" height="80" fill={s} /></svg>
+    case 'frame_wall': return <svg {...P}><rect x="20" y="8" width="60" height="84" fill="#3f3f46" /><rect x="27" y="15" width="46" height="70" fill="#fff" /><rect x="33" y="21" width="34" height="58" fill={c} /></svg>
+    case 'tshirt': return <svg {...P}><path d="M30 18 L42 10 L58 10 L70 18 L86 30 L76 42 L70 36 L70 90 L30 90 L30 36 L24 42 L14 30 Z" fill={c} stroke={s} strokeWidth="3" /></svg>
+    case 'mug': return <svg {...P}><circle cx="70" cy="50" r="16" fill="none" stroke={s} strokeWidth="6" /><rect x="16" y="26" width="52" height="48" rx="4" fill={c} stroke={s} strokeWidth="3" /></svg>
+    case 'tote': return <svg {...P}><path d="M32 30 L36 12 L48 12 L50 30" fill="none" stroke={s} strokeWidth="4" /><path d="M52 30 L54 12 L66 12 L70 30" fill="none" stroke={s} strokeWidth="4" /><rect x="22" y="28" width="56" height="60" rx="3" fill={c} stroke={s} strokeWidth="3" /></svg>
+    case 'sticker': return <svg {...P}><rect x="14" y="14" width="72" height="72" rx="16" fill="#fff" stroke={s} strokeWidth="3" /><rect x="24" y="24" width="52" height="52" rx="8" fill={c} /></svg>
+    case 'postcard': return <svg {...P}><rect x="10" y="30" width="80" height="40" rx="3" fill={c} stroke={s} strokeWidth="3" /></svg>
+    default: return <svg {...P}><rect x="16" y="10" width="68" height="80" rx="3" fill="#fff" stroke={s} strokeWidth="3" /><rect x="24" y="18" width="52" height="52" fill={c} /></svg>
+  }
 }
 
 const nextId = () => `obj_${Date.now()}_${_uid++}`
