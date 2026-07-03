@@ -90,6 +90,7 @@ function IcBrain()    { return <SvgIcon><path d="M9.5 2A2.5 2.5 0 0 1 12 4.5v15a
 function IcAssistant() { return <SvgIcon><path d="M12 2a2 2 0 0 1 2 2c0 .74-.4 1.39-1 1.73V7h1a7 7 0 0 1 7 7h1a1 1 0 0 1 0 2h-1v1a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-1H2a1 1 0 0 1 0-2h1a7 7 0 0 1 7-7h1V5.73c-.6-.34-1-.99-1-1.73a2 2 0 0 1 2-2z"/><circle cx="9" cy="12" r="1"/><circle cx="15" cy="12" r="1"/></SvgIcon> }
 function IcCard() { return <SvgIcon><path d="M20 4H4c-1.11 0-1.99.89-1.99 2L2 18c0 1.11.89 2 2 2h16c1.11 0 2-.89 2-2V6c0-1.11-.89-2-2-2zm0 14H4v-6h16v6zm0-10H4V6h16v2z"/></SvgIcon> }
 function IcSparkles() { return <SvgIcon><path d="m12 3-1.9 5.8a2 2 0 0 1-1.287 1.288L3 12l5.8 1.9a2 2 0 0 1 1.288 1.287L12 21l1.9-5.8a2 2 0 0 1 1.287-1.288L21 12l-5.8-1.9a2 2 0 0 1-1.288-1.287Z"/><path d="M5 3v4"/><path d="M3 5h4"/><path d="M19 17v4"/><path d="M17 19h4"/></SvgIcon> }
+function IcCog() { return <SvgIcon><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></SvgIcon> }
 import { useEntitlements } from '../hooks/useEntitlements'
 import { useAddons } from '../hooks/useAddons'
 import { useTagRegistrySync } from '../hooks/useTagRegistry'
@@ -100,25 +101,20 @@ import { isFlagEnabled } from '../lib/featureFlags'
 function getNav(t) {
   return [
   { to: '/dashboard',       icon: IcHome,     label: t('nav.home'), tourId: 'nav-dashboard' },
-  // Assistent-Nav retired (Phase 1) — Leadly lebt in der Bubble + im Dashboard-Briefing.
   { to: '/aufgaben',        icon: IcKanban,   label: t('nav.aufgaben') },
-
-  { divider: true, label: t('nav.branding'), tourId: 'nav-branding' },
-  { to: '/personal-brand',  icon: IcPersonBrand,  label: 'Personal Brand' },
-  { to: '/company-brand',   icon: IcCompanyBrand, label: 'Company Brand' },
-  { to: '/zielgruppen',     icon: IcTarget,   label: t('nav.zielgruppen') },
-  { to: '/branding/strike2-personas', icon: IcTarget, label: 'Strike2 Zielgruppen', module: 'strike2_zielgruppen_plus' },
-  { to: '/ki-sichtbarkeit', icon: IcSparkles, label: 'KI-Sichtbarkeit', addonSlug: 'auralis' },
 
   { divider: true, label: t('nav.sales'), tourId: 'nav-sales' },
   { to: '/organizations',   icon: IcUsers2,   label: 'Unternehmen' },
   { to: '/leads',           icon: IcUsers,    label: 'Kontakte' },
   { to: '/deals',           icon: IcBarChart, label: t('nav.deals') },
-  // Kampagne = zentrale CRM-Klammer (Partner-Feedback): Kontakte/Unternehmen/Deals laufen über Kampagnen.
   { to: '/sponsoring/kampagnen', icon: IcRocket, label: 'Kampagnen', module: 'sponsoring' },
   { to: '/reports',         icon: IcBarChart, label: t('nav.salesReporting') },
 
-  // Projektumsetzung temporär ausgeblendet (2026-06-01 — kommt später zurück)
+  { divider: true, label: t('nav.content'), tourId: 'nav-content' },
+  { to: '/redaktionsplan',  icon: IcCalPen,   label: t('nav.redaktionsplan') },
+  { to: '/content-studio',  icon: IcStar,     label: 'Content-Werkstatt' },
+  { to: '/bibliothek',      icon: IcImage,    label: 'Bibliothek' },
+
   { divider: true, label: 'LinkedIn', tourId: 'nav-linkedin' },
   { to: '/linkedin-inbox',  icon: IcInbox,    label: 'Import-Inbox' },
   { to: '/vernetzungen',    icon: IcHeart,    label: 'Vernetzung' },
@@ -128,29 +124,9 @@ function getNav(t) {
   { to: '/profil-checker',  icon: IcLinkedIn, label: 'Profil-Checker' },
   { to: '/profiltexte',     icon: IcLinkedIn, label: t('nav.profiltexte') },
 
-  { divider: true, label: t('nav.content'), tourId: 'nav-content' },
-  { to: '/redaktionsplan',  icon: IcCalPen,   label: t('nav.redaktionsplan') },
-  { to: '/content-studio',  icon: IcStar,     label: 'Content-Werkstatt' },
-  { to: '/bibliothek',      icon: IcImage,    label: 'Bibliothek' },
-
-  // Instagram — Addon-Section. Divider-Label MUSS 'Instagram' sein, damit
-  // SIDEBAR_DIVIDER_TO_MODULE die Section ohne instagram-Modul ausblendet.
   { divider: true, label: 'Instagram', tourId: 'nav-instagram' },
   { to: '/instagram',       icon: IcInstagram, label: 'Analysen' },
 
-  // "Wissen" — gemischte Herkunft: Wissensdatenbank (branding-Modul) + Ligen/Pakete
-  // (sponsoring-Addon). BEWUSST KEIN Eintrag in SIDEBAR_DIVIDER_TO_MODULE → Gating
-  // läuft per-Item über item.module; die Section verschwindet via Hide-empty-Divider
-  // (Layout-Filter unten), sobald 0 Items sichtbar sind. Routen unverändert.
-  { divider: true, label: 'Wissen', tourId: 'nav-wissen' },
-  { to: '/wissensdatenbank',       icon: IcCloud,  label: t('nav.wissensdatenbank'), module: 'branding' },
-  { to: '/sponsoring/ligen',       icon: IcShield, label: 'Ligen',             module: 'sponsoring' },
-  { to: '/sponsoring/pakete',      icon: IcPuzzle, label: 'Pakete',            module: 'sponsoring' },
-  { to: '/sponsoring/rechte',      icon: IcGrid,   label: 'Rechte & Inventar', module: 'sponsoring' },
-  { to: '/sponsoring/hospitality', icon: IcHeart,  label: 'Hospitality',       module: 'sponsoring' },
-
-  // Sponsoring OS — Addon-Section. Divider-Label MUSS 'Sponsoring' sein, damit
-  // SIDEBAR_DIVIDER_TO_MODULE die Section ohne sponsoring-Modul ausblendet.
   { divider: true, label: 'Sponsoring', tourId: 'nav-sponsoring' },
   { to: '/sponsoring',                 icon: IcRocket,        label: 'Übersicht' },
   { to: '/sponsoring/angebote',        icon: IcDoc,           label: 'Angebote' },
@@ -163,9 +139,27 @@ function getNav(t) {
   { to: '/sponsoring/signale',         icon: IcTarget,        label: 'Signale' },
   { to: '/sponsoring/sichtbarkeit',    icon: IcSparkles,      label: 'KI-Sichtbarkeit' },
   { to: '/sponsoring/success',         icon: IcStar,          label: 'Sponsor Success' },
-  // Aus dem Menü ausgeblendet (Routen + ModuleGuard bleiben bestehen, per Direkt-URL
-  // weiter erreichbar): /sponsoring/assistent + /sponsoring/linkedin-import.
+  ]
+}
 
+// Bereiche „Branding" + „Wissen" wandern ins Kopf-Menü oben rechts (Einrichtung).
+// Sub-Items bewusst 1:1 unverändert (inkl. der Sponsoring-Unterseiten in „Wissen").
+function getSetupNav(t) {
+  return [
+    { label: t('nav.branding'), tourId: 'nav-branding', items: [
+      { to: '/personal-brand',  icon: IcPersonBrand,  label: 'Personal Brand' },
+      { to: '/company-brand',   icon: IcCompanyBrand, label: 'Company Brand' },
+      { to: '/zielgruppen',     icon: IcTarget,   label: t('nav.zielgruppen') },
+      { to: '/branding/strike2-personas', icon: IcTarget, label: 'Strike2 Zielgruppen', module: 'strike2_zielgruppen_plus' },
+      { to: '/ki-sichtbarkeit', icon: IcSparkles, label: 'KI-Sichtbarkeit', addonSlug: 'auralis' },
+    ] },
+    { label: 'Wissen', tourId: 'nav-wissen', items: [
+      { to: '/wissensdatenbank',       icon: IcCloud,  label: t('nav.wissensdatenbank'), module: 'branding' },
+      { to: '/sponsoring/ligen',       icon: IcShield, label: 'Ligen',             module: 'sponsoring' },
+      { to: '/sponsoring/pakete',      icon: IcPuzzle, label: 'Pakete',            module: 'sponsoring' },
+      { to: '/sponsoring/rechte',      icon: IcGrid,   label: 'Rechte & Inventar', module: 'sponsoring' },
+      { to: '/sponsoring/hospitality', icon: IcHeart,  label: 'Hospitality',       module: 'sponsoring' },
+    ] },
   ]
 }
 
@@ -433,6 +427,7 @@ export default function Layout({ session, role, onLogout, children }) {
   const [userName, setUserName] = useState('')
   const [notifications, setNotifications] = useState([])
   const [showNotif, setShowNotif] = useState(false)
+  const [showSetup, setShowSetup] = useState(false)
   // IDs bereits gesehener Benachrichtigungen (persistiert) → ungelesene = neue IDs.
   // Dadurch wird die Glocke wieder rot, sobald etwas NEUES auftaucht.
   const [seenNotifIds, setSeenNotifIds] = useState(() => {
@@ -498,6 +493,26 @@ export default function Layout({ session, role, onLogout, children }) {
   // Sidebar-Gating B3: Addons mit leerem activates_modules (z.B. auralis →
   // KI-Sichtbarkeit) sind nicht in entitlements.modules → Slug-Gate via useAddons.
   const { subscribedSlugs, reload: reloadAddons } = useAddons()
+  const SETUP_NAV = getSetupNav(t)
+  const isItemVisible = (item) => {
+    if (!item) return false
+    if (item.adminOnly && !isAdmin) return false
+    if (!item.to) return true            // sub-section parent
+    if (entitlementsLoading) return true // D-A=a Race-Schutz
+    // Admin sees all sidebar items for support — DO NOT remove without
+    // alternative diagnostics path (Leadesk-Admin braucht Sicht auf
+    // Sponsoring/Strike2/etc. auch ohne Modul-Activation des Accounts).
+    if (isAdmin) return true
+    // Sidebar-Gating (Marketplace-Addons): Item nur sichtbar wenn das
+    // zugehörige Addon/Modul aktiviert ist (verschwindet nach Cancel).
+    //   item.module    → Modul-Gate (Addon mit activates_modules, z.B. Strike2)
+    //   item.addonSlug → Slug-Gate (Addon mit leerem activates_modules, z.B. auralis)
+    if (item.module && !hasModule(item.module)) return false
+    if (item.addonSlug && !(subscribedSlugs?.has?.(item.addonSlug))) return false
+    const perm = getRequiredPermission(item.to)
+    if (perm === null) return true       // always-on
+    return hasPermission(perm)
+  }
   // B4 Propagation: useAddons ist per-Component (nicht Context-shared wie
   // useEntitlements). Damit ein Cancel/Activate im Marketplace auch den Slug-Gate
   // hier live aktualisiert (≤2s, ohne Reload), reloaden wir die Addons sobald sich
@@ -685,7 +700,7 @@ export default function Layout({ session, role, onLogout, children }) {
   }
 
   useEffect(()=>{
-    function h(e){if(!e.target.closest('[data-notif]')&&!e.target.closest('[data-user-menu]')){setShowNotif(false);setShowMenu(false)}}
+    function h(e){if(!e.target.closest('[data-notif]')&&!e.target.closest('[data-user-menu]')&&!e.target.closest('[data-setup-menu]')){setShowNotif(false);setShowMenu(false);setShowSetup(false)}}
     document.addEventListener('mousedown',h)
     return ()=>document.removeEventListener('mousedown',h)
   },[])
@@ -875,25 +890,7 @@ export default function Layout({ session, role, onLogout, children }) {
             //   - getRequiredPermission(item.to)===null → always-on, gerendert
             //   - hasPermission(perm)===true → gerendert
             //   - sonst → herausgefiltert
-            const isItemVisible = (item) => {
-              if (!item) return false
-              if (item.adminOnly && !isAdmin) return false
-              if (!item.to) return true            // sub-section parent
-              if (entitlementsLoading) return true // D-A=a Race-Schutz
-              // Admin sees all sidebar items for support — DO NOT remove without
-              // alternative diagnostics path (Leadesk-Admin braucht Sicht auf
-              // Sponsoring/Strike2/etc. auch ohne Modul-Activation des Accounts).
-              if (isAdmin) return true
-              // Sidebar-Gating (Marketplace-Addons): Item nur sichtbar wenn das
-              // zugehörige Addon/Modul aktiviert ist (verschwindet nach Cancel).
-              //   item.module    → Modul-Gate (Addon mit activates_modules, z.B. Strike2)
-              //   item.addonSlug → Slug-Gate (Addon mit leerem activates_modules, z.B. auralis)
-              if (item.module && !hasModule(item.module)) return false
-              if (item.addonSlug && !(subscribedSlugs?.has?.(item.addonSlug))) return false
-              const perm = getRequiredPermission(item.to)
-              if (perm === null) return true       // always-on
-              return hasPermission(perm)
-            }
+// isItemVisible ist jetzt im Component-Scope definiert (auch fürs Einrichtung-Menü).
 
             return (
               <>
@@ -1049,6 +1046,43 @@ export default function Layout({ session, role, onLogout, children }) {
               <span title="Noch nicht installiert" style={{ position:'absolute', top:6, right:6, width:9, height:9, borderRadius:'50%', background:'var(--wl-primary, rgb(49,90,231))', border:'2px solid var(--bg-body)' }}/>
             )}
           </a>
+
+          {/* Einrichtung — Branding & Wissen (aus der linken Leiste hierher verschoben) */}
+          <div style={{ position:'relative' }} data-setup-menu>
+            <button data-setup-menu onClick={()=>setShowSetup(v=>!v)} title="Einrichtung — Branding & Wissen"
+              style={{ background: showSetup ? 'var(--surface-hover)' : 'var(--surface)', backdropFilter:'var(--glass-blur)', WebkitBackdropFilter:'var(--glass-blur)', border:'1px solid var(--border)', cursor:'pointer', width:38, height:38, borderRadius:11, display:'flex', alignItems:'center', justifyContent:'center', color:'var(--text-muted)', transition:'all 0.15s' }}
+              onMouseEnter={e=>{ e.currentTarget.style.color='var(--text-primary)' }}
+              onMouseLeave={e=>{ e.currentTarget.style.color='var(--text-muted)' }}>
+              <IcCog/>
+            </button>
+            {showSetup && (
+              <div data-setup-menu style={{ position:'absolute', top:'calc(100% + 8px)', right:0, width:250, background:'var(--surface-glass-strong)', backdropFilter:'var(--glass-blur)', WebkitBackdropFilter:'var(--glass-blur)', borderRadius:16, boxShadow:'0 8px 32px rgba(15,23,42,0.18)', border:'1px solid var(--border)', zIndex:1000, overflow:'hidden', padding:6 }}>
+                {SETUP_NAV.map(sec => {
+                  const moduleKey = SIDEBAR_DIVIDER_TO_MODULE[sec.label]
+                  const items = sec.items.filter(isItemVisible)
+                  if (moduleKey && !isAdmin && !entitlementsLoading && !hasModule(moduleKey)) return null
+                  if (items.length === 0 && !entitlementsLoading) return null
+                  return (
+                    <div key={sec.label} style={{ marginBottom:2 }}>
+                      <div style={{ fontSize:10.5, fontWeight:700, letterSpacing:'0.05em', textTransform:'uppercase', color:'var(--text-muted)', padding:'8px 10px 4px' }}>{sec.label}</div>
+                      {items.map(it => {
+                        const active = location.pathname === it.to || location.pathname.startsWith(it.to + '/')
+                        return (
+                          <NavLink key={it.to} to={it.to} onClick={()=>setShowSetup(false)}
+                            style={{ display:'flex', alignItems:'center', gap:10, padding:'8px 10px', borderRadius:9, textDecoration:'none', fontSize:13, fontWeight:600, color: active ? 'var(--wl-primary, rgb(49,90,231))' : 'var(--text-primary)', background: active ? 'rgba(49,90,231,0.08)' : 'transparent' }}
+                            onMouseEnter={e=>{ if(!active) e.currentTarget.style.background='var(--surface-hover)' }}
+                            onMouseLeave={e=>{ if(!active) e.currentTarget.style.background='transparent' }}>
+                            <span style={{ display:'flex', alignItems:'center', justifyContent:'center', width:20, color:'var(--text-muted)', flexShrink:0 }}>{it.icon()}</span>
+                            <span>{it.label}</span>
+                          </NavLink>
+                        )
+                      })}
+                    </div>
+                  )
+                })}
+              </div>
+            )}
+          </div>
 
           {/* Glocke — Pill */}
           <div style={{ position:'relative' }}>
