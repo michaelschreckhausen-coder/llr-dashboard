@@ -1088,16 +1088,21 @@ export default function DesignerCanvas({ visual, teamId, onSaved, onReplaceVisua
         const rect = cont ? cont.getBoundingClientRect() : { left: 0, top: 0 }
         const x = (e.evt.clientX || 0) - rect.left
         const y = (e.evt.clientY || 0) - rect.top
-        const tgtId = e.target && e.target.attrs ? e.target.attrs.id : null
-        const onEmpty = e.target === stage || tgtId === '__bg__' || tgtId === '__bgfill__' || !tgtId
-        if (onEmpty) {
+        // Ziel-Objekt finden — der Klick kann auf einem Kind liegen (z.B. Bild im
+        // Rahmen/Mockup), dessen Objekt-ID am Group-Vorfahren hängt → Vorfahren hochlaufen.
+        let tnode = e.target
+        let tgtId = tnode && tnode.attrs ? tnode.attrs.id : null
+        let guard = 0
+        while (tnode && tnode !== stage && guard++ < 12 && (!tgtId || tgtId === '__bg__' || tgtId === '__bgfill__' || !objects.find(o => o.id === tgtId))) {
+          tnode = tnode.getParent ? tnode.getParent() : null
+          tgtId = tnode && tnode.attrs ? tnode.attrs.id : null
+        }
+        const obj = objects.find(o => o.id === tgtId)
+        if (!obj) {
           setCtxMenu({ x, y, objId: null })
         } else {
-          const obj = objects.find(o => o.id === tgtId)
-          if (!obj) { setCtxMenu({ x, y, objId: null }); return }
-          // Objekt auswählen, falls nicht bereits Teil der Selektion.
-          setSelectedIds(prev => prev.includes(tgtId) ? prev : [tgtId])
-          setCtxMenu({ x, y, objId: tgtId })
+          setSelectedIds(prev => prev.includes(obj.id) ? prev : [obj.id])
+          setCtxMenu({ x, y, objId: obj.id })
         }
       } catch (_e) { /* noop */ }
     }
@@ -4453,6 +4458,7 @@ Antworte AUSSCHLIESSLICH mit JSON: {"ok":<bool>,"issues":["..."],"operations":[.
             onToggleLock={(id) => { toggleLayerFlag(id, 'locked'); setCtxMenu(null) }}
             onToggleHidden={(id) => { toggleLayerFlag(id, 'hidden'); setCtxMenu(null) }}
             onRename={(id) => { setSelectedIds([id]); setActiveTool('layers'); setRenamingId(id); setCtxMenu(null) }}
+            onRemoveImage={(id) => { pushHistory(); updateObject(id, { src: null }); setCtxMenu(null) }}
             onDelete={() => { deleteSelected(); setCtxMenu(null) }}
             onPaste={() => { pasteClipboard(); setCtxMenu(null) }}
             onSelectAll={() => { setSelectedIds(objects.map(o => o.id)); setCtxMenu(null) }}
@@ -4656,7 +4662,7 @@ function ContextMenuItem({ children, onClick, danger }) {
 function ContextMenuSep() {
   return <div style={{ height: 1, background: 'var(--border,#E9ECF2)', margin: '5px 8px' }} />
 }
-function ContextMenu({ ctx, obj, hasClipboard, containerW, onClose, onReorder, onDuplicate, onToggleLock, onToggleHidden, onRename, onDelete, onPaste, onSelectAll }) {
+function ContextMenu({ ctx, obj, hasClipboard, containerW, onClose, onReorder, onDuplicate, onToggleLock, onToggleHidden, onRename, onDelete, onPaste, onSelectAll, onRemoveImage = () => {} }) {
   const MENU_W = 224
   const estH = obj ? 332 : 96
   // Kanten-Kippung: wenn rechts/unten kein Platz, nach links/oben öffnen.
@@ -4684,8 +4690,12 @@ function ContextMenu({ ctx, obj, hasClipboard, containerW, onClose, onReorder, o
             <ContextMenuItem onClick={() => onToggleLock(obj.id)}>{obj.locked ? <Unlock {...ic} /> : <Lock {...ic} />}{obj.locked ? 'Entsperren' : 'Sperren'}</ContextMenuItem>
             <ContextMenuItem onClick={() => onToggleHidden(obj.id)}>{obj.hidden ? <Eye {...ic} /> : <EyeOff {...ic} />}{obj.hidden ? 'Einblenden' : 'Ausblenden'}</ContextMenuItem>
             <ContextMenuItem onClick={() => onRename(obj.id)}><Type {...ic} />Umbenennen</ContextMenuItem>
+            {(obj.type === 'frame' || obj.type === 'mockup') && obj.src && (<>
+              <ContextMenuSep />
+              <ContextMenuItem onClick={() => onRemoveImage(obj.id)}><X {...ic} />Bild aus Rahmen entfernen</ContextMenuItem>
+            </>)}
             <ContextMenuSep />
-            <ContextMenuItem danger onClick={onDelete}><Trash2 {...ic} />Löschen</ContextMenuItem>
+            <ContextMenuItem danger onClick={onDelete}><Trash2 {...ic} />{(obj.type === 'frame' || obj.type === 'mockup') ? 'Rahmen löschen' : 'Löschen'}</ContextMenuItem>
           </>
         ) : (
           <>
