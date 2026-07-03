@@ -1050,10 +1050,11 @@ export default function Layout({ session, role, onLogout, children }) {
           {/* Einrichtung — Branding & Wissen (aus der linken Leiste hierher verschoben) */}
           <div style={{ position:'relative' }} data-setup-menu>
             <button data-setup-menu onClick={()=>setShowSetup(v=>!v)} title="Einrichtung — Branding & Wissen"
-              style={{ background: showSetup ? 'var(--surface-hover)' : 'var(--surface)', backdropFilter:'var(--glass-blur)', WebkitBackdropFilter:'var(--glass-blur)', border:'1px solid var(--border)', cursor:'pointer', width:38, height:38, borderRadius:11, display:'flex', alignItems:'center', justifyContent:'center', color:'var(--text-muted)', transition:'all 0.15s' }}
+              style={{ display:'flex', alignItems:'center', gap:6, height:38, boxSizing:'border-box', padding:'0 12px', borderRadius:11, border:'1px solid var(--border)', background: showSetup ? 'var(--surface-hover)' : 'var(--surface)', backdropFilter:'var(--glass-blur)', WebkitBackdropFilter:'var(--glass-blur)', cursor:'pointer', color: showSetup ? 'var(--text-primary)' : 'var(--text-muted)', fontSize:13, fontWeight:600, fontFamily:'inherit', whiteSpace:'nowrap', transition:'all 0.15s' }}
               onMouseEnter={e=>{ e.currentTarget.style.color='var(--text-primary)' }}
-              onMouseLeave={e=>{ e.currentTarget.style.color='var(--text-muted)' }}>
-              <IcCog/>
+              onMouseLeave={e=>{ if(!showSetup) e.currentTarget.style.color='var(--text-muted)' }}>
+              Einrichtung
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" style={{ transform: showSetup ? 'rotate(180deg)' : 'none', transition:'transform 0.15s' }}><polyline points="6 9 12 15 18 9"/></svg>
             </button>
             {showSetup && (
               <div data-setup-menu style={{ position:'absolute', top:'calc(100% + 8px)', right:0, width:250, background:'var(--surface-glass-strong)', backdropFilter:'var(--glass-blur)', WebkitBackdropFilter:'var(--glass-blur)', borderRadius:16, boxShadow:'0 8px 32px rgba(15,23,42,0.18)', border:'1px solid var(--border)', zIndex:1000, overflow:'hidden', padding:6 }}>
