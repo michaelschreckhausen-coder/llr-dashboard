@@ -382,6 +382,8 @@ const ZOOM_MAX = 8
 // Rand um die Artboard (Display-px), damit Auswahlrahmen/Anfasser über den
 // Seitenrand hinaus sichtbar bleiben (Stage ist größer als die Seite).
 const CANVAS_PAD = 80
+// Aktive Drag-Payload aus den Bibliotheks-Panels (Icon/Grafik/Foto/Upload/Medium) → Canvas-Drop.
+let _designerDrag = null
 
 export default function DesignerCanvas({ visual, teamId, onSaved, onReplaceVisual, onPagesToPost }) {
   const stageRef = useRef(null)
@@ -987,10 +989,37 @@ export default function DesignerCanvas({ visual, teamId, onSaved, onReplaceVisua
   function onContainerMouseUp() {
     if (panDragRef.current) { panDragRef.current = null; setIsPanning(false) }
   }
-  // Drag&Drop eines Bildes auf den Canvas → als image-Objekt einfügen.
-  function onContainerDragOver(e) { e.preventDefault() }
+  // Drag&Drop auf den Canvas: (a) Bibliotheks-Element (Icon/Grafik/Foto/Upload/Medium)
+  // per _designerDrag-Payload, (b) Betriebssystem-Datei. Über einem Rahmen/Mockup
+  // landet das Bild direkt darin (cover-fill), sonst an der Drop-Position.
+  function onContainerDragOver(e) { if (_designerDrag || (e.dataTransfer?.types && Array.prototype.indexOf.call(e.dataTransfer.types, 'Files') >= 0)) e.preventDefault() }
+  function frameAtContentPoint(cx, cy) {
+    for (let i = objects.length - 1; i >= 0; i--) {
+      const o = objects[i]
+      if ((o.type !== 'frame' && o.type !== 'mockup') || o.hidden || o.locked) continue
+      const x = o.x || 0, y = o.y || 0, w = o.width || 0, h = o.height || 0
+      if (cx >= x && cx <= x + w && cy >= y && cy <= y + h) return o
+    }
+    return null
+  }
+  function dropContentPoint(e) {
+    const stage = stageRef.current
+    if (!stage) return null
+    try { stage.setPointersPositions(e.nativeEvent || e) } catch (_e) {}
+    return stagePoint()
+  }
   function onContainerDrop(e) {
     e.preventDefault()
+    const payload = _designerDrag; _designerDrag = null
+    if (payload) {
+      const p = dropContentPoint(e)
+      const frame = p ? frameAtContentPoint(p.x, p.y) : null
+      const opts = frame ? { frameId: frame.id } : (p ? { at: { x: p.x, y: p.y } } : {})
+      if (payload.k === 'dataurl' && payload.dataUrl) addImageFromDataUrl(payload.dataUrl, payload.meta || {}, opts)
+      else if (payload.k === 'stock' && payload.large) { setSavedMsg('Bild wird eingefügt…'); photoToDataUrl(payload.large).then(du => { if (du) addImageFromDataUrl(du, {}, opts) }) }
+      else if (payload.k === 'media' && payload.storagePath) insertMediaFromPath(payload.storagePath, opts)
+      return
+    }
     try {
       const file = e.dataTransfer?.files?.[0]
       if (file) onPickImageFile(file)
@@ -1863,12 +1892,15 @@ Antworte AUSSCHLIESSLICH mit JSON: {"ok":<bool>,"issues":["..."],"operations":[.
     } finally { setPageAiBusy(false) }
   }
 
-  function addImageFromDataUrl(dataUrl, meta = {}) {
+  function addImageFromDataUrl(dataUrl, meta = {}, opts = {}) {
     if (!dataUrl) return
     const img = new window.Image()
     img.onload = () => {
+      // Drop direkt in einen Rahmen/Mockup (Drag aus der Bibliothek über den Rahmen).
+      if (opts.frameId) { setImgCache(prev => ({ ...prev, [dataUrl]: img })); pushHistory(); updateObject(opts.frameId, { src: dataUrl }); return }
       // Ist ein leerer Bilderrahmen ausgewählt? → Bild in den Rahmen einsetzen (cover-fill) statt neues Bild-Objekt.
-      const selFrame = (selectedIds.length === 1) ? objects.find(o => o.id === selectedIds[0] && (o.type === 'frame' || o.type === 'mockup')) : null
+      // (nur beim Klick-Einfügen, nicht wenn eine Drop-Position vorgegeben ist)
+      const selFrame = (!opts.at && selectedIds.length === 1) ? objects.find(o => o.id === selectedIds[0] && (o.type === 'frame' || o.type === 'mockup')) : null
       if (selFrame) { setImgCache(prev => ({ ...prev, [dataUrl]: img })); pushHistory(); updateObject(selFrame.id, { src: dataUrl }); return }
       const nw = img.naturalWidth || 200
       const nh = img.naturalHeight || 200
@@ -1885,7 +1917,7 @@ Antworte AUSSCHLIESSLICH mit JSON: {"ok":<bool>,"issues":["..."],"operations":[.
         const sc = Math.min(1, maxDim / Math.max(nw, nh))
         w = Math.round(nw * sc); h = Math.round(nh * sc)
       }
-      const c = center()
+      const c = opts.at || center()
       setImgCache(prev => ({ ...prev, [dataUrl]: img }))
       addObject({ type: 'image', src: dataUrl, x: c.x - w / 2, y: c.y - h / 2, width: w, height: h, rotation: 0, opacity: 1,
         ...(meta.iconId ? { iconId: meta.iconId, iconColor: meta.iconColor || '#1f2937', isIcon: true } : {}) })
@@ -1910,11 +1942,11 @@ Antworte AUSSCHLIESSLICH mit JSON: {"ok":<bool>,"issues":["..."],"operations":[.
     } catch (_e) {}
   }
   // Bild aus der Medien-Bibliothek (Storage-Pfad) als Objekt einfügen.
-  async function insertMediaFromPath(storagePath) {
+  async function insertMediaFromPath(storagePath, opts = {}) {
     if (!storagePath) return
     try {
       const dataUrl = await visualDataUrl(storagePath)
-      if (dataUrl) addImageFromDataUrl(dataUrl)
+      if (dataUrl) addImageFromDataUrl(dataUrl, {}, opts)
       else setSavedMsg('Medium konnte nicht geladen werden.')
     } catch (_e) { setSavedMsg('Medium konnte nicht geladen werden.') }
   }
@@ -5231,10 +5263,11 @@ function IconsTab({ onInsert }) {
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(44px, 1fr))', gap: 8 }}>
             {ids.map(id => (
               <button key={id} onClick={() => handlePick(id)} title={id} disabled={inserting === id}
-                style={{ height: 44, borderRadius: 9, border: '1px solid var(--border)', background: '#fff', cursor: 'pointer', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', position: 'relative' }}>
+                draggable onDragStart={() => { _designerDrag = { k: 'dataurl', dataUrl: iconSvgUrl(id, color), meta: { iconId: id, iconColor: color, isIcon: true } } }} onDragEnd={() => { _designerDrag = null }}
+                style={{ height: 44, borderRadius: 9, border: '1px solid var(--border)', background: '#fff', cursor: 'grab', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', position: 'relative' }}>
                 {inserting === id
                   ? <Loader2 size={16} className="lk-spin" style={{ color: 'var(--text-muted)' }} />
-                  : <img src={iconSvgUrl(id, color)} alt={id} loading="lazy" width={28} height={28} style={{ display: 'block', objectFit: 'contain' }} />}
+                  : <img src={iconSvgUrl(id, color)} alt={id} loading="lazy" draggable={false} width={28} height={28} style={{ display: 'block', objectFit: 'contain' }} />}
               </button>
             ))}
           </div>
@@ -5279,10 +5312,11 @@ function GraphicsTab({ onInsert }) {
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(44px, 1fr))', gap: 8 }}>
             {ids.map(id => (
               <button key={id} onClick={() => handlePick(id)} title={id} disabled={inserting === id}
-                style={{ height: 44, borderRadius: 9, border: '1px solid var(--border)', background: '#fff', cursor: 'pointer', display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }}>
+                draggable onDragStart={() => { _designerDrag = { k: 'dataurl', dataUrl: iconSvgUrl(id), meta: { isGraphic: true } } }} onDragEnd={() => { _designerDrag = null }}
+                style={{ height: 44, borderRadius: 9, border: '1px solid var(--border)', background: '#fff', cursor: 'grab', display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }}>
                 {inserting === id
                   ? <Loader2 size={16} className="lk-spin" style={{ color: 'var(--text-muted)' }} />
-                  : <img src={iconSvgUrl(id)} alt={id} loading="lazy" width={30} height={30} style={{ display: 'block', objectFit: 'contain' }} />}
+                  : <img src={iconSvgUrl(id)} alt={id} loading="lazy" draggable={false} width={30} height={30} style={{ display: 'block', objectFit: 'contain' }} />}
               </button>
             ))}
           </div>
@@ -5357,9 +5391,10 @@ function ImagesTab({ onInsert }) {
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(78px, 1fr))', gap: 8 }}>
           {photos.map(p => (
             <button key={p.id} onClick={() => handlePick(p)} title={p.alt || ''} disabled={inserting === p.id}
-              style={{ border: 'none', padding: 0, borderRadius: 8, overflow: 'hidden', cursor: 'pointer', background: p.avgColor || '#eef1f5', position: 'relative', display: 'flex', flexDirection: 'column' }}>
+              draggable onDragStart={() => { _designerDrag = { k: 'stock', large: p?.src?.large } }} onDragEnd={() => { _designerDrag = null }}
+              style={{ border: 'none', padding: 0, borderRadius: 8, overflow: 'hidden', cursor: 'grab', background: p.avgColor || '#eef1f5', position: 'relative', display: 'flex', flexDirection: 'column' }}>
               <div style={{ width: '100%', aspectRatio: '1 / 1', background: p.avgColor || '#eef1f5', position: 'relative' }}>
-                <img src={p?.src?.tiny || p?.src?.medium} alt={p.alt || ''} loading="lazy"
+                <img src={p?.src?.tiny || p?.src?.medium} alt={p.alt || ''} loading="lazy" draggable={false}
                   style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} />
                 {inserting === p.id && (
                   <div style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'rgba(255,255,255,0.6)' }}>
@@ -5651,8 +5686,9 @@ function UploadsPanelBody({ onTriggerUpload, uploadThumbs, onInsertUpload, media
           <PanelLabel>Diese Sitzung</PanelLabel>
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 8, marginBottom: 14 }}>
             {uploadThumbs.map((u, i) => (
-              <button key={i} onClick={() => onInsertUpload(u)} title="Einfügen"
-                style={{ height: 64, borderRadius: 8, border: '1px solid var(--border)', background: `#f4f6fa center/cover no-repeat url(${u})`, cursor: 'pointer' }} />
+              <button key={i} onClick={() => onInsertUpload(u)} title="Auf die Leinwand ziehen oder klicken"
+                draggable onDragStart={() => { _designerDrag = { k: 'dataurl', dataUrl: u } }} onDragEnd={() => { _designerDrag = null }}
+                style={{ height: 64, borderRadius: 8, border: '1px solid var(--border)', background: `#f4f6fa center/cover no-repeat url(${u})`, cursor: 'grab' }} />
             ))}
           </div>
         </>
@@ -5665,8 +5701,9 @@ function UploadsPanelBody({ onTriggerUpload, uploadThumbs, onInsertUpload, media
       ) : (
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 8 }}>
           {mediaLib.map((m) => (
-            <button key={m.id} onClick={() => onInsertMediaItem(m.storage_path)} title="Einfügen"
-              style={{ height: 64, borderRadius: 8, border: '1px solid var(--border)', background: `#f4f6fa center/cover no-repeat url(${m.url})`, cursor: 'pointer' }} />
+            <button key={m.id} onClick={() => onInsertMediaItem(m.storage_path)} title="Auf die Leinwand ziehen oder klicken"
+              draggable onDragStart={() => { _designerDrag = { k: 'media', storagePath: m.storage_path } }} onDragEnd={() => { _designerDrag = null }}
+              style={{ height: 64, borderRadius: 8, border: '1px solid var(--border)', background: `#f4f6fa center/cover no-repeat url(${m.url})`, cursor: 'grab' }} />
           ))}
         </div>
       ))}
