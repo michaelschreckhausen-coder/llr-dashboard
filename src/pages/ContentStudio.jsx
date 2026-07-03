@@ -141,6 +141,17 @@ function splitAudienceRef(v) {
 
 // Kleines Vorschau-Thumbnail (downscaled JPEG-DataURL) für Chat-Anhänge — wird im
 // Composer angezeigt UND in der Nachricht persistiert (klein genug für metadata).
+// Schnelles Base64 via FileReader (nativer, non-blocking Encoder). Die frühere
+// Byte-für-Byte-Schleife (String.fromCharCode je Byte) blockierte den Main-Thread
+// bei großen Anhängen sekundenlang → "lädt langsam hoch".
+function fileToBase64(file) {
+  return new Promise((resolve) => {
+    const fr = new FileReader()
+    fr.onload = () => { const s = String(fr.result || ''); const i = s.indexOf(','); resolve(i >= 0 ? s.slice(i + 1) : '') }
+    fr.onerror = () => resolve('')
+    fr.readAsDataURL(file)
+  })
+}
 function makeImageThumb(file, max = 320) {
   return new Promise((resolve) => {
     try {
@@ -1181,13 +1192,11 @@ Neue Anfrage: "${p}"` },
           f = new File([blob], (f.name || 'bild').replace(/\.(heic|heif)$/i, '') + '.jpg', { type: 'image/jpeg' })
         } catch (_e) { /* Konvertierung fehlgeschlagen → als generische Datei behandeln */ }
       }
-      const buf = await f.arrayBuffer()
-      let bin = ''
-      const arr = new Uint8Array(buf)
-      for (let i = 0; i < arr.byteLength; i++) bin += String.fromCharCode(arr[i])
-      const base64 = btoa(bin)
-      let preview = null
-      if ((f.type || '').startsWith('image/')) { try { preview = await makeImageThumb(f) } catch (_e) { preview = null } }
+      const isImg = (f.type || '').startsWith('image/')
+      const [base64, preview] = await Promise.all([
+        fileToBase64(f),
+        isImg ? makeImageThumb(f).catch(() => null) : Promise.resolve(null),
+      ])
       out.push({ name:f.name, type:f.type, size:f.size, base64, preview })
     }
     setAttachments(prev => [...prev, ...out])
