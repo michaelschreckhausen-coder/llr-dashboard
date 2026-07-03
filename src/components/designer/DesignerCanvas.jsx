@@ -286,6 +286,26 @@ function frameCoverFit(imgW, imgH, W, H) {
   return { x: (W - w) / 2, y: (H - h) / 2, width: w, height: h }
 }
 
+// ─── Collagen: Preset-Raster, die mehrere Rahmen (frames) platzieren ─────────
+// cells = [x, y, w, h] als Anteil (0..1) der Collage-Box. Jede Zelle wird ein Frame.
+const T = 1 / 3
+const COLLAGE_LAYOUTS = [
+  { id: '2h',    label: '2 nebeneinander', cells: [[0, 0, .5, 1], [.5, 0, .5, 1]] },
+  { id: '2v',    label: '2 gestapelt',     cells: [[0, 0, 1, .5], [0, .5, 1, .5]] },
+  { id: '3h',    label: '3 Spalten',       cells: [[0, 0, T, 1], [T, 0, T, 1], [2 * T, 0, T, 1]] },
+  { id: '3v',    label: '3 Zeilen',        cells: [[0, 0, 1, T], [0, T, 1, T], [0, 2 * T, 1, T]] },
+  { id: '3lbig', label: '1 groß + 2',      cells: [[0, 0, .6, 1], [.6, 0, .4, .5], [.6, .5, .4, .5]] },
+  { id: '3tbig', label: '1 oben + 2',      cells: [[0, 0, 1, .6], [0, .6, .5, .4], [.5, .6, .5, .4]] },
+  { id: '3rbig', label: '2 + 1 groß',      cells: [[0, 0, .4, .5], [0, .5, .4, .5], [.4, 0, .6, 1]] },
+  { id: '4grid', label: '2 × 2',           cells: [[0, 0, .5, .5], [.5, 0, .5, .5], [0, .5, .5, .5], [.5, .5, .5, .5]] },
+  { id: '4h',    label: '4 Spalten',       cells: [[0, 0, .25, 1], [.25, 0, .25, 1], [.5, 0, .25, 1], [.75, 0, .25, 1]] },
+  { id: '4lbig', label: '1 groß + 3',      cells: [[0, 0, .55, 1], [.55, 0, .45, T], [.55, T, .45, T], [.55, 2 * T, .45, T]] },
+  { id: '4tbig', label: '1 oben + 3',      cells: [[0, 0, 1, .58], [0, .58, T, .42], [T, .58, T, .42], [2 * T, .58, T, .42]] },
+  { id: '5mix',  label: '5er Mix',         cells: [[0, 0, .5, .5], [.5, 0, .5, .5], [0, .5, T, .5], [T, .5, T, .5], [2 * T, .5, T, .5]] },
+  { id: '6grid', label: '3 × 2',           cells: [[0, 0, T, .5], [T, 0, T, .5], [2 * T, 0, T, .5], [0, .5, T, .5], [T, .5, T, .5], [2 * T, .5, T, .5]] },
+  { id: '6h',    label: '6 Streifen',      cells: [[0, 0, 1, 1 / 6], [0, 1 / 6, 1, 1 / 6], [0, 2 / 6, 1, 1 / 6], [0, 3 / 6, 1, 1 / 6], [0, 4 / 6, 1, 1 / 6], [0, 5 / 6, 1, 1 / 6]] },
+]
+
 const nextId = () => `obj_${Date.now()}_${_uid++}`
 
 // Blob → DataURL (für PDF-Einbettung via jsPDF.addImage).
@@ -1417,6 +1437,24 @@ export default function DesignerCanvas({ visual, teamId, onSaved, onReplaceVisua
     const c = center()
     const s = Math.round(Math.min(stageSize.width, stageSize.height) * 0.42)
     addObject({ type: 'frame', shape: shapeId, x: c.x - s / 2, y: c.y - s / 2, width: s, height: s, rotation: 0, opacity: 1 })
+  }
+  function addCollage(layoutId) {
+    const lay = COLLAGE_LAYOUTS.find(l => l.id === layoutId); if (!lay) return
+    const cw = (baseCrop?.width || stageSize.width), ch = (baseCrop?.height || stageSize.height)
+    const margin = Math.round(Math.min(cw, ch) * 0.06)
+    const bx = margin, by = margin, bw = cw - margin * 2, bh = ch - margin * 2
+    const gap = Math.max(6, Math.round(Math.min(bw, bh) * 0.018))
+    const frames = lay.cells.map(cell => ({
+      id: nextId(), type: 'frame', shape: 'rect',
+      x: Math.round(bx + cell[0] * bw + gap / 2),
+      y: Math.round(by + cell[1] * bh + gap / 2),
+      width: Math.round(cell[2] * bw - gap),
+      height: Math.round(cell[3] * bh - gap),
+      rotation: 0, opacity: 1,
+    }))
+    pushHistory()
+    setObjects(prev => [...prev, ...frames])
+    setSelectedIds(frames.length ? [frames[0].id] : [])
   }
   function addRect() {
     const c = center()
@@ -4091,6 +4129,7 @@ Antworte AUSSCHLIESSLICH mit JSON: {"ok":<bool>,"issues":["..."],"operations":[.
           elementTab={elementTab} setElementTab={setElementTab}
           onAddRect={addRect} onAddEllipse={addEllipse} onAddLine={addLine} onAddArrow={addArrow}
           onAddFrame={addFrame}
+          onAddCollage={addCollage}
           onAddAsset={addAsset}
           onInsertMedia={(dataUrl, meta) => addImageFromDataUrl(dataUrl, meta)}
           // Text
@@ -5305,10 +5344,11 @@ function TemplatesPanelBody({ onApplyTemplate, onClose }) {
 }
 
 // ─── Panel: Elemente (Formen / Icons / Grafiken / Bilder) ───────────────────
-function ElementsPanelBody({ elementTab, setElementTab, onAddRect, onAddEllipse, onAddLine, onAddArrow, onAddAsset, onInsertMedia, onAddFrame = () => {} }) {
+function ElementsPanelBody({ elementTab, setElementTab, onAddRect, onAddEllipse, onAddLine, onAddArrow, onAddAsset, onInsertMedia, onAddFrame = () => {}, onAddCollage = () => {} }) {
   const tabs = [
     { id: 'shapes', label: 'Formen' },
     { id: 'frames', label: 'Rahmen' },
+    { id: 'collage', label: 'Collage' },
     { id: 'icons', label: 'Icons' },
     { id: 'graphics', label: 'Grafiken' },
     { id: 'images', label: 'Bilder' },
@@ -5359,6 +5399,22 @@ function ElementsPanelBody({ elementTab, setElementTab, onAddRect, onAddEllipse,
               <button key={s.id} onClick={() => onAddFrame(s.id)} title={s.label}
                 style={{ height: 52, borderRadius: 9, border: '1px solid var(--border)', background: '#fff', cursor: 'pointer', display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }}>
                 <svg width="30" height="30" viewBox="0 0 100 100"><path d={s.svg} fill="#CBD5E1" stroke="#94A3B8" strokeWidth="3" strokeLinejoin="round" /></svg>
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
+      {elementTab === 'collage' && (
+        <div>
+          <PanelLabel>Collage-Layouts</PanelLabel>
+          <div style={{ fontSize: 11.5, color: 'var(--text-muted)', margin: '0 0 8px', lineHeight: 1.4 }}>Layout einfügen — es platziert mehrere Rahmen. Jede Zelle auswählen und ein Bild einsetzen.</div>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(58px, 1fr))', gap: 8 }}>
+            {COLLAGE_LAYOUTS.map(l => (
+              <button key={l.id} onClick={() => onAddCollage(l.id)} title={l.label}
+                style={{ height: 58, borderRadius: 9, border: '1px solid var(--border)', background: '#fff', cursor: 'pointer', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', padding: 6 }}>
+                <svg width="42" height="42" viewBox="0 0 100 100">
+                  {l.cells.map((ce, i) => (<rect key={i} x={ce[0] * 100 + 2} y={ce[1] * 100 + 2} width={Math.max(0, ce[2] * 100 - 4)} height={Math.max(0, ce[3] * 100 - 4)} rx="3" fill="#CBD5E1" stroke="#94A3B8" strokeWidth="2" />))}
+                </svg>
               </button>
             ))}
           </div>
