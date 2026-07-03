@@ -482,7 +482,10 @@ export default function Automatisierung({ session }) {
         </div>
 
         {/* Extension-Status Banner — dezent statt gelb */}
-        <ExtensionBanner jobsActive={jobs.length > 0} />
+        <ExtensionBanner
+          runningCount={jobs.filter(j => j.status === 'running').length}
+          waitingCount={jobs.filter(j => j.status !== 'running').length}
+        />
 
         {/* View-Toggle Kampagnen vs Warteschlange */}
         <div style={{ display:'flex', alignItems:'center', gap:12, marginBottom:16, flexWrap:'wrap' }}>
@@ -608,18 +611,29 @@ function KpiTile({ Icon, label, value, sub, tint, tintBg }) {
   )
 }
 
-function ExtensionBanner({ jobsActive }) {
+function ExtensionBanner({ runningCount = 0, waitingCount = 0 }) {
+  const active  = runningCount > 0
+  const waiting = waitingCount > 0
+  const bg  = active ? '#ECFDF5' : waiting ? '#FFFBEB' : '#F1F5F9'
+  const fg  = active ? '#065F46' : waiting ? '#92400E' : '#475569'
+  const ico = active ? '#16a34a' : waiting ? '#d97706' : '#64748B'
+  const dot = active ? '#22c55e' : waiting ? '#f59e0b' : '#CBD5E1'
+  const line  = active  ? `· verarbeitet ${runningCount} Job${runningCount !== 1 ? 's' : ''}`
+              : waiting ? `· ${waitingCount} Job${waitingCount !== 1 ? 's' : ''} in Warteschlange`
+              : '· bereit'
+  const badge = active ? 'Aktiv' : waiting ? 'Wartet' : 'Idle'
   return (
     <div style={{ ...cardStyle, marginBottom:20, padding:'12px 16px', display:'flex', alignItems:'center', gap:12, flexWrap:'wrap' }}>
-      <div style={{ width:32, height:32, borderRadius:8, background:jobsActive ? '#ECFDF5' : '#F1F5F9', display:'flex', alignItems:'center', justifyContent:'center', color:jobsActive ? '#16a34a' : '#64748B' }}>
+      <div style={{ width:32, height:32, borderRadius:8, background:bg, display:'flex', alignItems:'center', justifyContent:'center', color:ico }}>
         <Globe size={16} />
       </div>
       <div style={{ flex:1, minWidth:240, fontSize:12, color:'var(--text-muted)' }}>
-        <span style={{ fontWeight:700, color:'var(--text-strong)' }}>Leadesk Chrome-Extension</span> {jobsActive ? '· aktiv, verarbeitet Jobs' : '· bereit'} — Automatisierung läuft im Browser deines aktiven LinkedIn-Tabs.
+        <span style={{ fontWeight:700, color:'var(--text-strong)' }}>Leadesk Chrome-Extension</span> {line}
+        <div style={{ marginTop:2, color:'#92400E' }}>Automatisierung wird gerade überarbeitet — Kampagnen werden noch nicht ausgeführt.</div>
       </div>
-      <span style={{ display:'inline-flex', alignItems:'center', gap:6, padding:'5px 10px', borderRadius:99, background:jobsActive ? '#ECFDF5' : '#F1F5F9', color:jobsActive ? '#065F46' : '#475569', fontSize:11, fontWeight:700 }}>
-        <span style={{ width:7, height:7, borderRadius:'50%', background:jobsActive ? '#22c55e' : '#CBD5E1' }}/>
-        {jobsActive ? 'Aktiv' : 'Idle'}
+      <span style={{ display:'inline-flex', alignItems:'center', gap:6, padding:'5px 10px', borderRadius:99, background:bg, color:fg, fontSize:11, fontWeight:700 }}>
+        <span style={{ width:7, height:7, borderRadius:'50%', background:dot }}/>
+        {badge}
       </span>
       <a href={EXTENSION_WEBSTORE_URL} target="_blank" rel="noopener noreferrer"
         style={{ ...ghostBtnStyle, textDecoration:'none', color:PRIMARY_VAR, borderColor:'rgba(49,90,231,0.35)', background:'rgba(49,90,231,0.06)' }}>
