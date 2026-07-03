@@ -311,6 +311,95 @@ const COLLAGE_LAYOUTS = [
 // Jede Vorlage: aspect (Default-Seitenverhältnis), screen(w,h) → Screen-Rechteck,
 // behind(w,h)/front(w,h) → Konva-Deko (Body/Bezel/Notch). Bild füllt den Screen (cover).
 const _rectClipLocal = (ctx, w, h) => { ctx.beginPath(); ctx.rect(0, 0, w, h); ctx.closePath() }
+
+// ─── Perspektiv-Warp-Engine (Homographie + affines Dreiecks-Textur-Mapping) ──
+// Konva kann nur affin transformieren. Für angewinkelte Mockups (Screen = belie-
+// biges Viereck) rendern wir das Bild per Homographie in ein Offscreen-Canvas und
+// zeigen dieses als Konva.Image. Ansatz: Einheitsquadrat→Quad-Homographie, feines
+// Gitter, je Zelle zwei affin texturierte Dreiecke (perspektivisch korrekt).
+function _homoUnitToQuad(q) {
+  const x0 = q[0].x, y0 = q[0].y, x1 = q[1].x, y1 = q[1].y, x2 = q[2].x, y2 = q[2].y, x3 = q[3].x, y3 = q[3].y
+  const dx1 = x1 - x2, dx2 = x3 - x2, dx3 = x0 - x1 + x2 - x3
+  const dy1 = y1 - y2, dy2 = y3 - y2, dy3 = y0 - y1 + y2 - y3
+  let a, b, c, d, e, f, g, h
+  if (Math.abs(dx3) < 1e-9 && Math.abs(dy3) < 1e-9) {
+    a = x1 - x0; b = x2 - x1; c = x0; d = y1 - y0; e = y2 - y1; f = y0; g = 0; h = 0
+  } else {
+    const den = dx1 * dy2 - dx2 * dy1
+    g = (dx3 * dy2 - dx2 * dy3) / den
+    h = (dx1 * dy3 - dx3 * dy1) / den
+    a = x1 - x0 + g * x1; b = x3 - x0 + h * x3; c = x0
+    d = y1 - y0 + g * y1; e = y3 - y0 + h * y3; f = y0
+  }
+  return { a, b, c, d, e, f, g, h }
+}
+function _applyHomo(m, u, v) {
+  const den = m.g * u + m.h * v + 1
+  return { x: (m.a * u + m.b * v + m.c) / den, y: (m.d * u + m.e * v + m.f) / den }
+}
+// Affine Koeffizienten, die Quell-Dreieck s[] → Ziel-Dreieck d[] abbilden.
+function _affineFromTri(s, d) {
+  const s0 = s[0], s1 = s[1], s2 = s[2]
+  const det = s0.x * (s1.y - s2.y) - s0.y * (s1.x - s2.x) + (s1.x * s2.y - s2.x * s1.y)
+  if (Math.abs(det) < 1e-9) return null
+  const i = 1 / det
+  const m00 = (s1.y - s2.y) * i, m01 = (s2.y - s0.y) * i, m02 = (s0.y - s1.y) * i
+  const m10 = (s2.x - s1.x) * i, m11 = (s0.x - s2.x) * i, m12 = (s1.x - s0.x) * i
+  const m20 = (s1.x * s2.y - s2.x * s1.y) * i, m21 = (s2.x * s0.y - s0.x * s2.y) * i, m22 = (s0.x * s1.y - s1.x * s0.y) * i
+  const a = m00 * d[0].x + m01 * d[1].x + m02 * d[2].x
+  const b = m10 * d[0].x + m11 * d[1].x + m12 * d[2].x
+  const c = m20 * d[0].x + m21 * d[1].x + m22 * d[2].x
+  const dd = m00 * d[0].y + m01 * d[1].y + m02 * d[2].y
+  const e = m10 * d[0].y + m11 * d[1].y + m12 * d[2].y
+  const ff = m20 * d[0].y + m21 * d[1].y + m22 * d[2].y
+  return { a, b, c, d: dd, e, f: ff }
+}
+function _drawTexTri(ctx, src, s, d) {
+  const m = _affineFromTri(s, d)
+  if (!m) return
+  ctx.save()
+  ctx.beginPath()
+  ctx.moveTo(d[0].x, d[0].y); ctx.lineTo(d[1].x, d[1].y); ctx.lineTo(d[2].x, d[2].y); ctx.closePath()
+  ctx.clip()
+  ctx.setTransform(m.a, m.d, m.b, m.e, m.c, m.f)
+  ctx.drawImage(src, 0, 0)
+  ctx.restore()
+  ctx.setTransform(1, 0, 0, 1, 0, 0)
+}
+// Bild → Offscreen-Canvas (outW×outH·ss), perspektivisch in quad gemappt (cover, pan).
+function warpImageToCanvas(img, quad, outW, outH, opts = {}) {
+  const ss = opts.ss || 1
+  const N = opts.grid || 14
+  const cw = Math.max(1, Math.round(outW * ss)), ch = Math.max(1, Math.round(outH * ss))
+  const cv = document.createElement('canvas'); cv.width = cw; cv.height = ch
+  const ctx = cv.getContext('2d')
+  ctx.imageSmoothingEnabled = true; ctx.imageSmoothingQuality = 'high'
+  const q = quad.map(p => ({ x: p.x * ss, y: p.y * ss }))
+  const iw = img.naturalWidth || img.width, ih = img.naturalHeight || img.height
+  if (!iw || !ih) return cv
+  const wq = (Math.hypot(q[1].x - q[0].x, q[1].y - q[0].y) + Math.hypot(q[2].x - q[3].x, q[2].y - q[3].y)) / 2
+  const hq = (Math.hypot(q[3].x - q[0].x, q[3].y - q[0].y) + Math.hypot(q[2].x - q[1].x, q[2].y - q[1].y)) / 2
+  const targetAsp = wq / Math.max(1e-6, hq)
+  const panX = opts.panX == null ? 0.5 : opts.panX, panY = opts.panY == null ? 0.5 : opts.panY
+  let cropW = iw, cropH = ih, cropX = 0, cropY = 0
+  if (iw / ih > targetAsp) { cropW = Math.round(ih * targetAsp); cropX = Math.round((iw - cropW) * panX) }
+  else { cropH = Math.round(iw / targetAsp); cropY = Math.round((ih - cropH) * panY) }
+  // Quelle einmal auf den Crop zuschneiden → günstigere, saubere Quell-Koordinaten.
+  const sc = document.createElement('canvas'); sc.width = Math.max(1, cropW); sc.height = Math.max(1, cropH)
+  sc.getContext('2d').drawImage(img, cropX, cropY, cropW, cropH, 0, 0, cropW, cropH)
+  const H = _homoUnitToQuad(q)
+  const srcP = (u, v) => ({ x: u * cropW, y: v * cropH })
+  for (let ix = 0; ix < N; ix++) {
+    for (let iy = 0; iy < N; iy++) {
+      const u0 = ix / N, u1 = (ix + 1) / N, v0 = iy / N, v1 = (iy + 1) / N
+      const D00 = _applyHomo(H, u0, v0), D10 = _applyHomo(H, u1, v0), D11 = _applyHomo(H, u1, v1), D01 = _applyHomo(H, u0, v1)
+      const S00 = srcP(u0, v0), S10 = srcP(u1, v0), S11 = srcP(u1, v1), S01 = srcP(u0, v1)
+      _drawTexTri(ctx, sc, [S00, S10, S11], [D00, D10, D11])
+      _drawTexTri(ctx, sc, [S00, S11, S01], [D00, D11, D01])
+    }
+  }
+  return cv
+}
 const DEVICE_MOCKUPS = [
   {
     id: 'browser', label: 'Browser', aspect: 1.5,
@@ -470,6 +559,38 @@ const DEVICE_MOCKUPS = [
     screen: (w, h) => ({ x: 0, y: 0, w, h, r: Math.round(w * 0.02) }),
     behind: (w, h) => [<Rect key="sh" width={w} height={h} cornerRadius={Math.round(w * 0.02)} fill="#fff" shadowColor="#0f172a" shadowBlur={16} shadowOpacity={0.18} shadowOffsetY={6} />],
   },
+  // ── Perspektivische Mockups (nutzen die Warp-Engine: screenQuad statt screen) ──
+  {
+    id: 'phone_persp', label: 'Phone 3D', aspect: 0.62,
+    screenQuad: (w, h) => [{ x: w * 0.12, y: h * 0.09 }, { x: w * 0.76, y: h * 0.17 }, { x: w * 0.76, y: h * 0.83 }, { x: w * 0.12, y: h * 0.91 }],
+    behind: (w, h) => [
+      <Line key="body" closed fill="#0B0B0F"
+        points={[w * 0.06, h * 0.02, w * 0.82, h * 0.12, w * 0.82, h * 0.88, w * 0.06, h * 0.98]}
+        shadowColor="#0f172a" shadowBlur={20} shadowOpacity={0.28} shadowOffsetX={9} shadowOffsetY={11} />,
+    ],
+    front: (w, h) => [
+      <Line key="notch" closed fill="#0B0B0F" points={[w * 0.34, h * 0.105, w * 0.54, h * 0.13, w * 0.54, h * 0.16, w * 0.34, h * 0.135]} />,
+    ],
+  },
+  {
+    id: 'laptop_persp', label: 'Laptop 3D', aspect: 1.4,
+    screenQuad: (w, h) => [{ x: w * 0.2, y: h * 0.06 }, { x: w * 0.8, y: h * 0.06 }, { x: w * 0.86, y: h * 0.62 }, { x: w * 0.14, y: h * 0.62 }],
+    behind: (w, h) => [
+      <Line key="bezel" closed fill="#0B0B0F" points={[w * 0.18, h * 0.03, w * 0.82, h * 0.03, w * 0.885, h * 0.655, w * 0.115, h * 0.655]} />,
+    ],
+    front: (w, h) => [
+      <Line key="deck" closed fill="#C7CDD4" stroke="#AEB6BF" strokeWidth={1} points={[w * 0.115, h * 0.655, w * 0.885, h * 0.655, w * 0.98, h * 0.9, w * 0.02, h * 0.9]} />,
+      <Line key="hinge" points={[w * 0.115, h * 0.655, w * 0.885, h * 0.655]} stroke="#8b93a0" strokeWidth={Math.max(2, h * 0.01)} />,
+      <Line key="tp" closed fill="#B7BEC7" points={[w * 0.42, h * 0.77, w * 0.58, h * 0.77, w * 0.6, h * 0.85, w * 0.4, h * 0.85]} />,
+    ],
+  },
+  {
+    id: 'card_persp', label: 'Karte 3D', aspect: 1.3,
+    screenQuad: (w, h) => [{ x: w * 0.1, y: h * 0.18 }, { x: w * 0.9, y: h * 0.06 }, { x: w * 0.92, y: h * 0.82 }, { x: w * 0.08, y: h * 0.94 }],
+    behind: (w, h) => [
+      <Line key="sh" closed fill="#0f172a" opacity={0.16} points={[w * 0.14, h * 0.24, w * 0.94, h * 0.12, w * 0.96, h * 0.88, w * 0.12, h * 1.0]} />,
+    ],
+  },
 ]
 const deviceById = id => DEVICE_MOCKUPS.find(d => d.id === id) || DEVICE_MOCKUPS[0]
 function mockupPreview(id) {
@@ -496,6 +617,9 @@ function mockupPreview(id) {
     case 'tote': return <svg {...P}><path d="M32 30 L36 12 L48 12 L50 30" fill="none" stroke={s} strokeWidth="4" /><path d="M52 30 L54 12 L66 12 L70 30" fill="none" stroke={s} strokeWidth="4" /><rect x="22" y="28" width="56" height="60" rx="3" fill={c} stroke={s} strokeWidth="3" /></svg>
     case 'sticker': return <svg {...P}><rect x="14" y="14" width="72" height="72" rx="16" fill="#fff" stroke={s} strokeWidth="3" /><rect x="24" y="24" width="52" height="52" rx="8" fill={c} /></svg>
     case 'postcard': return <svg {...P}><rect x="10" y="30" width="80" height="40" rx="3" fill={c} stroke={s} strokeWidth="3" /></svg>
+    case 'phone_persp': return <svg {...P}><polygon points="30,12 66,20 66,80 30,88" fill={c} stroke={s} strokeWidth="3" strokeLinejoin="round" /></svg>
+    case 'laptop_persp': return <svg {...P}><polygon points="24,16 76,16 84,60 16,60" fill={c} stroke={s} strokeWidth="3" strokeLinejoin="round" /><polygon points="16,60 84,60 94,84 6,84" fill="#E2E8F0" stroke={s} strokeWidth="3" strokeLinejoin="round" /></svg>
+    case 'card_persp': return <svg {...P}><polygon points="16,26 84,14 88,78 12,90" fill={c} stroke={s} strokeWidth="3" strokeLinejoin="round" /></svg>
     default: return <svg {...P}><rect x="16" y="10" width="68" height="80" rx="3" fill="#fff" stroke={s} strokeWidth="3" /><rect x="24" y="18" width="52" height="52" fill={c} /></svg>
   }
 }
@@ -561,6 +685,7 @@ export default function DesignerCanvas({ visual, teamId, onSaved, onReplaceVisua
 
   const [objects, setObjects] = useState([])          // Overlay-Objekte (Text, Formen, Sticker, Bild)
   const [imgCache, setImgCache] = useState({})        // {src(DataURL/URL) -> HTMLImageElement} für type:'image'
+  const [warpCache, setWarpCache] = useState({})      // {warpKey -> HTMLCanvasElement} für perspektivische Mockups
   const [selectedIds, setSelectedIds] = useState([])  // Mehrfach-Auswahl (Array von Objekt-IDs)
   const selectedId = selectedIds.length === 1 ? selectedIds[0] : null  // Abwärtskompatibel (Einzel-Selektion)
   const setSelectedId = useCallback((id) => setSelectedIds(id ? [id] : []), [])
@@ -1314,6 +1439,26 @@ export default function DesignerCanvas({ visual, teamId, onSaved, onReplaceVisua
     return () => { cancelled = true }
   }, [objects, imgCache])
 
+  // ─── Perspektivische Mockups: gewarptes Screen-Canvas bauen/cachen ──────────
+  useEffect(() => {
+    const quadMocks = objects.filter(o => o.type === 'mockup' && o.src && deviceById(o.device).screenQuad && imgCache[o.src])
+    if (!quadMocks.length) return
+    let changed = false
+    const next = { ...warpCache }
+    for (const o of quadMocks) {
+      const dev = deviceById(o.device)
+      const key = warpKey(o)
+      if (next[key]) continue
+      try {
+        const quad = dev.screenQuad(o.width, o.height)
+        const ss = Math.max(1, Math.min(2, 1200 / Math.max(o.width || 1, o.height || 1)))
+        next[key] = warpImageToCanvas(imgCache[o.src], quad, o.width, o.height, { panX: o.panX, panY: o.panY, ss, grid: 14 })
+        changed = true
+      } catch (_e) { /* Warp-Fehler ignorieren, Platzhalter bleibt */ }
+    }
+    if (changed) setWarpCache(next)
+  }, [objects, imgCache, warpCache])
+
   // ─── History-Helfer ────────────────────────────────────────────────────────
   const snapshot = useCallback(() => ({
     objects: JSON.parse(JSON.stringify(objects)),
@@ -1685,6 +1830,7 @@ export default function DesignerCanvas({ visual, teamId, onSaved, onReplaceVisua
     setObjects(prev => [...prev, ...frames])
     setSelectedIds(frames.length ? [frames[0].id] : [])
   }
+  function warpKey(o) { return `${o.id}|${o.device}|${o.src || ''}|${Math.round(o.width)}x${Math.round(o.height)}|${o.panX == null ? 0.5 : o.panX}|${o.panY == null ? 0.5 : o.panY}` }
   function addMockup(deviceId) {
     const dev = deviceById(deviceId); if (!dev) return
     const cw = (baseCrop?.width || stageSize.width), ch = (baseCrop?.height || stageSize.height)
@@ -4107,6 +4253,26 @@ Antworte AUSSCHLIESSLICH mit JSON: {"ok":<bool>,"issues":["..."],"operations":[.
       case 'mockup': {
         const dev = deviceById(o.device)
         const el = o.src ? imgCache[o.src] : null
+        if (dev.screenQuad) {
+          const quad = dev.screenQuad(o.width, o.height)
+          const pts = quad.flatMap(p => [p.x, p.y])
+          const wc = el ? warpCache[warpKey(o)] : null
+          const xs = quad.map(p => p.x), ys = quad.map(p => p.y)
+          const qx = Math.min(...xs), qy = Math.min(...ys), qw = Math.max(...xs) - qx, qh = Math.max(...ys) - qy
+          return (
+            <Group key={o.id} {...base}>
+              {dev.behind ? dev.behind(o.width, o.height) : null}
+              {el && wc
+                ? <KImage image={wc} x={0} y={0} width={o.width} height={o.height} />
+                : (<>
+                    <Line points={pts} closed fill="#EEF2F7" stroke="#C7D0DB" strokeWidth={1} />
+                    <KText text="Bild einsetzen" x={qx} y={qy + qh / 2 - 8} width={qw} align="center" fontSize={Math.max(10, Math.min(15, qw * 0.06))} fill="#93A2B5" listening={false} />
+                  </>)}
+              {dev.front ? dev.front(o.width, o.height) : null}
+              {o.id === frameDropTarget && <Line points={pts} closed fill="rgba(49,90,231,0.32)" listening={false} />}
+            </Group>
+          )
+        }
         const scr = dev.screen(o.width, o.height)
         const fit = el ? frameCoverFit(el.naturalWidth || el.width, el.naturalHeight || el.height, scr.w, scr.h, o.panX, o.panY) : null
         const mockEditing = !!el && distortId === o.id
