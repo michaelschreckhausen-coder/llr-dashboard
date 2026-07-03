@@ -280,10 +280,11 @@ const FRAME_SHAPES = [
 FRAME_SHAPES.forEach(s => { if (s.pts) { s.svg = _fsvg(s.pts); s.clip = (c, w, h) => _fclipPts(c, w, h, s.pts) } })
 const frameShapeById = id => FRAME_SHAPES.find(s => s.id === id) || FRAME_SHAPES[0]
 // Cover-Fit: Bild füllt die Rahmen-Box komplett (kein Verzerren), zentriert.
-function frameCoverFit(imgW, imgH, W, H) {
+function frameCoverFit(imgW, imgH, W, H, panX, panY) {
   const s = Math.max(W / (imgW || 1), H / (imgH || 1))
   const w = (imgW || 1) * s, h = (imgH || 1) * s
-  return { x: (W - w) / 2, y: (H - h) / 2, width: w, height: h }
+  const px = panX == null ? 0.5 : panX, py = panY == null ? 0.5 : panY
+  return { x: (W - w) * px, y: (H - h) * py, width: w, height: h }
 }
 
 // ─── Collagen: Preset-Raster, die mehrere Rahmen (frames) platzieren ─────────
@@ -3901,15 +3902,21 @@ Antworte AUSSCHLIESSLICH mit JSON: {"ok":<bool>,"issues":["..."],"operations":[.
       case 'frame': {
         const shp = frameShapeById(o.shape)
         const el = o.src ? imgCache[o.src] : null
-        const fit = el ? frameCoverFit(el.naturalWidth || el.width, el.naturalHeight || el.height, o.width, o.height) : null
+        const fit = el ? frameCoverFit(el.naturalWidth || el.width, el.naturalHeight || el.height, o.width, o.height, o.panX, o.panY) : null
+        const editing = !!el && distortId === o.id
         return (
-          <Group key={o.id} {...base} clipFunc={(ctx) => shp.clip(ctx, o.width, o.height)}>
+          <Group key={o.id} {...base} draggable={base.draggable && !editing} clipFunc={(ctx) => shp.clip(ctx, o.width, o.height)}>
             {el && fit
-              ? <KImage image={el} x={fit.x} y={fit.y} width={fit.width} height={fit.height} />
+              ? <KImage image={el} x={fit.x} y={fit.y} width={fit.width} height={fit.height}
+                  draggable={editing}
+                  onDragStart={editing ? () => pushHistory() : undefined}
+                  onDragMove={editing ? (e) => { const n = e.target; const minX = o.width - fit.width, minY = o.height - fit.height; n.x(Math.max(minX, Math.min(0, n.x()))); n.y(Math.max(minY, Math.min(0, n.y()))) } : undefined}
+                  onDragEnd={editing ? (e) => { const n = e.target; const rx = o.width - fit.width, ry = o.height - fit.height; const nx = Math.max(rx, Math.min(0, n.x())), ny = Math.max(ry, Math.min(0, n.y())); updateObject(o.id, { panX: rx ? nx / rx : 0.5, panY: ry ? ny / ry : 0.5 }, false) } : undefined} />
               : (<>
                   <Rect width={o.width} height={o.height} fill="#EEF2F7" />
                   <KText text="Bild einsetzen" width={o.width} y={o.height / 2 - 9} align="center" fontSize={Math.max(11, Math.min(16, o.width * 0.06))} fill="#93A2B5" listening={false} />
                 </>)}
+            {editing && <Rect width={o.width} height={o.height} stroke="#315AE7" strokeWidth={2} dash={[6, 4]} listening={false} />}
             {o.id === frameDropTarget && <Rect width={o.width} height={o.height} fill="rgba(49,90,231,0.32)" listening={false} />}
           </Group>
         )
@@ -3918,17 +3925,23 @@ Antworte AUSSCHLIESSLICH mit JSON: {"ok":<bool>,"issues":["..."],"operations":[.
         const dev = deviceById(o.device)
         const el = o.src ? imgCache[o.src] : null
         const scr = dev.screen(o.width, o.height)
-        const fit = el ? frameCoverFit(el.naturalWidth || el.width, el.naturalHeight || el.height, scr.w, scr.h) : null
+        const fit = el ? frameCoverFit(el.naturalWidth || el.width, el.naturalHeight || el.height, scr.w, scr.h, o.panX, o.panY) : null
+        const mockEditing = !!el && distortId === o.id
         return (
-          <Group key={o.id} {...base}>
+          <Group key={o.id} {...base} draggable={base.draggable && !mockEditing}>
             {dev.behind(o.width, o.height)}
             <Group x={scr.x} y={scr.y} clipFunc={(ctx) => { if (scr.r) _froundClip(ctx, scr.w, scr.h, scr.r); else _rectClipLocal(ctx, scr.w, scr.h) }}>
               {el && fit
-                ? <KImage image={el} x={fit.x} y={fit.y} width={fit.width} height={fit.height} />
+                ? <KImage image={el} x={fit.x} y={fit.y} width={fit.width} height={fit.height}
+                    draggable={mockEditing}
+                    onDragStart={mockEditing ? () => pushHistory() : undefined}
+                    onDragMove={mockEditing ? (e) => { const n = e.target; const minX = scr.w - fit.width, minY = scr.h - fit.height; n.x(Math.max(minX, Math.min(0, n.x()))); n.y(Math.max(minY, Math.min(0, n.y()))) } : undefined}
+                    onDragEnd={mockEditing ? (e) => { const n = e.target; const rx = scr.w - fit.width, ry = scr.h - fit.height; const nx = Math.max(rx, Math.min(0, n.x())), ny = Math.max(ry, Math.min(0, n.y())); updateObject(o.id, { panX: rx ? nx / rx : 0.5, panY: ry ? ny / ry : 0.5 }, false) } : undefined} />
                 : (<>
                     <Rect width={scr.w} height={scr.h} fill="#EEF2F7" />
                     <KText text="Bild einsetzen" width={scr.w} y={scr.h / 2 - 8} align="center" fontSize={Math.max(10, Math.min(15, scr.w * 0.06))} fill="#93A2B5" listening={false} />
                   </>)}
+              {mockEditing && <Rect width={scr.w} height={scr.h} stroke="#315AE7" strokeWidth={2} dash={[6, 4]} listening={false} />}
             </Group>
             {dev.front ? dev.front(o.width, o.height) : null}
             {o.id === frameDropTarget && <Rect x={scr.x} y={scr.y} width={scr.w} height={scr.h} fill="rgba(49,90,231,0.32)" listening={false} />}
