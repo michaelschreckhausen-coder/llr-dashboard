@@ -41,7 +41,7 @@ import {
   AlignHorizontalDistributeCenter, AlignVerticalDistributeCenter,
 } from 'lucide-react'
 import { supabase } from '../../lib/supabase'
-import { visualDataUrl, uploadDesignRender, updateVisual, getVisual, listTeamVisuals, signedVisualUrl, uploadImageBlob, createImageVisual } from '../../lib/contentVisuals'
+import { visualDataUrl, uploadDesignRender, updateVisual, getVisual, listTeamVisuals, signedVisualUrl, signedThumbUrl, uploadImageBlob, createImageVisual } from '../../lib/contentVisuals'
 import { splitModelValue, DEFAULT_IMAGE_MODEL } from '../../lib/imageModels'
 import { DESIGN_TEMPLATES } from '../../lib/designTemplates'
 import { DESIGN_ASSETS, ASSET_CATEGORIES } from '../../lib/designAssets'
@@ -1855,11 +1855,10 @@ export default function DesignerCanvas({ visual, teamId, onSaved, onReplaceVisua
     ;(async () => {
       try {
         const { data } = await listTeamVisuals({ teamId, brandVoiceId: activeBrandVoice?.id, limit: 80 })
-        const withUrls = []
-        for (const v of (data || [])) {
-          const url = await signedVisualUrl(v.storage_path, 3600)
-          if (url) withUrls.push({ id: v.id, url, storage_path: v.storage_path })
-        }
+        const items = (data || [])
+        // Parallel + serverseitig verkleinert (statt 80 sequentielle Voll-Bild-Signaturen).
+        const signed = await Promise.all(items.map(v => signedThumbUrl(v.storage_path, { width: 200, height: 200, resize: 'cover' })))
+        const withUrls = items.map((v, i) => signed[i] ? { id: v.id, url: signed[i], storage_path: v.storage_path } : null).filter(Boolean)
         if (!cancelled) setMediaLib(withUrls)
       } catch (_e) { if (!cancelled) setMediaLib([]) }
       finally { if (!cancelled) setMediaLoading(false) }

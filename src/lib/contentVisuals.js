@@ -82,6 +82,19 @@ export async function signedVisualUrl(storagePath, expiresIn = 3600) {
   return data?.signedUrl || null
 }
 
+// Signierte URL mit serverseitiger Verkleinerung (imgproxy) — schnelle, kleine
+// Grid-Thumbnails. Fällt bei fehlender Transformation auf die normale URL zurück.
+export async function signedThumbUrl(storagePath, { width = 400, height = 400, resize = 'cover', quality = 75, expiresIn = 3600 } = {}) {
+  if (!storagePath) return null
+  try {
+    const { data, error } = await supabase.storage.from('visuals')
+      .createSignedUrl(storagePath, expiresIn, { transform: { width, height, resize, quality } })
+    if (error) throw error
+    if (data?.signedUrl) return data.signedUrl
+  } catch (_e) { /* Transformation nicht verfügbar → Fallback */ }
+  return await signedVisualUrl(storagePath, expiresIn)
+}
+
 // Lädt ein Storage-Objekt als Blob (für CORS-sicheres Laden ins Canvas / Download).
 export async function downloadVisualBlob(storagePath) {
   if (!storagePath) return null

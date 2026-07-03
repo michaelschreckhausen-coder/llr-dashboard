@@ -55,8 +55,13 @@ export default function Media({ session }) {
       if (q2) q = q.ilike('prompt', '%' + q2 + '%')
       const { data } = await q
       visualItems = await Promise.all((data || []).map(async (v) => {
-        const { data: signed } = await supabase.storage.from('visuals').createSignedUrl(v.storage_path, 60 * 60 * 24)
-        return { ...v, signed_url: signed?.signedUrl || null }
+        let signedUrl = null
+        if (v.media_type === 'image') {
+          const { data: t } = await supabase.storage.from('visuals').createSignedUrl(v.storage_path, 60 * 60 * 24, { transform: { width: 1000, height: 1000, resize: 'contain', quality: 78 } })
+          signedUrl = t?.signedUrl || null
+        }
+        if (!signedUrl) { const { data: s } = await supabase.storage.from('visuals').createSignedUrl(v.storage_path, 60 * 60 * 24); signedUrl = s?.signedUrl || null }
+        return { ...v, signed_url: signedUrl }
       }))
     }
 
@@ -74,8 +79,11 @@ export default function Media({ session }) {
       }
       const filtered = q2 ? raw.filter(r => r.kind.toLowerCase().includes(q2)) : raw
       identityItems = await Promise.all(filtered.map(async ({ path, kind }) => {
-        const { data: signed } = await supabase.storage.from('visuals').createSignedUrl(path, 60 * 60 * 24)
-        return { id: 'identity:' + path, identity: true, identity_kind: kind, storage_path: path, signed_url: signed?.signedUrl || null, media_type: 'image', model: 'identity', original_filename: 'Identität · ' + kind }
+        let signedUrl = null
+        const { data: t } = await supabase.storage.from('visuals').createSignedUrl(path, 60 * 60 * 24, { transform: { width: 1000, height: 1000, resize: 'contain', quality: 78 } })
+        signedUrl = t?.signedUrl || null
+        if (!signedUrl) { const { data: s } = await supabase.storage.from('visuals').createSignedUrl(path, 60 * 60 * 24); signedUrl = s?.signedUrl || null }
+        return { id: 'identity:' + path, identity: true, identity_kind: kind, storage_path: path, signed_url: signedUrl, media_type: 'image', model: 'identity', original_filename: 'Identität · ' + kind }
       }))
     }
 

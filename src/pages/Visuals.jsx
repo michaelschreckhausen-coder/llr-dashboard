@@ -17,7 +17,7 @@ import { resizeImageBeforeUpload } from '../lib/imageResize'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
 import { sharedBrandVoiceIds, scopeContentByTeamOrSharedBV } from '../lib/teamShares'
-import { listTeamVisuals, addImagePageToDesign } from '../lib/contentVisuals'
+import { listTeamVisuals, addImagePageToDesign, signedThumbUrl } from '../lib/contentVisuals'
 import { useTeam } from '../context/TeamContext'
 import { useBrandVoice } from '../context/BrandVoiceContext'
 
@@ -102,6 +102,10 @@ export default function Visuals({ session, kindFilter = null, embedded = false, 
     if (librarySearch.trim()) q = q.ilike('prompt', '%' + librarySearch.trim() + '%')
     const { data } = await q
     const withUrls = await Promise.all((data || []).map(async (v) => {
+      if (v.media_type === 'image') {
+        const url = await signedThumbUrl(v.storage_path, { width: 1000, height: 1000, resize: 'contain', quality: 78, expiresIn: 60 * 60 * 24 })
+        return { ...v, signed_url: url }
+      }
       const { data: signed } = await supabase.storage.from('visuals').createSignedUrl(v.storage_path, 60 * 60 * 24)
       return { ...v, signed_url: signed?.signedUrl || null }
     }))
