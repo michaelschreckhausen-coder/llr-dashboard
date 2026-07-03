@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useCallback } from 'react'
+import React, { useEffect, useState, useCallback, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { Check, X, Loader2, UserPlus, Building2, Inbox as InboxIcon, Megaphone, Plus } from 'lucide-react'
 import { supabase } from '../lib/supabase'
@@ -18,7 +18,7 @@ const initials = n => (n || '?').trim().split(/\s+/).map(w => w[0]).join('').toU
 function Avatar({ name, avatar_url, size = 44 }) {
   const colors = ['#3b82f6', '#8b5cf6', '#10b981', '#f59e0b', '#ef4444', '#0891b2']
   const bg = colors[(name || '').charCodeAt(0) % colors.length]
-  if (avatar_url) return <img src={avatar_url} alt={name} style={{ width: size, height: size, borderRadius: '50%', objectFit: 'cover', flexShrink: 0 }} />
+  if (avatar_url) return <img src={avatar_url} alt={name} loading="lazy" decoding="async" style={{ width: size, height: size, borderRadius: '50%', objectFit: 'cover', flexShrink: 0 }} />
   return <div style={{ width: size, height: size, borderRadius: '50%', background: bg, display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff', fontWeight: 800, fontSize: size * 0.36, flexShrink: 0 }}>{initials(name)}</div>
 }
 
@@ -39,6 +39,11 @@ export default function LinkedInInbox() {
   const [memById, setMemById]     = useState(() => new Map())// inbox_id → [campaign_id]
   const [filter, setFilter]       = useState('all')          // 'all' | 'none' | campaign_id
   const [assignOpen, setAssignOpen] = useState(false)
+
+  // Progressives Rendern — nur PAGE_SIZE Karten gleichzeitig im DOM, Rest per Infinite-Scroll.
+  const PAGE_SIZE = 25
+  const [visibleCount, setVisibleCount] = useState(PAGE_SIZE)
+  const sentinelRef = useRef(null)
 
   useEffect(() => { supabase.auth.getUser().then(({ data }) => setUid(data?.user?.id || null)) }, [])
 
@@ -107,6 +112,25 @@ export default function LinkedInInbox() {
     if (filter === 'none') return cs.length === 0
     return cs.includes(filter)
   })
+  const visible = displayed.slice(0, visibleCount)
+  const hasMore = visibleCount < displayed.length
+
+  // Beim Filter-/Team-Wechsel wieder auf die erste Seite zurücksetzen.
+  useEffect(() => { setVisibleCount(PAGE_SIZE) }, [filter, activeTeamId])
+
+  // Infinite-Scroll: sobald der Sentinel in den Viewport kommt, 25 weitere anhängen.
+  useEffect(() => {
+    if (!hasMore) return
+    const el = sentinelRef.current
+    if (!el) return
+    const io = new IntersectionObserver(entries => {
+      if (entries[0].isIntersecting) {
+        setVisibleCount(c => Math.min(c + PAGE_SIZE, displayed.length))
+      }
+    }, { rootMargin: '400px' })
+    io.observe(el)
+    return () => io.disconnect()
+  }, [hasMore, displayed.length])
 
   const toggle = id => setSelected(prev => { const n = new Set(prev); n.has(id) ? n.delete(id) : n.add(id); return n })
   const allSelected = displayed.length > 0 && displayed.every(r => selected.has(r.id))
@@ -243,7 +267,7 @@ export default function LinkedInInbox() {
         </div>
       ) : (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-          {displayed.map(row => {
+          {visible.map(row => {
             const sel = selected.has(row.id)
             const inCrm = existing.has(row.id)
             const memberOf = memById.get(row.id) || []
@@ -276,6 +300,22 @@ export default function LinkedInInbox() {
               </div>
             )
           })}
+
+          {/* Infinite-Scroll-Sentinel + Fallback-Button */}
+          {hasMore && (
+            <div ref={sentinelRef} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 10, padding: '16px 0 4px' }}>
+              <Loader2 size={20} className="spin" style={{ color: muted }} />
+              <button onClick={() => setVisibleCount(c => Math.min(c + PAGE_SIZE, displayed.length))}
+                style={{ background: 'none', border: `1px solid ${border}`, borderRadius: 8, padding: '8px 16px', fontSize: 13, fontWeight: 600, color: muted, cursor: 'pointer' }}>
+                Mehr laden
+              </button>
+            </div>
+          )}
+          {displayed.length > 0 && (
+            <div style={{ textAlign: 'center', fontSize: 12, color: muted, padding: '8px 0 2px' }}>
+              {Math.min(visibleCount, displayed.length)} von {displayed.length} angezeigt
+            </div>
+          )}
         </div>
       )}
 
