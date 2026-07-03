@@ -11,10 +11,11 @@ name: DB-Migrationen anwenden
 #     explizite Freigabe vor jeder Prod-Migration (Hard-Rule).
 
 on:
-  push:
-    branches: [develop, main]
-    paths:
-      - 'supabase/migrations/**.sql'
+  # Auto-Trigger bei Push DEAKTIVIERT (2026-07-03): GitHub-Runner-IPs werden von der
+  # ufw-Firewall der Hetzner-Server (Port 22 nur Admin-IP + internes 10.0.20.0/24) geblockt,
+  # daher lief jeder Auto-Lauf in den SSH-Timeout und schlug fehl. Migrationen werden
+  # manuell per SSH eingespielt (siehe Projekt-Doku). Nur noch manuell startbar:
+  workflow_dispatch: {}
 
 concurrency:
   group: db-migrate-${{ github.ref_name }}
