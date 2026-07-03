@@ -25,7 +25,7 @@
 //      Visual-Datensatz hochgeladen und als neues Basisbild geladen.
 
 import React, { useState, useEffect, useRef, useCallback } from 'react'
-import { Stage, Layer, Image as KImage, Rect, Circle, Ellipse, Line, Arrow, Text as KText, Path, Transformer } from 'react-konva'
+import { Stage, Layer, Group, Image as KImage, Rect, Circle, Ellipse, Line, Arrow, Text as KText, Path, Transformer } from 'react-konva'
 import GenerationLoading from '../GenerationLoading'
 import Konva from 'konva'
 import {
@@ -250,6 +250,42 @@ const HEAL_PROMPT = 'Entferne den Inhalt im markierten Bereich vollständig und 
 
 
 let _uid = 0
+// ─── Bilderrahmen (Frames): Formen zum Maskieren/Cover-Füllen von Bildern ─────
+// Wie Canva „Rahmen": eine Form, in die ein Bild eingesetzt und cover-gefüllt wird.
+// Collagen (Raster) und Mockups bauen auf demselben Primitiv auf.
+const _fpoly = (n, rot = -90) => { const a = []; for (let i = 0; i < n; i++) { const t = (rot + i * 360 / n) * Math.PI / 180; a.push([50 + 50 * Math.cos(t), 50 + 50 * Math.sin(t)]) } return a }
+const _fstar = (n = 5, rot = -90, inner = 0.45) => { const a = []; for (let i = 0; i < 2 * n; i++) { const r = (i % 2 ? 50 * inner : 50); const t = (rot + i * 180 / n) * Math.PI / 180; a.push([50 + r * Math.cos(t), 50 + r * Math.sin(t)]) } return a }
+const _fsvg = pts => 'M' + pts.map(p => p[0].toFixed(1) + ' ' + p[1].toFixed(1)).join(' L ') + ' Z'
+const _fclipPts = (ctx, w, h, pts) => { ctx.beginPath(); pts.forEach((p, i) => { const x = p[0] / 100 * w, y = p[1] / 100 * h; i ? ctx.lineTo(x, y) : ctx.moveTo(x, y) }); ctx.closePath() }
+const _froundClip = (ctx, w, h, rr) => { const r = Math.min(rr, w / 2, h / 2); ctx.beginPath(); ctx.moveTo(r, 0); ctx.lineTo(w - r, 0); ctx.arcTo(w, 0, w, r, r); ctx.lineTo(w, h - r); ctx.arcTo(w, h, w - r, h, r); ctx.lineTo(r, h); ctx.arcTo(0, h, 0, h - r, r); ctx.lineTo(0, r); ctx.arcTo(0, 0, r, 0, r); ctx.closePath() }
+const _fbez = (ctx, w, h, cmds) => { const X = v => v / 100 * w, Y = v => v / 100 * h; ctx.beginPath(); ctx.moveTo(X(cmds[0][0]), Y(cmds[0][1])); for (let i = 1; i < cmds.length; i++) { const p = cmds[i]; ctx.bezierCurveTo(X(p[0]), Y(p[1]), X(p[2]), Y(p[3]), X(p[4]), Y(p[5])) } ctx.closePath() }
+const _HEART = [[50, 88], [8, 58, 0, 30, 22, 16], [40, 4, 50, 22, 50, 30], [50, 22, 60, 4, 78, 16], [100, 30, 92, 58, 50, 88]]
+const _BLOB = [[50, 5], [74, 1, 97, 22, 94, 47], [91, 72, 74, 97, 48, 94], [23, 91, 4, 71, 8, 46], [12, 22, 27, 9, 50, 5]]
+const FRAME_SHAPES = [
+  { id: 'rect',    label: 'Rechteck',   svg: 'M1 1 H99 V99 H1 Z', clip: (c, w, h) => { c.beginPath(); c.rect(0, 0, w, h); c.closePath() } },
+  { id: 'rounded', label: 'Abgerundet', svg: 'M16 1 H84 A15 15 0 0 1 99 16 V84 A15 15 0 0 1 84 99 H16 A15 15 0 0 1 1 84 V16 A15 15 0 0 1 16 1 Z', clip: (c, w, h) => _froundClip(c, w, h, Math.min(w, h) * 0.15) },
+  { id: 'circle',  label: 'Kreis',      svg: 'M50 1 A49 49 0 1 0 50 99 A49 49 0 1 0 50 1 Z', clip: (c, w, h) => { c.beginPath(); c.ellipse(w / 2, h / 2, w / 2, h / 2, 0, 0, 2 * Math.PI); c.closePath() } },
+  { id: 'triangle', label: 'Dreieck',   pts: [[50, 0], [100, 100], [0, 100]] },
+  { id: 'diamond', label: 'Raute',      pts: [[50, 0], [100, 50], [50, 100], [0, 50]] },
+  { id: 'pentagon', label: 'Fünfeck',   pts: _fpoly(5) },
+  { id: 'hexagon', label: 'Sechseck',   pts: _fpoly(6, 0) },
+  { id: 'hexagon2', label: 'Sechseck 2', pts: _fpoly(6, -90) },
+  { id: 'octagon', label: 'Achteck',    pts: _fpoly(8, -22.5) },
+  { id: 'star',    label: 'Stern',      pts: _fstar(5) },
+  { id: 'star6',   label: 'Stern 6',    pts: _fstar(6) },
+  { id: 'heart',   label: 'Herz',       svg: 'M50 88 C 8 58 0 30 22 16 C 40 4 50 22 50 30 C 50 22 60 4 78 16 C 100 30 92 58 50 88 Z', clip: (c, w, h) => _fbez(c, w, h, _HEART) },
+  { id: 'blob',    label: 'Blob',       svg: 'M50 5 C 74 1 97 22 94 47 C 91 72 74 97 48 94 C 23 91 4 71 8 46 C 12 22 27 9 50 5 Z', clip: (c, w, h) => _fbez(c, w, h, _BLOB) },
+  { id: 'arch',    label: 'Bogen',      svg: 'M0 100 L0 50 A50 50 0 0 1 100 50 L100 100 Z', clip: (c, w, h) => { const r = w / 2; c.beginPath(); c.moveTo(0, h); c.lineTo(0, r); c.arc(w / 2, r, r, Math.PI, 0, false); c.lineTo(w, h); c.closePath() } },
+]
+FRAME_SHAPES.forEach(s => { if (s.pts) { s.svg = _fsvg(s.pts); s.clip = (c, w, h) => _fclipPts(c, w, h, s.pts) } })
+const frameShapeById = id => FRAME_SHAPES.find(s => s.id === id) || FRAME_SHAPES[0]
+// Cover-Fit: Bild füllt die Rahmen-Box komplett (kein Verzerren), zentriert.
+function frameCoverFit(imgW, imgH, W, H) {
+  const s = Math.max(W / (imgW || 1), H / (imgH || 1))
+  const w = (imgW || 1) * s, h = (imgH || 1) * s
+  return { x: (W - w) / 2, y: (H - h) / 2, width: w, height: h }
+}
+
 const nextId = () => `obj_${Date.now()}_${_uid++}`
 
 // Blob → DataURL (für PDF-Einbettung via jsPDF.addImage).
@@ -1017,7 +1053,7 @@ export default function DesignerCanvas({ visual, teamId, onSaved, onReplaceVisua
 
   // ─── Bild-Objekte: HTMLImageElement nachladen (z.B. nach Restore) ───────────
   useEffect(() => {
-    const missing = objects.filter(o => o.type === 'image' && o.src && !imgCache[o.src])
+    const missing = objects.filter(o => (o.type === 'image' || o.type === 'frame') && o.src && !imgCache[o.src])
     if (!missing.length) return
     let cancelled = false
     missing.forEach(o => {
@@ -1377,6 +1413,11 @@ export default function DesignerCanvas({ visual, teamId, onSaved, onReplaceVisua
       fontSize: 44, fontFamily: 'Inter', fill: bgColor ? '#111827' : '#ffffff', fontStyle: 'normal', align: 'left', width: 360,
       rotation: 0, scaleX: 1, scaleY: 1 })
   }
+  function addFrame(shapeId) {
+    const c = center()
+    const s = Math.round(Math.min(stageSize.width, stageSize.height) * 0.42)
+    addObject({ type: 'frame', shape: shapeId, x: c.x - s / 2, y: c.y - s / 2, width: s, height: s, rotation: 0, opacity: 1 })
+  }
   function addRect() {
     const c = center()
     addObject({ type: 'rect', x: c.x - 80, y: c.y - 50, width: 160, height: 100, fill: 'rgba(49,90,231,0.85)', stroke: '#ffffff', strokeWidth: 0, rotation: 0 })
@@ -1726,6 +1767,9 @@ Antworte AUSSCHLIESSLICH mit JSON: {"ok":<bool>,"issues":["..."],"operations":[.
     if (!dataUrl) return
     const img = new window.Image()
     img.onload = () => {
+      // Ist ein leerer Bilderrahmen ausgewählt? → Bild in den Rahmen einsetzen (cover-fill) statt neues Bild-Objekt.
+      const selFrame = (selectedIds.length === 1) ? objects.find(o => o.id === selectedIds[0] && o.type === 'frame') : null
+      if (selFrame) { setImgCache(prev => ({ ...prev, [dataUrl]: img })); pushHistory(); updateObject(selFrame.id, { src: dataUrl }); return }
       const nw = img.naturalWidth || 200
       const nh = img.naturalHeight || 200
       let w, h
@@ -3700,6 +3744,10 @@ Antworte AUSSCHLIESSLICH mit JSON: {"ok":<bool>,"issues":["..."],"operations":[.
           patch.radiusX = Math.max(2, (o.radiusX || 90) * node.scaleX())
           patch.radiusY = Math.max(2, (o.radiusY || 90) * node.scaleY())
           node.scaleX(1); node.scaleY(1)
+        } else if (o.type === 'frame') {
+          patch.width = Math.max(8, (o.width || 100) * node.scaleX())
+          patch.height = Math.max(8, (o.height || 100) * node.scaleY())
+          node.scaleX(1); node.scaleY(1)
         } else {
           patch.scaleX = node.scaleX(); patch.scaleY = node.scaleY()
         }
@@ -3736,6 +3784,21 @@ Antworte AUSSCHLIESSLICH mit JSON: {"ok":<bool>,"issues":["..."],"operations":[.
           ? { x: o.cropX || 0, y: o.cropY || 0, width: o.cropWidth, height: o.cropHeight }
           : undefined
         return <KImage key={o.id} {...base} image={el} width={o.width} height={o.height} crop={cropProp} />
+      }
+      case 'frame': {
+        const shp = frameShapeById(o.shape)
+        const el = o.src ? imgCache[o.src] : null
+        const fit = el ? frameCoverFit(el.naturalWidth || el.width, el.naturalHeight || el.height, o.width, o.height) : null
+        return (
+          <Group key={o.id} {...base} clipFunc={(ctx) => shp.clip(ctx, o.width, o.height)}>
+            {el && fit
+              ? <KImage image={el} x={fit.x} y={fit.y} width={fit.width} height={fit.height} listening={false} />
+              : (<>
+                  <Rect width={o.width} height={o.height} fill="#EEF2F7" />
+                  <KText text="Bild einsetzen" width={o.width} y={o.height / 2 - 9} align="center" fontSize={Math.max(11, Math.min(16, o.width * 0.06))} fill="#93A2B5" listening={false} />
+                </>)}
+          </Group>
+        )
       }
       default:
         return null
@@ -4027,6 +4090,7 @@ Antworte AUSSCHLIESSLICH mit JSON: {"ok":<bool>,"issues":["..."],"operations":[.
           // Elemente
           elementTab={elementTab} setElementTab={setElementTab}
           onAddRect={addRect} onAddEllipse={addEllipse} onAddLine={addLine} onAddArrow={addArrow}
+          onAddFrame={addFrame}
           onAddAsset={addAsset}
           onInsertMedia={(dataUrl, meta) => addImageFromDataUrl(dataUrl, meta)}
           // Text
@@ -5241,9 +5305,10 @@ function TemplatesPanelBody({ onApplyTemplate, onClose }) {
 }
 
 // ─── Panel: Elemente (Formen / Icons / Grafiken / Bilder) ───────────────────
-function ElementsPanelBody({ elementTab, setElementTab, onAddRect, onAddEllipse, onAddLine, onAddArrow, onAddAsset, onInsertMedia }) {
+function ElementsPanelBody({ elementTab, setElementTab, onAddRect, onAddEllipse, onAddLine, onAddArrow, onAddAsset, onInsertMedia, onAddFrame = () => {} }) {
   const tabs = [
     { id: 'shapes', label: 'Formen' },
+    { id: 'frames', label: 'Rahmen' },
     { id: 'icons', label: 'Icons' },
     { id: 'graphics', label: 'Grafiken' },
     { id: 'images', label: 'Bilder' },
@@ -5282,6 +5347,20 @@ function ElementsPanelBody({ elementTab, setElementTab, onAddRect, onAddEllipse,
               </button>
             ))}
             {assetList.length === 0 && <span style={{ gridColumn: '1 / -1', fontSize: 12, color: 'var(--text-muted)' }}>Keine Treffer.</span>}
+          </div>
+        </div>
+      )}
+      {elementTab === 'frames' && (
+        <div>
+          <PanelLabel>Bilderrahmen</PanelLabel>
+          <div style={{ fontSize: 11.5, color: 'var(--text-muted)', margin: '0 0 8px', lineHeight: 1.4 }}>Rahmen einfügen, dann auswählen und ein Bild einsetzen (Upload/Medien) — es füllt die Form (cover).</div>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(52px, 1fr))', gap: 8 }}>
+            {FRAME_SHAPES.map(s => (
+              <button key={s.id} onClick={() => onAddFrame(s.id)} title={s.label}
+                style={{ height: 52, borderRadius: 9, border: '1px solid var(--border)', background: '#fff', cursor: 'pointer', display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }}>
+                <svg width="30" height="30" viewBox="0 0 100 100"><path d={s.svg} fill="#CBD5E1" stroke="#94A3B8" strokeWidth="3" strokeLinejoin="round" /></svg>
+              </button>
+            ))}
           </div>
         </div>
       )}
