@@ -20,6 +20,7 @@
     "@tiptap/pm": "^3.26.0",
     "@tiptap/react": "^3.26.0",
     "@tiptap/starter-kit": "^3.26.0",
+    "heic2any": "^0.0.4",
     "i18next": "^26.0.5",
     "jspdf": "^4.2.1",
     "jszip": "^3.10.1",

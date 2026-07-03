@@ -29,10 +29,11 @@ function getSpeechRecognition() {
   return window.SpeechRecognition || window.webkitSpeechRecognition || null;
 }
 
-export function useVoiceInput({ language = 'de-DE', onFinalTranscript } = {}) {
+export function useVoiceInput({ language = 'de-DE', onFinalTranscript, initialMode } = {}) {
   // Default = Azure (EU, bestes Deutsch). Neuer Storage-Key migriert User vom
   // alten Web-Speech-Default weg; eine bewusste frühere Wahl bleibt erhalten.
   const [mode, setMode] = useState(() => {
+    if (initialMode) return initialMode; // vom Aufrufer erzwungen (z.B. Content-Werkstatt: 'web')
     try { return window.localStorage?.getItem('leadly_voice_mode_v2') || 'azure'; }
     catch { return 'azure'; }
   });
