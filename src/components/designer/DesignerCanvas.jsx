@@ -591,6 +591,61 @@ const DEVICE_MOCKUPS = [
       <Line key="sh" closed fill="#0f172a" opacity={0.16} points={[w * 0.14, h * 0.24, w * 0.94, h * 0.12, w * 0.96, h * 0.88, w * 0.12, h * 1.0]} />,
     ],
   },
+  {
+    id: 'ereader', label: 'E-Reader', aspect: 0.72,
+    screen: (w, h) => { const bez = Math.round(w * 0.06); return { x: bez, y: bez, w: w - 2 * bez, h: h * 0.86 - bez, r: 2 } },
+    behind: (w, h) => [<Rect key="body" width={w} height={h} fill="#2a2f3a" cornerRadius={Math.round(w * 0.05)} />],
+    front: (w, h) => [<Circle key="btn" x={w / 2} y={h * 0.93} radius={Math.max(4, w * 0.03)} fill="none" stroke="#5b6472" strokeWidth={2} />],
+  },
+  {
+    id: 'ultrawide', label: 'Ultrawide', aspect: 2.4,
+    screen: (w, h) => { const p = Math.round(w * 0.01), sh = h * 0.82; return { x: p, y: p, w: w - 2 * p, h: sh - 2 * p, r: 3 } },
+    behind: (w, h) => { const sh = h * 0.82; return [
+      <Rect key="scr" width={w} height={sh} fill="#0B0B0F" cornerRadius={6} />,
+      <Rect key="neck" x={w * 0.46} y={sh} width={w * 0.08} height={h * 0.12} fill="#C7CDD4" />,
+      <Rect key="base" x={w * 0.38} y={h * 0.94} width={w * 0.24} height={h * 0.05} cornerRadius={6} fill="#AEB6BF" />,
+    ] },
+  },
+  {
+    id: 'phone_land', label: 'Phone quer', aspect: 2.05,
+    screen: (w, h) => { const bez = Math.round(h * 0.05); return { x: bez, y: bez, w: w - 2 * bez, h: h - 2 * bez, r: Math.round(h * 0.1) } },
+    behind: (w, h) => [<Rect key="body" width={w} height={h} fill="#0B0B0F" cornerRadius={Math.round(h * 0.16)} />],
+    front: (w, h) => { const nh = h * 0.34, bez = Math.round(h * 0.05), nw = Math.max(4, w * 0.02); return [<Rect key="notch" x={bez + nw * 0.4} y={(h - nh) / 2} width={nw * 1.6} height={nh} cornerRadius={nw} fill="#0B0B0F" />] },
+  },
+  {
+    id: 'notebook', label: 'Notizbuch', aspect: 0.75,
+    screen: (w, h) => { const p = Math.round(w * 0.06), top = h * 0.08; return { x: p + w * 0.05, y: top, w: w - 2 * p - w * 0.05, h: h - top - p, r: 2 } },
+    behind: (w, h) => [<Rect key="page" width={w} height={h} fill="#FFFFFF" cornerRadius={4} stroke="#E2E8F0" strokeWidth={1} shadowColor="#0f172a" shadowBlur={12} shadowOpacity={0.14} shadowOffsetY={4} />],
+    front: (w, h) => { const rings = []; for (let i = 0; i < 8; i++) { rings.push(<Circle key={'rg' + i} x={w * 0.06} y={h * 0.08 + i * (h * 0.84 / 7)} radius={Math.max(3, w * 0.016)} fill="none" stroke="#9aa4b2" strokeWidth={2} />) } return rings },
+  },
+  {
+    id: 'rollup', label: 'Roll-Up', aspect: 0.42,
+    screen: (w, h) => { const p = Math.round(w * 0.06); return { x: p, y: p, w: w - 2 * p, h: h * 0.92 - p, r: 0 } },
+    behind: (w, h) => [<Rect key="ban" width={w} height={h * 0.92} fill="#FFFFFF" stroke="#E2E8F0" strokeWidth={1} shadowColor="#0f172a" shadowBlur={12} shadowOpacity={0.12} shadowOffsetY={3} />],
+    front: (w, h) => [
+      <Rect key="foot" x={w * 0.1} y={h * 0.92} width={w * 0.8} height={h * 0.035} cornerRadius={4} fill="#AEB6BF" />,
+      <Line key="leg" points={[w * 0.5, h * 0.955, w * 0.5, h]} stroke="#AEB6BF" strokeWidth={Math.max(3, w * 0.03)} />,
+    ],
+  },
+  {
+    id: 'cd', label: 'Cover', aspect: 1,
+    screen: (w, h) => ({ x: 0, y: 0, w: w * 0.82, h, r: 0 }),
+    behind: (w, h) => [
+      <Circle key="disc" x={w * 0.86} y={h * 0.5} radius={h * 0.42} fill="#e5e7eb" stroke="#cbd5e1" strokeWidth={1} />,
+      <Circle key="hole" x={w * 0.86} y={h * 0.5} radius={h * 0.07} fill="#f4f6fa" stroke="#cbd5e1" strokeWidth={1} />,
+      <Rect key="cover" width={w * 0.82} height={h} fill="#fff" shadowColor="#0f172a" shadowBlur={14} shadowOpacity={0.16} shadowOffsetX={-2} shadowOffsetY={4} />,
+    ],
+  },
+  {
+    id: 'poster_persp', label: 'Poster 3D', aspect: 0.72,
+    screenQuad: (w, h) => [{ x: w * 0.09, y: h * 0.06 }, { x: w * 0.85, y: h * 0.14 }, { x: w * 0.85, y: h * 0.9 }, { x: w * 0.09, y: h * 0.95 }],
+    behind: (w, h) => [<Line key="sh" closed fill="#0f172a" opacity={0.14} points={[w * 0.13, h * 0.11, w * 0.89, h * 0.19, w * 0.89, h * 0.95, w * 0.13, h * 1.0]} />],
+  },
+  {
+    id: 'tablet_persp', label: 'Tablet 3D', aspect: 1.35,
+    screenQuad: (w, h) => [{ x: w * 0.17, y: h * 0.13 }, { x: w * 0.82, y: h * 0.06 }, { x: w * 0.88, y: h * 0.88 }, { x: w * 0.23, y: h * 0.94 }],
+    behind: (w, h) => [<Line key="body" closed fill="#0B0B0F" points={[w * 0.13, h * 0.09, w * 0.86, h * 0.02, w * 0.92, h * 0.95, w * 0.19, h * 1.0]} shadowColor="#0f172a" shadowBlur={20} shadowOpacity={0.25} shadowOffsetX={8} shadowOffsetY={10} />],
+  },
 ]
 const deviceById = id => DEVICE_MOCKUPS.find(d => d.id === id) || DEVICE_MOCKUPS[0]
 const DEFAULT_PHOTO_QUAD = [{ u: 0.28, v: 0.28 }, { u: 0.72, v: 0.28 }, { u: 0.72, v: 0.72 }, { u: 0.28, v: 0.72 }]
@@ -600,20 +655,6 @@ function mockupQuad(o) {
   if (o.kind === 'photo') { const qf = o.quadFrac || DEFAULT_PHOTO_QUAD; return qf.map(p => ({ x: p.u * o.width, y: p.v * o.height })) }
   const dev = deviceById(o.device); return dev && dev.screenQuad ? dev.screenQuad(o.width, o.height) : null
 }
-// Seed-Bibliothek: echte Foto-Mockups (lizenzfreie Pexels-Fotos + vermessene Screen-Ecken).
-// Beim Einfügen wird das Foto zu einer DataURL geladen (kein CORS-Taint beim Export).
-const _pxPhoto = id => `https://images.pexels.com/photos/${id}/pexels-photo-${id}.jpeg?auto=compress&cs=tinysrgb&w=1200`
-const _pxThumb = id => `https://images.pexels.com/photos/${id}/pexels-photo-${id}.jpeg?auto=compress&cs=tinysrgb&w=300`
-const PHOTO_MOCKUPS = [
-  { id: 'pm_frame', label: 'Bilderrahmen', photo: _pxPhoto('5978721'), thumb: _pxThumb('5978721'),
-    quad: [{ u: 0.445, v: 0.35 }, { u: 0.62, v: 0.35 }, { u: 0.62, v: 0.67 }, { u: 0.445, v: 0.67 }] },
-  { id: 'pm_laptop', label: 'Laptop', photo: _pxPhoto('16978385'), thumb: _pxThumb('16978385'),
-    quad: [{ u: 0.515, v: 0.34 }, { u: 0.96, v: 0.355 }, { u: 0.955, v: 0.635 }, { u: 0.535, v: 0.675 }] },
-  { id: 'pm_laptop_angle', label: 'Laptop schräg', photo: _pxPhoto('34804004'), thumb: _pxThumb('34804004'),
-    quad: [{ u: 0.355, v: 0.275 }, { u: 0.745, v: 0.305 }, { u: 0.715, v: 0.49 }, { u: 0.335, v: 0.615 }] },
-  { id: 'pm_phone', label: 'Smartphone', photo: _pxPhoto('6373144'), thumb: _pxThumb('6373144'),
-    quad: [{ u: 0.475, v: 0.295 }, { u: 0.555, v: 0.29 }, { u: 0.56, v: 0.635 }, { u: 0.48, v: 0.64 }] },
-]
 function mockupPreview(id) {
   const c = '#CBD5E1', s = '#94A3B8'
   const P = { width: 28, height: 28, viewBox: '0 0 100 100' }
@@ -641,6 +682,14 @@ function mockupPreview(id) {
     case 'phone_persp': return <svg {...P}><polygon points="30,12 66,20 66,80 30,88" fill={c} stroke={s} strokeWidth="3" strokeLinejoin="round" /></svg>
     case 'laptop_persp': return <svg {...P}><polygon points="24,16 76,16 84,60 16,60" fill={c} stroke={s} strokeWidth="3" strokeLinejoin="round" /><polygon points="16,60 84,60 94,84 6,84" fill="#E2E8F0" stroke={s} strokeWidth="3" strokeLinejoin="round" /></svg>
     case 'card_persp': return <svg {...P}><polygon points="16,26 84,14 88,78 12,90" fill={c} stroke={s} strokeWidth="3" strokeLinejoin="round" /></svg>
+    case 'ereader': return <svg {...P}><rect x="30" y="8" width="40" height="84" rx="6" fill="#5b6472" /><rect x="34" y="12" width="32" height="64" rx="2" fill={c} /><circle cx="50" cy="85" r="3" fill="none" stroke="#c7cdd4" strokeWidth="2" /></svg>
+    case 'ultrawide': return <svg {...P}><rect x="6" y="26" width="88" height="38" rx="3" fill={c} stroke={s} strokeWidth="3" /><rect x="44" y="64" width="12" height="10" fill={s} /><rect x="36" y="74" width="28" height="5" rx="2" fill={s} /></svg>
+    case 'phone_land': return <svg {...P}><rect x="10" y="34" width="80" height="32" rx="9" fill={c} stroke={s} strokeWidth="3" /></svg>
+    case 'notebook': return <svg {...P}><rect x="24" y="10" width="52" height="80" rx="3" fill="#fff" stroke={s} strokeWidth="3" /><rect x="32" y="16" width="40" height="68" fill={c} /><circle cx="28" cy="22" r="2.5" fill="none" stroke={s} strokeWidth="2" /><circle cx="28" cy="40" r="2.5" fill="none" stroke={s} strokeWidth="2" /><circle cx="28" cy="58" r="2.5" fill="none" stroke={s} strokeWidth="2" /><circle cx="28" cy="76" r="2.5" fill="none" stroke={s} strokeWidth="2" /></svg>
+    case 'rollup': return <svg {...P}><rect x="30" y="6" width="40" height="76" fill={c} stroke={s} strokeWidth="3" /><rect x="34" y="82" width="32" height="5" rx="2" fill={s} /><line x1="50" y1="86" x2="50" y2="94" stroke={s} strokeWidth="3" /></svg>
+    case 'cd': return <svg {...P}><circle cx="66" cy="50" r="30" fill="#e5e7eb" stroke={s} strokeWidth="2" /><circle cx="66" cy="50" r="6" fill="#fff" stroke={s} strokeWidth="2" /><rect x="14" y="20" width="52" height="60" fill="#fff" stroke={s} strokeWidth="3" /></svg>
+    case 'poster_persp': return <svg {...P}><polygon points="18,14 76,22 76,80 18,86" fill={c} stroke={s} strokeWidth="3" strokeLinejoin="round" /></svg>
+    case 'tablet_persp': return <svg {...P}><polygon points="20,20 78,12 84,84 26,90" fill={c} stroke={s} strokeWidth="3" strokeLinejoin="round" /></svg>
     default: return <svg {...P}><rect x="16" y="10" width="68" height="80" rx="3" fill="#fff" stroke={s} strokeWidth="3" /><rect x="24" y="18" width="52" height="52" fill={c} /></svg>
   }
 }
@@ -1865,28 +1914,6 @@ export default function DesignerCanvas({ visual, teamId, onSaved, onReplaceVisua
       qf[idx] = { u, v }
       return { ...o, quadFrac: qf }
     }))
-  }
-  async function addPhotoMockup(seed) {
-    if (!seed) return
-    try {
-      setSavedMsg('Foto-Mockup wird geladen…')
-      const url = await photoToDataUrl(seed.photo)
-      if (!url) { setSavedMsg('Mockup-Foto konnte nicht geladen werden.'); return }
-      const img = new window.Image()
-      img.onload = () => {
-        const nw = img.naturalWidth || 1200, nh = img.naturalHeight || 800
-        const cw = (baseCrop?.width || stageSize.width), ch = (baseCrop?.height || stageSize.height)
-        let w = Math.round(Math.min(cw, ch) * 0.82), h = Math.round(w * nh / nw)
-        if (h > ch * 0.92) { h = Math.round(ch * 0.92); w = Math.round(h * nw / nh) }
-        const c = center(); const id = nextId()
-        setImgCache(prev => ({ ...prev, [url]: img }))
-        pushHistory()
-        setObjects(prev => [...prev, { type: 'mockup', kind: 'photo', id, photoSrc: url, src: null, quadFrac: seed.quad.map(p => ({ ...p })), x: Math.round(c.x - w / 2), y: Math.round(c.y - h / 2), width: w, height: h, rotation: 0, opacity: 1 }])
-        setSelectedIds([id]); setSavedMsg('')
-      }
-      img.onerror = () => setSavedMsg('Mockup-Foto konnte nicht geladen werden.')
-      img.src = url
-    } catch (_e) { setSavedMsg('Mockup-Foto konnte nicht geladen werden.') }
   }
   function addMockup(deviceId) {
     const dev = deviceById(deviceId); if (!dev) return
@@ -4663,7 +4690,6 @@ Antworte AUSSCHLIESSLICH mit JSON: {"ok":<bool>,"issues":["..."],"operations":[.
           onAddFrame={addFrame}
           onAddCollage={addCollage}
           onAddMockup={addMockup}
-          onAddPhotoMockup={addPhotoMockup}
           onAddAsset={addAsset}
           onInsertMedia={(dataUrl, meta) => addImageFromDataUrl(dataUrl, meta)}
           // Text
@@ -5892,7 +5918,7 @@ function TemplatesPanelBody({ onApplyTemplate, onClose }) {
 }
 
 // ─── Panel: Elemente (Formen / Icons / Grafiken / Bilder) ───────────────────
-function ElementsPanelBody({ elementTab, setElementTab, onAddRect, onAddEllipse, onAddLine, onAddArrow, onAddAsset, onInsertMedia, onAddFrame = () => {}, onAddCollage = () => {}, onAddMockup = () => {}, onAddPhotoMockup = () => {} }) {
+function ElementsPanelBody({ elementTab, setElementTab, onAddRect, onAddEllipse, onAddLine, onAddArrow, onAddAsset, onInsertMedia, onAddFrame = () => {}, onAddCollage = () => {}, onAddMockup = () => {} }) {
   const tabs = [
     { id: 'shapes', label: 'Formen' },
     { id: 'frames', label: 'Rahmen' },
@@ -5971,18 +5997,8 @@ function ElementsPanelBody({ elementTab, setElementTab, onAddRect, onAddEllipse,
       )}
       {elementTab === 'mockups' && (
         <div>
-          <div style={{ marginBottom: 4 }}><span style={{ fontSize: 12.5, fontWeight: 700, color: 'var(--text)' }}>📸 Foto-Mockups</span></div>
-          <div style={{ fontSize: 11, color: 'var(--text-muted)', margin: '0 0 8px', lineHeight: 1.4 }}>Echtes Foto — dein Design wird perspektivisch auf den Screen gerechnet. (Screen-Ecken per Doppelklick anpassbar.)</div>
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: 8, marginBottom: 16 }}>
-            {PHOTO_MOCKUPS.map(pm => (
-              <button key={pm.id} onClick={() => onAddPhotoMockup(pm)} title={pm.label}
-                style={{ border: '1px solid var(--border)', borderRadius: 9, overflow: 'hidden', cursor: 'pointer', background: '#f4f6fa', padding: 0, display: 'block', textAlign: 'left' }}>
-                <img src={pm.thumb} alt={pm.label} loading="lazy" draggable={false} style={{ width: '100%', height: 74, objectFit: 'cover', display: 'block' }} />
-                <span style={{ display: 'block', fontSize: 10, fontWeight: 700, color: 'var(--text-muted)', padding: '3px 6px' }}>{pm.label}</span>
-              </button>
-            ))}
-          </div>
-          <PanelLabel>Geräte-Mockups</PanelLabel>
+          <PanelLabel>Mockups</PanelLabel>
+          <div style={{ fontSize: 11.5, color: 'var(--text-muted)', margin: '0 0 8px', lineHeight: 1.4 }}>Geräte-Mockup einfügen, dann auswählen und ein Bild einsetzen — es füllt den Screen.</div>
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(58px, 1fr))', gap: 8 }}>
             {DEVICE_MOCKUPS.map(d => (
               <button key={d.id} onClick={() => onAddMockup(d.id)} title={d.label}
