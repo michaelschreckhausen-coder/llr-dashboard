@@ -542,6 +542,17 @@ function PostModal({ post, onClose, onSave, onDelete, session, activeTeamId, mem
       })
   }, [form.brand_voice_id])
 
+  // LinkedIn-Verbindung der Brand prüfen (für „posten/planen"-Buttons)
+  const [liConnected, setLiConnected] = useState(false)
+  useEffect(() => {
+    if (!form.brand_voice_id) { setLiConnected(false); return }
+    let cancelled = false
+    supabase.rpc('bv_linkedin_connected', { bv_id: form.brand_voice_id })
+      .then(({ data }) => { if (!cancelled) setLiConnected(!!data) })
+      .catch(() => { if (!cancelled) setLiConnected(false) })
+    return () => { cancelled = true }
+  }, [form.brand_voice_id])
+
   // ─── Mentions (@-Erwähnungen von Team-Membern) ──────────────────────────
   // Lokale UI-Liste; wird beim Save in content_post_mentions gesynct.
   // Shape: [{ user_id, label }]
@@ -1567,6 +1578,7 @@ function PostModal({ post, onClose, onSave, onDelete, session, activeTeamId, mem
             const future = hasSchedule && new Date(form.scheduled_at) > new Date()
             return (
               <button onClick={async () => {
+                if (!liConnected) { alert('Um auf LinkedIn zu posten oder zu planen, verknüpfe zuerst ein LinkedIn-Profil in dieser Brand (Branding → Personal Brand → LinkedIn verbinden).'); return }
                 if (!post?.id) { alert('Bitte zuerst speichern.'); return }
                 if (future) {
                   if (!window.confirm(`Auto-Publish einplanen für ${new Date(form.scheduled_at).toLocaleString('de-DE')}? Der Worker postet dann automatisch.`)) return
@@ -1617,7 +1629,7 @@ function PostModal({ post, onClose, onSave, onDelete, session, activeTeamId, mem
                 } catch (e) {
                   alert('Posten fehlgeschlagen: ' + (e.message || 'Unbekannt'))
                 } finally { setSaving(false) }
-              }} disabled={saving} style={{ padding:'9px 16px', borderRadius:10, border:'none', background: saving ? '#94A3B8' : 'var(--wl-primary, rgb(49,90,231))', color:'#fff', fontSize:13, fontWeight:700, cursor: saving ? 'wait' : 'pointer', display:'flex', alignItems:'center', gap:5 }}>
+              }} disabled={saving} title={!liConnected ? 'Kein LinkedIn-Profil mit dieser Brand verknüpft — erst verbinden' : undefined} style={{ padding:'9px 16px', borderRadius:10, border:'none', background: !liConnected ? '#CBD5E1' : (saving ? '#94A3B8' : 'var(--wl-primary, rgb(49,90,231))'), color:'#fff', fontSize:13, fontWeight:700, cursor: saving ? 'wait' : 'pointer', display:'flex', alignItems:'center', gap:5, opacity: !liConnected ? 0.9 : 1 }}>
                 {future ? <span style={{display:'inline-flex',alignItems:'center',gap:6}}><Calendar size={13}/>Auto-Publish einplanen</span> : <span style={{display:'inline-flex',alignItems:'center',gap:6}}><Rocket size={13}/>Jetzt auf LinkedIn posten</span>}
               </button>
             )

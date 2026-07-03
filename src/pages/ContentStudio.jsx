@@ -11,7 +11,7 @@
 //   - Beim ersten Send im Clean-Modus → Sidebar klappt automatisch auf
 
 import React, { useState, useEffect, useRef } from 'react'
-import { Pencil, Pin, BookOpen, Target, Send, Loader2, Globe, Plus, FileText, ChevronLeft, ChevronRight, ChevronsRight, ChevronDown, X, Mic, Square, Image as ImageIcon, Download, Sparkles, Wand2, FilePlus2, Brush, MessageSquare, CalendarPlus, Maximize2, Minimize2 } from 'lucide-react'
+import { Pencil, Pin, BookOpen, Target, Send, Loader2, Globe, Plus, FileText, ChevronLeft, ChevronRight, ChevronsRight, ChevronDown, X, Mic, Square, Image as ImageIcon, Download, Sparkles, Wand2, FilePlus2, Brush, MessageSquare, CalendarPlus, Maximize2, Minimize2, Paperclip } from 'lucide-react'
 import { useVoiceInput } from '../hooks/useVoiceInput'
 import { useResponsive } from '../hooks/useResponsive'
 import CompanyMultiSelect from '../components/CompanyMultiSelect'
@@ -140,6 +140,20 @@ function splitAudienceRef(v) {
   return { target_audience_id: v || null, strike2_persona_id: null }
 }
 
+// Kleines Vorschau-Thumbnail (downscaled JPEG-DataURL) für Chat-Anhänge — wird im
+// Composer angezeigt UND in der Nachricht persistiert (klein genug für metadata).
+async function makeImageThumb(file, max = 320) {
+  try {
+    const bmp = await createImageBitmap(file)
+    const scale = Math.min(1, max / Math.max(bmp.width, bmp.height))
+    const w = Math.max(1, Math.round(bmp.width * scale)), h = Math.max(1, Math.round(bmp.height * scale))
+    const canvas = document.createElement('canvas'); canvas.width = w; canvas.height = h
+    canvas.getContext('2d').drawImage(bmp, 0, 0, w, h)
+    if (bmp.close) bmp.close()
+    return canvas.toDataURL('image/jpeg', 0.82)
+  } catch (_e) { return null }
+}
+
 // ─── Hauptkomponente ────────────────────────────────────────────────────────
 export default function ContentStudio({ session }) {
   const navigate = useNavigate()
@@ -248,7 +262,9 @@ export default function ContentStudio({ session }) {
   // (in jedem Zustand: Split UND Vollbild — der schmale Chat-Streifen verschiebt sie).
   const rightOpen = editorOpen                                                  // Kompat: rechtes Panel offen?
   // Visual-Composer (In-Chat-Bildgenerierung)
-  const [visualMode, setVisualMode] = useState(false)
+  const [answerFormat, setAnswerFormat] = useState('auto') // 'auto' | 'chat' | 'post' | 'visual'
+  const visualMode = answerFormat === 'visual'
+  const setVisualMode = (v) => { const next = typeof v === 'function' ? v(answerFormat === 'visual') : v; setAnswerFormat(next ? 'visual' : 'auto') }
   const [imageModel, setImageModel] = useState(DEFAULT_IMAGE_MODEL)
   const [imageFormat, setImageFormat] = useState(PRESET_BY_ID[DEFAULT_PRESET_ID])   // Format-Preset (Plattform/Freiform)
   const [useBrandImages, setUseBrandImages] = useState(true)   // Brand-Bilder als Referenz für Bildgenerierung
@@ -462,7 +478,7 @@ export default function ContentStudio({ session }) {
       .eq('id', postId).maybeSingle()
     if (!post) return
     setLinkedPost(post); setRefDoc(null)
-    if (genImage) setVisualMode(true)
+    setAnswerFormat(genImage ? 'visual' : 'post')
     // Wenn schon ein Chat existiert → öffne ihn (Sidebar geht auf für Chat-View)
     if (post.text_werkstatt_chat_id) {
       setSidebarOpen(true)
@@ -489,7 +505,7 @@ export default function ContentStudio({ session }) {
     if (!doc) return
     setActiveChatId(null); setActiveChat(null); setMessages([]); setLinkedPost(null)
     setRefDoc(doc)
-    setVisualMode(true)
+    setAnswerFormat('visual')
     setInput('Erstelle ein passendes Bild zum Inhalt dieses Dokuments.')
   }
 
@@ -756,13 +772,14 @@ export default function ContentStudio({ session }) {
   }
 
   // ─── Senden ───────────────────────────────────────────────────────────────
-  async function sendMessage() {
+  async function sendMessage(answerFormatArg) {
     if (!input.trim()) return
     if (activeChatId && pendingGens.has(activeChatId)) return
     if (!contentReady) { setError('Wähle oben eine Marke oder „Ohne Marke"'); return }
     setError('')
     const userMsgText = input.trim()
     const atts = attachments   // Anhänge festhalten (State wird gleich geleert)
+    const attMeta = atts.map(a => ({ name:a.name, type:a.type, size:a.size, preview:a.preview||null }))
     const wasClean = viewMode === 'clean'
 
     // Wenn Sidebar zu war und wir im Clean-Modus senden → aufklappen
@@ -802,7 +819,7 @@ export default function ContentStudio({ session }) {
     }
 
     // User-Bubble optimistisch
-    const tempUser = { id:'temp-' + Date.now(), role:'user', content:userMsgText, metadata:{}, created_at:new Date().toISOString() }
+    const tempUser = { id:'temp-' + Date.now(), role:'user', content:userMsgText, metadata:{ attachments: attMeta }, created_at:new Date().toISOString() }
     setMessages(prev => [...prev, tempUser])
     setInput(''); setAttachments([])
     setTimeout(() => messagesEndRef.current?.scrollIntoView({ behavior:'smooth' }), 30)
@@ -820,6 +837,7 @@ export default function ContentStudio({ session }) {
           strike2_persona_id: splitAudienceRef(selectedAudienceId).strike2_persona_id || undefined,
           company_voice_id: selectedCompanyVoiceIds[0] || null, company_voice_ids: selectedCompanyVoiceIds,
           user_message: userMsgText,
+          answer_format: answerFormatArg || 'auto',
           knowledge_resource_ids: selectedKnowledgeIds,
           use_web_search: useWebSearch,
           document_context: (useEditorContext && editorOpen) ? (editorRef.current?.getText?.() || undefined) : undefined,
@@ -844,6 +862,7 @@ export default function ContentStudio({ session }) {
     if (!contentReady) { setError('Wähle oben eine Marke oder „Ohne Marke"'); return }
     setError('')
     const prompt = input.trim()
+    const attMetaV = attachments.map(a => ({ name:a.name, type:a.type, size:a.size, preview:a.preview||null }))
     const atts = attachments.filter(a => (a.type || '').startsWith('image/'))   // angehängte Bilder als Referenz
     const wasClean = viewMode === 'clean'
     if (wasClean && !sidebarOpen && !editorOpen) setSidebarOpen(true)
@@ -868,10 +887,10 @@ export default function ContentStudio({ session }) {
     }
 
     // User-Nachricht speichern + optimistisch anzeigen
-    const tempUser = { id:'temp-' + Date.now(), role:'user', content:prompt, metadata:{}, created_at:new Date().toISOString() }
+    const tempUser = { id:'temp-' + Date.now(), role:'user', content:prompt, metadata:{ attachments: attMetaV }, created_at:new Date().toISOString() }
     setMessages(prev => [...prev, tempUser])
     setInput(''); setAttachments([])
-    try { await supabase.from('content_chat_messages').insert({ chat_id: chatIdForSend, role:'user', content: prompt, metadata: { type:'image_request' } }) } catch (_e) {}
+    try { await supabase.from('content_chat_messages').insert({ chat_id: chatIdForSend, role:'user', content: prompt, metadata: { type:'image_request', attachments: attMetaV } }) } catch (_e) {}
     setTimeout(() => messagesEndRef.current?.scrollIntoView({ behavior:'smooth' }), 30)
     pendingGens.set(chatIdForSend, { kind:'image', startedAt:Date.now(), expectedSeconds:(/(-pro-|\|high)/i.test(imageModel||'') ? 45 : 22), ratio:(imageFormat?.ratio||'1:1') }); emitGenChange()
 
@@ -937,6 +956,7 @@ ${transcript || '(noch leer)'}${extra.length ? '\n\n=== ZUSATZKONTEXT ===\n' + e
           ...(prevVisual ? {} : { targetWidth: imageFormat?.w || undefined, targetHeight: imageFormat?.h || undefined }),
           variants: 1,
           brandVoiceId: activeBrandVoice?.id || null,
+          noBrand: noBrand,
           companyVoiceIds: selectedCompanyVoiceIds,
           useBrandVoiceRefs: useBrandImages,
           parentVisualId: prevVisual?.id || undefined,
@@ -968,7 +988,30 @@ ${transcript || '(noch leer)'}${extra.length ? '\n\n=== ZUSATZKONTEXT ===\n' + e
   }
 
   // Einheitlicher Senden-Dispatcher: im Visual-Modus → Bild, sonst → Text.
-  function handleSend() { return visualMode ? sendVisualMessage() : sendMessage() }
+  async function handleSend() {
+    if (answerFormat === 'visual') return sendVisualMessage()
+    if (answerFormat === 'post' || answerFormat === 'chat') return sendMessage(answerFormat)
+    return sendAuto()
+  }
+  // „Automatisch": erst Visual-vs-Text erkennen, dann routen. Text-EF entscheidet danach
+  // selbst zwischen fertigem Beitrag, Gespräch und Rückfrage (answer_format='auto').
+  async function sendAuto() {
+    const p = (input || '').trim(); if (!p) return
+    try {
+      const recent = (messages || []).slice(-6).map(m => `${m.role}: ${String(m.content || '').replace(/<\/?beitragstext>/gi, '').slice(0, 280)}`).join('\n')
+      const { data } = await supabase.functions.invoke('generate', {
+        body: { type:'raw', model:'claude-haiku-4-5', prompt:
+`In einer LinkedIn-Content-Werkstatt: Soll die folgende Anfrage ein BILD/Visual erzeugen oder TEXT (Beitrag schreiben bzw. chatten)? Nur wenn eindeutig ein Bild gewünscht ist (z.B. „erstelle ein Bild", „Visual dazu", „Grafik", „zeig mir ein Bild von…") → visual. Sonst (Beitrag schreiben, Feedback, Fragen, Brainstorming, Smalltalk) → text. Antworte NUR mit einem Wort: visual oder text.
+
+Bisher:
+${recent || '(leer)'}
+
+Neue Anfrage: "${p}"` },
+      })
+      if (String(data?.text || '').toLowerCase().includes('visual')) return sendVisualMessage()
+    } catch (_e) {}
+    return sendMessage('auto')
+  }
 
   // Bild herunterladen (Blob → kein Cross-Origin-Problem)
   async function downloadVisual(storagePath, id) {
@@ -1064,7 +1107,9 @@ ${transcript || '(noch leer)'}${extra.length ? '\n\n=== ZUSATZKONTEXT ===\n' + e
       const arr = new Uint8Array(buf)
       for (let i = 0; i < arr.byteLength; i++) bin += String.fromCharCode(arr[i])
       const base64 = btoa(bin)
-      out.push({ name:f.name, type:f.type, size:f.size, base64 })
+      let preview = null
+      if ((f.type || '').startsWith('image/')) { try { preview = await makeImageThumb(f) } catch (_e) { preview = null } }
+      out.push({ name:f.name, type:f.type, size:f.size, base64, preview })
     }
     setAttachments(prev => [...prev, ...out])
     setPlusOpen(false)
@@ -1157,7 +1202,7 @@ ${transcript || '(noch leer)'}${extra.length ? '\n\n=== ZUSATZKONTEXT ===\n' + e
             showCompanyPicker={activeBrandVoice?.account_type !== 'company_page'}
             selectedCompanyVoiceIds={selectedCompanyVoiceIds} setSelectedCompanyVoiceIds={setSelectedCompanyVoiceIds}
             useWebSearch={useWebSearch} setUseWebSearch={setUseWebSearch} editorOpen={editorOpen} useEditorContext={useEditorContext} setUseEditorContext={setUseEditorContext}
-            visualMode={visualMode} setVisualMode={setVisualMode}
+            visualMode={visualMode} setVisualMode={setVisualMode} answerFormat={answerFormat} setAnswerFormat={setAnswerFormat}
             imageModel={imageModel} setImageModel={setImageModel}
             imageFormat={imageFormat} setImageFormat={setImageFormat}
             useBrandImages={useBrandImages} setUseBrandImages={setUseBrandImages}
@@ -1229,7 +1274,7 @@ ${transcript || '(noch leer)'}${extra.length ? '\n\n=== ZUSATZKONTEXT ===\n' + e
             showCompanyPicker={activeBrandVoice?.account_type !== 'company_page'}
             selectedCompanyVoiceIds={selectedCompanyVoiceIds} setSelectedCompanyVoiceIds={setSelectedCompanyVoiceIds}
             useWebSearch={useWebSearch} setUseWebSearch={setUseWebSearch} editorOpen={editorOpen} useEditorContext={useEditorContext} setUseEditorContext={setUseEditorContext}
-            visualMode={visualMode} setVisualMode={setVisualMode}
+            visualMode={visualMode} setVisualMode={setVisualMode} answerFormat={answerFormat} setAnswerFormat={setAnswerFormat}
             imageModel={imageModel} setImageModel={setImageModel}
             imageFormat={imageFormat} setImageFormat={setImageFormat}
             useBrandImages={useBrandImages} setUseBrandImages={setUseBrandImages}
@@ -1556,7 +1601,7 @@ function CleanView({
   audiences, selectedAudienceId, setSelectedAudienceId,
   companyVoices = [], showCompanyPicker = false, selectedCompanyVoiceIds = [], setSelectedCompanyVoiceIds = () => {},
   useWebSearch, setUseWebSearch, editorOpen = false, useEditorContext = false, setUseEditorContext = () => {},
-  visualMode = false, setVisualMode = () => {}, imageModel, setImageModel = () => {}, imageFormat, setImageFormat = () => {},
+  visualMode = false, setVisualMode = () => {}, answerFormat = 'auto', setAnswerFormat = () => {}, imageModel, setImageModel = () => {}, imageFormat, setImageFormat = () => {},
   useBrandImages = true, setUseBrandImages = () => {}, hasChatVisuals = false,
   handleFiles, fileInputRef, sendMessage, navigate,
 }) {
@@ -1611,7 +1656,7 @@ function CleanView({
           companyVoices={companyVoices} showCompanyPicker={showCompanyPicker}
           selectedCompanyVoiceIds={selectedCompanyVoiceIds} setSelectedCompanyVoiceIds={setSelectedCompanyVoiceIds}
           useWebSearch={useWebSearch} setUseWebSearch={setUseWebSearch} editorOpen={editorOpen} useEditorContext={useEditorContext} setUseEditorContext={setUseEditorContext}
-          visualMode={visualMode} setVisualMode={setVisualMode}
+          visualMode={visualMode} setVisualMode={setVisualMode} answerFormat={answerFormat} setAnswerFormat={setAnswerFormat}
           imageModel={imageModel} setImageModel={setImageModel} imageFormat={imageFormat} setImageFormat={setImageFormat}
           useBrandImages={useBrandImages} setUseBrandImages={setUseBrandImages} hasChatVisuals={hasChatVisuals}
           handleFiles={handleFiles} fileInputRef={fileInputRef}
@@ -1634,7 +1679,7 @@ function ChatView({
   audiences, selectedAudienceId, setSelectedAudienceId,
   companyVoices = [], showCompanyPicker = false, selectedCompanyVoiceIds = [], setSelectedCompanyVoiceIds = () => {},
   useWebSearch, setUseWebSearch, editorOpen = false, useEditorContext = false, setUseEditorContext = () => {},
-  visualMode = false, setVisualMode = () => {}, imageModel, setImageModel = () => {}, imageFormat, setImageFormat = () => {},
+  visualMode = false, setVisualMode = () => {}, answerFormat = 'auto', setAnswerFormat = () => {}, imageModel, setImageModel = () => {}, imageFormat, setImageFormat = () => {},
   useBrandImages = true, setUseBrandImages = () => {}, hasChatVisuals = false,
   handleFiles, fileInputRef, sendMessage, navigate, error, hasOpenDoc = false, chatDocs = [], chatDesigns = [],
 }) {
@@ -1704,7 +1749,7 @@ function ChatView({
             companyVoices={companyVoices} showCompanyPicker={showCompanyPicker}
             selectedCompanyVoiceIds={selectedCompanyVoiceIds} setSelectedCompanyVoiceIds={setSelectedCompanyVoiceIds}
             useWebSearch={useWebSearch} setUseWebSearch={setUseWebSearch} editorOpen={editorOpen} useEditorContext={useEditorContext} setUseEditorContext={setUseEditorContext}
-            visualMode={visualMode} setVisualMode={setVisualMode}
+            visualMode={visualMode} setVisualMode={setVisualMode} answerFormat={answerFormat} setAnswerFormat={setAnswerFormat}
             imageModel={imageModel} setImageModel={setImageModel} imageFormat={imageFormat} setImageFormat={setImageFormat}
             useBrandImages={useBrandImages} setUseBrandImages={setUseBrandImages} hasChatVisuals={hasChatVisuals}
             handleFiles={handleFiles} fileInputRef={fileInputRef}
@@ -1745,7 +1790,7 @@ function ChatInput({
   audiences, selectedAudienceId, setSelectedAudienceId,
   companyVoices = [], showCompanyPicker = false, selectedCompanyVoiceIds = [], setSelectedCompanyVoiceIds = () => {},
   useWebSearch, setUseWebSearch, editorOpen = false, useEditorContext = false, setUseEditorContext = () => {},
-  visualMode = false, setVisualMode = () => {}, imageModel = DEFAULT_IMAGE_MODEL, setImageModel = () => {},
+  visualMode = false, setVisualMode = () => {}, answerFormat = 'auto', setAnswerFormat = () => {}, imageModel = DEFAULT_IMAGE_MODEL, setImageModel = () => {},
   imageFormat = PRESET_BY_ID[DEFAULT_PRESET_ID], setImageFormat = () => {}, useBrandImages = true, setUseBrandImages = () => {}, hasChatVisuals = false,
   handleFiles, fileInputRef, sendMessage, enabled,
 }) {
@@ -1769,16 +1814,30 @@ function ChatInput({
           <span style={{ fontSize:13, fontWeight:700, color:P }}>Dateien hier ablegen zum Anhängen</span>
         </div>
       )}
-      {/* Attachment-Strip */}
+      {/* Attachment-Strip — Bild-Vorschau (wie Claude/ChatGPT) bzw. Datei-Kachel */}
       {attachments.length > 0 && (
-        <div style={{ display:'flex', gap:6, marginBottom:8, flexWrap:'wrap' }}>
-          {attachments.map((a, i) => (
-            <div key={i} style={{ padding:'4px 8px', borderRadius:6, background:'#F1F5F9', fontSize:11, display:'flex', alignItems:'center', gap:6 }}>
-              📎 {a.name.length > 24 ? a.name.slice(0,22) + '…' : a.name}
-              <button onClick={() => setAttachments(prev => prev.filter((_, j) => j !== i))}
-                style={{ background:'none', border:'none', cursor:'pointer', padding:0, color:'#999' }}>×</button>
-            </div>
-          ))}
+        <div style={{ display:'flex', gap:8, marginBottom:8, flexWrap:'wrap' }}>
+          {attachments.map((a, i) => {
+            const isImg = (a.type || '').startsWith('image/')
+            const src = a.preview || (a.base64 ? 'data:' + (a.type || 'image/png') + ';base64,' + a.base64 : null)
+            const remove = (
+              <button onClick={() => setAttachments(prev => prev.filter((_, j) => j !== i))} title="Entfernen"
+                style={{ position:'absolute', top:-6, right:-6, width:18, height:18, borderRadius:9, border:'1px solid var(--border)', background:'#fff', color:'#64748B', cursor:'pointer', fontSize:12, lineHeight:'16px', padding:0, display:'flex', alignItems:'center', justifyContent:'center', boxShadow:'0 1px 3px rgba(0,0,0,.12)' }}>×</button>
+            )
+            return (
+              <div key={i} title={a.name} style={{ position:'relative' }}>
+                {isImg && src ? (
+                  <img src={src} alt={a.name} style={{ width:54, height:54, objectFit:'cover', borderRadius:8, border:'1px solid var(--border)', display:'block' }}/>
+                ) : (
+                  <div style={{ height:54, minWidth:120, maxWidth:190, padding:'0 10px', borderRadius:8, background:'#F1F5F9', border:'1px solid var(--border)', display:'flex', alignItems:'center', gap:8 }}>
+                    <Paperclip size={16} strokeWidth={1.75} style={{ color:'var(--text-muted)', flexShrink:0 }}/>
+                    <span style={{ fontSize:11, fontWeight:600, color:'var(--text-primary)', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{a.name}</span>
+                  </div>
+                )}
+                {remove}
+              </div>
+            )
+          })}
         </div>
       )}
 
@@ -1824,7 +1883,7 @@ function ChatInput({
                 <div style={{ position:'absolute', bottom:'calc(100% + 6px)', left:0, zIndex:81, background:'#fff', border:'1px solid var(--border)', borderRadius:10, boxShadow:'0 10px 30px rgba(0,0,0,.12)', minWidth:260, padding:6 }}>
                   <button onClick={() => { setPlusOpen(false); fileInputRef.current?.click() }}
                     style={PlusItem}>
-                    <span style={{ fontSize:16 }}>📎</span>
+                    <Paperclip size={16} strokeWidth={1.75}/>
                     <span>Datei hochladen</span>
                   </button>
                   <div style={{ height:1, background:'var(--border)', margin:'4px 0' }}/>
@@ -1864,10 +1923,9 @@ function ChatInput({
           </button></Tip>
 
           {/* Visual-Modus: Bild im Chat erstellen (Format + Modell erscheinen in Zeile 2) */}
-          <Tip label="Bild im Chat erstellen"><button data-tour-id="cs-visual" onClick={() => setVisualMode(v => !v)}
-            style={{ ...IconBtn(visualMode), width:34, padding:0, justifyContent:'center', gap:0 }}>
-            <ImageIcon size={16} strokeWidth={1.75}/>
-          </button></Tip>
+          <span data-tour-id="cs-visual" style={{ display:'inline-flex', flexShrink:0 }}>
+            <AnswerFormatSelect value={answerFormat} onChange={setAnswerFormat} />
+          </span>
           {/* Editor-Kontext (nur wenn Dokument-Editor offen) */}
           {editorOpen && (
             <Tip label="Dokument-Inhalt als Kontext für die KI nutzen"><button onClick={() => setUseEditorContext(v => !v)}
@@ -1947,6 +2005,47 @@ function parseImageMessage(msg) {
 }
 
 // Einheitliches Modell-Dropdown (ersetzt das native <select>, das fett/abweichend aussah).
+const ANSWER_FORMATS = [
+  { id:'auto',   label:'Automatisch', hint:'KI entscheidet: Beitrag, Visual oder Rückfrage', Icon: Sparkles },
+  { id:'chat',   label:'Chatten',     hint:'Frei besprechen — kein fertiger Beitrag', Icon: MessageSquare },
+  { id:'post',   label:'Beitrag',     hint:'Fertigen LinkedIn-Beitrag schreiben', Icon: FileText },
+  { id:'visual', label:'Visual',      hint:'Bild im Chat erstellen', Icon: ImageIcon },
+]
+function AnswerFormatSelect({ value = 'auto', onChange = () => {} }) {
+  const [open, setOpen] = useState(false)
+  const cur = ANSWER_FORMATS.find(x => x.id === value) || ANSWER_FORMATS[0]
+  const CurIcon = cur.Icon
+  return (
+    <div style={{ position:'relative', flexShrink:0 }}>
+      <Tip label="Antwortformat wählen"><button onClick={() => setOpen(o => !o)}
+        style={{ ...IconBtn(value !== 'auto'), padding:'0 9px', gap:5, height:34 }}>
+        <CurIcon size={15} strokeWidth={1.75}/>
+        <span style={{ fontSize:12, fontWeight:600 }}>{cur.label}</span>
+        <ChevronDown size={13} strokeWidth={2}/>
+      </button></Tip>
+      {open && (
+        <>
+          <div onClick={() => setOpen(false)} style={{ position:'fixed', inset:0, zIndex:80 }}/>
+          <div style={{ position:'absolute', bottom:'calc(100% + 6px)', left:0, zIndex:81, background:'#fff', border:'1px solid var(--border)', borderRadius:10, boxShadow:'0 10px 30px rgba(0,0,0,.12)', minWidth:260, padding:6 }}>
+            {ANSWER_FORMATS.map(x => {
+              const FI = x.Icon; const active = x.id === value
+              return (
+                <button key={x.id} onClick={() => { onChange(x.id); setOpen(false) }}
+                  style={{ display:'flex', alignItems:'flex-start', gap:9, width:'100%', padding:'8px 10px', background: active ? 'rgba(49,90,231,0.08)' : 'transparent', border:'none', cursor:'pointer', borderRadius:7, textAlign:'left', fontFamily:'inherit' }}>
+                  <FI size={15} strokeWidth={1.75} style={{ color: active ? P : 'var(--text-muted)', marginTop:1, flexShrink:0 }}/>
+                  <span>
+                    <span style={{ display:'block', fontSize:13, fontWeight:700, color: active ? P : 'var(--text-primary)' }}>{x.label}</span>
+                    <span style={{ display:'block', fontSize:11, color:'var(--text-muted)' }}>{x.hint}</span>
+                  </span>
+                </button>
+              )
+            })}
+          </div>
+        </>
+      )}
+    </div>
+  )
+}
 function ModelDropdown({ value, onChange }) {
   const [open, setOpen] = useState(false)
   const ref = useRef(null)
@@ -2099,6 +2198,22 @@ function MessageBubble({ msg, onAttachToPost, loadExistingPosts, onInsertToDoc, 
 
   return (
     <div style={{ display:'flex', flexDirection:'column', alignItems: isUser ? 'flex-end' : 'flex-start', gap:6 }}>
+      {isUser && (meta.attachments || []).length > 0 && (
+        <div style={{ display:'flex', gap:6, flexWrap:'wrap', justifyContent:'flex-end', maxWidth:'92%' }}>
+          {(meta.attachments || []).map((a, i) => {
+            const isImg = (a?.type || '').startsWith('image/')
+            return isImg && a?.preview ? (
+              <img key={i} src={a.preview} alt={a.name || ''} title={a.name || ''}
+                style={{ width:80, height:80, objectFit:'cover', borderRadius:8, border:'1px solid var(--border)' }}/>
+            ) : (
+              <div key={i} title={a?.name || ''} style={{ height:34, maxWidth:180, padding:'0 10px', borderRadius:8, background:'#F1F5F9', border:'1px solid var(--border)', display:'flex', alignItems:'center', gap:6 }}>
+                <Paperclip size={13} strokeWidth={1.75} style={{ color:'var(--text-muted)', flexShrink:0 }}/>
+                <span style={{ fontSize:11, fontWeight:600, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{a?.name || 'Datei'}</span>
+              </div>
+            )
+          })}
+        </div>
+      )}
       <div style={{
         maxWidth:'92%', padding:'12px 14px', borderRadius:12,
         background: isUser ? P : '#fff',

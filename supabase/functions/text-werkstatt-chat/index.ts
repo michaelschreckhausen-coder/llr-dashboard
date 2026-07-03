@@ -256,6 +256,7 @@ Deno.serve(async (req) => {
     const companyVoiceIds: string[] = Array.isArray(body.company_voice_ids) ? body.company_voice_ids.filter(Boolean) : (companyVoiceId ? [companyVoiceId] : []);
     const companyIdsProvided: boolean = body.company_voice_ids !== undefined || companyVoiceId !== undefined;
     const userMessage: string = (body.user_message || "").trim();
+    const answerFormat: string = (body.answer_format || "post").toString();
     const knowledgeIds: string[] = Array.isArray(body.knowledge_resource_ids) ? body.knowledge_resource_ids : [];
     const useWebSearch: boolean = !!body.use_web_search;
     const documentContext: string = (body.document_context || "").trim();
@@ -372,6 +373,11 @@ Deno.serve(async (req) => {
     if (memEnabled) {
       const corpus = await buildBrandCorpus(admin, chat.brand_voice_id, { noBrand: !!chat.no_brand, userId: user.id });
       if (corpus) systemParts.push(corpus);
+    if (answerFormat === "chat") {
+      systemParts.push("ANTWORTMODUS: CHATTEN. Der Nutzer möchte zunächst besprechen/brainstormen, KEINEN fertigen Beitrag. Antworte natürlich und beratend im Gespräch und stelle bei Bedarf Rückfragen. Erzeuge NUR dann einen <beitragstext>, wenn der Nutzer ausdrücklich einen fertigen Beitrag verlangt.");
+    } else if (answerFormat === "auto") {
+      systemParts.push("ANTWORTMODUS: AUTOMATISCH. Entscheide selbst anhand der Anfrage: Will der Nutzer klar einen fertigen LinkedIn-Beitrag, liefere ihn wie oben beschrieben in <beitragstext>…</beitragstext>. Will er hingegen nur besprechen/brainstormen, gibt er Feedback, oder fehlen dir noch wichtige Infos für einen guten Beitrag, dann antworte im Gespräch OHNE <beitragstext> und stelle gezielte Rückfragen.");
+    }
     }
     const systemPrompt = systemParts.join("\n\n");
 
@@ -392,7 +398,7 @@ Deno.serve(async (req) => {
       .from("content_chat_messages")
       .insert({
         chat_id: chat.id, role: "user", content: userMessage,
-        metadata: { knowledge_resource_ids: knowledgeIds, use_web_search: useWebSearch, attachments: body.attachments || [] },
+        metadata: { knowledge_resource_ids: knowledgeIds, use_web_search: useWebSearch, attachments: (body.attachments || []).map((a: any) => ({ name: a?.name, type: a?.type, size: a?.size, preview: a?.preview || null })) },
       })
       .select().single();
     if (umErr) return json({ error: "User-Message konnte nicht gespeichert werden: " + umErr.message }, 500);
