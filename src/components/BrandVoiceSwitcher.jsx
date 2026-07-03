@@ -28,7 +28,7 @@ export default function BrandVoiceSwitcher({ session, compact = false }) {
   const team = brandVoices.filter(bv => bv.user_id !== session?.user?.id && bv.is_shared)
 
   const activeIcon = noBrand ? <User size={14} strokeWidth={1.75}/> : (ACCOUNT_ICONS[activeBrandVoice?.account_type] || <Sparkles size={14} strokeWidth={1.75}/>)
-  const activeName = noBrand ? 'Ohne Marke' : (activeBrandVoice?.name || 'Marke wählen')
+  const activeName = noBrand ? 'Ohne Brand' : (activeBrandVoice?.name || 'Marke wählen')
 
   return (
     <div ref={ref} style={{ position:'relative' }}>
@@ -66,7 +66,7 @@ export default function BrandVoiceSwitcher({ session, compact = false }) {
           <button onClick={() => { switchBrandVoice('__none__'); setOpen(false) }}
             style={{ width:'100%', textAlign:'left', display:'flex', alignItems:'center', gap:10, padding:'9px 12px', borderRadius:9, border:'none', cursor:'pointer', background: noBrand ? 'rgba(49,90,231,0.08)' : 'transparent', color:'var(--text-primary)', fontSize:13, fontWeight:600 }}>
             <User size={14} strokeWidth={1.75}/>
-            <span style={{ flex:1 }}>Ohne Marke <span style={{ fontSize:11, color:'var(--text-muted)', fontWeight:500 }}>· persönlich</span></span>
+            <span style={{ flex:1 }}>Ohne Brand <span style={{ fontSize:11, color:'var(--text-muted)', fontWeight:500 }}>· persönlich</span></span>
             {noBrand && <span style={{ color:'var(--wl-primary, rgb(49,90,231))', fontSize:12 }}>✓</span>}
           </button>
           <div style={{ borderTop:'1px solid var(--border-soft, #F1F5F9)', margin:'4px 0' }}/>

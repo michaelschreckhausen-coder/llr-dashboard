@@ -22,7 +22,7 @@ const BrandVoiceContext = createContext({
 })
 
 // Sentinel für den markenlosen Modus (persönlich, nutzer-privat)
-export const NO_BRAND = { id: null, noBrand: true, name: 'Ohne Marke', account_type: 'none' }
+export const NO_BRAND = { id: null, noBrand: true, name: 'Ohne Brand', account_type: 'none' }
 
 export function BrandVoiceProvider({ session, children }) {
   const { activeTeamId } = useTeam()

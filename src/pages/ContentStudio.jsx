@@ -784,7 +784,7 @@ export default function ContentStudio({ session }) {
   async function sendMessage(answerFormatArg) {
     if (!input.trim()) return
     if (activeChatId && pendingGens.has(activeChatId)) return
-    if (!contentReady) { setError('Wähle oben eine Marke oder „Ohne Marke"'); return }
+    if (!contentReady) { setError('Wähle oben eine Marke oder „Ohne Brand"'); return }
     setError('')
     const userMsgText = input.trim()
     const atts = attachments   // Anhänge festhalten (State wird gleich geleert)
@@ -868,7 +868,7 @@ export default function ContentStudio({ session }) {
   async function sendVisualMessage() {
     if (!input.trim()) return
     if (activeChatId && pendingGens.has(activeChatId)) return
-    if (!contentReady) { setError('Wähle oben eine Marke oder „Ohne Marke"'); return }
+    if (!contentReady) { setError('Wähle oben eine Marke oder „Ohne Brand"'); return }
     setError('')
     const prompt = input.trim()
     const attMetaV = attachments.map(a => ({ name:a.name, type:a.type, size:a.size, preview:a.preview||null }))
@@ -1049,7 +1049,7 @@ Neue Anfrage: "${p}"` },
     const forceNew = postId === '__new__'
     const targetId = forceNew ? null : (postId || linkedPost?.id || activeChat?.post_id)
     if (!targetId) {
-      if (!contentReady) { alert('Wähle oben eine Marke oder „Ohne Marke"'); return }
+      if (!contentReady) { alert('Wähle oben eine Marke oder „Ohne Brand"'); return }
       if (!activeTeamId) { alert('Kein Team aktiv'); return }
       const title = beitragstext.split('\n')[0].slice(0, 80) || 'Neuer Beitrag'
       const { data: post, error } = await supabase.from('content_posts').insert({
