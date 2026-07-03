@@ -3885,7 +3885,7 @@ Antworte AUSSCHLIESSLICH mit JSON: {"ok":<bool>,"issues":["..."],"operations":[.
         return (
           <Group key={o.id} {...base} clipFunc={(ctx) => shp.clip(ctx, o.width, o.height)}>
             {el && fit
-              ? <KImage image={el} x={fit.x} y={fit.y} width={fit.width} height={fit.height} listening={false} />
+              ? <KImage image={el} x={fit.x} y={fit.y} width={fit.width} height={fit.height} />
               : (<>
                   <Rect width={o.width} height={o.height} fill="#EEF2F7" />
                   <KText text="Bild einsetzen" width={o.width} y={o.height / 2 - 9} align="center" fontSize={Math.max(11, Math.min(16, o.width * 0.06))} fill="#93A2B5" listening={false} />
@@ -3903,7 +3903,7 @@ Antworte AUSSCHLIESSLICH mit JSON: {"ok":<bool>,"issues":["..."],"operations":[.
             {dev.behind(o.width, o.height)}
             <Group x={scr.x} y={scr.y} clipFunc={(ctx) => { if (scr.r) _froundClip(ctx, scr.w, scr.h, scr.r); else _rectClipLocal(ctx, scr.w, scr.h) }}>
               {el && fit
-                ? <KImage image={el} x={fit.x} y={fit.y} width={fit.width} height={fit.height} listening={false} />
+                ? <KImage image={el} x={fit.x} y={fit.y} width={fit.width} height={fit.height} />
                 : (<>
                     <Rect width={scr.w} height={scr.h} fill="#EEF2F7" />
                     <KText text="Bild einsetzen" width={scr.w} y={scr.h / 2 - 8} align="center" fontSize={Math.max(10, Math.min(15, scr.w * 0.06))} fill="#93A2B5" listening={false} />
@@ -4920,6 +4920,12 @@ function ContextBar({
         <button type="button" onClick={onCrop} title="Zuschneiden"
           style={{ display: 'inline-flex', alignItems: 'center', gap: 6, height: 34, padding: '0 12px', borderRadius: 9, border: '1px solid var(--border,#E9ECF2)', background: 'var(--surface,#fff)', color: 'var(--text-primary)', fontSize: 12.5, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit' }}>
           <Crop size={14} strokeWidth={1.9} />Zuschneiden
+        </button>
+      )}
+      {(o.type === 'frame' || o.type === 'mockup') && o.src && (
+        <button type="button" onClick={() => setOnce({ src: null })} title="Bild aus dem Rahmen entfernen"
+          style={{ display: 'inline-flex', alignItems: 'center', gap: 6, height: 34, padding: '0 12px', borderRadius: 9, border: '1px solid var(--border,#E9ECF2)', background: 'var(--surface,#fff)', color: 'var(--text-primary)', fontSize: 12.5, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit' }}>
+          <X size={14} strokeWidth={2} />Bild entfernen
         </button>
       )}
 
