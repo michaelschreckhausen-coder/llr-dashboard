@@ -303,6 +303,7 @@ Deno.serve(async (req) => {
   const prompt        = (body?.prompt || "").toString().trim();
   const aspectRatio   = (body?.aspectRatio || "1:1").toString();
   const brandVoiceId  = body?.brandVoiceId || null;
+  const noBrand       = body?.noBrand === true; // markenloser Modus → Visual nutzer-privat
   const companyVoiceId = body?.companyVoiceId || null; // Ambassador (legacy single)
   const companyVoiceIds: string[] = Array.isArray(body?.companyVoiceIds) ? body.companyVoiceIds.filter(Boolean) : (companyVoiceId ? [companyVoiceId] : []);
   const postId        = body?.postId       || null;
@@ -476,6 +477,7 @@ Deno.serve(async (req) => {
         user_id: user.id,
         team_id: teamId,
         brand_voice_id: brandVoiceId,
+        no_brand: noBrand,
         prompt,
         resolved_prompt: resolvedPrompt,
         aspect_ratio: aspectRatio,
