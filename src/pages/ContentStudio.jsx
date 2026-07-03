@@ -142,16 +142,25 @@ function splitAudienceRef(v) {
 
 // Kleines Vorschau-Thumbnail (downscaled JPEG-DataURL) für Chat-Anhänge — wird im
 // Composer angezeigt UND in der Nachricht persistiert (klein genug für metadata).
-async function makeImageThumb(file, max = 320) {
-  try {
-    const bmp = await createImageBitmap(file)
-    const scale = Math.min(1, max / Math.max(bmp.width, bmp.height))
-    const w = Math.max(1, Math.round(bmp.width * scale)), h = Math.max(1, Math.round(bmp.height * scale))
-    const canvas = document.createElement('canvas'); canvas.width = w; canvas.height = h
-    canvas.getContext('2d').drawImage(bmp, 0, 0, w, h)
-    if (bmp.close) bmp.close()
-    return canvas.toDataURL('image/jpeg', 0.82)
-  } catch (_e) { return null }
+function makeImageThumb(file, max = 320) {
+  return new Promise((resolve) => {
+    try {
+      const url = URL.createObjectURL(file)
+      const img = new Image()
+      img.onload = () => {
+        try {
+          const scale = Math.min(1, max / Math.max(img.width, img.height))
+          const w = Math.max(1, Math.round(img.width * scale)), h = Math.max(1, Math.round(img.height * scale))
+          const canvas = document.createElement('canvas'); canvas.width = w; canvas.height = h
+          canvas.getContext('2d').drawImage(img, 0, 0, w, h)
+          URL.revokeObjectURL(url)
+          resolve(canvas.toDataURL('image/jpeg', 0.82))
+        } catch (_e) { URL.revokeObjectURL(url); resolve(null) }
+      }
+      img.onerror = () => { URL.revokeObjectURL(url); resolve(null) }
+      img.src = url
+    } catch (_e) { resolve(null) }
+  })
 }
 
 // ─── Hauptkomponente ────────────────────────────────────────────────────────
