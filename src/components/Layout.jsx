@@ -1019,33 +1019,9 @@ export default function Layout({ session, role, onLogout, children }) {
             </span>
           )}
 
-          {!isMobile && currentArea && AREA_TOURS[currentArea] && (
-            <button onClick={() => setActiveAreaTour(currentArea)} title={'Tour: ' + AREA_TOURS[currentArea].label + ' neu starten'}
-              style={{ width:38, height:38, borderRadius:11, border:'1px solid var(--border)', background:'var(--surface)', cursor:'pointer', display:'inline-flex', alignItems:'center', justifyContent:'center', color:'var(--text-muted)' }}>
-              <HelpCircle size={15} strokeWidth={1.9}/>
-            </button>
-          )}
-
           {/* Globales Sprachmodell — Picker für alle KI-Funktionen.
               Auf /ssi ausgeblendet (reines SSI-Tracking, keine KI-Funktion). */}
           {!isMobile && location.pathname !== '/ssi' && <GlobalModelPicker/>}
-
-          {/* Extension-Button — direkt zum Chrome Web Store */}
-          <a
-            href={EXTENSION_WEBSTORE_URL}
-            target="_blank"
-            rel="noopener noreferrer"
-            title={extInstalled ? 'Browser-Extension aktiv — im Web Store ansehen' : 'Browser-Extension installieren'}
-            style={{ position:'relative', background:extInstalled?'rgba(34,197,94,0.12)':'var(--surface)', backdropFilter:'var(--glass-blur)', WebkitBackdropFilter:'var(--glass-blur)', border:'1px solid '+(extInstalled?'rgba(34,197,94,0.40)':'var(--border)'), cursor:'pointer', width:38, height:38, borderRadius:11, display:'flex', alignItems:'center', justifyContent:'center', color: extInstalled?'rgb(22,163,74)':'var(--text-muted)', transition:'all 0.15s', textDecoration:'none' }}
-            onMouseEnter={e=>{ if(!extInstalled) e.currentTarget.style.color='var(--text-primary)' }}
-            onMouseLeave={e=>{ if(!extInstalled) e.currentTarget.style.color='var(--text-muted)' }}>
-            <IcPuzzle/>
-            {extInstalled ? (
-              <span title="Extension aktiv" style={{ position:'absolute', top:6, right:6, width:9, height:9, borderRadius:'50%', background:'rgb(34,197,94)', border:'2px solid var(--bg-body)' }}/>
-            ) : (
-              <span title="Noch nicht installiert" style={{ position:'absolute', top:6, right:6, width:9, height:9, borderRadius:'50%', background:'var(--wl-primary, rgb(49,90,231))', border:'2px solid var(--bg-body)' }}/>
-            )}
-          </a>
 
           {/* Einrichtung — Branding & Wissen (aus der linken Leiste hierher verschoben) */}
           <div style={{ position:'relative' }} data-setup-menu>
@@ -1084,6 +1060,31 @@ export default function Layout({ session, role, onLogout, children }) {
               </div>
             )}
           </div>
+
+          {!isMobile && currentArea && AREA_TOURS[currentArea] && (
+            <button onClick={() => setActiveAreaTour(currentArea)} title={'Tour: ' + AREA_TOURS[currentArea].label + ' neu starten'}
+              style={{ width:38, height:38, borderRadius:11, border:'1px solid var(--border)', background:'var(--surface)', cursor:'pointer', display:'inline-flex', alignItems:'center', justifyContent:'center', color:'var(--text-muted)' }}>
+              <HelpCircle size={15} strokeWidth={1.9}/>
+            </button>
+          )}
+
+
+          {/* Extension-Button — direkt zum Chrome Web Store */}
+          <a
+            href={EXTENSION_WEBSTORE_URL}
+            target="_blank"
+            rel="noopener noreferrer"
+            title={extInstalled ? 'Browser-Extension aktiv — im Web Store ansehen' : 'Browser-Extension installieren'}
+            style={{ position:'relative', background:extInstalled?'rgba(34,197,94,0.12)':'var(--surface)', backdropFilter:'var(--glass-blur)', WebkitBackdropFilter:'var(--glass-blur)', border:'1px solid '+(extInstalled?'rgba(34,197,94,0.40)':'var(--border)'), cursor:'pointer', width:38, height:38, borderRadius:11, display:'flex', alignItems:'center', justifyContent:'center', color: extInstalled?'rgb(22,163,74)':'var(--text-muted)', transition:'all 0.15s', textDecoration:'none' }}
+            onMouseEnter={e=>{ if(!extInstalled) e.currentTarget.style.color='var(--text-primary)' }}
+            onMouseLeave={e=>{ if(!extInstalled) e.currentTarget.style.color='var(--text-muted)' }}>
+            <IcPuzzle/>
+            {extInstalled ? (
+              <span title="Extension aktiv" style={{ position:'absolute', top:6, right:6, width:9, height:9, borderRadius:'50%', background:'rgb(34,197,94)', border:'2px solid var(--bg-body)' }}/>
+            ) : (
+              <span title="Noch nicht installiert" style={{ position:'absolute', top:6, right:6, width:9, height:9, borderRadius:'50%', background:'var(--wl-primary, rgb(49,90,231))', border:'2px solid var(--bg-body)' }}/>
+            )}
+          </a>
 
           {/* Glocke — Pill */}
           <div style={{ position:'relative' }}>
