@@ -306,6 +306,53 @@ const COLLAGE_LAYOUTS = [
   { id: '6h',    label: '6 Streifen',      cells: [[0, 0, 1, 1 / 6], [0, 1 / 6, 1, 1 / 6], [0, 2 / 6, 1, 1 / 6], [0, 3 / 6, 1, 1 / 6], [0, 4 / 6, 1, 1 / 6], [0, 5 / 6, 1, 1 / 6]] },
 ]
 
+// ─── Mockups: Geräte-/Rahmen-Hülle um einen Bild-Screen (nutzt Frame-Prinzip) ─
+// Jede Vorlage: aspect (Default-Seitenverhältnis), screen(w,h) → Screen-Rechteck,
+// behind(w,h)/front(w,h) → Konva-Deko (Body/Bezel/Notch). Bild füllt den Screen (cover).
+const _rectClipLocal = (ctx, w, h) => { ctx.beginPath(); ctx.rect(0, 0, w, h); ctx.closePath() }
+const DEVICE_MOCKUPS = [
+  {
+    id: 'browser', label: 'Browser', aspect: 1.5,
+    screen: (w, h) => { const tb = Math.round(h * 0.12), p = Math.max(2, Math.round(w * 0.014)); return { x: p, y: tb, w: w - 2 * p, h: h - tb - p, r: 0 } },
+    behind: (w, h) => { const tb = Math.round(h * 0.12), r = Math.max(6, Math.round(w * 0.012)), dot = Math.max(3, Math.round(h * 0.02)); return [
+      <Rect key="body" width={w} height={h} fill="#FFFFFF" cornerRadius={r} stroke="#E2E8F0" strokeWidth={1} />,
+      <Rect key="bar" width={w} height={tb} fill="#F1F5F9" cornerRadius={[r, r, 0, 0]} />,
+      <Circle key="d1" x={tb * 0.65} y={tb / 2} radius={dot} fill="#FF5F57" />,
+      <Circle key="d2" x={tb * 0.65 + dot * 3} y={tb / 2} radius={dot} fill="#FEBC2E" />,
+      <Circle key="d3" x={tb * 0.65 + dot * 6} y={tb / 2} radius={dot} fill="#28C840" />,
+      <Rect key="addr" x={tb * 1.5} y={tb * 0.28} width={w * 0.55} height={tb * 0.44} cornerRadius={tb * 0.22} fill="#FFFFFF" stroke="#E2E8F0" strokeWidth={1} />,
+    ] },
+  },
+  {
+    id: 'phone', label: 'Smartphone', aspect: 0.5,
+    screen: (w, h) => { const bez = Math.round(w * 0.05); return { x: bez, y: bez, w: w - 2 * bez, h: h - 2 * bez, r: Math.round(w * 0.1) } },
+    behind: (w, h) => [<Rect key="body" width={w} height={h} fill="#0B0B0F" cornerRadius={Math.round(w * 0.16)} />],
+    front: (w, h) => { const nw = w * 0.34, bez = Math.round(w * 0.05), nh = Math.max(4, h * 0.02); return [<Rect key="notch" x={(w - nw) / 2} y={bez + nh * 0.4} width={nw} height={nh * 1.6} cornerRadius={nh} fill="#0B0B0F" />] },
+  },
+  {
+    id: 'laptop', label: 'Laptop', aspect: 1.5,
+    screen: (w, h) => { const p = Math.round(w * 0.03), sh = h * 0.86; return { x: p, y: p, w: w - 2 * p, h: sh - 2 * p, r: Math.max(2, Math.round(w * 0.006)) } },
+    behind: (w, h) => { const sh = h * 0.86, r = Math.max(6, Math.round(w * 0.01)); return [
+      <Rect key="scr" width={w} height={sh} fill="#0B0B0F" cornerRadius={r} />,
+      <Line key="base" points={[w * 0.04, sh, w * 0.96, sh, w, h, 0, h]} closed fill="#C7CDD4" />,
+      <Rect key="notch" x={w * 0.44} y={sh} width={w * 0.12} height={h * 0.03} fill="#AEB6BF" cornerRadius={[0, 0, 4, 4]} />,
+    ] },
+  },
+  {
+    id: 'polaroid', label: 'Fotorahmen', aspect: 0.84,
+    screen: (w, h) => { const p = Math.round(w * 0.06), s = w - 2 * p; return { x: p, y: p, w: s, h: s, r: 0 } },
+    behind: (w, h) => [<Rect key="paper" width={w} height={h} fill="#FFFFFF" cornerRadius={4} shadowColor="#0f172a" shadowBlur={14} shadowOpacity={0.16} shadowOffsetY={5} />],
+  },
+]
+const deviceById = id => DEVICE_MOCKUPS.find(d => d.id === id) || DEVICE_MOCKUPS[0]
+function mockupPreview(id) {
+  const c = '#CBD5E1', s = '#94A3B8'
+  if (id === 'phone') return <svg width="26" height="26" viewBox="0 0 100 100"><rect x="34" y="8" width="32" height="84" rx="9" fill={c} stroke={s} strokeWidth="3" /></svg>
+  if (id === 'browser') return <svg width="30" height="30" viewBox="0 0 100 100"><rect x="8" y="24" width="84" height="56" rx="5" fill={c} stroke={s} strokeWidth="3" /><rect x="8" y="24" width="84" height="13" rx="2" fill={s} /></svg>
+  if (id === 'laptop') return <svg width="32" height="32" viewBox="0 0 100 100"><rect x="18" y="22" width="64" height="42" rx="3" fill={c} stroke={s} strokeWidth="3" /><path d="M10 76 L90 76 L98 88 L2 88 Z" fill={c} stroke={s} strokeWidth="3" /></svg>
+  return <svg width="26" height="26" viewBox="0 0 100 100"><rect x="16" y="10" width="68" height="80" rx="3" fill="#fff" stroke={s} strokeWidth="3" /><rect x="24" y="18" width="52" height="52" fill={c} /></svg>
+}
+
 const nextId = () => `obj_${Date.now()}_${_uid++}`
 
 // Blob → DataURL (für PDF-Einbettung via jsPDF.addImage).
@@ -1073,7 +1120,7 @@ export default function DesignerCanvas({ visual, teamId, onSaved, onReplaceVisua
 
   // ─── Bild-Objekte: HTMLImageElement nachladen (z.B. nach Restore) ───────────
   useEffect(() => {
-    const missing = objects.filter(o => (o.type === 'image' || o.type === 'frame') && o.src && !imgCache[o.src])
+    const missing = objects.filter(o => (o.type === 'image' || o.type === 'frame' || o.type === 'mockup') && o.src && !imgCache[o.src])
     if (!missing.length) return
     let cancelled = false
     missing.forEach(o => {
@@ -1456,6 +1503,14 @@ export default function DesignerCanvas({ visual, teamId, onSaved, onReplaceVisua
     setObjects(prev => [...prev, ...frames])
     setSelectedIds(frames.length ? [frames[0].id] : [])
   }
+  function addMockup(deviceId) {
+    const dev = deviceById(deviceId); if (!dev) return
+    const cw = (baseCrop?.width || stageSize.width), ch = (baseCrop?.height || stageSize.height)
+    let w = Math.round(Math.min(cw, ch) * 0.6), h = Math.round(w / dev.aspect)
+    if (h > ch * 0.9) { h = Math.round(ch * 0.9); w = Math.round(h * dev.aspect) }
+    const c = center()
+    addObject({ type: 'mockup', device: deviceId, x: Math.round(c.x - w / 2), y: Math.round(c.y - h / 2), width: w, height: h, rotation: 0, opacity: 1 })
+  }
   function addRect() {
     const c = center()
     addObject({ type: 'rect', x: c.x - 80, y: c.y - 50, width: 160, height: 100, fill: 'rgba(49,90,231,0.85)', stroke: '#ffffff', strokeWidth: 0, rotation: 0 })
@@ -1806,7 +1861,7 @@ Antworte AUSSCHLIESSLICH mit JSON: {"ok":<bool>,"issues":["..."],"operations":[.
     const img = new window.Image()
     img.onload = () => {
       // Ist ein leerer Bilderrahmen ausgewählt? → Bild in den Rahmen einsetzen (cover-fill) statt neues Bild-Objekt.
-      const selFrame = (selectedIds.length === 1) ? objects.find(o => o.id === selectedIds[0] && o.type === 'frame') : null
+      const selFrame = (selectedIds.length === 1) ? objects.find(o => o.id === selectedIds[0] && (o.type === 'frame' || o.type === 'mockup')) : null
       if (selFrame) { setImgCache(prev => ({ ...prev, [dataUrl]: img })); pushHistory(); updateObject(selFrame.id, { src: dataUrl }); return }
       const nw = img.naturalWidth || 200
       const nh = img.naturalHeight || 200
@@ -3782,7 +3837,7 @@ Antworte AUSSCHLIESSLICH mit JSON: {"ok":<bool>,"issues":["..."],"operations":[.
           patch.radiusX = Math.max(2, (o.radiusX || 90) * node.scaleX())
           patch.radiusY = Math.max(2, (o.radiusY || 90) * node.scaleY())
           node.scaleX(1); node.scaleY(1)
-        } else if (o.type === 'frame') {
+        } else if (o.type === 'frame' || o.type === 'mockup') {
           patch.width = Math.max(8, (o.width || 100) * node.scaleX())
           patch.height = Math.max(8, (o.height || 100) * node.scaleY())
           node.scaleX(1); node.scaleY(1)
@@ -3835,6 +3890,26 @@ Antworte AUSSCHLIESSLICH mit JSON: {"ok":<bool>,"issues":["..."],"operations":[.
                   <Rect width={o.width} height={o.height} fill="#EEF2F7" />
                   <KText text="Bild einsetzen" width={o.width} y={o.height / 2 - 9} align="center" fontSize={Math.max(11, Math.min(16, o.width * 0.06))} fill="#93A2B5" listening={false} />
                 </>)}
+          </Group>
+        )
+      }
+      case 'mockup': {
+        const dev = deviceById(o.device)
+        const el = o.src ? imgCache[o.src] : null
+        const scr = dev.screen(o.width, o.height)
+        const fit = el ? frameCoverFit(el.naturalWidth || el.width, el.naturalHeight || el.height, scr.w, scr.h) : null
+        return (
+          <Group key={o.id} {...base}>
+            {dev.behind(o.width, o.height)}
+            <Group x={scr.x} y={scr.y} clipFunc={(ctx) => { if (scr.r) _froundClip(ctx, scr.w, scr.h, scr.r); else _rectClipLocal(ctx, scr.w, scr.h) }}>
+              {el && fit
+                ? <KImage image={el} x={fit.x} y={fit.y} width={fit.width} height={fit.height} listening={false} />
+                : (<>
+                    <Rect width={scr.w} height={scr.h} fill="#EEF2F7" />
+                    <KText text="Bild einsetzen" width={scr.w} y={scr.h / 2 - 8} align="center" fontSize={Math.max(10, Math.min(15, scr.w * 0.06))} fill="#93A2B5" listening={false} />
+                  </>)}
+            </Group>
+            {dev.front ? dev.front(o.width, o.height) : null}
           </Group>
         )
       }
@@ -4130,6 +4205,7 @@ Antworte AUSSCHLIESSLICH mit JSON: {"ok":<bool>,"issues":["..."],"operations":[.
           onAddRect={addRect} onAddEllipse={addEllipse} onAddLine={addLine} onAddArrow={addArrow}
           onAddFrame={addFrame}
           onAddCollage={addCollage}
+          onAddMockup={addMockup}
           onAddAsset={addAsset}
           onInsertMedia={(dataUrl, meta) => addImageFromDataUrl(dataUrl, meta)}
           // Text
@@ -5344,11 +5420,12 @@ function TemplatesPanelBody({ onApplyTemplate, onClose }) {
 }
 
 // ─── Panel: Elemente (Formen / Icons / Grafiken / Bilder) ───────────────────
-function ElementsPanelBody({ elementTab, setElementTab, onAddRect, onAddEllipse, onAddLine, onAddArrow, onAddAsset, onInsertMedia, onAddFrame = () => {}, onAddCollage = () => {} }) {
+function ElementsPanelBody({ elementTab, setElementTab, onAddRect, onAddEllipse, onAddLine, onAddArrow, onAddAsset, onInsertMedia, onAddFrame = () => {}, onAddCollage = () => {}, onAddMockup = () => {} }) {
   const tabs = [
     { id: 'shapes', label: 'Formen' },
     { id: 'frames', label: 'Rahmen' },
     { id: 'collage', label: 'Collage' },
+    { id: 'mockups', label: 'Mockups' },
     { id: 'icons', label: 'Icons' },
     { id: 'graphics', label: 'Grafiken' },
     { id: 'images', label: 'Bilder' },
@@ -5415,6 +5492,21 @@ function ElementsPanelBody({ elementTab, setElementTab, onAddRect, onAddEllipse,
                 <svg width="42" height="42" viewBox="0 0 100 100">
                   {l.cells.map((ce, i) => (<rect key={i} x={ce[0] * 100 + 2} y={ce[1] * 100 + 2} width={Math.max(0, ce[2] * 100 - 4)} height={Math.max(0, ce[3] * 100 - 4)} rx="3" fill="#CBD5E1" stroke="#94A3B8" strokeWidth="2" />))}
                 </svg>
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
+      {elementTab === 'mockups' && (
+        <div>
+          <PanelLabel>Mockups</PanelLabel>
+          <div style={{ fontSize: 11.5, color: 'var(--text-muted)', margin: '0 0 8px', lineHeight: 1.4 }}>Geräte-Mockup einfügen, dann auswählen und ein Bild einsetzen — es füllt den Screen.</div>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(58px, 1fr))', gap: 8 }}>
+            {DEVICE_MOCKUPS.map(d => (
+              <button key={d.id} onClick={() => onAddMockup(d.id)} title={d.label}
+                style={{ height: 58, borderRadius: 9, border: '1px solid var(--border)', background: '#fff', cursor: 'pointer', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 3 }}>
+                {mockupPreview(d.id)}
+                <span style={{ fontSize: 9.5, color: 'var(--text-muted)', fontWeight: 600 }}>{d.label}</span>
               </button>
             ))}
           </div>
