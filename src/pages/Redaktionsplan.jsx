@@ -1579,7 +1579,7 @@ function PostModal({ post, onClose, onSave, onDelete, session, activeTeamId, mem
               <button onClick={async () => {
                 if (!liConnected) {
                   if (activeBrandVoice?.noBrand || !form.brand_voice_id) {
-                    alert('Auf LinkedIn posten oder planen geht nur im Redaktionsplan einer Marke. Wechsle oben von „Ohne Marke" zu einer Brand (mit verknüpftem LinkedIn-Profil), um diesen Beitrag zu veröffentlichen.')
+                    alert('Auf LinkedIn posten oder planen geht nur im Redaktionsplan einer Marke. Wechsle oben von „Ohne Brand" zu einer Brand (mit verknüpftem LinkedIn-Profil), um diesen Beitrag zu veröffentlichen.')
                   } else {
                     alert('Um auf LinkedIn zu posten oder zu planen, verknüpfe zuerst ein LinkedIn-Profil in dieser Brand (Branding → Personal Brand → LinkedIn verbinden).')
                   }

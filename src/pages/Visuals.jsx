@@ -114,7 +114,7 @@ export default function Visuals({ session, kindFilter = null, embedded = false, 
     const arr = Array.from(fileList || [])
     if (!arr.length) return
     if (!activeTeamId) { alert('Kein Team aktiv'); return }
-    if (!activeBrandVoice?.id && !noBrand) { alert('Bitte oben eine Marke oder „Ohne Marke" wählen.'); return }
+    if (!activeBrandVoice?.id && !noBrand) { alert('Bitte oben eine Marke oder „Ohne Brand" wählen.'); return }
     setUploading(true)
     try {
       for (const file of arr) {
