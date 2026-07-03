@@ -84,7 +84,7 @@ export async function signedVisualUrl(storagePath, expiresIn = 3600) {
 
 // Signierte URL mit serverseitiger Verkleinerung (imgproxy) — schnelle, kleine
 // Grid-Thumbnails. Fällt bei fehlender Transformation auf die normale URL zurück.
-export async function signedThumbUrl(storagePath, { width = 400, height = 400, resize = 'cover', quality = 75, expiresIn = 3600 } = {}) {
+export async function signedThumbUrl(storagePath, { width = 400, height = 400, resize = 'contain', quality = 75, expiresIn = 3600 } = {}) {
   if (!storagePath) return null
   try {
     const { data, error } = await supabase.storage.from('visuals')
