@@ -25,7 +25,7 @@
 //      Visual-Datensatz hochgeladen und als neues Basisbild geladen.
 
 import React, { useState, useEffect, useRef, useCallback } from 'react'
-import { Stage, Layer, Image as KImage, Rect, Circle, Ellipse, Line, Arrow, Text as KText, Path, Transformer } from 'react-konva'
+import { Stage, Layer, Group, Image as KImage, Rect, Circle, Ellipse, Line, Arrow, Text as KText, Path, Transformer } from 'react-konva'
 import GenerationLoading from '../GenerationLoading'
 import Konva from 'konva'
 import {
@@ -250,6 +250,450 @@ const HEAL_PROMPT = 'Entferne den Inhalt im markierten Bereich vollständig und 
 
 
 let _uid = 0
+// ─── Bilderrahmen (Frames): Formen zum Maskieren/Cover-Füllen von Bildern ─────
+// Wie Canva „Rahmen": eine Form, in die ein Bild eingesetzt und cover-gefüllt wird.
+// Collagen (Raster) und Mockups bauen auf demselben Primitiv auf.
+const _fpoly = (n, rot = -90) => { const a = []; for (let i = 0; i < n; i++) { const t = (rot + i * 360 / n) * Math.PI / 180; a.push([50 + 50 * Math.cos(t), 50 + 50 * Math.sin(t)]) } return a }
+const _fstar = (n = 5, rot = -90, inner = 0.45) => { const a = []; for (let i = 0; i < 2 * n; i++) { const r = (i % 2 ? 50 * inner : 50); const t = (rot + i * 180 / n) * Math.PI / 180; a.push([50 + r * Math.cos(t), 50 + r * Math.sin(t)]) } return a }
+const _fsvg = pts => 'M' + pts.map(p => p[0].toFixed(1) + ' ' + p[1].toFixed(1)).join(' L ') + ' Z'
+const _fclipPts = (ctx, w, h, pts) => { ctx.beginPath(); pts.forEach((p, i) => { const x = p[0] / 100 * w, y = p[1] / 100 * h; i ? ctx.lineTo(x, y) : ctx.moveTo(x, y) }); ctx.closePath() }
+const _froundClip = (ctx, w, h, rr) => { const r = Math.min(rr, w / 2, h / 2); ctx.beginPath(); ctx.moveTo(r, 0); ctx.lineTo(w - r, 0); ctx.arcTo(w, 0, w, r, r); ctx.lineTo(w, h - r); ctx.arcTo(w, h, w - r, h, r); ctx.lineTo(r, h); ctx.arcTo(0, h, 0, h - r, r); ctx.lineTo(0, r); ctx.arcTo(0, 0, r, 0, r); ctx.closePath() }
+const _fbez = (ctx, w, h, cmds) => { const X = v => v / 100 * w, Y = v => v / 100 * h; ctx.beginPath(); ctx.moveTo(X(cmds[0][0]), Y(cmds[0][1])); for (let i = 1; i < cmds.length; i++) { const p = cmds[i]; ctx.bezierCurveTo(X(p[0]), Y(p[1]), X(p[2]), Y(p[3]), X(p[4]), Y(p[5])) } ctx.closePath() }
+const _HEART = [[50, 88], [8, 58, 0, 30, 22, 16], [40, 4, 50, 22, 50, 30], [50, 22, 60, 4, 78, 16], [100, 30, 92, 58, 50, 88]]
+const _BLOB = [[50, 5], [74, 1, 97, 22, 94, 47], [91, 72, 74, 97, 48, 94], [23, 91, 4, 71, 8, 46], [12, 22, 27, 9, 50, 5]]
+const FRAME_SHAPES = [
+  { id: 'rect',    label: 'Rechteck',   svg: 'M1 1 H99 V99 H1 Z', clip: (c, w, h) => { c.beginPath(); c.rect(0, 0, w, h); c.closePath() } },
+  { id: 'rounded', label: 'Abgerundet', svg: 'M16 1 H84 A15 15 0 0 1 99 16 V84 A15 15 0 0 1 84 99 H16 A15 15 0 0 1 1 84 V16 A15 15 0 0 1 16 1 Z', clip: (c, w, h) => _froundClip(c, w, h, Math.min(w, h) * 0.15) },
+  { id: 'circle',  label: 'Kreis',      svg: 'M50 1 A49 49 0 1 0 50 99 A49 49 0 1 0 50 1 Z', clip: (c, w, h) => { c.beginPath(); c.ellipse(w / 2, h / 2, w / 2, h / 2, 0, 0, 2 * Math.PI); c.closePath() } },
+  { id: 'triangle', label: 'Dreieck',   pts: [[50, 0], [100, 100], [0, 100]] },
+  { id: 'diamond', label: 'Raute',      pts: [[50, 0], [100, 50], [50, 100], [0, 50]] },
+  { id: 'pentagon', label: 'Fünfeck',   pts: _fpoly(5) },
+  { id: 'hexagon', label: 'Sechseck',   pts: _fpoly(6, 0) },
+  { id: 'hexagon2', label: 'Sechseck 2', pts: _fpoly(6, -90) },
+  { id: 'octagon', label: 'Achteck',    pts: _fpoly(8, -22.5) },
+  { id: 'star',    label: 'Stern',      pts: _fstar(5) },
+  { id: 'star6',   label: 'Stern 6',    pts: _fstar(6) },
+  { id: 'heart',   label: 'Herz',       svg: 'M50 88 C 8 58 0 30 22 16 C 40 4 50 22 50 30 C 50 22 60 4 78 16 C 100 30 92 58 50 88 Z', clip: (c, w, h) => _fbez(c, w, h, _HEART) },
+  { id: 'blob',    label: 'Blob',       svg: 'M50 5 C 74 1 97 22 94 47 C 91 72 74 97 48 94 C 23 91 4 71 8 46 C 12 22 27 9 50 5 Z', clip: (c, w, h) => _fbez(c, w, h, _BLOB) },
+  { id: 'arch',    label: 'Bogen',      svg: 'M0 100 L0 50 A50 50 0 0 1 100 50 L100 100 Z', clip: (c, w, h) => { const r = w / 2; c.beginPath(); c.moveTo(0, h); c.lineTo(0, r); c.arc(w / 2, r, r, Math.PI, 0, false); c.lineTo(w, h); c.closePath() } },
+]
+FRAME_SHAPES.forEach(s => { if (s.pts) { s.svg = _fsvg(s.pts); s.clip = (c, w, h) => _fclipPts(c, w, h, s.pts) } })
+const frameShapeById = id => FRAME_SHAPES.find(s => s.id === id) || FRAME_SHAPES[0]
+// Cover-Fit: Bild füllt die Rahmen-Box komplett (kein Verzerren), zentriert.
+function frameCoverFit(imgW, imgH, W, H, panX, panY) {
+  const s = Math.max(W / (imgW || 1), H / (imgH || 1))
+  const w = (imgW || 1) * s, h = (imgH || 1) * s
+  const px = panX == null ? 0.5 : panX, py = panY == null ? 0.5 : panY
+  return { x: (W - w) * px, y: (H - h) * py, width: w, height: h }
+}
+
+// ─── Collagen: Preset-Raster, die mehrere Rahmen (frames) platzieren ─────────
+// cells = [x, y, w, h] als Anteil (0..1) der Collage-Box. Jede Zelle wird ein Frame.
+const T = 1 / 3
+const COLLAGE_LAYOUTS = [
+  { id: '2h',    label: '2 nebeneinander', cells: [[0, 0, .5, 1], [.5, 0, .5, 1]] },
+  { id: '2v',    label: '2 gestapelt',     cells: [[0, 0, 1, .5], [0, .5, 1, .5]] },
+  { id: '3h',    label: '3 Spalten',       cells: [[0, 0, T, 1], [T, 0, T, 1], [2 * T, 0, T, 1]] },
+  { id: '3v',    label: '3 Zeilen',        cells: [[0, 0, 1, T], [0, T, 1, T], [0, 2 * T, 1, T]] },
+  { id: '3lbig', label: '1 groß + 2',      cells: [[0, 0, .6, 1], [.6, 0, .4, .5], [.6, .5, .4, .5]] },
+  { id: '3tbig', label: '1 oben + 2',      cells: [[0, 0, 1, .6], [0, .6, .5, .4], [.5, .6, .5, .4]] },
+  { id: '3rbig', label: '2 + 1 groß',      cells: [[0, 0, .4, .5], [0, .5, .4, .5], [.4, 0, .6, 1]] },
+  { id: '4grid', label: '2 × 2',           cells: [[0, 0, .5, .5], [.5, 0, .5, .5], [0, .5, .5, .5], [.5, .5, .5, .5]] },
+  { id: '4h',    label: '4 Spalten',       cells: [[0, 0, .25, 1], [.25, 0, .25, 1], [.5, 0, .25, 1], [.75, 0, .25, 1]] },
+  { id: '4lbig', label: '1 groß + 3',      cells: [[0, 0, .55, 1], [.55, 0, .45, T], [.55, T, .45, T], [.55, 2 * T, .45, T]] },
+  { id: '4tbig', label: '1 oben + 3',      cells: [[0, 0, 1, .58], [0, .58, T, .42], [T, .58, T, .42], [2 * T, .58, T, .42]] },
+  { id: '5mix',  label: '5er Mix',         cells: [[0, 0, .5, .5], [.5, 0, .5, .5], [0, .5, T, .5], [T, .5, T, .5], [2 * T, .5, T, .5]] },
+  { id: '6grid', label: '3 × 2',           cells: [[0, 0, T, .5], [T, 0, T, .5], [2 * T, 0, T, .5], [0, .5, T, .5], [T, .5, T, .5], [2 * T, .5, T, .5]] },
+  { id: '6h',    label: '6 Streifen',      cells: [[0, 0, 1, 1 / 6], [0, 1 / 6, 1, 1 / 6], [0, 2 / 6, 1, 1 / 6], [0, 3 / 6, 1, 1 / 6], [0, 4 / 6, 1, 1 / 6], [0, 5 / 6, 1, 1 / 6]] },
+]
+
+// ─── Mockups: Geräte-/Rahmen-Hülle um einen Bild-Screen (nutzt Frame-Prinzip) ─
+// Jede Vorlage: aspect (Default-Seitenverhältnis), screen(w,h) → Screen-Rechteck,
+// behind(w,h)/front(w,h) → Konva-Deko (Body/Bezel/Notch). Bild füllt den Screen (cover).
+const _rectClipLocal = (ctx, w, h) => { ctx.beginPath(); ctx.rect(0, 0, w, h); ctx.closePath() }
+
+// ─── Perspektiv-Warp-Engine (Homographie + affines Dreiecks-Textur-Mapping) ──
+// Konva kann nur affin transformieren. Für angewinkelte Mockups (Screen = belie-
+// biges Viereck) rendern wir das Bild per Homographie in ein Offscreen-Canvas und
+// zeigen dieses als Konva.Image. Ansatz: Einheitsquadrat→Quad-Homographie, feines
+// Gitter, je Zelle zwei affin texturierte Dreiecke (perspektivisch korrekt).
+function _homoUnitToQuad(q) {
+  const x0 = q[0].x, y0 = q[0].y, x1 = q[1].x, y1 = q[1].y, x2 = q[2].x, y2 = q[2].y, x3 = q[3].x, y3 = q[3].y
+  const dx1 = x1 - x2, dx2 = x3 - x2, dx3 = x0 - x1 + x2 - x3
+  const dy1 = y1 - y2, dy2 = y3 - y2, dy3 = y0 - y1 + y2 - y3
+  let a, b, c, d, e, f, g, h
+  if (Math.abs(dx3) < 1e-9 && Math.abs(dy3) < 1e-9) {
+    a = x1 - x0; b = x2 - x1; c = x0; d = y1 - y0; e = y2 - y1; f = y0; g = 0; h = 0
+  } else {
+    const den = dx1 * dy2 - dx2 * dy1
+    g = (dx3 * dy2 - dx2 * dy3) / den
+    h = (dx1 * dy3 - dx3 * dy1) / den
+    a = x1 - x0 + g * x1; b = x3 - x0 + h * x3; c = x0
+    d = y1 - y0 + g * y1; e = y3 - y0 + h * y3; f = y0
+  }
+  return { a, b, c, d, e, f, g, h }
+}
+function _applyHomo(m, u, v) {
+  const den = m.g * u + m.h * v + 1
+  return { x: (m.a * u + m.b * v + m.c) / den, y: (m.d * u + m.e * v + m.f) / den }
+}
+// Affine Koeffizienten, die Quell-Dreieck s[] → Ziel-Dreieck d[] abbilden.
+function _affineFromTri(s, d) {
+  const s0 = s[0], s1 = s[1], s2 = s[2]
+  const det = s0.x * (s1.y - s2.y) - s0.y * (s1.x - s2.x) + (s1.x * s2.y - s2.x * s1.y)
+  if (Math.abs(det) < 1e-9) return null
+  const i = 1 / det
+  const m00 = (s1.y - s2.y) * i, m01 = (s2.y - s0.y) * i, m02 = (s0.y - s1.y) * i
+  const m10 = (s2.x - s1.x) * i, m11 = (s0.x - s2.x) * i, m12 = (s1.x - s0.x) * i
+  const m20 = (s1.x * s2.y - s2.x * s1.y) * i, m21 = (s2.x * s0.y - s0.x * s2.y) * i, m22 = (s0.x * s1.y - s1.x * s0.y) * i
+  const a = m00 * d[0].x + m01 * d[1].x + m02 * d[2].x
+  const b = m10 * d[0].x + m11 * d[1].x + m12 * d[2].x
+  const c = m20 * d[0].x + m21 * d[1].x + m22 * d[2].x
+  const dd = m00 * d[0].y + m01 * d[1].y + m02 * d[2].y
+  const e = m10 * d[0].y + m11 * d[1].y + m12 * d[2].y
+  const ff = m20 * d[0].y + m21 * d[1].y + m22 * d[2].y
+  return { a, b, c, d: dd, e, f: ff }
+}
+function _drawTexTri(ctx, src, s, d) {
+  const m = _affineFromTri(s, d)
+  if (!m) return
+  ctx.save()
+  ctx.beginPath()
+  ctx.moveTo(d[0].x, d[0].y); ctx.lineTo(d[1].x, d[1].y); ctx.lineTo(d[2].x, d[2].y); ctx.closePath()
+  ctx.clip()
+  ctx.setTransform(m.a, m.d, m.b, m.e, m.c, m.f)
+  ctx.drawImage(src, 0, 0)
+  ctx.restore()
+  ctx.setTransform(1, 0, 0, 1, 0, 0)
+}
+// Bild → Offscreen-Canvas (outW×outH·ss), perspektivisch in quad gemappt (cover, pan).
+function warpImageToCanvas(img, quad, outW, outH, opts = {}) {
+  const ss = opts.ss || 1
+  const N = opts.grid || 14
+  const cw = Math.max(1, Math.round(outW * ss)), ch = Math.max(1, Math.round(outH * ss))
+  const cv = document.createElement('canvas'); cv.width = cw; cv.height = ch
+  const ctx = cv.getContext('2d')
+  ctx.imageSmoothingEnabled = true; ctx.imageSmoothingQuality = 'high'
+  const q = quad.map(p => ({ x: p.x * ss, y: p.y * ss }))
+  const iw = img.naturalWidth || img.width, ih = img.naturalHeight || img.height
+  if (!iw || !ih) return cv
+  const wq = (Math.hypot(q[1].x - q[0].x, q[1].y - q[0].y) + Math.hypot(q[2].x - q[3].x, q[2].y - q[3].y)) / 2
+  const hq = (Math.hypot(q[3].x - q[0].x, q[3].y - q[0].y) + Math.hypot(q[2].x - q[1].x, q[2].y - q[1].y)) / 2
+  const targetAsp = wq / Math.max(1e-6, hq)
+  const panX = opts.panX == null ? 0.5 : opts.panX, panY = opts.panY == null ? 0.5 : opts.panY
+  let cropW = iw, cropH = ih, cropX = 0, cropY = 0
+  if (iw / ih > targetAsp) { cropW = Math.round(ih * targetAsp); cropX = Math.round((iw - cropW) * panX) }
+  else { cropH = Math.round(iw / targetAsp); cropY = Math.round((ih - cropH) * panY) }
+  // Quelle einmal auf den Crop zuschneiden → günstigere, saubere Quell-Koordinaten.
+  const sc = document.createElement('canvas'); sc.width = Math.max(1, cropW); sc.height = Math.max(1, cropH)
+  sc.getContext('2d').drawImage(img, cropX, cropY, cropW, cropH, 0, 0, cropW, cropH)
+  const H = _homoUnitToQuad(q)
+  const srcP = (u, v) => ({ x: u * cropW, y: v * cropH })
+  for (let ix = 0; ix < N; ix++) {
+    for (let iy = 0; iy < N; iy++) {
+      const u0 = ix / N, u1 = (ix + 1) / N, v0 = iy / N, v1 = (iy + 1) / N
+      const D00 = _applyHomo(H, u0, v0), D10 = _applyHomo(H, u1, v0), D11 = _applyHomo(H, u1, v1), D01 = _applyHomo(H, u0, v1)
+      const S00 = srcP(u0, v0), S10 = srcP(u1, v0), S11 = srcP(u1, v1), S01 = srcP(u0, v1)
+      _drawTexTri(ctx, sc, [S00, S10, S11], [D00, D10, D11])
+      _drawTexTri(ctx, sc, [S00, S11, S01], [D00, D11, D01])
+    }
+  }
+  return cv
+}
+const DEVICE_MOCKUPS = [
+  {
+    id: 'browser', label: 'Browser', aspect: 1.5,
+    screen: (w, h) => { const tb = Math.round(h * 0.12), p = Math.max(2, Math.round(w * 0.014)); return { x: p, y: tb, w: w - 2 * p, h: h - tb - p, r: 0 } },
+    behind: (w, h) => { const tb = Math.round(h * 0.12), r = Math.max(6, Math.round(w * 0.012)), dot = Math.max(3, Math.round(h * 0.02)); return [
+      <Rect key="body" width={w} height={h} fill="#FFFFFF" cornerRadius={r} stroke="#E2E8F0" strokeWidth={1} />,
+      <Rect key="bar" width={w} height={tb} fill="#F1F5F9" cornerRadius={[r, r, 0, 0]} />,
+      <Circle key="d1" x={tb * 0.65} y={tb / 2} radius={dot} fill="#FF5F57" />,
+      <Circle key="d2" x={tb * 0.65 + dot * 3} y={tb / 2} radius={dot} fill="#FEBC2E" />,
+      <Circle key="d3" x={tb * 0.65 + dot * 6} y={tb / 2} radius={dot} fill="#28C840" />,
+      <Rect key="addr" x={tb * 1.5} y={tb * 0.28} width={w * 0.55} height={tb * 0.44} cornerRadius={tb * 0.22} fill="#FFFFFF" stroke="#E2E8F0" strokeWidth={1} />,
+    ] },
+  },
+  {
+    id: 'phone', label: 'Smartphone', aspect: 0.5,
+    screen: (w, h) => { const bez = Math.round(w * 0.05); return { x: bez, y: bez, w: w - 2 * bez, h: h - 2 * bez, r: Math.round(w * 0.1) } },
+    behind: (w, h) => [<Rect key="body" width={w} height={h} fill="#0B0B0F" cornerRadius={Math.round(w * 0.16)} />],
+    front: (w, h) => { const nw = w * 0.34, bez = Math.round(w * 0.05), nh = Math.max(4, h * 0.02); return [<Rect key="notch" x={(w - nw) / 2} y={bez + nh * 0.4} width={nw} height={nh * 1.6} cornerRadius={nh} fill="#0B0B0F" />] },
+  },
+  {
+    id: 'laptop', label: 'Laptop', aspect: 1.5,
+    screen: (w, h) => { const p = Math.round(w * 0.03), sh = h * 0.86; return { x: p, y: p, w: w - 2 * p, h: sh - 2 * p, r: Math.max(2, Math.round(w * 0.006)) } },
+    behind: (w, h) => { const sh = h * 0.86, r = Math.max(6, Math.round(w * 0.01)); return [
+      <Rect key="scr" width={w} height={sh} fill="#0B0B0F" cornerRadius={r} />,
+      <Line key="base" points={[w * 0.04, sh, w * 0.96, sh, w, h, 0, h]} closed fill="#C7CDD4" />,
+      <Rect key="notch" x={w * 0.44} y={sh} width={w * 0.12} height={h * 0.03} fill="#AEB6BF" cornerRadius={[0, 0, 4, 4]} />,
+    ] },
+  },
+  {
+    id: 'polaroid', label: 'Fotorahmen', aspect: 0.84,
+    screen: (w, h) => { const p = Math.round(w * 0.06), s = w - 2 * p; return { x: p, y: p, w: s, h: s, r: 0 } },
+    behind: (w, h) => [<Rect key="paper" width={w} height={h} fill="#FFFFFF" cornerRadius={4} shadowColor="#0f172a" shadowBlur={14} shadowOpacity={0.16} shadowOffsetY={5} />],
+  },
+  {
+    id: 'tablet', label: 'Tablet', aspect: 0.75,
+    screen: (w, h) => { const bez = Math.round(w * 0.055); return { x: bez, y: bez, w: w - 2 * bez, h: h - 2 * bez, r: Math.round(w * 0.03) } },
+    behind: (w, h) => [<Rect key="body" width={w} height={h} fill="#0B0B0F" cornerRadius={Math.round(w * 0.06)} />],
+  },
+  {
+    id: 'tablet_ls', label: 'Tablet quer', aspect: 1.33,
+    screen: (w, h) => { const bez = Math.round(h * 0.055); return { x: bez, y: bez, w: w - 2 * bez, h: h - 2 * bez, r: Math.round(h * 0.03) } },
+    behind: (w, h) => [<Rect key="body" width={w} height={h} fill="#0B0B0F" cornerRadius={Math.round(h * 0.06)} />],
+  },
+  {
+    id: 'monitor', label: 'Monitor', aspect: 1.55,
+    screen: (w, h) => { const p = Math.round(w * 0.02), sh = h * 0.8; return { x: p, y: p, w: w - 2 * p, h: sh - 2 * p, r: Math.max(2, Math.round(w * 0.004)) } },
+    behind: (w, h) => { const sh = h * 0.8, r = Math.max(6, Math.round(w * 0.012)); return [
+      <Rect key="scr" width={w} height={sh} fill="#0B0B0F" cornerRadius={r} />,
+      <Rect key="neck" x={w * 0.45} y={sh} width={w * 0.1} height={h * 0.12} fill="#C7CDD4" />,
+      <Rect key="base" x={w * 0.32} y={h * 0.92} width={w * 0.36} height={h * 0.05} cornerRadius={6} fill="#AEB6BF" />,
+    ] },
+  },
+  {
+    id: 'tv', label: 'TV', aspect: 1.78,
+    screen: (w, h) => { const p = Math.round(w * 0.012), sh = h * 0.9; return { x: p, y: p, w: w - 2 * p, h: sh - 2 * p, r: 2 } },
+    behind: (w, h) => { const sh = h * 0.9; return [
+      <Rect key="scr" width={w} height={sh} fill="#0B0B0F" cornerRadius={4} />,
+      <Rect key="stand" x={w * 0.44} y={sh} width={w * 0.12} height={h * 0.05} fill="#AEB6BF" />,
+      <Line key="feet" points={[w * 0.3, h, w * 0.7, h]} stroke="#AEB6BF" strokeWidth={Math.max(3, h * 0.02)} lineCap="round" />,
+    ] },
+  },
+  {
+    id: 'watch', label: 'Smartwatch', aspect: 0.82,
+    screen: (w, h) => { const bx = Math.round(w * 0.14), by = Math.round(h * 0.2); return { x: bx, y: by, w: w - 2 * bx, h: h - 2 * by, r: Math.round(w * 0.16) } },
+    behind: (w, h) => { const bw = w * 0.34; return [
+      <Rect key="bandT" x={(w - bw) / 2} y={0} width={bw} height={h * 0.24} fill="#334155" cornerRadius={6} />,
+      <Rect key="bandB" x={(w - bw) / 2} y={h * 0.76} width={bw} height={h * 0.24} fill="#334155" cornerRadius={6} />,
+      <Rect key="body" x={w * 0.08} y={h * 0.16} width={w * 0.84} height={h * 0.68} fill="#0B0B0F" cornerRadius={Math.round(w * 0.2)} />,
+      <Rect key="crown" x={w * 0.93} y={h * 0.42} width={w * 0.05} height={h * 0.16} fill="#C7CDD4" cornerRadius={3} />,
+    ] },
+  },
+  {
+    id: 'ig_post', label: 'Instagram', aspect: 0.6,
+    screen: (w, h) => { const bez = Math.round(w * 0.045), top = bez + h * 0.1, sq = w - 2 * bez; return { x: bez, y: top, w: sq, h: sq, r: 0 } },
+    behind: (w, h) => { const bez = Math.round(w * 0.045), r = Math.round(w * 0.11); return [
+      <Rect key="body" width={w} height={h} fill="#FFFFFF" cornerRadius={r} stroke="#0B0B0F" strokeWidth={Math.max(2, w * 0.02)} />,
+      <Circle key="av" x={bez + h * 0.045} y={bez + h * 0.05} radius={h * 0.028} fill="#CBD5E1" />,
+      <Rect key="name" x={bez + h * 0.09} y={bez + h * 0.038} width={w * 0.4} height={h * 0.022} cornerRadius={3} fill="#CBD5E1" />,
+    ] },
+    front: (w, h) => { const bez = Math.round(w * 0.045), top = bez + h * 0.1, sq = w - 2 * bez, ay = top + sq + h * 0.035; return [
+      <Circle key="like" x={bez + h * 0.03} y={ay} radius={h * 0.022} fill="none" stroke="#0B0B0F" strokeWidth={2} />,
+      <Circle key="cmt" x={bez + h * 0.1} y={ay} radius={h * 0.022} fill="none" stroke="#0B0B0F" strokeWidth={2} />,
+      <Circle key="share" x={bez + h * 0.17} y={ay} radius={h * 0.022} fill="none" stroke="#0B0B0F" strokeWidth={2} />,
+    ] },
+  },
+  {
+    id: 'ig_story', label: 'Story', aspect: 0.5,
+    screen: (w, h) => { const bez = Math.round(w * 0.05); return { x: bez, y: bez, w: w - 2 * bez, h: h - 2 * bez, r: Math.round(w * 0.1) } },
+    behind: (w, h) => [<Rect key="body" width={w} height={h} fill="#0B0B0F" cornerRadius={Math.round(w * 0.16)} />],
+    front: (w, h) => { const bez = Math.round(w * 0.05); return [
+      <Rect key="prog" x={bez + w * 0.06} y={bez + h * 0.02} width={w - 2 * bez - w * 0.12} height={Math.max(2, h * 0.006)} cornerRadius={2} fill="rgba(255,255,255,0.75)" />,
+    ] },
+  },
+  {
+    id: 'poster', label: 'Poster', aspect: 0.7,
+    screen: (w, h) => { const p = Math.round(w * 0.03); return { x: p, y: p, w: w - 2 * p, h: h - 2 * p, r: 0 } },
+    behind: (w, h) => [<Rect key="frame" width={w} height={h} fill="#111827" shadowColor="#0f172a" shadowBlur={18} shadowOpacity={0.22} shadowOffsetY={8} />],
+  },
+  {
+    id: 'billboard', label: 'Plakatwand', aspect: 1.9,
+    screen: (w, h) => { const p = Math.round(w * 0.015), bh = h * 0.72; return { x: p, y: p, w: w - 2 * p, h: bh - 2 * p, r: 0 } },
+    behind: (w, h) => { const bh = h * 0.72; return [
+      <Rect key="board" width={w} height={bh} fill="#FFFFFF" stroke="#94A3B8" strokeWidth={Math.max(2, w * 0.008)} />,
+      <Rect key="p1" x={w * 0.2} y={bh} width={w * 0.03} height={h - bh} fill="#94A3B8" />,
+      <Rect key="p2" x={w * 0.77} y={bh} width={w * 0.03} height={h - bh} fill="#94A3B8" />,
+    ] },
+  },
+  {
+    id: 'card', label: 'Visitenkarte', aspect: 1.72,
+    screen: (w, h) => ({ x: 0, y: 0, w, h, r: Math.round(w * 0.03) }),
+    behind: (w, h) => [<Rect key="sh" width={w} height={h} cornerRadius={Math.round(w * 0.03)} fill="#fff" shadowColor="#0f172a" shadowBlur={16} shadowOpacity={0.18} shadowOffsetY={6} />],
+  },
+  {
+    id: 'book', label: 'Buchcover', aspect: 0.68,
+    screen: (w, h) => { const sp = Math.round(w * 0.06); return { x: sp, y: 0, w: w - sp, h, r: 0 } },
+    behind: (w, h) => [<Rect key="sh" width={w} height={h} fill="#fff" cornerRadius={[2, 6, 6, 2]} shadowColor="#0f172a" shadowBlur={16} shadowOpacity={0.2} shadowOffsetX={6} shadowOffsetY={6} />],
+    front: (w, h) => { const sp = Math.round(w * 0.06); return [<Rect key="spine" x={sp} y={0} width={Math.max(3, w * 0.015)} height={h} fill="rgba(0,0,0,0.12)" />] },
+  },
+  {
+    id: 'frame_wall', label: 'Wandrahmen', aspect: 0.8,
+    screen: (w, h) => { const fr = Math.round(w * 0.08); return { x: fr, y: fr, w: w - 2 * fr, h: h - 2 * fr, r: 0 } },
+    behind: (w, h) => { const fr = Math.round(w * 0.08); return [
+      <Rect key="fr" width={w} height={h} fill="#3f3f46" shadowColor="#0f172a" shadowBlur={16} shadowOpacity={0.22} shadowOffsetY={7} />,
+      <Rect key="mat" x={fr * 0.5} y={fr * 0.5} width={w - fr} height={h - fr} fill="#FFFFFF" />,
+    ] },
+  },
+  {
+    id: 'tshirt', label: 'T-Shirt', aspect: 0.95,
+    screen: (w, h) => ({ x: w * 0.32, y: h * 0.3, w: w * 0.36, h: h * 0.42, r: 0 }),
+    behind: (w, h) => [<Line key="shirt" closed fill="#EEF2F6" stroke="#CBD5E1" strokeWidth={2}
+      points={[w * 0.28, h * 0.08, w * 0.4, h * 0.02, w * 0.6, h * 0.02, w * 0.72, h * 0.08, w * 0.9, h * 0.2, w * 0.8, h * 0.34, w * 0.7, h * 0.28, w * 0.7, h, w * 0.3, h, w * 0.3, h * 0.28, w * 0.2, h * 0.34, w * 0.1, h * 0.2]} />],
+  },
+  {
+    id: 'mug', label: 'Tasse', aspect: 1.25,
+    screen: (w, h) => ({ x: w * 0.14, y: h * 0.16, w: w * 0.5, h: h * 0.68, r: 0 }),
+    behind: (w, h) => [
+      <Circle key="handle" x={w * 0.68} y={h * 0.5} radius={h * 0.2} fill="none" stroke="#CBD5E1" strokeWidth={Math.max(6, w * 0.05)} />,
+      <Rect key="body" x={w * 0.08} y={h * 0.08} width={w * 0.6} height={h * 0.84} cornerRadius={Math.round(w * 0.03)} fill="#FFFFFF" stroke="#CBD5E1" strokeWidth={2} />,
+    ],
+  },
+  {
+    id: 'tote', label: 'Tasche', aspect: 0.85,
+    screen: (w, h) => ({ x: w * 0.2, y: h * 0.34, w: w * 0.6, h: h * 0.5, r: 0 }),
+    behind: (w, h) => [
+      <Line key="h1" points={[w * 0.32, h * 0.24, w * 0.36, h * 0.05, w * 0.46, h * 0.05, w * 0.48, h * 0.24]} stroke="#CBD5E1" strokeWidth={Math.max(4, w * 0.02)} fill="" lineCap="round" lineJoin="round" />,
+      <Line key="h2" points={[w * 0.52, h * 0.24, w * 0.54, h * 0.05, w * 0.64, h * 0.05, w * 0.68, h * 0.24]} stroke="#CBD5E1" strokeWidth={Math.max(4, w * 0.02)} fill="" lineCap="round" lineJoin="round" />,
+      <Rect key="bag" x={w * 0.14} y={h * 0.22} width={w * 0.72} height={h * 0.72} fill="#F4F1EA" stroke="#CBD5E1" strokeWidth={2} cornerRadius={4} />,
+    ],
+  },
+  {
+    id: 'sticker', label: 'Sticker', aspect: 1,
+    screen: (w, h) => { const b = Math.round(w * 0.08); return { x: b, y: b, w: w - 2 * b, h: h - 2 * b, r: Math.round(w * 0.12) } },
+    behind: (w, h) => [<Rect key="wh" width={w} height={h} cornerRadius={Math.round(w * 0.18)} fill="#FFFFFF" shadowColor="#0f172a" shadowBlur={14} shadowOpacity={0.18} shadowOffsetY={5} />],
+  },
+  {
+    id: 'postcard', label: 'Postkarte', aspect: 1.48,
+    screen: (w, h) => ({ x: 0, y: 0, w, h, r: Math.round(w * 0.02) }),
+    behind: (w, h) => [<Rect key="sh" width={w} height={h} cornerRadius={Math.round(w * 0.02)} fill="#fff" shadowColor="#0f172a" shadowBlur={16} shadowOpacity={0.18} shadowOffsetY={6} />],
+  },
+  // ── Perspektivische Mockups (nutzen die Warp-Engine: screenQuad statt screen) ──
+  {
+    id: 'phone_persp', label: 'Phone 3D', aspect: 0.62,
+    screenQuad: (w, h) => [{ x: w * 0.12, y: h * 0.09 }, { x: w * 0.76, y: h * 0.17 }, { x: w * 0.76, y: h * 0.83 }, { x: w * 0.12, y: h * 0.91 }],
+    behind: (w, h) => [
+      <Line key="body" closed fill="#0B0B0F"
+        points={[w * 0.06, h * 0.02, w * 0.82, h * 0.12, w * 0.82, h * 0.88, w * 0.06, h * 0.98]}
+        shadowColor="#0f172a" shadowBlur={20} shadowOpacity={0.28} shadowOffsetX={9} shadowOffsetY={11} />,
+    ],
+    front: (w, h) => [
+      <Line key="notch" closed fill="#0B0B0F" points={[w * 0.34, h * 0.105, w * 0.54, h * 0.13, w * 0.54, h * 0.16, w * 0.34, h * 0.135]} />,
+    ],
+  },
+  {
+    id: 'laptop_persp', label: 'Laptop 3D', aspect: 1.4,
+    screenQuad: (w, h) => [{ x: w * 0.2, y: h * 0.06 }, { x: w * 0.8, y: h * 0.06 }, { x: w * 0.86, y: h * 0.62 }, { x: w * 0.14, y: h * 0.62 }],
+    behind: (w, h) => [
+      <Line key="bezel" closed fill="#0B0B0F" points={[w * 0.18, h * 0.03, w * 0.82, h * 0.03, w * 0.885, h * 0.655, w * 0.115, h * 0.655]} />,
+    ],
+    front: (w, h) => [
+      <Line key="deck" closed fill="#C7CDD4" stroke="#AEB6BF" strokeWidth={1} points={[w * 0.115, h * 0.655, w * 0.885, h * 0.655, w * 0.98, h * 0.9, w * 0.02, h * 0.9]} />,
+      <Line key="hinge" points={[w * 0.115, h * 0.655, w * 0.885, h * 0.655]} stroke="#8b93a0" strokeWidth={Math.max(2, h * 0.01)} />,
+      <Line key="tp" closed fill="#B7BEC7" points={[w * 0.42, h * 0.77, w * 0.58, h * 0.77, w * 0.6, h * 0.85, w * 0.4, h * 0.85]} />,
+    ],
+  },
+  {
+    id: 'card_persp', label: 'Karte 3D', aspect: 1.3,
+    screenQuad: (w, h) => [{ x: w * 0.1, y: h * 0.18 }, { x: w * 0.9, y: h * 0.06 }, { x: w * 0.92, y: h * 0.82 }, { x: w * 0.08, y: h * 0.94 }],
+    behind: (w, h) => [
+      <Line key="sh" closed fill="#0f172a" opacity={0.16} points={[w * 0.14, h * 0.24, w * 0.94, h * 0.12, w * 0.96, h * 0.88, w * 0.12, h * 1.0]} />,
+    ],
+  },
+  {
+    id: 'ereader', label: 'E-Reader', aspect: 0.72,
+    screen: (w, h) => { const bez = Math.round(w * 0.06); return { x: bez, y: bez, w: w - 2 * bez, h: h * 0.86 - bez, r: 2 } },
+    behind: (w, h) => [<Rect key="body" width={w} height={h} fill="#2a2f3a" cornerRadius={Math.round(w * 0.05)} />],
+    front: (w, h) => [<Circle key="btn" x={w / 2} y={h * 0.93} radius={Math.max(4, w * 0.03)} fill="none" stroke="#5b6472" strokeWidth={2} />],
+  },
+  {
+    id: 'ultrawide', label: 'Ultrawide', aspect: 2.4,
+    screen: (w, h) => { const p = Math.round(w * 0.01), sh = h * 0.82; return { x: p, y: p, w: w - 2 * p, h: sh - 2 * p, r: 3 } },
+    behind: (w, h) => { const sh = h * 0.82; return [
+      <Rect key="scr" width={w} height={sh} fill="#0B0B0F" cornerRadius={6} />,
+      <Rect key="neck" x={w * 0.46} y={sh} width={w * 0.08} height={h * 0.12} fill="#C7CDD4" />,
+      <Rect key="base" x={w * 0.38} y={h * 0.94} width={w * 0.24} height={h * 0.05} cornerRadius={6} fill="#AEB6BF" />,
+    ] },
+  },
+  {
+    id: 'phone_land', label: 'Phone quer', aspect: 2.05,
+    screen: (w, h) => { const bez = Math.round(h * 0.05); return { x: bez, y: bez, w: w - 2 * bez, h: h - 2 * bez, r: Math.round(h * 0.1) } },
+    behind: (w, h) => [<Rect key="body" width={w} height={h} fill="#0B0B0F" cornerRadius={Math.round(h * 0.16)} />],
+    front: (w, h) => { const nh = h * 0.34, bez = Math.round(h * 0.05), nw = Math.max(4, w * 0.02); return [<Rect key="notch" x={bez + nw * 0.4} y={(h - nh) / 2} width={nw * 1.6} height={nh} cornerRadius={nw} fill="#0B0B0F" />] },
+  },
+  {
+    id: 'notebook', label: 'Notizbuch', aspect: 0.75,
+    screen: (w, h) => { const p = Math.round(w * 0.06), top = h * 0.08; return { x: p + w * 0.05, y: top, w: w - 2 * p - w * 0.05, h: h - top - p, r: 2 } },
+    behind: (w, h) => [<Rect key="page" width={w} height={h} fill="#FFFFFF" cornerRadius={4} stroke="#E2E8F0" strokeWidth={1} shadowColor="#0f172a" shadowBlur={12} shadowOpacity={0.14} shadowOffsetY={4} />],
+    front: (w, h) => { const rings = []; for (let i = 0; i < 8; i++) { rings.push(<Circle key={'rg' + i} x={w * 0.06} y={h * 0.08 + i * (h * 0.84 / 7)} radius={Math.max(3, w * 0.016)} fill="none" stroke="#9aa4b2" strokeWidth={2} />) } return rings },
+  },
+  {
+    id: 'rollup', label: 'Roll-Up', aspect: 0.42,
+    screen: (w, h) => { const p = Math.round(w * 0.06); return { x: p, y: p, w: w - 2 * p, h: h * 0.92 - p, r: 0 } },
+    behind: (w, h) => [<Rect key="ban" width={w} height={h * 0.92} fill="#FFFFFF" stroke="#E2E8F0" strokeWidth={1} shadowColor="#0f172a" shadowBlur={12} shadowOpacity={0.12} shadowOffsetY={3} />],
+    front: (w, h) => [
+      <Rect key="foot" x={w * 0.1} y={h * 0.92} width={w * 0.8} height={h * 0.035} cornerRadius={4} fill="#AEB6BF" />,
+      <Line key="leg" points={[w * 0.5, h * 0.955, w * 0.5, h]} stroke="#AEB6BF" strokeWidth={Math.max(3, w * 0.03)} />,
+    ],
+  },
+  {
+    id: 'cd', label: 'Cover', aspect: 1,
+    screen: (w, h) => ({ x: 0, y: 0, w: w * 0.82, h, r: 0 }),
+    behind: (w, h) => [
+      <Circle key="disc" x={w * 0.86} y={h * 0.5} radius={h * 0.42} fill="#e5e7eb" stroke="#cbd5e1" strokeWidth={1} />,
+      <Circle key="hole" x={w * 0.86} y={h * 0.5} radius={h * 0.07} fill="#f4f6fa" stroke="#cbd5e1" strokeWidth={1} />,
+      <Rect key="cover" width={w * 0.82} height={h} fill="#fff" shadowColor="#0f172a" shadowBlur={14} shadowOpacity={0.16} shadowOffsetX={-2} shadowOffsetY={4} />,
+    ],
+  },
+  {
+    id: 'poster_persp', label: 'Poster 3D', aspect: 0.72,
+    screenQuad: (w, h) => [{ x: w * 0.09, y: h * 0.06 }, { x: w * 0.85, y: h * 0.14 }, { x: w * 0.85, y: h * 0.9 }, { x: w * 0.09, y: h * 0.95 }],
+    behind: (w, h) => [<Line key="sh" closed fill="#0f172a" opacity={0.14} points={[w * 0.13, h * 0.11, w * 0.89, h * 0.19, w * 0.89, h * 0.95, w * 0.13, h * 1.0]} />],
+  },
+  {
+    id: 'tablet_persp', label: 'Tablet 3D', aspect: 1.35,
+    screenQuad: (w, h) => [{ x: w * 0.17, y: h * 0.13 }, { x: w * 0.82, y: h * 0.06 }, { x: w * 0.88, y: h * 0.88 }, { x: w * 0.23, y: h * 0.94 }],
+    behind: (w, h) => [<Line key="body" closed fill="#0B0B0F" points={[w * 0.13, h * 0.09, w * 0.86, h * 0.02, w * 0.92, h * 0.95, w * 0.19, h * 1.0]} shadowColor="#0f172a" shadowBlur={20} shadowOpacity={0.25} shadowOffsetX={8} shadowOffsetY={10} />],
+  },
+]
+const deviceById = id => DEVICE_MOCKUPS.find(d => d.id === id) || DEVICE_MOCKUPS[0]
+const DEFAULT_PHOTO_QUAD = [{ u: 0.28, v: 0.28 }, { u: 0.72, v: 0.28 }, { u: 0.72, v: 0.72 }, { u: 0.28, v: 0.72 }]
+// Screen-Quad eines Mockups in lokalen Koordinaten: Foto-Mockup nutzt o.quadFrac,
+// perspektivische Geräte-Mockups dev.screenQuad; sonst null (Rechteck-Screen-Pfad).
+function mockupQuad(o) {
+  if (o.kind === 'photo') { const qf = o.quadFrac || DEFAULT_PHOTO_QUAD; return qf.map(p => ({ x: p.u * o.width, y: p.v * o.height })) }
+  const dev = deviceById(o.device); return dev && dev.screenQuad ? dev.screenQuad(o.width, o.height) : null
+}
+function mockupPreview(id) {
+  const c = '#CBD5E1', s = '#94A3B8'
+  const P = { width: 28, height: 28, viewBox: '0 0 100 100' }
+  switch (id) {
+    case 'phone': return <svg {...P}><rect x="34" y="8" width="32" height="84" rx="9" fill={c} stroke={s} strokeWidth="3" /></svg>
+    case 'browser': return <svg {...P}><rect x="8" y="24" width="84" height="56" rx="5" fill={c} stroke={s} strokeWidth="3" /><rect x="8" y="24" width="84" height="13" rx="2" fill={s} /></svg>
+    case 'laptop': return <svg {...P}><rect x="18" y="22" width="64" height="42" rx="3" fill={c} stroke={s} strokeWidth="3" /><path d="M10 76 L90 76 L98 88 L2 88 Z" fill={c} stroke={s} strokeWidth="3" /></svg>
+    case 'tablet': return <svg {...P}><rect x="28" y="10" width="44" height="80" rx="6" fill={c} stroke={s} strokeWidth="3" /></svg>
+    case 'tablet_ls': return <svg {...P}><rect x="10" y="28" width="80" height="44" rx="6" fill={c} stroke={s} strokeWidth="3" /></svg>
+    case 'monitor': return <svg {...P}><rect x="12" y="16" width="76" height="50" rx="3" fill={c} stroke={s} strokeWidth="3" /><rect x="45" y="66" width="10" height="14" fill={s} /><rect x="34" y="80" width="32" height="6" rx="2" fill={s} /></svg>
+    case 'tv': return <svg {...P}><rect x="8" y="16" width="84" height="58" rx="3" fill={c} stroke={s} strokeWidth="3" /><rect x="44" y="74" width="12" height="7" fill={s} /><rect x="30" y="81" width="40" height="5" rx="2" fill={s} /></svg>
+    case 'watch': return <svg {...P}><rect x="40" y="6" width="20" height="22" rx="4" fill={s} /><rect x="40" y="72" width="20" height="22" rx="4" fill={s} /><rect x="30" y="26" width="40" height="48" rx="12" fill={c} stroke={s} strokeWidth="3" /></svg>
+    case 'ig_post': return <svg {...P}><rect x="30" y="8" width="40" height="84" rx="8" fill="#fff" stroke={s} strokeWidth="3" /><rect x="35" y="34" width="30" height="30" fill={c} /></svg>
+    case 'ig_story': return <svg {...P}><rect x="30" y="8" width="40" height="84" rx="8" fill={c} stroke={s} strokeWidth="3" /><rect x="37" y="14" width="26" height="3" rx="1" fill="#fff" /></svg>
+    case 'poster': return <svg {...P}><rect x="24" y="8" width="52" height="84" fill="#111827" /><rect x="28" y="12" width="44" height="76" fill={c} /></svg>
+    case 'billboard': return <svg {...P}><rect x="8" y="20" width="84" height="42" fill={c} stroke={s} strokeWidth="3" /><rect x="26" y="62" width="5" height="24" fill={s} /><rect x="69" y="62" width="5" height="24" fill={s} /></svg>
+    case 'card': return <svg {...P}><rect x="14" y="34" width="72" height="32" rx="4" fill={c} stroke={s} strokeWidth="3" /></svg>
+    case 'book': return <svg {...P}><rect x="26" y="10" width="50" height="80" rx="3" fill={c} stroke={s} strokeWidth="3" /><rect x="30" y="10" width="4" height="80" fill={s} /></svg>
+    case 'frame_wall': return <svg {...P}><rect x="20" y="8" width="60" height="84" fill="#3f3f46" /><rect x="27" y="15" width="46" height="70" fill="#fff" /><rect x="33" y="21" width="34" height="58" fill={c} /></svg>
+    case 'tshirt': return <svg {...P}><path d="M30 18 L42 10 L58 10 L70 18 L86 30 L76 42 L70 36 L70 90 L30 90 L30 36 L24 42 L14 30 Z" fill={c} stroke={s} strokeWidth="3" /></svg>
+    case 'mug': return <svg {...P}><circle cx="70" cy="50" r="16" fill="none" stroke={s} strokeWidth="6" /><rect x="16" y="26" width="52" height="48" rx="4" fill={c} stroke={s} strokeWidth="3" /></svg>
+    case 'tote': return <svg {...P}><path d="M32 30 L36 12 L48 12 L50 30" fill="none" stroke={s} strokeWidth="4" /><path d="M52 30 L54 12 L66 12 L70 30" fill="none" stroke={s} strokeWidth="4" /><rect x="22" y="28" width="56" height="60" rx="3" fill={c} stroke={s} strokeWidth="3" /></svg>
+    case 'sticker': return <svg {...P}><rect x="14" y="14" width="72" height="72" rx="16" fill="#fff" stroke={s} strokeWidth="3" /><rect x="24" y="24" width="52" height="52" rx="8" fill={c} /></svg>
+    case 'postcard': return <svg {...P}><rect x="10" y="30" width="80" height="40" rx="3" fill={c} stroke={s} strokeWidth="3" /></svg>
+    case 'phone_persp': return <svg {...P}><polygon points="30,12 66,20 66,80 30,88" fill={c} stroke={s} strokeWidth="3" strokeLinejoin="round" /></svg>
+    case 'laptop_persp': return <svg {...P}><polygon points="24,16 76,16 84,60 16,60" fill={c} stroke={s} strokeWidth="3" strokeLinejoin="round" /><polygon points="16,60 84,60 94,84 6,84" fill="#E2E8F0" stroke={s} strokeWidth="3" strokeLinejoin="round" /></svg>
+    case 'card_persp': return <svg {...P}><polygon points="16,26 84,14 88,78 12,90" fill={c} stroke={s} strokeWidth="3" strokeLinejoin="round" /></svg>
+    case 'ereader': return <svg {...P}><rect x="30" y="8" width="40" height="84" rx="6" fill="#5b6472" /><rect x="34" y="12" width="32" height="64" rx="2" fill={c} /><circle cx="50" cy="85" r="3" fill="none" stroke="#c7cdd4" strokeWidth="2" /></svg>
+    case 'ultrawide': return <svg {...P}><rect x="6" y="26" width="88" height="38" rx="3" fill={c} stroke={s} strokeWidth="3" /><rect x="44" y="64" width="12" height="10" fill={s} /><rect x="36" y="74" width="28" height="5" rx="2" fill={s} /></svg>
+    case 'phone_land': return <svg {...P}><rect x="10" y="34" width="80" height="32" rx="9" fill={c} stroke={s} strokeWidth="3" /></svg>
+    case 'notebook': return <svg {...P}><rect x="24" y="10" width="52" height="80" rx="3" fill="#fff" stroke={s} strokeWidth="3" /><rect x="32" y="16" width="40" height="68" fill={c} /><circle cx="28" cy="22" r="2.5" fill="none" stroke={s} strokeWidth="2" /><circle cx="28" cy="40" r="2.5" fill="none" stroke={s} strokeWidth="2" /><circle cx="28" cy="58" r="2.5" fill="none" stroke={s} strokeWidth="2" /><circle cx="28" cy="76" r="2.5" fill="none" stroke={s} strokeWidth="2" /></svg>
+    case 'rollup': return <svg {...P}><rect x="30" y="6" width="40" height="76" fill={c} stroke={s} strokeWidth="3" /><rect x="34" y="82" width="32" height="5" rx="2" fill={s} /><line x1="50" y1="86" x2="50" y2="94" stroke={s} strokeWidth="3" /></svg>
+    case 'cd': return <svg {...P}><circle cx="66" cy="50" r="30" fill="#e5e7eb" stroke={s} strokeWidth="2" /><circle cx="66" cy="50" r="6" fill="#fff" stroke={s} strokeWidth="2" /><rect x="14" y="20" width="52" height="60" fill="#fff" stroke={s} strokeWidth="3" /></svg>
+    case 'poster_persp': return <svg {...P}><polygon points="18,14 76,22 76,80 18,86" fill={c} stroke={s} strokeWidth="3" strokeLinejoin="round" /></svg>
+    case 'tablet_persp': return <svg {...P}><polygon points="20,20 78,12 84,84 26,90" fill={c} stroke={s} strokeWidth="3" strokeLinejoin="round" /></svg>
+    default: return <svg {...P}><rect x="16" y="10" width="68" height="80" rx="3" fill="#fff" stroke={s} strokeWidth="3" /><rect x="24" y="18" width="52" height="52" fill={c} /></svg>
+  }
+}
+
 const nextId = () => `obj_${Date.now()}_${_uid++}`
 
 // Blob → DataURL (für PDF-Einbettung via jsPDF.addImage).
@@ -278,6 +722,8 @@ const ZOOM_MAX = 8
 // Rand um die Artboard (Display-px), damit Auswahlrahmen/Anfasser über den
 // Seitenrand hinaus sichtbar bleiben (Stage ist größer als die Seite).
 const CANVAS_PAD = 80
+// Aktive Drag-Payload aus den Bibliotheks-Panels (Icon/Grafik/Foto/Upload/Medium) → Canvas-Drop.
+let _designerDrag = null
 
 export default function DesignerCanvas({ visual, teamId, onSaved, onReplaceVisual, onPagesToPost }) {
   const stageRef = useRef(null)
@@ -309,6 +755,7 @@ export default function DesignerCanvas({ visual, teamId, onSaved, onReplaceVisua
 
   const [objects, setObjects] = useState([])          // Overlay-Objekte (Text, Formen, Sticker, Bild)
   const [imgCache, setImgCache] = useState({})        // {src(DataURL/URL) -> HTMLImageElement} für type:'image'
+  const [warpCache, setWarpCache] = useState({})      // {warpKey -> HTMLCanvasElement} für perspektivische Mockups
   const [selectedIds, setSelectedIds] = useState([])  // Mehrfach-Auswahl (Array von Objekt-IDs)
   const selectedId = selectedIds.length === 1 ? selectedIds[0] : null  // Abwärtskompatibel (Einzel-Selektion)
   const setSelectedId = useCallback((id) => setSelectedIds(id ? [id] : []), [])
@@ -320,8 +767,10 @@ export default function DesignerCanvas({ visual, teamId, onSaved, onReplaceVisua
   // dieses Objekt frei (nicht-proportional) skaliert werden. Rahmenfarbe + Anker-Form
   // wechseln im Verzerren-Modus.
   const [distortId, setDistortId] = useState(null)
+  const [quadEditId, setQuadEditId] = useState(null)  // Foto-Mockup: aktiver Screen-Ecken-Editor
   const [marquee, setMarquee] = useState(null)        // {x,y,w,h} Rubberband in Bühnenkoordinaten
   const [marqueeHits, setMarqueeHits] = useState([])  // Ids der vom Kästchen berührten Elemente (Live-Rahmen)
+  const [frameDropTarget, setFrameDropTarget] = useState(null)  // Rahmen/Mockup, über dem gerade ein Bild schwebt (Drag-to-fill)
   const marqueeStartRef = useRef(null)
   const clipboardRef = useRef([])                     // kopierte Objekte (intern)
   const [loading, setLoading] = useState(true)
@@ -655,7 +1104,7 @@ export default function DesignerCanvas({ visual, teamId, onSaved, onReplaceVisua
     setStageSize(p.stage || { width: 1080, height: 1080 })
     primaryImageIdRef.current = p.primaryImageId || null
     historyRef.current = []; futureRef.current = []
-    setSelectedIds([]); setDistortId(null)
+    setSelectedIds([]); setDistortId(null); setQuadEditId(null)
     try { resetMaskCanvas((p.stage && p.stage.width) || 1080, (p.stage && p.stage.height) || 1080) } catch (_e) {}
   }
   function switchToPage(idx) {
@@ -872,6 +1321,7 @@ export default function DesignerCanvas({ visual, teamId, onSaved, onReplaceVisua
       if (editingTextId) commitTextEdit()
       setSelectedIds([])
       setDistortId(null)
+      setQuadEditId(null)
     }
   }
   function onContainerMouseMove(e) {
@@ -882,10 +1332,37 @@ export default function DesignerCanvas({ visual, teamId, onSaved, onReplaceVisua
   function onContainerMouseUp() {
     if (panDragRef.current) { panDragRef.current = null; setIsPanning(false) }
   }
-  // Drag&Drop eines Bildes auf den Canvas → als image-Objekt einfügen.
-  function onContainerDragOver(e) { e.preventDefault() }
+  // Drag&Drop auf den Canvas: (a) Bibliotheks-Element (Icon/Grafik/Foto/Upload/Medium)
+  // per _designerDrag-Payload, (b) Betriebssystem-Datei. Über einem Rahmen/Mockup
+  // landet das Bild direkt darin (cover-fill), sonst an der Drop-Position.
+  function onContainerDragOver(e) { if (_designerDrag || (e.dataTransfer?.types && Array.prototype.indexOf.call(e.dataTransfer.types, 'Files') >= 0)) e.preventDefault() }
+  function frameAtContentPoint(cx, cy) {
+    for (let i = objects.length - 1; i >= 0; i--) {
+      const o = objects[i]
+      if ((o.type !== 'frame' && o.type !== 'mockup') || o.hidden || o.locked) continue
+      const x = o.x || 0, y = o.y || 0, w = o.width || 0, h = o.height || 0
+      if (cx >= x && cx <= x + w && cy >= y && cy <= y + h) return o
+    }
+    return null
+  }
+  function dropContentPoint(e) {
+    const stage = stageRef.current
+    if (!stage) return null
+    try { stage.setPointersPositions(e.nativeEvent || e) } catch (_e) {}
+    return stagePoint()
+  }
   function onContainerDrop(e) {
     e.preventDefault()
+    const payload = _designerDrag; _designerDrag = null
+    if (payload) {
+      const p = dropContentPoint(e)
+      const frame = p ? frameAtContentPoint(p.x, p.y) : null
+      const opts = frame ? { frameId: frame.id } : (p ? { at: { x: p.x, y: p.y } } : {})
+      if (payload.k === 'dataurl' && payload.dataUrl) addImageFromDataUrl(payload.dataUrl, payload.meta || {}, opts)
+      else if (payload.k === 'stock' && payload.large) { setSavedMsg('Bild wird eingefügt…'); photoToDataUrl(payload.large).then(du => { if (du) addImageFromDataUrl(du, {}, opts) }) }
+      else if (payload.k === 'media' && payload.storagePath) insertMediaFromPath(payload.storagePath, opts)
+      return
+    }
     try {
       const file = e.dataTransfer?.files?.[0]
       if (file) onPickImageFile(file)
@@ -966,7 +1443,8 @@ export default function DesignerCanvas({ visual, teamId, onSaved, onReplaceVisua
   // Objekte) — er gilt immer nur für das eine doppelgeklickte Objekt.
   useEffect(() => {
     if (distortId && !(selectedIds.length === 1 && selectedIds[0] === distortId)) setDistortId(null)
-  }, [selectedIds, distortId])
+    if (quadEditId && !(selectedIds.length === 1 && selectedIds[0] === quadEditId)) setQuadEditId(null)
+  }, [selectedIds, distortId, quadEditId])
 
   // ─── Rechtsklick: Kontextmenü öffnen ───────────────────────────────────────
   // Wir hängen den Konva-'contextmenu'-Handler an die Stage. Klick auf ein Objekt
@@ -983,16 +1461,21 @@ export default function DesignerCanvas({ visual, teamId, onSaved, onReplaceVisua
         const rect = cont ? cont.getBoundingClientRect() : { left: 0, top: 0 }
         const x = (e.evt.clientX || 0) - rect.left
         const y = (e.evt.clientY || 0) - rect.top
-        const tgtId = e.target && e.target.attrs ? e.target.attrs.id : null
-        const onEmpty = e.target === stage || tgtId === '__bg__' || tgtId === '__bgfill__' || !tgtId
-        if (onEmpty) {
+        // Ziel-Objekt finden — der Klick kann auf einem Kind liegen (z.B. Bild im
+        // Rahmen/Mockup), dessen Objekt-ID am Group-Vorfahren hängt → Vorfahren hochlaufen.
+        let tnode = e.target
+        let tgtId = tnode && tnode.attrs ? tnode.attrs.id : null
+        let guard = 0
+        while (tnode && tnode !== stage && guard++ < 12 && (!tgtId || tgtId === '__bg__' || tgtId === '__bgfill__' || !objects.find(o => o.id === tgtId))) {
+          tnode = tnode.getParent ? tnode.getParent() : null
+          tgtId = tnode && tnode.attrs ? tnode.attrs.id : null
+        }
+        const obj = objects.find(o => o.id === tgtId)
+        if (!obj) {
           setCtxMenu({ x, y, objId: null })
         } else {
-          const obj = objects.find(o => o.id === tgtId)
-          if (!obj) { setCtxMenu({ x, y, objId: null }); return }
-          // Objekt auswählen, falls nicht bereits Teil der Selektion.
-          setSelectedIds(prev => prev.includes(tgtId) ? prev : [tgtId])
-          setCtxMenu({ x, y, objId: tgtId })
+          setSelectedIds(prev => prev.includes(obj.id) ? prev : [obj.id])
+          setCtxMenu({ x, y, objId: obj.id })
         }
       } catch (_e) { /* noop */ }
     }
@@ -1017,17 +1500,40 @@ export default function DesignerCanvas({ visual, teamId, onSaved, onReplaceVisua
 
   // ─── Bild-Objekte: HTMLImageElement nachladen (z.B. nach Restore) ───────────
   useEffect(() => {
-    const missing = objects.filter(o => o.type === 'image' && o.src && !imgCache[o.src])
-    if (!missing.length) return
+    const need = new Set()
+    objects.forEach(o => {
+      if ((o.type === 'image' || o.type === 'frame' || o.type === 'mockup') && o.src && !imgCache[o.src]) need.add(o.src)
+      if (o.type === 'mockup' && o.photoSrc && !imgCache[o.photoSrc]) need.add(o.photoSrc)
+    })
+    if (!need.size) return
     let cancelled = false
-    missing.forEach(o => {
+    need.forEach(url => {
       const img = new window.Image()
-      img.onload = () => { if (!cancelled) setImgCache(prev => ({ ...prev, [o.src]: img })) }
+      img.onload = () => { if (!cancelled) setImgCache(prev => ({ ...prev, [url]: img })) }
       img.onerror = () => {}
-      img.src = o.src
+      img.src = url
     })
     return () => { cancelled = true }
   }, [objects, imgCache])
+
+  // ─── Perspektivische Mockups: gewarptes Screen-Canvas bauen/cachen ──────────
+  useEffect(() => {
+    const quadMocks = objects.filter(o => o.type === 'mockup' && o.src && mockupQuad(o) && imgCache[o.src])
+    if (!quadMocks.length) return
+    let changed = false
+    const next = { ...warpCache }
+    for (const o of quadMocks) {
+      const key = warpKey(o)
+      if (next[key]) continue
+      try {
+        const quad = mockupQuad(o)
+        const ss = Math.max(1, Math.min(2, 1200 / Math.max(o.width || 1, o.height || 1)))
+        next[key] = warpImageToCanvas(imgCache[o.src], quad, o.width, o.height, { panX: o.panX, panY: o.panY, ss, grid: 14 })
+        changed = true
+      } catch (_e) { /* Warp-Fehler ignorieren, Platzhalter bleibt */ }
+    }
+    if (changed) setWarpCache(next)
+  }, [objects, imgCache, warpCache])
 
   // ─── History-Helfer ────────────────────────────────────────────────────────
   const snapshot = useCallback(() => ({
@@ -1377,6 +1883,46 @@ export default function DesignerCanvas({ visual, teamId, onSaved, onReplaceVisua
       fontSize: 44, fontFamily: 'Inter', fill: bgColor ? '#111827' : '#ffffff', fontStyle: 'normal', align: 'left', width: 360,
       rotation: 0, scaleX: 1, scaleY: 1 })
   }
+  function addFrame(shapeId) {
+    const c = center()
+    const s = Math.round(Math.min(stageSize.width, stageSize.height) * 0.42)
+    addObject({ type: 'frame', shape: shapeId, x: c.x - s / 2, y: c.y - s / 2, width: s, height: s, rotation: 0, opacity: 1 })
+  }
+  function addCollage(layoutId) {
+    const lay = COLLAGE_LAYOUTS.find(l => l.id === layoutId); if (!lay) return
+    const cw = (baseCrop?.width || stageSize.width), ch = (baseCrop?.height || stageSize.height)
+    const margin = Math.round(Math.min(cw, ch) * 0.06)
+    const bx = margin, by = margin, bw = cw - margin * 2, bh = ch - margin * 2
+    const gap = Math.max(6, Math.round(Math.min(bw, bh) * 0.018))
+    const frames = lay.cells.map(cell => ({
+      id: nextId(), type: 'frame', shape: 'rect',
+      x: Math.round(bx + cell[0] * bw + gap / 2),
+      y: Math.round(by + cell[1] * bh + gap / 2),
+      width: Math.round(cell[2] * bw - gap),
+      height: Math.round(cell[3] * bh - gap),
+      rotation: 0, opacity: 1,
+    }))
+    pushHistory()
+    setObjects(prev => [...prev, ...frames])
+    setSelectedIds(frames.length ? [frames[0].id] : [])
+  }
+  function warpKey(o) { const q = o.kind === 'photo' && o.quadFrac ? o.quadFrac.map(p => `${p.u.toFixed(3)},${p.v.toFixed(3)}`).join(';') : ''; return `${o.id}|${o.device || o.kind}|${o.src || ''}|${Math.round(o.width)}x${Math.round(o.height)}|${o.panX == null ? 0.5 : o.panX}|${o.panY == null ? 0.5 : o.panY}|${q}` }
+  function setQuadCorner(id, idx, u, v) {
+    setObjects(prev => prev.map(o => {
+      if (o.id !== id) return o
+      const qf = (o.quadFrac ? o.quadFrac.slice() : DEFAULT_PHOTO_QUAD.map(p => ({ ...p })))
+      qf[idx] = { u, v }
+      return { ...o, quadFrac: qf }
+    }))
+  }
+  function addMockup(deviceId) {
+    const dev = deviceById(deviceId); if (!dev) return
+    const cw = (baseCrop?.width || stageSize.width), ch = (baseCrop?.height || stageSize.height)
+    let w = Math.round(Math.min(cw, ch) * 0.6), h = Math.round(w / dev.aspect)
+    if (h > ch * 0.9) { h = Math.round(ch * 0.9); w = Math.round(h * dev.aspect) }
+    const c = center()
+    addObject({ type: 'mockup', device: deviceId, x: Math.round(c.x - w / 2), y: Math.round(c.y - h / 2), width: w, height: h, rotation: 0, opacity: 1 })
+  }
   function addRect() {
     const c = center()
     addObject({ type: 'rect', x: c.x - 80, y: c.y - 50, width: 160, height: 100, fill: 'rgba(49,90,231,0.85)', stroke: '#ffffff', strokeWidth: 0, rotation: 0 })
@@ -1722,10 +2268,16 @@ Antworte AUSSCHLIESSLICH mit JSON: {"ok":<bool>,"issues":["..."],"operations":[.
     } finally { setPageAiBusy(false) }
   }
 
-  function addImageFromDataUrl(dataUrl, meta = {}) {
+  function addImageFromDataUrl(dataUrl, meta = {}, opts = {}) {
     if (!dataUrl) return
     const img = new window.Image()
     img.onload = () => {
+      // Drop direkt in einen Rahmen/Mockup (Drag aus der Bibliothek über den Rahmen).
+      if (opts.frameId) { setImgCache(prev => ({ ...prev, [dataUrl]: img })); pushHistory(); updateObject(opts.frameId, { src: dataUrl }); return }
+      // Ist ein leerer Bilderrahmen ausgewählt? → Bild in den Rahmen einsetzen (cover-fill) statt neues Bild-Objekt.
+      // (nur beim Klick-Einfügen, nicht wenn eine Drop-Position vorgegeben ist)
+      const selFrame = (!opts.at && selectedIds.length === 1) ? objects.find(o => o.id === selectedIds[0] && (o.type === 'frame' || o.type === 'mockup')) : null
+      if (selFrame) { setImgCache(prev => ({ ...prev, [dataUrl]: img })); pushHistory(); updateObject(selFrame.id, { src: dataUrl }); return }
       const nw = img.naturalWidth || 200
       const nh = img.naturalHeight || 200
       let w, h
@@ -1741,7 +2293,7 @@ Antworte AUSSCHLIESSLICH mit JSON: {"ok":<bool>,"issues":["..."],"operations":[.
         const sc = Math.min(1, maxDim / Math.max(nw, nh))
         w = Math.round(nw * sc); h = Math.round(nh * sc)
       }
-      const c = center()
+      const c = opts.at || center()
       setImgCache(prev => ({ ...prev, [dataUrl]: img }))
       addObject({ type: 'image', src: dataUrl, x: c.x - w / 2, y: c.y - h / 2, width: w, height: h, rotation: 0, opacity: 1,
         ...(meta.iconId ? { iconId: meta.iconId, iconColor: meta.iconColor || '#1f2937', isIcon: true } : {}) })
@@ -1766,11 +2318,11 @@ Antworte AUSSCHLIESSLICH mit JSON: {"ok":<bool>,"issues":["..."],"operations":[.
     } catch (_e) {}
   }
   // Bild aus der Medien-Bibliothek (Storage-Pfad) als Objekt einfügen.
-  async function insertMediaFromPath(storagePath) {
+  async function insertMediaFromPath(storagePath, opts = {}) {
     if (!storagePath) return
     try {
       const dataUrl = await visualDataUrl(storagePath)
-      if (dataUrl) addImageFromDataUrl(dataUrl)
+      if (dataUrl) addImageFromDataUrl(dataUrl, {}, opts)
       else setSavedMsg('Medium konnte nicht geladen werden.')
     } catch (_e) { setSavedMsg('Medium konnte nicht geladen werden.') }
   }
@@ -3534,6 +4086,7 @@ Antworte AUSSCHLIESSLICH mit JSON: {"ok":<bool>,"issues":["..."],"operations":[.
     if (!o || o.type === 'text' || o.locked) return
     try { e?.cancelBubble && (e.cancelBubble = true) } catch (_e) {}
     setSelectedIds([o.id])
+    if (o.type === 'mockup' && o.kind === 'photo') { setQuadEditId(prev => (prev === o.id ? null : o.id)); return }
     setDistortId(prev => (prev === o.id ? null : o.id))
   }
 
@@ -3602,9 +4155,15 @@ Antworte AUSSCHLIESSLICH mit JSON: {"ok":<bool>,"issues":["..."],"operations":[.
         const node = e.target
         const ids = selectedIds.includes(o.id) && selectedIds.length > 1 ? selectedIds : [o.id]
         applyDragSnap(node, ids)
+        if (o.type === 'image' && ids.length === 1) {
+          const cx = node.x() + off.x + (o.width || 0) / 2, cy = node.y() + off.y + (o.height || 0) / 2
+          const hit = [...objects].reverse().find(t => (t.type === 'frame' || t.type === 'mockup') && t.id !== o.id && cx >= t.x && cx <= t.x + (t.width || 0) && cy >= t.y && cy <= t.y + (t.height || 0))
+          setFrameDropTarget(hit ? hit.id : null)
+        }
       },
       onDragEnd: (e) => {
         clearGuides()
+        setFrameDropTarget(null)
         // Bei Gruppen-Drag bewegt der Transformer mehrere Nodes — jede Node hier
         // einzeln in ihren Objekt-State zurückschreiben.
         const dxNode = e.target
@@ -3619,7 +4178,20 @@ Antworte AUSSCHLIESSLICH mit JSON: {"ok":<bool>,"issues":["..."],"operations":[.
           })
           setTimeout(() => { skipHistoryRef.current = false }, 0)
         } else {
-          updateObject(o.id, { x: node.x() + off.x, y: node.y() + off.y }, false)
+          const nx = node.x() + off.x, ny = node.y() + off.y
+          // Bild über einen Rahmen/Mockup fallen gelassen? → Bild einsetzen (cover), Bild-Objekt entfernen.
+          if (o.type === 'image' && o.src) {
+            const cx = nx + (o.width || 0) / 2, cy = ny + (o.height || 0) / 2
+            const frame = [...objects].reverse().find(t => (t.type === 'frame' || t.type === 'mockup') && t.id !== o.id && cx >= t.x && cx <= t.x + (t.width || 0) && cy >= t.y && cy <= t.y + (t.height || 0))
+            if (frame) {
+              pushHistory()
+              const srcVal = o.src
+              setObjects(prev => prev.filter(p => p.id !== o.id).map(p => p.id === frame.id ? { ...p, src: srcVal } : p))
+              setSelectedIds([frame.id])
+              return
+            }
+          }
+          updateObject(o.id, { x: nx, y: ny }, false)
         }
       },
       onTransformStart: () => {
@@ -3700,6 +4272,10 @@ Antworte AUSSCHLIESSLICH mit JSON: {"ok":<bool>,"issues":["..."],"operations":[.
           patch.radiusX = Math.max(2, (o.radiusX || 90) * node.scaleX())
           patch.radiusY = Math.max(2, (o.radiusY || 90) * node.scaleY())
           node.scaleX(1); node.scaleY(1)
+        } else if (o.type === 'frame' || o.type === 'mockup') {
+          patch.width = Math.max(8, (o.width || 100) * node.scaleX())
+          patch.height = Math.max(8, (o.height || 100) * node.scaleY())
+          node.scaleX(1); node.scaleY(1)
         } else {
           patch.scaleX = node.scaleX(); patch.scaleY = node.scaleY()
         }
@@ -3736,6 +4312,90 @@ Antworte AUSSCHLIESSLICH mit JSON: {"ok":<bool>,"issues":["..."],"operations":[.
           ? { x: o.cropX || 0, y: o.cropY || 0, width: o.cropWidth, height: o.cropHeight }
           : undefined
         return <KImage key={o.id} {...base} image={el} width={o.width} height={o.height} crop={cropProp} />
+      }
+      case 'frame': {
+        const shp = frameShapeById(o.shape)
+        const el = o.src ? imgCache[o.src] : null
+        const fit = el ? frameCoverFit(el.naturalWidth || el.width, el.naturalHeight || el.height, o.width, o.height, o.panX, o.panY) : null
+        const editing = !!el && distortId === o.id
+        return (
+          <Group key={o.id} {...base} draggable={base.draggable && !editing} clipFunc={(ctx) => shp.clip(ctx, o.width, o.height)}>
+            {el && fit
+              ? <KImage image={el} x={fit.x} y={fit.y} width={fit.width} height={fit.height}
+                  draggable={editing}
+                  onDragStart={editing ? () => pushHistory() : undefined}
+                  onDragMove={editing ? (e) => { const n = e.target; const minX = o.width - fit.width, minY = o.height - fit.height; n.x(Math.max(minX, Math.min(0, n.x()))); n.y(Math.max(minY, Math.min(0, n.y()))) } : undefined}
+                  onDragEnd={editing ? (e) => { const n = e.target; const rx = o.width - fit.width, ry = o.height - fit.height; const nx = Math.max(rx, Math.min(0, n.x())), ny = Math.max(ry, Math.min(0, n.y())); updateObject(o.id, { panX: rx ? nx / rx : 0.5, panY: ry ? ny / ry : 0.5 }, false) } : undefined} />
+              : (<>
+                  <Rect width={o.width} height={o.height} fill="#EEF2F7" />
+                  <KText text="Bild einsetzen" width={o.width} y={o.height / 2 - 9} align="center" fontSize={Math.max(11, Math.min(16, o.width * 0.06))} fill="#93A2B5" listening={false} />
+                </>)}
+            {editing && <Rect width={o.width} height={o.height} stroke="#315AE7" strokeWidth={2} dash={[6, 4]} listening={false} />}
+            {o.id === frameDropTarget && <Rect width={o.width} height={o.height} fill="rgba(49,90,231,0.32)" listening={false} />}
+          </Group>
+        )
+      }
+      case 'mockup': {
+        const dev = deviceById(o.device)
+        const el = o.src ? imgCache[o.src] : null
+        const mquad = mockupQuad(o)
+        if (mquad) {
+          const isPhoto = o.kind === 'photo'
+          const bg = isPhoto && o.photoSrc ? imgCache[o.photoSrc] : null
+          const editing = isPhoto && quadEditId === o.id
+          const pts = mquad.flatMap(p => [p.x, p.y])
+          const wc = el ? warpCache[warpKey(o)] : null
+          const xs = mquad.map(p => p.x), ys = mquad.map(p => p.y)
+          const qx = Math.min(...xs), qy = Math.min(...ys), qw = Math.max(...xs) - qx, qh = Math.max(...ys) - qy
+          return (
+            <Group key={o.id} {...base} draggable={base.draggable && !editing}>
+              {isPhoto
+                ? (bg ? <KImage image={bg} width={o.width} height={o.height} /> : <Rect width={o.width} height={o.height} fill="#EEF2F7" cornerRadius={6} />)
+                : (dev.behind ? dev.behind(o.width, o.height) : null)}
+              {el && wc
+                ? <KImage image={wc} x={0} y={0} width={o.width} height={o.height} listening={false} />
+                : (<>
+                    {!isPhoto && <Line points={pts} closed fill="#EEF2F7" stroke="#C7D0DB" strokeWidth={1} />}
+                    {isPhoto && bg && !editing && <Line points={pts} closed fill="rgba(49,90,231,0.10)" stroke="#315AE7" strokeWidth={1.5} dash={[5, 4]} listening={false} />}
+                    {(!isPhoto || !bg) && <KText text={isPhoto ? 'Foto lädt…' : 'Bild einsetzen'} x={qx} y={qy + qh / 2 - 8} width={qw} align="center" fontSize={Math.max(10, Math.min(15, qw * 0.06))} fill="#93A2B5" listening={false} />}
+                  </>)}
+              {!isPhoto && dev.front ? dev.front(o.width, o.height) : null}
+              {editing && (<>
+                <Line points={pts} closed stroke="#315AE7" strokeWidth={2} dash={[6, 4]} listening={false} />
+                {mquad.map((p, idx) => (
+                  <Circle key={'qh' + idx} x={p.x} y={p.y} radius={8} fill="#ffffff" stroke="#315AE7" strokeWidth={2}
+                    draggable
+                    onDragMove={(e) => { const n = e.target; const u = Math.max(0, Math.min(1, n.x() / o.width)), v = Math.max(0, Math.min(1, n.y() / o.height)); setQuadCorner(o.id, idx, u, v) }}
+                    onDragEnd={() => pushHistory()} />
+                ))}
+              </>)}
+              {o.id === frameDropTarget && <Line points={pts} closed fill="rgba(49,90,231,0.32)" listening={false} />}
+            </Group>
+          )
+        }
+        const scr = dev.screen(o.width, o.height)
+        const fit = el ? frameCoverFit(el.naturalWidth || el.width, el.naturalHeight || el.height, scr.w, scr.h, o.panX, o.panY) : null
+        const mockEditing = !!el && distortId === o.id
+        return (
+          <Group key={o.id} {...base} draggable={base.draggable && !mockEditing}>
+            {dev.behind(o.width, o.height)}
+            <Group x={scr.x} y={scr.y} clipFunc={(ctx) => { if (scr.r) _froundClip(ctx, scr.w, scr.h, scr.r); else _rectClipLocal(ctx, scr.w, scr.h) }}>
+              {el && fit
+                ? <KImage image={el} x={fit.x} y={fit.y} width={fit.width} height={fit.height}
+                    draggable={mockEditing}
+                    onDragStart={mockEditing ? () => pushHistory() : undefined}
+                    onDragMove={mockEditing ? (e) => { const n = e.target; const minX = scr.w - fit.width, minY = scr.h - fit.height; n.x(Math.max(minX, Math.min(0, n.x()))); n.y(Math.max(minY, Math.min(0, n.y()))) } : undefined}
+                    onDragEnd={mockEditing ? (e) => { const n = e.target; const rx = scr.w - fit.width, ry = scr.h - fit.height; const nx = Math.max(rx, Math.min(0, n.x())), ny = Math.max(ry, Math.min(0, n.y())); updateObject(o.id, { panX: rx ? nx / rx : 0.5, panY: ry ? ny / ry : 0.5 }, false) } : undefined} />
+                : (<>
+                    <Rect width={scr.w} height={scr.h} fill="#EEF2F7" />
+                    <KText text="Bild einsetzen" width={scr.w} y={scr.h / 2 - 8} align="center" fontSize={Math.max(10, Math.min(15, scr.w * 0.06))} fill="#93A2B5" listening={false} />
+                  </>)}
+              {mockEditing && <Rect width={scr.w} height={scr.h} stroke="#315AE7" strokeWidth={2} dash={[6, 4]} listening={false} />}
+            </Group>
+            {dev.front ? dev.front(o.width, o.height) : null}
+            {o.id === frameDropTarget && <Rect x={scr.x} y={scr.y} width={scr.w} height={scr.h} fill="rgba(49,90,231,0.32)" listening={false} />}
+          </Group>
+        )
       }
       default:
         return null
@@ -4027,6 +4687,9 @@ Antworte AUSSCHLIESSLICH mit JSON: {"ok":<bool>,"issues":["..."],"operations":[.
           // Elemente
           elementTab={elementTab} setElementTab={setElementTab}
           onAddRect={addRect} onAddEllipse={addEllipse} onAddLine={addLine} onAddArrow={addArrow}
+          onAddFrame={addFrame}
+          onAddCollage={addCollage}
+          onAddMockup={addMockup}
           onAddAsset={addAsset}
           onInsertMedia={(dataUrl, meta) => addImageFromDataUrl(dataUrl, meta)}
           // Text
@@ -4239,6 +4902,7 @@ Antworte AUSSCHLIESSLICH mit JSON: {"ok":<bool>,"issues":["..."],"operations":[.
             onToggleLock={(id) => { toggleLayerFlag(id, 'locked'); setCtxMenu(null) }}
             onToggleHidden={(id) => { toggleLayerFlag(id, 'hidden'); setCtxMenu(null) }}
             onRename={(id) => { setSelectedIds([id]); setActiveTool('layers'); setRenamingId(id); setCtxMenu(null) }}
+            onRemoveImage={(id) => { pushHistory(); updateObject(id, { src: null }); setCtxMenu(null) }}
             onDelete={() => { deleteSelected(); setCtxMenu(null) }}
             onPaste={() => { pasteClipboard(); setCtxMenu(null) }}
             onSelectAll={() => { setSelectedIds(objects.map(o => o.id)); setCtxMenu(null) }}
@@ -4442,7 +5106,7 @@ function ContextMenuItem({ children, onClick, danger }) {
 function ContextMenuSep() {
   return <div style={{ height: 1, background: 'var(--border,#E9ECF2)', margin: '5px 8px' }} />
 }
-function ContextMenu({ ctx, obj, hasClipboard, containerW, onClose, onReorder, onDuplicate, onToggleLock, onToggleHidden, onRename, onDelete, onPaste, onSelectAll }) {
+function ContextMenu({ ctx, obj, hasClipboard, containerW, onClose, onReorder, onDuplicate, onToggleLock, onToggleHidden, onRename, onDelete, onPaste, onSelectAll, onRemoveImage = () => {} }) {
   const MENU_W = 224
   const estH = obj ? 332 : 96
   // Kanten-Kippung: wenn rechts/unten kein Platz, nach links/oben öffnen.
@@ -4470,8 +5134,12 @@ function ContextMenu({ ctx, obj, hasClipboard, containerW, onClose, onReorder, o
             <ContextMenuItem onClick={() => onToggleLock(obj.id)}>{obj.locked ? <Unlock {...ic} /> : <Lock {...ic} />}{obj.locked ? 'Entsperren' : 'Sperren'}</ContextMenuItem>
             <ContextMenuItem onClick={() => onToggleHidden(obj.id)}>{obj.hidden ? <Eye {...ic} /> : <EyeOff {...ic} />}{obj.hidden ? 'Einblenden' : 'Ausblenden'}</ContextMenuItem>
             <ContextMenuItem onClick={() => onRename(obj.id)}><Type {...ic} />Umbenennen</ContextMenuItem>
+            {(obj.type === 'frame' || obj.type === 'mockup') && obj.src && (<>
+              <ContextMenuSep />
+              <ContextMenuItem onClick={() => onRemoveImage(obj.id)}><X {...ic} />Bild aus Rahmen entfernen</ContextMenuItem>
+            </>)}
             <ContextMenuSep />
-            <ContextMenuItem danger onClick={onDelete}><Trash2 {...ic} />Löschen</ContextMenuItem>
+            <ContextMenuItem danger onClick={onDelete}><Trash2 {...ic} />{(obj.type === 'frame' || obj.type === 'mockup') ? 'Rahmen löschen' : 'Löschen'}</ContextMenuItem>
           </>
         ) : (
           <>
@@ -4743,6 +5411,12 @@ function ContextBar({
           <Crop size={14} strokeWidth={1.9} />Zuschneiden
         </button>
       )}
+      {(o.type === 'frame' || o.type === 'mockup') && o.src && (
+        <button type="button" onClick={() => setOnce({ src: null })} title="Bild aus dem Rahmen entfernen"
+          style={{ display: 'inline-flex', alignItems: 'center', gap: 6, height: 34, padding: '0 12px', borderRadius: 9, border: '1px solid var(--border,#E9ECF2)', background: 'var(--surface,#fff)', color: 'var(--text-primary)', fontSize: 12.5, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit' }}>
+          <X size={14} strokeWidth={2} />Bild entfernen
+        </button>
+      )}
 
       <Divider />
 
@@ -5001,10 +5675,11 @@ function IconsTab({ onInsert }) {
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(44px, 1fr))', gap: 8 }}>
             {ids.map(id => (
               <button key={id} onClick={() => handlePick(id)} title={id} disabled={inserting === id}
-                style={{ height: 44, borderRadius: 9, border: '1px solid var(--border)', background: '#fff', cursor: 'pointer', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', position: 'relative' }}>
+                draggable onDragStart={() => { _designerDrag = { k: 'dataurl', dataUrl: iconSvgUrl(id, color), meta: { iconId: id, iconColor: color, isIcon: true } } }} onDragEnd={() => { _designerDrag = null }}
+                style={{ height: 44, borderRadius: 9, border: '1px solid var(--border)', background: '#fff', cursor: 'grab', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', position: 'relative' }}>
                 {inserting === id
                   ? <Loader2 size={16} className="lk-spin" style={{ color: 'var(--text-muted)' }} />
-                  : <img src={iconSvgUrl(id, color)} alt={id} loading="lazy" width={28} height={28} style={{ display: 'block', objectFit: 'contain' }} />}
+                  : <img src={iconSvgUrl(id, color)} alt={id} loading="lazy" draggable={false} width={28} height={28} style={{ display: 'block', objectFit: 'contain' }} />}
               </button>
             ))}
           </div>
@@ -5049,10 +5724,11 @@ function GraphicsTab({ onInsert }) {
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(44px, 1fr))', gap: 8 }}>
             {ids.map(id => (
               <button key={id} onClick={() => handlePick(id)} title={id} disabled={inserting === id}
-                style={{ height: 44, borderRadius: 9, border: '1px solid var(--border)', background: '#fff', cursor: 'pointer', display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }}>
+                draggable onDragStart={() => { _designerDrag = { k: 'dataurl', dataUrl: iconSvgUrl(id), meta: { isGraphic: true } } }} onDragEnd={() => { _designerDrag = null }}
+                style={{ height: 44, borderRadius: 9, border: '1px solid var(--border)', background: '#fff', cursor: 'grab', display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }}>
                 {inserting === id
                   ? <Loader2 size={16} className="lk-spin" style={{ color: 'var(--text-muted)' }} />
-                  : <img src={iconSvgUrl(id)} alt={id} loading="lazy" width={30} height={30} style={{ display: 'block', objectFit: 'contain' }} />}
+                  : <img src={iconSvgUrl(id)} alt={id} loading="lazy" draggable={false} width={30} height={30} style={{ display: 'block', objectFit: 'contain' }} />}
               </button>
             ))}
           </div>
@@ -5127,9 +5803,10 @@ function ImagesTab({ onInsert }) {
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(78px, 1fr))', gap: 8 }}>
           {photos.map(p => (
             <button key={p.id} onClick={() => handlePick(p)} title={p.alt || ''} disabled={inserting === p.id}
-              style={{ border: 'none', padding: 0, borderRadius: 8, overflow: 'hidden', cursor: 'pointer', background: p.avgColor || '#eef1f5', position: 'relative', display: 'flex', flexDirection: 'column' }}>
+              draggable onDragStart={() => { _designerDrag = { k: 'stock', large: p?.src?.large } }} onDragEnd={() => { _designerDrag = null }}
+              style={{ border: 'none', padding: 0, borderRadius: 8, overflow: 'hidden', cursor: 'grab', background: p.avgColor || '#eef1f5', position: 'relative', display: 'flex', flexDirection: 'column' }}>
               <div style={{ width: '100%', aspectRatio: '1 / 1', background: p.avgColor || '#eef1f5', position: 'relative' }}>
-                <img src={p?.src?.tiny || p?.src?.medium} alt={p.alt || ''} loading="lazy"
+                <img src={p?.src?.tiny || p?.src?.medium} alt={p.alt || ''} loading="lazy" draggable={false}
                   style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} />
                 {inserting === p.id && (
                   <div style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'rgba(255,255,255,0.6)' }}>
@@ -5241,9 +5918,12 @@ function TemplatesPanelBody({ onApplyTemplate, onClose }) {
 }
 
 // ─── Panel: Elemente (Formen / Icons / Grafiken / Bilder) ───────────────────
-function ElementsPanelBody({ elementTab, setElementTab, onAddRect, onAddEllipse, onAddLine, onAddArrow, onAddAsset, onInsertMedia }) {
+function ElementsPanelBody({ elementTab, setElementTab, onAddRect, onAddEllipse, onAddLine, onAddArrow, onAddAsset, onInsertMedia, onAddFrame = () => {}, onAddCollage = () => {}, onAddMockup = () => {} }) {
   const tabs = [
     { id: 'shapes', label: 'Formen' },
+    { id: 'frames', label: 'Rahmen' },
+    { id: 'collage', label: 'Collage' },
+    { id: 'mockups', label: 'Mockups' },
     { id: 'icons', label: 'Icons' },
     { id: 'graphics', label: 'Grafiken' },
     { id: 'images', label: 'Bilder' },
@@ -5282,6 +5962,51 @@ function ElementsPanelBody({ elementTab, setElementTab, onAddRect, onAddEllipse,
               </button>
             ))}
             {assetList.length === 0 && <span style={{ gridColumn: '1 / -1', fontSize: 12, color: 'var(--text-muted)' }}>Keine Treffer.</span>}
+          </div>
+        </div>
+      )}
+      {elementTab === 'frames' && (
+        <div>
+          <PanelLabel>Bilderrahmen</PanelLabel>
+          <div style={{ fontSize: 11.5, color: 'var(--text-muted)', margin: '0 0 8px', lineHeight: 1.4 }}>Rahmen einfügen, dann auswählen und ein Bild einsetzen (Upload/Medien) — es füllt die Form (cover).</div>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(52px, 1fr))', gap: 8 }}>
+            {FRAME_SHAPES.map(s => (
+              <button key={s.id} onClick={() => onAddFrame(s.id)} title={s.label}
+                style={{ height: 52, borderRadius: 9, border: '1px solid var(--border)', background: '#fff', cursor: 'pointer', display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }}>
+                <svg width="30" height="30" viewBox="0 0 100 100"><path d={s.svg} fill="#CBD5E1" stroke="#94A3B8" strokeWidth="3" strokeLinejoin="round" /></svg>
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
+      {elementTab === 'collage' && (
+        <div>
+          <PanelLabel>Collage-Layouts</PanelLabel>
+          <div style={{ fontSize: 11.5, color: 'var(--text-muted)', margin: '0 0 8px', lineHeight: 1.4 }}>Layout einfügen — es platziert mehrere Rahmen. Jede Zelle auswählen und ein Bild einsetzen.</div>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(58px, 1fr))', gap: 8 }}>
+            {COLLAGE_LAYOUTS.map(l => (
+              <button key={l.id} onClick={() => onAddCollage(l.id)} title={l.label}
+                style={{ height: 58, borderRadius: 9, border: '1px solid var(--border)', background: '#fff', cursor: 'pointer', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', padding: 6 }}>
+                <svg width="42" height="42" viewBox="0 0 100 100">
+                  {l.cells.map((ce, i) => (<rect key={i} x={ce[0] * 100 + 2} y={ce[1] * 100 + 2} width={Math.max(0, ce[2] * 100 - 4)} height={Math.max(0, ce[3] * 100 - 4)} rx="3" fill="#CBD5E1" stroke="#94A3B8" strokeWidth="2" />))}
+                </svg>
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
+      {elementTab === 'mockups' && (
+        <div>
+          <PanelLabel>Mockups</PanelLabel>
+          <div style={{ fontSize: 11.5, color: 'var(--text-muted)', margin: '0 0 8px', lineHeight: 1.4 }}>Geräte-Mockup einfügen, dann auswählen und ein Bild einsetzen — es füllt den Screen.</div>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(58px, 1fr))', gap: 8 }}>
+            {DEVICE_MOCKUPS.map(d => (
+              <button key={d.id} onClick={() => onAddMockup(d.id)} title={d.label}
+                style={{ height: 58, borderRadius: 9, border: '1px solid var(--border)', background: '#fff', cursor: 'pointer', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 3 }}>
+                {mockupPreview(d.id)}
+                <span style={{ fontSize: 9.5, color: 'var(--text-muted)', fontWeight: 600 }}>{d.label}</span>
+              </button>
+            ))}
           </div>
         </div>
       )}
@@ -5373,8 +6098,9 @@ function UploadsPanelBody({ onTriggerUpload, uploadThumbs, onInsertUpload, media
           <PanelLabel>Diese Sitzung</PanelLabel>
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 8, marginBottom: 14 }}>
             {uploadThumbs.map((u, i) => (
-              <button key={i} onClick={() => onInsertUpload(u)} title="Einfügen"
-                style={{ height: 64, borderRadius: 8, border: '1px solid var(--border)', background: `#f4f6fa center/cover no-repeat url(${u})`, cursor: 'pointer' }} />
+              <button key={i} onClick={() => onInsertUpload(u)} title="Auf die Leinwand ziehen oder klicken"
+                draggable onDragStart={() => { _designerDrag = { k: 'dataurl', dataUrl: u } }} onDragEnd={() => { _designerDrag = null }}
+                style={{ height: 64, borderRadius: 8, border: '1px solid var(--border)', background: `#f4f6fa center/cover no-repeat url(${u})`, cursor: 'grab' }} />
             ))}
           </div>
         </>
@@ -5387,8 +6113,9 @@ function UploadsPanelBody({ onTriggerUpload, uploadThumbs, onInsertUpload, media
       ) : (
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 8 }}>
           {mediaLib.map((m) => (
-            <button key={m.id} onClick={() => onInsertMediaItem(m.storage_path)} title="Einfügen"
-              style={{ height: 64, borderRadius: 8, border: '1px solid var(--border)', background: `#f4f6fa center/cover no-repeat url(${m.url})`, cursor: 'pointer' }} />
+            <button key={m.id} onClick={() => onInsertMediaItem(m.storage_path)} title="Auf die Leinwand ziehen oder klicken"
+              draggable onDragStart={() => { _designerDrag = { k: 'media', storagePath: m.storage_path } }} onDragEnd={() => { _designerDrag = null }}
+              style={{ height: 64, borderRadius: 8, border: '1px solid var(--border)', background: `#f4f6fa center/cover no-repeat url(${m.url})`, cursor: 'grab' }} />
           ))}
         </div>
       ))}
