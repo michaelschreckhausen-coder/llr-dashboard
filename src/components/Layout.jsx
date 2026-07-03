@@ -90,7 +90,6 @@ function IcBrain()    { return <SvgIcon><path d="M9.5 2A2.5 2.5 0 0 1 12 4.5v15a
 function IcAssistant() { return <SvgIcon><path d="M12 2a2 2 0 0 1 2 2c0 .74-.4 1.39-1 1.73V7h1a7 7 0 0 1 7 7h1a1 1 0 0 1 0 2h-1v1a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-1H2a1 1 0 0 1 0-2h1a7 7 0 0 1 7-7h1V5.73c-.6-.34-1-.99-1-1.73a2 2 0 0 1 2-2z"/><circle cx="9" cy="12" r="1"/><circle cx="15" cy="12" r="1"/></SvgIcon> }
 function IcCard() { return <SvgIcon><path d="M20 4H4c-1.11 0-1.99.89-1.99 2L2 18c0 1.11.89 2 2 2h16c1.11 0 2-.89 2-2V6c0-1.11-.89-2-2-2zm0 14H4v-6h16v6zm0-10H4V6h16v2z"/></SvgIcon> }
 function IcSparkles() { return <SvgIcon><path d="m12 3-1.9 5.8a2 2 0 0 1-1.287 1.288L3 12l5.8 1.9a2 2 0 0 1 1.288 1.287L12 21l1.9-5.8a2 2 0 0 1 1.287-1.288L21 12l-5.8-1.9a2 2 0 0 1-1.288-1.287Z"/><path d="M5 3v4"/><path d="M3 5h4"/><path d="M19 17v4"/><path d="M17 19h4"/></SvgIcon> }
-function IcCog() { return <SvgIcon><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></SvgIcon> }
 import { useEntitlements } from '../hooks/useEntitlements'
 import { useAddons } from '../hooks/useAddons'
 import { useTagRegistrySync } from '../hooks/useTagRegistry'
@@ -139,27 +138,21 @@ function getNav(t) {
   { to: '/sponsoring/signale',         icon: IcTarget,        label: 'Signale' },
   { to: '/sponsoring/sichtbarkeit',    icon: IcSparkles,      label: 'KI-Sichtbarkeit' },
   { to: '/sponsoring/success',         icon: IcStar,          label: 'Sponsor Success' },
-  ]
-}
 
-// Bereiche „Branding" + „Wissen" wandern ins Kopf-Menü oben rechts (Einrichtung).
-// Sub-Items bewusst 1:1 unverändert (inkl. der Sponsoring-Unterseiten in „Wissen").
-function getSetupNav(t) {
-  return [
-    { label: t('nav.branding'), tourId: 'nav-branding', items: [
-      { to: '/personal-brand',  icon: IcPersonBrand,  label: 'Personal Brand' },
-      { to: '/company-brand',   icon: IcCompanyBrand, label: 'Company Brand' },
-      { to: '/zielgruppen',     icon: IcTarget,   label: t('nav.zielgruppen') },
-      { to: '/branding/strike2-personas', icon: IcTarget, label: 'Strike2 Zielgruppen', module: 'strike2_zielgruppen_plus' },
-      { to: '/ki-sichtbarkeit', icon: IcSparkles, label: 'KI-Sichtbarkeit', addonSlug: 'auralis' },
-    ] },
-    { label: 'Wissen', tourId: 'nav-wissen', items: [
-      { to: '/wissensdatenbank',       icon: IcCloud,  label: t('nav.wissensdatenbank'), module: 'branding' },
-      { to: '/sponsoring/ligen',       icon: IcShield, label: 'Ligen',             module: 'sponsoring' },
-      { to: '/sponsoring/pakete',      icon: IcPuzzle, label: 'Pakete',            module: 'sponsoring' },
-      { to: '/sponsoring/rechte',      icon: IcGrid,   label: 'Rechte & Inventar', module: 'sponsoring' },
-      { to: '/sponsoring/hospitality', icon: IcHeart,  label: 'Hospitality',       module: 'sponsoring' },
-    ] },
+  // ── Einrichtung (unten, leicht getönt): Branding + Wissen ──
+  { divider: true, label: t('nav.branding'), tourId: 'nav-branding', setup: true },
+  { to: '/personal-brand',  icon: IcPersonBrand,  label: 'Personal Brand' },
+  { to: '/company-brand',   icon: IcCompanyBrand, label: 'Company Brand' },
+  { to: '/zielgruppen',     icon: IcTarget,   label: t('nav.zielgruppen') },
+  { to: '/branding/strike2-personas', icon: IcTarget, label: 'Strike2 Zielgruppen', module: 'strike2_zielgruppen_plus' },
+  { to: '/ki-sichtbarkeit', icon: IcSparkles, label: 'KI-Sichtbarkeit', addonSlug: 'auralis' },
+
+  { divider: true, label: 'Wissen', tourId: 'nav-wissen', setup: true },
+  { to: '/wissensdatenbank',       icon: IcCloud,  label: t('nav.wissensdatenbank'), module: 'branding' },
+  { to: '/sponsoring/ligen',       icon: IcShield, label: 'Ligen',             module: 'sponsoring' },
+  { to: '/sponsoring/pakete',      icon: IcPuzzle, label: 'Pakete',            module: 'sponsoring' },
+  { to: '/sponsoring/rechte',      icon: IcGrid,   label: 'Rechte & Inventar', module: 'sponsoring' },
+  { to: '/sponsoring/hospitality', icon: IcHeart,  label: 'Hospitality',       module: 'sponsoring' },
   ]
 }
 
@@ -427,7 +420,6 @@ export default function Layout({ session, role, onLogout, children }) {
   const [userName, setUserName] = useState('')
   const [notifications, setNotifications] = useState([])
   const [showNotif, setShowNotif] = useState(false)
-  const [showSetup, setShowSetup] = useState(false)
   // IDs bereits gesehener Benachrichtigungen (persistiert) → ungelesene = neue IDs.
   // Dadurch wird die Glocke wieder rot, sobald etwas NEUES auftaucht.
   const [seenNotifIds, setSeenNotifIds] = useState(() => {
@@ -493,26 +485,6 @@ export default function Layout({ session, role, onLogout, children }) {
   // Sidebar-Gating B3: Addons mit leerem activates_modules (z.B. auralis →
   // KI-Sichtbarkeit) sind nicht in entitlements.modules → Slug-Gate via useAddons.
   const { subscribedSlugs, reload: reloadAddons } = useAddons()
-  const SETUP_NAV = getSetupNav(t)
-  const isItemVisible = (item) => {
-    if (!item) return false
-    if (item.adminOnly && !isAdmin) return false
-    if (!item.to) return true            // sub-section parent
-    if (entitlementsLoading) return true // D-A=a Race-Schutz
-    // Admin sees all sidebar items for support — DO NOT remove without
-    // alternative diagnostics path (Leadesk-Admin braucht Sicht auf
-    // Sponsoring/Strike2/etc. auch ohne Modul-Activation des Accounts).
-    if (isAdmin) return true
-    // Sidebar-Gating (Marketplace-Addons): Item nur sichtbar wenn das
-    // zugehörige Addon/Modul aktiviert ist (verschwindet nach Cancel).
-    //   item.module    → Modul-Gate (Addon mit activates_modules, z.B. Strike2)
-    //   item.addonSlug → Slug-Gate (Addon mit leerem activates_modules, z.B. auralis)
-    if (item.module && !hasModule(item.module)) return false
-    if (item.addonSlug && !(subscribedSlugs?.has?.(item.addonSlug))) return false
-    const perm = getRequiredPermission(item.to)
-    if (perm === null) return true       // always-on
-    return hasPermission(perm)
-  }
   // B4 Propagation: useAddons ist per-Component (nicht Context-shared wie
   // useEntitlements). Damit ein Cancel/Activate im Marketplace auch den Slug-Gate
   // hier live aktualisiert (≤2s, ohne Reload), reloaden wir die Addons sobald sich
@@ -700,7 +672,7 @@ export default function Layout({ session, role, onLogout, children }) {
   }
 
   useEffect(()=>{
-    function h(e){if(!e.target.closest('[data-notif]')&&!e.target.closest('[data-user-menu]')&&!e.target.closest('[data-setup-menu]')){setShowNotif(false);setShowMenu(false);setShowSetup(false)}}
+    function h(e){if(!e.target.closest('[data-notif]')&&!e.target.closest('[data-user-menu]')){setShowNotif(false);setShowMenu(false)}}
     document.addEventListener('mousedown',h)
     return ()=>document.removeEventListener('mousedown',h)
   },[])
@@ -873,7 +845,7 @@ export default function Layout({ session, role, onLogout, children }) {
                   sections.push({ type:'section', label: currentSection.label, items: [] })
                 }
                 currentSection = item
-                sections.push({ type:'section', label: item.label, tourId: item.tourId, items: [] })
+                sections.push({ type:'section', label: item.label, tourId: item.tourId, setup: item.setup || false, items: [] })
               } else {
                 if (currentSection) {
                   sections[sections.length - 1].items.push(item)
@@ -890,54 +862,57 @@ export default function Layout({ session, role, onLogout, children }) {
             //   - getRequiredPermission(item.to)===null → always-on, gerendert
             //   - hasPermission(perm)===true → gerendert
             //   - sonst → herausgefiltert
-// isItemVisible ist jetzt im Component-Scope definiert (auch fürs Einrichtung-Menü).
+            const isItemVisible = (item) => {
+              if (!item) return false
+              if (item.adminOnly && !isAdmin) return false
+              if (!item.to) return true            // sub-section parent
+              if (entitlementsLoading) return true // D-A=a Race-Schutz
+              // Admin sees all sidebar items for support — DO NOT remove without
+              // alternative diagnostics path (Leadesk-Admin braucht Sicht auf
+              // Sponsoring/Strike2/etc. auch ohne Modul-Activation des Accounts).
+              if (isAdmin) return true
+              // Sidebar-Gating (Marketplace-Addons): Item nur sichtbar wenn das
+              // zugehörige Addon/Modul aktiviert ist (verschwindet nach Cancel).
+              //   item.module    → Modul-Gate (Addon mit activates_modules, z.B. Strike2)
+              //   item.addonSlug → Slug-Gate (Addon mit leerem activates_modules, z.B. auralis)
+              if (item.module && !hasModule(item.module)) return false
+              if (item.addonSlug && !(subscribedSlugs?.has?.(item.addonSlug))) return false
+              const perm = getRequiredPermission(item.to)
+              if (perm === null) return true       // always-on
+              return hasPermission(perm)
+            }
 
+            const renderSection = (sec, i) => {
+              const moduleKey = SIDEBAR_DIVIDER_TO_MODULE[sec.label]
+              let visibleItems = sec.items.filter(isItemVisible)
+              if (moduleKey && !isAdmin && !entitlementsLoading && !hasModule(moduleKey)) {
+                if (sec.label === 'LinkedIn' && hasPermission('linkedin.profile_texts')) {
+                  visibleItems = sec.items.filter(it => it.to === '/profiltexte')
+                } else { return null }
+              }
+              if (visibleItems.length === 0 && !entitlementsLoading) return null
+              return (
+                <NavSection key={sec.label + '-' + i} label={sec.label} tourId={sec.tourId} items={visibleItems}
+                  isAdmin={isAdmin} location={location} collapsed={isCollapsed}
+                  autoActive={activeSecLabel === sec.label}
+                  isOpen={openSection === sec.label}
+                  onOpen={() => setOpenSection(sec.label)}
+                  onToggle={() => setOpenSection(prev => prev === sec.label ? null : sec.label)} />
+              )
+            }
+            const opsSections = sections.filter(sec => !sec.setup)
+            const setupSections = sections.filter(sec => sec.setup)
             return (
               <>
                 {topItems.filter(isItemVisible).map((item, i) => (
                   <NavItem key={i} item={item} collapsed={isCollapsed} />
                 ))}
-                {sections.map((sec, i) => {
-                  // Existing Modul-Filter (Block 2 Plan-Modules-Feature):
-                  // ganze Section weg wenn !hasModule. Admin/Loading sind Bypass.
-                  const moduleKey = SIDEBAR_DIVIDER_TO_MODULE[sec.label]
-                  let visibleItems = sec.items.filter(isItemVisible)
-
-                  if (moduleKey && !isAdmin && !entitlementsLoading && !hasModule(moduleKey)) {
-                    // Spezialfall LinkedIn-Section (2026-05-20 Restructure):
-                    // Profiltexte ist nach LinkedIn gewandert, hat aber weiter
-                    // die Permission 'linkedin.profile_texts'. Accounts wie
-                    // SALESPLAY Webinar haben diese Permission, aber kein
-                    // linkedin-Modul. Damit Profiltexte für sie erreichbar
-                    // bleibt: Section anzeigen, aber NUR Profiltexte als Item.
-                    if (sec.label === 'LinkedIn' && hasPermission('linkedin.profile_texts')) {
-                      visibleItems = sec.items.filter(it => it.to === '/profiltexte')
-                    } else {
-                      return null
-                    }
-                  }
-
-                  // Block 5.4: Section komplett verstecken wenn 0 Items uebrig
-                  // (D-B=a), aber NICHT waehrend loading (Race-Schutz).
-                  if (visibleItems.length === 0 && !entitlementsLoading) {
-                    return null
-                  }
-                  return (
-                    <NavSection
-                      key={i}
-                      label={sec.label}
-                      tourId={sec.tourId}
-                      items={visibleItems}
-                      isAdmin={isAdmin}
-                      location={location}
-                      collapsed={isCollapsed}
-                      autoActive={activeSecLabel === sec.label}
-                      isOpen={openSection === sec.label}
-                      onOpen={() => setOpenSection(sec.label)}
-                      onToggle={() => setOpenSection(prev => prev === sec.label ? null : sec.label)}
-                    />
-                  )
-                })}
+                {opsSections.map((sec, i) => renderSection(sec, i))}
+                {!isCollapsed && setupSections.length > 0 && (
+                  <div style={{ marginTop: 10, paddingTop: 6, paddingBottom: 4, borderTop: '1px solid var(--border)', background: 'rgba(2,6,23,0.035)' }}>
+                    {setupSections.map((sec, i) => renderSection(sec, i))}
+                  </div>
+                )}
               </>
             )
           })()}
@@ -1019,49 +994,6 @@ export default function Layout({ session, role, onLogout, children }) {
             </span>
           )}
 
-          {/* Globales Sprachmodell — Picker für alle KI-Funktionen.
-              Auf /ssi ausgeblendet (reines SSI-Tracking, keine KI-Funktion). */}
-          {!isMobile && location.pathname !== '/ssi' && <GlobalModelPicker/>}
-
-          {/* Einrichtung — Branding & Wissen (aus der linken Leiste hierher verschoben) */}
-          <div style={{ position:'relative' }} data-setup-menu>
-            <button data-setup-menu onClick={()=>setShowSetup(v=>!v)} title="Einrichtung — Branding & Wissen"
-              style={{ display:'flex', alignItems:'center', gap:7, height:38, boxSizing:'border-box', padding:'0 13px', borderRadius:11, border:'1px solid ' + (showSetup ? 'var(--wl-primary, rgb(49,90,231))' : 'rgba(49,90,231,0.30)'), background: showSetup ? 'rgba(49,90,231,0.14)' : 'rgba(49,90,231,0.07)', backdropFilter:'var(--glass-blur)', WebkitBackdropFilter:'var(--glass-blur)', cursor:'pointer', color:'var(--wl-primary, rgb(49,90,231))', fontSize:13, fontWeight:700, fontFamily:'inherit', whiteSpace:'nowrap', transition:'all 0.15s' }}
-              onMouseEnter={e=>{ e.currentTarget.style.background='rgba(49,90,231,0.14)' }}
-              onMouseLeave={e=>{ if(!showSetup) e.currentTarget.style.background='rgba(49,90,231,0.07)' }}>
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/><rect x="14" y="14" width="7" height="7" rx="1.5"/></svg>
-              Einrichtung
-              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" style={{ transform: showSetup ? 'rotate(180deg)' : 'none', transition:'transform 0.15s' }}><polyline points="6 9 12 15 18 9"/></svg>
-            </button>
-            {showSetup && (
-              <div data-setup-menu style={{ position:'absolute', top:'calc(100% + 8px)', right:0, width:250, background:'var(--surface-glass-strong)', backdropFilter:'var(--glass-blur)', WebkitBackdropFilter:'var(--glass-blur)', borderRadius:16, boxShadow:'0 8px 32px rgba(15,23,42,0.18)', border:'1px solid var(--border)', zIndex:1000, overflow:'hidden', padding:6 }}>
-                {SETUP_NAV.map(sec => {
-                  const moduleKey = SIDEBAR_DIVIDER_TO_MODULE[sec.label]
-                  const items = sec.items.filter(isItemVisible)
-                  if (moduleKey && !isAdmin && !entitlementsLoading && !hasModule(moduleKey)) return null
-                  if (items.length === 0 && !entitlementsLoading) return null
-                  return (
-                    <div key={sec.label} style={{ marginBottom:2 }}>
-                      <div style={{ fontSize:10.5, fontWeight:700, letterSpacing:'0.05em', textTransform:'uppercase', color:'var(--text-muted)', padding:'8px 10px 4px' }}>{sec.label}</div>
-                      {items.map(it => {
-                        const active = location.pathname === it.to || location.pathname.startsWith(it.to + '/')
-                        return (
-                          <NavLink key={it.to} to={it.to} onClick={()=>setShowSetup(false)}
-                            style={{ display:'flex', alignItems:'center', gap:10, padding:'8px 10px', borderRadius:9, textDecoration:'none', fontSize:13, fontWeight:600, color: active ? 'var(--wl-primary, rgb(49,90,231))' : 'var(--text-primary)', background: active ? 'rgba(49,90,231,0.08)' : 'transparent' }}
-                            onMouseEnter={e=>{ if(!active) e.currentTarget.style.background='var(--surface-hover)' }}
-                            onMouseLeave={e=>{ if(!active) e.currentTarget.style.background='transparent' }}>
-                            <span style={{ display:'flex', alignItems:'center', justifyContent:'center', width:20, color:'var(--text-muted)', flexShrink:0 }}>{it.icon()}</span>
-                            <span>{it.label}</span>
-                          </NavLink>
-                        )
-                      })}
-                    </div>
-                  )
-                })}
-              </div>
-            )}
-          </div>
-
           {!isMobile && currentArea && AREA_TOURS[currentArea] && (
             <button onClick={() => setActiveAreaTour(currentArea)} title={'Tour: ' + AREA_TOURS[currentArea].label + ' neu starten'}
               style={{ width:38, height:38, borderRadius:11, border:'1px solid var(--border)', background:'var(--surface)', cursor:'pointer', display:'inline-flex', alignItems:'center', justifyContent:'center', color:'var(--text-muted)' }}>
@@ -1069,6 +1001,9 @@ export default function Layout({ session, role, onLogout, children }) {
             </button>
           )}
 
+          {/* Globales Sprachmodell — Picker für alle KI-Funktionen.
+              Auf /ssi ausgeblendet (reines SSI-Tracking, keine KI-Funktion). */}
+          {!isMobile && location.pathname !== '/ssi' && <GlobalModelPicker/>}
 
           {/* Extension-Button — direkt zum Chrome Web Store */}
           <a
