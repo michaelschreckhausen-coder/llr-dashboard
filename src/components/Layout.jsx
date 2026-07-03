@@ -99,25 +99,20 @@ import { isFlagEnabled } from '../lib/featureFlags'
 function getNav(t) {
   return [
   { to: '/dashboard',       icon: IcHome,     label: t('nav.home'), tourId: 'nav-dashboard' },
-  // Assistent-Nav retired (Phase 1) — Leadly lebt in der Bubble + im Dashboard-Briefing.
   { to: '/aufgaben',        icon: IcKanban,   label: t('nav.aufgaben') },
-
-  { divider: true, label: t('nav.branding'), tourId: 'nav-branding' },
-  { to: '/personal-brand',  icon: IcPersonBrand,  label: 'Personal Brand' },
-  { to: '/company-brand',   icon: IcCompanyBrand, label: 'Company Brand' },
-  { to: '/zielgruppen',     icon: IcTarget,   label: t('nav.zielgruppen') },
-  { to: '/branding/strike2-personas', icon: IcTarget, label: 'Strike2 Zielgruppen', module: 'strike2_zielgruppen_plus' },
-  { to: '/ki-sichtbarkeit', icon: IcSparkles, label: 'KI-Sichtbarkeit', addonSlug: 'auralis' },
 
   { divider: true, label: t('nav.sales'), tourId: 'nav-sales' },
   { to: '/organizations',   icon: IcUsers2,   label: 'Unternehmen' },
   { to: '/leads',           icon: IcUsers,    label: 'Kontakte' },
   { to: '/deals',           icon: IcBarChart, label: t('nav.deals') },
-  // Kampagne = zentrale CRM-Klammer (Partner-Feedback): Kontakte/Unternehmen/Deals laufen über Kampagnen.
   { to: '/sponsoring/kampagnen', icon: IcRocket, label: 'Kampagnen', module: 'sponsoring' },
   { to: '/reports',         icon: IcBarChart, label: t('nav.salesReporting') },
 
-  // Projektumsetzung temporär ausgeblendet (2026-06-01 — kommt später zurück)
+  { divider: true, label: t('nav.content'), tourId: 'nav-content' },
+  { to: '/redaktionsplan',  icon: IcCalPen,   label: t('nav.redaktionsplan') },
+  { to: '/content-studio',  icon: IcStar,     label: 'Content-Werkstatt' },
+  { to: '/bibliothek',      icon: IcImage,    label: 'Bibliothek' },
+
   { divider: true, label: 'LinkedIn', tourId: 'nav-linkedin' },
   { to: '/linkedin-inbox',  icon: IcInbox,    label: 'Import-Inbox' },
   { to: '/vernetzungen',    icon: IcHeart,    label: 'Vernetzung' },
@@ -127,29 +122,9 @@ function getNav(t) {
   { to: '/profil-checker',  icon: IcLinkedIn, label: 'Profil-Checker' },
   { to: '/profiltexte',     icon: IcLinkedIn, label: t('nav.profiltexte') },
 
-  { divider: true, label: t('nav.content'), tourId: 'nav-content' },
-  { to: '/redaktionsplan',  icon: IcCalPen,   label: t('nav.redaktionsplan') },
-  { to: '/content-studio',  icon: IcStar,     label: 'Content-Werkstatt' },
-  { to: '/bibliothek',      icon: IcImage,    label: 'Bibliothek' },
-
-  // Instagram — Addon-Section. Divider-Label MUSS 'Instagram' sein, damit
-  // SIDEBAR_DIVIDER_TO_MODULE die Section ohne instagram-Modul ausblendet.
   { divider: true, label: 'Instagram', tourId: 'nav-instagram' },
   { to: '/instagram',       icon: IcInstagram, label: 'Analysen' },
 
-  // "Wissen" — gemischte Herkunft: Wissensdatenbank (branding-Modul) + Ligen/Pakete
-  // (sponsoring-Addon). BEWUSST KEIN Eintrag in SIDEBAR_DIVIDER_TO_MODULE → Gating
-  // läuft per-Item über item.module; die Section verschwindet via Hide-empty-Divider
-  // (Layout-Filter unten), sobald 0 Items sichtbar sind. Routen unverändert.
-  { divider: true, label: 'Wissen', tourId: 'nav-wissen' },
-  { to: '/wissensdatenbank',       icon: IcCloud,  label: t('nav.wissensdatenbank'), module: 'branding' },
-  { to: '/sponsoring/ligen',       icon: IcShield, label: 'Ligen',             module: 'sponsoring' },
-  { to: '/sponsoring/pakete',      icon: IcPuzzle, label: 'Pakete',            module: 'sponsoring' },
-  { to: '/sponsoring/rechte',      icon: IcGrid,   label: 'Rechte & Inventar', module: 'sponsoring' },
-  { to: '/sponsoring/hospitality', icon: IcHeart,  label: 'Hospitality',       module: 'sponsoring' },
-
-  // Sponsoring OS — Addon-Section. Divider-Label MUSS 'Sponsoring' sein, damit
-  // SIDEBAR_DIVIDER_TO_MODULE die Section ohne sponsoring-Modul ausblendet.
   { divider: true, label: 'Sponsoring', tourId: 'nav-sponsoring' },
   { to: '/sponsoring',                 icon: IcRocket,        label: 'Übersicht' },
   { to: '/sponsoring/angebote',        icon: IcDoc,           label: 'Angebote' },
@@ -162,9 +137,21 @@ function getNav(t) {
   { to: '/sponsoring/signale',         icon: IcTarget,        label: 'Signale' },
   { to: '/sponsoring/sichtbarkeit',    icon: IcSparkles,      label: 'KI-Sichtbarkeit' },
   { to: '/sponsoring/success',         icon: IcStar,          label: 'Sponsor Success' },
-  // Aus dem Menü ausgeblendet (Routen + ModuleGuard bleiben bestehen, per Direkt-URL
-  // weiter erreichbar): /sponsoring/assistent + /sponsoring/linkedin-import.
 
+  // ── Einrichtung (unten, leicht getönt): Branding + Wissen ──
+  { divider: true, label: t('nav.branding'), tourId: 'nav-branding', setup: true },
+  { to: '/personal-brand',  icon: IcPersonBrand,  label: 'Personal Brand' },
+  { to: '/company-brand',   icon: IcCompanyBrand, label: 'Company Brand' },
+  { to: '/zielgruppen',     icon: IcTarget,   label: t('nav.zielgruppen') },
+  { to: '/branding/strike2-personas', icon: IcTarget, label: 'Strike2 Zielgruppen', module: 'strike2_zielgruppen_plus' },
+  { to: '/ki-sichtbarkeit', icon: IcSparkles, label: 'KI-Sichtbarkeit', addonSlug: 'auralis' },
+
+  { divider: true, label: 'Wissen', tourId: 'nav-wissen', setup: true },
+  { to: '/wissensdatenbank',       icon: IcCloud,  label: t('nav.wissensdatenbank'), module: 'branding' },
+  { to: '/sponsoring/ligen',       icon: IcShield, label: 'Ligen',             module: 'sponsoring' },
+  { to: '/sponsoring/pakete',      icon: IcPuzzle, label: 'Pakete',            module: 'sponsoring' },
+  { to: '/sponsoring/rechte',      icon: IcGrid,   label: 'Rechte & Inventar', module: 'sponsoring' },
+  { to: '/sponsoring/hospitality', icon: IcHeart,  label: 'Hospitality',       module: 'sponsoring' },
   ]
 }
 
@@ -817,7 +804,7 @@ export default function Layout({ session, role, onLogout, children }) {
                   sections.push({ type:'section', label: currentSection.label, items: [] })
                 }
                 currentSection = item
-                sections.push({ type:'section', label: item.label, tourId: item.tourId, items: [] })
+                sections.push({ type:'section', label: item.label, tourId: item.tourId, setup: item.setup || false, items: [] })
               } else {
                 if (currentSection) {
                   sections[sections.length - 1].items.push(item)
@@ -854,52 +841,37 @@ export default function Layout({ session, role, onLogout, children }) {
               return hasPermission(perm)
             }
 
+            const renderSection = (sec, i) => {
+              const moduleKey = SIDEBAR_DIVIDER_TO_MODULE[sec.label]
+              let visibleItems = sec.items.filter(isItemVisible)
+              if (moduleKey && !isAdmin && !entitlementsLoading && !hasModule(moduleKey)) {
+                if (sec.label === 'LinkedIn' && hasPermission('linkedin.profile_texts')) {
+                  visibleItems = sec.items.filter(it => it.to === '/profiltexte')
+                } else { return null }
+              }
+              if (visibleItems.length === 0 && !entitlementsLoading) return null
+              return (
+                <NavSection key={sec.label + '-' + i} label={sec.label} tourId={sec.tourId} items={visibleItems}
+                  isAdmin={isAdmin} location={location} collapsed={isCollapsed}
+                  autoActive={activeSecLabel === sec.label}
+                  isOpen={openSection === sec.label}
+                  onOpen={() => setOpenSection(sec.label)}
+                  onToggle={() => setOpenSection(prev => prev === sec.label ? null : sec.label)} />
+              )
+            }
+            const opsSections = sections.filter(sec => !sec.setup)
+            const setupSections = sections.filter(sec => sec.setup)
             return (
               <>
                 {topItems.filter(isItemVisible).map((item, i) => (
                   <NavItem key={i} item={item} collapsed={isCollapsed} />
                 ))}
-                {sections.map((sec, i) => {
-                  // Existing Modul-Filter (Block 2 Plan-Modules-Feature):
-                  // ganze Section weg wenn !hasModule. Admin/Loading sind Bypass.
-                  const moduleKey = SIDEBAR_DIVIDER_TO_MODULE[sec.label]
-                  let visibleItems = sec.items.filter(isItemVisible)
-
-                  if (moduleKey && !isAdmin && !entitlementsLoading && !hasModule(moduleKey)) {
-                    // Spezialfall LinkedIn-Section (2026-05-20 Restructure):
-                    // Profiltexte ist nach LinkedIn gewandert, hat aber weiter
-                    // die Permission 'linkedin.profile_texts'. Accounts wie
-                    // SALESPLAY Webinar haben diese Permission, aber kein
-                    // linkedin-Modul. Damit Profiltexte für sie erreichbar
-                    // bleibt: Section anzeigen, aber NUR Profiltexte als Item.
-                    if (sec.label === 'LinkedIn' && hasPermission('linkedin.profile_texts')) {
-                      visibleItems = sec.items.filter(it => it.to === '/profiltexte')
-                    } else {
-                      return null
-                    }
-                  }
-
-                  // Block 5.4: Section komplett verstecken wenn 0 Items uebrig
-                  // (D-B=a), aber NICHT waehrend loading (Race-Schutz).
-                  if (visibleItems.length === 0 && !entitlementsLoading) {
-                    return null
-                  }
-                  return (
-                    <NavSection
-                      key={i}
-                      label={sec.label}
-                      tourId={sec.tourId}
-                      items={visibleItems}
-                      isAdmin={isAdmin}
-                      location={location}
-                      collapsed={isCollapsed}
-                      autoActive={activeSecLabel === sec.label}
-                      isOpen={openSection === sec.label}
-                      onOpen={() => setOpenSection(sec.label)}
-                      onToggle={() => setOpenSection(prev => prev === sec.label ? null : sec.label)}
-                    />
-                  )
-                })}
+                {opsSections.map((sec, i) => renderSection(sec, i))}
+                {!isCollapsed && setupSections.length > 0 && (
+                  <div style={{ marginTop: 4, paddingTop: 4, paddingBottom: 6, background: 'rgba(2,6,23,0.035)' }}>
+                    {setupSections.map((sec, i) => renderSection(sec, i))}
+                  </div>
+                )}
               </>
             )
           })()}
