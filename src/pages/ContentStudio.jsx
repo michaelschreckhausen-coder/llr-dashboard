@@ -163,6 +163,41 @@ function makeImageThumb(file, max = 320) {
   })
 }
 
+// Echte Collage/Montage aus mehreren angehängten Bildern — deterministisch per Canvas
+// (generative Modelle wie Gemini erfinden die Fotos neu → unbrauchbar für „Collage").
+// Layout passt sich an Ausrichtung an: Querformat → stapeln, Hochformat → nebeneinander.
+function collageLayout(n, avgAspect) {
+  if (n <= 1) return [1, 1]
+  if (n === 2) return avgAspect >= 1 ? [1, 2] : [2, 1]
+  if (n === 3) return avgAspect >= 1 ? [1, 3] : [3, 1]
+  if (n === 4) return [2, 2]
+  const cols = Math.ceil(Math.sqrt(n)); return [cols, Math.ceil(n / cols)]
+}
+async function composeCollage(atts, W, H, gap = 12) {
+  const load = (a) => new Promise((res) => {
+    const im = new Image()
+    im.onload = () => res(im); im.onerror = () => res(null)
+    im.src = a.base64 ? ('data:' + (a.type || 'image/jpeg') + ';base64,' + a.base64) : (a.preview || '')
+  })
+  const imgs = (await Promise.all((atts || []).map(load))).filter(Boolean)
+  if (!imgs.length) throw new Error('Keine Bilder ladbar')
+  const avgAspect = imgs.reduce((s, im) => s + (im.width / im.height), 0) / imgs.length
+  const [cols, rows] = collageLayout(imgs.length, avgAspect)
+  const canvas = document.createElement('canvas'); canvas.width = W; canvas.height = H
+  const ctx = canvas.getContext('2d')
+  ctx.fillStyle = '#ffffff'; ctx.fillRect(0, 0, W, H)
+  const cw = (W - gap * (cols + 1)) / cols
+  const ch = (H - gap * (rows + 1)) / rows
+  imgs.forEach((im, i) => {
+    const cx = i % cols, cy = Math.floor(i / cols)
+    const dx = gap + cx * (cw + gap), dy = gap + cy * (ch + gap)
+    const s = Math.max(cw / im.width, ch / im.height) // cover-crop, keine Verzerrung
+    const sw = cw / s, sh = ch / s
+    ctx.drawImage(im, (im.width - sw) / 2, (im.height - sh) / 2, sw, sh, dx, dy, cw, ch)
+  })
+  return await new Promise((res) => canvas.toBlob((b) => res(b), 'image/png'))
+}
+
 // ─── Hauptkomponente ────────────────────────────────────────────────────────
 export default function ContentStudio({ session }) {
   const navigate = useNavigate()
@@ -902,6 +937,37 @@ export default function ContentStudio({ session }) {
     try { await supabase.from('content_chat_messages').insert({ chat_id: chatIdForSend, role:'user', content: prompt, metadata: { type:'image_request', attachments: attMetaV } }) } catch (_e) {}
     setTimeout(() => messagesEndRef.current?.scrollIntoView({ behavior:'smooth' }), 30)
     pendingGens.set(chatIdForSend, { kind:'image', startedAt:Date.now(), expectedSeconds:(/(-pro-|\|high)/i.test(imageModel||'') ? 45 : 22), ratio:(imageFormat?.ratio||'1:1') }); emitGenChange()
+
+    // ── Echte Collage/Montage: wenn der Nutzer eine Collage aus den angehängten Bildern
+    //    will, deterministisch per Canvas zusammensetzen statt an das Bildmodell zu geben.
+    const wantsCollage = /\b(collage|kollage|montage|nebeneinander|aneinander|zusammen(f[üu]g|setz|stell)|raster|grid|side.?by.?side)\b/i.test(prompt)
+    if (wantsCollage && atts.length >= 2) {
+      try {
+        const fmtW = imageFormat?.w || 1200, fmtH = imageFormat?.h || 1200
+        const blob = await composeCollage(atts, fmtW, fmtH)
+        if (!blob) throw new Error('Collage konnte nicht erzeugt werden')
+        const { path, error: upErr } = await uploadImageBlob(activeTeamId, blob)
+        if (upErr) throw new Error(upErr.message || 'Upload fehlgeschlagen')
+        let userId = null
+        try { const { data } = await supabase.auth.getUser(); userId = data?.user?.id || null } catch (_e) {}
+        const { data: row, error: insErr } = await supabase.from('visuals').insert({
+          user_id: userId, team_id: activeTeamId,
+          brand_voice_id: noBrand ? null : (activeBrandVoice?.id || null), no_brand: noBrand,
+          kind: 'image', media_type: 'image', aspect_ratio: imageFormat?.ratio || '1:1',
+          prompt, storage_path: path,
+        }).select().single()
+        if (insErr) throw insErr
+        await linkVisualToChat(row.id, chatIdForSend)
+        const imgMeta = { type:'image', visual_id: row.id, storage_path: path, prompt, collage: true }
+        await supabase.from('content_chat_messages').insert({ chat_id: chatIdForSend, role:'assistant', content: JSON.stringify(imgMeta), metadata: imgMeta })
+        loadChats()
+      } catch (e) {
+        if (chatIdForSend === activeChatIdRef.current) setError('Collage-Fehler: ' + (e?.message || String(e)))
+      } finally {
+        pendingGens.delete(chatIdForSend); emitGenChange(); emitGenDone(chatIdForSend)
+      }
+      return
+    }
 
     // ── Bild-Direktor (wie ChatGPT/Claude): ein Sprachmodell liest den GANZEN Chat
     // (inkl. geschriebener Beiträge + vorheriger Bilder) und formuliert daraus einen
