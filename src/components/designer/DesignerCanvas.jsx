@@ -600,6 +600,20 @@ function mockupQuad(o) {
   if (o.kind === 'photo') { const qf = o.quadFrac || DEFAULT_PHOTO_QUAD; return qf.map(p => ({ x: p.u * o.width, y: p.v * o.height })) }
   const dev = deviceById(o.device); return dev && dev.screenQuad ? dev.screenQuad(o.width, o.height) : null
 }
+// Seed-Bibliothek: echte Foto-Mockups (lizenzfreie Pexels-Fotos + vermessene Screen-Ecken).
+// Beim Einfügen wird das Foto zu einer DataURL geladen (kein CORS-Taint beim Export).
+const _pxPhoto = id => `https://images.pexels.com/photos/${id}/pexels-photo-${id}.jpeg?auto=compress&cs=tinysrgb&w=1200`
+const _pxThumb = id => `https://images.pexels.com/photos/${id}/pexels-photo-${id}.jpeg?auto=compress&cs=tinysrgb&w=300`
+const PHOTO_MOCKUPS = [
+  { id: 'pm_frame', label: 'Bilderrahmen', photo: _pxPhoto('5978721'), thumb: _pxThumb('5978721'),
+    quad: [{ u: 0.445, v: 0.35 }, { u: 0.62, v: 0.35 }, { u: 0.62, v: 0.67 }, { u: 0.445, v: 0.67 }] },
+  { id: 'pm_laptop', label: 'Laptop', photo: _pxPhoto('16978385'), thumb: _pxThumb('16978385'),
+    quad: [{ u: 0.515, v: 0.34 }, { u: 0.96, v: 0.355 }, { u: 0.955, v: 0.635 }, { u: 0.535, v: 0.675 }] },
+  { id: 'pm_laptop_angle', label: 'Laptop schräg', photo: _pxPhoto('34804004'), thumb: _pxThumb('34804004'),
+    quad: [{ u: 0.355, v: 0.275 }, { u: 0.745, v: 0.305 }, { u: 0.715, v: 0.49 }, { u: 0.335, v: 0.615 }] },
+  { id: 'pm_phone', label: 'Smartphone', photo: _pxPhoto('6373144'), thumb: _pxThumb('6373144'),
+    quad: [{ u: 0.475, v: 0.295 }, { u: 0.555, v: 0.29 }, { u: 0.56, v: 0.635 }, { u: 0.48, v: 0.64 }] },
+]
 function mockupPreview(id) {
   const c = '#CBD5E1', s = '#94A3B8'
   const P = { width: 28, height: 28, viewBox: '0 0 100 100' }
@@ -670,7 +684,6 @@ export default function DesignerCanvas({ visual, teamId, onSaved, onReplaceVisua
   const containerRef = useRef(null)
   const textareaRef = useRef(null)
   const fileInputRef = useRef(null)                   // versteckter file-input (Bild-Upload)
-  const pendingPhotoMockupRef = useRef(false)         // nächster Upload → Foto-Mockup statt Bild-Objekt
   const activeRef = useRef(null)                       // Root des Designers (Sichtbarkeits-Guard)
 
   const { activeBrandVoice } = useBrandVoice()
@@ -1853,31 +1866,27 @@ export default function DesignerCanvas({ visual, teamId, onSaved, onReplaceVisua
       return { ...o, quadFrac: qf }
     }))
   }
-  function addPhotoMockupFromDataUrl(url) {
-    if (!url) return
-    const img = new window.Image()
-    img.onload = () => {
-      const nw = img.naturalWidth || 400, nh = img.naturalHeight || 300
-      const cw = (baseCrop?.width || stageSize.width), ch = (baseCrop?.height || stageSize.height)
-      let w = Math.round(Math.min(cw, ch) * 0.72), h = Math.round(w * nh / nw)
-      if (h > ch * 0.92) { h = Math.round(ch * 0.92); w = Math.round(h * nw / nh) }
-      const c = center(); const id = nextId()
-      setImgCache(prev => ({ ...prev, [url]: img }))
-      pushHistory()
-      setObjects(prev => [...prev, { type: 'mockup', kind: 'photo', id, photoSrc: url, src: null, quadFrac: DEFAULT_PHOTO_QUAD.map(p => ({ ...p })), x: Math.round(c.x - w / 2), y: Math.round(c.y - h / 2), width: w, height: h, rotation: 0, opacity: 1 }])
-      setSelectedIds([id]); setDistortId(null); setQuadEditId(id)
-    }
-    img.onerror = () => setSavedMsg('Bild konnte nicht geladen werden.')
-    img.src = url
-  }
-  function convertImageToPhotoMockup(id) {
-    const o = objects.find(x => x.id === id)
-    if (!o || o.type !== 'image') return
-    pushHistory()
-    setObjects(prev => prev.map(x => x.id === id
-      ? { type: 'mockup', kind: 'photo', id: x.id, photoSrc: x.src, src: null, quadFrac: DEFAULT_PHOTO_QUAD.map(p => ({ ...p })), x: x.x, y: x.y, width: x.width, height: x.height, rotation: x.rotation || 0, opacity: x.opacity == null ? 1 : x.opacity }
-      : x))
-    setSelectedIds([id]); setDistortId(null); setQuadEditId(id)
+  async function addPhotoMockup(seed) {
+    if (!seed) return
+    try {
+      setSavedMsg('Foto-Mockup wird geladen…')
+      const url = await photoToDataUrl(seed.photo)
+      if (!url) { setSavedMsg('Mockup-Foto konnte nicht geladen werden.'); return }
+      const img = new window.Image()
+      img.onload = () => {
+        const nw = img.naturalWidth || 1200, nh = img.naturalHeight || 800
+        const cw = (baseCrop?.width || stageSize.width), ch = (baseCrop?.height || stageSize.height)
+        let w = Math.round(Math.min(cw, ch) * 0.82), h = Math.round(w * nh / nw)
+        if (h > ch * 0.92) { h = Math.round(ch * 0.92); w = Math.round(h * nw / nh) }
+        const c = center(); const id = nextId()
+        setImgCache(prev => ({ ...prev, [url]: img }))
+        pushHistory()
+        setObjects(prev => [...prev, { type: 'mockup', kind: 'photo', id, photoSrc: url, src: null, quadFrac: seed.quad.map(p => ({ ...p })), x: Math.round(c.x - w / 2), y: Math.round(c.y - h / 2), width: w, height: h, rotation: 0, opacity: 1 }])
+        setSelectedIds([id]); setSavedMsg('')
+      }
+      img.onerror = () => setSavedMsg('Mockup-Foto konnte nicht geladen werden.')
+      img.src = url
+    } catch (_e) { setSavedMsg('Mockup-Foto konnte nicht geladen werden.') }
   }
   function addMockup(deviceId) {
     const dev = deviceById(deviceId); if (!dev) return
@@ -2296,7 +2305,6 @@ Antworte AUSSCHLIESSLICH mit JSON: {"ok":<bool>,"issues":["..."],"operations":[.
     const reader = new FileReader()
     reader.onload = () => {
       const url = String(reader.result || '')
-      if (pendingPhotoMockupRef.current) { pendingPhotoMockupRef.current = false; addPhotoMockupFromDataUrl(url); setUploadThumbs(prev => prev.includes(url) ? prev : [url, ...prev].slice(0, 24)); return }
       addImageFromDataUrl(url)
       setUploadThumbs(prev => prev.includes(url) ? prev : [url, ...prev].slice(0, 24))
     }
@@ -4655,7 +4663,7 @@ Antworte AUSSCHLIESSLICH mit JSON: {"ok":<bool>,"issues":["..."],"operations":[.
           onAddFrame={addFrame}
           onAddCollage={addCollage}
           onAddMockup={addMockup}
-          onCreatePhotoMockup={() => { pendingPhotoMockupRef.current = true; triggerImageUpload() }}
+          onAddPhotoMockup={addPhotoMockup}
           onAddAsset={addAsset}
           onInsertMedia={(dataUrl, meta) => addImageFromDataUrl(dataUrl, meta)}
           // Text
@@ -4869,7 +4877,6 @@ Antworte AUSSCHLIESSLICH mit JSON: {"ok":<bool>,"issues":["..."],"operations":[.
             onToggleHidden={(id) => { toggleLayerFlag(id, 'hidden'); setCtxMenu(null) }}
             onRename={(id) => { setSelectedIds([id]); setActiveTool('layers'); setRenamingId(id); setCtxMenu(null) }}
             onRemoveImage={(id) => { pushHistory(); updateObject(id, { src: null }); setCtxMenu(null) }}
-            onToPhotoMockup={(id) => { convertImageToPhotoMockup(id); setCtxMenu(null) }}
             onDelete={() => { deleteSelected(); setCtxMenu(null) }}
             onPaste={() => { pasteClipboard(); setCtxMenu(null) }}
             onSelectAll={() => { setSelectedIds(objects.map(o => o.id)); setCtxMenu(null) }}
@@ -5073,7 +5080,7 @@ function ContextMenuItem({ children, onClick, danger }) {
 function ContextMenuSep() {
   return <div style={{ height: 1, background: 'var(--border,#E9ECF2)', margin: '5px 8px' }} />
 }
-function ContextMenu({ ctx, obj, hasClipboard, containerW, onClose, onReorder, onDuplicate, onToggleLock, onToggleHidden, onRename, onDelete, onPaste, onSelectAll, onRemoveImage = () => {}, onToPhotoMockup = () => {} }) {
+function ContextMenu({ ctx, obj, hasClipboard, containerW, onClose, onReorder, onDuplicate, onToggleLock, onToggleHidden, onRename, onDelete, onPaste, onSelectAll, onRemoveImage = () => {} }) {
   const MENU_W = 224
   const estH = obj ? 332 : 96
   // Kanten-Kippung: wenn rechts/unten kein Platz, nach links/oben öffnen.
@@ -5104,10 +5111,6 @@ function ContextMenu({ ctx, obj, hasClipboard, containerW, onClose, onReorder, o
             {(obj.type === 'frame' || obj.type === 'mockup') && obj.src && (<>
               <ContextMenuSep />
               <ContextMenuItem onClick={() => onRemoveImage(obj.id)}><X {...ic} />Bild aus Rahmen entfernen</ContextMenuItem>
-            </>)}
-            {obj.type === 'image' && (<>
-              <ContextMenuSep />
-              <ContextMenuItem onClick={() => onToPhotoMockup(obj.id)}><Frame {...ic} />Als Foto-Mockup verwenden</ContextMenuItem>
             </>)}
             <ContextMenuSep />
             <ContextMenuItem danger onClick={onDelete}><Trash2 {...ic} />{(obj.type === 'frame' || obj.type === 'mockup') ? 'Rahmen löschen' : 'Löschen'}</ContextMenuItem>
@@ -5889,7 +5892,7 @@ function TemplatesPanelBody({ onApplyTemplate, onClose }) {
 }
 
 // ─── Panel: Elemente (Formen / Icons / Grafiken / Bilder) ───────────────────
-function ElementsPanelBody({ elementTab, setElementTab, onAddRect, onAddEllipse, onAddLine, onAddArrow, onAddAsset, onInsertMedia, onAddFrame = () => {}, onAddCollage = () => {}, onAddMockup = () => {}, onCreatePhotoMockup = () => {} }) {
+function ElementsPanelBody({ elementTab, setElementTab, onAddRect, onAddEllipse, onAddLine, onAddArrow, onAddAsset, onInsertMedia, onAddFrame = () => {}, onAddCollage = () => {}, onAddMockup = () => {}, onAddPhotoMockup = () => {} }) {
   const tabs = [
     { id: 'shapes', label: 'Formen' },
     { id: 'frames', label: 'Rahmen' },
@@ -5968,12 +5971,18 @@ function ElementsPanelBody({ elementTab, setElementTab, onAddRect, onAddEllipse,
       )}
       {elementTab === 'mockups' && (
         <div>
-          <PanelLabel>Mockups</PanelLabel>
-          <div style={{ fontSize: 11.5, color: 'var(--text-muted)', margin: '0 0 8px', lineHeight: 1.4 }}>Geräte-Mockup einfügen und ein Bild einsetzen. Oder ein <b>eigenes Foto</b> zum Mockup machen — 4 Ecken auf den Screen ziehen (Doppelklick zum Bearbeiten).</div>
-          <button onClick={onCreatePhotoMockup} title="Eigenes Foto als Mockup verwenden"
-            style={{ width: '100%', marginBottom: 10, height: 34, borderRadius: 8, border: '1px solid var(--wl-primary, rgb(49,90,231))', background: 'rgba(49,90,231,0.06)', color: 'var(--wl-primary, rgb(49,90,231))', cursor: 'pointer', fontSize: 12, fontWeight: 700, fontFamily: 'inherit', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: 6 }}>
-            <Frame size={14} strokeWidth={2} /> Eigenes Foto als Mockup
-          </button>
+          <div style={{ marginBottom: 4 }}><span style={{ fontSize: 12.5, fontWeight: 700, color: 'var(--text)' }}>📸 Foto-Mockups</span></div>
+          <div style={{ fontSize: 11, color: 'var(--text-muted)', margin: '0 0 8px', lineHeight: 1.4 }}>Echtes Foto — dein Design wird perspektivisch auf den Screen gerechnet. (Screen-Ecken per Doppelklick anpassbar.)</div>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: 8, marginBottom: 16 }}>
+            {PHOTO_MOCKUPS.map(pm => (
+              <button key={pm.id} onClick={() => onAddPhotoMockup(pm)} title={pm.label}
+                style={{ border: '1px solid var(--border)', borderRadius: 9, overflow: 'hidden', cursor: 'pointer', background: '#f4f6fa', padding: 0, display: 'block', textAlign: 'left' }}>
+                <img src={pm.thumb} alt={pm.label} loading="lazy" draggable={false} style={{ width: '100%', height: 74, objectFit: 'cover', display: 'block' }} />
+                <span style={{ display: 'block', fontSize: 10, fontWeight: 700, color: 'var(--text-muted)', padding: '3px 6px' }}>{pm.label}</span>
+              </button>
+            ))}
+          </div>
+          <PanelLabel>Geräte-Mockups</PanelLabel>
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(58px, 1fr))', gap: 8 }}>
             {DEVICE_MOCKUPS.map(d => (
               <button key={d.id} onClick={() => onAddMockup(d.id)} title={d.label}
