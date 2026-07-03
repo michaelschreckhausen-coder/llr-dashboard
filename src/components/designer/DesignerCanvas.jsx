@@ -593,6 +593,13 @@ const DEVICE_MOCKUPS = [
   },
 ]
 const deviceById = id => DEVICE_MOCKUPS.find(d => d.id === id) || DEVICE_MOCKUPS[0]
+const DEFAULT_PHOTO_QUAD = [{ u: 0.28, v: 0.28 }, { u: 0.72, v: 0.28 }, { u: 0.72, v: 0.72 }, { u: 0.28, v: 0.72 }]
+// Screen-Quad eines Mockups in lokalen Koordinaten: Foto-Mockup nutzt o.quadFrac,
+// perspektivische Geräte-Mockups dev.screenQuad; sonst null (Rechteck-Screen-Pfad).
+function mockupQuad(o) {
+  if (o.kind === 'photo') { const qf = o.quadFrac || DEFAULT_PHOTO_QUAD; return qf.map(p => ({ x: p.u * o.width, y: p.v * o.height })) }
+  const dev = deviceById(o.device); return dev && dev.screenQuad ? dev.screenQuad(o.width, o.height) : null
+}
 function mockupPreview(id) {
   const c = '#CBD5E1', s = '#94A3B8'
   const P = { width: 28, height: 28, viewBox: '0 0 100 100' }
@@ -663,6 +670,7 @@ export default function DesignerCanvas({ visual, teamId, onSaved, onReplaceVisua
   const containerRef = useRef(null)
   const textareaRef = useRef(null)
   const fileInputRef = useRef(null)                   // versteckter file-input (Bild-Upload)
+  const pendingPhotoMockupRef = useRef(false)         // nächster Upload → Foto-Mockup statt Bild-Objekt
   const activeRef = useRef(null)                       // Root des Designers (Sichtbarkeits-Guard)
 
   const { activeBrandVoice } = useBrandVoice()
@@ -697,6 +705,7 @@ export default function DesignerCanvas({ visual, teamId, onSaved, onReplaceVisua
   // dieses Objekt frei (nicht-proportional) skaliert werden. Rahmenfarbe + Anker-Form
   // wechseln im Verzerren-Modus.
   const [distortId, setDistortId] = useState(null)
+  const [quadEditId, setQuadEditId] = useState(null)  // Foto-Mockup: aktiver Screen-Ecken-Editor
   const [marquee, setMarquee] = useState(null)        // {x,y,w,h} Rubberband in Bühnenkoordinaten
   const [marqueeHits, setMarqueeHits] = useState([])  // Ids der vom Kästchen berührten Elemente (Live-Rahmen)
   const [frameDropTarget, setFrameDropTarget] = useState(null)  // Rahmen/Mockup, über dem gerade ein Bild schwebt (Drag-to-fill)
@@ -1033,7 +1042,7 @@ export default function DesignerCanvas({ visual, teamId, onSaved, onReplaceVisua
     setStageSize(p.stage || { width: 1080, height: 1080 })
     primaryImageIdRef.current = p.primaryImageId || null
     historyRef.current = []; futureRef.current = []
-    setSelectedIds([]); setDistortId(null)
+    setSelectedIds([]); setDistortId(null); setQuadEditId(null)
     try { resetMaskCanvas((p.stage && p.stage.width) || 1080, (p.stage && p.stage.height) || 1080) } catch (_e) {}
   }
   function switchToPage(idx) {
@@ -1250,6 +1259,7 @@ export default function DesignerCanvas({ visual, teamId, onSaved, onReplaceVisua
       if (editingTextId) commitTextEdit()
       setSelectedIds([])
       setDistortId(null)
+      setQuadEditId(null)
     }
   }
   function onContainerMouseMove(e) {
@@ -1371,7 +1381,8 @@ export default function DesignerCanvas({ visual, teamId, onSaved, onReplaceVisua
   // Objekte) — er gilt immer nur für das eine doppelgeklickte Objekt.
   useEffect(() => {
     if (distortId && !(selectedIds.length === 1 && selectedIds[0] === distortId)) setDistortId(null)
-  }, [selectedIds, distortId])
+    if (quadEditId && !(selectedIds.length === 1 && selectedIds[0] === quadEditId)) setQuadEditId(null)
+  }, [selectedIds, distortId, quadEditId])
 
   // ─── Rechtsklick: Kontextmenü öffnen ───────────────────────────────────────
   // Wir hängen den Konva-'contextmenu'-Handler an die Stage. Klick auf ein Objekt
@@ -1427,30 +1438,33 @@ export default function DesignerCanvas({ visual, teamId, onSaved, onReplaceVisua
 
   // ─── Bild-Objekte: HTMLImageElement nachladen (z.B. nach Restore) ───────────
   useEffect(() => {
-    const missing = objects.filter(o => (o.type === 'image' || o.type === 'frame' || o.type === 'mockup') && o.src && !imgCache[o.src])
-    if (!missing.length) return
+    const need = new Set()
+    objects.forEach(o => {
+      if ((o.type === 'image' || o.type === 'frame' || o.type === 'mockup') && o.src && !imgCache[o.src]) need.add(o.src)
+      if (o.type === 'mockup' && o.photoSrc && !imgCache[o.photoSrc]) need.add(o.photoSrc)
+    })
+    if (!need.size) return
     let cancelled = false
-    missing.forEach(o => {
+    need.forEach(url => {
       const img = new window.Image()
-      img.onload = () => { if (!cancelled) setImgCache(prev => ({ ...prev, [o.src]: img })) }
+      img.onload = () => { if (!cancelled) setImgCache(prev => ({ ...prev, [url]: img })) }
       img.onerror = () => {}
-      img.src = o.src
+      img.src = url
     })
     return () => { cancelled = true }
   }, [objects, imgCache])
 
   // ─── Perspektivische Mockups: gewarptes Screen-Canvas bauen/cachen ──────────
   useEffect(() => {
-    const quadMocks = objects.filter(o => o.type === 'mockup' && o.src && deviceById(o.device).screenQuad && imgCache[o.src])
+    const quadMocks = objects.filter(o => o.type === 'mockup' && o.src && mockupQuad(o) && imgCache[o.src])
     if (!quadMocks.length) return
     let changed = false
     const next = { ...warpCache }
     for (const o of quadMocks) {
-      const dev = deviceById(o.device)
       const key = warpKey(o)
       if (next[key]) continue
       try {
-        const quad = dev.screenQuad(o.width, o.height)
+        const quad = mockupQuad(o)
         const ss = Math.max(1, Math.min(2, 1200 / Math.max(o.width || 1, o.height || 1)))
         next[key] = warpImageToCanvas(imgCache[o.src], quad, o.width, o.height, { panX: o.panX, panY: o.panY, ss, grid: 14 })
         changed = true
@@ -1830,7 +1844,41 @@ export default function DesignerCanvas({ visual, teamId, onSaved, onReplaceVisua
     setObjects(prev => [...prev, ...frames])
     setSelectedIds(frames.length ? [frames[0].id] : [])
   }
-  function warpKey(o) { return `${o.id}|${o.device}|${o.src || ''}|${Math.round(o.width)}x${Math.round(o.height)}|${o.panX == null ? 0.5 : o.panX}|${o.panY == null ? 0.5 : o.panY}` }
+  function warpKey(o) { const q = o.kind === 'photo' && o.quadFrac ? o.quadFrac.map(p => `${p.u.toFixed(3)},${p.v.toFixed(3)}`).join(';') : ''; return `${o.id}|${o.device || o.kind}|${o.src || ''}|${Math.round(o.width)}x${Math.round(o.height)}|${o.panX == null ? 0.5 : o.panX}|${o.panY == null ? 0.5 : o.panY}|${q}` }
+  function setQuadCorner(id, idx, u, v) {
+    setObjects(prev => prev.map(o => {
+      if (o.id !== id) return o
+      const qf = (o.quadFrac ? o.quadFrac.slice() : DEFAULT_PHOTO_QUAD.map(p => ({ ...p })))
+      qf[idx] = { u, v }
+      return { ...o, quadFrac: qf }
+    }))
+  }
+  function addPhotoMockupFromDataUrl(url) {
+    if (!url) return
+    const img = new window.Image()
+    img.onload = () => {
+      const nw = img.naturalWidth || 400, nh = img.naturalHeight || 300
+      const cw = (baseCrop?.width || stageSize.width), ch = (baseCrop?.height || stageSize.height)
+      let w = Math.round(Math.min(cw, ch) * 0.72), h = Math.round(w * nh / nw)
+      if (h > ch * 0.92) { h = Math.round(ch * 0.92); w = Math.round(h * nw / nh) }
+      const c = center(); const id = nextId()
+      setImgCache(prev => ({ ...prev, [url]: img }))
+      pushHistory()
+      setObjects(prev => [...prev, { type: 'mockup', kind: 'photo', id, photoSrc: url, src: null, quadFrac: DEFAULT_PHOTO_QUAD.map(p => ({ ...p })), x: Math.round(c.x - w / 2), y: Math.round(c.y - h / 2), width: w, height: h, rotation: 0, opacity: 1 }])
+      setSelectedIds([id]); setDistortId(null); setQuadEditId(id)
+    }
+    img.onerror = () => setSavedMsg('Bild konnte nicht geladen werden.')
+    img.src = url
+  }
+  function convertImageToPhotoMockup(id) {
+    const o = objects.find(x => x.id === id)
+    if (!o || o.type !== 'image') return
+    pushHistory()
+    setObjects(prev => prev.map(x => x.id === id
+      ? { type: 'mockup', kind: 'photo', id: x.id, photoSrc: x.src, src: null, quadFrac: DEFAULT_PHOTO_QUAD.map(p => ({ ...p })), x: x.x, y: x.y, width: x.width, height: x.height, rotation: x.rotation || 0, opacity: x.opacity == null ? 1 : x.opacity }
+      : x))
+    setSelectedIds([id]); setDistortId(null); setQuadEditId(id)
+  }
   function addMockup(deviceId) {
     const dev = deviceById(deviceId); if (!dev) return
     const cw = (baseCrop?.width || stageSize.width), ch = (baseCrop?.height || stageSize.height)
@@ -2248,6 +2296,7 @@ Antworte AUSSCHLIESSLICH mit JSON: {"ok":<bool>,"issues":["..."],"operations":[.
     const reader = new FileReader()
     reader.onload = () => {
       const url = String(reader.result || '')
+      if (pendingPhotoMockupRef.current) { pendingPhotoMockupRef.current = false; addPhotoMockupFromDataUrl(url); setUploadThumbs(prev => prev.includes(url) ? prev : [url, ...prev].slice(0, 24)); return }
       addImageFromDataUrl(url)
       setUploadThumbs(prev => prev.includes(url) ? prev : [url, ...prev].slice(0, 24))
     }
@@ -4002,6 +4051,7 @@ Antworte AUSSCHLIESSLICH mit JSON: {"ok":<bool>,"issues":["..."],"operations":[.
     if (!o || o.type === 'text' || o.locked) return
     try { e?.cancelBubble && (e.cancelBubble = true) } catch (_e) {}
     setSelectedIds([o.id])
+    if (o.type === 'mockup' && o.kind === 'photo') { setQuadEditId(prev => (prev === o.id ? null : o.id)); return }
     setDistortId(prev => (prev === o.id ? null : o.id))
   }
 
@@ -4253,22 +4303,37 @@ Antworte AUSSCHLIESSLICH mit JSON: {"ok":<bool>,"issues":["..."],"operations":[.
       case 'mockup': {
         const dev = deviceById(o.device)
         const el = o.src ? imgCache[o.src] : null
-        if (dev.screenQuad) {
-          const quad = dev.screenQuad(o.width, o.height)
-          const pts = quad.flatMap(p => [p.x, p.y])
+        const mquad = mockupQuad(o)
+        if (mquad) {
+          const isPhoto = o.kind === 'photo'
+          const bg = isPhoto && o.photoSrc ? imgCache[o.photoSrc] : null
+          const editing = isPhoto && quadEditId === o.id
+          const pts = mquad.flatMap(p => [p.x, p.y])
           const wc = el ? warpCache[warpKey(o)] : null
-          const xs = quad.map(p => p.x), ys = quad.map(p => p.y)
+          const xs = mquad.map(p => p.x), ys = mquad.map(p => p.y)
           const qx = Math.min(...xs), qy = Math.min(...ys), qw = Math.max(...xs) - qx, qh = Math.max(...ys) - qy
           return (
-            <Group key={o.id} {...base}>
-              {dev.behind ? dev.behind(o.width, o.height) : null}
+            <Group key={o.id} {...base} draggable={base.draggable && !editing}>
+              {isPhoto
+                ? (bg ? <KImage image={bg} width={o.width} height={o.height} /> : <Rect width={o.width} height={o.height} fill="#EEF2F7" cornerRadius={6} />)
+                : (dev.behind ? dev.behind(o.width, o.height) : null)}
               {el && wc
-                ? <KImage image={wc} x={0} y={0} width={o.width} height={o.height} />
+                ? <KImage image={wc} x={0} y={0} width={o.width} height={o.height} listening={false} />
                 : (<>
-                    <Line points={pts} closed fill="#EEF2F7" stroke="#C7D0DB" strokeWidth={1} />
-                    <KText text="Bild einsetzen" x={qx} y={qy + qh / 2 - 8} width={qw} align="center" fontSize={Math.max(10, Math.min(15, qw * 0.06))} fill="#93A2B5" listening={false} />
+                    {!isPhoto && <Line points={pts} closed fill="#EEF2F7" stroke="#C7D0DB" strokeWidth={1} />}
+                    {isPhoto && bg && !editing && <Line points={pts} closed fill="rgba(49,90,231,0.10)" stroke="#315AE7" strokeWidth={1.5} dash={[5, 4]} listening={false} />}
+                    {(!isPhoto || !bg) && <KText text={isPhoto ? 'Foto lädt…' : 'Bild einsetzen'} x={qx} y={qy + qh / 2 - 8} width={qw} align="center" fontSize={Math.max(10, Math.min(15, qw * 0.06))} fill="#93A2B5" listening={false} />}
                   </>)}
-              {dev.front ? dev.front(o.width, o.height) : null}
+              {!isPhoto && dev.front ? dev.front(o.width, o.height) : null}
+              {editing && (<>
+                <Line points={pts} closed stroke="#315AE7" strokeWidth={2} dash={[6, 4]} listening={false} />
+                {mquad.map((p, idx) => (
+                  <Circle key={'qh' + idx} x={p.x} y={p.y} radius={8} fill="#ffffff" stroke="#315AE7" strokeWidth={2}
+                    draggable
+                    onDragMove={(e) => { const n = e.target; const u = Math.max(0, Math.min(1, n.x() / o.width)), v = Math.max(0, Math.min(1, n.y() / o.height)); setQuadCorner(o.id, idx, u, v) }}
+                    onDragEnd={() => pushHistory()} />
+                ))}
+              </>)}
               {o.id === frameDropTarget && <Line points={pts} closed fill="rgba(49,90,231,0.32)" listening={false} />}
             </Group>
           )
@@ -4590,6 +4655,7 @@ Antworte AUSSCHLIESSLICH mit JSON: {"ok":<bool>,"issues":["..."],"operations":[.
           onAddFrame={addFrame}
           onAddCollage={addCollage}
           onAddMockup={addMockup}
+          onCreatePhotoMockup={() => { pendingPhotoMockupRef.current = true; triggerImageUpload() }}
           onAddAsset={addAsset}
           onInsertMedia={(dataUrl, meta) => addImageFromDataUrl(dataUrl, meta)}
           // Text
@@ -4803,6 +4869,7 @@ Antworte AUSSCHLIESSLICH mit JSON: {"ok":<bool>,"issues":["..."],"operations":[.
             onToggleHidden={(id) => { toggleLayerFlag(id, 'hidden'); setCtxMenu(null) }}
             onRename={(id) => { setSelectedIds([id]); setActiveTool('layers'); setRenamingId(id); setCtxMenu(null) }}
             onRemoveImage={(id) => { pushHistory(); updateObject(id, { src: null }); setCtxMenu(null) }}
+            onToPhotoMockup={(id) => { convertImageToPhotoMockup(id); setCtxMenu(null) }}
             onDelete={() => { deleteSelected(); setCtxMenu(null) }}
             onPaste={() => { pasteClipboard(); setCtxMenu(null) }}
             onSelectAll={() => { setSelectedIds(objects.map(o => o.id)); setCtxMenu(null) }}
@@ -5006,7 +5073,7 @@ function ContextMenuItem({ children, onClick, danger }) {
 function ContextMenuSep() {
   return <div style={{ height: 1, background: 'var(--border,#E9ECF2)', margin: '5px 8px' }} />
 }
-function ContextMenu({ ctx, obj, hasClipboard, containerW, onClose, onReorder, onDuplicate, onToggleLock, onToggleHidden, onRename, onDelete, onPaste, onSelectAll, onRemoveImage = () => {} }) {
+function ContextMenu({ ctx, obj, hasClipboard, containerW, onClose, onReorder, onDuplicate, onToggleLock, onToggleHidden, onRename, onDelete, onPaste, onSelectAll, onRemoveImage = () => {}, onToPhotoMockup = () => {} }) {
   const MENU_W = 224
   const estH = obj ? 332 : 96
   // Kanten-Kippung: wenn rechts/unten kein Platz, nach links/oben öffnen.
@@ -5037,6 +5104,10 @@ function ContextMenu({ ctx, obj, hasClipboard, containerW, onClose, onReorder, o
             {(obj.type === 'frame' || obj.type === 'mockup') && obj.src && (<>
               <ContextMenuSep />
               <ContextMenuItem onClick={() => onRemoveImage(obj.id)}><X {...ic} />Bild aus Rahmen entfernen</ContextMenuItem>
+            </>)}
+            {obj.type === 'image' && (<>
+              <ContextMenuSep />
+              <ContextMenuItem onClick={() => onToPhotoMockup(obj.id)}><Frame {...ic} />Als Foto-Mockup verwenden</ContextMenuItem>
             </>)}
             <ContextMenuSep />
             <ContextMenuItem danger onClick={onDelete}><Trash2 {...ic} />{(obj.type === 'frame' || obj.type === 'mockup') ? 'Rahmen löschen' : 'Löschen'}</ContextMenuItem>
@@ -5818,7 +5889,7 @@ function TemplatesPanelBody({ onApplyTemplate, onClose }) {
 }
 
 // ─── Panel: Elemente (Formen / Icons / Grafiken / Bilder) ───────────────────
-function ElementsPanelBody({ elementTab, setElementTab, onAddRect, onAddEllipse, onAddLine, onAddArrow, onAddAsset, onInsertMedia, onAddFrame = () => {}, onAddCollage = () => {}, onAddMockup = () => {} }) {
+function ElementsPanelBody({ elementTab, setElementTab, onAddRect, onAddEllipse, onAddLine, onAddArrow, onAddAsset, onInsertMedia, onAddFrame = () => {}, onAddCollage = () => {}, onAddMockup = () => {}, onCreatePhotoMockup = () => {} }) {
   const tabs = [
     { id: 'shapes', label: 'Formen' },
     { id: 'frames', label: 'Rahmen' },
@@ -5898,7 +5969,11 @@ function ElementsPanelBody({ elementTab, setElementTab, onAddRect, onAddEllipse,
       {elementTab === 'mockups' && (
         <div>
           <PanelLabel>Mockups</PanelLabel>
-          <div style={{ fontSize: 11.5, color: 'var(--text-muted)', margin: '0 0 8px', lineHeight: 1.4 }}>Geräte-Mockup einfügen, dann auswählen und ein Bild einsetzen — es füllt den Screen.</div>
+          <div style={{ fontSize: 11.5, color: 'var(--text-muted)', margin: '0 0 8px', lineHeight: 1.4 }}>Geräte-Mockup einfügen und ein Bild einsetzen. Oder ein <b>eigenes Foto</b> zum Mockup machen — 4 Ecken auf den Screen ziehen (Doppelklick zum Bearbeiten).</div>
+          <button onClick={onCreatePhotoMockup} title="Eigenes Foto als Mockup verwenden"
+            style={{ width: '100%', marginBottom: 10, height: 34, borderRadius: 8, border: '1px solid var(--wl-primary, rgb(49,90,231))', background: 'rgba(49,90,231,0.06)', color: 'var(--wl-primary, rgb(49,90,231))', cursor: 'pointer', fontSize: 12, fontWeight: 700, fontFamily: 'inherit', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: 6 }}>
+            <Frame size={14} strokeWidth={2} /> Eigenes Foto als Mockup
+          </button>
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(58px, 1fr))', gap: 8 }}>
             {DEVICE_MOCKUPS.map(d => (
               <button key={d.id} onClick={() => onAddMockup(d.id)} title={d.label}
