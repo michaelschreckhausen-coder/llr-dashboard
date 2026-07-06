@@ -3634,8 +3634,10 @@ Antworte AUSSCHLIESSLICH mit JSON: {"ok":<bool>,"issues":["..."],"operations":[.
           baseEl = await loadHtmlImage(erasedUrl)
         } catch (_) { baseEl = origEl }
       }
-      // Großzügiger Rand, damit auch Schatten/Abdruck des alten Objekts im Bereich liegen.
-      const pad = Math.round(Math.max(bbox.w, bbox.h) * 0.9 + Math.min(W, H) * 0.07)
+      // Moderater Kontext-Rand: genug Umgebung für passende Beleuchtung/Perspektive, aber
+      // NICHT so groß, dass das neue Objekt winzig in der Mitte eines riesigen Ausschnitts
+      // gerendert wird (→ blass/zerrissen). Das Objekt soll den Ausschnitt gut ausfüllen.
+      const pad = Math.round(Math.max(bbox.w, bbox.h) * 0.35 + Math.min(W, H) * 0.03)
       const bx = Math.max(0, bbox.x - pad)
       const by = Math.max(0, bbox.y - pad)
       const bw = Math.min(W - bx, bbox.w + pad * 2)
@@ -3652,7 +3654,7 @@ Antworte AUSSCHLIESSLICH mit JSON: {"ok":<bool>,"issues":["..."],"operations":[.
       // 4) Eng gefasster Prompt (Photoshop-Stil: nur ändern was nötig, Rest erhalten)
       const prompt = isHeal
         ? 'Entferne das vom Nutzer gemeinte Objekt/Element in diesem Bildausschnitt vollständig und rekonstruiere realistisch den Hintergrund, der dahinter liegen würde. Übernimm Textur, Muster, Farben, Beleuchtung, Schatten und Perspektive exakt aus der direkten Umgebung, sodass keinerlei Spur des entfernten Objekts bleibt. Ändere sonst nichts. Fotorealistisch und nahtlos.'
-        : `Platziere in der Mitte dieses Bildausschnitts, auf der vorhandenen Oberfläche (z.B. Tisch oder Boden) stehend, fotorealistisch und DEUTLICH SICHTBAR mit klaren Konturen: ${rawPrompt.trim()}. Das Objekt soll klar erkennbar und angemessen groß im markierten Bereich stehen. Falls in der Mitte aktuell noch etwas anderes zu sehen ist, ersetze es vollständig; falls die Stelle leer ist, füge das Objekt dort passend hinzu. Es darf nur DIESES EINE Objekt entstehen. Passe Größe, Beleuchtung, Perspektive und Farbstimmung exakt an die Szene an und gib dem Objekt einen eigenen, natürlichen Schatten in Richtung der vorhandenen Lichtquelle. Der übrige Bildinhalt bleibt unverändert. Keine Kopien, keine Reste eines alten Objekts, keine verwaschenen Flächen, keine sichtbaren Kanten.`
+        : `Platziere in der Mitte dieses Bildausschnitts, auf der vorhandenen Oberfläche (z.B. Tisch oder Boden) stehend, fotorealistisch, KRÄFTIG UND DEUTLICH SICHTBAR mit klaren, satten Konturen und Details: ${rawPrompt.trim()}. Das Objekt soll GROSS und PROMINENT sein und den mittleren Bereich des Ausschnitts gut ausfüllen (nicht winzig, nicht blass, nicht durchscheinend-schwach). Falls in der Mitte aktuell noch etwas anderes zu sehen ist, ersetze es vollständig; falls die Stelle leer ist, füge das Objekt dort passend hinzu. Es darf nur DIESES EINE Objekt entstehen. Passe Größe, Beleuchtung, Perspektive und Farbstimmung exakt an die Szene an und gib dem Objekt einen eigenen, natürlichen Schatten in Richtung der vorhandenen Lichtquelle. Der übrige Bildinhalt bleibt unverändert. Keine Kopien, keine Reste eines alten Objekts, keine verwaschenen Flächen, keine sichtbaren Kanten.`
       // 5) Nur den Crop ans Modell (inline) — kein Vollbild, kein BV-Ref
       const aiVisual = await callGenerateImage(prompt, { inlineRefs: [{ mimeType: 'image/png', data: cropB64 }] })
       const aiCropEl = await loadImageEl(aiVisual.storage_path)
@@ -3681,7 +3683,7 @@ Antworte AUSSCHLIESSLICH mit JSON: {"ok":<bool>,"issues":["..."],"operations":[.
         const cy = Math.max(0, bbox.y - cpad)
         const cw2 = Math.min(W - cx, bbox.w + cpad * 2)
         const ch2 = Math.min(H - cy, bbox.h + cpad * 2)
-        resultUrl = compositeRectFeather(baseEl, placed, cx, cy, cw2, ch2, W, H)
+        resultUrl = compositeRectFeather(baseEl, placed, cx, cy, cw2, ch2, W, H, 0.05)
       }
       await applyResultDirect(resultUrl, 'mask')   // direkt ins Bild (rückgängig via Undo)
     } catch (e) {
@@ -3784,11 +3786,11 @@ Antworte AUSSCHLIESSLICH mit JSON: {"ok":<bool>,"issues":["..."],"operations":[.
   // Blendet das (an Bbox-Position gesetzte) KI-Ergebnis rechteckig + weich auslaufend
   // über das Original — für „Bereich ändern", damit das neue Objekt seine eigene Form
   // behält und nicht auf die alte Silhouette geclippt wird. Rest bleibt 1:1 Original.
-  function compositeRectFeather(origEl, placed, bx, by, bw, bh, W, H) {
+  function compositeRectFeather(origEl, placed, bx, by, bw, bh, W, H, featherFrac = 0.14) {
     const out = document.createElement('canvas'); out.width = W; out.height = H
     const octx = out.getContext('2d')
     octx.drawImage(origEl, 0, 0, W, H)
-    const feather = Math.max(10, Math.round(Math.min(bw, bh) * 0.14))
+    const feather = Math.max(4, Math.round(Math.min(bw, bh) * featherFrac))
     const fr = document.createElement('canvas'); fr.width = W; fr.height = H
     const frctx = fr.getContext('2d')
     frctx.filter = `blur(${feather}px)`
