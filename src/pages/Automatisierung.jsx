@@ -170,6 +170,7 @@ export default function Automatisierung({ session }) {
   const [statusTab, setStatusTab]     = useState('active')
   const [campaigns, setCampaigns]     = useState([])
   const [jobs, setJobs]               = useState([])
+  const [drafts, setDrafts]           = useState([])
   const [logs24h, setLogs24h]         = useState([])
   const [leads, setLeads]             = useState([])
   const [loading, setLoading]         = useState(true)
@@ -226,6 +227,9 @@ export default function Automatisierung({ session }) {
     setJobs(j.data || [])
     setLeads(l.data || [])
     setLogs24h(lg.data || [])
+    const { data: dr } = await supabase.from('automation_jobs').select('*').eq('user_id', uid)
+      .eq('status', 'draft').eq('action', 'message').order('created_at', { ascending: true })
+    setDrafts(dr || [])
     setLoading(false)
   }, [uid])
 
@@ -239,6 +243,24 @@ export default function Automatisierung({ session }) {
   function showFlash(msg, type = 'ok') {
     setFlash({ msg, type })
     setTimeout(() => setFlash(null), 3500)
+  }
+
+  // ── Nachrichten-Entwürfe: Freigeben (draft→pending) / Verwerfen (→cancelled) ──
+  async function approveDraft(id, text) {
+    const d = drafts.find(x => x.id === id)
+    if (d && text != null && text !== (d.payload?.message || '')) {
+      await supabase.from('automation_jobs').update({ payload: { ...(d.payload || {}), message: text } }).eq('id', id)
+    }
+    const { error } = await supabase.from('automation_jobs').update({ status: 'pending' }).eq('id', id) // CHECK-Feld separat (#1)
+    if (error) { showFlash(error.message, 'err'); return }
+    setDrafts(prev => prev.filter(x => x.id !== id))
+    showFlash('Nachricht freigegeben — wird gesendet.')
+  }
+  async function rejectDraft(id) {
+    const { error } = await supabase.from('automation_jobs').update({ status: 'cancelled' }).eq('id', id)
+    if (error) { showFlash(error.message, 'err'); return }
+    setDrafts(prev => prev.filter(x => x.id !== id))
+    showFlash('Entwurf verworfen.')
   }
 
   // ── KPI-Aggregation ─────────────────────────────────────────────────────
@@ -322,7 +344,7 @@ export default function Automatisierung({ session }) {
             target_url: lead.linkedin_url,
             target_name: ((lead.first_name || '') + ' ' + (lead.last_name || '')).trim() || lead.name || null,
             payload: { message: firstStep.message || '' },
-            status: 'pending',
+            status: action === 'message' ? 'draft' : 'pending', // message = Entwurf, wartet auf Freigabe
             scheduled_at: new Date(now.getTime() + i * 3 * 60000).toISOString(),
             inbox_id: lead.id,
           })
@@ -485,6 +507,18 @@ export default function Automatisierung({ session }) {
           waitingCount={jobs.filter(j => j.status !== 'running').length}
         />
 
+        {/* Nachrichten-Freigabe — message-Entwürfe warten auf menschliches OK vor dem Versand */}
+        {drafts.length > 0 && (
+          <div style={{ ...cardStyle, marginBottom:16, border:'1px solid #FDE68A', background:'#FFFBEB' }}>
+            <div style={{ display:'flex', alignItems:'center', gap:8, marginBottom:12, flexWrap:'wrap' }}>
+              <MessageSquare size={16} color="#d97706" />
+              <span style={{ fontSize:14, fontWeight:800, color:'var(--text-strong)' }}>Nachrichten-Freigabe</span>
+              <span style={{ fontSize:12, color:'var(--text-muted)' }}>· {drafts.length} {drafts.length === 1 ? 'Entwurf wartet' : 'Entwürfe warten'} auf deine Freigabe</span>
+            </div>
+            {drafts.map(d => <DraftCard key={d.id} draft={d} onApprove={approveDraft} onReject={rejectDraft} />)}
+          </div>
+        )}
+
         {/* View-Toggle Kampagnen vs Warteschlange */}
         <div style={{ display:'flex', alignItems:'center', gap:12, marginBottom:16, flexWrap:'wrap' }}>
           <div style={toggleGroupStyle} role="tablist">
@@ -604,6 +638,28 @@ function KpiTile({ Icon, label, value, sub, tint, tintBg }) {
           <div style={{ fontSize:20, fontWeight:800, color:'#0F172A', marginTop:2, lineHeight:1.1 }}>{value}</div>
           {sub && <div style={{ fontSize:10, color:'var(--text-muted)', marginTop:2 }}>{sub}</div>}
         </div>
+      </div>
+    </div>
+  )
+}
+
+function DraftCard({ draft, onApprove, onReject }) {
+  const [text, setText] = useState(draft.payload?.message || '')
+  const [busy, setBusy] = useState(false)
+  const canSend = !busy && !!text.trim()
+  return (
+    <div style={{ background:'var(--surface)', border:'1px solid #FDE68A', borderRadius:10, padding:'12px 14px', marginBottom:10 }}>
+      <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:8, gap:8 }}>
+        <span style={{ fontSize:13, fontWeight:700, color:'var(--text-strong)' }}>{draft.target_name || draft.target_url}</span>
+        {draft.target_url && <a href={draft.target_url} target="_blank" rel="noopener noreferrer" style={{ fontSize:11, color:PRIMARY_VAR, textDecoration:'none', whiteSpace:'nowrap' }}>Profil ↗</a>}
+      </div>
+      <textarea value={text} onChange={e => setText(e.target.value)} rows={3}
+        style={{ width:'100%', boxSizing:'border-box', border:'1px solid #E4E7EC', borderRadius:8, padding:'8px 10px', fontSize:12.5, fontFamily:'inherit', resize:'vertical', color:'var(--text-strong)' }} />
+      <div style={{ display:'flex', gap:8, justifyContent:'flex-end', marginTop:8 }}>
+        <button disabled={busy} onClick={async () => { setBusy(true); await onReject(draft.id) }}
+          style={{ padding:'7px 14px', borderRadius:8, border:'1px solid #FCA5A5', background:'#FEF2F2', color:'#dc2626', fontSize:12.5, fontWeight:700, cursor:'pointer' }}>Verwerfen</button>
+        <button disabled={!canSend} onClick={async () => { setBusy(true); await onApprove(draft.id, text) }}
+          style={{ padding:'7px 14px', borderRadius:8, border:'none', background:PRIMARY_VAR, color:'#fff', fontSize:12.5, fontWeight:700, cursor: canSend ? 'pointer' : 'default', opacity: canSend ? 1 : 0.6 }}>Freigeben &amp; senden</button>
       </div>
     </div>
   )
