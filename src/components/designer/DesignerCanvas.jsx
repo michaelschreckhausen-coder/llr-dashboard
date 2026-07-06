@@ -3685,6 +3685,16 @@ Antworte AUSSCHLIESSLICH mit JSON: {"ok":<bool>,"issues":["..."],"operations":[.
         if (p - W >= 0 && cand[p - W] && !shadow[p - W]) { shadow[p - W] = 1; q[qt++] = p - W }
         if (p + W < N && cand[p + W] && !shadow[p + W]) { shadow[p + W] = 1; q[qt++] = p + W }
       }
+      // Runaway-Schutz: Ein echter Schlagschatten ist nie viel größer als das Objekt.
+      // Auf weichen Verlaufs-/Vignette-Hintergründen kann der „dunkler als Untergrund"-
+      // Flood über die halbe Bildfläche laufen (→ LaMa verwäscht alles = „Wasserschaden").
+      // Wenn der erkannte Schatten unplausibel groß ist, verwerfen wir ihn und entfernen
+      // nur das tatsächlich markierte Objekt.
+      let objCount = 0, shadowCount = 0
+      for (let i = 0; i < N; i++) { if (obj[i]) objCount++; if (shadow[i]) shadowCount++ }
+      if (shadowCount > objCount * 2.2 || (objCount + shadowCount) > N * 0.18) {
+        shadow.fill(0)
+      }
       // final = obj ∪ shadow
       const fc = document.createElement('canvas'); fc.width = W; fc.height = H
       const fctx = fc.getContext('2d')
