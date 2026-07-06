@@ -32,7 +32,7 @@ import {
   Type, Square as SquareIcon, Circle as CircleIcon, Minus, ArrowRight, Star as StarIcon,
   Trash2, Undo2, Redo2, Save, Download, BringToFront, SendToBack, Crop, Wand2,
   Bold, Italic, Sliders, Loader2, X, ChevronUp, ChevronDown, Brush, Lasso,
-  Eraser, Pen, Pencil, Highlighter, PenTool, Image as ImageIcon, LayoutTemplate, Copy, ZoomIn, ZoomOut, Maximize2,
+  Eraser, Pen, Pencil, Highlighter, PenTool, Scissors, Image as ImageIcon, LayoutTemplate, Copy, ZoomIn, ZoomOut, Maximize2,
   Upload, Frame, Eye, EyeOff, Lock, Unlock, Layers, GripVertical, Underline,
   FlipHorizontal2, FlipVertical2, FlipHorizontal, FlipVertical, Scaling, Send, CalendarPlus, FileText, Search, Paintbrush,
   AlignLeft, AlignCenter, AlignRight, Baseline, MoveVertical,
@@ -3305,14 +3305,30 @@ Antworte AUSSCHLIESSLICH mit JSON: {"ok":<bool>,"issues":["..."],"operations":[.
     } else if (!opts.noReference) {
       body.referenceImagePaths = [visual.storage_path]
     }
-    const { data, error: fnErr } = await supabase.functions.invoke('generate-image', { body })
-    if (fnErr) throw new Error(humanizeFnError(fnErr))
-    if (data?.error) throw new Error(humanizeProviderError(data.error))
-    const nv = (data?.visuals || [])[0]
-    if (!nv) throw new Error('Kein Ergebnis erhalten — bitte erneut versuchen.')
-    let full = nv
-    try { const { data: fv } = await getVisual(nv.id); if (fv) full = fv } catch (_e) {}
-    return full
+    // Auto-Retry gegen intermittente Ausfälle (Google 503/overloaded, Rate-Limit,
+    // Timeout, leeres Ergebnis, Netzwerk). Der Bild-Dienst kippt gelegentlich kurz weg —
+    // 2 stille Wiederholungen mit Backoff machen die KI-Werkzeuge spürbar zuverlässiger.
+    const isTransient = (m) => /503|unavailable|overload|429|rate.?limit|timeout|timed out|deadline|network|fetch failed|temporar|econn|socket|Kein Ergebnis/i.test(String(m || ''))
+    const attempts = opts.noRetry ? 1 : 3
+    let lastErr = null
+    for (let attempt = 0; attempt < attempts; attempt++) {
+      if (attempt > 0) await new Promise(r => setTimeout(r, 900 * attempt + 400))
+      try {
+        const { data, error: fnErr } = await supabase.functions.invoke('generate-image', { body })
+        if (fnErr) { if (isTransient(fnErr?.message) && attempt < attempts - 1) { lastErr = new Error(humanizeFnError(fnErr)); continue } throw new Error(humanizeFnError(fnErr)) }
+        if (data?.error) { if (isTransient(data.error) && attempt < attempts - 1) { lastErr = new Error(humanizeProviderError(data.error)); continue } throw new Error(humanizeProviderError(data.error)) }
+        const nv = (data?.visuals || [])[0]
+        if (!nv) { if (attempt < attempts - 1) { lastErr = new Error('Kein Ergebnis erhalten — bitte erneut versuchen.'); continue } throw new Error('Kein Ergebnis erhalten — bitte erneut versuchen.') }
+        let full = nv
+        try { const { data: fv } = await getVisual(nv.id); if (fv) full = fv } catch (_e) {}
+        return full
+      } catch (e) {
+        lastErr = e
+        if (isTransient(e?.message) && attempt < attempts - 1) continue
+        throw e
+      }
+    }
+    throw lastErr || new Error('KI-Bearbeitung fehlgeschlagen.')
   }
 
   // Lädt ein Storage-Bild als HTMLImageElement (über DataURL, CORS-sicher)
@@ -3551,8 +3567,8 @@ Antworte AUSSCHLIESSLICH mit JSON: {"ok":<bool>,"issues":["..."],"operations":[.
   // ─── Hintergrund-Werkzeuge (volles KI-Vollbild, kein Compositing) ──────────
   async function runBackgroundReplace(mode, customPrompt) {
     if (!visual?.storage_path) { setAiError('Kein Basisbild.'); return }
-    if (!activeImageObj()) { setSavedMsg('Hintergrund-KI braucht ein Bild im Design.'); return }
-    setBgMenuBusy(true); setSavedMsg('')
+    if (!activeImageObj()) { setAiError('Hintergrund-Werkzeuge brauchen ein Bild im Design — füge erst ein Bild hinzu.'); return }
+    setBgMenuBusy(true); setSavedMsg(''); setAiError('')
     try {
       // Originalpixel des aktiven Bildes (volle Auflösung)
       const target = activeImageObj()
@@ -3599,7 +3615,8 @@ Antworte AUSSCHLIESSLICH mit JSON: {"ok":<bool>,"issues":["..."],"operations":[.
       setSavedMsg('')
       await applyResultDirect(out.toDataURL('image/png'), 'bg')
     } catch (e) {
-      setSavedMsg('Fehler: ' + (e?.message || 'Hintergrund-Bearbeitung fehlgeschlagen'))
+      setSavedMsg('')
+      setAiError('Hintergrund: ' + (e?.message || 'Bearbeitung fehlgeschlagen. Bitte erneut versuchen.'))
     } finally {
       setBgMenuBusy(false)
     }
@@ -6205,53 +6222,72 @@ function AiPanelBody({
 }) {
   const [bgText, setBgText] = useState('')
   const startMask = (mode) => { setAiMode(mode); setCropMode(false); setSelectedId(null); setAiError && setAiError('') }
+  const CARD = { background: 'rgba(2,6,23,0.025)', borderRadius: 12, padding: 12 }
+  const CTITLE = { fontSize: 12.5, fontWeight: 700, color: 'var(--text-primary)', marginBottom: 3 }
+  const CHINT = { fontSize: 11.5, color: 'var(--text-muted)', marginBottom: 10, lineHeight: 1.4 }
   return (
-    <div>
-      <PanelLabel>Schnellbefehl</PanelLabel>
-      <textarea value={aiCommand} onChange={e => setAiCommand(e.target.value)} placeholder="Was soll die KI tun? z.B. mach das Bild winterlich"
-        style={{ width: '100%', minHeight: 60, padding: 8, borderRadius: 8, border: '1px solid var(--border)', fontSize: 12.5, fontFamily: 'inherit', outline: 'none', resize: 'vertical', boxSizing: 'border-box', marginBottom: 8 }} />
-      <PanelBtn full primary disabled={aiBusy} onClick={onRunFreeCommand}><Sparkles size={15} strokeWidth={1.9} />{aiBusy ? 'KI arbeitet…' : 'Ausführen'}</PanelBtn>
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
 
-      <PanelLabel>Bereich bearbeiten</PanelLabel>
-      <div style={{ display: 'flex', gap: 6, marginBottom: 8 }}>
-        <PanelBtn onClick={() => startMask(aiMode === 'edit' ? null : 'edit')} primary={aiMode === 'edit'}><Wand2 size={14} strokeWidth={1.9} />Bereich</PanelBtn>
-        <PanelBtn onClick={() => startMask(aiMode === 'heal' ? null : 'heal')} primary={aiMode === 'heal'}><Eraser size={14} strokeWidth={1.9} />Entfernen</PanelBtn>
+      {/* Hero: Freitext-Befehl fürs ganze Bild */}
+      <div>
+        <div style={{ ...CTITLE, fontSize: 13 }}>Was soll die KI tun?</div>
+        <div style={{ ...CHINT, marginBottom: 8 }}>Beschreibe die Änderung in eigenen Worten — sie wird aufs ganze Bild angewendet.</div>
+        <textarea value={aiCommand} onChange={e => setAiCommand(e.target.value)} placeholder="z.B. mach das Bild winterlich, heller, mehr Kontrast …"
+          style={{ width: '100%', minHeight: 66, padding: 10, borderRadius: 10, border: '1px solid var(--border)', fontSize: 12.5, fontFamily: 'inherit', outline: 'none', resize: 'vertical', boxSizing: 'border-box', marginBottom: 8, lineHeight: 1.45 }} />
+        <PanelBtn full primary disabled={aiBusy} onClick={onRunFreeCommand}><Sparkles size={15} strokeWidth={1.9} />{aiBusy ? 'KI arbeitet…' : 'Ausführen'}</PanelBtn>
       </div>
-      {aiMode && (
-        <div style={{ border: '1px solid var(--border)', borderRadius: 10, padding: 10, marginBottom: 10 }}>
-          <div style={{ display: 'flex', gap: 4, marginBottom: 8 }}>
-            <ToolBtn onClick={() => setMaskTool('brush')} active={maskTool === 'brush'} title="Pinsel"><Brush size={14} strokeWidth={1.9} /></ToolBtn>
-            <ToolBtn onClick={() => setMaskTool('lasso')} active={maskTool === 'lasso'} title="Lasso"><Lasso size={14} strokeWidth={1.9} /></ToolBtn>
-            <ToolBtn onClick={() => setMaskTool('rect')} active={maskTool === 'rect'} title="Rechteck"><SquareIcon size={14} strokeWidth={1.9} /></ToolBtn>
-          </div>
-          {maskTool === 'brush' && (
-            <label style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 11, color: 'var(--text-muted)', marginBottom: 6 }}>
-              Pinsel<input type="range" min={10} max={300} step={2} value={brushSize} onChange={e => setBrushSize(parseInt(e.target.value, 10))} style={{ flex: 1 }} />
-            </label>
-          )}
-          <label style={{ display: 'flex', alignItems: 'center', gap: 5, fontSize: 11, color: 'var(--text-muted)', marginBottom: 8 }}>
-            <input type="checkbox" checked={feather} onChange={e => setFeather(e.target.checked)} />weiche Kante
-          </label>
-          {aiMode === 'edit' && (
-            <input value={aiPrompt} onChange={e => setAiPrompt(e.target.value)} placeholder="z.B. mach das Hemd blau"
-              style={{ width: '100%', height: 32, padding: '0 10px', borderRadius: 8, border: '1px solid var(--border)', fontSize: 12.5, outline: 'none', fontFamily: 'inherit', marginBottom: 8, boxSizing: 'border-box' }} />
-          )}
-          <div style={{ display: 'flex', gap: 6, marginBottom: 8 }}>
-            <PanelBtn onClick={onClearMask}>Leeren</PanelBtn>
-            <PanelBtn onClick={onInvertMask}>Invertieren</PanelBtn>
-          </div>
-          <PanelBtn full primary disabled={aiBusy || !hasMask} onClick={onRunMaskEdit}>{aiBusy ? 'KI arbeitet…' : (aiMode === 'heal' ? 'Entfernen' : 'Anwenden')}</PanelBtn>
+
+      {/* Karte: Bereich gezielt bearbeiten */}
+      <div style={CARD}>
+        <div style={CTITLE}>Bereich gezielt bearbeiten</div>
+        <div style={CHINT}>Markiere einen Bereich und ändere oder entferne nur diesen.</div>
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
+          <ChoiceBtn active={aiMode === 'edit'} onClick={() => startMask(aiMode === 'edit' ? null : 'edit')} icon={<Wand2 size={17} strokeWidth={1.9} />}>Bereich ändern</ChoiceBtn>
+          <ChoiceBtn active={aiMode === 'heal'} onClick={() => startMask(aiMode === 'heal' ? null : 'heal')} icon={<Eraser size={17} strokeWidth={1.9} />}>Objekt entfernen</ChoiceBtn>
         </div>
-      )}
-
-      <PanelLabel>Hintergrund</PanelLabel>
-      <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-        <PanelBtn full disabled={bgMenuBusy} onClick={onBgRemove}>Hintergrund entfernen (transparent)</PanelBtn>
-        <input value={bgText} onChange={e => setBgText(e.target.value)} placeholder="Neuer Hintergrund (Beschreibung)…"
-          style={{ width: '100%', height: 32, padding: '0 10px', borderRadius: 8, border: '1px solid var(--border)', fontSize: 12.5, outline: 'none', fontFamily: 'inherit', boxSizing: 'border-box' }} />
-        <PanelBtn full disabled={bgMenuBusy || !bgText.trim()} onClick={() => { if (bgText.trim()) { onBgReplace(bgText.trim()); setBgText('') } }}>Hintergrund ersetzen</PanelBtn>
+        {aiMode && (
+          <div style={{ background: 'rgba(49,90,231,0.05)', borderRadius: 10, padding: 10, marginTop: 10 }}>
+            <div style={{ fontSize: 11, color: 'var(--text-muted)', marginBottom: 8 }}>Werkzeug wählen und den Bereich direkt im Bild markieren:</div>
+            <div style={{ display: 'flex', gap: 6, marginBottom: 8 }}>
+              <ToolBtn onClick={() => setMaskTool('brush')} active={maskTool === 'brush'} title="Pinsel"><Brush size={14} strokeWidth={1.9} /></ToolBtn>
+              <ToolBtn onClick={() => setMaskTool('lasso')} active={maskTool === 'lasso'} title="Lasso"><Lasso size={14} strokeWidth={1.9} /></ToolBtn>
+              <ToolBtn onClick={() => setMaskTool('rect')} active={maskTool === 'rect'} title="Rechteck"><SquareIcon size={14} strokeWidth={1.9} /></ToolBtn>
+            </div>
+            {maskTool === 'brush' && (
+              <label style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 11, color: 'var(--text-muted)', marginBottom: 8 }}>
+                Pinselgröße<input type="range" min={10} max={300} step={2} value={brushSize} onChange={e => setBrushSize(parseInt(e.target.value, 10))} style={{ flex: 1, accentColor: P }} />
+              </label>
+            )}
+            <label style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 11.5, color: 'var(--text-secondary,#475467)', marginBottom: 8, cursor: 'pointer' }}>
+              <input type="checkbox" checked={feather} onChange={e => setFeather(e.target.checked)} style={{ accentColor: P }} />weiche Kante (nahtloser Übergang)
+            </label>
+            {aiMode === 'edit' && (
+              <input value={aiPrompt} onChange={e => setAiPrompt(e.target.value)} placeholder="Was soll im Bereich passieren? z.B. Hemd blau"
+                style={{ width: '100%', height: 34, padding: '0 10px', borderRadius: 8, border: '1px solid var(--border)', fontSize: 12.5, outline: 'none', fontFamily: 'inherit', marginBottom: 8, boxSizing: 'border-box' }} />
+            )}
+            <div style={{ display: 'flex', gap: 6, marginBottom: 8 }}>
+              <PanelBtn full onClick={onClearMask}>Auswahl leeren</PanelBtn>
+              <PanelBtn full onClick={onInvertMask}>Invertieren</PanelBtn>
+            </div>
+            <PanelBtn full primary disabled={aiBusy || !hasMask} onClick={onRunMaskEdit}>{aiBusy ? 'KI arbeitet…' : (aiMode === 'heal' ? 'Entfernen' : 'Anwenden')}</PanelBtn>
+            {!hasMask && <div style={{ fontSize: 10.5, color: 'var(--text-muted)', marginTop: 6, textAlign: 'center' }}>Noch kein Bereich markiert</div>}
+          </div>
+        )}
       </div>
-      {aiError && <div style={{ fontSize: 12, color: '#b91c1c', marginTop: 10 }}>{aiError}</div>}
+
+      {/* Karte: Hintergrund */}
+      <div style={CARD}>
+        <div style={CTITLE}>Hintergrund</div>
+        <div style={CHINT}>Motiv freistellen oder einen neuen Hintergrund erzeugen.</div>
+        <PanelBtn full disabled={bgMenuBusy} onClick={onBgRemove}><Scissors size={14} strokeWidth={1.9} />Freistellen (transparent)</PanelBtn>
+        <div style={{ height: 8 }} />
+        <input value={bgText} onChange={e => setBgText(e.target.value)} placeholder="Neuen Hintergrund beschreiben…"
+          style={{ width: '100%', height: 34, padding: '0 10px', borderRadius: 8, border: '1px solid var(--border)', fontSize: 12.5, outline: 'none', fontFamily: 'inherit', boxSizing: 'border-box', marginBottom: 8 }} />
+        <PanelBtn full disabled={bgMenuBusy || !bgText.trim()} onClick={() => { if (bgText.trim()) { onBgReplace(bgText.trim()); setBgText('') } }}><ImageIcon size={14} strokeWidth={1.9} />Hintergrund erzeugen</PanelBtn>
+      </div>
+
+      {(aiBusy || bgMenuBusy) && <div style={{ fontSize: 11.5, color: P, display: 'flex', alignItems: 'center', gap: 6 }}><Loader2 size={13} className="lk-spin" />KI arbeitet … einen Moment.</div>}
+      {aiError && <div style={{ fontSize: 12, color: '#b91c1c', background: 'rgba(185,28,28,0.06)', border: '1px solid rgba(185,28,28,0.18)', borderRadius: 8, padding: '8px 10px', lineHeight: 1.4 }}>{aiError}</div>}
     </div>
   )
 }
@@ -6300,12 +6336,43 @@ function DrawPanelBody({ penColor, setPenColor, penWidth, setPenWidth, onDoneDra
 // Leiste). Bündelt Filter/Anpassungen und die KI-Werkzeuge in einem Panel — wie
 // Canvas „Bild bearbeiten".
 function EditPanelBody(props) {
+  // Umschalter: Bildbearbeitung (Filter/Anpassen) vs. KI-Bearbeitung — statt beides
+  // untereinander zu stapeln, wird jeweils nur ein Bereich gezeigt (ruhiger).
+  const [tab, setTab] = useState('foto')  // 'foto' | 'ki'
   return (
     <div>
-      <AiPanelBody {...props} />
-      <div style={{ height: 1, background: 'var(--border,#E9ECF2)', margin: '16px 0' }} />
-      <FilterPanelBody {...props} />
+      <div style={{ display: 'flex', gap: 4, padding: 4, background: 'rgba(2,6,23,0.05)', borderRadius: 12, marginBottom: 16 }}>
+        <EditSegBtn active={tab === 'foto'} onClick={() => setTab('foto')} icon={<Sliders size={14} strokeWidth={2} />}>Bildbearbeitung</EditSegBtn>
+        <EditSegBtn active={tab === 'ki'} onClick={() => setTab('ki')} icon={<Sparkles size={14} strokeWidth={2} />}>KI-Bearbeitung</EditSegBtn>
+      </div>
+      {tab === 'foto' ? <FilterPanelBody {...props} /> : <AiPanelBody {...props} />}
     </div>
+  )
+}
+
+// Segmented-Umschalter oben im „Bild bearbeiten"-Panel (iOS-artig, aktiv = weiße Pille).
+function EditSegBtn({ active, onClick, icon, children }) {
+  return (
+    <button type="button" onClick={onClick}
+      style={{ flex: 1, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: 6, height: 34, borderRadius: 9,
+        cursor: 'pointer', fontFamily: 'inherit', fontSize: 12.5, fontWeight: 700, border: 'none',
+        background: active ? '#fff' : 'transparent', color: active ? P : 'var(--text-muted,#667085)',
+        boxShadow: active ? '0 1px 3px rgba(16,24,40,0.12)' : 'none', transition: 'background .12s, color .12s' }}>
+      {icon}{children}
+    </button>
+  )
+}
+
+// Große Auswahl-Kachel (Icon über Label) für „Bereich ändern / Objekt entfernen".
+function ChoiceBtn({ active, onClick, icon, children }) {
+  return (
+    <button type="button" onClick={onClick}
+      style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 6, padding: '12px 6px', borderRadius: 10,
+        cursor: 'pointer', fontFamily: 'inherit', fontSize: 12, fontWeight: 700,
+        border: '1.5px solid ' + (active ? P : 'var(--border,#E9ECF2)'),
+        background: active ? 'rgba(49,90,231,0.06)' : 'var(--surface,#fff)', color: active ? P : 'var(--text-secondary,#475467)' }}>
+      {icon}{children}
+    </button>
   )
 }
 
