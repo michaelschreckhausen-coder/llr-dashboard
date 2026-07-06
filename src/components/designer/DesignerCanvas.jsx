@@ -3579,6 +3579,32 @@ Antworte AUSSCHLIESSLICH mit JSON: {"ok":<bool>,"issues":["..."],"operations":[.
     }
   }
 
+  // Grobe Erkennung, ob die markierte Auswahl ein tatsächliches Objekt enthält (viele
+  // starke Kanten) oder nur leere Fläche/Hintergrund (glatte Wand + Tisch, evtl. eine
+  // Trennkante). Nur bei Objekt wird vor dem Ersetzen per LaMa geleert — bei leerer
+  // Fläche würde das Löschen den sauberen Hintergrund unnötig verwischen.
+  function selectionHasObject(origEl, bbox, W, H) {
+    try {
+      const c = document.createElement('canvas'); c.width = W; c.height = H
+      c.getContext('2d').drawImage(origEl, 0, 0, W, H)
+      const data = c.getContext('2d').getImageData(0, 0, W, H).data
+      const x0 = Math.max(1, bbox.x), y0 = Math.max(1, bbox.y)
+      const x1 = Math.min(W - 2, bbox.x + bbox.w), y1 = Math.min(H - 2, bbox.y + bbox.h)
+      if (x1 <= x0 || y1 <= y0) return true
+      const lumAt = (x, y) => { const i = (y * W + x) * 4; return 0.299 * data[i] + 0.587 * data[i + 1] + 0.114 * data[i + 2] }
+      const step = Math.max(1, Math.round(Math.min(bbox.w, bbox.h) / 200))
+      let strong = 0, total = 0
+      for (let y = y0; y < y1; y += step) for (let x = x0; x < x1; x += step) {
+        const gx = lumAt(x + 1, y) - lumAt(x - 1, y)
+        const gy = lumAt(x, y + 1) - lumAt(x, y - 1)
+        if (Math.sqrt(gx * gx + gy * gy) > 45) strong++
+        total++
+      }
+      if (!total) return true
+      return (strong / total) > 0.045
+    } catch (_e) { return true }
+  }
+
   async function runMaskedAiEdit(rawPrompt) {
     if (!visual?.storage_path) { setAiError('Kein Basisbild.'); return }
     const target = activeImageObj()
@@ -3600,7 +3626,9 @@ Antworte AUSSCHLIESSLICH mit JSON: {"ok":<bool>,"issues":["..."],"operations":[.
       // Fläche und setzt dort das neue Objekt hinein — statt das alte zu behalten und das
       // neue nur daneben zu platzieren. baseEl dient danach als Crop-Quelle UND Composite-Basis.
       let baseEl = origEl
-      if (!isHeal) {
+      if (!isHeal && selectionHasObject(origEl, bbox, W, H)) {
+        // Auswahl enthält ein Objekt → vorher leeren (Ersetzen). Bei leerer Fläche
+        // (Hinzufügen) NICHT löschen, sonst verwischt der saubere Hintergrund.
         try {
           const erasedUrl = await eraseRegionToDataUrl(origEl, W, H)
           baseEl = await loadHtmlImage(erasedUrl)
