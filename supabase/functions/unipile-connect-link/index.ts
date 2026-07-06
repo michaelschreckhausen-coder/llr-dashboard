@@ -63,6 +63,10 @@ Deno.serve(async (req) => {
     return json({ connected: true, unipile_account_id: acct.id, public: pub, status }, 200);
   }
 
+  // ── Onboarding-Gate: LinkedIn verbinden nur mit aktivem 'automation'-Addon ──
+  const { data: hasAddon } = await userClient.rpc("i_have_addon", { p_slug: "automation" });
+  if (!hasAddon) return json({ error: "no_addon", message: "Automatisierung-Addon nicht aktiv" }, 403);
+
   // ── Default: Hosted-Auth-Link erzeugen (mit notify_url = Canonical-Mapping) ──
   const appBase = (typeof body?.app_base === "string" && body.app_base) || "https://staging.leadesk.de";
   const notifyUrl = `${SB_PUBLIC}/functions/v1/unipile-webhook?secret=${encodeURIComponent(WEBHOOK_SECRET)}`;
