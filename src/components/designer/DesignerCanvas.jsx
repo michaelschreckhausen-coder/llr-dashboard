@@ -3577,7 +3577,7 @@ Antworte AUSSCHLIESSLICH mit JSON: {"ok":<bool>,"issues":["..."],"operations":[.
       // 4) Eng gefasster Prompt (Photoshop-Stil: nur ändern was nötig, Rest erhalten)
       const prompt = isHeal
         ? 'Entferne das vom Nutzer gemeinte Objekt/Element in diesem Bildausschnitt vollständig und rekonstruiere realistisch den Hintergrund, der dahinter liegen würde. Übernimm Textur, Muster, Farben, Beleuchtung, Schatten und Perspektive exakt aus der direkten Umgebung, sodass keinerlei Spur des entfernten Objekts bleibt. Ändere sonst nichts. Fotorealistisch und nahtlos.'
-        : `Bearbeite diesen Bildausschnitt: ${rawPrompt.trim()}. Behalte den übrigen Bildinhalt, die Komposition, Beleuchtung, Schattenrichtung, Farbstimmung, Filmkorn, Schärfe und Perspektive exakt bei, sodass sich die Änderung absolut nahtlos und fotorealistisch in das umgebende Bild einfügt. Keine sichtbaren Kanten.`
+        : `Ersetze im markierten Bereich dieses Bildausschnitts das vorhandene Objekt VOLLSTÄNDIG durch: ${rawPrompt.trim()}. Das neue Objekt fotorealistisch rendern — in Größe, Beleuchtung, Schattenwurf, Perspektive und Farbstimmung exakt passend zur Szene, mit realistischem Kontakt-/Schlagschatten. Vom ursprünglichen Objekt darf nichts übrig bleiben. Der umgebende Bildinhalt (Hintergrund, Untergrund, Umfeld) bleibt unverändert und geht nahtlos über. Keine sichtbaren Kanten.`
       // 5) Nur den Crop ans Modell (inline) — kein Vollbild, kein BV-Ref
       const aiVisual = await callGenerateImage(prompt, { inlineRefs: [{ mimeType: 'image/png', data: cropB64 }] })
       const aiCropEl = await loadImageEl(aiVisual.storage_path)
@@ -3587,10 +3587,17 @@ Antworte AUSSCHLIESSLICH mit JSON: {"ok":<bool>,"issues":["..."],"operations":[.
       placed.getContext('2d').drawImage(
         aiCropEl, 0, 0, aiCropEl.naturalWidth || cw, aiCropEl.naturalHeight || ch, bx, by, bw, bh
       )
-      // 7) Nur innerhalb der (weichen) Maske übernehmen — Rest bleibt 1:1 Original
-      const dilate = isHeal ? Math.max(2, Math.round(Math.min(W, H) * 0.008)) : 0
-      const blob = await compositeMaskedResult(origEl, placed, dilate)
-      const resultUrl = await blobToDataUrl(blob)
+      // 7) Ergebnis übernehmen. WICHTIG bei „Bereich ändern": das neue Objekt darf
+      //    NICHT auf die alte Objekt-Silhouette geclippt werden (sonst behält z.B. eine
+      //    Kerze die Pflanzen-Form). Daher rechteckig + weich auslaufend über den
+      //    markierten Bereich blenden. (Heal bleibt masken-genau, falls je genutzt.)
+      let resultUrl
+      if (isHeal) {
+        const blob = await compositeMaskedResult(origEl, placed, Math.max(2, Math.round(Math.min(W, H) * 0.008)))
+        resultUrl = await blobToDataUrl(blob)
+      } else {
+        resultUrl = compositeRectFeather(origEl, placed, bx, by, bw, bh, W, H)
+      }
       await applyResultDirect(resultUrl, 'mask')   // direkt ins Bild (rückgängig via Undo)
     } catch (e) {
       setAiError(e?.message || 'KI-Bearbeitung fehlgeschlagen. Das Bild bleibt unverändert.')
@@ -3601,6 +3608,31 @@ Antworte AUSSCHLIESSLICH mit JSON: {"ok":<bool>,"issues":["..."],"operations":[.
 
   // Compositing: original zeichnen, dann KI-Bild nur in der Maske darüberlegen.
   // Beide Bilder werden auf die Original-Pixelgröße gebracht.
+  // Blendet das (an Bbox-Position gesetzte) KI-Ergebnis rechteckig + weich auslaufend
+  // über das Original — für „Bereich ändern", damit das neue Objekt seine eigene Form
+  // behält und nicht auf die alte Silhouette geclippt wird. Rest bleibt 1:1 Original.
+  function compositeRectFeather(origEl, placed, bx, by, bw, bh, W, H) {
+    const out = document.createElement('canvas'); out.width = W; out.height = H
+    const octx = out.getContext('2d')
+    octx.drawImage(origEl, 0, 0, W, H)
+    const feather = Math.max(10, Math.round(Math.min(bw, bh) * 0.14))
+    const fr = document.createElement('canvas'); fr.width = W; fr.height = H
+    const frctx = fr.getContext('2d')
+    frctx.filter = `blur(${feather}px)`
+    frctx.fillStyle = '#fff'
+    frctx.fillRect(Math.round(bx + feather), Math.round(by + feather),
+      Math.max(1, Math.round(bw - 2 * feather)), Math.max(1, Math.round(bh - 2 * feather)))
+    frctx.filter = 'none'
+    const layer = document.createElement('canvas'); layer.width = W; layer.height = H
+    const lctx = layer.getContext('2d')
+    lctx.drawImage(placed, 0, 0)
+    lctx.globalCompositeOperation = 'destination-in'
+    lctx.drawImage(fr, 0, 0)
+    lctx.globalCompositeOperation = 'source-over'
+    octx.drawImage(layer, 0, 0)
+    return out.toDataURL('image/png')
+  }
+
   async function compositeMaskedResult(origEl, aiEl, dilatePx = 0) {
     const w = origEl.naturalWidth || stageSize.width
     const h = origEl.naturalHeight || stageSize.height
