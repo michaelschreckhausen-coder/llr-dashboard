@@ -3645,10 +3645,14 @@ Antworte AUSSCHLIESSLICH mit JSON: {"ok":<bool>,"issues":["..."],"operations":[.
       const Lbg = bg.length ? bg[Math.floor(bg.length / 2)] : 180
       const thr = Lbg * 0.93   // >7% dunkler als Untergrund = Schatten-Kandidat (auch weiche Penumbra)
       // Suchfenster (unten großzügiger, da Schatten meist nach unten fällt)
-      const sx0 = Math.max(0, minx - objW), sy0 = Math.max(0, miny - Math.round(objH * 0.4))
+      const sx0 = Math.max(0, minx - objW), sy0 = Math.max(0, miny - Math.round(objH * 0.2))
       const sx1 = Math.min(W - 1, maxx + objW), sy1 = Math.min(H - 1, maxy + Math.round(objH * 1.8))
       const cand = new Uint8Array(N)
-      for (let y = sy0; y <= sy1; y++) for (let x = sx0; x <= sx1; x++) { const p = idx(x, y); if (!obj[p] && lum[p] < thr) cand[p] = 1 }
+      // Schatten = moderates Abdunkeln der Fläche (nicht so dunkel wie ein eigenes
+      // dunkles Objekt). Untere Grenze verhindert, dass der Flood in dunkle
+      // Nachbarobjekte (Notizbuch, Halter) ausläuft.
+      const loThr = Lbg * 0.52
+      for (let y = sy0; y <= sy1; y++) for (let x = sx0; x <= sx1; x++) { const p = idx(x, y); if (!obj[p] && lum[p] < thr && lum[p] > loThr) cand[p] = 1 }
       // Flood von der Objektgrenze durch Schatten-Kandidaten (4-Nachbarschaft)
       const shadow = new Uint8Array(N)
       const q = new Int32Array(N); let qh = 0, qt = 0
@@ -3672,7 +3676,7 @@ Antworte AUSSCHLIESSLICH mit JSON: {"ok":<bool>,"issues":["..."],"operations":[.
       // leicht dilatieren (saubere Kanten) → auf schwarzem Grund als binär-PNG
       const out = document.createElement('canvas'); out.width = W; out.height = H
       const octx2 = out.getContext('2d'); octx2.fillStyle = '#000'; octx2.fillRect(0, 0, W, H)
-      const dl = Math.max(8, Math.round(Math.min(W, H) * 0.022))
+      const dl = Math.max(6, Math.round(Math.min(W, H) * 0.015))
       for (let a = 0; a < 360; a += 45) octx2.drawImage(fc, Math.round(Math.cos(a * Math.PI / 180) * dl), Math.round(Math.sin(a * Math.PI / 180) * dl), W, H)
       octx2.drawImage(fc, 0, 0)
       const oid = octx2.getImageData(0, 0, W, H); const dd = oid.data
