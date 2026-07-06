@@ -3499,6 +3499,38 @@ Antworte AUSSCHLIESSLICH mit JSON: {"ok":<bool>,"issues":["..."],"operations":[.
   // ─── Objekt entfernen via LaMa (selbst-gehosteter IOPaint-Service) ───────────
   // ECHTES Löschen + Hintergrund-Rekonstruktion (kein generatives Neu-Malen). Bild
   // + Maske gehen an die image-ai Edge Function → LaMa → entferntes Bild zurück.
+  // Entfernt den aktuell markierten Bereich (Objekt + zusammenhängender Schatten)
+  // via self-hosted LaMa und gibt die rekonstruierte Fläche als DataURL zurück.
+  async function eraseRegionToDataUrl(origEl, W, H) {
+    // Bild → PNG-DataURL
+    const ic = document.createElement('canvas'); ic.width = W; ic.height = H
+    ic.getContext('2d').drawImage(origEl, 0, 0, W, H)
+    const imageB64 = ic.toDataURL('image/png')
+    // Maske → schwarz/weiß-PNG (weiß = entfernen). Bevorzugt mit Schatten-Erkennung
+    // (Objekt + verbundener Schatten), Fallback: einfache großzügige Dilatation.
+    const m = maskCanvasRef.current
+    let maskB64 = buildEraseMaskWithShadow(m, origEl, W, H)
+    if (!maskB64) {
+      const mc = document.createElement('canvas'); mc.width = W; mc.height = H
+      const mctx = mc.getContext('2d')
+      mctx.fillStyle = '#000'; mctx.fillRect(0, 0, W, H)
+      const dil = Math.max(6, Math.round(Math.min(W, H) * 0.028))
+      for (let a = 0; a < 360; a += 45) {
+        mctx.drawImage(m, 0, 0, m.width, m.height, Math.round(Math.cos(a * Math.PI / 180) * dil), Math.round(Math.sin(a * Math.PI / 180) * dil), W, H)
+      }
+      mctx.drawImage(m, 0, 0, m.width, m.height, 0, 0, W, H)
+      const id = mctx.getImageData(0, 0, W, H); const d = id.data
+      for (let i = 0; i < d.length; i += 4) { const on = d[i] > 10 || d[i + 1] > 10 || d[i + 2] > 10; d[i] = on ? 255 : 0; d[i + 1] = on ? 255 : 0; d[i + 2] = on ? 255 : 0; d[i + 3] = 255 }
+      mctx.putImageData(id, 0, 0)
+      maskB64 = mc.toDataURL('image/png')
+    }
+    const { data, error } = await supabase.functions.invoke('image-ai', { body: { op: 'erase', image: imageB64, mask: maskB64 } })
+    if (error) throw new Error(humanizeFnError(error))
+    if (data?.error) throw new Error(data.error)
+    if (!data?.image) throw new Error('Kein Ergebnis vom Entfern-Dienst.')
+    return data.image
+  }
+
   async function runServerErase() {
     if (!visual?.storage_path) { setAiError('Kein Basisbild.'); return }
     const target = activeImageObj()
@@ -3509,33 +3541,8 @@ Antworte AUSSCHLIESSLICH mit JSON: {"ok":<bool>,"issues":["..."],"operations":[.
       const origEl = (target?.src && imgCache[target.src]) || bgImage || await loadImageEl(visual.storage_path)
       const W = origEl.naturalWidth || stageSize.width
       const H = origEl.naturalHeight || stageSize.height
-      // Bild → PNG-DataURL
-      const ic = document.createElement('canvas'); ic.width = W; ic.height = H
-      ic.getContext('2d').drawImage(origEl, 0, 0, W, H)
-      const imageB64 = ic.toDataURL('image/png')
-      // Maske → schwarz/weiß-PNG (weiß = entfernen). Bevorzugt mit Schatten-Erkennung
-      // (Objekt + verbundener Schatten), Fallback: einfache großzügige Dilatation.
-      const m = maskCanvasRef.current
-      let maskB64 = buildEraseMaskWithShadow(m, origEl, W, H)
-      if (!maskB64) {
-        const mc = document.createElement('canvas'); mc.width = W; mc.height = H
-        const mctx = mc.getContext('2d')
-        mctx.fillStyle = '#000'; mctx.fillRect(0, 0, W, H)
-        const dil = Math.max(6, Math.round(Math.min(W, H) * 0.028))
-        for (let a = 0; a < 360; a += 45) {
-          mctx.drawImage(m, 0, 0, m.width, m.height, Math.round(Math.cos(a * Math.PI / 180) * dil), Math.round(Math.sin(a * Math.PI / 180) * dil), W, H)
-        }
-        mctx.drawImage(m, 0, 0, m.width, m.height, 0, 0, W, H)
-        const id = mctx.getImageData(0, 0, W, H); const d = id.data
-        for (let i = 0; i < d.length; i += 4) { const on = d[i] > 10 || d[i + 1] > 10 || d[i + 2] > 10; d[i] = on ? 255 : 0; d[i + 1] = on ? 255 : 0; d[i + 2] = on ? 255 : 0; d[i + 3] = 255 }
-        mctx.putImageData(id, 0, 0)
-        maskB64 = mc.toDataURL('image/png')
-      }
-      const { data, error } = await supabase.functions.invoke('image-ai', { body: { op: 'erase', image: imageB64, mask: maskB64 } })
-      if (error) throw new Error(humanizeFnError(error))
-      if (data?.error) throw new Error(data.error)
-      if (!data?.image) throw new Error('Kein Ergebnis vom Entfern-Dienst.')
-      await applyResultDirect(data.image, 'mask')
+      const url = await eraseRegionToDataUrl(origEl, W, H)
+      await applyResultDirect(url, 'mask')
     } catch (e) {
       setAiError('Entfernen fehlgeschlagen: ' + (e?.message || 'Fehler') + '. Bitte erneut versuchen.')
     } finally {
@@ -3559,6 +3566,17 @@ Antworte AUSSCHLIESSLICH mit JSON: {"ok":<bool>,"issues":["..."],"operations":[.
       // 2) Masken-Bbox + großzügiger Kontext-Rand, auf Bildgrenzen geklemmt
       const bbox = computeMaskBBox(W, H)
       if (!bbox) { setAiError('Maske ist leer.'); setAiBusy(false); return }
+      // Bei „Bereich ändern" (Ersetzen) zuerst das markierte Objekt sauber via self-hosted
+      // LaMa entfernen (Objekt + Schatten). So sieht das Modell an der Stelle eine LEERE
+      // Fläche und setzt dort das neue Objekt hinein — statt das alte zu behalten und das
+      // neue nur daneben zu platzieren. baseEl dient danach als Crop-Quelle UND Composite-Basis.
+      let baseEl = origEl
+      if (!isHeal) {
+        try {
+          const erasedUrl = await eraseRegionToDataUrl(origEl, W, H)
+          baseEl = await loadHtmlImage(erasedUrl)
+        } catch (_) { baseEl = origEl }
+      }
       // Großzügiger Rand, damit auch Schatten/Abdruck des alten Objekts im Bereich liegen.
       const pad = Math.round(Math.max(bbox.w, bbox.h) * 0.9 + Math.min(W, H) * 0.07)
       const bx = Math.max(0, bbox.x - pad)
@@ -3572,12 +3590,12 @@ Antworte AUSSCHLIESSLICH mit JSON: {"ok":<bool>,"issues":["..."],"operations":[.
       const ch = Math.max(8, Math.round(bh * cropScale))
       const cropCanvas = document.createElement('canvas')
       cropCanvas.width = cw; cropCanvas.height = ch
-      cropCanvas.getContext('2d').drawImage(origEl, bx, by, bw, bh, 0, 0, cw, ch)
+      cropCanvas.getContext('2d').drawImage(baseEl, bx, by, bw, bh, 0, 0, cw, ch)
       const cropB64 = cropCanvas.toDataURL('image/png').split(',')[1]
       // 4) Eng gefasster Prompt (Photoshop-Stil: nur ändern was nötig, Rest erhalten)
       const prompt = isHeal
         ? 'Entferne das vom Nutzer gemeinte Objekt/Element in diesem Bildausschnitt vollständig und rekonstruiere realistisch den Hintergrund, der dahinter liegen würde. Übernimm Textur, Muster, Farben, Beleuchtung, Schatten und Perspektive exakt aus der direkten Umgebung, sodass keinerlei Spur des entfernten Objekts bleibt. Ändere sonst nichts. Fotorealistisch und nahtlos.'
-        : `Ersetze im markierten Bereich das vorhandene Objekt VOLLSTÄNDIG durch: ${rawPrompt.trim()}. Entferne dabei restlos JEDE Spur des ursprünglichen Objekts — insbesondere auch dessen Schatten, Abdruck, Spiegelung und farbige Reflexionen auf dem Untergrund — und rekonstruiere die freigewordene Fläche (z.B. Tisch/Boden/Wand) sauber und natürlich. Rendere das neue Objekt fotorealistisch, passend in Größe, Beleuchtung, Perspektive und Farbstimmung zur Szene, und gib ihm einen EIGENEN, natürlichen Schatten in Richtung der vorhandenen Lichtquelle. Der Bildinhalt außerhalb bleibt unverändert. Keine sichtbaren Kanten, keine Doppelschatten, kein Geist des alten Objekts.`
+        : `In diesem Bildausschnitt wurde bereits ein Objekt entfernt — die Stelle in der Mitte ist eine LEERE Fläche (z.B. Tisch, Boden oder Wand). Platziere GENAU DORT, mittig auf der Oberfläche stehend, fotorealistisch: ${rawPrompt.trim()}. Es darf nur DIESES EINE neue Objekt entstehen. Passe Größe, Beleuchtung, Perspektive und Farbstimmung exakt an die Szene an und gib dem neuen Objekt einen eigenen, natürlichen Schatten in Richtung der vorhandenen Lichtquelle. Der übrige Bildinhalt bleibt unverändert. Erfinde keine weiteren Objekte, keine Kopien, keine Reste eines alten Objekts, keine sichtbaren Kanten.`
       // 5) Nur den Crop ans Modell (inline) — kein Vollbild, kein BV-Ref
       const aiVisual = await callGenerateImage(prompt, { inlineRefs: [{ mimeType: 'image/png', data: cropB64 }] })
       const aiCropEl = await loadImageEl(aiVisual.storage_path)
@@ -3596,7 +3614,7 @@ Antworte AUSSCHLIESSLICH mit JSON: {"ok":<bool>,"issues":["..."],"operations":[.
         const blob = await compositeMaskedResult(origEl, placed, Math.max(2, Math.round(Math.min(W, H) * 0.008)))
         resultUrl = await blobToDataUrl(blob)
       } else {
-        resultUrl = compositeRectFeather(origEl, placed, bx, by, bw, bh, W, H)
+        resultUrl = compositeRectFeather(baseEl, placed, bx, by, bw, bh, W, H)
       }
       await applyResultDirect(resultUrl, 'mask')   // direkt ins Bild (rückgängig via Undo)
     } catch (e) {
