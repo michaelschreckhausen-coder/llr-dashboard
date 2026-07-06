@@ -32,7 +32,7 @@ import {
   Type, Square as SquareIcon, Circle as CircleIcon, Minus, ArrowRight, Star as StarIcon,
   Trash2, Undo2, Redo2, Save, Download, BringToFront, SendToBack, Crop, Wand2,
   Bold, Italic, Sliders, Loader2, X, ChevronUp, ChevronDown, Brush, Lasso,
-  Eraser, Pen, Pencil, Highlighter, PenTool, Scissors, Image as ImageIcon, LayoutTemplate, Copy, ZoomIn, ZoomOut, Maximize2,
+  Eraser, Pen, Pencil, Highlighter, PenTool, Scissors, MousePointerClick, Image as ImageIcon, LayoutTemplate, Copy, ZoomIn, ZoomOut, Maximize2,
   Upload, Frame, Eye, EyeOff, Lock, Unlock, Layers, GripVertical, Underline,
   FlipHorizontal2, FlipVertical2, FlipHorizontal, FlipVertical, Scaling, Send, CalendarPlus, FileText, Search, Paintbrush,
   AlignLeft, AlignCenter, AlignRight, Baseline, MoveVertical,
@@ -42,6 +42,7 @@ import {
 } from 'lucide-react'
 import { supabase } from '../../lib/supabase'
 import { visualDataUrl, uploadDesignRender, updateVisual, getVisual, listTeamVisuals, signedVisualUrl, signedThumbUrl, uploadImageBlob, createImageVisual } from '../../lib/contentVisuals'
+import { prepareSegment, segmentAt, isSegmentReady, resetSegment } from '../../lib/segment'
 import { splitModelValue, DEFAULT_IMAGE_MODEL } from '../../lib/imageModels'
 import { DESIGN_TEMPLATES } from '../../lib/designTemplates'
 import { DESIGN_ASSETS, ASSET_CATEGORIES } from '../../lib/designAssets'
@@ -804,7 +805,9 @@ export default function DesignerCanvas({ visual, teamId, onSaved, onReplaceVisua
   // ─── KI-Masken-Werkzeug ────────────────────────────────────────────────────
   // aiMode: 'edit' (freier Prompt) | 'heal' (Objekt entfernen) | null
   const [aiMode, setAiMode] = useState(null)
-  const [maskTool, setMaskTool] = useState('brush')   // 'brush' | 'lasso' | 'rect'
+  const [maskTool, setMaskTool] = useState('brush')   // 'brush' | 'lasso' | 'rect' | 'magic'
+  const [segBusy, setSegBusy] = useState(false)       // SlimSAM lädt/rechnet
+  const [segMsg, setSegMsg] = useState('')            // Fortschrittstext Klick-Auswahl
   const [brushSize, setBrushSize] = useState(60)      // in Bild-Pixeln
   const [feather, setFeather] = useState(true)        // weiche Kante
   const [aiPrompt, setAiPrompt] = useState('')
@@ -892,6 +895,7 @@ export default function DesignerCanvas({ visual, teamId, onSaved, onReplaceVisua
 
   // Masken-Canvas (volle Bild-Auflösung) + sichtbares Overlay-Canvas (Anzeige-Auflösung)
   const maskCanvasRef = useRef(null)                  // HTMLCanvasElement (Bild-Pixel, weiß=Maske)
+  const segSrcRef = useRef(null)                      // src des Bildes, für das SlimSAM-Embeddings vorliegen
   const overlayRef = useRef(null)                     // sichtbares Canvas über der Stage
   const drawingRef = useRef(false)
   const lassoPtsRef = useRef([])                      // [{x,y}] in Bild-Pixeln (Lasso)
@@ -2778,11 +2782,48 @@ Antworte AUSSCHLIESSLICH mit JSON: {"ok":<bool>,"issues":["..."],"operations":[.
     const py = (clientY - rect.top) / effScale + (baseCrop ? baseCrop.y : 0)
     return { x: px, y: py }
   }
+  // ─── Magic-Select: Klick auf ein Objekt → SlimSAM erkennt es und maskiert es ──
+  // Läuft lokal im Browser. Erste Nutzung pro Bild rechnet Embeddings (paar Sek.),
+  // danach ist jeder Klick schnell. Auswahl ist additiv (mehrere Objekte klickbar).
+  async function magicSelectAt(pt) {
+    const target = activeImageObj()
+    if (!target) { setAiError('Klick-Auswahl braucht ein Bild im Design.'); return }
+    try {
+      setSegBusy(true); setAiError('')
+      const origEl = (target?.src && imgCache[target.src]) || bgImage || await loadImageEl(visual.storage_path)
+      if (segSrcRef.current !== target.src || !isSegmentReady()) {
+        setSegMsg('Bild wird analysiert … (einmalig pro Bild)')
+        await prepareSegment(origEl, (p) => {
+          if (p && p.status === 'progress' && typeof p.progress === 'number' && /\.onnx/i.test(p.file || '')) {
+            setSegMsg('KI-Modell wird geladen … ' + Math.round(p.progress) + '%')
+          }
+        })
+        segSrcRef.current = target.src
+      }
+      setSegMsg('Objekt wird ausgewählt …')
+      const nx = pt.x / (stageSize.width || 1)
+      const ny = pt.y / (stageSize.height || 1)
+      const res = await segmentAt(nx, ny)
+      if (!res || !res.canvas) { setAiError('Kein Objekt erkannt — bitte direkt auf das Objekt klicken.'); return }
+      const mc = maskCanvasRef.current
+      if (mc) {
+        // Objekt-Maske (Bild-Auflösung) additiv in die Masken-Canvas (Artboard) zeichnen.
+        mc.getContext('2d').drawImage(res.canvas, 0, 0, res.W, res.H, 0, 0, mc.width, mc.height)
+        setHasMask(true); redrawOverlay()
+      }
+    } catch (e) {
+      setAiError('Klick-Auswahl fehlgeschlagen: ' + (e?.message || 'Fehler') + '. Nutze solange Pinsel/Lasso.')
+    } finally {
+      setSegBusy(false); setSegMsg('')
+    }
+  }
+
   function onMaskDown(e) {
     if (!aiMode) return
     e.preventDefault()
     const pt = overlayPoint(e)
     if (!pt) return
+    if (maskTool === 'magic') { magicSelectAt(pt); return }
     drawingRef.current = true
     if (maskTool === 'brush') {
       paintBrushAt(pt.x, pt.y); setHasMask(true); redrawOverlay()
@@ -3375,7 +3416,7 @@ Antworte AUSSCHLIESSLICH mit JSON: {"ok":<bool>,"issues":["..."],"operations":[.
     try {
       const im = await loadHtmlImage(dataUrl)
       setImgCache(prev => ({ ...prev, [dataUrl]: im }))
-      if (objId) updateObject(objId, { src: dataUrl })
+      if (objId) { pushHistory(); updateObject(objId, { src: dataUrl }) }
     } catch (_e) {}
     if (kind === 'free') setAiCommand('')
     if (kind === 'bg') { clearMask(); setAiMode(null) }
@@ -3386,7 +3427,7 @@ Antworte AUSSCHLIESSLICH mit JSON: {"ok":<bool>,"issues":["..."],"operations":[.
     try {
       const im = await loadHtmlImage(url)
       setImgCache(prev => ({ ...prev, [url]: im }))
-      if (objId) updateObject(objId, { src: url })
+      if (objId) { pushHistory(); updateObject(objId, { src: url }) }
     } catch (_e) {}
     setAiPreview(null)
     // Aufräumen je nach Werkzeug
@@ -3471,7 +3512,8 @@ Antworte AUSSCHLIESSLICH mit JSON: {"ok":<bool>,"issues":["..."],"operations":[.
         aiCropEl, 0, 0, aiCropEl.naturalWidth || cw, aiCropEl.naturalHeight || ch, bx, by, bw, bh
       )
       // 7) Nur innerhalb der (weichen) Maske übernehmen — Rest bleibt 1:1 Original
-      const blob = await compositeMaskedResult(origEl, placed)
+      const dilate = isHeal ? Math.max(2, Math.round(Math.min(W, H) * 0.008)) : 0
+      const blob = await compositeMaskedResult(origEl, placed, dilate)
       const resultUrl = await blobToDataUrl(blob)
       proposeResult(resultUrl, 'mask')   // erst Vorschau, dann Übernehmen/Verwerfen
     } catch (e) {
@@ -3483,7 +3525,7 @@ Antworte AUSSCHLIESSLICH mit JSON: {"ok":<bool>,"issues":["..."],"operations":[.
 
   // Compositing: original zeichnen, dann KI-Bild nur in der Maske darüberlegen.
   // Beide Bilder werden auf die Original-Pixelgröße gebracht.
-  async function compositeMaskedResult(origEl, aiEl) {
+  async function compositeMaskedResult(origEl, aiEl, dilatePx = 0) {
     const w = origEl.naturalWidth || stageSize.width
     const h = origEl.naturalHeight || stageSize.height
     const out = document.createElement('canvas')
@@ -3506,6 +3548,20 @@ Antworte AUSSCHLIESSLICH mit JSON: {"ok":<bool>,"issues":["..."],"operations":[.
       if (feather) tctx.filter = 'blur(0px)'
       tctx.drawImage(m, 0, 0, w, h)
       maskSrc = tmp
+    }
+    // Objekt entfernen: Maske leicht ausweiten (Dilatation), damit Objektkanten,
+    // dünne Ausläufer und Schattensäume komplett vom neu gefüllten Bereich abgedeckt
+    // werden (Magic-Eraser-Prinzip — keine Reste am Rand).
+    if (dilatePx > 0 && maskSrc) {
+      const dm = document.createElement('canvas'); dm.width = w; dm.height = h
+      const dctx = dm.getContext('2d')
+      for (let a = 0; a < 360; a += 45) {
+        const dx = Math.round(Math.cos(a * Math.PI / 180) * dilatePx)
+        const dy = Math.round(Math.sin(a * Math.PI / 180) * dilatePx)
+        dctx.drawImage(maskSrc, dx, dy, w, h)
+      }
+      dctx.drawImage(maskSrc, 0, 0, w, h)
+      maskSrc = dm
     }
     // optional weiche Kante: Maske leicht weichzeichnen
     if (feather && maskSrc) {
@@ -4734,6 +4790,7 @@ Antworte AUSSCHLIESSLICH mit JSON: {"ok":<bool>,"issues":["..."],"operations":[.
           onBgReplace={(txt) => runBackgroundReplace('replace', txt)}
           onClearMask={clearMask} onInvertMask={invertMask}
           setCropMode={setCropMode} setSelectedId={setSelectedId} setAiError={setAiError}
+          segBusy={segBusy} segMsg={segMsg} onUndo={undo} onRedo={redo}
           // Filter
           filters={filters} setFilters={setFilters}
           commitHistoryOnce={commitHistoryOnce} endInteraction={endInteraction}
@@ -5541,13 +5598,41 @@ function FormatMenu({ onPick }) {
 }
 
 function Slider({ label, min, max, step, value, onChange, onStart, onEnd }) {
+  const [dragging, setDragging] = useState(false)
+  const v = value || 0
+  const hasZero = min < 0 && max > 0
+  const frac = Math.max(0, Math.min(1, (v - min) / (max - min)))
+  const zeroPct = hasZero ? ((0 - min) / (max - min)) * 100 : 0
+  const disp = Number.isInteger(step) ? Math.round(v) : Math.round(v * 100) / 100
+  const sign = (hasZero && v > 0) ? '+' : ''
+  // Sanftes Einrasten am Nullpunkt (Detent): Werte nahe 0 fangen auf 0.
+  const snap = (val) => {
+    if (!hasZero) return val
+    return Math.abs(val) <= (max - min) * 0.035 ? 0 : val
+  }
   return (
-    <label style={{ display: 'inline-flex', flexDirection: 'column', gap: 2, fontSize: 11, color: 'var(--text-muted)' }}>
-      {label}
-      <input type="range" min={min} max={max} step={step} value={value || 0}
-        onMouseDown={onStart} onTouchStart={onStart} onMouseUp={onEnd} onTouchEnd={onEnd}
-        onChange={e => onChange(parseFloat(e.target.value))} style={{ width: 120 }} />
-    </label>
+    <div style={{ fontSize: 11.5, color: 'var(--text-muted)' }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 4 }}>
+        <span style={{ fontWeight: 600, color: 'var(--text-secondary,#475467)' }}>{label}</span>
+        <span style={{ fontVariantNumeric: 'tabular-nums', fontWeight: 700, color: v !== 0 ? P : 'var(--text-muted)', minWidth: 36, textAlign: 'right' }}>{sign}{disp}</span>
+      </div>
+      <div style={{ position: 'relative' }}>
+        {hasZero && (
+          <span style={{ position: 'absolute', left: zeroPct + '%', top: 3, width: 2, height: 10, background: 'var(--border,#D0D5DD)', transform: 'translateX(-50%)', pointerEvents: 'none', borderRadius: 1 }} />
+        )}
+        {dragging && (
+          <span style={{ position: 'absolute', left: frac * 100 + '%', top: -25, transform: 'translateX(-50%)', background: P, color: '#fff', fontSize: 10.5, fontWeight: 700, fontVariantNumeric: 'tabular-nums', padding: '2px 7px', borderRadius: 6, whiteSpace: 'nowrap', pointerEvents: 'none', boxShadow: '0 2px 8px rgba(16,24,40,0.22)' }}>{sign}{disp}</span>
+        )}
+        <input type="range" min={min} max={max} step={step} value={v}
+          onMouseDown={() => { setDragging(true); onStart && onStart() }}
+          onTouchStart={() => { setDragging(true); onStart && onStart() }}
+          onMouseUp={() => { setDragging(false); onEnd && onEnd() }}
+          onTouchEnd={() => { setDragging(false); onEnd && onEnd() }}
+          onDoubleClick={() => { if (hasZero) onChange(0) }}
+          onChange={e => onChange(snap(parseFloat(e.target.value)))}
+          style={{ width: '100%', accentColor: P, cursor: 'pointer' }} />
+      </div>
+    </div>
   )
 }
 
@@ -6218,7 +6303,7 @@ function AiPanelBody({
   aiMode, setAiMode, maskTool, setMaskTool, brushSize, setBrushSize, feather, setFeather,
   aiPrompt, setAiPrompt, aiCommand, setAiCommand, aiBusy, aiError, bgMenuBusy, hasMask,
   onRunMaskEdit, onRunFreeCommand, onBgRemove, onBgReplace, onClearMask, onInvertMask,
-  setCropMode, setSelectedId, setAiError,
+  setCropMode, setSelectedId, setAiError, segBusy, segMsg, onUndo, onRedo,
 }) {
   const [bgText, setBgText] = useState('')
   const startMask = (mode) => { setAiMode(mode); setCropMode(false); setSelectedId(null); setAiError && setAiError('') }
@@ -6227,6 +6312,18 @@ function AiPanelBody({
   const CHINT = { fontSize: 11.5, color: 'var(--text-muted)', marginBottom: 10, lineHeight: 1.4 }
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+
+      {/* Rückgängig / Wiederholen — auch KI-Änderungen sind jetzt Undo-fähig */}
+      <div style={{ display: 'flex', gap: 6 }}>
+        <button type="button" onClick={onUndo} title="Letzte Änderung rückgängig (auch KI)"
+          style={{ flex: 1, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: 6, height: 30, borderRadius: 8, cursor: 'pointer', fontFamily: 'inherit', fontSize: 12, fontWeight: 600, border: '1px solid var(--border)', background: '#fff', color: 'var(--text-secondary,#475467)' }}>
+          <Undo2 size={13} strokeWidth={2} />Rückgängig
+        </button>
+        <button type="button" onClick={onRedo} title="Wiederholen"
+          style={{ flex: 1, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: 6, height: 30, borderRadius: 8, cursor: 'pointer', fontFamily: 'inherit', fontSize: 12, fontWeight: 600, border: '1px solid var(--border)', background: '#fff', color: 'var(--text-secondary,#475467)' }}>
+          <Redo2 size={13} strokeWidth={2} />Wiederholen
+        </button>
+      </div>
 
       {/* Hero: Freitext-Befehl fürs ganze Bild */}
       <div>
@@ -6247,12 +6344,27 @@ function AiPanelBody({
         </div>
         {aiMode && (
           <div style={{ background: 'rgba(49,90,231,0.05)', borderRadius: 10, padding: 10, marginTop: 10 }}>
-            <div style={{ fontSize: 11, color: 'var(--text-muted)', marginBottom: 8 }}>Werkzeug wählen und den Bereich direkt im Bild markieren:</div>
-            <div style={{ display: 'flex', gap: 6, marginBottom: 8 }}>
+            <div style={{ fontSize: 11, color: 'var(--text-muted)', marginBottom: 8 }}>Auswahl-Werkzeug wählen und den Bereich im Bild markieren:</div>
+            <div style={{ display: 'flex', gap: 6, marginBottom: 8, alignItems: 'center' }}>
+              <button type="button" onClick={() => setMaskTool('magic')} title="Objekt per Klick automatisch erkennen"
+                style={{ flex: 1, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: 6, height: 32, borderRadius: 8, cursor: 'pointer', fontFamily: 'inherit', fontSize: 12, fontWeight: 700,
+                  border: '1px solid ' + (maskTool === 'magic' ? P : 'var(--border,#E9ECF2)'), background: maskTool === 'magic' ? 'rgba(49,90,231,0.08)' : '#fff', color: maskTool === 'magic' ? P : 'var(--text-secondary,#475467)' }}>
+                <MousePointerClick size={14} strokeWidth={1.9} />Magisch
+              </button>
               <ToolBtn onClick={() => setMaskTool('brush')} active={maskTool === 'brush'} title="Pinsel"><Brush size={14} strokeWidth={1.9} /></ToolBtn>
               <ToolBtn onClick={() => setMaskTool('lasso')} active={maskTool === 'lasso'} title="Lasso"><Lasso size={14} strokeWidth={1.9} /></ToolBtn>
               <ToolBtn onClick={() => setMaskTool('rect')} active={maskTool === 'rect'} title="Rechteck"><SquareIcon size={14} strokeWidth={1.9} /></ToolBtn>
             </div>
+            {maskTool === 'magic' && (
+              <div style={{ fontSize: 11, color: 'var(--text-muted)', marginBottom: 8, lineHeight: 1.4 }}>
+                Klick direkt auf ein Objekt im Bild — die KI erkennt und markiert es automatisch. Mehrere Objekte nacheinander anklickbar.
+              </div>
+            )}
+            {segBusy && (
+              <div style={{ fontSize: 11.5, color: P, display: 'flex', alignItems: 'center', gap: 6, marginBottom: 8 }}>
+                <Loader2 size={13} className="lk-spin" />{segMsg || 'KI erkennt Objekte …'}
+              </div>
+            )}
             {maskTool === 'brush' && (
               <label style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 11, color: 'var(--text-muted)', marginBottom: 8 }}>
                 Pinselgröße<input type="range" min={10} max={300} step={2} value={brushSize} onChange={e => setBrushSize(parseInt(e.target.value, 10))} style={{ flex: 1, accentColor: P }} />
