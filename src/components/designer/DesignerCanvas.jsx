@@ -3518,7 +3518,9 @@ Antworte AUSSCHLIESSLICH mit JSON: {"ok":<bool>,"issues":["..."],"operations":[.
       const mc = document.createElement('canvas'); mc.width = W; mc.height = H
       const mctx = mc.getContext('2d')
       mctx.fillStyle = '#000'; mctx.fillRect(0, 0, W, H)
-      const dil = Math.max(2, Math.round(Math.min(W, H) * 0.01))
+      // Großzügig dilatieren, damit Kontaktschatten/Halo/Abdruck des Objekts mit
+      // entfernt und sauber rekonstruiert werden (nicht nur das Objekt selbst).
+      const dil = Math.max(6, Math.round(Math.min(W, H) * 0.028))
       for (let a = 0; a < 360; a += 45) {
         const dx = Math.round(Math.cos(a * Math.PI / 180) * dil)
         const dy = Math.round(Math.sin(a * Math.PI / 180) * dil)
@@ -3560,7 +3562,8 @@ Antworte AUSSCHLIESSLICH mit JSON: {"ok":<bool>,"issues":["..."],"operations":[.
       // 2) Masken-Bbox + großzügiger Kontext-Rand, auf Bildgrenzen geklemmt
       const bbox = computeMaskBBox(W, H)
       if (!bbox) { setAiError('Maske ist leer.'); setAiBusy(false); return }
-      const pad = Math.round(Math.max(bbox.w, bbox.h) * 0.6 + Math.min(W, H) * 0.04)
+      // Großzügiger Rand, damit auch Schatten/Abdruck des alten Objekts im Bereich liegen.
+      const pad = Math.round(Math.max(bbox.w, bbox.h) * 0.9 + Math.min(W, H) * 0.07)
       const bx = Math.max(0, bbox.x - pad)
       const by = Math.max(0, bbox.y - pad)
       const bw = Math.min(W - bx, bbox.w + pad * 2)
@@ -3577,7 +3580,7 @@ Antworte AUSSCHLIESSLICH mit JSON: {"ok":<bool>,"issues":["..."],"operations":[.
       // 4) Eng gefasster Prompt (Photoshop-Stil: nur ändern was nötig, Rest erhalten)
       const prompt = isHeal
         ? 'Entferne das vom Nutzer gemeinte Objekt/Element in diesem Bildausschnitt vollständig und rekonstruiere realistisch den Hintergrund, der dahinter liegen würde. Übernimm Textur, Muster, Farben, Beleuchtung, Schatten und Perspektive exakt aus der direkten Umgebung, sodass keinerlei Spur des entfernten Objekts bleibt. Ändere sonst nichts. Fotorealistisch und nahtlos.'
-        : `Ersetze im markierten Bereich dieses Bildausschnitts das vorhandene Objekt VOLLSTÄNDIG durch: ${rawPrompt.trim()}. Das neue Objekt fotorealistisch rendern — in Größe, Beleuchtung, Schattenwurf, Perspektive und Farbstimmung exakt passend zur Szene, mit realistischem Kontakt-/Schlagschatten. Vom ursprünglichen Objekt darf nichts übrig bleiben. Der umgebende Bildinhalt (Hintergrund, Untergrund, Umfeld) bleibt unverändert und geht nahtlos über. Keine sichtbaren Kanten.`
+        : `Ersetze im markierten Bereich das vorhandene Objekt VOLLSTÄNDIG durch: ${rawPrompt.trim()}. Entferne dabei restlos JEDE Spur des ursprünglichen Objekts — insbesondere auch dessen Schatten, Abdruck, Spiegelung und farbige Reflexionen auf dem Untergrund — und rekonstruiere die freigewordene Fläche (z.B. Tisch/Boden/Wand) sauber und natürlich. Rendere das neue Objekt fotorealistisch, passend in Größe, Beleuchtung, Perspektive und Farbstimmung zur Szene, und gib ihm einen EIGENEN, natürlichen Schatten in Richtung der vorhandenen Lichtquelle. Der Bildinhalt außerhalb bleibt unverändert. Keine sichtbaren Kanten, keine Doppelschatten, kein Geist des alten Objekts.`
       // 5) Nur den Crop ans Modell (inline) — kein Vollbild, kein BV-Ref
       const aiVisual = await callGenerateImage(prompt, { inlineRefs: [{ mimeType: 'image/png', data: cropB64 }] })
       const aiCropEl = await loadImageEl(aiVisual.storage_path)
