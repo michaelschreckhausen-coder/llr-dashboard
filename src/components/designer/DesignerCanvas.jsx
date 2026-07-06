@@ -3542,7 +3542,36 @@ Antworte AUSSCHLIESSLICH mit JSON: {"ok":<bool>,"issues":["..."],"operations":[.
       const W = origEl.naturalWidth || stageSize.width
       const H = origEl.naturalHeight || stageSize.height
       const url = await eraseRegionToDataUrl(origEl, W, H)
-      await applyResultDirect(url, 'mask')
+      // Aufräum-Pass: LaMa entfernt das Objekt zuverlässig, kann aber auf texturarmen
+      // Hintergründen (glatte Wand/Verlauf) einen weichen Grauschleier / Objekt-Geist
+      // hinterlassen. Ein generativer Reconstruct-Pass NUR über den betroffenen Ausschnitt
+      // rekonstruiert Wand/Tisch sauber. Fällt bei Fehler auf das reine LaMa-Ergebnis zurück.
+      let finalUrl = url
+      try {
+        const erasedEl = await loadHtmlImage(url)
+        const bbox = computeMaskBBox(W, H)
+        if (bbox) {
+          const pad = Math.round(Math.max(bbox.w, bbox.h) * 0.6 + Math.min(W, H) * 0.05)
+          const bx = Math.max(0, bbox.x - pad)
+          const by = Math.max(0, bbox.y - pad)
+          const bw = Math.min(W - bx, bbox.w + pad * 2)
+          const bh = Math.min(H - by, bbox.h + pad * 2)
+          const MAXC = 1280
+          const cropScale = Math.min(1, MAXC / Math.max(bw, bh))
+          const cw = Math.max(8, Math.round(bw * cropScale))
+          const ch = Math.max(8, Math.round(bh * cropScale))
+          const cc = document.createElement('canvas'); cc.width = cw; cc.height = ch
+          cc.getContext('2d').drawImage(erasedEl, bx, by, bw, bh, 0, 0, cw, ch)
+          const cropB64 = cc.toDataURL('image/png').split(',')[1]
+          const prompt = 'In diesem Bildausschnitt wurde ein Objekt entfernt. Entferne noch verbliebene weiche graue Schleier, Schatten, Abdrücke oder Unschärfe-Reste vollständig und rekonstruiere den Hintergrund (z.B. Wand und Tischplatte) sauber, gleichmäßig, texturtreu, mit korrekter Kante zwischen den Flächen und passender Beleuchtung. Erfinde KEIN neues Objekt und füge nichts hinzu — der Bereich soll völlig leer und natürlich wirken. Ändere sonst nichts.'
+          const aiVisual = await callGenerateImage(prompt, { inlineRefs: [{ mimeType: 'image/png', data: cropB64 }] })
+          const aiCropEl = await loadImageEl(aiVisual.storage_path)
+          const placed = document.createElement('canvas'); placed.width = W; placed.height = H
+          placed.getContext('2d').drawImage(aiCropEl, 0, 0, aiCropEl.naturalWidth || cw, aiCropEl.naturalHeight || ch, bx, by, bw, bh)
+          finalUrl = compositeRectFeather(erasedEl, placed, bx, by, bw, bh, W, H)
+        }
+      } catch (_e) { finalUrl = url }
+      await applyResultDirect(finalUrl, 'mask')
     } catch (e) {
       setAiError('Entfernen fehlgeschlagen: ' + (e?.message || 'Fehler') + '. Bitte erneut versuchen.')
     } finally {
