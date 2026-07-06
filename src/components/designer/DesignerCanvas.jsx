@@ -3469,6 +3469,54 @@ Antworte AUSSCHLIESSLICH mit JSON: {"ok":<bool>,"issues":["..."],"operations":[.
   // Kontext-Rand (für Beleuchtung/Perspektive/Textur), regeneriert lokal in hoher
   // Auflösung, und der editierte Crop wird ausschließlich innerhalb der weichen Maske
   // zurückkomponiert. Der Rest des Bildes bleibt pixelgenau erhalten.
+  // ─── Objekt entfernen via LaMa (selbst-gehosteter IOPaint-Service) ───────────
+  // ECHTES Löschen + Hintergrund-Rekonstruktion (kein generatives Neu-Malen). Bild
+  // + Maske gehen an die image-ai Edge Function → LaMa → entferntes Bild zurück.
+  async function runServerErase() {
+    if (!visual?.storage_path) { setAiError('Kein Basisbild.'); return }
+    const target = activeImageObj()
+    if (!target) { setAiError('KI-Werkzeuge brauchen ein Bild im Design.'); return }
+    if (!hasMask) { setAiError('Bitte zuerst einen Bereich markieren (Magisch, Pinsel, Lasso oder Rechteck).'); return }
+    setAiBusy(true); setAiError('')
+    try {
+      const origEl = (target?.src && imgCache[target.src]) || bgImage || await loadImageEl(visual.storage_path)
+      const W = origEl.naturalWidth || stageSize.width
+      const H = origEl.naturalHeight || stageSize.height
+      // Bild → PNG-DataURL
+      const ic = document.createElement('canvas'); ic.width = W; ic.height = H
+      ic.getContext('2d').drawImage(origEl, 0, 0, W, H)
+      const imageB64 = ic.toDataURL('image/png')
+      // Maske → schwarz/weiß-PNG (weiß = entfernen), leicht dilatiert für saubere Kanten
+      const m = maskCanvasRef.current
+      const mc = document.createElement('canvas'); mc.width = W; mc.height = H
+      const mctx = mc.getContext('2d')
+      mctx.fillStyle = '#000'; mctx.fillRect(0, 0, W, H)
+      const dil = Math.max(2, Math.round(Math.min(W, H) * 0.01))
+      for (let a = 0; a < 360; a += 45) {
+        const dx = Math.round(Math.cos(a * Math.PI / 180) * dil)
+        const dy = Math.round(Math.sin(a * Math.PI / 180) * dil)
+        mctx.drawImage(m, 0, 0, m.width, m.height, dx, dy, W, H)
+      }
+      mctx.drawImage(m, 0, 0, m.width, m.height, 0, 0, W, H)
+      const id = mctx.getImageData(0, 0, W, H); const d = id.data
+      for (let i = 0; i < d.length; i += 4) {
+        const on = d[i] > 10 || d[i + 1] > 10 || d[i + 2] > 10
+        d[i] = on ? 255 : 0; d[i + 1] = on ? 255 : 0; d[i + 2] = on ? 255 : 0; d[i + 3] = 255
+      }
+      mctx.putImageData(id, 0, 0)
+      const maskB64 = mc.toDataURL('image/png')
+      const { data, error } = await supabase.functions.invoke('image-ai', { body: { op: 'erase', image: imageB64, mask: maskB64 } })
+      if (error) throw new Error(humanizeFnError(error))
+      if (data?.error) throw new Error(data.error)
+      if (!data?.image) throw new Error('Kein Ergebnis vom Entfern-Dienst.')
+      await applyResultDirect(data.image, 'mask')
+    } catch (e) {
+      setAiError('Entfernen fehlgeschlagen: ' + (e?.message || 'Fehler') + '. Bitte erneut versuchen.')
+    } finally {
+      setAiBusy(false)
+    }
+  }
+
   async function runMaskedAiEdit(rawPrompt) {
     if (!visual?.storage_path) { setAiError('Kein Basisbild.'); return }
     const target = activeImageObj()
@@ -4785,7 +4833,7 @@ Antworte AUSSCHLIESSLICH mit JSON: {"ok":<bool>,"issues":["..."],"operations":[.
           aiCommand={aiCommand} setAiCommand={setAiCommand}
           aiBusy={aiBusy} aiError={aiError} bgMenuBusy={bgMenuBusy}
           hasMask={hasMask}
-          onRunMaskEdit={() => aiMode === 'heal' ? runMaskedAiEdit(HEAL_PROMPT) : runMaskedAiEdit(aiPrompt)}
+          onRunMaskEdit={() => aiMode === 'heal' ? runServerErase() : runMaskedAiEdit(aiPrompt)}
           onRunFreeCommand={() => runFreeAiCommand(aiCommand)}
           onBgRemove={() => runBackgroundReplace('remove')}
           onBgReplace={(txt) => runBackgroundReplace('replace', txt)}
