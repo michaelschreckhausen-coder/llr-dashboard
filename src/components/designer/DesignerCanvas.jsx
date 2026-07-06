@@ -2791,24 +2791,51 @@ Antworte AUSSCHLIESSLICH mit JSON: {"ok":<bool>,"issues":["..."],"operations":[.
     try {
       setSegBusy(true); setAiError('')
       const origEl = (target?.src && imgCache[target.src]) || bgImage || await loadImageEl(visual.storage_path)
-      if (segSrcRef.current !== target.src || !isSegmentReady()) {
-        setSegMsg('Bild wird analysiert … (einmalig pro Bild)')
-        await prepareSegment(origEl, (p) => {
-          if (p && p.status === 'progress' && typeof p.progress === 'number' && /\.onnx/i.test(p.file || '')) {
-            setSegMsg('KI-Modell wird geladen … ' + Math.round(p.progress) + '%')
-          }
-        })
-        segSrcRef.current = target.src
-      }
-      setSegMsg('Objekt wird ausgewählt …')
+      const W = origEl.naturalWidth || stageSize.width
+      const H = origEl.naturalHeight || stageSize.height
       const nx = pt.x / (stageSize.width || 1)
       const ny = pt.y / (stageSize.height || 1)
-      const res = await segmentAt(nx, ny)
-      if (!res || !res.canvas) { setAiError('Kein Objekt erkannt — bitte direkt auf das Objekt klicken.'); return }
+      let maskEl = null, mW = W, mH = H
+
+      // 1) Server-SAM (SAM-HQ, höchste Qualität) — selbst-gehostet.
+      try {
+        setSegMsg('Objekt wird erkannt …')
+        const ic = document.createElement('canvas'); ic.width = W; ic.height = H
+        ic.getContext('2d').drawImage(origEl, 0, 0, W, H)
+        const px = Math.round(nx * W), py = Math.round(ny * H)
+        const { data, error } = await supabase.functions.invoke('image-ai', { body: { op: 'segment', image: ic.toDataURL('image/png'), points: [[px, py]] } })
+        if (!error && !data?.error && data?.mask) {
+          const im = await loadHtmlImage(data.mask)
+          // Graustufen-Maske → weiß+Alpha (maskCanvas nutzt Alpha als Auswahl).
+          const tmp = document.createElement('canvas'); tmp.width = im.naturalWidth || W; tmp.height = im.naturalHeight || H
+          const tctx = tmp.getContext('2d'); tctx.drawImage(im, 0, 0)
+          const idm = tctx.getImageData(0, 0, tmp.width, tmp.height); const dd = idm.data
+          let any = false
+          for (let k = 0; k < dd.length; k += 4) { const on = dd[k] > 127; if (on) any = true; dd[k] = 255; dd[k + 1] = 255; dd[k + 2] = 255; dd[k + 3] = on ? 255 : 0 }
+          if (any) { tctx.putImageData(idm, 0, 0); maskEl = tmp; mW = tmp.width; mH = tmp.height }
+        }
+      } catch (_e) { /* Fallback unten */ }
+
+      // 2) Fallback: Browser-SlimSAM (falls Server nicht erreichbar / Modell aus).
+      if (!maskEl) {
+        if (segSrcRef.current !== target.src || !isSegmentReady()) {
+          setSegMsg('Bild wird analysiert … (einmalig pro Bild)')
+          await prepareSegment(origEl, (p) => {
+            if (p && p.status === 'progress' && typeof p.progress === 'number' && /\.onnx/i.test(p.file || '')) {
+              setSegMsg('KI-Modell wird geladen … ' + Math.round(p.progress) + '%')
+            }
+          })
+          segSrcRef.current = target.src
+        }
+        setSegMsg('Objekt wird ausgewählt …')
+        const res = await segmentAt(nx, ny)
+        if (res && res.canvas) { maskEl = res.canvas; mW = res.W; mH = res.H }
+      }
+
+      if (!maskEl) { setAiError('Kein Objekt erkannt — bitte direkt auf das Objekt klicken.'); return }
       const mc = maskCanvasRef.current
       if (mc) {
-        // Objekt-Maske (Bild-Auflösung) additiv in die Masken-Canvas (Artboard) zeichnen.
-        mc.getContext('2d').drawImage(res.canvas, 0, 0, res.W, res.H, 0, 0, mc.width, mc.height)
+        mc.getContext('2d').drawImage(maskEl, 0, 0, mW, mH, 0, 0, mc.width, mc.height)
         setHasMask(true); redrawOverlay()
       }
     } catch (e) {
@@ -3690,9 +3717,20 @@ Antworte AUSSCHLIESSLICH mit JSON: {"ok":<bool>,"issues":["..."],"operations":[.
       // Das Motiv wird per Alpha-Matte aus den ORIGINAL-Pixeln freigestellt und
       // bleibt damit pixelgenau erhalten (kein generatives Neu-Malen → kein
       // „Sims-Effekt"). Wie bei Canva/CapCut. Verarbeitung lokal im Browser.
+      // 1) Server-Matting (BiRefNet, selbst-gehostet) — höchste Qualität, feine Kanten.
+      // 2) Fallback: lokales Browser-MODNet, falls der Dienst nicht erreichbar ist.
       setSavedMsg('Motiv wird freigestellt …')
-      const { removeBackgroundLocal } = await import('../../lib/bgRemoval')
-      const cutoutUrl = await removeBackgroundLocal(origEl, onProg)
+      let cutoutUrl = null
+      try {
+        const ic = document.createElement('canvas'); ic.width = W; ic.height = H
+        ic.getContext('2d').drawImage(origEl, 0, 0, W, H)
+        const { data, error } = await supabase.functions.invoke('image-ai', { body: { op: 'matte', image: ic.toDataURL('image/png') } })
+        if (!error && !data?.error && data?.image) cutoutUrl = data.image
+      } catch (_e) { /* Fallback unten */ }
+      if (!cutoutUrl) {
+        const { removeBackgroundLocal } = await import('../../lib/bgRemoval')
+        cutoutUrl = await removeBackgroundLocal(origEl, onProg)
+      }
 
       if (mode === 'remove') {
         setSavedMsg('')
