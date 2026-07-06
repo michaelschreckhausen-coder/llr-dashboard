@@ -3654,7 +3654,7 @@ Antworte AUSSCHLIESSLICH mit JSON: {"ok":<bool>,"issues":["..."],"operations":[.
       // 4) Eng gefasster Prompt (Photoshop-Stil: nur ändern was nötig, Rest erhalten)
       const prompt = isHeal
         ? 'Entferne das vom Nutzer gemeinte Objekt/Element in diesem Bildausschnitt vollständig und rekonstruiere realistisch den Hintergrund, der dahinter liegen würde. Übernimm Textur, Muster, Farben, Beleuchtung, Schatten und Perspektive exakt aus der direkten Umgebung, sodass keinerlei Spur des entfernten Objekts bleibt. Ändere sonst nichts. Fotorealistisch und nahtlos.'
-        : `Platziere in der Mitte dieses Bildausschnitts, auf der vorhandenen Oberfläche (z.B. Tisch oder Boden) stehend, fotorealistisch, KRÄFTIG UND DEUTLICH SICHTBAR mit klaren, satten Konturen und Details: ${rawPrompt.trim()}. Das Objekt soll GROSS und PROMINENT sein und den mittleren Bereich des Ausschnitts gut ausfüllen (nicht winzig, nicht blass, nicht durchscheinend-schwach). Falls in der Mitte aktuell noch etwas anderes zu sehen ist, ersetze es vollständig; falls die Stelle leer ist, füge das Objekt dort passend hinzu. Es darf nur DIESES EINE Objekt entstehen. Passe Größe, Beleuchtung, Perspektive und Farbstimmung exakt an die Szene an und gib dem Objekt einen eigenen, natürlichen Schatten in Richtung der vorhandenen Lichtquelle. Der übrige Bildinhalt bleibt unverändert. Keine Kopien, keine Reste eines alten Objekts, keine verwaschenen Flächen, keine sichtbaren Kanten.`
+        : `Platziere in der Mitte dieses Bildausschnitts, auf der vorhandenen Oberfläche (z.B. Tisch oder Boden) stehend, fotorealistisch, KRÄFTIG UND DEUTLICH SICHTBAR mit klaren, satten Konturen und Details: ${rawPrompt.trim()}. Das Objekt soll GROSS und PROMINENT sein, aber VOLLSTÄNDIG und mit etwas Abstand INNERHALB des Bildausschnitts liegen — an keiner Seite abgeschnitten, den Rand nicht berührend (nicht winzig, nicht blass, nicht durchscheinend-schwach). Falls in der Mitte aktuell noch etwas anderes zu sehen ist, ersetze es vollständig; falls die Stelle leer ist, füge das Objekt dort passend hinzu. Es darf nur DIESES EINE Objekt entstehen. Passe Größe, Beleuchtung, Perspektive und Farbstimmung exakt an die Szene an und gib dem Objekt einen eigenen, natürlichen Schatten in Richtung der vorhandenen Lichtquelle. Der übrige Bildinhalt bleibt unverändert. Keine Kopien, keine Reste eines alten Objekts, keine verwaschenen Flächen, keine sichtbaren Kanten.`
       // 5) Nur den Crop ans Modell (inline) — kein Vollbild, kein BV-Ref
       const aiVisual = await callGenerateImage(prompt, { inlineRefs: [{ mimeType: 'image/png', data: cropB64 }] })
       const aiCropEl = await loadImageEl(aiVisual.storage_path)
@@ -3678,12 +3678,9 @@ Antworte AUSSCHLIESSLICH mit JSON: {"ok":<bool>,"issues":["..."],"operations":[.
         //   (bbox) + ein kleiner Rand. Sonst überblendet der breite Kontext-Rand
         //   benachbarte Objekte (z.B. wird ein Sandhwich links halb durchsichtig, wenn
         //   man rechts daneben ein Glas einfügt). So bleibt alles außerhalb der Auswahl 1:1.
-        const cpad = Math.round(Math.min(bbox.w, bbox.h) * 0.12) + 6
-        const cx = Math.max(0, bbox.x - cpad)
-        const cy = Math.max(0, bbox.y - cpad)
-        const cw2 = Math.min(W - cx, bbox.w + cpad * 2)
-        const ch2 = Math.min(H - cy, bbox.h + cpad * 2)
-        resultUrl = compositeRectFeather(baseEl, placed, cx, cy, cw2, ch2, W, H, 0.05)
+        // Objekt-genau zusammensetzen: nur das tatsächlich hinzugekommene Objekt (+Schatten)
+        // wird übernommen. Kein Abschneiden an einer Box-Kante, Nachbarn/Tisch bleiben 1:1.
+        resultUrl = compositeByDifference(baseEl, placed, bx, by, bw, bh, W, H)
       }
       await applyResultDirect(resultUrl, 'mask')   // direkt ins Bild (rückgängig via Undo)
     } catch (e) {
@@ -3803,6 +3800,60 @@ Antworte AUSSCHLIESSLICH mit JSON: {"ok":<bool>,"issues":["..."],"operations":[.
     lctx.drawImage(placed, 0, 0)
     lctx.globalCompositeOperation = 'destination-in'
     lctx.drawImage(fr, 0, 0)
+    lctx.globalCompositeOperation = 'source-over'
+    octx.drawImage(layer, 0, 0)
+    return out.toDataURL('image/png')
+  }
+
+  // Objekt-genaues Compositing: fügt NUR die Pixel ein, die sich gegenüber der Basis
+  // tatsächlich geändert haben (= das neue Objekt + sein Schatten), statt ein Rechteck
+  // zu überblenden. So wird (a) das ganze Objekt übernommen, auch wenn es größer als die
+  // markierte Box ist (kein Abschneiden), und (b) unveränderter Hintergrund/Nachbarobjekte
+  // bleiben 1:1 erhalten. Transparente Objekte (Glas) funktionieren, da nur die sichtbaren
+  // Merkmale (Rand/Wasser/Reflexion/Schatten) übernommen werden und der Rest die Basis zeigt.
+  function compositeByDifference(baseEl, placed, bx, by, bw, bh, W, H) {
+    const out = document.createElement('canvas'); out.width = W; out.height = H
+    const octx = out.getContext('2d'); octx.drawImage(baseEl, 0, 0, W, H)
+    const bc = document.createElement('canvas'); bc.width = W; bc.height = H
+    bc.getContext('2d').drawImage(baseEl, 0, 0, W, H)
+    const bd = bc.getContext('2d').getImageData(0, 0, W, H).data
+    const pc = document.createElement('canvas'); pc.width = W; pc.height = H
+    pc.getContext('2d').drawImage(placed, 0, 0)
+    const pd = pc.getContext('2d').getImageData(0, 0, W, H).data
+    // Binär-Maske: wo sich das generierte Bild deutlich von der Basis unterscheidet
+    const mc = document.createElement('canvas'); mc.width = W; mc.height = H
+    const mctx = mc.getContext('2d')
+    const mid = mctx.createImageData(W, H); const md = mid.data
+    const x0 = Math.max(0, bx), y0 = Math.max(0, by), x1 = Math.min(W, bx + bw), y1 = Math.min(H, by + bh)
+    const thr = 20
+    let hits = 0
+    for (let y = y0; y < y1; y++) for (let x = x0; x < x1; x++) {
+      const i = (y * W + x) * 4
+      if (pd[i + 3] < 8) continue   // außerhalb des platzierten Crops
+      const dr = pd[i] - bd[i], dg = pd[i + 1] - bd[i + 1], db = pd[i + 2] - bd[i + 2]
+      if (Math.sqrt(dr * dr + dg * dg + db * db) > thr) { md[i] = 255; md[i + 1] = 255; md[i + 2] = 255; md[i + 3] = 255; hits++ }
+    }
+    // Fallback: falls die Differenz-Maske praktisch leer ist (z.B. sehr transparentes
+    // Objekt / Modell hat kaum sichtbar geändert), auf rechteckige Feather-Blende zurück.
+    if (hits < (bw * bh) * 0.003) return compositeRectFeather(baseEl, placed, bx, by, bw, bh, W, H, 0.05)
+    mctx.putImageData(mid, 0, 0)
+    // Maske glätten: leichte Dilatation (Löcher/Ränder schließen) + Blur (weicher Übergang)
+    const mSoft = document.createElement('canvas'); mSoft.width = W; mSoft.height = H
+    const msc = mSoft.getContext('2d')
+    const dl = Math.max(2, Math.round(Math.min(W, H) * 0.006))
+    for (let a = 0; a < 360; a += 45) msc.drawImage(mc, Math.round(Math.cos(a * Math.PI / 180) * dl), Math.round(Math.sin(a * Math.PI / 180) * dl))
+    msc.drawImage(mc, 0, 0)
+    const mBlur = document.createElement('canvas'); mBlur.width = W; mBlur.height = H
+    const mbc = mBlur.getContext('2d')
+    mbc.filter = `blur(${Math.max(2, Math.round(Math.min(W, H) * 0.004))}px)`
+    mbc.drawImage(mSoft, 0, 0)
+    mbc.filter = 'none'
+    // Ebene = generiertes Bild, per Maske als Alpha geclippt
+    const layer = document.createElement('canvas'); layer.width = W; layer.height = H
+    const lctx = layer.getContext('2d')
+    lctx.drawImage(placed, 0, 0)
+    lctx.globalCompositeOperation = 'destination-in'
+    lctx.drawImage(mBlur, 0, 0)
     lctx.globalCompositeOperation = 'source-over'
     octx.drawImage(layer, 0, 0)
     return out.toDataURL('image/png')
