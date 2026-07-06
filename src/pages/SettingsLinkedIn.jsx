@@ -58,7 +58,9 @@ export default function SettingsLinkedIn({ session }) {
   const [liUnlinking, setLiUnlinking] = useState(false)
   const [brandVoices, setBrandVoices] = useState([]) // Publishing (pro BV)
   const [connectedBvIds, setConnectedBvIds] = useState(() => new Set())
-  const [extConn, setExtConn]       = useState(null)  // Automation (Extension)
+  const [extConn, setExtConn]       = useState(null)  // Automation (Extension, Legacy)
+  const [uniAcct, setUniAcct]       = useState(null)  // Automation (Unipile, serverseitig)
+  const [uniBusy, setUniBusy]       = useState(false)
   const [loading, setLoading]       = useState(true)
   const [msg, setMsg]               = useState(null)
 
@@ -84,6 +86,10 @@ export default function SettingsLinkedIn({ session }) {
     // 3. Automation — Extension-Verbindung
     const { data: ext } = await supabase.from('linkedin_connections').select('*').eq('user_id', uid).maybeSingle()
     setExtConn(ext)
+
+    // 4. Automation — Unipile-Verbindung (serverseitig, ersetzt die Extension)
+    const { data: uni } = await supabase.from('unipile_accounts').select('*').eq('user_id', uid).order('connected_at', { ascending: false }).limit(1).maybeSingle()
+    setUniAcct(uni)
     setLoading(false)
   }, [uid])
 
@@ -107,6 +113,23 @@ export default function SettingsLinkedIn({ session }) {
       } catch (e) { flash('Status konnte nicht verifiziert werden: ' + (e?.message || String(e)), 'error') }
     })()
   }, [])
+
+  // Hosted-Auth-Rückkehr (Unipile): Account bei Unipile finden + unipile_accounts upserten.
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search)
+    if (params.get('unipile') !== 'connected') return
+    window.history.replaceState(null, '', window.location.pathname)
+    ;(async () => {
+      setUniBusy(true)
+      try {
+        const { data, error } = await supabase.functions.invoke('unipile-connect-link', { body: { reconcile: true } })
+        if (error) throw error
+        if (data?.connected) { flash('LinkedIn-Automatisierung verbunden!'); load() }
+        else flash('Verbindung noch nicht bestätigt — kurz warten und Seite neu laden.', 'error')
+      } catch (e) { flash('Verbindung konnte nicht bestätigt werden: ' + (e?.message || String(e)), 'error') }
+      setUniBusy(false)
+    })()
+  }, [load])
 
   // ── Login: verbinden / trennen ──
   async function linkLogin() {
@@ -147,10 +170,23 @@ export default function SettingsLinkedIn({ session }) {
     flash('Automatisierung getrennt.')
   }
 
+  // ── Automation (Unipile): verbinden via Hosted Auth ──
+  async function connectUnipile() {
+    setUniBusy(true)
+    try {
+      const { data, error } = await supabase.functions.invoke('unipile-connect-link', { body: { app_base: window.location.origin } })
+      if (error) throw error
+      if (data?.url) window.location.href = data.url
+      else throw new Error(data?.error || 'Keine Auth-URL erhalten')
+    } catch (e) { flash('Verbinden fehlgeschlagen: ' + (e?.message || String(e)), 'error'); setUniBusy(false) }
+  }
+
   const loginConnected = identities.length > 0
   const loginIdent = identities[0]
   const publishCount = connectedBvIds.size
   const extConnected = extConn && extConn.status === 'connected'
+  const uniConnected = uniAcct && uniAcct.status === 'OK'
+  const uniReconnect = uniAcct && uniAcct.status !== 'OK'
 
   return (
     <div style={{ width: '100%', maxWidth: 1100, margin: '0 auto', padding: '8px 0 40px' }}>
@@ -240,21 +276,28 @@ export default function SettingsLinkedIn({ session }) {
               </div>
               <div style={{ flex: 1 }}>
                 <div style={{ fontSize: 15, fontWeight: 800, color: 'var(--text-strong, #111827)' }}>Automatisieren &amp; Importieren</div>
-                <div style={subText}>Vernetzen, Nachrichten, Kontakte-Import &amp; Sales-Navigator — über die Leadesk Chrome-Extension.</div>
+                <div style={subText}>Vernetzen, Nachrichten &amp; Profilbesuche — <strong>serverseitig über Unipile</strong> (kein Browser nötig).</div>
               </div>
-              <StatusPill connected={extConnected} />
+              <StatusPill connected={uniConnected} labelOff={uniAcct ? 'Reconnect nötig' : 'Nicht verbunden'} />
             </div>
             <div style={bdy}>
               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap' }}>
                 <div style={subText}>
-                  {extConnected
-                    ? <>Verbunden{extConn?.profile_name ? ' als ' + extConn.profile_name : ''}. Läuft über deine im Browser eingeloggte LinkedIn-Session.</>
-                    : <>Benötigt die Leadesk Chrome-Extension. Verbinden &amp; Synchronisieren läuft auf der Extension-Seite.</>}
+                  {uniConnected
+                    ? <>Verbunden{uniAcct?.provider_public_id ? ' als ' + uniAcct.provider_public_id : ''}. Kampagnen laufen serverseitig — kein offener Browser, keine Extension nötig.</>
+                    : uniReconnect
+                      ? <>Die LinkedIn-Sitzung ist abgelaufen. Bitte neu verbinden, damit Kampagnen weiterlaufen.</>
+                      : <>Verbinde dein LinkedIn <strong>einmal</strong> — dann führt Leadesk Vernetzungen, Nachrichten &amp; Besuche serverseitig aus.</>}
                 </div>
                 <div style={{ display: 'flex', gap: 8 }}>
-                  <button style={btnGhost} onClick={() => navigate('/linkedin-connect')}>{extConnected ? 'Verwalten' : 'Einrichten →'}</button>
-                  {extConnected && <button style={btnDanger} onClick={disconnectExtension}>Trennen</button>}
+                  {uniConnected
+                    ? <button style={btnGhost} onClick={connectUnipile} disabled={uniBusy}>{uniBusy ? '…' : 'Neu verbinden'}</button>
+                    : <button style={btnPrimary} onClick={connectUnipile} disabled={uniBusy}>{uniBusy ? 'Weiterleitung…' : 'LinkedIn verbinden'}</button>}
                 </div>
+              </div>
+              <div style={{ ...subText, fontSize: 11.5, paddingTop: 10, marginTop: 4, borderTop: '1px solid #EEF1F5' }}>
+                Kontakte-Import &amp; Sales-Navigator laufen weiter über die{' '}
+                <button onClick={() => navigate('/linkedin-connect')} style={{ background: 'none', border: 'none', color: P, fontWeight: 700, cursor: 'pointer', padding: 0, fontSize: 11.5 }}>Chrome-Extension →</button>
               </div>
             </div>
           </div>
