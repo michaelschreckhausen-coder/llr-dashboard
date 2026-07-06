@@ -3408,8 +3408,8 @@ Antworte AUSSCHLIESSLICH mit JSON: {"ok":<bool>,"issues":["..."],"operations":[.
     const target = activeImageObj()
     setAiPreview({ url: dataUrl, objId: target?.id || null, kind })
   }
-  // Ergebnis SOFORT ins Bild schreiben (ohne Vorschau). Wird von allen KI-Tools
-  // außer den Masken-/Bereich-Werkzeugen genutzt — dort bleibt die Vorschau.
+  // Ergebnis SOFORT ins Bild schreiben (ohne Vorschau) — inkl. Masken-/Bereich-Edits.
+  // Kein Übernehmen/Verwerfen mehr: Ergebnis ist direkt da, rückgängig via Undo.
   async function applyResultDirect(dataUrl, kind = 'free') {
     const target = activeImageObj()
     const objId = target?.id || null
@@ -3419,6 +3419,7 @@ Antworte AUSSCHLIESSLICH mit JSON: {"ok":<bool>,"issues":["..."],"operations":[.
       if (objId) { pushHistory(); updateObject(objId, { src: dataUrl }) }
     } catch (_e) {}
     if (kind === 'free') setAiCommand('')
+    if (kind === 'mask') { clearMask(); setAiMode(null); setAiPrompt('') }
     if (kind === 'bg') { clearMask(); setAiMode(null) }
   }
   async function applyPreview() {
@@ -3515,7 +3516,7 @@ Antworte AUSSCHLIESSLICH mit JSON: {"ok":<bool>,"issues":["..."],"operations":[.
       const dilate = isHeal ? Math.max(2, Math.round(Math.min(W, H) * 0.008)) : 0
       const blob = await compositeMaskedResult(origEl, placed, dilate)
       const resultUrl = await blobToDataUrl(blob)
-      proposeResult(resultUrl, 'mask')   // erst Vorschau, dann Übernehmen/Verwerfen
+      await applyResultDirect(resultUrl, 'mask')   // direkt ins Bild (rückgängig via Undo)
     } catch (e) {
       setAiError(e?.message || 'KI-Bearbeitung fehlgeschlagen. Das Bild bleibt unverändert.')
     } finally {
