@@ -3643,7 +3643,17 @@ Antworte AUSSCHLIESSLICH mit JSON: {"ok":<bool>,"issues":["..."],"operations":[.
         const blob = await compositeMaskedResult(origEl, placed, Math.max(2, Math.round(Math.min(W, H) * 0.008)))
         resultUrl = await blobToDataUrl(blob)
       } else {
-        resultUrl = compositeRectFeather(baseEl, placed, bx, by, bw, bh, W, H)
+        // WICHTIG: Das Modell bekommt zwar den großen Kontext-Crop (bx/by/bw/bh) als
+        //   Vorlage, aber zurückgeschrieben wird NUR die tatsächliche Nutzer-Auswahl
+        //   (bbox) + ein kleiner Rand. Sonst überblendet der breite Kontext-Rand
+        //   benachbarte Objekte (z.B. wird ein Sandhwich links halb durchsichtig, wenn
+        //   man rechts daneben ein Glas einfügt). So bleibt alles außerhalb der Auswahl 1:1.
+        const cpad = Math.round(Math.min(bbox.w, bbox.h) * 0.12) + 6
+        const cx = Math.max(0, bbox.x - cpad)
+        const cy = Math.max(0, bbox.y - cpad)
+        const cw2 = Math.min(W - cx, bbox.w + cpad * 2)
+        const ch2 = Math.min(H - cy, bbox.h + cpad * 2)
+        resultUrl = compositeRectFeather(baseEl, placed, cx, cy, cw2, ch2, W, H)
       }
       await applyResultDirect(resultUrl, 'mask')   // direkt ins Bild (rückgängig via Undo)
     } catch (e) {
