@@ -3513,27 +3513,24 @@ Antworte AUSSCHLIESSLICH mit JSON: {"ok":<bool>,"issues":["..."],"operations":[.
       const ic = document.createElement('canvas'); ic.width = W; ic.height = H
       ic.getContext('2d').drawImage(origEl, 0, 0, W, H)
       const imageB64 = ic.toDataURL('image/png')
-      // Maske → schwarz/weiß-PNG (weiß = entfernen), leicht dilatiert für saubere Kanten
+      // Maske → schwarz/weiß-PNG (weiß = entfernen). Bevorzugt mit Schatten-Erkennung
+      // (Objekt + verbundener Schatten), Fallback: einfache großzügige Dilatation.
       const m = maskCanvasRef.current
-      const mc = document.createElement('canvas'); mc.width = W; mc.height = H
-      const mctx = mc.getContext('2d')
-      mctx.fillStyle = '#000'; mctx.fillRect(0, 0, W, H)
-      // Großzügig dilatieren, damit Kontaktschatten/Halo/Abdruck des Objekts mit
-      // entfernt und sauber rekonstruiert werden (nicht nur das Objekt selbst).
-      const dil = Math.max(6, Math.round(Math.min(W, H) * 0.028))
-      for (let a = 0; a < 360; a += 45) {
-        const dx = Math.round(Math.cos(a * Math.PI / 180) * dil)
-        const dy = Math.round(Math.sin(a * Math.PI / 180) * dil)
-        mctx.drawImage(m, 0, 0, m.width, m.height, dx, dy, W, H)
+      let maskB64 = buildEraseMaskWithShadow(m, origEl, W, H)
+      if (!maskB64) {
+        const mc = document.createElement('canvas'); mc.width = W; mc.height = H
+        const mctx = mc.getContext('2d')
+        mctx.fillStyle = '#000'; mctx.fillRect(0, 0, W, H)
+        const dil = Math.max(6, Math.round(Math.min(W, H) * 0.028))
+        for (let a = 0; a < 360; a += 45) {
+          mctx.drawImage(m, 0, 0, m.width, m.height, Math.round(Math.cos(a * Math.PI / 180) * dil), Math.round(Math.sin(a * Math.PI / 180) * dil), W, H)
+        }
+        mctx.drawImage(m, 0, 0, m.width, m.height, 0, 0, W, H)
+        const id = mctx.getImageData(0, 0, W, H); const d = id.data
+        for (let i = 0; i < d.length; i += 4) { const on = d[i] > 10 || d[i + 1] > 10 || d[i + 2] > 10; d[i] = on ? 255 : 0; d[i + 1] = on ? 255 : 0; d[i + 2] = on ? 255 : 0; d[i + 3] = 255 }
+        mctx.putImageData(id, 0, 0)
+        maskB64 = mc.toDataURL('image/png')
       }
-      mctx.drawImage(m, 0, 0, m.width, m.height, 0, 0, W, H)
-      const id = mctx.getImageData(0, 0, W, H); const d = id.data
-      for (let i = 0; i < d.length; i += 4) {
-        const on = d[i] > 10 || d[i + 1] > 10 || d[i + 2] > 10
-        d[i] = on ? 255 : 0; d[i + 1] = on ? 255 : 0; d[i + 2] = on ? 255 : 0; d[i + 3] = 255
-      }
-      mctx.putImageData(id, 0, 0)
-      const maskB64 = mc.toDataURL('image/png')
       const { data, error } = await supabase.functions.invoke('image-ai', { body: { op: 'erase', image: imageB64, mask: maskB64 } })
       if (error) throw new Error(humanizeFnError(error))
       if (data?.error) throw new Error(data.error)
@@ -3611,6 +3608,80 @@ Antworte AUSSCHLIESSLICH mit JSON: {"ok":<bool>,"issues":["..."],"operations":[.
 
   // Compositing: original zeichnen, dann KI-Bild nur in der Maske darüberlegen.
   // Beide Bilder werden auf die Original-Pixelgröße gebracht.
+  // Baut die Entfern-Maske: Objekt + zusammenhängender Schatten. Erkennt Pixel, die
+  // deutlich dunkler als der umgebende Untergrund sind UND (über dunkle Pixel) mit dem
+  // Objekt verbunden — so wird der geworfene Schatten mitentfernt, ohne andere Objekte
+  // zu greifen. Rückgabe: PNG-DataURL (weiß=entfernen) oder null (dann Fallback).
+  function buildEraseMaskWithShadow(m, origEl, W, H) {
+    try {
+      const N = W * H
+      // Objekt-Maske auf Bildgröße + Bbox
+      const oc = document.createElement('canvas'); oc.width = W; oc.height = H
+      const octx = oc.getContext('2d'); octx.drawImage(m, 0, 0, m.width, m.height, 0, 0, W, H)
+      const od = octx.getImageData(0, 0, W, H).data
+      const obj = new Uint8Array(N)
+      let minx = W, miny = H, maxx = -1, maxy = -1
+      for (let i = 0; i < N; i++) {
+        if (od[i * 4 + 3] > 10) { obj[i] = 1; const x = i % W, y = (i - (i % W)) / W; if (x < minx) minx = x; if (x > maxx) maxx = x; if (y < miny) miny = y; if (y > maxy) maxy = y }
+      }
+      if (maxx < 0) return null
+      const objW = maxx - minx + 1, objH = maxy - miny + 1
+      // Luminanz des Bildes
+      const ic = document.createElement('canvas'); ic.width = W; ic.height = H
+      ic.getContext('2d').drawImage(origEl, 0, 0, W, H)
+      const px = ic.getContext('2d').getImageData(0, 0, W, H).data
+      const lum = new Float32Array(N)
+      for (let i = 0; i < N; i++) lum[i] = 0.299 * px[i * 4] + 0.587 * px[i * 4 + 1] + 0.114 * px[i * 4 + 2]
+      const idx = (x, y) => y * W + x
+      // Untergrund-Helligkeit: Median der Luminanz in einem Rahmen knapp außerhalb der Bbox
+      const ring = Math.max(6, Math.round(Math.min(objW, objH) * 0.35))
+      const bx0 = Math.max(0, minx - ring), by0 = Math.max(0, miny - ring), bx1 = Math.min(W - 1, maxx + ring), by1 = Math.min(H - 1, maxy + ring)
+      const bg = []
+      for (let y = by0; y <= by1; y++) for (let x = bx0; x <= bx1; x++) {
+        if (x > minx && x < maxx && y > miny && y < maxy) continue   // Innenbereich überspringen
+        const p = idx(x, y); if (!obj[p]) bg.push(lum[p])
+      }
+      bg.sort((a, b) => a - b)
+      const Lbg = bg.length ? bg[Math.floor(bg.length / 2)] : 180
+      const thr = Lbg * 0.90   // >10% dunkler als Untergrund = Schatten-Kandidat
+      // Suchfenster (unten großzügiger, da Schatten meist nach unten fällt)
+      const sx0 = Math.max(0, minx - objW), sy0 = Math.max(0, miny - Math.round(objH * 0.4))
+      const sx1 = Math.min(W - 1, maxx + objW), sy1 = Math.min(H - 1, maxy + Math.round(objH * 1.8))
+      const cand = new Uint8Array(N)
+      for (let y = sy0; y <= sy1; y++) for (let x = sx0; x <= sx1; x++) { const p = idx(x, y); if (!obj[p] && lum[p] < thr) cand[p] = 1 }
+      // Flood von der Objektgrenze durch Schatten-Kandidaten (4-Nachbarschaft)
+      const shadow = new Uint8Array(N)
+      const q = new Int32Array(N); let qh = 0, qt = 0
+      for (let y = sy0; y <= sy1; y++) for (let x = sx0; x <= sx1; x++) {
+        const p = idx(x, y); if (!cand[p] || shadow[p]) continue
+        if ((x > 0 && obj[p - 1]) || (x < W - 1 && obj[p + 1]) || (y > 0 && obj[p - W]) || (y < H - 1 && obj[p + W])) { shadow[p] = 1; q[qt++] = p }
+      }
+      while (qh < qt) {
+        const p = q[qh++]; const x = p % W
+        if (x > 0 && cand[p - 1] && !shadow[p - 1]) { shadow[p - 1] = 1; q[qt++] = p - 1 }
+        if (x < W - 1 && cand[p + 1] && !shadow[p + 1]) { shadow[p + 1] = 1; q[qt++] = p + 1 }
+        if (p - W >= 0 && cand[p - W] && !shadow[p - W]) { shadow[p - W] = 1; q[qt++] = p - W }
+        if (p + W < N && cand[p + W] && !shadow[p + W]) { shadow[p + W] = 1; q[qt++] = p + W }
+      }
+      // final = obj ∪ shadow
+      const fc = document.createElement('canvas'); fc.width = W; fc.height = H
+      const fctx = fc.getContext('2d')
+      const fid = fctx.createImageData(W, H); const fd = fid.data
+      for (let i = 0; i < N; i++) { const on = obj[i] || shadow[i]; fd[i * 4] = 255; fd[i * 4 + 1] = 255; fd[i * 4 + 2] = 255; fd[i * 4 + 3] = on ? 255 : 0 }
+      fctx.putImageData(fid, 0, 0)
+      // leicht dilatieren (saubere Kanten) → auf schwarzem Grund als binär-PNG
+      const out = document.createElement('canvas'); out.width = W; out.height = H
+      const octx2 = out.getContext('2d'); octx2.fillStyle = '#000'; octx2.fillRect(0, 0, W, H)
+      const dl = Math.max(4, Math.round(Math.min(W, H) * 0.012))
+      for (let a = 0; a < 360; a += 45) octx2.drawImage(fc, Math.round(Math.cos(a * Math.PI / 180) * dl), Math.round(Math.sin(a * Math.PI / 180) * dl), W, H)
+      octx2.drawImage(fc, 0, 0)
+      const oid = octx2.getImageData(0, 0, W, H); const dd = oid.data
+      for (let i = 0; i < dd.length; i += 4) { const on = dd[i] > 10 || dd[i + 1] > 10 || dd[i + 2] > 10; dd[i] = on ? 255 : 0; dd[i + 1] = on ? 255 : 0; dd[i + 2] = on ? 255 : 0; dd[i + 3] = 255 }
+      octx2.putImageData(oid, 0, 0)
+      return out.toDataURL('image/png')
+    } catch (_e) { return null }
+  }
+
   // Blendet das (an Bbox-Position gesetzte) KI-Ergebnis rechteckig + weich auslaufend
   // über das Original — für „Bereich ändern", damit das neue Objekt seine eigene Form
   // behält und nicht auf die alte Silhouette geclippt wird. Rest bleibt 1:1 Original.
