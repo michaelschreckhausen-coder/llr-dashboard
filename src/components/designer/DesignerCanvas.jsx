@@ -3812,51 +3812,35 @@ Antworte AUSSCHLIESSLICH mit JSON: {"ok":<bool>,"issues":["..."],"operations":[.
   // bleiben 1:1 erhalten. Transparente Objekte (Glas) funktionieren, da nur die sichtbaren
   // Merkmale (Rand/Wasser/Reflexion/Schatten) übernommen werden und der Rest die Basis zeigt.
   function compositeByDifference(baseEl, placed, bx, by, bw, bh, W, H) {
-    const out = document.createElement('canvas'); out.width = W; out.height = H
-    const octx = out.getContext('2d'); octx.drawImage(baseEl, 0, 0, W, H)
+    // Basis- und generierte Pixel im Crop-Bereich vergleichen, um die BOUNDING-BOX des
+    // tatsächlich hinzugekommenen Objekts (inkl. Schatten) zu finden. Danach GENAU diesen
+    // objekt-eigenen Bereich rechteckig weich einblenden — nicht die Nutzer-Box. So wird
+    // das ganze Objekt übernommen (auch transparente Mitte eines Glases), nichts wird an
+    // einer Box-Kante abgeschnitten, und Tisch/Nachbarn außerhalb bleiben 1:1.
     const bc = document.createElement('canvas'); bc.width = W; bc.height = H
     bc.getContext('2d').drawImage(baseEl, 0, 0, W, H)
     const bd = bc.getContext('2d').getImageData(0, 0, W, H).data
     const pc = document.createElement('canvas'); pc.width = W; pc.height = H
     pc.getContext('2d').drawImage(placed, 0, 0)
     const pd = pc.getContext('2d').getImageData(0, 0, W, H).data
-    // Binär-Maske: wo sich das generierte Bild deutlich von der Basis unterscheidet
-    const mc = document.createElement('canvas'); mc.width = W; mc.height = H
-    const mctx = mc.getContext('2d')
-    const mid = mctx.createImageData(W, H); const md = mid.data
     const x0 = Math.max(0, bx), y0 = Math.max(0, by), x1 = Math.min(W, bx + bw), y1 = Math.min(H, by + bh)
-    const thr = 20
-    let hits = 0
+    const thr = 16
+    let minx = W, miny = H, maxx = -1, maxy = -1, hits = 0
     for (let y = y0; y < y1; y++) for (let x = x0; x < x1; x++) {
       const i = (y * W + x) * 4
-      if (pd[i + 3] < 8) continue   // außerhalb des platzierten Crops
+      if (pd[i + 3] < 8) continue
       const dr = pd[i] - bd[i], dg = pd[i + 1] - bd[i + 1], db = pd[i + 2] - bd[i + 2]
-      if (Math.sqrt(dr * dr + dg * dg + db * db) > thr) { md[i] = 255; md[i + 1] = 255; md[i + 2] = 255; md[i + 3] = 255; hits++ }
+      if (Math.sqrt(dr * dr + dg * dg + db * db) > thr) {
+        hits++; if (x < minx) minx = x; if (x > maxx) maxx = x; if (y < miny) miny = y; if (y > maxy) maxy = y
+      }
     }
-    // Fallback: falls die Differenz-Maske praktisch leer ist (z.B. sehr transparentes
-    // Objekt / Modell hat kaum sichtbar geändert), auf rechteckige Feather-Blende zurück.
-    if (hits < (bw * bh) * 0.003) return compositeRectFeather(baseEl, placed, bx, by, bw, bh, W, H, 0.05)
-    mctx.putImageData(mid, 0, 0)
-    // Maske glätten: leichte Dilatation (Löcher/Ränder schließen) + Blur (weicher Übergang)
-    const mSoft = document.createElement('canvas'); mSoft.width = W; mSoft.height = H
-    const msc = mSoft.getContext('2d')
-    const dl = Math.max(2, Math.round(Math.min(W, H) * 0.006))
-    for (let a = 0; a < 360; a += 45) msc.drawImage(mc, Math.round(Math.cos(a * Math.PI / 180) * dl), Math.round(Math.sin(a * Math.PI / 180) * dl))
-    msc.drawImage(mc, 0, 0)
-    const mBlur = document.createElement('canvas'); mBlur.width = W; mBlur.height = H
-    const mbc = mBlur.getContext('2d')
-    mbc.filter = `blur(${Math.max(2, Math.round(Math.min(W, H) * 0.004))}px)`
-    mbc.drawImage(mSoft, 0, 0)
-    mbc.filter = 'none'
-    // Ebene = generiertes Bild, per Maske als Alpha geclippt
-    const layer = document.createElement('canvas'); layer.width = W; layer.height = H
-    const lctx = layer.getContext('2d')
-    lctx.drawImage(placed, 0, 0)
-    lctx.globalCompositeOperation = 'destination-in'
-    lctx.drawImage(mBlur, 0, 0)
-    lctx.globalCompositeOperation = 'source-over'
-    octx.drawImage(layer, 0, 0)
-    return out.toDataURL('image/png')
+    // Kein/kaum Unterschied → Fallback: die ganze Crop-Region weich einblenden.
+    if (maxx < 0 || hits < (bw * bh) * 0.0015) return compositeRectFeather(baseEl, placed, bx, by, bw, bh, W, H, 0.05)
+    // Objekt-Bbox mit kleinem Rand
+    const mg = Math.max(4, Math.round(Math.min(W, H) * 0.012))
+    const ox = Math.max(0, minx - mg), oy = Math.max(0, miny - mg)
+    const ow = Math.min(W - ox, (maxx - minx + 1) + mg * 2), oh = Math.min(H - oy, (maxy - miny + 1) + mg * 2)
+    return compositeRectFeather(baseEl, placed, ox, oy, ow, oh, W, H, 0.06)
   }
 
   async function compositeMaskedResult(origEl, aiEl, dilatePx = 0) {
