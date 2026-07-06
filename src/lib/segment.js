@@ -88,25 +88,99 @@ export async function segmentAt(nx, ny) {
   const mw = dims[dims.length - 1]
   const nMasks = dims[dims.length - 3] || 1
   const mdata = maskTensor.data
-
-  // Beste der (i.d.R. 3) Masken per IoU-Score wählen.
   const scores = outputs.iou_scores?.data || [1]
-  let best = 0
-  for (let i = 1; i < nMasks && i < scores.length; i++) if (scores[i] > scores[best]) best = i
-  const plane = best * mh * mw
+  const N = mw * mh
+  const cx = Math.max(0, Math.min(mw - 1, Math.round(nx * mw)))
+  const cy = Math.max(0, Math.min(mh - 1, Math.round(ny * mh)))
 
-  // Maske in ein WxH-Canvas malen (weiß, sonst transparent).
+  // Kandidaten (i.d.R. 3 SAM-Masken) nach Score sortieren.
+  const order = Array.from({ length: nMasks }, (_, i) => i)
+    .sort((a, b) => (scores[b] || 0) - (scores[a] || 0))
+
+  // Beste Maske wählen, deren aufbereitete Fläche plausibel ist (nicht winzig,
+  // nicht „halbes Bild"). So werden über-segmentierte Riesen-Masken verworfen.
+  let chosen = null
+  let fallback = null
+  for (const mi of order) {
+    const cleaned = cleanMask(mdata, mi * N, mw, mh, cx, cy)
+    const frac = cleaned.area / N
+    if (!fallback) fallback = { cleaned, frac, score: scores[mi] || 0 }
+    if (frac >= 0.0008 && frac <= 0.8) { chosen = { cleaned, frac, score: scores[mi] || 0 }; break }
+  }
+  if (!chosen) chosen = fallback
+  if (!chosen || chosen.frac < 0.0003 || chosen.frac > 0.95) return null
+
+  const comp = chosen.cleaned.comp
   const out = document.createElement('canvas')
   out.width = mw; out.height = mh
   const ctx = out.getContext('2d')
   const img = ctx.createImageData(mw, mh)
   const d = img.data
-  for (let i = 0; i < mh * mw; i++) {
-    const on = mdata[plane + i] ? 255 : 0
+  for (let i = 0; i < N; i++) {
     const j = i * 4
-    d[j] = 255; d[j + 1] = 255; d[j + 2] = 255; d[j + 3] = on
+    d[j] = 255; d[j + 1] = 255; d[j + 2] = 255; d[j + 3] = comp[i] ? 255 : 0
   }
   ctx.putImageData(img, 0, 0)
 
-  return { canvas: out, score: scores[best] || 0, W: mw, H: mh }
+  return { canvas: out, score: chosen.score, W: mw, H: mh }
+}
+
+// Maskenaufbereitung: aus einer rohen SAM-Maske (Ebene `plane` in `mdata`)
+//   1) nur die ZUSAMMENHÄNGENDE Region am Klickpunkt behalten (entfernt weit
+//      entfernte Fehl-Flächen — der Hauptgrund für „Wolken" um das Objekt),
+//   2) Löcher im Objekt füllen (solide Auswahl).
+// Rückgabe: { comp: Uint8Array(0/1), area }.
+function cleanMask(mdata, plane, w, h, cx, cy) {
+  const N = w * h
+  const raw = new Uint8Array(N)
+  for (let i = 0; i < N; i++) raw[i] = mdata[plane + i] ? 1 : 0
+
+  // Startpunkt am Klick; liegt er nicht in der Maske, nächstgelegenen Treffer suchen.
+  const idx = (x, y) => y * w + x
+  let start = raw[idx(cx, cy)] ? idx(cx, cy) : -1
+  if (start < 0) {
+    const maxR = Math.round(Math.min(w, h) * 0.12)
+    outer:
+    for (let r = 2; r <= maxR; r += 2) {
+      for (let a = 0; a < 360; a += 12) {
+        const x = Math.round(cx + Math.cos(a * Math.PI / 180) * r)
+        const y = Math.round(cy + Math.sin(a * Math.PI / 180) * r)
+        if (x >= 0 && x < w && y >= 0 && y < h && raw[idx(x, y)]) { start = idx(x, y); break outer }
+      }
+    }
+  }
+
+  // Zusammenhangskomponente (4-Nachbarschaft) ab Startpunkt.
+  let comp
+  if (start >= 0) {
+    comp = new Uint8Array(N)
+    const q = new Int32Array(N); let qh = 0, qt = 0
+    q[qt++] = start; comp[start] = 1
+    while (qh < qt) {
+      const p = q[qh++]; const x = p % w, y = (p - x) / w
+      if (x > 0)     { const n = p - 1; if (raw[n] && !comp[n]) { comp[n] = 1; q[qt++] = n } }
+      if (x < w - 1) { const n = p + 1; if (raw[n] && !comp[n]) { comp[n] = 1; q[qt++] = n } }
+      if (y > 0)     { const n = p - w; if (raw[n] && !comp[n]) { comp[n] = 1; q[qt++] = n } }
+      if (y < h - 1) { const n = p + w; if (raw[n] && !comp[n]) { comp[n] = 1; q[qt++] = n } }
+    }
+  } else {
+    comp = raw
+  }
+
+  // Löcher füllen: Hintergrund von den Rändern fluten; alles Nicht-Erreichte ist Loch.
+  const bg = new Uint8Array(N)
+  const q2 = new Int32Array(N); let h2 = 0, t2 = 0
+  const pushBg = (p) => { if (!comp[p] && !bg[p]) { bg[p] = 1; q2[t2++] = p } }
+  for (let x = 0; x < w; x++) { pushBg(idx(x, 0)); pushBg(idx(x, h - 1)) }
+  for (let y = 0; y < h; y++) { pushBg(idx(0, y)); pushBg(idx(w - 1, y)) }
+  while (h2 < t2) {
+    const p = q2[h2++]; const x = p % w, y = (p - x) / w
+    if (x > 0)     { const n = p - 1; if (!comp[n] && !bg[n]) { bg[n] = 1; q2[t2++] = n } }
+    if (x < w - 1) { const n = p + 1; if (!comp[n] && !bg[n]) { bg[n] = 1; q2[t2++] = n } }
+    if (y > 0)     { const n = p - w; if (!comp[n] && !bg[n]) { bg[n] = 1; q2[t2++] = n } }
+    if (y < h - 1) { const n = p + w; if (!comp[n] && !bg[n]) { bg[n] = 1; q2[t2++] = n } }
+  }
+  let area = 0
+  for (let i = 0; i < N; i++) { if (!comp[i] && !bg[i]) comp[i] = 1; if (comp[i]) area++ }
+  return { comp, area }
 }
