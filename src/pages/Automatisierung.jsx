@@ -171,6 +171,7 @@ export default function Automatisierung({ session }) {
   const [campaigns, setCampaigns]     = useState([])
   const [jobs, setJobs]               = useState([])
   const [drafts, setDrafts]           = useState([])
+  const [uniConnected, setUniConnected] = useState(false)
   const [logs24h, setLogs24h]         = useState([])
   const [leads, setLeads]             = useState([])
   const [loading, setLoading]         = useState(true)
@@ -230,6 +231,8 @@ export default function Automatisierung({ session }) {
     const { data: dr } = await supabase.from('automation_jobs').select('*').eq('user_id', uid)
       .eq('status', 'draft').eq('action', 'message').order('created_at', { ascending: true })
     setDrafts(dr || [])
+    const { data: ua } = await supabase.from('unipile_accounts').select('status').eq('user_id', uid).eq('status', 'OK').limit(1).maybeSingle()
+    setUniConnected(!!ua)
     setLoading(false)
   }, [uid])
 
@@ -471,7 +474,7 @@ export default function Automatisierung({ session }) {
             <div style={{ fontSize:20, color:'#30A0D0', fontFamily:'"Caveat", cursive', fontWeight:600, marginBottom:6 }}>LinkedIn · Automatisierung</div>
             <h1 style={{ fontSize:26, fontWeight:700, margin:0, letterSpacing:'-0.3px', lineHeight:1.2, color:'var(--text-primary, rgb(20,20,43))' }}>Deine Kampagnen, auf Autopilot.</h1>
             <p style={{ fontSize:13, color:'var(--text-muted)', margin:'8px 0 0', lineHeight:1.6, maxWidth:600 }}>
-              LinkedIn-Sequenzen aus deinen Import-Kontakten — Vernetzen, Nachrichten und Follow-ups, automatisch über die Browser-Extension.
+              LinkedIn-Sequenzen aus deinen Import-Kontakten — Vernetzen, Nachrichten und Follow-ups, automatisch &amp; serverseitig über Unipile.
             </p>
           </div>
           <div style={{ display:'flex', alignItems:'center', gap:8, flexWrap:'wrap' }}>
@@ -501,10 +504,12 @@ export default function Automatisierung({ session }) {
           <KpiTile Icon={BarChart3}   label="Akzeptanzrate"      value={kpis.acceptRate + '%'} sub={`${kpis.totalReplied} von ${kpis.totalDone}`} tint={kpis.acceptRate >= 25 ? '#16a34a' : kpis.acceptRate >= 10 ? '#f59e0b' : '#dc2626'} tintBg={kpis.acceptRate >= 25 ? '#ECFDF5' : kpis.acceptRate >= 10 ? '#FFFBEB' : '#FEF2F2'} />
         </div>
 
-        {/* Extension-Status Banner — dezent statt gelb */}
+        {/* Unipile-Verbindungsstatus (serverseitige Automatisierung) */}
         <ExtensionBanner
+          connected={uniConnected}
           runningCount={jobs.filter(j => j.status === 'running').length}
           waitingCount={jobs.filter(j => j.status !== 'running').length}
+          onManage={() => navigate('/settings/linkedin')}
         />
 
         {/* Nachrichten-Freigabe — message-Entwürfe warten auf menschliches OK vor dem Versand */}
@@ -665,34 +670,34 @@ function DraftCard({ draft, onApprove, onReject }) {
   )
 }
 
-function ExtensionBanner({ runningCount = 0, waitingCount = 0 }) {
+function ExtensionBanner({ connected = false, runningCount = 0, waitingCount = 0, onManage }) {
   const active  = runningCount > 0
   const waiting = waitingCount > 0
-  const bg  = active ? '#ECFDF5' : waiting ? '#FFFBEB' : '#F1F5F9'
-  const fg  = active ? '#065F46' : waiting ? '#92400E' : '#475569'
-  const ico = active ? '#16a34a' : waiting ? '#d97706' : '#64748B'
-  const dot = active ? '#22c55e' : waiting ? '#f59e0b' : '#CBD5E1'
   const line  = active  ? `· verarbeitet ${runningCount} Job${runningCount !== 1 ? 's' : ''}`
               : waiting ? `· ${waitingCount} Job${waitingCount !== 1 ? 's' : ''} in Warteschlange`
               : '· bereit'
-  const badge = active ? 'Aktiv' : waiting ? 'Wartet' : 'Idle'
+  const okBg  = connected ? '#ECFDF5' : '#FEF2F2'
+  const okFg  = connected ? '#065F46' : '#991B1B'
+  const okDot = connected ? '#22c55e' : '#f87171'
   return (
     <div style={{ ...cardStyle, marginBottom:20, padding:'12px 16px', display:'flex', alignItems:'center', gap:12, flexWrap:'wrap' }}>
-      <div style={{ width:32, height:32, borderRadius:8, background:bg, display:'flex', alignItems:'center', justifyContent:'center', color:ico }}>
+      <div style={{ width:32, height:32, borderRadius:8, background:okBg, display:'flex', alignItems:'center', justifyContent:'center', color:connected ? '#16a34a' : '#dc2626' }}>
         <Globe size={16} />
       </div>
       <div style={{ flex:1, minWidth:240, fontSize:12, color:'var(--text-muted)' }}>
-        <span style={{ fontWeight:700, color:'var(--text-strong)' }}>Leadesk Chrome-Extension</span> {line}
-        <div style={{ marginTop:2, color:'#92400E' }}>Automatisierung wird gerade überarbeitet — Kampagnen werden noch nicht ausgeführt.</div>
+        <span style={{ fontWeight:700, color:'var(--text-strong)' }}>Serverseitige Automatisierung</span> {connected ? line : ''}
+        <div style={{ marginTop:2 }}>{connected
+          ? 'LinkedIn verbunden über Unipile — Kampagnen laufen serverseitig, kein Browser nötig.'
+          : 'LinkedIn noch nicht verbunden — Kampagnen starten erst nach der Verbindung.'}</div>
       </div>
-      <span style={{ display:'inline-flex', alignItems:'center', gap:6, padding:'5px 10px', borderRadius:99, background:bg, color:fg, fontSize:11, fontWeight:700 }}>
-        <span style={{ width:7, height:7, borderRadius:'50%', background:dot }}/>
-        {badge}
+      <span style={{ display:'inline-flex', alignItems:'center', gap:6, padding:'5px 10px', borderRadius:99, background:okBg, color:okFg, fontSize:11, fontWeight:700 }}>
+        <span style={{ width:7, height:7, borderRadius:'50%', background:okDot }}/>
+        {connected ? 'Verbunden' : 'Nicht verbunden'}
       </span>
-      <a href={EXTENSION_WEBSTORE_URL} target="_blank" rel="noopener noreferrer"
-        style={{ ...ghostBtnStyle, textDecoration:'none', color:PRIMARY_VAR, borderColor:'rgba(49,90,231,0.35)', background:'rgba(49,90,231,0.06)' }}>
-        <ExternalLink size={13} /> Chrome Web Store
-      </a>
+      <button onClick={onManage}
+        style={{ ...ghostBtnStyle, cursor:'pointer', color:PRIMARY_VAR, borderColor:'rgba(49,90,231,0.35)', background:'rgba(49,90,231,0.06)' }}>
+        <ExternalLink size={13} /> Verbindung verwalten
+      </button>
     </div>
   )
 }
@@ -792,7 +797,7 @@ function QueueView({ jobs, onCancel, onReload }) {
       {jobs.length === 0 ? (
         <div style={{ ...cardStyle, textAlign:'center', padding:'40px 20px', color:'var(--text-muted)', fontSize:13 }}>
           <CheckCircle2 size={28} color="#22c55e" style={{ display:'block', margin:'0 auto 8px' }} />
-          Keine Jobs in der Warteschlange — Extension ist bereit
+          Keine Jobs in der Warteschlange — bereit, sobald du eine Kampagne startest
         </div>
       ) : (
         <div style={{ background:'var(--surface)', borderRadius:12, border:'1px solid var(--border, #E4E7EC)', overflow:'hidden' }}>
