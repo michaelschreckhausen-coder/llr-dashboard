@@ -79,7 +79,7 @@ Deno.serve(async () => {
   const { data: jobs } = await db.from("automation_jobs")
     .select("id, action, target_url, payload, user_id")
     .eq("status", "pending").lte("scheduled_at", nowIso)
-    .in("action", ["connect", "visit", "follow"]) // Welle 1 + follow; message dormant
+    .in("action", ["connect", "visit", "follow", "message"]) // message: nur status=pending = im UI freigegebene Entwürfe ('draft' wird nicht geclaimt)
     .order("scheduled_at", { ascending: true }).limit(BATCH);
 
   const out: unknown[] = [];
