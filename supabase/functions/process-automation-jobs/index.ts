@@ -45,6 +45,17 @@ async function sendMessage(accountId: string, providerId: string, text: string, 
   return r.ok ? { ok: true as const, result: await r.json() } : { ok: false as const, error: `message ${r.status}: ${await r.text()}` };
 }
 
+// follow — Raw-Voyager-Route (kein sauberer Endpoint; fragiler als invite/message, s. Doc-Hinweis).
+async function followUser(accountId: string, providerId: string) {
+  const body = {
+    account_id: accountId, method: "POST", encoding: false,
+    body: { patch: { $set: { following: true } } },
+    request_url: `https://www.linkedin.com/voyager/api/feed/dash/followingStates/urn:li:fsd_followingState:urn:li:fsd_profile:${providerId}`,
+  };
+  const r = await fetch(`${U}/linkedin`, { method: "POST", headers: uHeaders, body: JSON.stringify(body) });
+  return r.ok ? { ok: true as const, result: await r.json() } : { ok: false as const, error: `follow ${r.status}: ${await r.text()}` };
+}
+
 async function countDoneToday(userId: string, action: string): Promise<number> {
   const since = new Date(); since.setUTCHours(0, 0, 0, 0);
   const { count } = await db.from("automation_jobs").select("id", { count: "exact", head: true })
@@ -68,7 +79,7 @@ Deno.serve(async () => {
   const { data: jobs } = await db.from("automation_jobs")
     .select("id, action, target_url, payload, user_id")
     .eq("status", "pending").lte("scheduled_at", nowIso)
-    .in("action", ["connect", "visit"]) // Welle 1; message dormant, follow Welle 2
+    .in("action", ["connect", "visit", "follow"]) // Welle 1 + follow; message dormant
     .order("scheduled_at", { ascending: true }).limit(BATCH);
 
   const out: unknown[] = [];
@@ -113,6 +124,14 @@ Deno.serve(async () => {
         msg.ok
           ? await finish(job.id, "done", { provider_id: p.provider_id, unipile_account_id: accountId, result: msg.result })
           : await finish(job.id, "error", { provider_id: p.provider_id, error: msg.error });
+
+      } else if (job.action === "follow") {
+        const p = await getProfile(accountId, publicId);
+        if (!p.ok) { await finish(job.id, "error", { error: p.error }); continue; }
+        const fol = await followUser(accountId, p.provider_id);
+        fol.ok
+          ? await finish(job.id, "done", { provider_id: p.provider_id, unipile_account_id: accountId, result: fol.result })
+          : await finish(job.id, "error", { provider_id: p.provider_id, error: fol.error });
       }
       out.push({ id: job.id, action: job.action });
     } catch (e) {
