@@ -97,6 +97,10 @@ async function handleSubscriptionEvent(sub: Stripe.Subscription, opts: { explici
     throw error
   }
   console.log(`[stripe-addon-webhook] upsert OK · account=${accountId} addon=${addonId} status=${status}`)
+
+  // Automation-Quantity gleich beim Kauf setzen (nicht erst beim nächsten Connect) — idempotent, set-to-count.
+  // Deckt den Grandfathered→Paid-Übergang ab (schon verbunden, kauft später regulär).
+  await supabase.rpc('trigger_sync_automation_quantity', { p_account_id: accountId })
 }
 
 async function handleCheckoutSessionCompleted(session: Stripe.Checkout.Session) {
