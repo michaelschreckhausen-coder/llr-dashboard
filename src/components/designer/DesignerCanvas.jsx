@@ -3550,43 +3550,28 @@ Antworte AUSSCHLIESSLICH mit JSON: {"ok":<bool>,"issues":["..."],"operations":[.
       const origEl = (target?.src && imgCache[target.src]) || bgImage || await loadImageEl(visual.storage_path)
       const W = origEl.naturalWidth || stageSize.width
       const H = origEl.naturalHeight || stageSize.height
-      const url = await eraseRegionToDataUrl(origEl, W, H)
-      // Aufräum-Pass: LaMa entfernt das Objekt zuverlässig, kann aber auf texturarmen
-      // Hintergründen (glatte Wand/Verlauf) einen weichen Grauschleier / Objekt-Geist
-      // hinterlassen. Ein generativer Reconstruct-Pass NUR über den betroffenen Ausschnitt
-      // rekonstruiert Wand/Tisch sauber. Fällt bei Fehler auf das reine LaMa-Ergebnis zurück.
-      let finalUrl = url
-      try {
-        const erasedEl = await loadHtmlImage(url)
-        const bbox = computeMaskBBox(W, H)
-        if (bbox) {
-          const pad = Math.round(Math.max(bbox.w, bbox.h) * 0.6 + Math.min(W, H) * 0.05)
-          const bx = Math.max(0, bbox.x - pad)
-          const by = Math.max(0, bbox.y - pad)
-          const bw = Math.min(W - bx, bbox.w + pad * 2)
-          const bh = Math.min(H - by, bbox.h + pad * 2)
-          const MAXC = 1280
-          const cropScale = Math.min(1, MAXC / Math.max(bw, bh))
-          const cw = Math.max(8, Math.round(bw * cropScale))
-          const ch = Math.max(8, Math.round(bh * cropScale))
-          const cc = document.createElement('canvas'); cc.width = cw; cc.height = ch
-          cc.getContext('2d').drawImage(erasedEl, bx, by, bw, bh, 0, 0, cw, ch)
-          const cropB64 = cc.toDataURL('image/png').split(',')[1]
-          const prompt = 'In diesem Bildausschnitt wurde ein Objekt entfernt. Entferne noch verbliebene weiche graue Schleier, Schatten, Abdrücke oder Unschärfe-Reste vollständig und rekonstruiere den Hintergrund (z.B. Wand und Tischplatte) sauber, gleichmäßig, texturtreu, mit korrekter Kante zwischen den Flächen und passender Beleuchtung. Erfinde KEIN neues Objekt und füge nichts hinzu — der Bereich soll völlig leer und natürlich wirken. Ändere sonst nichts.'
-          const aiVisual = await callGenerateImage(prompt, { inlineRefs: [{ mimeType: 'image/png', data: cropB64 }] })
-          const aiCropEl = await loadImageEl(aiVisual.storage_path)
-          const placed = document.createElement('canvas'); placed.width = W; placed.height = H
-          placed.getContext('2d').drawImage(aiCropEl, 0, 0, aiCropEl.naturalWidth || cw, aiCropEl.naturalHeight || ch, bx, by, bw, bh)
-          // WICHTIG: den generativen Aufräum-Pass NUR innerhalb der (leicht ausgeweiteten)
-          // Nutzer-Maske zurückblenden — NICHT über das ganze Kontext-Rechteck. Sonst wird
-          // die neu-generierte Umgebung (Nachbarobjekte, Tisch) mitübernommen und der
-          // gesamte Bereich um das entfernte Objekt verändert. So bleibt außerhalb der
-          // Maske exakt das saubere LaMa-Ergebnis (= Original bis auf das entfernte Objekt).
-          const cleanBlob = await compositeMaskedResult(erasedEl, placed, Math.max(3, Math.round(Math.min(W, H) * 0.012)))
-          finalUrl = await blobToDataUrl(cleanBlob)
-        }
-      } catch (_e) { finalUrl = url }
-      await applyResultDirect(finalUrl, 'mask')
+      const bbox = computeMaskBBox(W, H)
+      if (!bbox) { setAiError('Maske ist leer.'); setAiBusy(false); return }
+      // VOLLBILD-Entfernen mit Ortsangabe aus der Auswahl — gleiches Prinzip wie „Bereich
+      // ändern": das GANZE Bild geht an die KI, die das Objekt an der markierten Stelle
+      // sauber entfernt und die Fläche dahinter fotorealistisch rekonstruiert, OHNE den
+      // Rest des Bildes zu verändern. Das ist robuster als LaMa bei transparenten/großen
+      // Objekten (kein milchiger Schleier / Sockelring) und lässt die Umgebung 1:1.
+      const fc = document.createElement('canvas'); fc.width = W; fc.height = H
+      fc.getContext('2d').drawImage(origEl, 0, 0, W, H)
+      const fullB64 = fc.toDataURL('image/png').split(',')[1]
+      const cx = bbox.x + bbox.w / 2, cy = bbox.y + bbox.h / 2
+      const hpos = cx < W * 0.34 ? 'im linken Drittel' : (cx > W * 0.66 ? 'im rechten Drittel' : 'in der horizontalen Mitte')
+      const vpos = cy < H * 0.4 ? 'im oberen Bereich' : (cy > H * 0.66 ? 'im unteren Bereich' : 'auf mittlerer Höhe')
+      const basePct = Math.round(((bbox.y + bbox.h) / H) * 100)
+      const midXPct = Math.round((cx / W) * 100)
+      const prompt = `Entferne aus diesem Foto VOLLSTÄNDIG das Objekt, das an folgender Stelle steht: ${hpos}, ${vpos} des Bildes (horizontale Mitte des Objekts bei etwa ${midXPct}% der Bildbreite, Unterkante/Standfläche bei etwa ${basePct}% der Bildhöhe von oben). Rekonstruiere die Fläche dahinter — z. B. Tischplatte und Wand — fotorealistisch, texturtreu und mit passender Beleuchtung, sodass KEINERLEI Spur des Objekts bleibt: kein Umriss, kein Schatten, kein milchiger Schleier, kein Sockel, kein Ring, keine Unschärfe. Die Stelle soll völlig leer und natürlich wirken, als wäre dort nie etwas gewesen.\nÄndere den GESAMTEN REST des Bildes NICHT: alle anderen vorhandenen Objekte, der übrige Hintergrund, Farben, Licht und Komposition bleiben exakt unverändert. Füge NICHTS hinzu. Gib das vollständige Bild in identischer Größe und identischem Bildausschnitt zurück.`
+      const aiVisual = await callGenerateImage(prompt, { inlineRefs: [{ mimeType: 'image/png', data: fullB64 }] })
+      const aiEl = await loadImageEl(aiVisual.storage_path)
+      const oc = document.createElement('canvas')
+      oc.width = aiEl.naturalWidth || W; oc.height = aiEl.naturalHeight || H
+      oc.getContext('2d').drawImage(aiEl, 0, 0)
+      await applyResultDirect(oc.toDataURL('image/png'), 'mask')
     } catch (e) {
       setAiError('Entfernen fehlgeschlagen: ' + (e?.message || 'Fehler') + '. Bitte erneut versuchen.')
     } finally {
