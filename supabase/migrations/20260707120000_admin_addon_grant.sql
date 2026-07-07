@@ -22,10 +22,15 @@ ALTER TABLE public.account_addons DROP CONSTRAINT IF EXISTS account_addons_billi
 ALTER TABLE public.account_addons ADD CONSTRAINT account_addons_billing_type_check
   CHECK (billing_type IN ('stripe','grandfathered','comped','external'));
 
--- Partial-Unique (nur active): verhindert Duplikat-Grants pro (account, addon, member)
-CREATE UNIQUE INDEX IF NOT EXISTS account_addons_active_uniq
-  ON public.account_addons (account_id, addon_id, COALESCE(member_user_id, '00000000-0000-0000-0000-000000000000'::uuid))
-  WHERE status = 'active';
+-- Alte (account_id, addon_id)-Unique blockt Member+Account-weit-Koexistenz → durch partielle Indexe ersetzen.
+ALTER TABLE public.account_addons DROP CONSTRAINT IF EXISTS account_addons_account_id_addon_id_key;
+DROP INDEX IF EXISTS public.account_addons_active_uniq;
+-- Account-weit: max. 1 Zeile pro (account, addon) mit member NULL — Ziel für den Stripe-Upsert-ON-CONFLICT.
+CREATE UNIQUE INDEX IF NOT EXISTS account_addons_accountwide_uniq
+  ON public.account_addons (account_id, addon_id) WHERE member_user_id IS NULL;
+-- Member: max. 1 AKTIVER Grant pro (account, addon, member).
+CREATE UNIQUE INDEX IF NOT EXISTS account_addons_member_active_uniq
+  ON public.account_addons (account_id, addon_id, member_user_id) WHERE member_user_id IS NOT NULL AND status = 'active';
 
 -- 2) i_have_addon MEMBER-AWARE (account-weit ODER member=auth.uid()). Bestehende Grants (member NULL) → identisch.
 CREATE OR REPLACE FUNCTION public.i_have_addon(p_slug text)
@@ -127,6 +132,28 @@ BEGIN
   LEFT JOIN auth.users u ON u.id = aa.member_user_id
   WHERE aa.account_id = p_account_id
   ORDER BY aa.status, a.sort_order, a.slug;
+END; $$;
+
+-- 6) Stripe-Upsert an die member-aware Welt anpassen: setzt billing_type='stripe',
+--    ON CONFLICT auf den account-weiten Partial-Index (member_user_id IS NULL). Sonst NULL billing_type → Quantity-Sync skippt.
+CREATE OR REPLACE FUNCTION public.upsert_account_addon_from_stripe(p_account_id uuid, p_addon_id uuid, p_status text, p_stripe_subscription_id text, p_stripe_subscription_item_id text, p_current_period_end timestamptz)
+RETURNS uuid LANGUAGE plpgsql SECURITY DEFINER SET search_path TO 'public' AS $$
+DECLARE v_id uuid;
+BEGIN
+  INSERT INTO public.account_addons (account_id, addon_id, member_user_id, status, stripe_subscription_id, stripe_subscription_item_id, current_period_end, activated_at, canceled_at, is_grandfathered, billing_type)
+  VALUES (p_account_id, p_addon_id, NULL, p_status, p_stripe_subscription_id, p_stripe_subscription_item_id, p_current_period_end, now(),
+          CASE WHEN p_status = 'canceled' THEN now() ELSE NULL END, false, 'stripe')
+  ON CONFLICT (account_id, addon_id) WHERE member_user_id IS NULL DO UPDATE
+    SET status                      = EXCLUDED.status,
+        stripe_subscription_id      = COALESCE(EXCLUDED.stripe_subscription_id, public.account_addons.stripe_subscription_id),
+        stripe_subscription_item_id = COALESCE(EXCLUDED.stripe_subscription_item_id, public.account_addons.stripe_subscription_item_id),
+        current_period_end          = EXCLUDED.current_period_end,
+        canceled_at                 = CASE WHEN EXCLUDED.status = 'canceled' THEN now() ELSE public.account_addons.canceled_at END,
+        updated_at                  = now(),
+        is_grandfathered            = false,
+        billing_type                = 'stripe'
+  RETURNING id INTO v_id;
+  RETURN v_id;
 END; $$;
 
 COMMIT;
