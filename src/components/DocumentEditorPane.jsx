@@ -87,7 +87,7 @@ if (typeof document !== 'undefined' && !document.getElementById('leadesk-docpane
   const s = document.createElement('style')
   s.id = 'leadesk-docpane-css'
   s.textContent = `
-    .lk-docpane .ProseMirror { outline:none; min-height:58vh; font-size:16px; line-height:1.78; color:var(--text-primary,#1d2939); }
+    .lk-docpane .ProseMirror { outline:none; min-height:58vh; font-size:16px; line-height:1.78; color:var(--text-primary,#1d2939); overflow-wrap:break-word; word-break:break-word; }
     .lk-docpane .ProseMirror p { margin:0 0 14px; }
     .lk-docpane .ProseMirror h1 { font-size:27px; font-weight:800; margin:24px 0 12px; letter-spacing:-0.015em; }
     .lk-docpane .ProseMirror h2 { font-size:21px; font-weight:700; margin:20px 0 10px; letter-spacing:-0.01em; }
@@ -432,7 +432,7 @@ const DocumentEditorPane = forwardRef(function DocumentEditorPane({
         </div>
         {/* Zeile 2: EINE durchgehende Leiste — Toolbar + Weiterschreiben · Übernehmen · Export (alles links) */}
         <div style={{ padding:'0 28px 12px' }}>
-          <div style={{ display:'flex', alignItems:'center', gap:2, padding:5, background:'var(--surface,#fff)', border:'1px solid var(--border,#E9ECF2)', borderRadius:11, flexWrap:'nowrap', maxWidth:780, width:'100%', margin:'0 auto', boxSizing:'border-box' }}>
+          <div style={{ display:'flex', alignItems:'center', gap:2, rowGap:4, padding:5, background:'var(--surface,#fff)', border:'1px solid var(--border,#E9ECF2)', borderRadius:11, flexWrap:'wrap', maxWidth:780, width:'100%', margin:'0 auto', boxSizing:'border-box' }}>
             <Toolbar editor={editor} />
             <div style={{ flex:1, minWidth:12 }} />
             <button type="button" onMouseDown={e => e.preventDefault()} onClick={continueWriting} disabled={continuing} title="KI schreibt am Dokumentende weiter"
@@ -498,7 +498,7 @@ const DocumentEditorPane = forwardRef(function DocumentEditorPane({
       {/* ── Scrollender Editor-Bereich ── */}
       <div style={{ flex:1, overflowY:'auto', padding:'24px 28px 72px', minHeight:0 }}>
         <div style={{ position:'relative', maxWidth:780, margin:'0 auto', background:'var(--surface,#fff)', border:'1px solid var(--border,#E9ECF2)',
-                      borderRadius:16, boxShadow:'0 1px 2px rgba(16,24,40,0.04), 0 12px 28px rgba(16,24,40,0.04)', padding:'48px 56px' }}>
+                      borderRadius:16, boxShadow:'0 1px 2px rgba(16,24,40,0.04), 0 12px 28px rgba(16,24,40,0.04)', padding:'clamp(24px,5vw,48px) clamp(18px,5vw,56px)', boxSizing:'border-box' }}>
           <EditorContent editor={editor} />
           {isEmpty && editor && (
             <div style={{ position:'absolute', top:104, left:56, right:56 }}>

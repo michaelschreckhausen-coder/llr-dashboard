@@ -5883,7 +5883,7 @@ function humanizeProviderError(msg) {
 
 // ─── kleine UI-Bausteine ──────────────────────────────────────────────────────
 const barStyle = {
-  display: 'flex', alignItems: 'center', gap: 8, padding: '9px 12px',
+  display: 'flex', alignItems: 'center', gap: 8, rowGap: 6, padding: '9px 12px', flexWrap: 'wrap',
   borderBottom: '1px solid var(--border,#E9ECF2)', background: 'var(--surface,#fff)', flexShrink: 0,
 }
 
@@ -6150,7 +6150,7 @@ function ContextBar({
   const fs = Math.round(o.fontSize || 44)
 
   return (
-    <div style={{ ...barStyle, flexWrap: 'nowrap', gap: 6, minWidth: 0 }}>
+    <div style={{ ...barStyle, flexWrap: 'wrap', gap: 6, minWidth: 0 }}>
       {/* ── TEXT ── */}
       {isText && (
         <>
