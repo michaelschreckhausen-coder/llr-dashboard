@@ -16,15 +16,14 @@ Deno.serve(async (req) => {
   const { account_id } = await req.json().catch(() => ({} as any));
   if (!account_id) return json({ error: "account_id required" }, 400);
 
-  // Automation-Addon-Zeile des Accounts
+  // Nur ZAHLENDE (billing_type=stripe, aktiv, mit Item) syncen.
+  // comped/external/grandfathered (jede Ebene) → kein Stripe-Charge, überspringen.
   const { data: aa } = await db.from("account_addons")
-    .select("status, is_grandfathered, stripe_subscription_item_id, addons!inner(slug)")
-    .eq("account_id", account_id).eq("addons.slug", "automation").limit(1).maybeSingle();
+    .select("status, billing_type, stripe_subscription_item_id, addons!inner(slug)")
+    .eq("account_id", account_id).eq("addons.slug", "automation").eq("billing_type", "stripe").eq("status", "active")
+    .limit(1).maybeSingle();
 
-  // Nur ZAHLENDE (aktiv, nicht grandfathered, mit Stripe-Item) syncen.
-  if (!aa) return json({ skipped: "no_addon" });
-  if (aa.is_grandfathered) return json({ skipped: "grandfathered" });      // frei → keine Quantity
-  if (aa.status !== "active") return json({ skipped: "not_active" });
+  if (!aa) return json({ skipped: "kein_stripe_addon" });
   if (!aa.stripe_subscription_item_id) return json({ skipped: "no_stripe_item" });
 
   // SET-TO-ACTUAL-COUNT: # verbundene unipile_accounts (status OK) des Accounts.
