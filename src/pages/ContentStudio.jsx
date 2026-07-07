@@ -2267,43 +2267,28 @@ function parseImageMessage(msg) {
 
 // Einheitliches Modell-Dropdown (ersetzt das native <select>, das fett/abweichend aussah).
 const ANSWER_FORMATS = [
-  { id:'auto',   label:'Automatisch', hint:'KI entscheidet: Beitrag, Visual oder Rückfrage', Icon: Sparkles },
-  { id:'chat',   label:'Chatten',     hint:'Frei besprechen — kein fertiger Beitrag', Icon: MessageSquare },
-  { id:'post',   label:'Beitrag',     hint:'Fertigen LinkedIn-Beitrag schreiben', Icon: FileText },
-  { id:'visual', label:'Visual',      hint:'Bild im Chat erstellen', Icon: ImageIcon },
+  { id:'auto',   tip:'Automatische Generierung', Icon: Sparkles },
+  { id:'chat',   tip:'Chatten',                  Icon: MessageSquare },
+  { id:'post',   tip:'Beitrag',                  Icon: FileText },
+  { id:'visual', tip:'Visual',                   Icon: ImageIcon },
 ]
+// Segment-Umschalter: vier Icons nebeneinander (Automatisch vorausgewählt), direkt sichtbar.
 function AnswerFormatSelect({ value = 'auto', onChange = () => {} }) {
-  const [open, setOpen] = useState(false)
-  const cur = ANSWER_FORMATS.find(x => x.id === value) || ANSWER_FORMATS[0]
-  const CurIcon = cur.Icon
   return (
-    <div style={{ position:'relative', flexShrink:0 }}>
-      <Tip label="Antwortformat wählen"><button onClick={() => setOpen(o => !o)}
-        style={{ ...IconBtn(value !== 'auto'), padding:'0 9px', gap:5, height:34 }}>
-        <CurIcon size={15} strokeWidth={1.75}/>
-        <span style={{ fontSize:12, fontWeight:600 }}>{cur.label}</span>
-        <ChevronDown size={13} strokeWidth={2}/>
-      </button></Tip>
-      {open && (
-        <>
-          <div onClick={() => setOpen(false)} style={{ position:'fixed', inset:0, zIndex:80 }}/>
-          <div style={{ position:'absolute', bottom:'calc(100% + 6px)', left:0, zIndex:81, background:'#fff', border:'1px solid var(--border)', borderRadius:10, boxShadow:'0 10px 30px rgba(0,0,0,.12)', minWidth:260, padding:6 }}>
-            {ANSWER_FORMATS.map(x => {
-              const FI = x.Icon; const active = x.id === value
-              return (
-                <button key={x.id} onClick={() => { onChange(x.id); setOpen(false) }}
-                  style={{ display:'flex', alignItems:'flex-start', gap:9, width:'100%', padding:'8px 10px', background: active ? 'rgba(49,90,231,0.08)' : 'transparent', border:'none', cursor:'pointer', borderRadius:7, textAlign:'left', fontFamily:'inherit' }}>
-                  <FI size={15} strokeWidth={1.75} style={{ color: active ? P : 'var(--text-muted)', marginTop:1, flexShrink:0 }}/>
-                  <span>
-                    <span style={{ display:'block', fontSize:13, fontWeight:700, color: active ? P : 'var(--text-primary)' }}>{x.label}</span>
-                    <span style={{ display:'block', fontSize:11, color:'var(--text-muted)' }}>{x.hint}</span>
-                  </span>
-                </button>
-              )
-            })}
-          </div>
-        </>
-      )}
+    <div style={{ display:'inline-flex', alignItems:'center', gap:2, padding:2, borderRadius:9, border:'1.5px solid var(--border)', background:'#fff', flexShrink:0 }}>
+      {ANSWER_FORMATS.map(x => {
+        const XI = x.Icon; const active = x.id === value
+        return (
+          <Tip key={x.id} label={x.tip}>
+            <button type="button" onClick={() => onChange(x.id)} aria-pressed={active}
+              style={{ width:32, height:30, display:'inline-flex', alignItems:'center', justifyContent:'center', borderRadius:7, border:'none', cursor:'pointer', background: active ? P : 'transparent', color: active ? '#fff' : 'var(--text-muted)', transition:'background .12s, color .12s' }}
+              onMouseEnter={e => { if (!active) e.currentTarget.style.background = 'var(--page-bg,#F2F4F8)' }}
+              onMouseLeave={e => { if (!active) e.currentTarget.style.background = 'transparent' }}>
+              <XI size={15} strokeWidth={1.9}/>
+            </button>
+          </Tip>
+        )
+      })}
     </div>
   )
 }
