@@ -2209,6 +2209,26 @@ Nutze nur die für den Befehl nötigen Operationen.`
           })
           const rebuilt = [...nonText]; fixed.forEach(t2 => { const s = scrims.find(sc => sc.__scrimFor === t2.id); if (s) rebuilt.push(s); rebuilt.push(t2) }); arr = rebuilt
         } catch (_e) {}
+        // Vertikale Entzerrung: Text-Elemente, die sich in derselben Spalte vertikal
+        // überlappen (z.B. Headline bricht auf 2 Zeilen um → Tagline sitzt drin), nach
+        // unten schieben, damit nichts überlappt. Nur Text (Fotos/Panels bleiben fix).
+        try {
+          const texts = arr.filter(o => o.type === 'text').sort((a, b) => (a.y || 0) - (b.y || 0))
+          const xOv = (a, b) => { const ax0 = a.x || 0, ax1 = ax0 + (a.width || 0), bx0 = b.x || 0, bx1 = bx0 + (b.width || 0); return Math.min(ax1, bx1) - Math.max(ax0, bx0) > Math.min(a.width || 1, b.width || 1) * 0.3 }
+          const yPatch = {}
+          for (let i = 1; i < texts.length; i++) {
+            let y = texts[i].y || 0
+            for (let j = 0; j < i; j++) {
+              if (!xOv(texts[i], texts[j])) continue
+              const upBottom = (texts[j].y || 0) + measureTextH(texts[j])
+              const gap = Math.round((texts[i].fontSize || 24) * 0.45)
+              if (y < upBottom + gap) y = upBottom + gap
+            }
+            y = Math.min(y, ch - margin - measureTextH(texts[i]))
+            if (y !== (texts[i].y || 0)) { yPatch[texts[i].id] = y; texts[i] = { ...texts[i], y } }
+          }
+          if (Object.keys(yPatch).length) arr = arr.map(o => (o.type === 'text' && yPatch[o.id] != null) ? { ...o, y: yPatch[o.id] } : o)
+        } catch (_e) {}
         return { objects: arr, nextBg: bg, filterPatch: fPatch, imageInstruction: imgInstr, wantCutout: cutout, replaceBg, logos, stockImages }
       }
 
