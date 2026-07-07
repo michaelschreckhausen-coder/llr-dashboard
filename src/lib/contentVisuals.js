@@ -44,6 +44,24 @@ export async function linkVisualToChat(visualId, chatId) {
 }
 export const addVisualToChat = linkVisualToChat
 
+// Zuordnung eines Designs/Bilds zu EINEM Chat entfernen (Design bleibt bestehen).
+export async function unlinkVisualFromChat(visualId, chatId) {
+  if (!visualId || !chatId) return { error: null }
+  return supabase.from('visual_chats').delete().eq('visual_id', visualId).eq('chat_id', chatId)
+}
+
+// Einen Chat vollständig löschen: Nachrichten, Dokument-/Visual-Zuordnungen und den Chat
+// selbst. (Designs/Bilder/Dokumente selbst bleiben erhalten — nur die Verknüpfung geht weg.)
+// Es gibt keine DB-Cascades auf content_chats → Kinder explizit entfernen.
+export async function deleteChat(chatId) {
+  if (!chatId) return { error: null }
+  try { await supabase.from('content_posts').update({ text_werkstatt_chat_id: null }).eq('text_werkstatt_chat_id', chatId) } catch (_e) {}
+  try { await supabase.from('visual_chats').delete().eq('chat_id', chatId) } catch (_e) {}
+  try { await supabase.from('content_document_chats').delete().eq('chat_id', chatId) } catch (_e) {}
+  try { await supabase.from('content_chat_messages').delete().eq('chat_id', chatId) } catch (_e) {}
+  return supabase.from('content_chats').delete().eq('id', chatId)
+}
+
 export async function getVisual(id) {
   return supabase.from('visuals').select('*').eq('id', id).maybeSingle()
 }

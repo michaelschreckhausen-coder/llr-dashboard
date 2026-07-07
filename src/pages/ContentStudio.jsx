@@ -11,7 +11,7 @@
 //   - Beim ersten Send im Clean-Modus → Sidebar klappt automatisch auf
 
 import React, { useState, useEffect, useRef } from 'react'
-import { Pencil, Pin, BookOpen, Target, Send, Loader2, Globe, Plus, FileText, ChevronLeft, ChevronRight, ChevronsRight, ChevronDown, X, Mic, Square, Image as ImageIcon, Download, Sparkles, Wand2, FilePlus2, Brush, MessageSquare, CalendarPlus, Maximize2, Minimize2, Paperclip } from 'lucide-react'
+import { Pencil, Pin, BookOpen, Target, Send, Loader2, Globe, Plus, FileText, ChevronLeft, ChevronRight, ChevronsRight, ChevronDown, X, Mic, Square, Image as ImageIcon, Download, Sparkles, Wand2, FilePlus2, Brush, MessageSquare, CalendarPlus, Maximize2, Minimize2, Paperclip, Trash2, MoreVertical, Unlink } from 'lucide-react'
 import { useVoiceInput } from '../hooks/useVoiceInput'
 import { useResponsive } from '../hooks/useResponsive'
 import CompanyMultiSelect from '../components/CompanyMultiSelect'
@@ -28,7 +28,7 @@ import GenerationLoading from '../components/GenerationLoading'
 import { IMAGE_MODELS, DEFAULT_IMAGE_MODEL, splitModelValue, imageModelLabel, imageModelName, ASPECT_PRESETS, DEFAULT_ASPECT } from '../lib/imageModels'
 import FormatPicker from '../components/FormatPicker'
 import { PRESET_BY_ID, DEFAULT_PRESET_ID } from '../lib/formatPresets'
-import { listVisualsForChat, linkVisualToChat, getVisual, signedVisualUrl, downloadVisualBlob, visualDataUrl, uploadImageBlob, listTeamVisuals, listChatsForVisual, createEmptyDesign as createEmptyDesignRow, addImagePageToDesign } from '../lib/contentVisuals'
+import { listVisualsForChat, linkVisualToChat, getVisual, signedVisualUrl, downloadVisualBlob, visualDataUrl, uploadImageBlob, listTeamVisuals, listChatsForVisual, createEmptyDesign as createEmptyDesignRow, addImagePageToDesign, deleteVisual, unlinkVisualFromChat, deleteChat } from '../lib/contentVisuals'
 
 // ─── Hintergrund-Generierungen (überlebt Navigation/Unmount) ────────────────
 // Map chatId -> { kind:'image'|'text', startedAt, expectedSeconds, ratio }. Liegt auf
@@ -233,6 +233,7 @@ export default function ContentStudio({ session }) {
   // Chat-Listen-State
   const [chats, setChats] = useState([])
   const [chatsLoading, setChatsLoading] = useState(true)
+  const [hoverChatId, setHoverChatId] = useState(null)
   const [activeChatId, setActiveChatId] = useState(null)
   const [activeChat, setActiveChat] = useState(null)
   const [messages, setMessages] = useState([])
@@ -476,6 +477,18 @@ export default function ContentStudio({ session }) {
     setChatsLoading(false)
   }
   useEffect(() => { loadChats() }, [activeBrandVoice?.id, noBrand])
+
+  // Chat vollständig löschen (Nachrichten + Zuordnungen). Designs/Bilder/Dokumente bleiben.
+  async function handleDeleteChat(chatId) {
+    if (!chatId) return
+    try { await deleteChat(chatId) } catch (_e) {}
+    setChats(prev => prev.filter(c => c.id !== chatId))
+    if (chatId === activeChatId) {
+      setActiveChatId(null); setActiveChat(null); setMessages([]); setChatVisuals([]); setChatDocs([])
+      setEditorOpen(false); setActiveVisual(null)
+      const n = new URLSearchParams(searchParams); n.delete('chat_id'); n.delete('post_id'); n.delete('doc'); n.delete('visual'); setSearchParams(n)
+    }
+  }
 
   // ─── Audiences + Knowledge Base laden ─────────────────────────────────────
   useEffect(() => {
@@ -1238,22 +1251,33 @@ Neue Anfrage: "${p}"` },
             {!chatsLoading && chats.length === 0 && <div style={{ padding:'14px 8px', fontSize:12, color:'var(--text-muted)', lineHeight:1.5 }}>Noch keine Chats für diese Brand Voice.</div>}
             {chats.map(c => {
               const active = c.id === activeChatId
+              const hov = hoverChatId === c.id
               return (
-                <button key={c.id} onClick={() => { const n = new URLSearchParams(searchParams); n.set('chat_id', c.id); n.delete('post_id'); n.delete('doc'); n.delete('visual'); setSearchParams(n) }}
-                  style={{
-                    width:'100%', textAlign:'left', padding:'9px 11px', borderRadius:9, border:'none', cursor:'pointer', marginBottom:3,
-                    background: active ? 'var(--surface,#fff)' : 'transparent',
-                    boxShadow: active ? '0 1px 2px rgba(16,24,40,0.06)' : 'none',
-                    color: active ? 'var(--text-primary,#101828)' : 'var(--text-muted,#475467)',
-                    fontSize:12.5, lineHeight:1.4, fontWeight: active ? 700 : 500, fontFamily:'inherit',
-                    display:'flex', alignItems:'center', gap:7, overflow:'hidden',
-                  }}
-                  onMouseEnter={e => { if (!active) e.currentTarget.style.background = 'rgba(16,24,40,0.04)' }}
-                  onMouseLeave={e => { if (!active) e.currentTarget.style.background = 'transparent' }}
-                  title={c.title}>
-                  {c.post_id && <Pin size={11} strokeWidth={1.75} style={{ flexShrink:0, color:P }}/>}
-                  <span style={{ overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{c.title}</span>
-                </button>
+                <div key={c.id} style={{ position:'relative', marginBottom:3 }}
+                  onMouseEnter={() => setHoverChatId(c.id)} onMouseLeave={() => setHoverChatId(h => h === c.id ? null : h)}>
+                  <button onClick={() => { const n = new URLSearchParams(searchParams); n.set('chat_id', c.id); n.delete('post_id'); n.delete('doc'); n.delete('visual'); setSearchParams(n) }}
+                    style={{
+                      width:'100%', textAlign:'left', padding:'9px 34px 9px 11px', borderRadius:9, border:'none', cursor:'pointer',
+                      background: active ? 'var(--surface,#fff)' : (hov ? 'rgba(16,24,40,0.04)' : 'transparent'),
+                      boxShadow: active ? '0 1px 2px rgba(16,24,40,0.06)' : 'none',
+                      color: active ? 'var(--text-primary,#101828)' : 'var(--text-muted,#475467)',
+                      fontSize:12.5, lineHeight:1.4, fontWeight: active ? 700 : 500, fontFamily:'inherit',
+                      display:'flex', alignItems:'center', gap:7, overflow:'hidden',
+                    }}
+                    title={c.title}>
+                    {c.post_id && <Pin size={11} strokeWidth={1.75} style={{ flexShrink:0, color:P }}/>}
+                    <span style={{ overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{c.title}</span>
+                  </button>
+                  {(hov || active) && (
+                    <button title="Chat löschen"
+                      onClick={(e) => { e.stopPropagation(); if (window.confirm('Diesen Chat löschen? Nachrichten und Zuordnungen werden entfernt — Designs, Bilder und Dokumente selbst bleiben erhalten.')) handleDeleteChat(c.id) }}
+                      style={{ position:'absolute', top:'50%', right:5, transform:'translateY(-50%)', width:24, height:24, borderRadius:7, border:'none', background:'transparent', cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'center', color:'var(--text-soft,#98a2b3)', padding:0 }}
+                      onMouseEnter={e => { e.currentTarget.style.background = 'rgba(220,38,38,0.1)'; e.currentTarget.style.color = '#dc2626' }}
+                      onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.color = 'var(--text-soft,#98a2b3)' }}>
+                      <Trash2 size={13} strokeWidth={1.9}/>
+                    </button>
+                  )}
+                </div>
               )
             })}
           </div>
@@ -1435,7 +1459,17 @@ Neue Anfrage: "${p}"` },
               {activeChatId && (
                 <VisualRail visuals={chatVisuals.filter(v => v.kind === 'design')} activeVisualId={activeVisual?.id}
                   onSelect={(v) => openVisualInDesigner(v, { assignToChat:false })}
-                  onNew={() => createEmptyDesign()} />
+                  onNew={() => createEmptyDesign()}
+                  onUnlink={async (v) => {
+                    if (activeChatId) { try { await unlinkVisualFromChat(v.id, activeChatId) } catch (_e) {} }
+                    if (activeVisual?.id === v.id) { setActiveVisual(null); setEditorOpen(false) }
+                    if (activeChatId) loadChatVisuals(activeChatId)
+                  }}
+                  onDelete={async (v) => {
+                    try { await deleteVisual(v.id) } catch (_e) {}
+                    if (activeVisual?.id === v.id) { setActiveVisual(null); setEditorOpen(false) }
+                    if (activeChatId) loadChatVisuals(activeChatId)
+                  }} />
               )}
             </>
           ) : (
@@ -2528,7 +2562,16 @@ function EmptyOpenPane({ type, onOpen, onNew }) {
 }
 
 // ─── Bild-Leiste (rechte Leiste im Designer-Modus, pro Chat) ────────────────
-function VisualRail({ visuals = [], activeVisualId, onSelect = () => {}, onNew = () => {} }) {
+function VisualRail({ visuals = [], activeVisualId, onSelect = () => {}, onNew = () => {}, onUnlink = null, onDelete = null }) {
+  const [menuFor, setMenuFor] = useState(null)
+  const [busyId, setBusyId] = useState(null)
+  useEffect(() => {
+    if (!menuFor) return
+    const close = () => setMenuFor(null)
+    window.addEventListener('click', close)
+    return () => window.removeEventListener('click', close)
+  }, [menuFor])
+  const menuItem = { display:'flex', alignItems:'center', gap:8, width:'100%', textAlign:'left', padding:'8px 10px', borderRadius:7, border:'none', background:'transparent', cursor:'pointer', fontSize:12.5, fontWeight:600, fontFamily:'inherit', color:'var(--text-primary,#101828)', whiteSpace:'nowrap' }
   return (
     <aside style={{ width:56, flexShrink:0, borderLeft:'1px solid var(--border,#E9ECF2)', background:'var(--page-bg, #F7F8FA)',
                     display:'flex', flexDirection:'column', alignItems:'center', gap:7, padding:'14px 0', overflowY:'auto' }}>
@@ -2538,15 +2581,41 @@ function VisualRail({ visuals = [], activeVisualId, onSelect = () => {}, onNew =
       )}
       {visuals.map((v) => {
         const active = v.id === activeVisualId
+        const showMenu = menuFor === v.id
         return (
-          <button key={v.id} onClick={() => onSelect(v)} title={v.title || v.prompt || 'Design'}
-            style={{ position:'relative', width:42, height:42, borderRadius:9, flexShrink:0, cursor:'pointer', overflow:'hidden', padding:0,
-              border:'2px solid ' + (active ? P : 'var(--border,#E9ECF2)'),
-              background:'#fff', boxShadow: active ? '0 1px 3px rgba(49,90,231,0.25)' : 'none' }}>
-            {v.signed_url
-              ? <img src={v.signed_url} alt="" style={{ width:'100%', height:'100%', objectFit:'cover', display:'block' }}/>
-              : <span style={{ display:'flex', width:'100%', height:'100%', alignItems:'center', justifyContent:'center', color:'var(--text-soft,#98a2b3)' }}><ImageIcon size={16} strokeWidth={1.8}/></span>}
-          </button>
+          <div key={v.id} style={{ position:'relative', width:42, flexShrink:0 }}>
+            <button onClick={() => onSelect(v)} title={v.title || v.prompt || 'Design'}
+              style={{ position:'relative', display:'block', width:42, height:42, borderRadius:9, cursor:'pointer', overflow:'hidden', padding:0,
+                border:'2px solid ' + (active ? P : 'var(--border,#E9ECF2)'),
+                background:'#fff', boxShadow: active ? '0 1px 3px rgba(49,90,231,0.25)' : 'none', opacity: busyId === v.id ? 0.45 : 1 }}>
+              {v.signed_url
+                ? <img src={v.signed_url} alt="" style={{ width:'100%', height:'100%', objectFit:'cover', display:'block' }}/>
+                : <span style={{ display:'flex', width:'100%', height:'100%', alignItems:'center', justifyContent:'center', color:'var(--text-soft,#98a2b3)' }}><ImageIcon size={16} strokeWidth={1.8}/></span>}
+            </button>
+            {(onUnlink || onDelete) && (
+              <button onClick={(e) => { e.stopPropagation(); setMenuFor(showMenu ? null : v.id) }} title="Optionen"
+                style={{ position:'absolute', top:-5, right:-5, width:18, height:18, borderRadius:'50%', border:'1px solid var(--border,#E9ECF2)', background:'#fff', cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'center', boxShadow:'0 1px 3px rgba(16,24,40,0.18)', color:'var(--text-muted,#667085)', padding:0, zIndex:2 }}>
+                <MoreVertical size={12} strokeWidth={2}/>
+              </button>
+            )}
+            {showMenu && (
+              <div onClick={(e) => e.stopPropagation()}
+                style={{ position:'absolute', top:0, right:'116%', zIndex:60, background:'var(--surface,#fff)', border:'1px solid var(--border,#E9ECF2)', borderRadius:10, boxShadow:'0 8px 24px rgba(16,24,40,0.16)', padding:5, display:'flex', flexDirection:'column', gap:2 }}>
+                {onUnlink && (
+                  <button onClick={async () => { setMenuFor(null); setBusyId(v.id); try { await onUnlink(v) } finally { setBusyId(null) } }}
+                    style={menuItem}
+                    onMouseEnter={e => e.currentTarget.style.background='rgba(16,24,40,0.05)'} onMouseLeave={e => e.currentTarget.style.background='transparent'}>
+                    <Unlink size={14} strokeWidth={1.9}/>Aus Chat entfernen</button>
+                )}
+                {onDelete && (
+                  <button onClick={async () => { setMenuFor(null); if (!window.confirm('Dieses Design endgültig löschen? Das kann nicht rückgängig gemacht werden.')) return; setBusyId(v.id); try { await onDelete(v) } finally { setBusyId(null) } }}
+                    style={{ ...menuItem, color:'#dc2626' }}
+                    onMouseEnter={e => e.currentTarget.style.background='rgba(220,38,38,0.08)'} onMouseLeave={e => e.currentTarget.style.background='transparent'}>
+                    <Trash2 size={14} strokeWidth={1.9}/>Design löschen</button>
+                )}
+              </div>
+            )}
+          </div>
         )
       })}
       <button onClick={onNew} title="Neues Design erstellen"
