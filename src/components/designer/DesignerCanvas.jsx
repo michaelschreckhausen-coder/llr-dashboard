@@ -4366,6 +4366,9 @@ Antworte AUSSCHLIESSLICH mit JSON: {"ok":<bool>,"issues":["..."],"operations":[.
   // Toleranz wird daher durch effScale geteilt (≈6px Bildschirm).
   const SNAP_PX = 6
   const guideTimerRef = useRef(null)
+  // Start-Box + Start-Rotation eines Transforms — für robuste Anker-Erkennung per
+  // Box-Vergleich (getActiveAnchor ist bei react-konva-Re-Renders unzuverlässig).
+  const transformStartRef = useRef(null)
   // Hysterese für Pfeiltasten-Snap: die zuletzt getroffene Linie je Achse wird
   // „ignoriert", solange das Objekt in ihrer Toleranzzone bleibt → einmal andocken,
   // danach mit weiteren Pfeil-Drücken frei darüber hinaus (kein Kleben).
@@ -4752,6 +4755,25 @@ Antworte AUSSCHLIESSLICH mit JSON: {"ok":<bool>,"issues":["..."],"operations":[.
     } catch (_e) { /* Resize-Snap darf nie crashen */ }
   }
 
+  // Leitet den aktiven Transform-Anker aus dem Vergleich Start-Box <-> Live-Box ab
+  // (welche Kanten sich bewegt haben). Unabhängig von trRef.getActiveAnchor(), das bei
+  // Re-Renders null liefern kann. Rückgabe wie Konva-Anker: 'middle-right','top-left', …
+  function deriveResizeAnchor(node) {
+    try {
+      const sb = transformStartRef.current
+      if (!sb || !sb.box) return ''
+      const cb = node.getClientRect({ relativeTo: node.getStage() })
+      const eps = Math.max(0.5, 0.6 / effScale)
+      const left = Math.abs(cb.x - sb.box.x) > eps
+      const right = Math.abs((cb.x + cb.width) - (sb.box.x + sb.box.width)) > eps
+      const top = Math.abs(cb.y - sb.box.y) > eps
+      const bottom = Math.abs((cb.y + cb.height) - (sb.box.y + sb.box.height)) > eps
+      const v = top ? 'top' : (bottom ? 'bottom' : 'middle')
+      const h = left ? 'left' : (right ? 'right' : 'center')
+      return v + '-' + h
+    } catch (_e) { return '' }
+  }
+
   // Snapping während des PROPORTIONALEN Skalierens (Ecken, Seitenverhältnis fix). Die
   // nächstgelegene aktive Kante snappt an eine Guide-Linie; die Box wird EINHEITLICH um
   // die gegenüberliegende (feste) Ecke skaliert, sodass das Verhältnis erhalten bleibt.
@@ -4993,8 +5015,9 @@ Antworte AUSSCHLIESSLICH mit JSON: {"ok":<bool>,"issues":["..."],"operations":[.
           updateObject(o.id, { x: nx, y: ny }, false)
         }
       },
-      onTransformStart: () => {
+      onTransformStart: (e) => {
         pushHistory()
+        try { const nd = e.target; transformStartRef.current = { box: nd.getClientRect({ relativeTo: nd.getStage() }), rot: nd.rotation() || 0 } } catch (_e) { transformStartRef.current = null }
         if (o.type === 'image') {
           const el = imgCache[o.src]
           const natW = (el && (el.naturalWidth || el.width)) || o.width || 1
@@ -5005,10 +5028,11 @@ Antworte AUSSCHLIESSLICH mit JSON: {"ok":<bool>,"issues":["..."],"operations":[.
       },
       onTransform: (e) => {
         const node = e.target
-        let anchor = ''
-        try { anchor = trRef.current?.getActiveAnchor() || '' } catch (_e) {}
-        // Drehen: nur das Live-Grad-Badge zeichnen (kein Kanten-Snap-Overhead) → flüssig.
-        if (anchor === 'rotater') { drawRotationBadge(node); return }
+        // Drehen erkennen (Winkel geändert) → nur Badge, kein Kanten-Snap.
+        const startRot = transformStartRef.current?.rot ?? (node.rotation() || 0)
+        if (Math.abs((node.rotation() || 0) - startRot) > 0.01) { drawRotationBadge(node); return }
+        // Aktiven Anker robust per Box-Vergleich bestimmen (nicht via getActiveAnchor).
+        const anchor = deriveResizeAnchor(node)
         // Smart-Guides auch beim Skalieren: aktive Kante(n) snappen + Hilfslinien zeigen.
         // Im proportionalen Modus (Nicht-Text, kein Verzerren) wird das achsenweise
         // Kanten-Snapping übersprungen, da es sonst das Seitenverhältnis verzerren würde.
@@ -5023,11 +5047,15 @@ Antworte AUSSCHLIESSLICH mit JSON: {"ok":<bool>,"issues":["..."],"operations":[.
           return
         }
         applyResizeSnap(node, anchor, [o.id])
-        // Text-Seiten-Anker: Breite LIVE anpassen (Umbruch) statt den Text optisch zu
-        // strecken — sonst wirkt die Vorschau, als würde die Schrift mitwachsen (tut sie
-        // beim Loslassen aber nicht). Ecken/oben-unten skalieren die fontSize bewusst.
-        if (isText && (anchor === 'middle-left' || anchor === 'middle-right')) {
-          try { node.width(Math.max(20, node.width() * node.scaleX())); node.scaleX(1); node.scaleY(1) } catch (_e) {}
+        // Text-BREITEN-Resize (nur X skaliert, Y bleibt ~1) → Breite LIVE anpassen (Umbruch)
+        // statt den Text optisch zu strecken. Ecken/oben-unten skalieren die fontSize bewusst.
+        if (isText) {
+          try {
+            const scx = node.scaleX(), scy = node.scaleY()
+            if (Math.abs(scx - 1) > 0.005 && Math.abs(scy - 1) <= 0.005) {
+              node.width(Math.max(20, node.width() * scx)); node.scaleX(1); node.scaleY(1)
+            }
+          } catch (_e) {}
         }
       },
       onTransformEnd: (e) => {
@@ -5039,10 +5067,10 @@ Antworte AUSSCHLIESSLICH mit JSON: {"ok":<bool>,"issues":["..."],"operations":[.
           // SEITEN (middle-left/right) → nur Breite (Umbruch). Der aktive Anker liefert
           // den zuverlässigsten Hinweis; Fallback über den Achsen-Vergleich.
           const scx = node.scaleX(), scy = node.scaleY()
-          let anchor = ''
-          try { anchor = trRef.current?.getActiveAnchor() || '' } catch (_e) {}
-          const isSideAnchor = anchor === 'middle-left' || anchor === 'middle-right'
-          const isTopBottom = anchor === 'top-center' || anchor === 'bottom-center'
+          const anchor = deriveResizeAnchor(node)
+          const dSx = Math.abs(scx - 1), dSy = Math.abs(scy - 1)
+          const isSideAnchor = anchor === 'middle-left' || anchor === 'middle-right' || (dSx > 0.005 && dSy <= 0.005)
+          const isTopBottom = anchor === 'top-center' || anchor === 'bottom-center' || (dSy > 0.005 && dSx <= 0.005)
           if (isSideAnchor) {
             // nur Breite ändern, fontSize bleibt
             patch.width = Math.max(20, (node.width() * scx))
@@ -5061,9 +5089,10 @@ Antworte AUSSCHLIESSLICH mit JSON: {"ok":<bool>,"issues":["..."],"operations":[.
           patch.height = Math.max(4, node.height() * node.scaleY())
           node.scaleX(1); node.scaleY(1)
         } else if (o.type === 'image') {
-          let anchor = ''
-          try { anchor = trRef.current?.getActiveAnchor() || '' } catch (_e) {}
-          const isSide = anchor === 'middle-left' || anchor === 'middle-right' || anchor === 'top-center' || anchor === 'bottom-center'
+          const anchor = deriveResizeAnchor(node)
+          // Seiten-Anker = nur EINE Achse bewegt (Bild-Zuschnitt). Fallback über Scale-Deltas.
+          const _dx = Math.abs(node.scaleX() - 1), _dy = Math.abs(node.scaleY() - 1)
+          const isSide = anchor === 'middle-left' || anchor === 'middle-right' || anchor === 'top-center' || anchor === 'bottom-center' || ((_dx > 0.005) !== (_dy > 0.005))
           if (isSide && distortId !== o.id) {
             // Live-Crop hat node bereits gesetzt (Breite/Höhe + crop, scale=1) → übernehmen.
             patch.width = Math.max(8, node.width())
