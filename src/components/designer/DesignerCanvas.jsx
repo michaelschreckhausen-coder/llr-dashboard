@@ -2429,11 +2429,20 @@ Antworte AUSSCHLIESSLICH mit JSON: {"ok":<bool>,"issues":["..."],"operations":[.
     const text = (cmd || '').trim()
     if (!text) { setAiError('Bitte beschreibe, was die KI tun soll.'); return }
     if (!visual?.storage_path) { setAiError('Kein Basisbild.'); return }
-    if (!activeImageObj()) { setAiError('KI-Werkzeuge brauchen ein Bild im Design.'); return }
+    const target = activeImageObj()
+    if (!target) { setAiError('KI-Werkzeuge brauchen ein Bild im Design.'); return }
     setAiBusy(true); setAiError('')
     try {
-      const prompt = `Bearbeite das Referenzbild gemäß dieser Anweisung: ${text}. Behalte Bildstil, Beleuchtung und Perspektive konsistent, fotorealistisch.`
-      const aiVisual = await callGenerateImage(prompt)
+      // WICHTIG: immer den AKTUELLEN Bildstand als Vorlage schicken (inkl. vorheriger
+      // Bereich-ändern-/Entfernen-/Filter-Änderungen), sonst gehen frühere Edits verloren.
+      const curEl = (target?.src && imgCache[target.src]) || bgImage || await loadImageEl(visual.storage_path)
+      const W = curEl.naturalWidth || stageSize.width
+      const H = curEl.naturalHeight || stageSize.height
+      const ic = document.createElement('canvas'); ic.width = W; ic.height = H
+      ic.getContext('2d').drawImage(curEl, 0, 0, W, H)
+      const curB64 = ic.toDataURL('image/png').split(',')[1]
+      const prompt = `Bearbeite dieses Bild gemäß dieser Anweisung: ${text}. Übernimm ALLE bereits vorhandenen Bildinhalte unverändert (nichts entfernen, was nicht ausdrücklich gemeint ist) und ändere nur, was die Anweisung verlangt. Behalte Bildstil, Beleuchtung und Perspektive konsistent, fotorealistisch.`
+      const aiVisual = await callGenerateImage(prompt, { inlineRefs: [{ mimeType: 'image/png', data: curB64 }] })
       const aiUrl = await visualDataUrl(aiVisual.storage_path)
       if (aiUrl) await applyResultDirect(aiUrl, 'free')   // direkt ins Bild
     } catch (e) {
