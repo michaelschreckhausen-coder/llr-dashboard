@@ -5276,7 +5276,7 @@ Antworte AUSSCHLIESSLICH mit JSON: {"ok":<bool>,"issues":["..."],"operations":[.
       <input ref={fileInputRef} type="file" accept="image/*" style={{ display: 'none' }}
         onChange={(e) => { const f = e.target.files?.[0]; onPickImageFile(f); e.target.value = '' }} />
       {/* Tier 1 — globale Werkzeugleiste: links Undo/Redo + Zoom, rechts Format/Export/Speichern */}
-      <div style={{ display: 'flex', flexWrap: 'nowrap', alignItems: 'center', gap: 6, padding: '9px 10px', borderBottom: '1px solid var(--border,#E9ECF2)', background: 'var(--surface,#fff)', flexShrink: 0, overflow: 'hidden' }}>
+      <div style={{ display: 'flex', flexWrap: 'wrap', rowGap: 6, alignItems: 'center', gap: 6, padding: '9px 10px', borderBottom: '1px solid var(--border,#E9ECF2)', background: 'var(--surface,#fff)', flexShrink: 0 }}>
         {/* Undo / Redo */}
         <div style={{ display: 'inline-flex', alignItems: 'center', gap: 2, flexShrink: 0 }}>
           <ToolBtn onClick={undo} title="Rückgängig (Cmd/Ctrl+Z)"><Undo2 size={15} strokeWidth={1.9} /></ToolBtn>
