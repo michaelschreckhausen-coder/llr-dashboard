@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react'
 import { supabase } from '../lib/supabase'
+import { EXTENSION_WEBSTORE_URL } from '../lib/leadeskExtension'
 
 const P  = 'var(--wl-primary, rgb(49,90,231))'
 const PL = 'rgba(49,90,231,0.09)'
@@ -178,12 +179,12 @@ export default function LinkedInConnect({ session }) {
               {isConnected ? 'Importiere Verbindungen, Nachrichten und Anfragen' : 'Wie Waalaxy — einmal einrichten, alles laeuft automatisch'}
             </div>
           </div>
-          <a href="https://github.com/michaelschreckhausen-coder/llr-dashboard/tree/main/chrome-extension"
+          <a href={EXTENSION_WEBSTORE_URL}
             target="_blank" rel="noreferrer"
             style={{ display:'inline-flex', alignItems:'center', gap:6, padding:'9px 16px', borderRadius:10,
               background:P, color:'white', textDecoration:'none', fontSize:13, fontWeight:700, flexShrink:0 }}>
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
-            Extension herunterladen
+            Im Chrome Web Store öffnen
           </a>
         </div>
 
@@ -193,7 +194,7 @@ export default function LinkedInConnect({ session }) {
             <div>
               <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:12, marginBottom:20 }}>
                 {[
-                  { n:'1', title:'Extension installieren', desc:'ZIP herunterladen, entpacken. In Chrome: chrome://extensions → Entwicklermodus → Entpackt laden → ext4 Ordner waehlen.', icon:<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke={P} strokeWidth="2" strokeLinecap="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg> },
+                  { n:'1', title:'Extension installieren', desc:'Im Chrome Web Store auf „Hinzufügen" klicken — die Leadesk-Extension wird installiert.', icon:<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke={P} strokeWidth="2" strokeLinecap="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg> },
                   { n:'2', title:'Im Popup anmelden', desc:'Klicke das Leadesk Icon in der Chrome-Symbolleiste. E-Mail und Passwort deines Dashboards eingeben und anmelden.', icon:<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke={P} strokeWidth="2" strokeLinecap="round"><path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4"/><polyline points="10 17 15 12 10 7"/><line x1="15" y1="12" x2="3" y2="12"/></svg> },
                   { n:'3', title:'Profilbild erscheint sofort', desc:'Nach dem Login verbindet sich die Extension automatisch mit LinkedIn. Dein Profilbild erscheint sofort im Popup — ohne weiteren Klick.', icon:<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke={P} strokeWidth="2" strokeLinecap="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg> },
                   { n:'4', title:'Dashboard zeigt "Connected"', desc:'Diese Seite aktualisiert sich automatisch in Echtzeit. Du siehst deinen Namen, dein Profilbild und den grünen "Connected" Badge.', icon:<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke={P} strokeWidth="2" strokeLinecap="round"><polyline points="20 6 9 17 4 12"/></svg> },
