@@ -1413,7 +1413,8 @@ Neue Anfrage: "${p}"` },
             selectedKnowledgeIds={selectedKnowledgeIds} setSelectedKnowledgeIds={setSelectedKnowledgeIds}
             audiences={audiences} selectedAudienceId={selectedAudienceId} setSelectedAudienceId={setSelectedAudienceId}
             companyVoices={(brandVoices||[]).filter(v => v.account_type === 'company_page')}
-            showCompanyPicker={activeBrandVoice?.account_type !== 'company_page'}
+            showCompanyPicker={!noBrand && activeBrandVoice?.account_type !== 'company_page'}
+            noBrand={noBrand}
             selectedCompanyVoiceIds={selectedCompanyVoiceIds} setSelectedCompanyVoiceIds={setSelectedCompanyVoiceIds}
             useWebSearch={useWebSearch} setUseWebSearch={setUseWebSearch} editorOpen={editorOpen} useEditorContext={useEditorContext} setUseEditorContext={setUseEditorContext}
             visualMode={visualMode} setVisualMode={setVisualMode} answerFormat={answerFormat} setAnswerFormat={setAnswerFormat}
@@ -1485,7 +1486,8 @@ Neue Anfrage: "${p}"` },
             selectedKnowledgeIds={selectedKnowledgeIds} setSelectedKnowledgeIds={setSelectedKnowledgeIds}
             audiences={audiences} selectedAudienceId={selectedAudienceId} setSelectedAudienceId={setSelectedAudienceId}
             companyVoices={(brandVoices||[]).filter(v => v.account_type === 'company_page')}
-            showCompanyPicker={activeBrandVoice?.account_type !== 'company_page'}
+            showCompanyPicker={!noBrand && activeBrandVoice?.account_type !== 'company_page'}
+            noBrand={noBrand}
             selectedCompanyVoiceIds={selectedCompanyVoiceIds} setSelectedCompanyVoiceIds={setSelectedCompanyVoiceIds}
             useWebSearch={useWebSearch} setUseWebSearch={setUseWebSearch} editorOpen={editorOpen} useEditorContext={useEditorContext} setUseEditorContext={setUseEditorContext}
             visualMode={visualMode} setVisualMode={setVisualMode} answerFormat={answerFormat} setAnswerFormat={setAnswerFormat}
@@ -1833,7 +1835,7 @@ function CleanView({
   plusOpen, setPlusOpen,
   knowledgeBase, selectedKnowledgeIds, setSelectedKnowledgeIds,
   audiences, selectedAudienceId, setSelectedAudienceId,
-  companyVoices = [], showCompanyPicker = false, selectedCompanyVoiceIds = [], setSelectedCompanyVoiceIds = () => {},
+  companyVoices = [], showCompanyPicker = false, noBrand = false, selectedCompanyVoiceIds = [], setSelectedCompanyVoiceIds = () => {},
   useWebSearch, setUseWebSearch, editorOpen = false, useEditorContext = false, setUseEditorContext = () => {},
   visualMode = false, setVisualMode = () => {}, answerFormat = 'auto', setAnswerFormat = () => {}, imageModel, setImageModel = () => {}, imageCount = 'auto', setImageCount = () => {}, imageFormat, setImageFormat = () => {},
   useBrandImages = true, setUseBrandImages = () => {}, hasChatVisuals = false,
@@ -1887,7 +1889,7 @@ function CleanView({
           plusOpen={plusOpen} setPlusOpen={setPlusOpen}
           knowledgeBase={knowledgeBase} selectedKnowledgeIds={selectedKnowledgeIds} setSelectedKnowledgeIds={setSelectedKnowledgeIds}
           audiences={audiences} selectedAudienceId={selectedAudienceId} setSelectedAudienceId={setSelectedAudienceId}
-          companyVoices={companyVoices} showCompanyPicker={showCompanyPicker}
+          companyVoices={companyVoices} showCompanyPicker={showCompanyPicker} noBrand={noBrand}
           selectedCompanyVoiceIds={selectedCompanyVoiceIds} setSelectedCompanyVoiceIds={setSelectedCompanyVoiceIds}
           useWebSearch={useWebSearch} setUseWebSearch={setUseWebSearch} editorOpen={editorOpen} useEditorContext={useEditorContext} setUseEditorContext={setUseEditorContext}
           visualMode={visualMode} setVisualMode={setVisualMode} answerFormat={answerFormat} setAnswerFormat={setAnswerFormat}
@@ -1911,7 +1913,7 @@ function ChatView({
   plusOpen, setPlusOpen,
   knowledgeBase, selectedKnowledgeIds, setSelectedKnowledgeIds,
   audiences, selectedAudienceId, setSelectedAudienceId,
-  companyVoices = [], showCompanyPicker = false, selectedCompanyVoiceIds = [], setSelectedCompanyVoiceIds = () => {},
+  companyVoices = [], showCompanyPicker = false, noBrand = false, selectedCompanyVoiceIds = [], setSelectedCompanyVoiceIds = () => {},
   useWebSearch, setUseWebSearch, editorOpen = false, useEditorContext = false, setUseEditorContext = () => {},
   visualMode = false, setVisualMode = () => {}, answerFormat = 'auto', setAnswerFormat = () => {}, imageModel, setImageModel = () => {}, imageCount = 'auto', setImageCount = () => {}, imageFormat, setImageFormat = () => {},
   useBrandImages = true, setUseBrandImages = () => {}, hasChatVisuals = false,
@@ -1980,7 +1982,7 @@ function ChatView({
             plusOpen={plusOpen} setPlusOpen={setPlusOpen}
             knowledgeBase={knowledgeBase} selectedKnowledgeIds={selectedKnowledgeIds} setSelectedKnowledgeIds={setSelectedKnowledgeIds}
             audiences={audiences} selectedAudienceId={selectedAudienceId} setSelectedAudienceId={setSelectedAudienceId}
-            companyVoices={companyVoices} showCompanyPicker={showCompanyPicker}
+            companyVoices={companyVoices} showCompanyPicker={showCompanyPicker} noBrand={noBrand}
             selectedCompanyVoiceIds={selectedCompanyVoiceIds} setSelectedCompanyVoiceIds={setSelectedCompanyVoiceIds}
             useWebSearch={useWebSearch} setUseWebSearch={setUseWebSearch} editorOpen={editorOpen} useEditorContext={useEditorContext} setUseEditorContext={setUseEditorContext}
             visualMode={visualMode} setVisualMode={setVisualMode} answerFormat={answerFormat} setAnswerFormat={setAnswerFormat}
@@ -2022,7 +2024,7 @@ function ChatInput({
   plusOpen, setPlusOpen,
   knowledgeBase, selectedKnowledgeIds, setSelectedKnowledgeIds,
   audiences, selectedAudienceId, setSelectedAudienceId,
-  companyVoices = [], showCompanyPicker = false, selectedCompanyVoiceIds = [], setSelectedCompanyVoiceIds = () => {},
+  companyVoices = [], showCompanyPicker = false, noBrand = false, selectedCompanyVoiceIds = [], setSelectedCompanyVoiceIds = () => {},
   useWebSearch, setUseWebSearch, editorOpen = false, useEditorContext = false, setUseEditorContext = () => {},
   visualMode = false, setVisualMode = () => {}, answerFormat = 'auto', setAnswerFormat = () => {}, imageModel = DEFAULT_IMAGE_MODEL, setImageModel = () => {}, imageCount = 'auto', setImageCount = () => {},
   imageFormat = PRESET_BY_ID[DEFAULT_PRESET_ID], setImageFormat = () => {}, useBrandImages = true, setUseBrandImages = () => {}, hasChatVisuals = false,
@@ -2158,7 +2160,7 @@ function ChatInput({
           <span data-tour-id="cs-audience-select" style={{ display:'inline-flex', flexShrink:0 }}><AudienceSelect audiences={audiences} value={selectedAudienceId} onChange={setSelectedAudienceId} iconOnly /></span>
 
           {/* Company Brand (Ambassador, Icon) — nur bei Personal-Brand-Kontext */}
-          {showCompanyPicker && companyVoices.length > 0 && (
+          {!noBrand && showCompanyPicker && companyVoices.length > 0 && (
             <span data-tour-id="cs-company-select" style={{ display:'inline-flex', flexShrink:0 }}><CompanyMultiSelect companies={companyVoices} value={selectedCompanyVoiceIds} onChange={setSelectedCompanyVoiceIds} iconOnly /></span>
           )}
 
@@ -2211,10 +2213,12 @@ function ChatInput({
           <span title="Format / Seitenverhältnis" style={{ display:'inline-flex' }}>
             <FormatPicker value={imageFormat} onChange={setImageFormat} />
           </span>
+          {!noBrand && (
           <Tip label={useBrandImages ? 'Brand-Bilder werden als Referenz genutzt — klicken zum Ausschalten' : 'Brand-Bilder werden NICHT als Referenz genutzt — klicken zum Einschalten'}><button onClick={() => setUseBrandImages(v => !v)}
             style={{ ...IconBtn(useBrandImages), padding:'0 10px', gap:6 }}>
             <ImageIcon size={14} strokeWidth={1.75}/>Brand-Bilder {useBrandImages ? 'an' : 'aus'}
           </button></Tip>
+          )}
         </div>
       )}
       </div>
