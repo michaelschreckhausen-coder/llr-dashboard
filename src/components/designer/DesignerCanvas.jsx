@@ -3577,7 +3577,13 @@ Antworte AUSSCHLIESSLICH mit JSON: {"ok":<bool>,"issues":["..."],"operations":[.
           const aiCropEl = await loadImageEl(aiVisual.storage_path)
           const placed = document.createElement('canvas'); placed.width = W; placed.height = H
           placed.getContext('2d').drawImage(aiCropEl, 0, 0, aiCropEl.naturalWidth || cw, aiCropEl.naturalHeight || ch, bx, by, bw, bh)
-          finalUrl = compositeRectFeather(erasedEl, placed, bx, by, bw, bh, W, H)
+          // WICHTIG: den generativen Aufräum-Pass NUR innerhalb der (leicht ausgeweiteten)
+          // Nutzer-Maske zurückblenden — NICHT über das ganze Kontext-Rechteck. Sonst wird
+          // die neu-generierte Umgebung (Nachbarobjekte, Tisch) mitübernommen und der
+          // gesamte Bereich um das entfernte Objekt verändert. So bleibt außerhalb der
+          // Maske exakt das saubere LaMa-Ergebnis (= Original bis auf das entfernte Objekt).
+          const cleanBlob = await compositeMaskedResult(erasedEl, placed, Math.max(3, Math.round(Math.min(W, H) * 0.012)))
+          finalUrl = await blobToDataUrl(cleanBlob)
         }
       } catch (_e) { finalUrl = url }
       await applyResultDirect(finalUrl, 'mask')
