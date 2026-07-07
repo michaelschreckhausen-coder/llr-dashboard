@@ -1177,14 +1177,42 @@ export default function DesignerCanvas({ visual, teamId, onSaved, onReplaceVisua
       try {
         setAutosaving(true)
         const design_json = buildDesignJson()
-        await updateVisual(visual.id, { design_json })
+        const patch = { design_json }
+        // Kleines Vorschau-Render mitschreiben, damit Design-Rail & Bibliothek den
+        // AKTUELLEN Stand zeigen (nicht das alte Basisbild). Läuft nur bei Editier-Pausen
+        // (Debounce) — kein Render pro Tastendruck.
+        try {
+          const blob = await renderBlobOpts({ pixelRatio: 0.5, mimeType: 'image/png' })
+          if (blob) { const { path } = await uploadDesignRender(teamId, visual.id, blob); if (path) patch.storage_path = path }
+        } catch (_e) { /* Vorschau optional */ }
+        const { data: up } = await updateVisual(visual.id, patch)
         setSavedMsg('Automatisch gespeichert')
+        if (patch.storage_path && onSaved) onSaved(up || { ...visual, ...patch })
       } catch (_e) { /* Autosave darf nie stören */ }
       finally { setAutosaving(false) }
     }, 1000)
     return () => { if (autosaveTimerRef.current) clearTimeout(autosaveTimerRef.current) }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [objects, filters, baseCrop, bgColor, stageSize, visual?.id, teamId])
+
+  // Beim Öffnen eines Designs einmalig das Vorschaubild auffrischen — fixt veraltete
+  // Rail-/Bibliothek-Thumbnails auch für Designs, die vor dieser Änderung entstanden sind.
+  useEffect(() => {
+    if (loading || !visual?.id || !teamId) return
+    let cancelled = false
+    const t = setTimeout(async () => {
+      try {
+        const blob = await renderBlobOpts({ pixelRatio: 0.5, mimeType: 'image/png' })
+        if (cancelled || !blob) return
+        const { path } = await uploadDesignRender(teamId, visual.id, blob)
+        if (cancelled || !path) return
+        const { data: up } = await updateVisual(visual.id, { storage_path: path })
+        if (!cancelled && onSaved) onSaved(up || { ...visual, storage_path: path })
+      } catch (_e) { /* Vorschau optional */ }
+    }, 2500)
+    return () => { cancelled = true; clearTimeout(t) }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [loading, visual?.id, teamId])
 
   // ─── Anzeige-Skalierung an Container anpassen ──────────────────────────────
   useEffect(() => {

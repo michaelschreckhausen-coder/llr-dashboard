@@ -1397,7 +1397,14 @@ Neue Anfrage: "${p}"` },
                 <DesignerPane
                   visual={activeVisual}
                   teamId={activeTeamId}
-                  onSaved={(uv) => { setActiveVisual(uv); loadChatVisuals(activeChatId) }}
+                  onSaved={async (uv) => {
+                    setActiveVisual(uv)
+                    // Nur den Thumbnail dieses einen Designs in der Rail auffrischen (kein
+                    // Voll-Reload → kein Flackern der anderen Designs).
+                    if (uv?.id) {
+                      try { const su = await signedVisualUrl(uv.storage_path, 3600); setChatVisuals(prev => prev.map(x => x.id === uv.id ? { ...x, ...uv, signed_url: su } : x)) } catch (_e) {}
+                    }
+                  }}
                   onReplaceVisual={(nv) => openVisualInDesigner(nv, { assignToChat: !!activeChatId })}
                   onPagesToPost={async (created) => {
                     const postId = linkedPost?.id || activeChat?.post_id || null
