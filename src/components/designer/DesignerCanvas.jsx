@@ -2068,7 +2068,13 @@ Bild-Befehle nach Absicht (NICHT verwechseln — das ist wichtig):
 - Inhaltliche Bildänderung (andere Szene/Objekte/Perspektive) → edit_image.
 - Hintergrund durch ein NEUES (generiertes) Bild ersetzen — z.B. "generiere ein Büro im Hintergrund", "setz mich vor einen anderen Hintergrund" → replace_background mit instruction. Die Person wird per Matting freigestellt UND der neue Hintergrund generiert und dahintergelegt — Person bleibt EXAKT erhalten. NICHT edit_image, NICHT set_background-Farbe.
 - Logo einer Company-Marke einfügen → add_logo mit company="<Markenname>" (+ optional corner). Nutze IMMER das echte hinterlegte Logo, erzeuge NIEMALS ein Text-/Wortmarken-Logo.
-- Fotos/Bilder ins Design holen, Moodboards, Bild-Collagen („Bilder von X", „Moodboard mit …") → add_stock_image mit konkreten (am besten englischen) Suchbegriffen. Das sind ECHTE Fotos aus der Stock-Datenbank (Pexels) — NICHT edit_image/generieren. Für ein Moodboard MEHRERE add_stock_image in einem sauberen Raster (z.B. 2x2 oder 3x2, kleine Abstände, füllen die Seite), dazu passende Hintergrundfarbe (set_background) und optional eine Überschrift. Beispiel-Suchbegriffe „sommerliches Frucht-/Natur-Moodboard": "fresh summer fruit", "citrus fruit", "berries", "watermelon", "green tropical leaves", "sunny nature".
+- Fotos/Bilder, Moodboards, Bild-Collagen, Poster/Anzeigen mit Fotos („Bilder von X", „Moodboard", „Collage", „Werbung/Anzeige/Poster für …") → add_stock_image mit konkreten englischen Suchbegriffen (ECHTE Pexels-Fotos, NICHT generieren). Denke wie ein Art-Director und liefere ein VERKAUFSFERTIGES, professionelles Ergebnis — NIE ein beliebig wirkendes Foto-Raster:
+  • FARBWELT: Wähle EINE zusammenhängende Palette passend zum Thema (z.B. Pflanzenladen = sattes Waldgrün + Salbei + warmes Creme/Terrakotta). set_background in dieser Palette; ALLE Balken/Flächen/Schriften stammen aus dieser Palette. Keine bunt gemischten Fremdfarben.
+  • BILDAUSWAHL: 4–6 Fotos, die inhaltlich UND stilistisch/farblich/lichtmäßig ZUSAMMENPASSEN (gleiche Stimmung) — vermeide zufällig zusammengewürfelte Looks. Verteile sie in einem sauberen, gleichmäßigen Raster mit KONSTANTEN, gleich großen Abständen (Gutter ≈ 2–3% der Seite), das die Seite komplett füllt (bis an den Rand).
+  • HEADLINE-ZONE (SEHR WICHTIG — sonst wird Text unlesbar): Reserviere für Headline + Tagline eine EIGENE RUHIGE Farbfläche — entweder EINE Rasterzelle als VOLLE Farbfläche (add_rect in Palette-Farbe, KEIN Foto darunter, gleiche Größe wie eine Bildzelle) ODER einen durchgehenden Balken. Die Headline (und Tagline) liegen AUSSCHLIESSLICH auf dieser Fläche — NIEMALS halb über einem belebten Foto und niemals über eine Zellgrenze hinaus. width der Headline ≤ Breite dieser Fläche minus Rand; fontSize so, dass der GESAMTE Text vollständig hineinpasst (lieber kleiner). align:"center" innerhalb der Fläche.
+  • TEXT: kurze prägnante Headline (1–3 Wörter) + darunter eine kleinere Tagline/Claim (1 Zeile) + optional ein kleiner CTA („Jetzt entdecken"). Hoher Kontrast (heller Text auf dunkler Fläche, dunkler auf heller). Bevorzugt Marken-Schriften/-Farben.
+  • Ergebnis füllt die Seite randlos, saubere Ausrichtung, ausgewogene Komposition, wirkt wie eine echte Kampagnen-Anzeige.
+  Beispiel-Suchbegriffe „Pflanzenladen-Anzeige": "potted houseplants", "monstera plant", "green succulents", "botanical shop interior", "hanging plants in pots", "cactus pots". Beispiel „Frucht-Moodboard": "fresh summer fruit", "citrus fruit", "berries", "green tropical leaves".
 - GRUNDPRINZIP: Nutze IMMER zuerst die eingebauten Designer-Funktionen (set_filter, remove_background, replace_background, add_logo — sie erhalten die Person/nutzen echte Assets). Nur edit_image erzeugt das Basisbild generativ NEU — ausschließlich für inhaltliche Änderungen am Motiv, die keine eingebaute Funktion leisten kann.
 
 Gib AUSSCHLIESSLICH gültiges JSON zurück (kein Markdown, keine Erklärung, KEINE Kommentare, KEINE trailing commas, alle Klammern geschlossen) – Operationen in Ausführungsreihenfolge (Balken VOR zugehörigem Text):
@@ -2183,11 +2189,23 @@ Nutze nur die für den Befehl nötigen Operationen.`
             const th = measureTextH(t2); const existingScrim = nonText.find(e => e.__scrimFor === t2.id)
             if (existingScrim) return { ...t2, fill: '#FFFFFF' }
             const behind = [...nonText].reverse().find(e => (e.type==='rect'||e.type==='image'||e.type==='ellipse') && (e.opacity==null||e.opacity>0.6) && centerInside(t2, e, th))
-            let fill = t2.fill || '#111111'
-            if (behind && behind.type === 'rect' && typeof behind.fill === 'string' && behind.fill.startsWith('#')) { if (contrastRatio(fill, behind.fill) < 3) fill = readableOn(behind.fill) }
+            let fill = t2.fill || '#111111'; let clampPatch = null
+            if (behind && behind.type === 'rect' && typeof behind.fill === 'string' && behind.fill.startsWith('#')) {
+              if (contrastRatio(fill, behind.fill) < 3) fill = readableOn(behind.fill)
+              // Headline/Text in seiner Farbfläche halten: nicht über die Rechteck-Ränder
+              // hinausragen (sonst steht der Text halb über einem Nachbarfoto → unlesbar,
+              // wirkt „abgeschnitten"). Auf die Rechteck-Breite (minus Rand) einpassen.
+              const pad = Math.round((t2.fontSize || 40) * 0.4)
+              const rL = (behind.x || 0) + pad, rR = (behind.x || 0) + (behind.width || 0) - pad
+              const nx = Math.max(rL, t2.x || 0), nw = Math.min((t2.width || 0), rR - nx)
+              if (nw > 24 && (nx !== (t2.x || 0) || nw < (t2.width || 0))) {
+                const cl = fitText({ ...t2, x: nx, width: nw, align: t2.align || 'center' })
+                clampPatch = { x: cl.x, y: cl.y, width: cl.width, fontSize: cl.fontSize, align: t2.align || 'center' }
+              }
+            }
             else if (behind && behind.type === 'image') { const pad = Math.round((t2.fontSize || 40) * 0.35); scrims.push({ id: nextId(), type:'rect', x: Math.max(0, (t2.x||0) - pad), y: Math.max(0, (t2.y||0) - pad), width: Math.min(cw, (t2.width||0) + pad*2), height: Math.min(ch, th + pad*2), fill: '#0f172a', cornerRadius: 12, rotation:0, opacity:0.5, __scrimFor: t2.id }); fill = '#FFFFFF' }
             else { const b = (typeof bg === 'string' && bg.startsWith('#')) ? bg : '#ffffff'; if (contrastRatio(fill, b) < 3) fill = readableOn(b) }
-            return { ...t2, fill }
+            return { ...t2, ...(clampPatch || {}), fill }
           })
           const rebuilt = [...nonText]; fixed.forEach(t2 => { const s = scrims.find(sc => sc.__scrimFor === t2.id); if (s) rebuilt.push(s); rebuilt.push(t2) }); arr = rebuilt
         } catch (_e) {}
