@@ -5399,7 +5399,8 @@ Ignoriere reine Deko/Muster ohne Text. Antworte AUSSCHLIESSLICH mit JSON, ohne E
           <ToolBtn onClick={redo} title="Wiederholen (Cmd/Ctrl+Shift+Z)"><Redo2 size={15} strokeWidth={1.9} /></ToolBtn>
         </div>
         <div style={{ flexShrink: 0 }}><Divider /></div>
-        {/* Design-Name (randlos, wie Dokument-Titel) — Format-Auswahl sitzt unten in der Seiten-/Hintergrund-Leiste */}
+        {/* Format/Größe (nur Button; öffnet nach unten, damit die Tabelle voll sichtbar ist) */}
+        <div style={{ flexShrink: 0 }}><FormatPicker value={formatForSize(stageSize.width, stageSize.height)} onChange={(p) => applyFormatPreset(p)} openUp={false} /></div>
         <input value={designName} onChange={e => commitName(e.target.value)} placeholder="Unbenanntes Design" title={designName || 'Unbenanntes Design'}
           style={{ flex: 1, minWidth: 40, border: 'none', outline: 'none', background: 'transparent', fontSize: 17, fontWeight: 800, letterSpacing: '-0.01em', color: 'var(--text-primary,#101828)', fontFamily: 'inherit', textOverflow: 'ellipsis', whiteSpace: 'nowrap', overflow: 'hidden' }} />
 
@@ -5582,9 +5583,6 @@ Ignoriere reine Deko/Muster ohne Text. Antworte AUSSCHLIESSLICH mit JSON, ohne E
           <span style={{ fontSize: 12, color: 'var(--text-muted)' }}>Hintergrund</span>
           <ColorPopover value={bgColor || '#ffffff'} gradient={bgGrad || null} allowGradient brandColors={brandColors} title="Seiten-Hintergrundfarbe"
             onStart={commitHistoryOnce} onChange={(hex) => { setBgColor(hex); setBgGrad(null) }} onGradient={(g) => setBgGrad(g)} onEnd={endInteraction} />
-          <Divider />
-          <span style={{ fontSize: 12, color: 'var(--text-muted)', flexShrink: 0 }}>Format</span>
-          <FormatPicker value={formatForSize(stageSize.width, stageSize.height)} onChange={(p) => applyFormatPreset(p)} />
           <Divider />
           <div style={{ display: 'flex', alignItems: 'center', gap: 6, flex: 1, minWidth: 0, maxWidth: 560 }}>
             <Sparkles size={15} strokeWidth={1.9} style={{ color: P, flexShrink: 0 }} />
