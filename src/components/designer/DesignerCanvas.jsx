@@ -3650,8 +3650,12 @@ Antworte AUSSCHLIESSLICH mit JSON: {"ok":<bool>,"issues":["..."],"operations":[.
       // Nachbarobjekte verändert werden) — vertikal großzügig nach OBEN, da Objekte auf der
       // Fläche stehen und nach oben ragen (so wird ein hohes Objekt wie ein Glas NICHT oben
       // abgeschnitten). Unten nur wenig (für den Schatten).
-      const padX = Math.round(bbox.w * 0.25 + Math.min(W, H) * 0.02)
-      const padUp = Math.round(bbox.h * 0.55 + Math.min(W, H) * 0.03)
+      // Mehr horizontaler Kontext, damit das Modell das Objekt in NATÜRLICHER Breite/
+      // Proportion rendert (nicht in einen schmalen Ausschnitt quetscht). Seitliche
+      // Nachbarobjekte sind ungefährlich: das Composite unten erkennt das Objekt als
+      // zusammenhängende Fläche und ignoriert alles, was damit nicht verbunden ist.
+      const padX = Math.round(bbox.w * 0.5 + Math.min(W, H) * 0.02)
+      const padUp = Math.round(bbox.h * 0.7 + Math.min(W, H) * 0.03)
       const padDown = Math.round(bbox.h * 0.25 + Math.min(W, H) * 0.02)
       const bx = Math.max(0, bbox.x - padX)
       const by = Math.max(0, bbox.y - padUp)
@@ -3669,7 +3673,7 @@ Antworte AUSSCHLIESSLICH mit JSON: {"ok":<bool>,"issues":["..."],"operations":[.
       // 4) Eng gefasster Prompt (Photoshop-Stil: nur ändern was nötig, Rest erhalten)
       const prompt = isHeal
         ? 'Entferne das vom Nutzer gemeinte Objekt/Element in diesem Bildausschnitt vollständig und rekonstruiere realistisch den Hintergrund, der dahinter liegen würde. Übernimm Textur, Muster, Farben, Beleuchtung, Schatten und Perspektive exakt aus der direkten Umgebung, sodass keinerlei Spur des entfernten Objekts bleibt. Ändere sonst nichts. Fotorealistisch und nahtlos.'
-        : `Dies ist ein Bildausschnitt. Bearbeite AUSSCHLIESSLICH den zentralen Bereich (die mittleren rund zwei Drittel) gemäß folgender Anweisung: ${rawPrompt.trim()}. Der Rand des Ausschnitts dient nur als Umgebung/Referenz und bleibt unverändert.\n- Wenn ein neues Objekt gewünscht ist: füge NUR dieses eine Objekt ein — seine BASIS/Unterkante steht GENAU auf Höhe der UNTEREN Kante des Ausschnitts (auf der vorhandenen Oberfläche), und von dort ragt es nach oben. Es schwebt NICHT und sitzt weder zu hoch noch zu tief. Fotorealistisch, klar und deutlich sichtbar, in Breite passend zur markierten Stelle (etwa so breit wie der untere markierte Bereich), in realistischer Proportion zur Szene, mit eigenem natürlichem Schatten. Das Objekt muss VOLLSTÄNDIG im Ausschnitt liegen — oben und seitlich mit etwas Abstand, an keiner Seite abgeschnitten. Falls dort schon ein Objekt ist, ersetze es vollständig.\n- Wenn eine Anpassung/Korrektur gewünscht ist (z.B. eine Fläche vereinheitlichen, einen Übergang glätten): führe genau diese aus und rekonstruiere den Bereich nahtlos und texturtreu passend zur direkten Umgebung, OHNE ein neues Objekt zu erfinden.\nPasse Beleuchtung, Perspektive, Textur und Farbstimmung exakt an die Umgebung an, sodass der Übergang unsichtbar ist. Keine verwaschenen Flächen, keine sichtbaren Kanten, keine Kopien.`
+        : `Dies ist ein Bildausschnitt. Bearbeite AUSSCHLIESSLICH den zentralen Bereich (die mittleren rund zwei Drittel) gemäß folgender Anweisung: ${rawPrompt.trim()}. Der Rand des Ausschnitts dient nur als Umgebung/Referenz und bleibt unverändert.\n- Wenn ein neues Objekt gewünscht ist: füge NUR dieses eine Objekt ein — seine BASIS/Unterkante steht GENAU auf Höhe der UNTEREN Kante des Ausschnitts (auf der vorhandenen Oberfläche), und von dort ragt es nach oben. Es schwebt NICHT und sitzt weder zu hoch noch zu tief. Fotorealistisch, klar und deutlich sichtbar, in NATÜRLICHER, unverzerrter Proportion (auf keinen Fall gestaucht, gestreckt oder schmalgedrückt — echtes Seitenverhältnis des Objekts), in realistischer Größe zur Szene, mit eigenem natürlichem Schatten. Das Objekt muss VOLLSTÄNDIG im Ausschnitt liegen — oben und seitlich mit etwas Abstand, an keiner Seite abgeschnitten. Falls dort schon ein Objekt ist, ersetze es vollständig.\n- Wenn eine Anpassung/Korrektur gewünscht ist (z.B. eine Fläche vereinheitlichen, einen Übergang glätten): führe genau diese aus und rekonstruiere den Bereich nahtlos und texturtreu passend zur direkten Umgebung, OHNE ein neues Objekt zu erfinden.\nPasse Beleuchtung, Perspektive, Textur und Farbstimmung exakt an die Umgebung an, sodass der Übergang unsichtbar ist. Keine verwaschenen Flächen, keine sichtbaren Kanten, keine Kopien.`
       // 5) Nur den Crop ans Modell (inline) — kein Vollbild, kein BV-Ref
       const aiVisual = await callGenerateImage(prompt, { inlineRefs: [{ mimeType: 'image/png', data: cropB64 }] })
       const aiCropEl = await loadImageEl(aiVisual.storage_path)
@@ -3698,7 +3702,7 @@ Antworte AUSSCHLIESSLICH mit JSON: {"ok":<bool>,"issues":["..."],"operations":[.
         // Photoshop-Prinzip: NUR die Nutzer-Auswahl (bbox) wird verändert — streng darauf
         //   begrenzt und weich eingeblendet. Alles ausserhalb bleibt garantiert 1:1 erhalten,
         //   so kann NIE etwas ausserhalb der Auswahl verändert werden.
-        resultUrl = compositeSelectionUnionObject(baseEl, placed, bbox, bx, by, bw, bh, W, H)
+        resultUrl = compositeConnectedObject(baseEl, placed, bbox, bx, by, bw, bh, W, H)
       }
       await applyResultDirect(resultUrl, 'mask')   // direkt ins Bild (rückgängig via Undo)
     } catch (e) {
@@ -3890,6 +3894,97 @@ Antworte AUSSCHLIESSLICH mit JSON: {"ok":<bool>,"issues":["..."],"operations":[.
     const ox = Math.max(0, hx0 - mg), oy = Math.max(0, ry0 - mg)
     const ow = Math.min(W - ox, (hx1 - hx0) + mg * 2), oh = Math.min(H - oy, (ry1 - ry0) + mg * 2)
     return compositeRectFeather(baseEl, src, ox, oy, ow, oh, W, H, 0.045)
+  }
+
+  // OBJEKT-ERKENNENDES COMPOSITE (robust für JEDE Objektform/-größe): findet die
+  // zusammenhängende Fläche, die sich gegenüber der Basis verändert hat und mit der
+  // Nutzer-Auswahl verbunden ist (Flood-Fill ab der Auswahl). So wird das Objekt in
+  // seiner ECHTEN Breite/Höhe übernommen (nichts wird auf die Auswahl-Breite geclippt →
+  // KEIN Stauchen/Abschneiden), während getrennte Nachbarobjekte (nicht verbunden)
+  // garantiert unangetastet bleiben. Danach wird das Objekt deterministisch mit seiner
+  // Unterkante auf die Auswahl-Unterkante gesetzt und per weicher Alpha-Maske (aus der
+  // Objektsilhouette, leicht gefeathert) über die Basis geblendet.
+  function compositeConnectedObject(baseEl, placed, bbox, bx, by, bw, bh, W, H) {
+    const mk = () => { const c = document.createElement('canvas'); c.width = W; c.height = H; return c }
+    const bc = mk(); bc.getContext('2d').drawImage(baseEl, 0, 0, W, H)
+    const bd = bc.getContext('2d').getImageData(0, 0, W, H).data
+    const pc = mk(); pc.getContext('2d').drawImage(placed, 0, 0)
+    const pd = pc.getContext('2d').getImageData(0, 0, W, H).data
+    const thr2 = 18 * 18
+    const rx0 = Math.max(0, bx), ry0 = Math.max(0, by)
+    const rx1 = Math.min(W, bx + bw), ry1 = Math.min(H, by + bh)
+    // 1) Änderungs-Maske im Ausschnitt
+    const changed = new Uint8Array(W * H)
+    for (let y = ry0; y < ry1; y++) for (let x = rx0; x < rx1; x++) {
+      const i = (y * W + x) * 4
+      if (pd[i + 3] < 8) continue
+      const dr = pd[i] - bd[i], dg = pd[i + 1] - bd[i + 1], dbb = pd[i + 2] - bd[i + 2]
+      if (dr * dr + dg * dg + dbb * dbb > thr2) changed[y * W + x] = 1
+    }
+    // 2) Saatpunkte = veränderte Pixel innerhalb der (leicht erweiterten) Auswahl
+    const ex = Math.round(bbox.w * 0.2), ey = Math.round(bbox.h * 0.2)
+    const sx0 = Math.max(rx0, bbox.x - ex), sx1 = Math.min(rx1, bbox.x + bbox.w + ex)
+    const sy0 = Math.max(ry0, bbox.y - ey), sy1 = Math.min(ry1, bbox.y + bbox.h + ey)
+    const blob = new Uint8Array(W * H)
+    const stack = []
+    for (let y = sy0; y < sy1; y++) for (let x = sx0; x < sx1; x++) {
+      const p = y * W + x
+      if (changed[p] && !blob[p]) { blob[p] = 1; stack.push(p) }
+    }
+    // Fallback: keine Änderung in der Auswahl → alle Änderungen im Ausschnitt als Saat
+    if (stack.length === 0) {
+      for (let y = ry0; y < ry1; y++) for (let x = rx0; x < rx1; x++) {
+        const p = y * W + x
+        if (changed[p]) { blob[p] = 1; stack.push(p) }
+      }
+    }
+    // 3) 8er-Flood über zusammenhängende veränderte Pixel (nur im Ausschnitt)
+    let bymax = -1, bymin = H, bxmin = W, bxmax = -1
+    while (stack.length) {
+      const p = stack.pop()
+      const x = p % W, y = (p / W) | 0
+      if (y > bymax) bymax = y; if (y < bymin) bymin = y
+      if (x < bxmin) bxmin = x; if (x > bxmax) bxmax = x
+      for (let dy = -1; dy <= 1; dy++) for (let dx = -1; dx <= 1; dx++) {
+        if (!dx && !dy) continue
+        const nx = x + dx, ny = y + dy
+        if (nx < rx0 || nx >= rx1 || ny < ry0 || ny >= ry1) continue
+        const np = ny * W + nx
+        if (changed[np] && !blob[np]) { blob[np] = 1; stack.push(np) }
+      }
+    }
+    // 4) Kein Objekt erkannt → Anpassungsfall: nur die Auswahl weich einblenden
+    if (bxmax < 0) {
+      const mg = Math.max(3, Math.round(Math.min(W, H) * 0.006))
+      return compositeRectFeather(baseEl, placed, Math.max(0, bbox.x - mg), Math.max(0, bbox.y - mg), Math.min(W, bbox.w + mg * 2), Math.min(H, bbox.h + mg * 2), W, H, 0.06)
+    }
+    // 5) Deterministische Höhe: Objekt-Unterkante EXAKT auf Auswahl-Unterkante schieben
+    const targetBottom = bbox.y + bbox.h
+    let shift = targetBottom - bymax
+    const maxShift = Math.round(bbox.h * 0.6)
+    if (shift > maxShift) shift = maxShift
+    if (shift < -maxShift) shift = -maxShift
+    // 6) Alpha-Maske aus der Objektsilhouette, weich (Blur dilatiert + feathered zugleich)
+    const maskC = mk(); const mctx = maskC.getContext('2d')
+    const mImg = mctx.createImageData(W, H)
+    for (let p = 0; p < blob.length; p++) if (blob[p]) { const i = p * 4; mImg.data[i] = 255; mImg.data[i + 1] = 255; mImg.data[i + 2] = 255; mImg.data[i + 3] = 255 }
+    mctx.putImageData(mImg, 0, 0)
+    const feather = Math.max(2, Math.round(Math.min(W, H) * 0.004))
+    const soft = mk(); const sctx = soft.getContext('2d')
+    sctx.filter = `blur(${feather}px)`
+    sctx.drawImage(maskC, 0, shift)   // Maske um shift verschoben
+    sctx.filter = 'none'
+    // 7) generiertes Bild ebenfalls verschieben, mit weicher Maske ausstanzen, über Basis
+    const srcC = mk(); srcC.getContext('2d').drawImage(placed, 0, shift)
+    const layer = mk(); const lctx = layer.getContext('2d')
+    lctx.drawImage(srcC, 0, 0)
+    lctx.globalCompositeOperation = 'destination-in'
+    lctx.drawImage(soft, 0, 0)
+    lctx.globalCompositeOperation = 'source-over'
+    const out = mk(); const octx = out.getContext('2d')
+    octx.drawImage(baseEl, 0, 0, W, H)
+    octx.drawImage(layer, 0, 0)
+    return out.toDataURL('image/png')
   }
 
   function compositeByDifference(baseEl, placed, bx, by, bw, bh, W, H) {
