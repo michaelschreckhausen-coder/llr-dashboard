@@ -27,6 +27,8 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react'
 import { Stage, Layer, Group, Image as KImage, Rect, Circle, Ellipse, Line, Arrow, Text as KText, Path, Transformer } from 'react-konva'
 import GenerationLoading from '../GenerationLoading'
+import FormatPicker from '../FormatPicker'
+import { FORMAT_CATEGORIES, freeformPreset } from '../../lib/formatPresets'
 import Konva from 'konva'
 import {
   Type, Square as SquareIcon, Circle as CircleIcon, Minus, ArrowRight, Star as StarIcon,
@@ -716,6 +718,14 @@ const FORMAT_PRESETS = [
   { id: 'square',      label: 'Quadrat (1080×1080)', w: 1080, h: 1080 },
   { id: 'a4',          label: 'A4 (2480×3508)', w: 2480, h: 3508 },
 ]
+
+// Aktuelles Format-Preset aus der Seitengröße ableiten (für den FormatPicker-Wert).
+// Exakter w/h-Treffer aus der großen Format-Tabelle, sonst Freiformat mit echten px.
+function formatForSize(w, h) {
+  const W = Math.round(w || 0), H = Math.round(h || 0)
+  for (const c of FORMAT_CATEGORIES) for (const p of c.presets) if (p.w === W && p.h === H) return { ...p, category: c.key }
+  return freeformPreset(W || 1080, H || 1080)
+}
 
 const ZOOM_MIN = 0.1
 const ZOOM_MAX = 8
@@ -5320,8 +5330,7 @@ Antworte AUSSCHLIESSLICH mit JSON: {"ok":<bool>,"issues":["..."],"operations":[.
           <ToolBtn onClick={redo} title="Wiederholen (Cmd/Ctrl+Shift+Z)"><Redo2 size={15} strokeWidth={1.9} /></ToolBtn>
         </div>
         <div style={{ flexShrink: 0 }}><Divider /></div>
-        {/* Format/Größe (links) + Design-Name (randlos, wie Dokument-Titel) — Name nimmt Restbreite */}
-        <div style={{ flexShrink: 0 }}><FormatMenu onPick={applyFormatPreset} /></div>
+        {/* Design-Name (randlos, wie Dokument-Titel) — Format-Auswahl sitzt unten in der Seiten-/Hintergrund-Leiste */}
         <input value={designName} onChange={e => commitName(e.target.value)} placeholder="Unbenanntes Design" title={designName || 'Unbenanntes Design'}
           style={{ flex: 1, minWidth: 40, border: 'none', outline: 'none', background: 'transparent', fontSize: 17, fontWeight: 800, letterSpacing: '-0.01em', color: 'var(--text-primary,#101828)', fontFamily: 'inherit', textOverflow: 'ellipsis', whiteSpace: 'nowrap', overflow: 'hidden' }} />
 
@@ -5504,6 +5513,9 @@ Antworte AUSSCHLIESSLICH mit JSON: {"ok":<bool>,"issues":["..."],"operations":[.
           <span style={{ fontSize: 12, color: 'var(--text-muted)' }}>Hintergrund</span>
           <ColorPopover value={bgColor || '#ffffff'} gradient={bgGrad || null} allowGradient brandColors={brandColors} title="Seiten-Hintergrundfarbe"
             onStart={commitHistoryOnce} onChange={(hex) => { setBgColor(hex); setBgGrad(null) }} onGradient={(g) => setBgGrad(g)} onEnd={endInteraction} />
+          <Divider />
+          <span style={{ fontSize: 12, color: 'var(--text-muted)', flexShrink: 0 }}>Format</span>
+          <FormatPicker value={formatForSize(stageSize.width, stageSize.height)} onChange={(p) => applyFormatPreset(p)} />
           <Divider />
           <div style={{ display: 'flex', alignItems: 'center', gap: 6, flex: 1, minWidth: 0, maxWidth: 560 }}>
             <Sparkles size={15} strokeWidth={1.9} style={{ color: P, flexShrink: 0 }} />
