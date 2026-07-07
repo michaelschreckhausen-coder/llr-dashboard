@@ -3837,7 +3837,9 @@ Antworte AUSSCHLIESSLICH mit JSON: {"ok":<bool>,"issues":["..."],"operations":[.
     // Horizontales Band = NUR die Auswahl-Breite + kleiner Rand. Dadurch kann ein
     // seitliches Nachbarobjekt (z.B. eine Pflanze links) gar nicht in Betracht gezogen
     // werden — nur was direkt in/über der Auswahl liegt.
-    const hmg = Math.round(bbox.w * 0.12)
+    // Nur ein winziger fester Rand (nicht proportional zur Box) — so kann selbst bei einer
+    // Auswahl DIREKT neben einem Nachbarobjekt dessen Kante nicht mehr erfasst werden.
+    const hmg = Math.max(2, Math.round(Math.min(W, H) * 0.004))
     const hx0 = Math.max(Math.max(0, bx), bbox.x - hmg)
     const hx1 = Math.min(Math.min(W, bx + bw), bbox.x + bbox.w + hmg)
     const rowHasChange = (y) => {
