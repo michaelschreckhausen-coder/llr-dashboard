@@ -2184,7 +2184,7 @@ function ChatInput({
           {editorOpen && (
             <Tip label="Dokument-Inhalt als Kontext für die KI nutzen"><button onClick={() => setUseEditorContext(v => !v)}
               style={{ ...IconBtn(useEditorContext), width:34, padding:0, justifyContent:'center', gap:0 }}>
-              <FileText size={16} strokeWidth={1.75}/>
+              <BookOpen size={16} strokeWidth={1.75}/>
             </button></Tip>
           )}
         </div>
