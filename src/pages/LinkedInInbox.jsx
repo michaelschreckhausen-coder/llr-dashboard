@@ -46,12 +46,54 @@ export default function LinkedInInbox() {
   const [listOpen, setListOpen]     = useState(false)
   const [listFilter, setListFilter] = useState('all')        // 'all' | list_id
 
+  // Sales-Navigator-Import (Unipile) → Import-Inbox, optional direkt in eine Liste
+  const [importOpen, setImportOpen] = useState(false)
+  const [okAccount, setOkAccount]   = useState(undefined)    // undefined=lädt · null=keiner · string=account_id
+  const [impUrl, setImpUrl]         = useState('')
+  const [impListMode, setImpListMode] = useState('none')     // 'none' | 'new' | list_id
+  const [impNewList, setImpNewList] = useState('')
+  const [importing, setImporting]   = useState(false)
+  const [importErr, setImportErr]   = useState(null)
+
   // Progressives Rendern — nur PAGE_SIZE Karten gleichzeitig im DOM, Rest per Infinite-Scroll.
   const PAGE_SIZE = 25
   const [visibleCount, setVisibleCount] = useState(PAGE_SIZE)
   const sentinelRef = useRef(null)
 
   useEffect(() => { supabase.auth.getUser().then(({ data }) => setUid(data?.user?.id || null)) }, [])
+
+  // Verbundenen Unipile-Account des Users laden (Status OK) — für den Sales-Nav-Import.
+  useEffect(() => {
+    if (!uid) return
+    supabase.from('unipile_accounts').select('unipile_account_id').eq('user_id', uid).eq('status', 'OK').limit(1)
+      .then(({ data }) => setOkAccount(data?.[0]?.unipile_account_id || null))
+  }, [uid])
+
+  const runSalesNavImport = async () => {
+    setImportErr(null)
+    if (!okAccount) { setImportErr('Kein verbundener LinkedIn-Account.'); return }
+    if (!impUrl.trim()) { setImportErr('Bitte eine Sales-Navigator-Such-URL eingeben.'); return }
+    setImporting(true)
+    let listId = null
+    try {
+      if (impListMode === 'new') {
+        if (!impNewList.trim()) { setImportErr('Bitte einen Namen für die neue Liste eingeben.'); setImporting(false); return }
+        const r = await createList(impNewList.trim(), '#30A0D0')
+        listId = r?.id ?? r?.data?.id ?? (Array.isArray(r?.data) ? r.data[0]?.id : null)
+        if (!listId) { setImportErr('Liste anlegen fehlgeschlagen.'); setImporting(false); return }
+      } else if (impListMode !== 'none') {
+        listId = impListMode
+      }
+      const { data, error } = await supabase.functions.invoke('import-unipile-salesnav', {
+        body: { unipile_account_id: okAccount, search: { url: impUrl.trim() }, ...(listId ? { inbox_list_id: listId } : {}) },
+      })
+      if (error || data?.error) { setImportErr('Import fehlgeschlagen: ' + (data?.error || error?.message || 'unbekannt')); setImporting(false); return }
+      const n = (data?.inserted || 0) + (data?.updated || 0)
+      setImporting(false); setImportOpen(false); setImpUrl(''); setImpListMode('none'); setImpNewList('')
+      setMsg({ text: `${n} Kontakt${n === 1 ? '' : 'e'} importiert${listId ? ' + der Liste zugeordnet' : ''}.` })
+      load()
+    } catch (e) { setImportErr('Import fehlgeschlagen: ' + (e?.message || e)); setImporting(false) }
+  }
 
   const load = useCallback(async () => {
     if (!activeTeamId) { setRows([]); setLoading(false); return }
@@ -241,12 +283,64 @@ export default function LinkedInInbox() {
   return (
     <div style={{ width: '100%', maxWidth: 1100, margin: '0 auto', padding: '24px 16px 40px' }}>
       <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
+
+      {importOpen && (
+        <div onClick={() => !importing && setImportOpen(false)} style={{ position: 'fixed', inset: 0, background: 'rgba(15,23,42,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000, padding: 16 }}>
+          <div onClick={e => e.stopPropagation()} style={{ background: card, border: `1px solid ${border}`, borderRadius: 14, width: 520, maxWidth: '94vw', padding: 24, boxShadow: '0 24px 64px rgba(15,23,42,0.25)' }}>
+            <div style={{ fontSize: 17, fontWeight: 700, color: text, marginBottom: 4 }}>Sales-Navigator-Suche importieren</div>
+            <p style={{ fontSize: 13, color: muted, margin: '0 0 16px', lineHeight: 1.5 }}>Füge die URL einer Sales-Navigator-Personensuche ein — die Treffer landen in deiner Import-Inbox (optional direkt in einer Liste).</p>
+
+            {okAccount === undefined ? (
+              <div style={{ color: muted, fontSize: 14, padding: '12px 0' }}>Lade LinkedIn-Verbindung…</div>
+            ) : okAccount === null ? (
+              <div style={{ background: 'var(--primary-soft)', border: `1px solid ${border}`, borderRadius: 10, padding: 16, fontSize: 14, color: text, lineHeight: 1.5 }}>
+                Kein verbundener LinkedIn-Account.{' '}
+                <button onClick={() => navigate('/settings/linkedin')} style={{ background: 'none', border: 'none', color: primary, fontWeight: 700, cursor: 'pointer', fontSize: 14, padding: 0 }}>LinkedIn zuerst verbinden →</button>
+              </div>
+            ) : (
+              <>
+                <label style={{ fontSize: 12, fontWeight: 700, color: muted }}>Sales-Navigator-Such-URL</label>
+                <textarea value={impUrl} onChange={e => setImpUrl(e.target.value)} rows={2} placeholder="https://www.linkedin.com/sales/search/people?query=…"
+                  style={{ width: '100%', marginTop: 6, padding: 10, border: `1px solid ${border}`, borderRadius: 8, fontSize: 13, fontFamily: 'inherit', background: 'var(--surface)', color: text, boxSizing: 'border-box', resize: 'vertical' }} />
+                {impUrl.trim() && !/linkedin\.com\/sales\/search\/people/i.test(impUrl) && (
+                  <div style={{ fontSize: 12, color: '#B45309', marginTop: 4 }}>⚠ Sieht nicht nach einer Sales-Navigator-Personensuche aus — Import wird trotzdem versucht.</div>
+                )}
+
+                <label style={{ fontSize: 12, fontWeight: 700, color: muted, display: 'block', marginTop: 14 }}>In Liste (optional)</label>
+                <select value={impListMode} onChange={e => setImpListMode(e.target.value)}
+                  style={{ width: '100%', marginTop: 6, padding: 9, border: `1px solid ${border}`, borderRadius: 8, fontSize: 13, background: 'var(--surface)', color: text, boxSizing: 'border-box' }}>
+                  <option value="none">— keine Liste —</option>
+                  {lists.map(l => <option key={l.id} value={l.id}>{l.name}</option>)}
+                  <option value="new">+ Neue Liste anlegen…</option>
+                </select>
+                {impListMode === 'new' && (
+                  <input value={impNewList} onChange={e => setImpNewList(e.target.value)} placeholder="Name der neuen Liste"
+                    style={{ width: '100%', marginTop: 8, padding: 9, border: `1px solid ${border}`, borderRadius: 8, fontSize: 13, background: 'var(--surface)', color: text, boxSizing: 'border-box' }} />
+                )}
+
+                {importErr && <div style={{ fontSize: 13, color: '#B91C1C', marginTop: 12 }}>{importErr}</div>}
+
+                <div style={{ display: 'flex', gap: 10, justifyContent: 'flex-end', marginTop: 20 }}>
+                  <button onClick={() => setImportOpen(false)} disabled={importing} style={{ border: `1px solid ${border}`, background: card, color: muted, borderRadius: 8, padding: '9px 16px', fontSize: 13, fontWeight: 600, cursor: 'pointer' }}>Abbrechen</button>
+                  <button onClick={runSalesNavImport} disabled={importing || !impUrl.trim()} style={{ border: 'none', background: primary, color: '#fff', borderRadius: 8, padding: '9px 18px', fontSize: 13, fontWeight: 700, cursor: importing ? 'not-allowed' : 'pointer', opacity: (importing || !impUrl.trim()) ? 0.6 : 1, display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+                    {importing ? <><Loader2 size={15} style={{ animation: 'spin 1s linear infinite' }} /> Importiere…</> : 'Importieren'}
+                  </button>
+                </div>
+              </>
+            )}
+          </div>
+        </div>
+      )}
       {/* Journal-Header (analog /messages, /automatisierung) */}
       <div style={{ marginBottom: 22 }}>
         <div style={{ fontSize: 20, color: '#30A0D0', fontFamily: '"Caveat", cursive', fontWeight: 600, marginBottom: 6 }}>LinkedIn · Import-Inbox</div>
         <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
           <h1 style={{ fontSize: 26, fontWeight: 700, margin: 0, letterSpacing: '-0.3px', lineHeight: 1.2, color: 'var(--text-primary, rgb(20,20,43))' }}>Deine Import-Inbox.</h1>
           {!loading && <span style={{ background: primary, color: '#fff', borderRadius: 99, padding: '2px 10px', fontSize: 13, fontWeight: 700 }}>{rows.length}</span>}
+          <button onClick={() => { setImportErr(null); setImportOpen(true) }}
+            style={{ marginLeft: 'auto', display: 'inline-flex', alignItems: 'center', gap: 6, background: primary, color: '#fff', border: 'none', borderRadius: 8, padding: '8px 14px', fontSize: 13, fontWeight: 700, cursor: 'pointer' }}>
+            <Plus size={15} /> Sales-Navigator-Suche importieren
+          </button>
         </div>
         <p style={{ fontSize: 13, color: muted, margin: '8px 0 0', lineHeight: 1.6, maxWidth: 600 }}>
           Aus LinkedIn importierte Kontakte — noch keine CRM-Kontakte. Nach Kampagnen sortieren, sichten und per Klick ins CRM übernehmen.
