@@ -16,6 +16,22 @@ import { useInboxLists } from '../hooks/useInboxLists'
 const fullName = r => ((r.first_name || '') + ' ' + (r.last_name || '')).trim() || r.name || 'Unbekannt'
 const initials = n => (n || '?').trim().split(/\s+/).map(w => w[0]).join('').toUpperCase().substring(0, 2)
 
+// Freundliche Sales-Nav-Import-Fehler aus dem EF-Error-Body (functions.invoke legt ihn in error.context ab).
+function friendlyImportError(body, raw) {
+  const t = body?.unipile_type || ''
+  const e = body?.error || ''
+  if (t.includes('feature_not_subscribed')) return 'Dieser LinkedIn-Account hat kein Sales-Navigator-Abo — der Sales-Navigator-Import ist damit nicht möglich.'
+  if (body?.unipile_status === 404 || t.includes('resource_not_found') || e === 'unipile_account not found' || e === 'inbox_list nicht gefunden')
+    return 'LinkedIn-Account nicht (mehr) verbunden — bitte unter „Einstellungen → LinkedIn" neu verbinden.'
+  if (body?.unipile_status === 401 || t.includes('disconnected') || t.includes('invalid_credentials') || t.includes('unauthorized'))
+    return 'Die LinkedIn-Verbindung ist abgelaufen — bitte neu verbinden.'
+  if (e === 'keine Berechtigung für diese Liste') return 'Keine Berechtigung für die gewählte Liste.'
+  if (e === 'Auth erforderlich für inbox_list_id') return 'Sitzung abgelaufen — bitte neu anmelden.'
+  if (body?.detail) return 'Import fehlgeschlagen: ' + body.detail
+  if (e) return 'Import fehlgeschlagen: ' + e
+  return 'Import fehlgeschlagen (' + (raw?.message || 'unbekannter Fehler') + ').'
+}
+
 function Avatar({ name, avatar_url, size = 44 }) {
   const colors = ['#3b82f6', '#8b5cf6', '#10b981', '#f59e0b', '#ef4444', '#0891b2']
   const bg = colors[(name || '').charCodeAt(0) % colors.length]
@@ -87,7 +103,12 @@ export default function LinkedInInbox() {
       const { data, error } = await supabase.functions.invoke('import-unipile-salesnav', {
         body: { unipile_account_id: okAccount, search: { url: impUrl.trim() }, ...(listId ? { inbox_list_id: listId } : {}) },
       })
-      if (error || data?.error) { setImportErr('Import fehlgeschlagen: ' + (data?.error || error?.message || 'unbekannt')); setImporting(false); return }
+      if (error) {
+        let body = null
+        try { body = await error.context?.json?.() } catch { /* Body evtl. schon konsumiert / kein JSON */ }
+        setImportErr(friendlyImportError(body, error)); setImporting(false); return
+      }
+      if (data?.error) { setImportErr(friendlyImportError(data, null)); setImporting(false); return }
       const n = (data?.inserted || 0) + (data?.updated || 0)
       setImporting(false); setImportOpen(false); setImpUrl(''); setImpListMode('none'); setImpNewList('')
       setMsg({ text: `${n} Kontakt${n === 1 ? '' : 'e'} importiert${listId ? ' + der Liste zugeordnet' : ''}.` })
