@@ -1508,6 +1508,10 @@ Neue Anfrage: "${p}"` },
       {(() => {
         const suite = editorOpen && paneView === 'suite'
         const page  = editorOpen && paneView === 'page'
+        // Schwebende Steuerbuttons sitzen an der Splitscreen-Grenze (52% der VERFÜGBAREN
+        // Breite). Der positionierte Container schließt die 264px-Chat-Sidebar mit ein → bei
+        // offener Sidebar deren Breite herausrechnen, sonst wandern die Buttons nicht mit.
+        const railRight = sidebarOpen ? 'calc((100% - 264px) * 0.52)' : '52%'
         const openTo = (mode) => {
           if (mode) setSplitMode(mode)
           if (!editorOpenRef.current) { setEditorOpen(true); setPaneView('split'); setSidebarOpen(false) }
@@ -1579,12 +1583,12 @@ Neue Anfrage: "${p}"` },
             {/* Ausgeklappt (Split/Vollbild): Switcher oben + Ansicht-Steuerung mittig */}
             {editorOpen && !page && (
               <>
-                <div style={{ position:'absolute', zIndex:50, ...(suite ? { top:44, left:52, transform:'translateX(-100%)' } : { top:44, right:'52%' }) }}>
+                <div style={{ position:'absolute', zIndex:50, ...(suite ? { top:44, left:52, transform:'translateX(-100%)' } : { top:44, right:railRight }) }}>
                   <Switcher/>
                 </div>
                 <div style={{ position:'absolute', zIndex:50, display:'flex', flexDirection:'column', overflow:'hidden',
                     background:'var(--surface,#fff)', border:'1px solid var(--border,#E9ECF2)', borderRadius:10, boxShadow:'0 2px 10px rgba(16,24,40,0.10)',
-                    ...(suite ? { top:'50%', left:52, transform:'translate(-50%,-50%)' } : { top:'50%', right:'52%', transform:'translate(50%,-50%)' }) }}>
+                    ...(suite ? { top:'50%', left:52, transform:'translate(-50%,-50%)' } : { top:'50%', right:railRight, transform:'translate(50%,-50%)' }) }}>
                   {suite ? (
                     <button onClick={() => setPaneView('split')} title="Splitscreen" style={ctrlBtn}><ChevronRight size={18} strokeWidth={2}/></button>
                   ) : (
