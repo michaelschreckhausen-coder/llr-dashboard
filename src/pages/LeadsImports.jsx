@@ -132,25 +132,10 @@ export default function LeadsImports() {
   const [detail, setDetail] = useState(null)
   const hasAddon = subscribedSlugs?.has?.(ADDON_SLUG) || false
 
-  // Gate: Sales-Nav-Sync muss aktiviert sein (Marketplace). Bis dahin Upsell.
-  if (!addonsLoading && !hasAddon) {
-    return (
-      <div style={{ padding: '24px 28px', maxWidth: 560, margin: '0 auto' }}>
-        <div style={{ border: '1px solid #FDE68A', background: '#FFFBEB', borderRadius: 14, padding: '32px 28px', textAlign: 'center' }}>
-          <div style={{ fontSize: 34, marginBottom: 12 }}>🎁</div>
-          <h1 style={{ fontSize: 20, fontWeight: 600, margin: '0 0 10px' }}>Sales Navigator Sync aktivieren</h1>
-          <p style={{ fontSize: 14, color: '#92400E', lineHeight: 1.6, margin: '0 0 8px' }}>
-            Importiere komplette Sales-Navigator-Suchen mit einem Klick — bis zu 500 Leads in
-            wenigen Sekunden. Plus Single-Lead-Import direkt aus Sales-Nav-Profilen.
-          </p>
-          <p style={{ fontSize: 13, color: '#B45309', margin: '0 0 22px' }}>Kostenfrei bis 31. August 2026.</p>
-          <Link to="/marketplace" style={{ display: 'inline-block', background: PRIMARY, color: '#fff', textDecoration: 'none', fontWeight: 600, fontSize: 14, padding: '11px 22px', borderRadius: 10 }}>
-            Im Marketplace aktivieren →
-          </Link>
-        </div>
-      </div>
-    )
-  }
+  // Kein Blocker mehr: die Import-Historie ist immer sichtbar. Ist das
+  // Sales-Nav-Sync-Addon nicht im Marketplace gebucht, zeigen wir oben nur
+  // einen nicht-blockierenden Warnhinweis.
+  const showAddonWarning = !addonsLoading && !hasAddon
 
   return (
     <div style={{ padding: '24px 28px', maxWidth: 760, margin: '0 auto' }}>
@@ -158,6 +143,22 @@ export default function LeadsImports() {
       <p style={{ fontSize: 13, color: '#64748B', margin: '0 0 22px' }}>
         Sales-Navigator-Importe deines Teams. Laufende Jobs aktualisieren sich automatisch.
       </p>
+
+      {showAddonWarning && (
+        <div style={{ border: '1px solid #FDE68A', background: '#FFFBEB', borderRadius: 12, padding: '14px 16px', marginBottom: 20, display: 'flex', gap: 12, alignItems: 'flex-start' }}>
+          <div style={{ fontSize: 20, lineHeight: 1 }}>⚠️</div>
+          <div style={{ minWidth: 0 }}>
+            <div style={{ fontSize: 14, fontWeight: 600, color: '#92400E', marginBottom: 4 }}>Sales-Navigator-Sync nicht gebucht</div>
+            <p style={{ fontSize: 13, color: '#B45309', lineHeight: 1.6, margin: '0 0 8px' }}>
+              Der Import über die Chrome-Extension funktioniert weiterhin. Für die volle Nutzung in Leadesk
+              aktiviere das Addon im Marketplace — kostenfrei bis 31. August 2026.
+            </p>
+            <Link to="/marketplace" style={{ display: 'inline-block', background: PRIMARY, color: '#fff', textDecoration: 'none', fontWeight: 600, fontSize: 13, padding: '8px 16px', borderRadius: 9 }}>
+              Im Marketplace aktivieren →
+            </Link>
+          </div>
+        </div>
+      )}
 
       {isLoading ? (
         <div style={{ fontSize: 13, color: '#94A3B8', padding: '40px 0', textAlign: 'center' }}>Lädt…</div>

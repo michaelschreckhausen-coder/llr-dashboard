@@ -582,17 +582,17 @@ function renderSalesNavView(ctx, addonActive) {
   if (!root) { console.warn('[Leadesk] salesNavStub fehlt'); return }
   const isLead = ctx.mode === 'sales_lead'
 
-  // Gate: ohne aktives sales-nav-sync-Addon → Upsell statt Import-Buttons
-  const upsellHtml =
-    '<div style="font-size:12px;color:#92400E;background:#FEF3C7;border:1px solid #FDE68A;padding:12px;border-radius:8px;margin-top:12px">' +
-    '<strong>🎁 Sales Navigator Sync aktivieren</strong><br>' +
-    'Importiere Leads aus Sales Navigator — kostenfrei bis 31.08.2026.' +
+  // Kein Blocker mehr: der Import läuft in der Extension IMMER, unabhängig vom
+  // sales-nav-sync-Addon. Ohne gebuchtes Addon zeigen wir nur einen nicht-
+  // blockierenden Warnhinweis (Buchung im Leadesk-Marketplace).
+  const warnHtml = addonActive ? '' :
+    '<div style="font-size:12px;color:#92400E;background:#FEF3C7;border:1px solid #FDE68A;padding:10px;border-radius:8px;margin-top:12px">' +
+    '<strong>⚠️ Sales-Navigator-Sync nicht gebucht</strong><br>' +
+    'Der Import funktioniert hier in der Extension trotzdem. Für die volle Nutzung in Leadesk aktiviere das Addon im Marketplace — kostenfrei bis 31.08.2026.' +
     '<button id="snUpsellBtn" class="btn-primary" style="width:100%;margin-top:10px">Im Leadesk-Marketplace aktivieren</button></div>'
 
   let actionHtml
-  if (!addonActive) {
-    actionHtml = upsellHtml
-  } else if (isLead) {
+  if (isLead) {
     actionHtml = '<button id="salesImportBtn" class="btn-primary" style="width:100%;margin-top:12px">Lead importieren</button>'
   } else if (ctx.mode === 'sales_saved_search') {
     actionHtml = currentTeamId
@@ -615,16 +615,16 @@ function renderSalesNavView(ctx, addonActive) {
     '<div style="font-size:12px;margin-bottom:6px">Modus: <strong>' + ctx.mode + '</strong></div>' +
     (ctx.savedSearchId ? '<div style="font-size:12px;margin-bottom:6px">Saved-Search-ID: <code>' + ctx.savedSearchId + '</code></div>' : '') +
     (ctx.sourceId ? '<div style="font-size:12px;margin-bottom:6px">Lead-ID: <code>' + ctx.sourceId + '</code></div>' : '') +
+    warnHtml +
     actionHtml +
     '</div>'
   // Standard-Pages ausblenden (router-aware: .active entfernen → CSS .page{display:none})
   document.querySelectorAll('.page').forEach(p => p.classList.remove('active'))
 
-  if (!addonActive) {
-    const ub = document.getElementById('snUpsellBtn')
-    if (ub) ub.addEventListener('click', () => chrome.tabs.create({ url: appOrigin() + '/marketplace' }))
-    return
-  }
+  // Marketplace-Link im Warnhinweis (falls gerendert) — rein informativ, blockiert nichts.
+  const ub = document.getElementById('snUpsellBtn')
+  if (ub) ub.addEventListener('click', () => chrome.tabs.create({ url: appOrigin() + '/marketplace' }))
+
   if (isLead) {
     const btn = document.getElementById('salesImportBtn')
     if (btn) btn.addEventListener('click', () => importSalesNavLead(ctx))
