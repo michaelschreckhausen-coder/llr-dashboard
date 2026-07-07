@@ -13,6 +13,7 @@ import InboxLink from '../components/InboxLink'
 import PageHeader from '../components/PageHeader'
 import TabBar from '../components/TabBar'
 import { scrapeLinkedInConnections, normalizeLinkedInUrl } from '../lib/leadeskExtension'
+import { useInboxLists } from '../hooks/useInboxLists'
 
 const P = 'var(--wl-primary, rgb(49,90,231))'
 const fullName = l => ((l.first_name||'') + ' ' + (l.last_name||'')).trim() || l.name || 'Unbekannt'
@@ -281,6 +282,8 @@ export default function Vernetzungen({ session }) {
   const [tab, setTab]                   = useState('offen')
   const [sortBy, setSortBy]             = useState('date')
   const [search, setSearch]             = useState('')
+  const [listFilter, setListFilter]     = useState('all')   // 'all' | inbox_list_id
+  const { lists: inboxLists, membersByList } = useInboxLists({ activeTeamId })
   const [selected, setSelected]         = useState(null)
   const [anfrageModal, setAnfrageModal] = useState(null)
   const [statusModal, setStatusModal]   = useState(null)
@@ -379,7 +382,12 @@ export default function Vernetzungen({ session }) {
   }
   const filtered = sortedLeads.filter(l => {
     const searchMatch = !search || fullName(l).toLowerCase().includes(search.toLowerCase()) || (l.company||'').toLowerCase().includes(search.toLowerCase())
-    return tabMatch(l) && searchMatch
+    let listMatch = true
+    if (listFilter !== 'all') {
+      const set = membersByList.get(listFilter)
+      listMatch = !!set && set.has(l.id)
+    }
+    return tabMatch(l) && searchMatch && listMatch
   })
 
   const stats = {
@@ -505,6 +513,14 @@ export default function Vernetzungen({ session }) {
             </button>
           ))}
         </div>
+
+        {inboxLists.length > 0 && (
+          <select value={listFilter} onChange={e=>setListFilter(e.target.value)} title="Nach Inbox-Liste filtern"
+            style={{ padding:'9px 12px', borderRadius:10, border:'1.5px solid #E2E8F0', fontSize:13, outline:'none', background:'var(--surface)', color:'var(--text-primary)', cursor:'pointer' }}>
+            <option value="all">Alle Listen</option>
+            {inboxLists.map(l => <option key={l.id} value={l.id}>{l.name}</option>)}
+          </select>
+        )}
 
         <input value={search} onChange={e=>setSearch(e.target.value)} placeholder="Name, Firma oder Jobtitel suchen…"
           style={{ flex:1, minWidth:180, padding:'9px 14px', borderRadius:10, border:'1.5px solid #E2E8F0', fontSize:13, outline:'none' }}/>
