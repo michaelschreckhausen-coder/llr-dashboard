@@ -2581,7 +2581,7 @@ function VisualRail({ visuals = [], activeVisualId, onSelect = () => {}, onNew =
       )}
       {visuals.map((v) => {
         const active = v.id === activeVisualId
-        const showMenu = menuFor === v.id
+        const showMenu = menuFor && menuFor.id === v.id
         return (
           <div key={v.id} style={{ position:'relative', width:42, flexShrink:0 }}>
             <button onClick={() => onSelect(v)} title={v.title || v.prompt || 'Design'}
@@ -2593,14 +2593,14 @@ function VisualRail({ visuals = [], activeVisualId, onSelect = () => {}, onNew =
                 : <span style={{ display:'flex', width:'100%', height:'100%', alignItems:'center', justifyContent:'center', color:'var(--text-soft,#98a2b3)' }}><ImageIcon size={16} strokeWidth={1.8}/></span>}
             </button>
             {(onUnlink || onDelete) && (
-              <button onClick={(e) => { e.stopPropagation(); setMenuFor(showMenu ? null : v.id) }} title="Optionen"
+              <button onClick={(e) => { e.stopPropagation(); if (showMenu) { setMenuFor(null); return } const r = e.currentTarget.getBoundingClientRect(); setMenuFor({ id: v.id, x: r.left, y: r.top }) }} title="Optionen"
                 style={{ position:'absolute', top:-5, right:-5, width:18, height:18, borderRadius:'50%', border:'1px solid var(--border,#E9ECF2)', background:'#fff', cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'center', boxShadow:'0 1px 3px rgba(16,24,40,0.18)', color:'var(--text-muted,#667085)', padding:0, zIndex:2 }}>
                 <MoreVertical size={12} strokeWidth={2}/>
               </button>
             )}
             {showMenu && (
               <div onClick={(e) => e.stopPropagation()}
-                style={{ position:'absolute', top:0, right:'116%', zIndex:60, background:'var(--surface,#fff)', border:'1px solid var(--border,#E9ECF2)', borderRadius:10, boxShadow:'0 8px 24px rgba(16,24,40,0.16)', padding:5, display:'flex', flexDirection:'column', gap:2 }}>
+                style={{ position:'fixed', left: Math.max(8, (menuFor.x || 0) - 182), top: Math.min((menuFor.y || 0), (typeof window !== 'undefined' ? window.innerHeight : 800) - 104), zIndex:9999, minWidth:172, background:'var(--surface,#fff)', border:'1px solid var(--border,#E9ECF2)', borderRadius:10, boxShadow:'0 8px 24px rgba(16,24,40,0.16)', padding:5, display:'flex', flexDirection:'column', gap:2 }}>
                 {onUnlink && (
                   <button onClick={async () => { setMenuFor(null); setBusyId(v.id); try { await onUnlink(v) } finally { setBusyId(null) } }}
                     style={menuItem}
