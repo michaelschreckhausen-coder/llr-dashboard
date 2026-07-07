@@ -2,6 +2,9 @@ import React, { useEffect, useLayoutEffect, useRef, useState, useCallback, forwa
 import { useEditor, EditorContent } from '@tiptap/react'
 import StarterKit from '@tiptap/starter-kit'
 import Highlight from '@tiptap/extension-highlight'
+import { Extension } from '@tiptap/core'
+import { Plugin, PluginKey } from '@tiptap/pm/state'
+import { Decoration, DecorationSet } from '@tiptap/pm/view'
 import {
   Bold, Italic, Heading1, Heading2, List, ListOrdered, Quote, Undo2, Redo2,
   X, FilePlus2, Sparkles, Wand2, PenLine, Copy, Download, FileText,
@@ -83,6 +86,38 @@ function stripEmDashes(s) {
     .replace(/,\s*,/g, ',')
 }
 
+// Persistente Markierung: hält die Text-Auswahl sichtbar, auch wenn der Editor
+// den Fokus verliert (z. B. beim Tippen ins KI-Actions-Feld).
+const persistSelKey = new PluginKey('lkPersistSel')
+const PersistSelection = Extension.create({
+  name: 'lkPersistSelection',
+  addProseMirrorPlugins() {
+    return [ new Plugin({
+      key: persistSelKey,
+      state: {
+        init() { return { deco: DecorationSet.empty, range: null } },
+        apply(tr, value) {
+          let range = value.range
+          const meta = tr.getMeta(persistSelKey)
+          if (meta !== undefined) range = meta
+          else if (range) range = { from: tr.mapping.map(range.from), to: tr.mapping.map(range.to) }
+          let deco = DecorationSet.empty
+          if (range && range.to > range.from) {
+            deco = DecorationSet.create(tr.doc, [Decoration.inline(range.from, range.to, { class: 'lk-persisted-selection' })])
+          }
+          return { deco, range }
+        },
+      },
+      props: { decorations(state) { return persistSelKey.getState(state).deco } },
+    }) ]
+  },
+})
+function setPersistedSelection(ed, range) {
+  if (!ed || !ed.view) return
+  const tr = ed.state.tr.setMeta(persistSelKey, range); tr.setMeta('addToHistory', false)
+  ed.view.dispatch(tr)
+}
+
 if (typeof document !== 'undefined' && !document.getElementById('leadesk-docpane-css')) {
   const s = document.createElement('style')
   s.id = 'leadesk-docpane-css'
@@ -99,6 +134,7 @@ if (typeof document !== 'undefined' && !document.getElementById('leadesk-docpane
     .lk-docpane .ProseMirror mark { padding:0 2px; border-radius:3px; box-decoration-break:clone; -webkit-box-decoration-break:clone; }
     .lk-docpane .ProseMirror u { text-decoration-thickness:1px; text-underline-offset:2px; }
     .lk-docpane .ProseMirror:focus { outline:none; }
+    .lk-docpane .ProseMirror .lk-persisted-selection { background:#B4D5FE; }
   `
   document.head.appendChild(s)
 }
@@ -158,11 +194,14 @@ const DocumentEditorPane = forwardRef(function DocumentEditorPane({
     extensions: [
       StarterKit.configure({ heading: { levels: [1, 2, 3] }, link: { openOnClick: false, autolink: false, linkOnPaste: false } }),
       Highlight.configure({ multicolor: true }),
+      PersistSelection,
     ],
     content: '',
     onCreate: ({ editor }) => { setIsEmpty(editor.isEmpty); setWordCount(countWords(editor.getText())) },
     onUpdate: ({ editor }) => { setIsEmpty(editor.isEmpty); setWordCount(countWords(editor.getText())); scheduleSave() },
     onSelectionUpdate: ({ editor }) => { if (!preview) updateBubble(editor) },
+    onBlur: ({ editor }) => { const { from, to, empty } = editor.state.selection; if (!empty && from !== to) setPersistedSelection(editor, { from, to }) },
+    onFocus: ({ editor }) => { setPersistedSelection(editor, null) },
   })
 
   // Custom Actions laden
@@ -309,7 +348,7 @@ const DocumentEditorPane = forwardRef(function DocumentEditorPane({
     return out
   }
 
-  function closeBubble() { setBubble(null); setPreview(null); setShowTranslate(false); setShowRewrite(false); setShowEmoji(false); setAiInstruction(''); setShowActionForm(false) }
+  function closeBubble() { if (editor) setPersistedSelection(editor, null); setBubble(null); setPreview(null); setShowTranslate(false); setShowRewrite(false); setShowEmoji(false); setAiInstruction(''); setShowActionForm(false) }
 
   // Action ausführen → Vorschau erzeugen (nicht direkt anwenden)
   async function runAction(build, label) {
