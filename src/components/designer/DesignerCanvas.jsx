@@ -50,7 +50,7 @@ import { DESIGN_TEMPLATES } from '../../lib/designTemplates'
 import { DESIGN_ASSETS, ASSET_CATEGORIES } from '../../lib/designAssets'
 import { useBrandVoice } from '../../context/BrandVoiceContext'
 import { listBrandFonts, loadBrandFonts } from '../../lib/brandFonts'
-import { loadGoogleFont, isGoogleFont, isFontLoaded } from '../../lib/googleFonts'
+import { loadGoogleFont, isGoogleFont, isFontLoaded, GOOGLE_FONTS, fontsInCategory } from '../../lib/googleFonts'
 import FontPicker from './FontPicker'
 import { ColorPopover, toHex, gradientCss } from './ColorPicker'
 import { searchIcons, searchGraphics, iconSvgUrl, iconToDataUrl, searchPhotos, photoToDataUrl } from '../../lib/stockMedia'
@@ -3242,6 +3242,75 @@ Antworte AUSSCHLIESSLICH mit JSON: {"ok":<bool>,"issues":["..."],"operations":[.
     setFontRev(r => r + 1)
   }
 
+  // ─── Text aus dem Bild extrahieren (Vision) + editierbar in ähnlicher Schrift anlegen ──
+  // Ein bildfähiges Modell liest alle Textstellen (Wortlaut, Position, Farbe, Font-Stil).
+  // Jede erkannte Schrift wird auf die nächstliegende Familie aus dem Google-Fonts-Katalog
+  // (1500+) gemappt; daraus entstehen echte, bearbeitbare Text-Ebenen an gleicher Stelle.
+  async function runExtractText() {
+    try {
+      if (!teamId) { setAiError && setAiError('Kein Team-Kontext.'); return }
+      const primary = objects.find(o => o.type === 'image' && o.__primary) || objects.find(o => o.type === 'image')
+      const el = primary && imgCache[primary.src]
+      if (!primary || !el) { setAiError && setAiError('Text übernehmen braucht ein Bild im Design.'); return }
+      setBgMenuBusy(true); setAiError && setAiError(''); setSavedMsg('Text wird aus dem Bild gelesen …')
+      const iw = el.naturalWidth || el.width || 1024, ih = el.naturalHeight || el.height || 1024
+      const cnv = document.createElement('canvas'); cnv.width = iw; cnv.height = ih
+      cnv.getContext('2d').drawImage(el, 0, 0, iw, ih)
+      const blob = await new Promise(res => { try { cnv.toBlob(res, 'image/png') } catch (_e) { res(null) } })
+      if (!blob) throw new Error('Bild konnte nicht gelesen werden')
+      const up = await uploadImageBlob(teamId, blob); if (!up || !up.path) throw new Error('Upload fehlgeschlagen')
+      const prompt = `Du bekommst ein Bild. Erkenne ALLE gut lesbaren Text-Elemente (Überschriften, Claims, Wortmarken, Fließtext). Fasse zusammengehörige Zeilen eines Blocks zu EINEM Element zusammen. Für JEDES Textelement gib zurück:
+- "text": exakt der Wortlaut (mehrzeilig mit \n erlaubt)
+- "x","y","w","h": Bounding-Box als ANTEIL der Bildgröße (0..1; x,y = linke obere Ecke)
+- "color": dominante Textfarbe als Hex #rrggbb
+- "category": eine von "sans-serif","serif","display","handwriting","monospace"
+- "weight": "normal" oder "bold"
+- "italic": true oder false
+- "font": Name einer bekannten Schriftart, die dem Aussehen am nächsten kommt (z.B. "Montserrat","Playfair Display","Bebas Neue","Pacifico","Lora","Oswald","Roboto Mono","Poppins","Anton","Dancing Script")
+Ignoriere reine Deko/Muster ohne Text. Antworte AUSSCHLIESSLICH mit JSON, ohne Erklärung: {"texts":[{...}]}. Wenn kein Text da ist: {"texts":[]}`
+      const { data } = await Promise.race([
+        supabase.functions.invoke('generate', { body: { type: 'raw', model: 'claude-sonnet-4-6', prompt, referenceMediaPaths: [up.path] } }),
+        new Promise((_, rej) => setTimeout(() => rej(new Error('Zeitüberschreitung – bitte erneut versuchen')), 60000)),
+      ])
+      try { supabase.storage.from('visuals').remove([up.path]) } catch (_e) {}
+      let txt = String(data?.text || data?.content || data?.output || '').trim().replace(/^```(?:json)?/i, '').replace(/```\s*$/i, '').trim()
+      const a = txt.indexOf('{'), z = txt.lastIndexOf('}'); if (a >= 0 && z > a) txt = txt.slice(a, z + 1)
+      let parsed = null; try { parsed = JSON.parse(txt) } catch (_e) { parsed = null }
+      const list = parsed && Array.isArray(parsed.texts) ? parsed.texts : (Array.isArray(parsed) ? parsed : [])
+      if (!list.length) { setSavedMsg('Kein Text im Bild gefunden.'); setBgMenuBusy(false); return }
+      const catMap = { 'sans-serif': 's', 'sans': 's', 'serif': 'r', 'display': 'd', 'handwriting': 'h', 'script': 'h', 'monospace': 'm', 'mono': 'm' }
+      const catDefault = { s: 'Poppins', r: 'Lora', d: 'Bebas Neue', h: 'Dancing Script', m: 'Roboto Mono' }
+      const matchFont = (name, category) => {
+        const nm = String(name || '').trim()
+        if (nm && isGoogleFont(nm)) return nm
+        if (nm) { const low = nm.toLowerCase(); const hit = GOOGLE_FONTS.find(g => g.family.toLowerCase() === low) || GOOGLE_FONTS.find(g => { const gl = g.family.toLowerCase(); return gl.includes(low) || low.includes(gl) }); if (hit) return hit.family }
+        const cat = catMap[String(category || '').toLowerCase()] || 's'
+        const def = catDefault[cat]; const inCat = fontsInCategory(cat)
+        return (inCat.includes(def) ? def : (inCat[0] || 'Inter'))
+      }
+      const px = primary.x || 0, py = primary.y || 0, pw = primary.width || iw, ph = primary.height || ih
+      pushHistory()
+      const newObjs = []; const fams = new Set()
+      for (const it of list) {
+        const t = String(it.text || '').trim(); if (!t) continue
+        const fx = Math.max(0, Math.min(1, Number(it.x) || 0)), fy = Math.max(0, Math.min(1, Number(it.y) || 0))
+        const fw = Math.max(0.03, Math.min(1, Number(it.w) || 0.3)), fh = Math.max(0.01, Math.min(1, Number(it.h) || 0.1))
+        const fam = matchFont(it.font, it.category); fams.add(fam)
+        const numLines = Math.max(1, t.split(/\n/).length)
+        const fontSize = Math.max(8, Math.round((fh * ph * 0.82) / numLines))
+        const weightBold = String(it.weight || '').toLowerCase() === 'bold'
+        const fontStyle = [weightBold ? 'bold' : '', it.italic ? 'italic' : ''].filter(Boolean).join(' ') || 'normal'
+        newObjs.push({ id: nextId(), type: 'text', text: t, x: Math.round(px + fx * pw), y: Math.round(py + fy * ph), width: Math.max(40, Math.round(fw * pw * 1.08)), fontSize, fontFamily: fam, fill: /^#[0-9a-f]{6}$/i.test(String(it.color || '')) ? it.color : '#111111', fontStyle, align: 'left', rotation: 0, opacity: 1 })
+      }
+      if (!newObjs.length) { setSavedMsg('Kein Text übernommen.'); setBgMenuBusy(false); return }
+      try { fams.forEach(fm => loadGoogleFont(fm).catch(() => {})) } catch (_e) {}
+      setObjects(prev => [...prev, ...newObjs])
+      setSavedMsg(newObjs.length + ' Text' + (newObjs.length > 1 ? 'e' : '') + ' aus dem Bild übernommen ✓')
+    } catch (e) {
+      setAiError && setAiError('Text übernehmen: ' + (e?.message || 'fehlgeschlagen'))
+    } finally { setBgMenuBusy(false) }
+  }
+
   async function renderBlobOpts({ pixelRatio = 2, mimeType = 'image/png', quality = 0.92 } = {}) {
     const stage = stageRef.current
     if (!stage) throw new Error('Stage nicht bereit')
@@ -5603,6 +5672,7 @@ Antworte AUSSCHLIESSLICH mit JSON: {"ok":<bool>,"issues":["..."],"operations":[.
           onRunFreeCommand={() => runFreeAiCommand(aiCommand)}
           onBgRemove={() => runBackgroundReplace('remove')}
           onBgReplace={(txt) => runBackgroundReplace('replace', txt)}
+          onExtractText={runExtractText}
           onClearMask={clearMask} onInvertMask={invertMask}
           setCropMode={setCropMode} setSelectedId={setSelectedId} setAiError={setAiError}
           segBusy={segBusy} segMsg={segMsg} onUndo={undo} onRedo={redo}
@@ -7117,7 +7187,7 @@ function BrandPanelBody({ brandData, brandLoading, onApplyBrandColor, onInsertBr
 function AiPanelBody({
   aiMode, setAiMode, maskTool, setMaskTool, brushSize, setBrushSize, feather, setFeather,
   aiPrompt, setAiPrompt, aiCommand, setAiCommand, aiBusy, aiError, bgMenuBusy, hasMask,
-  onRunMaskEdit, onRunFreeCommand, onBgRemove, onBgReplace, onClearMask, onInvertMask,
+  onRunMaskEdit, onRunFreeCommand, onBgRemove, onBgReplace, onExtractText, onClearMask, onInvertMask,
   setCropMode, setSelectedId, setAiError, segBusy, segMsg, onUndo, onRedo,
 }) {
   const [bgText, setBgText] = useState('')
@@ -7211,6 +7281,13 @@ function AiPanelBody({
         <input value={bgText} onChange={e => setBgText(e.target.value)} placeholder="Neuen Hintergrund beschreiben…"
           style={{ width: '100%', height: 34, padding: '0 10px', borderRadius: 8, border: '1px solid var(--border)', fontSize: 12.5, outline: 'none', fontFamily: 'inherit', boxSizing: 'border-box', marginBottom: 8 }} />
         <PanelBtn full disabled={bgMenuBusy || !bgText.trim()} onClick={() => { if (bgText.trim()) { onBgReplace(bgText.trim()); setBgText('') } }}><ImageIcon size={14} strokeWidth={1.9} />Hintergrund erzeugen</PanelBtn>
+      </div>
+
+      {/* Karte: Text aus Bild übernehmen */}
+      <div style={CARD}>
+        <div style={CTITLE}>Text aus Bild übernehmen</div>
+        <div style={CHINT}>Liest den im Bild enthaltenen Text und legt ihn als bearbeitbare Ebenen in einer möglichst ähnlichen Schriftart an.</div>
+        <PanelBtn full disabled={bgMenuBusy} onClick={onExtractText}><Type size={14} strokeWidth={1.9} />{bgMenuBusy ? 'Wird gelesen…' : 'Text extrahieren'}</PanelBtn>
       </div>
 
       {(aiBusy || bgMenuBusy) && <div style={{ fontSize: 11.5, color: P, display: 'flex', alignItems: 'center', gap: 6 }}><Loader2 size={13} className="lk-spin" />KI arbeitet … einen Moment.</div>}
