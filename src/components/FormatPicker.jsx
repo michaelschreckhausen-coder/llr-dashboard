@@ -35,7 +35,7 @@ function RatioThumb({ w, h, active }) {
   )
 }
 
-export default function FormatPicker({ value, onChange }) {
+export default function FormatPicker({ value, onChange, openUp = true }) {
   const [open, setOpen] = useState(false)
   const [cat, setCat] = useState('linkedin')
   const [freeW, setFreeW] = useState(value?.id === 'free' ? value.w : 1080)
@@ -71,7 +71,7 @@ export default function FormatPicker({ value, onChange }) {
 
       {open && (
         <div style={{
-          position: 'absolute', bottom: 'calc(100% + 6px)', left: 0, zIndex: 60, width: 460, display: 'flex',
+          position: 'absolute', ...(openUp ? { bottom: 'calc(100% + 6px)' } : { top: 'calc(100% + 6px)' }), left: 0, zIndex: 60, width: 460, display: 'flex',
           borderRadius: 10, overflow: 'hidden', border: '1px solid var(--border, #D7DCE5)',
           background: 'var(--surface, #FFFFFF)', boxShadow: '0 12px 32px rgba(15,23,42,0.16)',
         }}>
