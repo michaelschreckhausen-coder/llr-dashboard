@@ -66,7 +66,10 @@ Deno.serve(async (req) => {
       body: JSON.stringify(searchBody),
     });
     if (!r.ok) {
-      return json({ error: `search ${r.status}: ${(await r.text()).slice(0, 200)}`, pages, inserted, updated, failed }, 502);
+      const txt = await r.text();
+      let unipile_type: string | null = null;
+      try { unipile_type = JSON.parse(txt)?.type ?? null; } catch { /* nicht-JSON */ }
+      return json({ error: "unipile_search_failed", unipile_status: r.status, unipile_type, detail: txt.slice(0, 200), pages, inserted, updated, failed }, 502);
     }
     const body: any = await r.json();
     const items: any[] = body.items ?? [];
