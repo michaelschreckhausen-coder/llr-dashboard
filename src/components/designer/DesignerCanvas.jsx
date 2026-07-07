@@ -3637,11 +3637,17 @@ Antworte AUSSCHLIESSLICH mit JSON: {"ok":<bool>,"issues":["..."],"operations":[.
       // Moderater Kontext-Rand: genug Umgebung für passende Beleuchtung/Perspektive, aber
       // NICHT so groß, dass das neue Objekt winzig in der Mitte eines riesigen Ausschnitts
       // gerendert wird (→ blass/zerrissen). Das Objekt soll den Ausschnitt gut ausfüllen.
-      const pad = Math.round(Math.max(bbox.w, bbox.h) * 0.3 + Math.min(W, H) * 0.03)
-      const bx = Math.max(0, bbox.x - pad)
-      const by = Math.max(0, bbox.y - pad)
-      const bw = Math.min(W - bx, bbox.w + pad * 2)
-      const bh = Math.min(H - by, bbox.h + pad * 2)
+      // Asymmetrischer Ausschnitt: horizontal ENG an der Auswahl (verhindert, dass seitliche
+      // Nachbarobjekte verändert werden) — vertikal großzügig nach OBEN, da Objekte auf der
+      // Fläche stehen und nach oben ragen (so wird ein hohes Objekt wie ein Glas NICHT oben
+      // abgeschnitten). Unten nur wenig (für den Schatten).
+      const padX = Math.round(bbox.w * 0.25 + Math.min(W, H) * 0.02)
+      const padUp = Math.round(bbox.h * 1.0 + Math.min(W, H) * 0.03)
+      const padDown = Math.round(bbox.h * 0.25 + Math.min(W, H) * 0.02)
+      const bx = Math.max(0, bbox.x - padX)
+      const by = Math.max(0, bbox.y - padUp)
+      const bw = Math.min(W - bx, bbox.w + padX * 2)
+      const bh = Math.min(H - by, bbox.h + padUp + padDown)
       // 3) Crop ausschneiden (für Modell-Effizienz auf max ~1280px Kante begrenzen)
       const MAXC = 1280
       const cropScale = Math.min(1, MAXC / Math.max(bw, bh))
@@ -3654,7 +3660,7 @@ Antworte AUSSCHLIESSLICH mit JSON: {"ok":<bool>,"issues":["..."],"operations":[.
       // 4) Eng gefasster Prompt (Photoshop-Stil: nur ändern was nötig, Rest erhalten)
       const prompt = isHeal
         ? 'Entferne das vom Nutzer gemeinte Objekt/Element in diesem Bildausschnitt vollständig und rekonstruiere realistisch den Hintergrund, der dahinter liegen würde. Übernimm Textur, Muster, Farben, Beleuchtung, Schatten und Perspektive exakt aus der direkten Umgebung, sodass keinerlei Spur des entfernten Objekts bleibt. Ändere sonst nichts. Fotorealistisch und nahtlos.'
-        : `Dies ist ein Bildausschnitt. Bearbeite AUSSCHLIESSLICH den zentralen Bereich (die mittleren rund zwei Drittel) gemäß folgender Anweisung: ${rawPrompt.trim()}. Der Rand des Ausschnitts dient nur als Umgebung/Referenz und bleibt unverändert.\n- Wenn ein neues Objekt gewünscht ist: füge NUR dieses eine Objekt zentriert, auf der vorhandenen Oberfläche stehend ein — fotorealistisch, klar und deutlich sichtbar, in Größe und Proportion passend zur Szene (etwa so groß wie der zentrale Bereich, mit etwas Abstand zu den Rändern, vollständig im Bild, nicht abgeschnitten), mit eigenem natürlichem Schatten. Falls dort schon ein Objekt ist, ersetze es vollständig.\n- Wenn eine Anpassung/Korrektur gewünscht ist (z.B. eine Fläche vereinheitlichen, einen Übergang glätten): führe genau diese aus und rekonstruiere den Bereich nahtlos und texturtreu passend zur direkten Umgebung, OHNE ein neues Objekt zu erfinden.\nPasse Beleuchtung, Perspektive, Textur und Farbstimmung exakt an die Umgebung an, sodass der Übergang unsichtbar ist. Keine verwaschenen Flächen, keine sichtbaren Kanten, keine Kopien.`
+        : `Dies ist ein Bildausschnitt. Bearbeite AUSSCHLIESSLICH den zentralen Bereich (die mittleren rund zwei Drittel) gemäß folgender Anweisung: ${rawPrompt.trim()}. Der Rand des Ausschnitts dient nur als Umgebung/Referenz und bleibt unverändert.\n- Wenn ein neues Objekt gewünscht ist: füge NUR dieses eine Objekt ein — es steht auf der vorhandenen Oberfläche im UNTEREN Bereich des Ausschnitts und ragt nach oben. Fotorealistisch, klar und deutlich sichtbar, in Breite passend zur markierten Stelle (etwa so breit wie der untere markierte Bereich), in realistischer Proportion zur Szene, mit eigenem natürlichem Schatten. Das Objekt muss VOLLSTÄNDIG im Ausschnitt liegen — oben und seitlich mit etwas Abstand, an keiner Seite abgeschnitten. Falls dort schon ein Objekt ist, ersetze es vollständig.\n- Wenn eine Anpassung/Korrektur gewünscht ist (z.B. eine Fläche vereinheitlichen, einen Übergang glätten): führe genau diese aus und rekonstruiere den Bereich nahtlos und texturtreu passend zur direkten Umgebung, OHNE ein neues Objekt zu erfinden.\nPasse Beleuchtung, Perspektive, Textur und Farbstimmung exakt an die Umgebung an, sodass der Übergang unsichtbar ist. Keine verwaschenen Flächen, keine sichtbaren Kanten, keine Kopien.`
       // 5) Nur den Crop ans Modell (inline) — kein Vollbild, kein BV-Ref
       const aiVisual = await callGenerateImage(prompt, { inlineRefs: [{ mimeType: 'image/png', data: cropB64 }] })
       const aiCropEl = await loadImageEl(aiVisual.storage_path)
@@ -3683,7 +3689,7 @@ Antworte AUSSCHLIESSLICH mit JSON: {"ok":<bool>,"issues":["..."],"operations":[.
         // Photoshop-Prinzip: NUR die Nutzer-Auswahl (bbox) wird verändert — streng darauf
         //   begrenzt und weich eingeblendet. Alles ausserhalb bleibt garantiert 1:1 erhalten,
         //   so kann NIE etwas ausserhalb der Auswahl verändert werden.
-        resultUrl = compositeRectFeather(baseEl, placed, bbox.x, bbox.y, bbox.w, bbox.h, W, H, 0.06)
+        resultUrl = compositeSelectionUnionObject(baseEl, placed, bbox, bx, by, bw, bh, W, H)
       }
       await applyResultDirect(resultUrl, 'mask')   // direkt ins Bild (rückgängig via Undo)
     } catch (e) {
@@ -3814,6 +3820,39 @@ Antworte AUSSCHLIESSLICH mit JSON: {"ok":<bool>,"issues":["..."],"operations":[.
   // markierte Box ist (kein Abschneiden), und (b) unveränderter Hintergrund/Nachbarobjekte
   // bleiben 1:1 erhalten. Transparente Objekte (Glas) funktionieren, da nur die sichtbaren
   // Merkmale (Rand/Wasser/Reflexion/Schatten) übernommen werden und der Rest die Basis zeigt.
+  // Composite fürs „Bereich ändern": übernimmt IMMER mindestens die Nutzer-Auswahl (bbox)
+  // und ZUSÄTZLICH den tatsächlich veränderten/hinzugekommenen Objekt-Bereich (per Differenz
+  // erkannt) — beides zusammen, aber STRENG innerhalb des (horizontal engen, nach oben weiten)
+  // Ausschnitts. So wird ein hohes Objekt (Glas) vollständig übernommen (nicht abgeschnitten),
+  // gleichzeitig kann NICHTS seitlich ausserhalb des Ausschnitts (z.B. ein Nachbarobjekt)
+  // verändert werden. Alles ausserhalb bleibt 1:1.
+  function compositeSelectionUnionObject(baseEl, placed, bbox, bx, by, bw, bh, W, H) {
+    const bc = document.createElement('canvas'); bc.width = W; bc.height = H
+    bc.getContext('2d').drawImage(baseEl, 0, 0, W, H)
+    const bd = bc.getContext('2d').getImageData(0, 0, W, H).data
+    const pc = document.createElement('canvas'); pc.width = W; pc.height = H
+    pc.getContext('2d').drawImage(placed, 0, 0)
+    const pd = pc.getContext('2d').getImageData(0, 0, W, H).data
+    const x0 = Math.max(0, bx), y0 = Math.max(0, by), x1 = Math.min(W, bx + bw), y1 = Math.min(H, by + bh)
+    const thr = 16
+    let minx = W, miny = H, maxx = -1, maxy = -1
+    for (let y = y0; y < y1; y++) for (let x = x0; x < x1; x++) {
+      const i = (y * W + x) * 4
+      if (pd[i + 3] < 8) continue
+      const dr = pd[i] - bd[i], dg = pd[i + 1] - bd[i + 1], db = pd[i + 2] - bd[i + 2]
+      if (Math.sqrt(dr * dr + dg * dg + db * db) > thr) { if (x < minx) minx = x; if (x > maxx) maxx = x; if (y < miny) miny = y; if (y > maxy) maxy = y }
+    }
+    // Startbereich = exakte Nutzer-Auswahl (deckt reine Anpassungen wie „Fläche vereinheitlichen")
+    let rx0 = bbox.x, ry0 = bbox.y, rx1 = bbox.x + bbox.w, ry1 = bbox.y + bbox.h
+    if (maxx >= 0) { rx0 = Math.min(rx0, minx); ry0 = Math.min(ry0, miny); rx1 = Math.max(rx1, maxx + 1); ry1 = Math.max(ry1, maxy + 1) }
+    // Streng auf den Ausschnitt begrenzen (kein Wandern nach aussen)
+    rx0 = Math.max(rx0, bx); ry0 = Math.max(ry0, by); rx1 = Math.min(rx1, bx + bw); ry1 = Math.min(ry1, by + bh)
+    const mg = Math.max(3, Math.round(Math.min(W, H) * 0.006))
+    const ox = Math.max(0, rx0 - mg), oy = Math.max(0, ry0 - mg)
+    const ow = Math.min(W - ox, (rx1 - rx0) + mg * 2), oh = Math.min(H - oy, (ry1 - ry0) + mg * 2)
+    return compositeRectFeather(baseEl, placed, ox, oy, ow, oh, W, H, 0.06)
+  }
+
   function compositeByDifference(baseEl, placed, bx, by, bw, bh, W, H) {
     // Basis- und generierte Pixel im Crop-Bereich vergleichen, um die BOUNDING-BOX des
     // tatsächlich hinzugekommenen Objekts (inkl. Schatten) zu finden. Danach GENAU diesen
