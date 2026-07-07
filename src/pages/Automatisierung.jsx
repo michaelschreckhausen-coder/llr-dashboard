@@ -183,7 +183,7 @@ export default function Automatisierung({ session }) {
   const [flash, setFlash]             = useState(null)
 
   // Modal-State
-  const [step, setStep] = useState('template') // template | configure | leads
+  const [step, setStep] = useState('template') // template | configure | source | list | select
   const [newCamp, setNewCamp] = useState(() => emptyCampaign())
   const [selectedLeads, setSelectedLeads] = useState([])
 
@@ -446,7 +446,7 @@ export default function Automatisierung({ session }) {
         newCamp={newCamp} setNewCamp={setNewCamp}
         sponsoringCampaigns={sponsoringCampaigns}
         quickTemplates={QUICK_TEMPLATES} pickTemplate={pickTemplate}
-        leads={leads}
+        leads={leads} uid={uid}
         selectedLeads={selectedLeads} setSelectedLeads={setSelectedLeads}
         addStep={addStep} removeStep={removeStep} updateStep={updateStep}
         onClose={resetModal}
@@ -913,14 +913,14 @@ function WSc({ title, hint, action, children }) {
   )
 }
 
-const STEP_ORDER = ['template', 'configure', 'leads']
+const STEP_LABELS = { template:'Vorlage', configure:'Sequenz & Name', source:'Quelle', list:'Liste', select:'Auswahl' }
 
 function NewCampaignWizard({
   step, setStep,
   newCamp, setNewCamp,
   sponsoringCampaigns = [],
   quickTemplates, pickTemplate,
-  leads,
+  leads, uid,
   selectedLeads, setSelectedLeads,
   addStep, removeStep, updateStep,
   onClose, onCreate,
@@ -930,60 +930,121 @@ function NewCampaignWizard({
   const { lists: inboxLists, membersByList } = useInboxLists({ activeTeamId })
   const linkedinLeads = leads.filter(l => l.linkedin_url)
   const [leadSearch, setLeadSearch] = useState('')
-  const filteredLeads = useMemo(() => {
+
+  // Lead-Quelle (Waalaxy-artig): 'inbox_list' | 'all' | 'later'
+  const [source, setSource]         = useState(null)
+  const [sourceListId, setSourceListId] = useState('')
+  const [selectMode, setSelectMode] = useState(null) // null = Entscheidung, 'manual' = Checkbox-Liste
+
+  // Eligibility (b): inbox_ids die AKTUELL in einer aktiven Kampagne enrollt sind.
+  // Nur laufende Kampagnen (active/paused) sperren Kontakte — gestoppte,
+  // abgeschlossene und Entwurf-Kampagnen geben ihre Kontakte fürs Re-Targeting
+  // wieder frei (Waalaxy-Regel „nicht aktuell in einer Kampagne").
+  // Zwei-Schritt statt Embed (#4). automation_campaign_leads ist user-scoped
+  // (kein team_id) → expliziter user_id-Filter statt nur RLS (#14).
+  const [enrolledIds, setEnrolledIds] = useState(() => new Set())
+  useEffect(() => {
+    if (!uid) return
+    let cancelled = false
+    ;(async () => {
+      const { data: camps } = await supabase.from('automation_campaigns')
+        .select('id').eq('user_id', uid).in('status', ['active', 'paused'])
+      if (cancelled) return
+      const activeIds = (camps || []).map(c => c.id)
+      if (!activeIds.length) { setEnrolledIds(new Set()); return }
+      const { data } = await supabase.from('automation_campaign_leads')
+        .select('inbox_id').eq('user_id', uid).in('campaign_id', activeIds)
+      if (cancelled) return
+      setEnrolledIds(new Set((data || []).map(r => r.inbox_id).filter(Boolean)))
+    })()
+    return () => { cancelled = true }
+  }, [uid])
+
+  // Kandidatenmenge je nach Quelle (Inbox-Kontakte mit linkedin_url).
+  const candidates = useMemo(() => {
+    if (source === 'inbox_list') {
+      const set = membersByList.get(sourceListId) || new Set()
+      return linkedinLeads.filter(l => set.has(l.id))
+    }
+    return linkedinLeads // 'all' (und Default)
+  }, [source, sourceListId, linkedinLeads, membersByList])
+
+  // Eligibility: (a) nicht bereits vernetzt, (b) nicht schon in einer Kampagne.
+  const eligible = useMemo(
+    () => candidates.filter(l => l.li_connection_status !== 'verbunden' && !enrolledIds.has(l.id)),
+    [candidates, enrolledIds]
+  )
+  const excludedCount = candidates.length - eligible.length
+
+  const filteredEligible = useMemo(() => {
     const t = leadSearch.trim().toLowerCase()
-    if (!t) return linkedinLeads
-    return linkedinLeads.filter(l =>
+    if (!t) return eligible
+    return eligible.filter(l =>
       fullName(l).toLowerCase().includes(t) ||
       (l.company || '').toLowerCase().includes(t) ||
       (l.job_title || '').toLowerCase().includes(t)
     )
-  }, [linkedinLeads, leadSearch])
+  }, [eligible, leadSearch])
 
-  const stepIndex = STEP_ORDER.indexOf(step)
-  const canConfigure = !!newCamp.sequence?.length
-  const canLeads     = !!newCamp.name?.trim() && canConfigure
-  const WIZARD_STEPS = [
-    { label:'Vorlage' },
-    { label:'Sequenz & Name' },
-    { label:'Leads', sub: selectedLeads.length ? `${selectedLeads.length} ausgewählt` : 'optional' },
-  ]
+  // Pfad ist dynamisch: der „Liste"-Screen erscheint nur bei „Aus Inbox-Liste".
+  const path = source === 'inbox_list'
+    ? ['template', 'configure', 'source', 'list', 'select']
+    : ['template', 'configure', 'source', 'select']
+  const stepIndex = Math.max(path.indexOf(step), 0)
+  const canConfigureNext = !!newCamp.name?.trim() && !!newCamp.sequence?.length
+  const WIZARD_STEPS = path.map(s => ({
+    label: STEP_LABELS[s],
+    sub: s === 'select' && selectedLeads.length ? `${selectedLeads.length} ausgewählt` : undefined,
+  }))
+
+  // Beim (Wieder-)Betreten der Quelle: Auswahl + Quelle zurücksetzen → sauberes
+  // Branching (und „Später" erstellt garantiert ohne Leads).
+  function goSource() {
+    setSource(null); setSourceListId(''); setSelectedLeads([]); setSelectMode(null); setStep('source')
+  }
 
   function goToStep(n) {
-    const target = STEP_ORDER[n - 1]
+    const target = path[n - 1]
     if (!target) return
-    if (target === 'configure' && !canConfigure) return
-    if (target === 'leads' && !canLeads) return
+    if ((target === 'source' || target === 'list' || target === 'select') && !canConfigureNext) return
+    if ((target === 'list' || target === 'select') && !source) return
+    if (target === 'select' && source === 'inbox_list' && !sourceListId) return
     setStep(target)
   }
 
   function nextStep() {
-    if (step === 'template')  setStep('configure')
-    else if (step === 'configure') { if (newCamp.name?.trim()) setStep('leads') }
+    if (step === 'template') setStep('configure')
+    else if (step === 'configure') { if (canConfigureNext) goSource() }
+    else if (step === 'list') { if (sourceListId) { setSelectMode(null); setStep('select') } }
+    // 'source' verzweigt über Karten, 'select' erstellt über den Footer.
   }
   function prevStep() {
     if (step === 'configure') setStep('template')
-    else if (step === 'leads') setStep('configure')
+    else if (step === 'source') setStep('configure')
+    else if (step === 'list') goSource()
+    else if (step === 'select') { if (source === 'inbox_list') setStep('list'); else goSource() }
     else onClose()
   }
 
+  const nextDisabled = step === 'configure' ? !canConfigureNext : step === 'list' ? !sourceListId : false
   const footer = (
     <>
       <button onClick={prevStep} style={ghostBtnStyle}>
         <ChevronLeft size={14} /> {step === 'template' ? 'Abbrechen' : 'Zurück'}
       </button>
       <div style={{ fontSize:12, color:'var(--text-muted)' }}>
-        Schritt {stepIndex + 1} von {WIZARD_STEPS.length}
+        Schritt {stepIndex + 1} von {path.length}
       </div>
-      {step !== 'leads' ? (
-        <button onClick={nextStep}
-          disabled={step === 'configure' && !newCamp.name?.trim()}
-          style={{ ...primaryBtnStyle, opacity:(step === 'configure' && !newCamp.name?.trim()) ? 0.5 : 1, cursor:(step === 'configure' && !newCamp.name?.trim()) ? 'not-allowed' : 'pointer' }}>
-          Weiter <ChevronRight size={14} />
-        </button>
-      ) : (
+      {step === 'select' ? (
         <button onClick={onCreate} style={primaryBtnStyle}>
           <Zap size={14} /> Kampagne erstellen{selectedLeads.length > 0 ? ` (${selectedLeads.length} Lead${selectedLeads.length === 1 ? '' : 's'})` : ''}
+        </button>
+      ) : step === 'source' ? (
+        <span style={{ width:1 }} />
+      ) : (
+        <button onClick={nextStep} disabled={nextDisabled}
+          style={{ ...primaryBtnStyle, opacity:nextDisabled ? 0.5 : 1, cursor:nextDisabled ? 'not-allowed' : 'pointer' }}>
+          Weiter <ChevronRight size={14} />
         </button>
       )}
     </>
@@ -1129,73 +1190,149 @@ function NewCampaignWizard({
         </>
       )}
 
-      {step === 'leads' && (
-        <WSc
-          title="Schritt 3: Leads zuweisen"
-          hint={`${selectedLeads.length} von ${linkedinLeads.length} ausgewählt. Nur Leads mit LinkedIn-URL werden angezeigt — du kannst die Auswahl später erweitern.`}
-          action={
-            <div style={{ display:'flex', gap:6, flexWrap:'wrap' }}>
-              {inboxLists.length > 0 && (
-                <select
-                  defaultValue=""
-                  title="Vorauswahl anhand einer Inbox-Liste"
-                  onChange={e => {
-                    const lid = e.target.value
-                    if (!lid) return
-                    const set = membersByList.get(lid) || new Set()
-                    setSelectedLeads(linkedinLeads.filter(l => set.has(l.id)).map(l => l.id))
-                  }}
-                  style={{ ...ghostBtnStyle, cursor:'pointer', paddingRight:8 }}>
-                  <option value="">Nach Liste…</option>
-                  {inboxLists.map(l => <option key={l.id} value={l.id}>{l.name}</option>)}
-                </select>
-              )}
-              <button onClick={() => setSelectedLeads(linkedinLeads.map(l => l.id))} style={ghostBtnStyle}>
-                <CheckCircle2 size={12} /> Alle ({linkedinLeads.length})
+      {step === 'source' && (
+        <WSc title="Schritt 3: Lead-Quelle" hint="Woher sollen die Kontakte für diese Kampagne kommen? Wähle eine Option.">
+          <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fill, minmax(240px, 1fr))', gap:12 }}>
+            {[
+              { key:'inbox_list', Icon:ListChecks, label:'Aus Inbox-Liste',     desc:'Kontakte aus einer gespeicherten Inbox-Liste wählen.' },
+              { key:'all',        Icon:Users,      label:'Alle Inbox-Kontakte', desc:'Alle offenen Inbox-Kontakte mit LinkedIn-URL als Kandidaten.' },
+              { key:'later',      Icon:Clock,      label:'Später hinzufügen',   desc:'Kampagne als Entwurf ohne Leads anlegen — Kontakte kommen später.' },
+            ].map(opt => (
+              <button key={opt.key}
+                onClick={() => {
+                  if (opt.key === 'inbox_list') { setSource('inbox_list'); setSourceListId(''); setSelectedLeads([]); setStep('list') }
+                  else if (opt.key === 'all')   { setSource('all'); setSelectedLeads([]); setSelectMode(null); setStep('select') }
+                  else                          { setSource('later'); setSelectedLeads([]); onCreate() }
+                }}
+                onMouseEnter={e => { e.currentTarget.style.borderColor = PRIMARY_VAR; e.currentTarget.style.transform = 'translateY(-1px)' }}
+                onMouseLeave={e => { e.currentTarget.style.borderColor = 'var(--border, #E5E7EB)'; e.currentTarget.style.transform = 'translateY(0)' }}
+                style={{ textAlign:'left', cursor:'pointer', padding:'16px 18px', borderRadius:12, border:'1.5px solid var(--border, #E5E7EB)', background:'var(--surface, #fff)', display:'flex', flexDirection:'column', gap:10, boxShadow:'0 1px 2px rgba(15,23,42,.04)', transition:'all .15s ease' }}>
+                <span style={{ width:36, height:36, borderRadius:10, background:'rgba(49,90,231,0.10)', display:'inline-flex', alignItems:'center', justifyContent:'center', color:PRIMARY_VAR }}>
+                  <opt.Icon size={17} />
+                </span>
+                <div style={{ fontSize:14, fontWeight:700, color:'var(--text-strong)' }}>{opt.label}</div>
+                <div style={{ fontSize:12, color:'var(--text-muted)', lineHeight:1.5 }}>{opt.desc}</div>
+                {opt.key === 'inbox_list' && inboxLists.length === 0 && (
+                  <div style={{ fontSize:11, color:'#B45309', fontStyle:'italic' }}>Noch keine Inbox-Listen angelegt.</div>
+                )}
               </button>
-              <button onClick={() => setSelectedLeads(linkedinLeads.filter(l => (l.hs_score || 0) >= 70).map(l => l.id))} style={ghostBtnStyle}>
-                <Sparkles size={12} /> Hot Leads (Score ≥ 70)
-              </button>
-              <button onClick={() => setSelectedLeads([])} style={ghostBtnStyle}>
-                <X size={12} /> Auswahl löschen
-              </button>
-            </div>
-          }
-        >
-          <div style={{ position:'relative' }}>
-            <Search size={14} style={{ position:'absolute', left:12, top:'50%', transform:'translateY(-50%)', color:'#9CA3AF' }} />
-            <input value={leadSearch} onChange={e => setLeadSearch(e.target.value)}
-              placeholder="Lead nach Name, Firma oder Position suchen…"
-              style={{ width:'100%', padding:'10px 14px 10px 36px', border:'1.5px solid var(--border, #E5E7EB)', borderRadius:10, fontSize:13, outline:'none', background:'var(--surface)', boxSizing:'border-box' }} />
+            ))}
           </div>
+        </WSc>
+      )}
 
-          <div style={{ maxHeight:420, overflowY:'auto', border:'1px solid var(--border, #E5E7EB)', borderRadius:10 }}>
-            {filteredLeads.length === 0 ? (
-              <div style={{ padding:36, textAlign:'center', color:'var(--text-muted)', fontSize:13 }}>
-                {linkedinLeads.length === 0
-                  ? 'Keine Leads mit LinkedIn-URL gefunden. Importiere zunächst Leads über Vernetzungen oder CRM.'
-                  : 'Keine Leads passen zur Suche.'}
-              </div>
-            ) : filteredLeads.map(lead => {
-              const checked = selectedLeads.includes(lead.id)
-              return (
-                <label key={lead.id} style={{ display:'flex', alignItems:'center', gap:12, padding:'10px 14px', borderBottom:'1px solid var(--border-soft, #F1F5F9)', cursor:'pointer', background:checked ? 'rgba(49,90,231,0.04)' : 'transparent', transition:'background .12s' }}>
-                  <input type="checkbox" checked={checked}
-                    onChange={e => setSelectedLeads(prev => e.target.checked ? [...prev, lead.id] : prev.filter(x => x !== lead.id))}
-                    style={{ accentColor:PRIMARY }} />
-                  <div style={{ flex:1, minWidth:0 }}>
-                    <div style={{ fontSize:13.5, fontWeight:600, color:'var(--text-strong)', whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis' }}>{fullName(lead)}</div>
-                    <div style={{ fontSize:11.5, color:'var(--text-muted)', whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis' }}>
-                      {[lead.job_title, lead.company].filter(Boolean).join(' · ') || '—'}
-                    </div>
-                  </div>
-                  <span style={{ fontSize:11, padding:'3px 9px', borderRadius:99, background:'rgba(49,90,231,0.08)', color:PRIMARY_VAR, fontWeight:700 }}>
-                    ⚡ {lead.hs_score || 0}
+      {step === 'list' && (
+        <WSc title="Schritt 4: Inbox-Liste wählen" hint="Nur Kontakte dieser Liste kommen als Kandidaten in die Auswahl.">
+          {inboxLists.length === 0 ? (
+            <div style={{ padding:24, textAlign:'center', color:'var(--text-muted)', fontSize:13, border:'1.5px dashed var(--border)', borderRadius:10 }}>
+              Noch keine Inbox-Listen. Lege welche in der LinkedIn-Inbox an („Zu Liste").
+            </div>
+          ) : (
+            <>
+              <WLb label="Inbox-Liste" hint="Zahl in Klammern = Anzahl Kontakte in der Liste." />
+              <select value={sourceListId} onChange={e => setSourceListId(e.target.value)}
+                style={{ width:'100%', padding:'10px 12px', borderRadius:10, border:'1px solid var(--border)', background:'var(--surface)', color:'var(--text-primary, #111827)', fontSize:14, outline:'none' }}>
+                <option value="">— Liste wählen —</option>
+                {inboxLists.map(l => {
+                  const cnt = (membersByList.get(l.id) || new Set()).size
+                  return <option key={l.id} value={l.id}>{l.name} ({cnt})</option>
+                })}
+              </select>
+              {sourceListId && (
+                <div style={{ fontSize:12, color:'var(--text-muted)', marginTop:2 }}>
+                  {candidates.length} Kontakt(e) mit LinkedIn-URL in dieser Liste.
+                </div>
+              )}
+            </>
+          )}
+        </WSc>
+      )}
+
+      {step === 'select' && (
+        <WSc
+          title="Schritt 5: Kontakte auswählen"
+          hint={`${eligible.length} zulässige Kontakt(e)${source === 'inbox_list' ? ' in dieser Liste' : ''}. Bereits vernetzte oder schon in einer Kampagne enrollte Kontakte sind ausgeschlossen.`}
+        >
+          {eligible.length === 0 ? (
+            <div style={{ padding:28, textAlign:'center', color:'var(--text-muted)', fontSize:13, border:'1.5px dashed var(--border)', borderRadius:10 }}>
+              Keine zulässigen Kontakte{excludedCount > 0 ? ` — ${excludedCount} ausgeschlossen (bereits vernetzt oder in Kampagne)` : ''}.
+              Du kannst die Kampagne trotzdem als Entwurf ohne Leads erstellen.
+            </div>
+          ) : selectMode === null ? (
+            <>
+              <div style={{ display:'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr', gap:12 }}>
+                <button onClick={() => { setSelectedLeads(eligible.map(l => l.id)); setSelectMode('manual') }}
+                  style={{ textAlign:'left', cursor:'pointer', padding:'16px 18px', borderRadius:12, border:`1.5px solid ${PRIMARY_VAR}`, background:'rgba(49,90,231,0.06)', display:'flex', flexDirection:'column', gap:8 }}>
+                  <span style={{ display:'inline-flex', alignItems:'center', gap:8, fontSize:14, fontWeight:700, color:PRIMARY_VAR }}>
+                    <CheckCircle2 size={17} /> Alle zulässigen hinzufügen ({eligible.length})
                   </span>
-                </label>
-              )
-            })}
-          </div>
+                  <span style={{ fontSize:12, color:'var(--text-muted)' }}>Empfohlen — alle {eligible.length} zulässigen Kontakte übernehmen.</span>
+                </button>
+                <button onClick={() => setSelectMode('manual')}
+                  style={{ textAlign:'left', cursor:'pointer', padding:'16px 18px', borderRadius:12, border:'1.5px solid var(--border, #E5E7EB)', background:'var(--surface, #fff)', display:'flex', flexDirection:'column', gap:8 }}>
+                  <span style={{ display:'inline-flex', alignItems:'center', gap:8, fontSize:14, fontWeight:700, color:'var(--text-strong)' }}>
+                    <Search size={16} /> Selbst auswählen
+                  </span>
+                  <span style={{ fontSize:12, color:'var(--text-muted)' }}>Einzeln aus den zulässigen Kontakten wählen.</span>
+                </button>
+              </div>
+              {excludedCount > 0 && (
+                <div style={{ fontSize:12, color:'var(--text-muted)', marginTop:2 }}>
+                  {excludedCount} ausgeschlossen (bereits vernetzt oder in Kampagne).
+                </div>
+              )}
+            </>
+          ) : (
+            <>
+              <div style={{ display:'flex', gap:6, flexWrap:'wrap', justifyContent:'flex-end' }}>
+                <button onClick={() => setSelectedLeads(eligible.map(l => l.id))} style={ghostBtnStyle}>
+                  <CheckCircle2 size={12} /> Alle ({eligible.length})
+                </button>
+                <button onClick={() => setSelectedLeads(eligible.filter(l => (l.hs_score || 0) >= 70).map(l => l.id))} style={ghostBtnStyle}>
+                  <Sparkles size={12} /> Hot Leads (Score ≥ 70)
+                </button>
+                <button onClick={() => setSelectedLeads([])} style={ghostBtnStyle}>
+                  <X size={12} /> Auswahl löschen
+                </button>
+              </div>
+              <div style={{ position:'relative' }}>
+                <Search size={14} style={{ position:'absolute', left:12, top:'50%', transform:'translateY(-50%)', color:'#9CA3AF' }} />
+                <input value={leadSearch} onChange={e => setLeadSearch(e.target.value)}
+                  placeholder="Kontakt nach Name, Firma oder Position suchen…"
+                  style={{ width:'100%', padding:'10px 14px 10px 36px', border:'1.5px solid var(--border, #E5E7EB)', borderRadius:10, fontSize:13, outline:'none', background:'var(--surface)', boxSizing:'border-box' }} />
+              </div>
+              {excludedCount > 0 && (
+                <div style={{ fontSize:12, color:'var(--text-muted)' }}>
+                  {excludedCount} ausgeschlossen (bereits vernetzt oder in Kampagne).
+                </div>
+              )}
+              <div style={{ maxHeight:420, overflowY:'auto', border:'1px solid var(--border, #E5E7EB)', borderRadius:10 }}>
+                {filteredEligible.length === 0 ? (
+                  <div style={{ padding:36, textAlign:'center', color:'var(--text-muted)', fontSize:13 }}>
+                    Keine Kontakte passen zur Suche.
+                  </div>
+                ) : filteredEligible.map(lead => {
+                  const checked = selectedLeads.includes(lead.id)
+                  return (
+                    <label key={lead.id} style={{ display:'flex', alignItems:'center', gap:12, padding:'10px 14px', borderBottom:'1px solid var(--border-soft, #F1F5F9)', cursor:'pointer', background:checked ? 'rgba(49,90,231,0.04)' : 'transparent', transition:'background .12s' }}>
+                      <input type="checkbox" checked={checked}
+                        onChange={e => setSelectedLeads(prev => e.target.checked ? [...prev, lead.id] : prev.filter(x => x !== lead.id))}
+                        style={{ accentColor:PRIMARY }} />
+                      <div style={{ flex:1, minWidth:0 }}>
+                        <div style={{ fontSize:13.5, fontWeight:600, color:'var(--text-strong)', whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis' }}>{fullName(lead)}</div>
+                        <div style={{ fontSize:11.5, color:'var(--text-muted)', whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis' }}>
+                          {[lead.job_title, lead.company].filter(Boolean).join(' · ') || '—'}
+                        </div>
+                      </div>
+                      <span style={{ fontSize:11, padding:'3px 9px', borderRadius:99, background:'rgba(49,90,231,0.08)', color:PRIMARY_VAR, fontWeight:700 }}>
+                        ⚡ {lead.hs_score || 0}
+                      </span>
+                    </label>
+                  )
+                })}
+              </div>
+            </>
+          )}
         </WSc>
       )}
     </WizardLayout>
