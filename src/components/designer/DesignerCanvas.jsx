@@ -3833,20 +3833,32 @@ Antworte AUSSCHLIESSLICH mit JSON: {"ok":<bool>,"issues":["..."],"operations":[.
     const pc = document.createElement('canvas'); pc.width = W; pc.height = H
     pc.getContext('2d').drawImage(placed, 0, 0)
     const pd = pc.getContext('2d').getImageData(0, 0, W, H).data
-    const x0 = Math.max(0, bx), y0 = Math.max(0, by), x1 = Math.min(W, bx + bw), y1 = Math.min(H, by + bh)
     const thr = 16
-    let minx = W, miny = H, maxx = -1, maxy = -1
-    for (let y = y0; y < y1; y++) for (let x = x0; x < x1; x++) {
-      const i = (y * W + x) * 4
-      if (pd[i + 3] < 8) continue
-      const dr = pd[i] - bd[i], dg = pd[i + 1] - bd[i + 1], db = pd[i + 2] - bd[i + 2]
-      if (Math.sqrt(dr * dr + dg * dg + db * db) > thr) { if (x < minx) minx = x; if (x > maxx) maxx = x; if (y < miny) miny = y; if (y > maxy) maxy = y }
+    // Horizontales Band = NUR die Auswahl-Breite + kleiner Rand. Dadurch kann ein
+    // seitliches Nachbarobjekt (z.B. eine Pflanze links) gar nicht in Betracht gezogen
+    // werden — nur was direkt in/über der Auswahl liegt.
+    const hmg = Math.round(bbox.w * 0.12)
+    const hx0 = Math.max(Math.max(0, bx), bbox.x - hmg)
+    const hx1 = Math.min(Math.min(W, bx + bw), bbox.x + bbox.w + hmg)
+    const rowHasChange = (y) => {
+      for (let x = hx0; x < hx1; x++) {
+        const i = (y * W + x) * 4
+        if (pd[i + 3] < 8) continue
+        const dr = pd[i] - bd[i], dg = pd[i + 1] - bd[i + 1], db = pd[i + 2] - bd[i + 2]
+        if (Math.sqrt(dr * dr + dg * dg + db * db) > thr) return true
+      }
+      return false
     }
-    // Startbereich = exakte Nutzer-Auswahl (deckt reine Anpassungen wie „Fläche vereinheitlichen")
-    let rx0 = bbox.x, ry0 = bbox.y, rx1 = bbox.x + bbox.w, ry1 = bbox.y + bbox.h
-    if (maxx >= 0) { rx0 = Math.min(rx0, minx); ry0 = Math.min(ry0, miny); rx1 = Math.max(rx1, maxx + 1); ry1 = Math.max(ry1, maxy + 1) }
-    // Streng auf den Ausschnitt begrenzen (kein Wandern nach aussen)
-    rx0 = Math.max(rx0, bx); ry0 = Math.max(ry0, by); rx1 = Math.min(rx1, bx + bw); ry1 = Math.min(ry1, by + bh)
+    // Objekt ragt aus der Auswahl NACH OBEN: von der Auswahl-Oberkante zeilenweise hoch
+    // gehen, solange zusammenhängend Änderungen vorliegen (eine Lücke stoppt) → Objekt-Top.
+    // So werden weder eine Lücke darüber noch entfernte Streu-Pixel mitgenommen.
+    const yTop = Math.max(0, by)
+    let objTop = bbox.y
+    for (let y = bbox.y - 1; y >= yTop; y--) { if (!rowHasChange(y)) break; objTop = y }
+    // Zurückgeschriebener Bereich: Auswahl-Breite (+Rand) × [Objekt-Top .. Auswahl-Unterkante + wenig Schatten]
+    const rx0 = hx0, rx1 = hx1
+    const ry0 = Math.min(bbox.y, objTop)
+    const ry1 = Math.min(Math.min(H, by + bh), bbox.y + bbox.h + Math.round(bbox.h * 0.2))
     const mg = Math.max(3, Math.round(Math.min(W, H) * 0.006))
     const ox = Math.max(0, rx0 - mg), oy = Math.max(0, ry0 - mg)
     const ow = Math.min(W - ox, (rx1 - rx0) + mg * 2), oh = Math.min(H - oy, (ry1 - ry0) + mg * 2)
