@@ -3637,7 +3637,7 @@ Antworte AUSSCHLIESSLICH mit JSON: {"ok":<bool>,"issues":["..."],"operations":[.
       // Moderater Kontext-Rand: genug Umgebung für passende Beleuchtung/Perspektive, aber
       // NICHT so groß, dass das neue Objekt winzig in der Mitte eines riesigen Ausschnitts
       // gerendert wird (→ blass/zerrissen). Das Objekt soll den Ausschnitt gut ausfüllen.
-      const pad = Math.round(Math.max(bbox.w, bbox.h) * 0.7 + Math.min(W, H) * 0.06)
+      const pad = Math.round(Math.max(bbox.w, bbox.h) * 0.3 + Math.min(W, H) * 0.03)
       const bx = Math.max(0, bbox.x - pad)
       const by = Math.max(0, bbox.y - pad)
       const bw = Math.min(W - bx, bbox.w + pad * 2)
@@ -3654,7 +3654,7 @@ Antworte AUSSCHLIESSLICH mit JSON: {"ok":<bool>,"issues":["..."],"operations":[.
       // 4) Eng gefasster Prompt (Photoshop-Stil: nur ändern was nötig, Rest erhalten)
       const prompt = isHeal
         ? 'Entferne das vom Nutzer gemeinte Objekt/Element in diesem Bildausschnitt vollständig und rekonstruiere realistisch den Hintergrund, der dahinter liegen würde. Übernimm Textur, Muster, Farben, Beleuchtung, Schatten und Perspektive exakt aus der direkten Umgebung, sodass keinerlei Spur des entfernten Objekts bleibt. Ändere sonst nichts. Fotorealistisch und nahtlos.'
-        : `Platziere in der Mitte dieses Bildausschnitts, auf der vorhandenen Oberfläche (z.B. Tisch oder Boden) stehend, fotorealistisch, KRÄFTIG UND DEUTLICH SICHTBAR mit klaren, satten Konturen und Details: ${rawPrompt.trim()}. Das Objekt soll in GRÖSSE UND PROPORTION realistisch zur restlichen Szene passen (ähnlich groß oder kleiner als andere sichtbare Gegenstände wie ein Topf) — etwa so groß wie der ursprünglich markierte mittlere Bereich, mittig und etwas zurückgesetzt auf der Oberfläche stehend. Es darf NICHT den ganzen Ausschnitt ausfüllen, NICHT herangezoomt oder überdimensioniert wirken; lass ringsum deutlichen Abstand. Das Objekt muss vollständig sichtbar sein (an keiner Seite abgeschnitten) und klar erkennbar (nicht blass, nicht durchscheinend-schwach). Falls in der Mitte aktuell noch etwas anderes zu sehen ist, ersetze es vollständig; falls die Stelle leer ist, füge das Objekt dort passend hinzu. Es darf nur DIESES EINE Objekt entstehen. Passe Größe, Beleuchtung, Perspektive und Farbstimmung exakt an die Szene an und gib dem Objekt einen eigenen, natürlichen Schatten in Richtung der vorhandenen Lichtquelle. Der übrige Bildinhalt bleibt unverändert. Keine Kopien, keine Reste eines alten Objekts, keine verwaschenen Flächen, keine sichtbaren Kanten.`
+        : `Dies ist ein Bildausschnitt. Bearbeite AUSSCHLIESSLICH den zentralen Bereich (die mittleren rund zwei Drittel) gemäß folgender Anweisung: ${rawPrompt.trim()}. Der Rand des Ausschnitts dient nur als Umgebung/Referenz und bleibt unverändert.\n- Wenn ein neues Objekt gewünscht ist: füge NUR dieses eine Objekt zentriert, auf der vorhandenen Oberfläche stehend ein — fotorealistisch, klar und deutlich sichtbar, in Größe und Proportion passend zur Szene (etwa so groß wie der zentrale Bereich, mit etwas Abstand zu den Rändern, vollständig im Bild, nicht abgeschnitten), mit eigenem natürlichem Schatten. Falls dort schon ein Objekt ist, ersetze es vollständig.\n- Wenn eine Anpassung/Korrektur gewünscht ist (z.B. eine Fläche vereinheitlichen, einen Übergang glätten): führe genau diese aus und rekonstruiere den Bereich nahtlos und texturtreu passend zur direkten Umgebung, OHNE ein neues Objekt zu erfinden.\nPasse Beleuchtung, Perspektive, Textur und Farbstimmung exakt an die Umgebung an, sodass der Übergang unsichtbar ist. Keine verwaschenen Flächen, keine sichtbaren Kanten, keine Kopien.`
       // 5) Nur den Crop ans Modell (inline) — kein Vollbild, kein BV-Ref
       const aiVisual = await callGenerateImage(prompt, { inlineRefs: [{ mimeType: 'image/png', data: cropB64 }] })
       const aiCropEl = await loadImageEl(aiVisual.storage_path)
@@ -3680,7 +3680,10 @@ Antworte AUSSCHLIESSLICH mit JSON: {"ok":<bool>,"issues":["..."],"operations":[.
         //   man rechts daneben ein Glas einfügt). So bleibt alles außerhalb der Auswahl 1:1.
         // Objekt-genau zusammensetzen: nur das tatsächlich hinzugekommene Objekt (+Schatten)
         // wird übernommen. Kein Abschneiden an einer Box-Kante, Nachbarn/Tisch bleiben 1:1.
-        resultUrl = compositeByDifference(baseEl, placed, bx, by, bw, bh, W, H)
+        // Photoshop-Prinzip: NUR die Nutzer-Auswahl (bbox) wird verändert — streng darauf
+        //   begrenzt und weich eingeblendet. Alles ausserhalb bleibt garantiert 1:1 erhalten,
+        //   so kann NIE etwas ausserhalb der Auswahl verändert werden.
+        resultUrl = compositeRectFeather(baseEl, placed, bbox.x, bbox.y, bbox.w, bbox.h, W, H, 0.06)
       }
       await applyResultDirect(resultUrl, 'mask')   // direkt ins Bild (rückgängig via Undo)
     } catch (e) {
