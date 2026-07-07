@@ -20,6 +20,7 @@ import {
 } from 'lucide-react'
 import { supabase } from '../lib/supabase'
 import { useTeam } from '../context/TeamContext'
+import { useInboxLists } from '../hooks/useInboxLists'
 import WizardLayout from '../components/WizardLayout'
 import { EXTENSION_WEBSTORE_URL } from '../lib/leadeskExtension'
 
@@ -922,6 +923,8 @@ function NewCampaignWizard({
   addStep, removeStep, updateStep,
   onClose, onCreate,
 }) {
+  const { activeTeamId } = useTeam() || {}
+  const { lists: inboxLists, membersByList } = useInboxLists({ activeTeamId })
   const linkedinLeads = leads.filter(l => l.linkedin_url)
   const [leadSearch, setLeadSearch] = useState('')
   const filteredLeads = useMemo(() => {
@@ -1128,7 +1131,22 @@ function NewCampaignWizard({
           title="Schritt 3: Leads zuweisen"
           hint={`${selectedLeads.length} von ${linkedinLeads.length} ausgewählt. Nur Leads mit LinkedIn-URL werden angezeigt — du kannst die Auswahl später erweitern.`}
           action={
-            <div style={{ display:'flex', gap:6 }}>
+            <div style={{ display:'flex', gap:6, flexWrap:'wrap' }}>
+              {inboxLists.length > 0 && (
+                <select
+                  defaultValue=""
+                  title="Vorauswahl anhand einer Inbox-Liste"
+                  onChange={e => {
+                    const lid = e.target.value
+                    if (!lid) return
+                    const set = membersByList.get(lid) || new Set()
+                    setSelectedLeads(linkedinLeads.filter(l => set.has(l.id)).map(l => l.id))
+                  }}
+                  style={{ ...ghostBtnStyle, cursor:'pointer', paddingRight:8 }}>
+                  <option value="">Nach Liste…</option>
+                  {inboxLists.map(l => <option key={l.id} value={l.id}>{l.name}</option>)}
+                </select>
+              )}
               <button onClick={() => setSelectedLeads(linkedinLeads.map(l => l.id))} style={ghostBtnStyle}>
                 <CheckCircle2 size={12} /> Alle ({linkedinLeads.length})
               </button>
