@@ -11,8 +11,8 @@ export const IMAGE_MODELS = [
   { value: 'gpt-image-1|high',                      name: 'GPT Image Pro',   label: 'GPT Image — Premium',            provider: 'OpenAI' },
 ]
 
-// Default: Nano Banana (schnell, günstig, gutes Image-Editing für Folge-Edits im Chat).
-export const DEFAULT_IMAGE_MODEL = 'gemini-2.5-flash-image|medium'
+// Default: Nano Banana Pro (beste Qualität) — auf Wunsch immer vorausgewählt, auch im Automatisch-Modus.
+export const DEFAULT_IMAGE_MODEL = 'gemini-3-pro-image-preview|medium'
 
 // "<model>|<quality>" -> { model, quality }
 export function splitModelValue(v) {

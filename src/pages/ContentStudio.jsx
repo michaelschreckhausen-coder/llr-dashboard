@@ -11,7 +11,7 @@
 //   - Beim ersten Send im Clean-Modus → Sidebar klappt automatisch auf
 
 import React, { useState, useEffect, useRef } from 'react'
-import { Pencil, Pin, BookOpen, Target, Send, Loader2, Globe, Plus, FileText, ChevronLeft, ChevronRight, ChevronsRight, ChevronDown, X, Mic, Square, Image as ImageIcon, Download, Sparkles, Wand2, FilePlus2, Brush, MessageSquare, CalendarPlus, Maximize2, Minimize2, Paperclip, Trash2, MoreVertical, Unlink } from 'lucide-react'
+import { Pencil, Pin, BookOpen, Target, Send, Loader2, Globe, Plus, FileText, ChevronLeft, ChevronRight, ChevronsRight, ChevronDown, X, Mic, Square, Image as ImageIcon, Download, Sparkles, Wand2, FilePlus2, Brush, MessageSquare, CalendarPlus, Maximize2, Minimize2, Paperclip, Trash2, MoreVertical, Unlink, Layers, Images } from 'lucide-react'
 import { useVoiceInput } from '../hooks/useVoiceInput'
 import { useResponsive } from '../hooks/useResponsive'
 import CompanyMultiSelect from '../components/CompanyMultiSelect'
@@ -66,7 +66,7 @@ function parseInline(text) {
 }
 
 // ─── Markdown-light Render: Beitragstext als Card extrahieren ───────────────
-function renderMessageContent(content) {
+function renderMessageContent(content, actions) {
   if (!content) return null
   const parts = []
   const regex = /<beitragstext>([\s\S]*?)<\/beitragstext>/gi
@@ -74,7 +74,7 @@ function renderMessageContent(content) {
   let m, key = 0
   while ((m = regex.exec(content)) !== null) {
     if (m.index > lastIdx) parts.push(<TextSpan key={`t${key++}`} text={content.slice(lastIdx, m.index)} />)
-    parts.push(<PostExtractCard key={`p${key++}`} text={m[1].trim()} />)
+    parts.push(<PostExtractCard key={`p${key++}`} text={m[1].trim()} actions={actions} />)
     lastIdx = m.index + m[0].length
   }
   if (lastIdx < content.length) parts.push(<TextSpan key={`t${key++}`} text={content.slice(lastIdx)} />)
@@ -90,7 +90,7 @@ function TextSpan({ text }) {
   )
 }
 
-function PostExtractCard({ text }) {
+function PostExtractCard({ text, actions }) {
   return (
     <div data-tour-id="cs-post-card" style={{
       margin:'10px 0', padding:'14px 16px',
@@ -101,6 +101,67 @@ function PostExtractCard({ text }) {
       </div>
       <div style={{ whiteSpace:'pre-wrap', wordBreak:'break-word', fontSize:14, lineHeight:1.6, color:'var(--text-primary)' }}>
         {parseInline(text)}
+      </div>
+      {actions && <PostActions text={text} {...actions} />}
+    </div>
+  )
+}
+
+// Icon-Buttons „Ins Dokument" + „In Beitrag" — pro Beitragstext-Card (auch bei mehreren Beiträgen je Nachricht)
+function PostActions({ text, onInsertToDoc, onAttachToPost, loadExistingPosts, chatDocs = [], hasOpenDoc = false }) {
+  const [menuOpen, setMenuOpen] = useState(false)
+  const [postMenuOpen, setPostMenuOpen] = useState(false)
+  const [posts, setPosts] = useState(null)
+  const [postsLoading, setPostsLoading] = useState(false)
+  return (
+    <div style={{ display:'flex', gap:8, flexWrap:'wrap', marginTop:12 }}>
+      <div style={{ position:'relative' }}>
+        <Tip label="Ins Dokument"><button data-tour-id="cs-insert-doc" onClick={() => { if ((chatDocs||[]).length || hasOpenDoc) setMenuOpen(o => !o); else onInsertToDoc && onInsertToDoc(text, 'new') }}
+          style={{ width:34, height:34, padding:0, justifyContent:'center', borderRadius:8, border:'none', background:P, color:'#fff', cursor:'pointer', display:'inline-flex', alignItems:'center' }}>
+          <FileText size={15} strokeWidth={1.9}/>
+        </button></Tip>
+        {menuOpen && (
+          <>
+            <div onClick={() => setMenuOpen(false)} style={{ position:'fixed', inset:0, zIndex:80 }}/>
+            <div style={{ position:'absolute', bottom:'calc(100% + 6px)', left:0, zIndex:81, background:'#fff', border:'1px solid var(--border)', borderRadius:10, boxShadow:'0 10px 30px rgba(0,0,0,.12)', minWidth:240, maxHeight:320, overflowY:'auto', padding:6 }}>
+              <button onClick={() => { onInsertToDoc(text, 'new'); setMenuOpen(false) }} style={{ ...ibMenuItem, color:P, fontWeight:700 }}>+ Als neues Dokument</button>
+              {(chatDocs||[]).length > 0 && <div style={{ height:1, background:'var(--border)', margin:'4px 0' }}/>}
+              {(chatDocs||[]).length > 0 && <div style={{ padding:'6px 11px', fontSize:10, fontWeight:700, color:'var(--text-muted)', textTransform:'uppercase', letterSpacing:'0.04em' }}>In bestehendes Dokument</div>}
+              {(chatDocs||[]).map(d => (
+                <button key={d.id} onClick={() => { onInsertToDoc(text, 'existing', d.id); setMenuOpen(false) }} title={d.title || 'Dokument'}
+                  style={{ ...ibMenuItem, display:'block', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>
+                  {d.title || 'Unbenanntes Dokument'}
+                </button>
+              ))}
+            </div>
+          </>
+        )}
+      </div>
+      <div data-tour-id="cs-attach-post" style={{ position:'relative' }}>
+        <Tip label="In Beitrag übernehmen"><button onClick={async () => {
+            const open = !postMenuOpen; setPostMenuOpen(open)
+            if (open && posts === null && loadExistingPosts) { setPostsLoading(true); const r = await loadExistingPosts(); setPosts(r || []); setPostsLoading(false) }
+          }}
+          style={{ width:34, height:34, padding:0, justifyContent:'center', borderRadius:8, border:'1.5px solid ' + P, background:'rgba(49,90,231,0.06)', color:P, cursor:'pointer', display:'inline-flex', alignItems:'center' }}>
+          <CalendarPlus size={15} strokeWidth={1.9}/>
+        </button></Tip>
+        {postMenuOpen && (
+          <>
+            <div onClick={() => setPostMenuOpen(false)} style={{ position:'fixed', inset:0, zIndex:80 }}/>
+            <div style={{ position:'absolute', bottom:'calc(100% + 6px)', left:0, zIndex:81, background:'#fff', border:'1px solid var(--border)', borderRadius:10, boxShadow:'0 10px 30px rgba(0,0,0,.12)', minWidth:270, maxHeight:340, overflowY:'auto', padding:6 }}>
+              <button onClick={() => { onAttachToPost(text, '__new__'); setPostMenuOpen(false) }} style={ibMenuItem}>+ Als neuen Beitrag anlegen</button>
+              <div style={{ height:1, background:'var(--border)', margin:'4px 0' }}/>
+              <div style={{ padding:'6px 11px', fontSize:10, fontWeight:700, color:'var(--text-muted)', textTransform:'uppercase', letterSpacing:'0.04em' }}>Zu bestehendem Beitrag</div>
+              {postsLoading && <div style={{ padding:'6px 11px', fontSize:12, color:'var(--text-muted)' }}>Lädt…</div>}
+              {!postsLoading && posts && posts.length === 0 && <div style={{ padding:'6px 11px', fontSize:12, color:'var(--text-muted)' }}>Noch keine Beiträge vorhanden</div>}
+              {!postsLoading && posts && posts.map(pp => (
+                <button key={pp.id} onClick={() => { onAttachToPost(text, pp.id); setPostMenuOpen(false) }} style={{ ...ibMenuItem, display:'block', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }} title={pp.title || '(ohne Titel)'}>
+                  {pp.title || '(ohne Titel)'}
+                </button>
+              ))}
+            </div>
+          </>
+        )}
       </div>
     </div>
   )
@@ -322,6 +383,7 @@ export default function ContentStudio({ session }) {
   const visualMode = answerFormat === 'visual'
   const setVisualMode = (v) => { const next = typeof v === 'function' ? v(answerFormat === 'visual') : v; setAnswerFormat(next ? 'visual' : 'auto') }
   const [imageModel, setImageModel] = useState(DEFAULT_IMAGE_MODEL)
+  const [imageCount, setImageCount] = useState('auto')   // Bilder pro Prompt: 'auto' | 1..4
   const [imageFormat, setImageFormat] = useState(PRESET_BY_ID[DEFAULT_PRESET_ID])   // Format-Preset (Plattform/Freiform)
   const [useBrandImages, setUseBrandImages] = useState(true)   // Brand-Bilder als Referenz für Bildgenerierung
   // Bild<->Chat-Leiste + aktives Designer-Bild
@@ -999,9 +1061,26 @@ export default function ContentStudio({ session }) {
     // Referenz mitläuft. Der Bildgenerator sieht den Chat NICHT — nur diesen Prompt.
     const lastVisual = lastChatVisual()
     let prevVisual = null
-    let promptForGen = prompt
+    let prompts = [prompt]
+
+    // ── Anzahl der Bilder bestimmen: fester Wert aus dem Dropdown oder „automatisch" ──
+    const fixedCount = imageCount === 'auto' ? null : Math.max(1, Math.min(4, parseInt(imageCount, 10) || 1))
+    const detectCount = (t) => {
+      const x = String(t || '').toLowerCase()
+      const m = x.match(/\b(\d{1,2})\s*(bilder|bild|slides?|varianten|versionen|grafiken|visuals)\b/)
+      if (m) return Math.max(1, Math.min(4, parseInt(m[1], 10)))
+      if (/\b(carousel|karussell)\b/.test(x)) return 3
+      if (/\b(mehrere|verschiedene|ein paar|einige)\b/.test(x) && /\b(bilder|grafiken|visuals|slides|varianten|versionen)\b/.test(x)) return 3
+      return 1
+    }
+    const autoCount = detectCount(prompt)
+    const wantsMulti = fixedCount ? fixedCount > 1 : autoCount > 1
+
+    // ── Bild-Direktor: liest den ganzen Chat und schreibt eigenständige Bild-Prompts.
+    //    Bei „auto" entscheidet er auch die Anzahl (achtet auf Prompt-Hinweise). ──
     const hasPriorContext = (messages && messages.length > 0) || !!lastVisual || !!(linkedPost?.content?.trim()) || !!(refDoc?.content_text?.trim())
-    if (hasPriorContext) {
+    const runDirector = hasPriorContext || wantsMulti
+    if (runDirector) {
       const transcript = (messages || []).slice(-24).map(m => {
         if (m.role === 'user') return `NUTZER: ${String(m.content || '').slice(0, 600)}`
         const meta = (m.metadata && typeof m.metadata === 'object') ? m.metadata : null
@@ -1011,19 +1090,26 @@ export default function ContentStudio({ session }) {
       const extra = []
       if (linkedPost?.content?.trim()) extra.push(`VERKNÜPFTER BEITRAG — Titel: "${linkedPost.title || ''}"\n${linkedPost.content.trim().slice(0, 1500)}`)
       if (refDoc?.content_text?.trim()) extra.push(`REFERENZ-DOKUMENT — Titel: "${refDoc.title || ''}"\n${refDoc.content_text.trim().slice(0, 1500)}`)
-      const directorInstr = `Du bist der Bild-Direktor einer LinkedIn-Content-Werkstatt — wie ChatGPT, wenn es aus einem Gespräch heraus ein Bild erzeugt. Du liest den gesamten bisherigen Verlauf plus die neue Anfrage und schreibst daraus EINEN eigenständigen, detaillierten Bild-Prompt. Der Bildgenerator sieht den Chat NICHT, nur deinen Prompt — er muss also alles Nötige selbst enthalten (Motiv, Szene, Bildausschnitt, Stil, Stimmung, Licht).
+      const countInstr = fixedCount
+        ? `ANZAHL: Der Nutzer will GENAU ${fixedCount} Bild${fixedCount > 1 ? 'er' : ''}. Gib im "prompts"-Array GENAU ${fixedCount} Bild-Prompt${fixedCount > 1 ? 's' : ''} zurück.`
+        : (wantsMulti
+            ? `ANZAHL: Der Nutzer will offenbar mehrere Bilder (Carousel / verschiedene Motive / mehrere Versionen). Gib ${autoCount} passende Bild-Prompts zurück.`
+            : `ANZAHL: Standardmäßig 1 Bild (ein Prompt). Nur wenn die Anfrage KLAR mehrere/verschiedene Bilder oder ein Carousel verlangt, gib bis zu 4 Prompts zurück — entscheide selbst.`)
+      const directorInstr = `Du bist der Bild-Direktor einer LinkedIn-Content-Werkstatt — wie ChatGPT, wenn es aus einem Gespräch heraus Bilder erzeugt. Du liest den gesamten bisherigen Verlauf plus die neue Anfrage und schreibst daraus eigenständige, detaillierte Bild-Prompts. Der Bildgenerator sieht den Chat NICHT, nur deine Prompts — jeder Prompt muss also alles Nötige selbst enthalten (Motiv, Szene, Bildausschnitt, Stil, Stimmung, Licht).
 
 Regeln:
 - Beziehe frühere Motive aktiv ein. Bezieht sich die Anfrage auf etwas Vorheriges ("der Camper", "aus einer anderen Perspektive", "mach es wärmer", "dazu ein Bild", "näher ran"), übernimm dieses Motiv explizit und ausführlich statt es zu verwerfen.
-- "aus einer anderen Perspektive / anderem Blickwinkel / Winkel / näher dran / weiter weg" = GLEICHES Motiv, nur andere Kamera → reference_last_image = true.
-- Kleine Änderung am letzten Bild (Farbe, Licht, Detail, Hintergrund) → gleiches Motiv beschreiben + reference_last_image = true.
+- "aus einer anderen Perspektive / anderem Blickwinkel / Winkel / näher dran / weiter weg" = GLEICHES Motiv, nur andere Kamera → reference_last_image = true, und dann NUR 1 Prompt.
+- Kleine Änderung am letzten Bild (Farbe, Licht, Detail, Hintergrund) → gleiches Motiv beschreiben + reference_last_image = true, NUR 1 Prompt.
 - Nur bei einem thematisch KOMPLETT anderen, unabhängigen Bild → reference_last_image = false.
 - Wurde im Chat ein Beitrag geschrieben und der Nutzer will "ein Bild dazu", leite das Bildmotiv inhaltlich aus dem Beitrag ab.
+${countInstr}
+- Mehrere Bilder als „Versionen/Varianten" desselben Motivs → beschreibe jeden Prompt eigenständig mit leichten Variationen. Als „Carousel / verschiedene Bilder" → unterschiedliche, aber thematisch zusammenhängende Motive (z. B. Schritte oder Aspekte einer Story). Entscheide anhand der Anfrage.
 ${lastVisual ? '- Es gibt bereits ein zuletzt erzeugtes Bild (siehe Verlauf, letzte "[Bild erzeugt]"-Zeile) — dessen Motiv ist der Bezugspunkt für Perspektiv-/Änderungswünsche.' : '- Es gibt noch kein vorheriges Bild → reference_last_image = false.'}
 ${atts.length ? '- Der Nutzer hat eigene Referenzbilder angehängt → reference_last_image = false.' : ''}
 
 Antworte AUSSCHLIESSLICH mit JSON, ohne Erklärung, in genau diesem Format:
-{"reference_last_image": true|false, "prompt": "<detaillierter, eigenständiger Bild-Prompt auf Deutsch>"}
+{"reference_last_image": true|false, "prompts": ["<detaillierter Bild-Prompt auf Deutsch>", "..."]}
 
 === CHAT-VERLAUF ===
 ${transcript || '(noch leer)'}${extra.length ? '\n\n=== ZUSATZKONTEXT ===\n' + extra.join('\n\n') : ''}
@@ -1037,19 +1123,24 @@ ${transcript || '(noch leer)'}${extra.length ? '\n\n=== ZUSATZKONTEXT ===\n' + e
         const raw = String(dir?.text || '')
         const a = raw.indexOf('{'); const b = raw.lastIndexOf('}')
         const parsed = (a >= 0 && b > a) ? JSON.parse(raw.slice(a, b + 1)) : null
-        if (parsed && String(parsed.prompt || '').trim()) promptForGen = String(parsed.prompt).trim()
+        let arr = Array.isArray(parsed?.prompts) ? parsed.prompts : (parsed?.prompt ? [parsed.prompt] : [])
+        arr = arr.map(x => String(x || '').trim()).filter(Boolean).slice(0, 4)
+        if (arr.length) prompts = arr
         if (parsed?.reference_last_image === true && lastVisual && atts.length === 0) prevVisual = lastVisual
       } catch (_e) {
-        if (linkedPost?.content?.trim()) promptForGen = `Erstelle ein Bild, das visuell zu diesem LinkedIn-Beitrag passt.\nBeitrag-Titel: "${linkedPost.title || ''}"\nBeitrag-Text:\n${linkedPost.content.trim()}\n\nKonkreter Bildwunsch: ${prompt}`
-        else if (refDoc?.content_text?.trim()) promptForGen = `Erstelle ein Bild, das visuell zum Inhalt dieses Dokuments passt.\nDokument-Titel: "${refDoc.title || ''}"\nDokument-Inhalt:\n${refDoc.content_text.trim().slice(0, 2000)}\n\nKonkreter Bildwunsch: ${prompt}`
+        if (linkedPost?.content?.trim()) prompts = [`Erstelle ein Bild, das visuell zu diesem LinkedIn-Beitrag passt.\nBeitrag-Titel: "${linkedPost.title || ''}"\nBeitrag-Text:\n${linkedPost.content.trim()}\n\nKonkreter Bildwunsch: ${prompt}`]
+        else if (refDoc?.content_text?.trim()) prompts = [`Erstelle ein Bild, das visuell zum Inhalt dieses Dokuments passt.\nDokument-Titel: "${refDoc.title || ''}"\nDokument-Inhalt:\n${refDoc.content_text.trim().slice(0, 2000)}\n\nKonkreter Bildwunsch: ${prompt}`]
       }
     }
+    // Beim Bearbeiten des letzten Bildes immer nur EIN Bild
+    if (prevVisual) prompts = [prompts[0]]
+
     const { model, quality } = splitModelValue(imageModel)
 
     try {
-      const { data, error: fnErr } = await supabase.functions.invoke('generate-image', {
+      const genOne = (pr) => supabase.functions.invoke('generate-image', {
         body: {
-          prompt: promptForGen,
+          prompt: pr,
           model, quality,
           aspectRatio: prevVisual?.aspect_ratio || imageFormat?.ratio || '1:1',
           ...(prevVisual ? {} : { targetWidth: imageFormat?.w || undefined, targetHeight: imageFormat?.h || undefined }),
@@ -1063,20 +1154,31 @@ ${transcript || '(noch leer)'}${extra.length ? '\n\n=== ZUSATZKONTEXT ===\n' + e
           referenceImagesInline: atts.map(a => ({ data: a.base64, mimeType: a.type || 'image/png' })),
         },
       })
-      if (fnErr) throw new Error(fnErr.message || 'Bildgenerierung fehlgeschlagen')
-      if (data?.error) throw new Error(data.error)
-      const visual = (data?.visuals || [])[0]
-      if (!visual) throw new Error('Kein Bild erhalten')
+      const results = await Promise.allSettled(prompts.map(genOne))
+      const visuals = []
+      let firstErr = null, notice = null
+      results.forEach((res, i) => {
+        if (res.status === 'fulfilled') {
+          const { data, error: fe } = res.value
+          if (fe) { firstErr = firstErr || (fe.message || 'Bildgenerierung fehlgeschlagen'); return }
+          if (data?.error) { firstErr = firstErr || data.error; return }
+          const v = (data?.visuals || [])[0]
+          if (v) visuals.push({ ...v, _prompt: prompts[i] })
+          if (data?.notice) notice = data.notice
+        } else { firstErr = firstErr || (res.reason?.message || String(res.reason)) }
+      })
+      if (!visuals.length) throw new Error(firstErr || 'Kein Bild erhalten')
 
-      // Bild dem Chat zuordnen
-      await linkVisualToChat(visual.id, chatIdForSend)
-      // Assistant-Bild-Nachricht persistieren (content = JSON-Marker, metadata = strukturiert)
-      const imgMeta = { type:'image', visual_id: visual.id, storage_path: visual.storage_path, prompt, edited: !!prevVisual }
-      const markerContent = JSON.stringify(imgMeta)
+      for (const v of visuals) { try { await linkVisualToChat(v.id, chatIdForSend) } catch (_e) {} }
+      const visualsMeta = visuals.map(v => ({ visual_id: v.id, storage_path: v.storage_path, prompt: v._prompt || prompt }))
+      const imgMeta = { type:'image', visuals: visualsMeta, visual_id: visuals[0].id, storage_path: visuals[0].storage_path, prompt, edited: !!prevVisual }
       try {
-        await supabase.from('content_chat_messages').insert({ chat_id: chatIdForSend, role:'assistant', content: markerContent, metadata: imgMeta })
+        await supabase.from('content_chat_messages').insert({ chat_id: chatIdForSend, role:'assistant', content: JSON.stringify(imgMeta), metadata: imgMeta })
       } catch (_e) {}
-      if (data?.notice && chatIdForSend === activeChatIdRef.current) setError(data.notice)
+      if (chatIdForSend === activeChatIdRef.current) {
+        if (firstErr && visuals.length < prompts.length) setError(`${visuals.length} von ${prompts.length} Bildern erzeugt — der Rest ist fehlgeschlagen.`)
+        else if (notice) setError(notice)
+      }
 
       loadChats()
     } catch (e) {
@@ -1322,7 +1424,7 @@ Neue Anfrage: "${p}"` },
             selectedCompanyVoiceIds={selectedCompanyVoiceIds} setSelectedCompanyVoiceIds={setSelectedCompanyVoiceIds}
             useWebSearch={useWebSearch} setUseWebSearch={setUseWebSearch} editorOpen={editorOpen} useEditorContext={useEditorContext} setUseEditorContext={setUseEditorContext}
             visualMode={visualMode} setVisualMode={setVisualMode} answerFormat={answerFormat} setAnswerFormat={setAnswerFormat}
-            imageModel={imageModel} setImageModel={setImageModel}
+            imageModel={imageModel} setImageModel={setImageModel} imageCount={imageCount} setImageCount={setImageCount}
             imageFormat={imageFormat} setImageFormat={setImageFormat}
             useBrandImages={useBrandImages} setUseBrandImages={setUseBrandImages}
             hasChatVisuals={chatVisuals.length > 0}
@@ -1394,7 +1496,7 @@ Neue Anfrage: "${p}"` },
             selectedCompanyVoiceIds={selectedCompanyVoiceIds} setSelectedCompanyVoiceIds={setSelectedCompanyVoiceIds}
             useWebSearch={useWebSearch} setUseWebSearch={setUseWebSearch} editorOpen={editorOpen} useEditorContext={useEditorContext} setUseEditorContext={setUseEditorContext}
             visualMode={visualMode} setVisualMode={setVisualMode} answerFormat={answerFormat} setAnswerFormat={setAnswerFormat}
-            imageModel={imageModel} setImageModel={setImageModel}
+            imageModel={imageModel} setImageModel={setImageModel} imageCount={imageCount} setImageCount={setImageCount}
             imageFormat={imageFormat} setImageFormat={setImageFormat}
             useBrandImages={useBrandImages} setUseBrandImages={setUseBrandImages}
             hasChatVisuals={chatVisuals.length > 0}
@@ -1741,7 +1843,7 @@ function CleanView({
   audiences, selectedAudienceId, setSelectedAudienceId,
   companyVoices = [], showCompanyPicker = false, selectedCompanyVoiceIds = [], setSelectedCompanyVoiceIds = () => {},
   useWebSearch, setUseWebSearch, editorOpen = false, useEditorContext = false, setUseEditorContext = () => {},
-  visualMode = false, setVisualMode = () => {}, answerFormat = 'auto', setAnswerFormat = () => {}, imageModel, setImageModel = () => {}, imageFormat, setImageFormat = () => {},
+  visualMode = false, setVisualMode = () => {}, answerFormat = 'auto', setAnswerFormat = () => {}, imageModel, setImageModel = () => {}, imageCount = 'auto', setImageCount = () => {}, imageFormat, setImageFormat = () => {},
   useBrandImages = true, setUseBrandImages = () => {}, hasChatVisuals = false,
   handleFiles, fileInputRef, sendMessage, navigate,
 }) {
@@ -1797,7 +1899,7 @@ function CleanView({
           selectedCompanyVoiceIds={selectedCompanyVoiceIds} setSelectedCompanyVoiceIds={setSelectedCompanyVoiceIds}
           useWebSearch={useWebSearch} setUseWebSearch={setUseWebSearch} editorOpen={editorOpen} useEditorContext={useEditorContext} setUseEditorContext={setUseEditorContext}
           visualMode={visualMode} setVisualMode={setVisualMode} answerFormat={answerFormat} setAnswerFormat={setAnswerFormat}
-          imageModel={imageModel} setImageModel={setImageModel} imageFormat={imageFormat} setImageFormat={setImageFormat}
+          imageModel={imageModel} setImageModel={setImageModel} imageCount={imageCount} setImageCount={setImageCount} imageFormat={imageFormat} setImageFormat={setImageFormat}
           useBrandImages={useBrandImages} setUseBrandImages={setUseBrandImages} hasChatVisuals={hasChatVisuals}
           handleFiles={handleFiles} fileInputRef={fileInputRef}
           sendMessage={sendMessage}
@@ -1819,7 +1921,7 @@ function ChatView({
   audiences, selectedAudienceId, setSelectedAudienceId,
   companyVoices = [], showCompanyPicker = false, selectedCompanyVoiceIds = [], setSelectedCompanyVoiceIds = () => {},
   useWebSearch, setUseWebSearch, editorOpen = false, useEditorContext = false, setUseEditorContext = () => {},
-  visualMode = false, setVisualMode = () => {}, answerFormat = 'auto', setAnswerFormat = () => {}, imageModel, setImageModel = () => {}, imageFormat, setImageFormat = () => {},
+  visualMode = false, setVisualMode = () => {}, answerFormat = 'auto', setAnswerFormat = () => {}, imageModel, setImageModel = () => {}, imageCount = 'auto', setImageCount = () => {}, imageFormat, setImageFormat = () => {},
   useBrandImages = true, setUseBrandImages = () => {}, hasChatVisuals = false,
   handleFiles, fileInputRef, sendMessage, navigate, error, hasOpenDoc = false, chatDocs = [], chatDesigns = [],
 }) {
@@ -1890,7 +1992,7 @@ function ChatView({
             selectedCompanyVoiceIds={selectedCompanyVoiceIds} setSelectedCompanyVoiceIds={setSelectedCompanyVoiceIds}
             useWebSearch={useWebSearch} setUseWebSearch={setUseWebSearch} editorOpen={editorOpen} useEditorContext={useEditorContext} setUseEditorContext={setUseEditorContext}
             visualMode={visualMode} setVisualMode={setVisualMode} answerFormat={answerFormat} setAnswerFormat={setAnswerFormat}
-            imageModel={imageModel} setImageModel={setImageModel} imageFormat={imageFormat} setImageFormat={setImageFormat}
+            imageModel={imageModel} setImageModel={setImageModel} imageCount={imageCount} setImageCount={setImageCount} imageFormat={imageFormat} setImageFormat={setImageFormat}
             useBrandImages={useBrandImages} setUseBrandImages={setUseBrandImages} hasChatVisuals={hasChatVisuals}
             handleFiles={handleFiles} fileInputRef={fileInputRef}
             sendMessage={sendMessage}
@@ -1930,7 +2032,7 @@ function ChatInput({
   audiences, selectedAudienceId, setSelectedAudienceId,
   companyVoices = [], showCompanyPicker = false, selectedCompanyVoiceIds = [], setSelectedCompanyVoiceIds = () => {},
   useWebSearch, setUseWebSearch, editorOpen = false, useEditorContext = false, setUseEditorContext = () => {},
-  visualMode = false, setVisualMode = () => {}, answerFormat = 'auto', setAnswerFormat = () => {}, imageModel = DEFAULT_IMAGE_MODEL, setImageModel = () => {},
+  visualMode = false, setVisualMode = () => {}, answerFormat = 'auto', setAnswerFormat = () => {}, imageModel = DEFAULT_IMAGE_MODEL, setImageModel = () => {}, imageCount = 'auto', setImageCount = () => {},
   imageFormat = PRESET_BY_ID[DEFAULT_PRESET_ID], setImageFormat = () => {}, useBrandImages = true, setUseBrandImages = () => {}, hasChatVisuals = false,
   handleFiles, fileInputRef, sendMessage, enabled,
 }) {
@@ -2113,6 +2215,7 @@ function ChatInput({
       {visualMode && (
         <div style={{ display:'flex', alignItems:'center', gap:6, flexWrap:'wrap' }}>
           <ModelDropdown value={imageModel} onChange={setImageModel} />
+          <CountDropdown value={imageCount} onChange={setImageCount} />
           <span title="Format / Seitenverhältnis" style={{ display:'inline-flex' }}>
             <FormatPicker value={imageFormat} onChange={setImageFormat} />
           </span>
@@ -2148,10 +2251,16 @@ function IconBtn(active) {
 // Bild-Nachricht erkennen: entweder metadata.type==='image' oder content ist ein
 // JSON-Marker {"type":"image",...}. Gibt {visual_id, storage_path, prompt} zurück.
 function parseImageMessage(msg) {
-  const meta = msg.metadata || {}
-  if (meta.type === 'image' && meta.storage_path) return { visual_id: meta.visual_id, storage_path: meta.storage_path, prompt: meta.prompt }
+  const norm = (o) => {
+    if (!o || o.type !== 'image') return null
+    if (Array.isArray(o.visuals) && o.visuals.length) return { visuals: o.visuals, prompt: o.prompt }
+    if (o.storage_path) return { visuals: [{ visual_id: o.visual_id, storage_path: o.storage_path, prompt: o.prompt }], prompt: o.prompt }
+    return null
+  }
+  const r = norm(msg.metadata || {})
+  if (r) return r
   if (typeof msg.content === 'string' && msg.content.trim().startsWith('{')) {
-    try { const j = JSON.parse(msg.content); if (j && j.type === 'image' && j.storage_path) return { visual_id: j.visual_id, storage_path: j.storage_path, prompt: j.prompt } } catch (_e) {}
+    try { const r2 = norm(JSON.parse(msg.content)); if (r2) return r2 } catch (_e) {}
   }
   return null
 }
@@ -2231,7 +2340,52 @@ function ModelDropdown({ value, onChange }) {
   )
 }
 
-function ImageBubble({ meta, chatDesigns = [], onOpenInDesigner, onDownloadVisual, onImageToPost, loadExistingPosts, signedVisualUrlFn }) {
+const IMAGE_COUNT_OPTS = [
+  { v:'auto', label:'Auto', hint:'KI entscheidet die Anzahl (achtet auf deinen Prompt: „Carousel", „3 Bilder"…)' },
+  { v:1, label:'1 Bild',  hint:'Ein einzelnes Bild' },
+  { v:2, label:'2 Bilder', hint:'Zwei Bilder (Varianten oder verschiedene — je nach Prompt)' },
+  { v:3, label:'3 Bilder', hint:'Drei Bilder' },
+  { v:4, label:'4 Bilder', hint:'Vier Bilder' },
+]
+function CountDropdown({ value = 'auto', onChange = () => {} }) {
+  const [open, setOpen] = useState(false)
+  const ref = useRef(null)
+  useEffect(() => {
+    if (!open) return
+    const onDoc = (e) => { if (ref.current && !ref.current.contains(e.target)) setOpen(false) }
+    document.addEventListener('mousedown', onDoc)
+    return () => document.removeEventListener('mousedown', onDoc)
+  }, [open])
+  const cur = IMAGE_COUNT_OPTS.find(o => o.v === value) || IMAGE_COUNT_OPTS[0]
+  return (
+    <div ref={ref} style={{ position:'relative', display:'inline-block' }}>
+      <Tip label="Anzahl der Bilder"><button type="button" onClick={() => setOpen(o => !o)}
+        style={{ height:34, padding:'0 11px', borderRadius:9, boxSizing:'border-box', border:'1.5px solid var(--border)', background:'#fff', color:'var(--text-primary)', fontSize:12.5, fontWeight:600, lineHeight:1, cursor:'pointer', whiteSpace:'nowrap', display:'inline-flex', alignItems:'center', gap:6, fontFamily:'inherit', flexShrink:0 }}>
+        <Layers size={14} strokeWidth={1.9} style={{ opacity:0.7 }}/>
+        <span>{value === 'auto' ? 'Anzahl: Auto' : cur.label}</span>
+        <ChevronDown size={14} strokeWidth={2} style={{ opacity:0.5, marginLeft:2, flexShrink:0 }}/>
+      </button></Tip>
+      {open && (
+        <div style={{ position:'absolute', zIndex:60, bottom:'calc(100% + 6px)', left:0, minWidth:230, background:'#fff', border:'1px solid var(--border)', borderRadius:10, boxShadow:'0 12px 32px rgba(15,23,42,0.16)', padding:6 }}>
+          {IMAGE_COUNT_OPTS.map(o => {
+            const active = o.v === value
+            return (
+              <button key={String(o.v)} type="button" onClick={() => { onChange(o.v); setOpen(false) }}
+                style={{ display:'flex', flexDirection:'column', gap:1, width:'100%', textAlign:'left', padding:'7px 10px', borderRadius:7, border:'none', background: active ? 'rgba(49,90,231,0.08)' : 'transparent', cursor:'pointer', fontFamily:'inherit' }}
+                onMouseEnter={e => { if (!active) e.currentTarget.style.background = 'var(--page-bg,#F2F4F8)' }}
+                onMouseLeave={e => { if (!active) e.currentTarget.style.background = 'transparent' }}>
+                <span style={{ fontSize:13, fontWeight:700, color: active ? P : 'var(--text-primary)' }}>{o.label}</span>
+                <span style={{ fontSize:11, color:'var(--text-muted)' }}>{o.hint}</span>
+              </button>
+            )
+          })}
+        </div>
+      )}
+    </div>
+  )
+}
+
+function SingleImage({ item, chatDesigns = [], onOpenInDesigner, onDownloadVisual, onImageToPost, loadExistingPosts, signedVisualUrlFn, compact = false }) {
   const [url, setUrl] = useState(null)
   const [designMenuOpen, setDesignMenuOpen] = useState(false)
   const [err, setErr] = useState(false)
@@ -2245,11 +2399,11 @@ function ImageBubble({ meta, chatDesigns = [], onOpenInDesigner, onDownloadVisua
     let cancelled = false
     setUrl(null); setErr(false)
     ;(async () => {
-      try { const u = signedVisualUrlFn ? await signedVisualUrlFn(meta.storage_path, 3600) : null; if (!cancelled) { if (u) setUrl(u); else setErr(true) } }
+      try { const u = signedVisualUrlFn ? await signedVisualUrlFn(item.storage_path, 3600) : null; if (!cancelled) { if (u) setUrl(u); else setErr(true) } }
       catch { if (!cancelled) setErr(true) }
     })()
     return () => { cancelled = true }
-  }, [meta.storage_path])
+  }, [item.storage_path])
   async function openPostMenu() {
     if (postMenuOpen) { setPostMenuOpen(false); return }
     setPostMenuOpen(true)
@@ -2260,29 +2414,29 @@ function ImageBubble({ meta, chatDesigns = [], onOpenInDesigner, onDownloadVisua
   }
   async function pick(postId) {
     setPostMenuOpen(false); setBusy(true)
-    const ok = onImageToPost ? await onImageToPost(meta, postId) : false
+    const ok = onImageToPost ? await onImageToPost(item, postId) : false
     setBusy(false)
     if (ok) { setDone(true); setTimeout(() => setDone(false), 2600) }
   }
   return (
     <div style={{ display:'flex', flexDirection:'column', alignItems:'flex-start', gap:8 }}>
-      <div style={{ padding:8, background:'#fff', border:'1px solid var(--border)', borderRadius:12, maxWidth:360 }}>
+      <div style={{ padding:8, background:'#fff', border:'1px solid var(--border)', borderRadius:12, maxWidth: compact ? 300 : 360 }}>
         {err ? (
           <div style={{ padding:'30px 24px', fontSize:12, color:'var(--text-muted)' }}>Bild konnte nicht geladen werden.</div>
         ) : url ? (
-          <img src={url} alt={meta.prompt || 'Generiertes Bild'} onClick={() => setLightbox(true)} style={{ display:'block', maxWidth:'100%', borderRadius:8, cursor:'zoom-in' }} />
+          <img src={url} alt={item.prompt || 'Generiertes Bild'} onClick={() => setLightbox(true)} style={{ display:'block', maxWidth:'100%', borderRadius:8, cursor:'zoom-in' }} />
         ) : (
           <div style={{ width:240, height:240, display:'flex', alignItems:'center', justifyContent:'center', color:'var(--text-muted)' }}><Loader2 size={18} className='lk-spin'/></div>
         )}
       </div>
       {lightbox && url && (
         <div onClick={() => setLightbox(false)} style={{ position:'fixed', inset:0, background:'rgba(0,0,0,0.82)', zIndex:1000, display:'flex', alignItems:'center', justifyContent:'center', padding:24, cursor:'zoom-out' }}>
-          <img src={url} alt={meta.prompt || 'Bild'} style={{ maxWidth:'95vw', maxHeight:'95vh', borderRadius:8, boxShadow:'0 20px 60px rgba(0,0,0,0.5)' }} />
+          <img src={url} alt={item.prompt || 'Bild'} style={{ maxWidth:'95vw', maxHeight:'95vh', borderRadius:8, boxShadow:'0 20px 60px rgba(0,0,0,0.5)' }} />
         </div>
       )}
       <div style={{ display:'flex', gap:8, flexWrap:'wrap', alignItems:'center' }}>
         <div style={{ position:'relative' }}>
-          <Tip label="In den Designer öffnen"><button onClick={() => { if ((chatDesigns||[]).length) setDesignMenuOpen(o => !o); else onOpenInDesigner && onOpenInDesigner(meta) }}
+          <Tip label="In den Designer öffnen"><button onClick={() => { if ((chatDesigns||[]).length) setDesignMenuOpen(o => !o); else onOpenInDesigner && onOpenInDesigner(item) }}
             style={{ width:34, height:34, padding:0, justifyContent:'center', borderRadius:8, border:'none', background:P, color:'#fff', cursor:'pointer', display:'inline-flex', alignItems:'center' }}>
             <Brush size={15} strokeWidth={1.9}/>
           </button></Tip>
@@ -2290,11 +2444,11 @@ function ImageBubble({ meta, chatDesigns = [], onOpenInDesigner, onDownloadVisua
             <>
               <div onClick={() => setDesignMenuOpen(false)} style={{ position:'fixed', inset:0, zIndex:80 }}/>
               <div style={{ position:'absolute', bottom:'calc(100% + 6px)', left:0, zIndex:81, background:'#fff', border:'1px solid var(--border)', borderRadius:10, boxShadow:'0 10px 30px rgba(0,0,0,.12)', minWidth:240, maxHeight:320, overflowY:'auto', padding:6 }}>
-                <button onClick={() => { onOpenInDesigner && onOpenInDesigner(meta); setDesignMenuOpen(false) }} style={{ ...ibMenuItem, color:P, fontWeight:700 }}>+ Neues Design</button>
+                <button onClick={() => { onOpenInDesigner && onOpenInDesigner(item); setDesignMenuOpen(false) }} style={{ ...ibMenuItem, color:P, fontWeight:700 }}>+ Neues Design</button>
                 {(chatDesigns||[]).length > 0 && <div style={{ height:1, background:'var(--border)', margin:'4px 0' }}/>}
                 {(chatDesigns||[]).length > 0 && <div style={{ padding:'6px 11px', fontSize:10, fontWeight:700, color:'var(--text-muted)', textTransform:'uppercase', letterSpacing:'0.04em' }}>In bestehendes Design einfügen</div>}
                 {(chatDesigns||[]).map(d => (
-                  <button key={d.id} onClick={() => { onOpenInDesigner && onOpenInDesigner(meta, d.id); setDesignMenuOpen(false) }} title={d.title || 'Design'}
+                  <button key={d.id} onClick={() => { onOpenInDesigner && onOpenInDesigner(item, d.id); setDesignMenuOpen(false) }} title={d.title || 'Design'}
                     style={{ ...ibMenuItem, display:'block', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>
                     {d.title || 'Design'}
                   </button>
@@ -2323,10 +2477,29 @@ function ImageBubble({ meta, chatDesigns = [], onOpenInDesigner, onDownloadVisua
             </div>
           )}
         </div>
-        <Tip label="Herunterladen"><button onClick={() => onDownloadVisual && onDownloadVisual(meta)}
+        <Tip label="Herunterladen"><button onClick={() => onDownloadVisual && onDownloadVisual(item)}
           style={{ width:34, height:34, padding:0, justifyContent:'center', borderRadius:8, border:'1.5px solid '+P, background:'rgba(49,90,231,0.06)', color:P, cursor:'pointer', display:'inline-flex', alignItems:'center' }}>
           <Download size={15} strokeWidth={1.9}/>
         </button></Tip>
+      </div>
+    </div>
+  )
+}
+
+
+function ImageBubble({ meta, chatDesigns = [], onOpenInDesigner, onDownloadVisual, onImageToPost, loadExistingPosts, signedVisualUrlFn }) {
+  const items = (meta && Array.isArray(meta.visuals) && meta.visuals.length) ? meta.visuals : [meta]
+  const shared = { chatDesigns, onOpenInDesigner, onDownloadVisual, onImageToPost, loadExistingPosts, signedVisualUrlFn }
+  if (items.length <= 1) return <SingleImage item={items[0]} {...shared} />
+  return (
+    <div style={{ display:'flex', flexDirection:'column', alignItems:'flex-start', gap:8, maxWidth:'100%' }}>
+      <div style={{ fontSize:11, fontWeight:700, color:'var(--text-muted)', textTransform:'uppercase', letterSpacing:'0.05em' }}>
+        {items.length} Bilder
+      </div>
+      <div style={{ display:'flex', flexWrap:'wrap', gap:14, alignItems:'flex-start' }}>
+        {items.map((it, i) => (
+          <SingleImage key={it.visual_id || it.storage_path || i} item={it} compact {...shared} />
+        ))}
       </div>
     </div>
   )
@@ -2373,62 +2546,10 @@ function MessageBubble({ msg, onAttachToPost, loadExistingPosts, onInsertToDoc, 
         border: isUser ? 'none' : '1px solid var(--border)',
         fontSize:14, lineHeight:1.6, wordBreak:'break-word',
       }}>
-        {isUser ? <div style={{ whiteSpace:'pre-wrap' }}>{msg.content}</div> : renderMessageContent(msg.content)}
+        {isUser ? <div style={{ whiteSpace:'pre-wrap' }}>{msg.content}</div> : renderMessageContent(msg.content, { onInsertToDoc, onAttachToPost, loadExistingPosts, chatDocs, hasOpenDoc })}
         {!isUser && sources?.length > 0 && <SourcesList sources={sources} />}
       </div>
-      {!isUser && beitragstext && (
-        <div style={{ display:'flex', gap:8, flexWrap:'wrap' }}>
-          <div style={{ position:'relative' }}>
-            <Tip label="Ins Dokument"><button data-tour-id="cs-insert-doc" onClick={() => { if ((chatDocs||[]).length || hasOpenDoc) setMenuOpen(o => !o); else onInsertToDoc && onInsertToDoc(beitragstext, 'new') }}
-              style={{ width:34, height:34, padding:0, justifyContent:'center', borderRadius:8, border:'none', background:P, color:'#fff', cursor:'pointer', display:'inline-flex', alignItems:'center' }}>
-              <FileText size={15} strokeWidth={1.9}/>
-            </button></Tip>
-            {menuOpen && (
-              <>
-                <div onClick={() => setMenuOpen(false)} style={{ position:'fixed', inset:0, zIndex:80 }}/>
-                <div style={{ position:'absolute', bottom:'calc(100% + 6px)', left:0, zIndex:81, background:'#fff', border:'1px solid var(--border)', borderRadius:10, boxShadow:'0 10px 30px rgba(0,0,0,.12)', minWidth:240, maxHeight:320, overflowY:'auto', padding:6 }}>
-                  <button onClick={() => { onInsertToDoc(beitragstext, 'new'); setMenuOpen(false) }} style={{ ...ibMenuItem, color:P, fontWeight:700 }}>+ Als neues Dokument</button>
-                  {(chatDocs||[]).length > 0 && <div style={{ height:1, background:'var(--border)', margin:'4px 0' }}/>}
-                  {(chatDocs||[]).length > 0 && <div style={{ padding:'6px 11px', fontSize:10, fontWeight:700, color:'var(--text-muted)', textTransform:'uppercase', letterSpacing:'0.04em' }}>In bestehendes Dokument</div>}
-                  {(chatDocs||[]).map(d => (
-                    <button key={d.id} onClick={() => { onInsertToDoc(beitragstext, 'existing', d.id); setMenuOpen(false) }} title={d.title || 'Dokument'}
-                      style={{ ...ibMenuItem, display:'block', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>
-                      {d.title || 'Unbenanntes Dokument'}
-                    </button>
-                  ))}
-                </div>
-              </>
-            )}
-          </div>
-          <div data-tour-id="cs-attach-post" style={{ position:'relative' }}>
-            <Tip label="In Beitrag übernehmen"><button onClick={async () => {
-                const open = !postMenuOpen; setPostMenuOpen(open)
-                if (open && posts === null && loadExistingPosts) { setPostsLoading(true); const r = await loadExistingPosts(); setPosts(r || []); setPostsLoading(false) }
-              }}
-              style={{ width:34, height:34, padding:0, justifyContent:'center', borderRadius:8, border:'1.5px solid ' + P, background:'rgba(49,90,231,0.06)', color:P, cursor:'pointer', display:'inline-flex', alignItems:'center' }}>
-              <CalendarPlus size={15} strokeWidth={1.9}/>
-            </button></Tip>
-            {postMenuOpen && (
-              <>
-                <div onClick={() => setPostMenuOpen(false)} style={{ position:'fixed', inset:0, zIndex:80 }}/>
-                <div style={{ position:'absolute', bottom:'calc(100% + 6px)', left:0, zIndex:81, background:'#fff', border:'1px solid var(--border)', borderRadius:10, boxShadow:'0 10px 30px rgba(0,0,0,.12)', minWidth:270, maxHeight:340, overflowY:'auto', padding:6 }}>
-                  <button onClick={() => { onAttachToPost(beitragstext, '__new__'); setPostMenuOpen(false) }} style={ibMenuItem}>+ Als neuen Beitrag anlegen</button>
-                  <div style={{ height:1, background:'var(--border)', margin:'4px 0' }}/>
-                  <div style={{ padding:'6px 11px', fontSize:10, fontWeight:700, color:'var(--text-muted)', textTransform:'uppercase', letterSpacing:'0.04em' }}>Zu bestehendem Beitrag</div>
-                  {postsLoading && <div style={{ padding:'6px 11px', fontSize:12, color:'var(--text-muted)' }}>Lädt…</div>}
-                  {!postsLoading && posts && posts.length === 0 && <div style={{ padding:'6px 11px', fontSize:12, color:'var(--text-muted)' }}>Noch keine Beiträge vorhanden</div>}
-                  {!postsLoading && posts && posts.map(pp => (
-                    <button key={pp.id} onClick={() => { onAttachToPost(beitragstext, pp.id); setPostMenuOpen(false) }} style={{ ...ibMenuItem, display:'block', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }} title={pp.title || '(ohne Titel)'}>
-                      {pp.title || '(ohne Titel)'}
-                    </button>
-                  ))}
-                </div>
-              </>
-            )}
-          </div>
         </div>
-      )}
-    </div>
   )
 }
 
