@@ -1131,7 +1131,7 @@ ${transcript || '(noch leer)'}${extra.length ? '\n\n=== ZUSATZKONTEXT ===\n' + e
     const { model, quality } = splitModelValue(imageModel)
 
     try {
-      const genOne = (pr) => supabase.functions.invoke('generate-image', {
+      const invokeGen = (pr) => supabase.functions.invoke('generate-image', {
         body: {
           prompt: pr,
           model, quality,
@@ -1147,6 +1147,13 @@ ${transcript || '(noch leer)'}${extra.length ? '\n\n=== ZUSATZKONTEXT ===\n' + e
           referenceImagesInline: atts.map(a => ({ data: a.base64, mimeType: a.type || 'image/png' })),
         },
       })
+      // Transiente Edge-Abbrüche (Container-Neustart bei parallelem Deploy, Netzwerk-Blip →
+      // „non-2xx status code") sind kein echter Generierungsfehler: EIN automatischer Retry.
+      const genOne = async (pr) => {
+        let r = await invokeGen(pr)
+        if (r && r.error) { await new Promise(res => setTimeout(res, 2500)); r = await invokeGen(pr) }
+        return r
+      }
       const results = await Promise.allSettled(prompts.map(genOne))
       const visuals = []
       let firstErr = null, notice = null
