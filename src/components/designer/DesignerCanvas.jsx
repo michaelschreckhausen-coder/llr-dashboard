@@ -3297,7 +3297,7 @@ Ignoriere reine Deko/Muster ohne Text. Antworte AUSSCHLIESSLICH mit JSON, ohne E
         const fw = Math.max(0.03, Math.min(1, Number(it.w) || 0.3)), fh = Math.max(0.01, Math.min(1, Number(it.h) || 0.1))
         const fam = matchFont(it.font, it.category); fams.add(fam)
         const numLines = Math.max(1, t.split(/\n/).length)
-        const fontSize = Math.max(8, Math.round((fh * ph * 0.82) / numLines))
+        const fontSize = Math.max(8, Math.round((fh * ph * 0.72) / numLines))
         const weightBold = String(it.weight || '').toLowerCase() === 'bold'
         const fontStyle = [weightBold ? 'bold' : '', it.italic ? 'italic' : ''].filter(Boolean).join(' ') || 'normal'
         newObjs.push({ id: nextId(), type: 'text', text: t, x: Math.round(px + fx * pw), y: Math.round(py + fy * ph), width: Math.max(40, Math.round(fw * pw * 1.08)), fontSize, fontFamily: fam, fill: /^#[0-9a-f]{6}$/i.test(String(it.color || '')) ? it.color : '#111111', fontStyle, align: 'left', rotation: 0, opacity: 1 })
