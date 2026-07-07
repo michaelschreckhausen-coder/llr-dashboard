@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState, useCallback, forwardRef, useImperativeHandle } from 'react'
+import React, { useEffect, useLayoutEffect, useRef, useState, useCallback, forwardRef, useImperativeHandle } from 'react'
 import { useEditor, EditorContent } from '@tiptap/react'
 import StarterKit from '@tiptap/starter-kit'
 import Highlight from '@tiptap/extension-highlight'
@@ -141,6 +141,8 @@ const DocumentEditorPane = forwardRef(function DocumentEditorPane({
   const loadedRef = useRef(false)
   const demoRef = useRef(false)   // true = Tour-Demo-Inhalt, NICHT speichern
   const currentDocId = useRef(docId || null)
+  const popRef = useRef(null)
+  const [popH, setPopH] = useState(0)
 
   function updateBubble(ed) {
     if (!ed) return
@@ -406,16 +408,46 @@ const DocumentEditorPane = forwardRef(function DocumentEditorPane({
     setExportOpen(false)
   }
   // ── Popover-Positionierung ────────────────────────────────────────────────
-  const placeBelow = bubble ? bubble.top < 380 : false
+  const VH = typeof window!=='undefined' ? window.innerHeight : 800
+  const MARGIN = 12
+  const estH = popH || 240                       // gemessene Höhe, sonst Schätzung
+  const capH = Math.min(estH, VH - 2*MARGIN)      // nie höher als Viewport
+  const spaceAbove = bubble ? bubble.top : 0
+  const spaceBelow = bubble ? VH - bubble.bottom : 0
+  // bevorzugt oberhalb der Auswahl, sonst unterhalb, sonst wo mehr Platz ist
+  const placeBelow = bubble ? (spaceAbove < capH + MARGIN + 10 && spaceBelow >= spaceAbove) : false
   const popLeft = bubble ? clamp(bubble.left, 220, (typeof window!=='undefined'?window.innerWidth:1200) - 220) : 0
+  // top so berechnen, dass das GANZE Popover im Viewport bleibt (translateY beachtet)
+  let popTop = 0
+  if (bubble) {
+    const rawTop = placeBelow ? bubble.bottom + 10 : bubble.top - 10
+    if (placeBelow) {
+      // Oberkante bei rawTop → clampen [MARGIN, VH - capH - MARGIN]
+      popTop = clamp(rawTop, MARGIN, VH - capH - MARGIN)
+    } else {
+      // Unterkante bei rawTop (translateY -100%) → clampen [capH + MARGIN, VH - MARGIN]
+      popTop = clamp(rawTop, capH + MARGIN, VH - MARGIN)
+    }
+  }
   const popStyle = bubble ? {
     position:'fixed', left: popLeft, zIndex:120,
-    top: placeBelow ? bubble.bottom + 10 : bubble.top - 10,
+    top: popTop,
     transform: placeBelow ? 'translate(-50%, 0)' : 'translate(-50%, -100%)',
     width:380, maxWidth:'92vw',
+    maxHeight: VH - 2*MARGIN, overflowY:'auto',
     background:'#fff', border:'1px solid var(--border,#E6E9EF)', borderRadius:14,
     boxShadow:'0 16px 40px rgba(16,24,40,0.18), 0 2px 8px rgba(16,24,40,0.06)', padding:10,
   } : {}
+
+  // Popover-Höhe messen → für Viewport-Klemmung (verhindert abgeschnittene KI-Actions bei großer Auswahl)
+  useLayoutEffect(() => {
+    if (bubble && popRef.current) {
+      const h = popRef.current.offsetHeight
+      if (h && Math.abs(h - popH) > 1) setPopH(h)
+    } else if (!bubble && popH !== 0) {
+      setPopH(0)
+    }
+  })
 
   return (
     <div className="lk-docpane" style={{ display:'flex', flexDirection:'column', height:'100%', minHeight:0, position:'relative', background:'var(--page-bg, #F7F8FA)' }}>
@@ -528,7 +560,7 @@ const DocumentEditorPane = forwardRef(function DocumentEditorPane({
       {bubble && (
         <>
           <div onMouseDown={(e) => { e.preventDefault(); closeBubble() }} style={{ position:'fixed', inset:0, zIndex:49 }}/>
-          <div onMouseDown={e => { if (e.target.tagName !== 'INPUT' && e.target.tagName !== 'TEXTAREA') e.preventDefault() }} style={popStyle}>
+          <div ref={popRef} onMouseDown={e => { if (e.target.tagName !== 'INPUT' && e.target.tagName !== 'TEXTAREA') e.preventDefault() }} style={popStyle}>
             {aiBusy ? (
               <div style={{ color:'var(--text-primary)', fontSize:13, padding:'10px 12px', display:'flex', alignItems:'center', gap:8 }}>
                 <Sparkles size={14} className='lk-spin' style={{ color:P }}/> KI arbeitet…
