@@ -3643,66 +3643,39 @@ Antworte AUSSCHLIESSLICH mit JSON: {"ok":<bool>,"issues":["..."],"operations":[.
           baseEl = await loadHtmlImage(erasedUrl)
         } catch (_) { baseEl = origEl }
       }
-      // Moderater Kontext-Rand: genug Umgebung für passende Beleuchtung/Perspektive, aber
-      // NICHT so groß, dass das neue Objekt winzig in der Mitte eines riesigen Ausschnitts
-      // gerendert wird (→ blass/zerrissen). Das Objekt soll den Ausschnitt gut ausfüllen.
-      // Asymmetrischer Ausschnitt: horizontal ENG an der Auswahl (verhindert, dass seitliche
-      // Nachbarobjekte verändert werden) — vertikal großzügig nach OBEN, da Objekte auf der
-      // Fläche stehen und nach oben ragen (so wird ein hohes Objekt wie ein Glas NICHT oben
-      // abgeschnitten). Unten nur wenig (für den Schatten).
-      // Mehr horizontaler Kontext, damit das Modell das Objekt in NATÜRLICHER Breite/
-      // Proportion rendert (nicht in einen schmalen Ausschnitt quetscht). Seitliche
-      // Nachbarobjekte sind ungefährlich: das Composite unten erkennt das Objekt als
-      // zusammenhängende Fläche und ignoriert alles, was damit nicht verbunden ist.
-      const padX = Math.round(bbox.w * 0.5 + Math.min(W, H) * 0.02)
-      const padUp = Math.round(bbox.h * 0.7 + Math.min(W, H) * 0.03)
-      const padDown = Math.round(bbox.h * 0.25 + Math.min(W, H) * 0.02)
-      const bx = Math.max(0, bbox.x - padX)
-      const by = Math.max(0, bbox.y - padUp)
-      const bw = Math.min(W - bx, bbox.w + padX * 2)
-      const bh = Math.min(H - by, bbox.h + padUp + padDown)
-      // 3) Crop ausschneiden (für Modell-Effizienz auf max ~1280px Kante begrenzen)
-      const MAXC = 1280
-      const cropScale = Math.min(1, MAXC / Math.max(bw, bh))
-      const cw = Math.max(8, Math.round(bw * cropScale))
-      const ch = Math.max(8, Math.round(bh * cropScale))
-      const cropCanvas = document.createElement('canvas')
-      cropCanvas.width = cw; cropCanvas.height = ch
-      cropCanvas.getContext('2d').drawImage(baseEl, bx, by, bw, bh, 0, 0, cw, ch)
-      const cropB64 = cropCanvas.toDataURL('image/png').split(',')[1]
-      // 4) Eng gefasster Prompt (Photoshop-Stil: nur ändern was nötig, Rest erhalten)
-      const prompt = isHeal
-        ? 'Entferne das vom Nutzer gemeinte Objekt/Element in diesem Bildausschnitt vollständig und rekonstruiere realistisch den Hintergrund, der dahinter liegen würde. Übernimm Textur, Muster, Farben, Beleuchtung, Schatten und Perspektive exakt aus der direkten Umgebung, sodass keinerlei Spur des entfernten Objekts bleibt. Ändere sonst nichts. Fotorealistisch und nahtlos.'
-        : `Dies ist ein Bildausschnitt. Bearbeite AUSSCHLIESSLICH den zentralen Bereich (die mittleren rund zwei Drittel) gemäß folgender Anweisung: ${rawPrompt.trim()}. Der Rand des Ausschnitts dient nur als Umgebung/Referenz und bleibt unverändert.\n- Wenn ein neues Objekt gewünscht ist: füge NUR dieses eine Objekt ein — seine BASIS/Unterkante steht GENAU auf Höhe der UNTEREN Kante des Ausschnitts (auf der vorhandenen Oberfläche), und von dort ragt es nach oben. Es schwebt NICHT und sitzt weder zu hoch noch zu tief. Fotorealistisch, klar und deutlich sichtbar, in NATÜRLICHER, unverzerrter Proportion (auf keinen Fall gestaucht, gestreckt oder schmalgedrückt — echtes Seitenverhältnis des Objekts), in realistischer Größe zur Szene, mit eigenem natürlichem Schatten. Das Objekt muss VOLLSTÄNDIG im Ausschnitt liegen — oben und seitlich mit etwas Abstand, an keiner Seite abgeschnitten. Falls dort schon ein Objekt ist, ersetze es vollständig.\n- Wenn eine Anpassung/Korrektur gewünscht ist (z.B. eine Fläche vereinheitlichen, einen Übergang glätten): führe genau diese aus und rekonstruiere den Bereich nahtlos und texturtreu passend zur direkten Umgebung, OHNE ein neues Objekt zu erfinden.\nPasse Beleuchtung, Perspektive, Textur und Farbstimmung exakt an die Umgebung an, sodass der Übergang unsichtbar ist. Keine verwaschenen Flächen, keine sichtbaren Kanten, keine Kopien.`
-      // 5) Nur den Crop ans Modell (inline) — kein Vollbild, kein BV-Ref
-      const aiVisual = await callGenerateImage(prompt, { inlineRefs: [{ mimeType: 'image/png', data: cropB64 }] })
-      const aiCropEl = await loadImageEl(aiVisual.storage_path)
-      // 6) Editierten Crop exakt an die Box-Position in ein Voll-Canvas setzen
-      const placed = document.createElement('canvas')
-      placed.width = W; placed.height = H
-      placed.getContext('2d').drawImage(
-        aiCropEl, 0, 0, aiCropEl.naturalWidth || cw, aiCropEl.naturalHeight || ch, bx, by, bw, bh
-      )
-      // 7) Ergebnis übernehmen. WICHTIG bei „Bereich ändern": das neue Objekt darf
-      //    NICHT auf die alte Objekt-Silhouette geclippt werden (sonst behält z.B. eine
-      //    Kerze die Pflanzen-Form). Daher rechteckig + weich auslaufend über den
-      //    markierten Bereich blenden. (Heal bleibt masken-genau, falls je genutzt.)
       let resultUrl
       if (isHeal) {
+        // Heal (Objekt entfernen im Ausschnitt): großzügiger Kontext-Crop, generativ
+        // rekonstruieren, masken-genau zurückblenden.
+        const padX = Math.round(bbox.w * 0.5 + Math.min(W, H) * 0.02)
+        const padUp = Math.round(bbox.h * 0.55 + Math.min(W, H) * 0.03)
+        const padDown = Math.round(bbox.h * 0.25 + Math.min(W, H) * 0.02)
+        const bx = Math.max(0, bbox.x - padX)
+        const by = Math.max(0, bbox.y - padUp)
+        const bw = Math.min(W - bx, bbox.w + padX * 2)
+        const bh = Math.min(H - by, bbox.h + padUp + padDown)
+        const MAXC = 1280
+        const cropScale = Math.min(1, MAXC / Math.max(bw, bh))
+        const cw = Math.max(8, Math.round(bw * cropScale))
+        const ch = Math.max(8, Math.round(bh * cropScale))
+        const cropCanvas = document.createElement('canvas')
+        cropCanvas.width = cw; cropCanvas.height = ch
+        cropCanvas.getContext('2d').drawImage(baseEl, bx, by, bw, bh, 0, 0, cw, ch)
+        const cropB64 = cropCanvas.toDataURL('image/png').split(',')[1]
+        const healPrompt = 'Entferne das vom Nutzer gemeinte Objekt/Element in diesem Bildausschnitt vollständig und rekonstruiere realistisch den Hintergrund, der dahinter liegen würde. Übernimm Textur, Muster, Farben, Beleuchtung, Schatten und Perspektive exakt aus der direkten Umgebung, sodass keinerlei Spur des entfernten Objekts bleibt. Ändere sonst nichts. Fotorealistisch und nahtlos.'
+        const aiVisual = await callGenerateImage(healPrompt, { inlineRefs: [{ mimeType: 'image/png', data: cropB64 }] })
+        const aiCropEl = await loadImageEl(aiVisual.storage_path)
+        const placed = document.createElement('canvas')
+        placed.width = W; placed.height = H
+        placed.getContext('2d').drawImage(aiCropEl, 0, 0, aiCropEl.naturalWidth || cw, aiCropEl.naturalHeight || ch, bx, by, bw, bh)
         const blob = await compositeMaskedResult(origEl, placed, Math.max(2, Math.round(Math.min(W, H) * 0.008)))
         resultUrl = await blobToDataUrl(blob)
       } else {
-        // WICHTIG: Das Modell bekommt zwar den großen Kontext-Crop (bx/by/bw/bh) als
-        //   Vorlage, aber zurückgeschrieben wird NUR die tatsächliche Nutzer-Auswahl
-        //   (bbox) + ein kleiner Rand. Sonst überblendet der breite Kontext-Rand
-        //   benachbarte Objekte (z.B. wird ein Sandhwich links halb durchsichtig, wenn
-        //   man rechts daneben ein Glas einfügt). So bleibt alles außerhalb der Auswahl 1:1.
-        // Objekt-genau zusammensetzen: nur das tatsächlich hinzugekommene Objekt (+Schatten)
-        // wird übernommen. Kein Abschneiden an einer Box-Kante, Nachbarn/Tisch bleiben 1:1.
-        // Photoshop-Prinzip: NUR die Nutzer-Auswahl (bbox) wird verändert — streng darauf
-        //   begrenzt und weich eingeblendet. Alles ausserhalb bleibt garantiert 1:1 erhalten,
-        //   so kann NIE etwas ausserhalb der Auswahl verändert werden.
-        resultUrl = compositeConnectedObject(baseEl, placed, bbox, bx, by, bw, bh, W, H)
+        // „Bereich ändern": Objekt generieren, per Matting (BiRefNet, self-hosted) sauber
+        // FREISTELLEN und als Cutout mit ECHTER Proportion auf das UNVERÄNDERTE Bild setzen.
+        // Der Hintergrund wird NIE neu gemalt → kein Drift („halbes Bild verändert"), keine
+        // sichtbare Naht, keine Stauchung (gleichmäßige Skalierung), Nachbarn bleiben 1:1.
+        resultUrl = await placeObjectByMatte(baseEl, bbox, rawPrompt.trim(), W, H)
       }
       await applyResultDirect(resultUrl, 'mask')   // direkt ins Bild (rückgängig via Undo)
     } catch (e) {
@@ -3710,6 +3683,121 @@ Antworte AUSSCHLIESSLICH mit JSON: {"ok":<bool>,"issues":["..."],"operations":[.
     } finally {
       setAiBusy(false)
     }
+  }
+
+  // Fügt ein neues Objekt in die Auswahl ein, ohne den Hintergrund neu zu malen:
+  // (1) Objekt in einem quadratischen Kontext-Ausschnitt generieren (neutrales Seiten-
+  // verhältnis → natürliche Proportion), (2) per Matting (BiRefNet, self-hosted) sauber
+  // freistellen (Cutout mit transparentem Hintergrund), (3) die mit der Auswahl verbundene
+  // Objekt-Komponente isolieren (Nachbarn fallen raus), (4) in ECHTER Proportion (gleich-
+  // mäßig skaliert) mit der Unterkante auf den Auswahl-Boden aufs UNVERÄNDERTE Bild setzen.
+  // → kein Drift, keine Naht, kein Stauchen, Nachbarobjekte 1:1.
+  async function placeObjectByMatte(baseEl, bbox, rawPrompt, W, H) {
+    const mk = (w, h) => { const c = document.createElement('canvas'); c.width = w; c.height = h; return c }
+    const cx = bbox.x + bbox.w / 2
+    const side = Math.round(Math.max(bbox.w, bbox.h) * 2.2 + Math.min(W, H) * 0.04)
+    const cropBottom = Math.min(H, bbox.y + bbox.h + Math.round(side * 0.12))
+    const by2 = Math.max(0, cropBottom - side)
+    const bx2 = Math.max(0, Math.round(cx - side / 2))
+    const bw2 = Math.min(W - bx2, side)
+    const bh2 = Math.min(H - by2, side)
+    const cs = Math.min(1, 1024 / Math.max(bw2, bh2))
+    const cw = Math.max(8, Math.round(bw2 * cs))
+    const ch = Math.max(8, Math.round(bh2 * cs))
+    const crop = mk(cw, ch)
+    crop.getContext('2d').drawImage(baseEl, bx2, by2, bw2, bh2, 0, 0, cw, ch)
+    const cropB64 = crop.toDataURL('image/png').split(',')[1]
+    const prompt = `Dies ist ein quadratischer Bildausschnitt einer realen Szene. Füge GENAU EIN neues Objekt hinzu gemäß dieser Anweisung: ${rawPrompt}. Das Objekt steht mittig, mit seiner Unterkante etwa auf Höhe der vorhandenen Standfläche, vollständig sichtbar und mit deutlichem Abstand zu allen vier Rändern, in NATÜRLICHER, unverzerrter Proportion (echtes Seitenverhältnis, auf keinen Fall gestaucht, gestreckt oder schmalgedrückt), fotorealistisch, klar erkennbar und gut vom Hintergrund abhebbar, mit zur Szene passender Beleuchtung. Verändere die vorhandene Szene ringsum so wenig wie möglich.`
+    const aiVisual = await callGenerateImage(prompt, { inlineRefs: [{ mimeType: 'image/png', data: cropB64 }] })
+    const aiEl = await loadImageEl(aiVisual.storage_path)
+    const aic = mk(cw, ch)
+    aic.getContext('2d').drawImage(aiEl, 0, 0, aiEl.naturalWidth || cw, aiEl.naturalHeight || ch, 0, 0, cw, ch)
+    // Freistellen (Matting) → Cutout mit transparentem Hintergrund
+    let cutUrl = null
+    try {
+      const { data, error } = await supabase.functions.invoke('image-ai', { body: { op: 'matte', image: aic.toDataURL('image/png') } })
+      if (!error && !data?.error && data?.image) cutUrl = data.image
+    } catch (_) { /* Fallback unten */ }
+    if (!cutUrl) {
+      try { const { removeBackgroundLocal } = await import('../../lib/bgRemoval'); cutUrl = await removeBackgroundLocal(aic) } catch (_) { cutUrl = null }
+    }
+    const out = mk(W, H)
+    const octx = out.getContext('2d')
+    octx.drawImage(baseEl, 0, 0, W, H)
+    if (!cutUrl) return out.toDataURL('image/png')
+    const cutEl = await loadHtmlImage(cutUrl)
+    const cc = mk(cw, ch)
+    cc.getContext('2d').drawImage(cutEl, 0, 0, cw, ch)
+    const ad = cc.getContext('2d').getImageData(0, 0, cw, ch).data
+    const A = 60
+    const opaque = (p) => ad[p * 4 + 3] > A
+    const scx = Math.min(cw - 1, Math.max(0, Math.round((cx - bx2) * cs)))
+    const seedY = Math.min(ch - 1, Math.max(0, Math.round((bbox.y + bbox.h - by2) * cs)))
+    const comp = new Uint8Array(cw * ch)
+    const stack = []
+    // Saat: erstes undurchsichtiges Pixel in/nahe der Mittelspalte, von der Auswahl-Unterkante nach oben
+    for (let d = 0; d <= Math.max(2, Math.round(bbox.w * cs / 2)) && !stack.length; d += 2) {
+      for (const sxx of [scx + d, scx - d]) {
+        if (sxx < 0 || sxx >= cw) continue
+        for (let yy = seedY; yy >= 0; yy--) {
+          const p = yy * cw + sxx
+          if (opaque(p)) { comp[p] = 1; stack.push(p); break }
+        }
+        if (stack.length) break
+      }
+    }
+    if (!stack.length) { for (let p = 0; p < cw * ch; p++) if (opaque(p)) { comp[p] = 1; stack.push(p) } }
+    let ox0 = cw, oy0 = ch, ox1 = -1, oy1 = -1
+    while (stack.length) {
+      const p = stack.pop()
+      const x = p % cw, y = (p / cw) | 0
+      if (x < ox0) ox0 = x; if (x > ox1) ox1 = x
+      if (y < oy0) oy0 = y; if (y > oy1) oy1 = y
+      const xl = x > 0, xr = x < cw - 1, yt = y > 0, yb = y < ch - 1
+      if (xl && opaque(p - 1) && !comp[p - 1]) { comp[p - 1] = 1; stack.push(p - 1) }
+      if (xr && opaque(p + 1) && !comp[p + 1]) { comp[p + 1] = 1; stack.push(p + 1) }
+      if (yt && opaque(p - cw) && !comp[p - cw]) { comp[p - cw] = 1; stack.push(p - cw) }
+      if (yb && opaque(p + cw) && !comp[p + cw]) { comp[p + cw] = 1; stack.push(p + cw) }
+      if (xl && yt && opaque(p - cw - 1) && !comp[p - cw - 1]) { comp[p - cw - 1] = 1; stack.push(p - cw - 1) }
+      if (xr && yt && opaque(p - cw + 1) && !comp[p - cw + 1]) { comp[p - cw + 1] = 1; stack.push(p - cw + 1) }
+      if (xl && yb && opaque(p + cw - 1) && !comp[p + cw - 1]) { comp[p + cw - 1] = 1; stack.push(p + cw - 1) }
+      if (xr && yb && opaque(p + cw + 1) && !comp[p + cw + 1]) { comp[p + cw + 1] = 1; stack.push(p + cw + 1) }
+    }
+    if (ox1 < 0) return out.toDataURL('image/png')
+    const objW = ox1 - ox0 + 1, objH = oy1 - oy0 + 1
+    const objCv = mk(objW, objH)
+    const oc = objCv.getContext('2d')
+    const objImg = oc.createImageData(objW, objH)
+    for (let y = oy0; y <= oy1; y++) for (let x = ox0; x <= ox1; x++) {
+      const sp = y * cw + x
+      if (!comp[sp]) continue
+      const di = ((y - oy0) * objW + (x - ox0)) * 4, si = sp * 4
+      objImg.data[di] = ad[si]; objImg.data[di + 1] = ad[si + 1]; objImg.data[di + 2] = ad[si + 2]; objImg.data[di + 3] = ad[si + 3]
+    }
+    oc.putImageData(objImg, 0, 0)
+    // Platzierung: Breite = Auswahl-Breite (Proportion erhalten), Unterkante auf Auswahl-Boden
+    const objW_full = objW / cs, objH_full = objH / cs
+    let scaleP = bbox.w / objW_full
+    const maxH = bbox.h * 3.0
+    if (objH_full * scaleP > maxH) scaleP = maxH / objH_full
+    const drawW = objW_full * scaleP, drawH = objH_full * scaleP
+    const drawX = Math.round(cx - drawW / 2)
+    const drawY = Math.round(bbox.y + bbox.h - drawH)
+    // Weicher Kontaktschatten (Matting entfernt den Original-Schatten)
+    try {
+      octx.save()
+      octx.globalAlpha = 0.22
+      octx.filter = `blur(${Math.max(2, Math.round(drawW * 0.05))}px)`
+      octx.fillStyle = '#000'
+      octx.beginPath()
+      octx.ellipse(cx, bbox.y + bbox.h - Math.max(2, drawH * 0.02), Math.max(6, drawW * 0.34), Math.max(3, drawH * 0.035), 0, 0, Math.PI * 2)
+      octx.fill()
+      octx.restore()
+    } catch (_) { /* Schatten optional */ }
+    octx.imageSmoothingEnabled = true
+    octx.imageSmoothingQuality = 'high'
+    octx.drawImage(objCv, drawX, drawY, drawW, drawH)
+    return out.toDataURL('image/png')
   }
 
   // Compositing: original zeichnen, dann KI-Bild nur in der Maske darüberlegen.
