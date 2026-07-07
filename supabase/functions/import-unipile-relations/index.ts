@@ -68,7 +68,7 @@ Deno.serve(async (req) => {
         p_team_id: acct.team_id, p_user_id: acct.user_id, p_lead: lead,
       });
       if (uerr) { failed++; continue; }
-      ins === true ? inserted++ : updated++;
+      (ins as any)?.inserted ? inserted++ : updated++; // RPC gibt jetzt jsonb {id, inserted}
     }
   } while (cursor && pages < maxPages);
 

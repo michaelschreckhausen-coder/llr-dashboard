@@ -37,6 +37,7 @@ Deno.serve(async (req) => {
   const searchBody = { ...search, api: "sales_navigator" };
   let cursor: string | null = null;
   let pages = 0, inserted = 0, updated = 0, failed = 0, seen = 0;
+  const importedIds: string[] = []; // inbox-Row-ids der importierten Kontakte (für Teil 2: Listen-Zuordnung)
   do {
     const url: string = `${U}/linkedin/search?account_id=${encodeURIComponent(unipile_account_id)}&limit=${PAGE}`
       + (cursor ? `&cursor=${encodeURIComponent(cursor)}` : "");
@@ -75,7 +76,9 @@ Deno.serve(async (req) => {
         p_team_id: acct.team_id, p_user_id: acct.user_id, p_lead: lead,
       });
       if (uerr) { failed++; continue; }
-      ins === true ? inserted++ : updated++;
+      const res = ins as any; // RPC gibt jetzt jsonb {id, inserted}
+      res?.inserted ? inserted++ : updated++;
+      if (res?.id) importedIds.push(res.id);
     }
   } while (cursor && pages < maxPages);
 
