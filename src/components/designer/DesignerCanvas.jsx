@@ -2257,6 +2257,43 @@ Nutze nur die für den Befehl nötigen Operationen.`
           }
           if (Object.keys(yPatch).length) arr = arr.map(o => (o.type === 'text' && yPatch[o.id] != null) ? { ...o, y: yPatch[o.id] } : o)
         } catch (_e) {}
+        // ── Panel-Layout (Kern gegen abgeschnittene/überlappende Texte): Text-Elemente,
+        // die auf einer soliden Farbfläche (rect) sitzen, werden als GRUPPE in diese Fläche
+        // eingepasst — Breite UND Höhe — und vertikal zentriert gestapelt (Headline+Tagline
+        // teilen sich eine Fläche). Passt der Block nicht, wird die GANZE Gruppe verkleinert.
+        try {
+          const panels = arr.filter(o => o.type === 'rect' && !o.__scrimFor && (o.opacity == null || o.opacity > 0.5) && typeof o.fill === 'string' && o.fill.startsWith('#') && (o.width || 0) > 30 && (o.height || 0) > 20)
+          const texts2 = arr.filter(o => o.type === 'text')
+          const groups = {}
+          for (const t of texts2) {
+            const th = measureTextH(t)
+            const cand = panels.filter(p => centerInside(t, p, th))
+            if (cand.length) { const pid = cand[cand.length - 1].id; (groups[pid] = groups[pid] || []).push(t) }
+          }
+          const measH = (txt, fs, fam, sty, w) => { try { const n = new Konva.Text({ text: String(txt || ''), fontSize: fs, fontFamily: fam || 'Inter', fontStyle: sty || 'normal', width: w, align: 'center', lineHeight: 1.15 }); const h = n.height(); try { n.destroy() } catch (_e) {} return h } catch (_e) { return fs * 1.3 } }
+          const measWord = (word, fs, fam, sty) => { try { const n = new Konva.Text({ text: String(word || ''), fontSize: fs, fontFamily: fam || 'Inter', fontStyle: sty || 'normal' }); const w = n.width(); try { n.destroy() } catch (_e) {} return w } catch (_e) { return fs * (String(word || '').length) * 0.6 } }
+          const patch2 = {}
+          for (const pid of Object.keys(groups)) {
+            const panel = panels.find(p => p.id === pid); if (!panel) continue
+            const grp = groups[pid].slice().sort((a, b) => (a.y || 0) - (b.y || 0))
+            const pad = Math.max(12, Math.round(Math.min(panel.width || 0, panel.height || 0) * 0.1))
+            const box = { x: (panel.x || 0) + pad, y: (panel.y || 0) + pad, w: Math.max(24, (panel.width || 0) - pad * 2), h: Math.max(16, (panel.height || 0) - pad * 2) }
+            const gap = Math.max(6, Math.round(box.h * 0.05))
+            // fontSize je Text zunächst so, dass das längste Wort in die Panel-Breite passt
+            let items = grp.map(t => {
+              let fs = Math.max(8, Math.round(Number(t.fontSize) || 40))
+              const longest = String(t.text || '').split(/\s+/).sort((a, b) => b.length - a.length)[0] || ''
+              for (let i = 0; i < 22 && fs > 8; i++) { if (measWord(longest, fs, t.fontFamily, t.fontStyle) <= box.w) break; fs = Math.max(8, Math.round(fs * 0.9)) }
+              return { t, fs }
+            })
+            const blockH = () => items.reduce((sum, it) => sum + measH(it.t.text, it.fs, it.t.fontFamily, it.t.fontStyle, box.w), 0) + gap * Math.max(0, items.length - 1)
+            let guard = 0
+            while (blockH() > box.h && guard++ < 30 && items.some(it => it.fs > 8)) items = items.map(it => ({ ...it, fs: Math.max(8, Math.round(it.fs * 0.92)) }))
+            let y = box.y + Math.max(0, (box.h - blockH()) / 2)
+            for (const it of items) { const h = measH(it.t.text, it.fs, it.t.fontFamily, it.t.fontStyle, box.w); patch2[it.t.id] = { x: box.x, y: Math.round(y), width: box.w, fontSize: it.fs, align: it.t.align || 'center' }; y += h + gap }
+          }
+          if (Object.keys(patch2).length) arr = arr.map(o => (o.type === 'text' && patch2[o.id]) ? { ...o, ...patch2[o.id] } : o)
+        } catch (_e) {}
         return { objects: arr, nextBg: bg, filterPatch: fPatch, imageInstruction: imgInstr, wantCutout: cutout, replaceBg, logos, stockImages }
       }
 
