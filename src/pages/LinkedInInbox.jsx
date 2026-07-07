@@ -1,8 +1,9 @@
 import React, { useEffect, useState, useCallback, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { Check, X, Loader2, UserPlus, Building2, Inbox as InboxIcon, Megaphone, Plus } from 'lucide-react'
+import { Check, X, Loader2, UserPlus, Building2, Inbox as InboxIcon, Megaphone, Plus, ListChecks } from 'lucide-react'
 import { supabase } from '../lib/supabase'
 import { useTeam } from '../context/TeamContext'
+import { useInboxLists } from '../hooks/useInboxLists'
 
 // ─────────────────────────────────────────────────────────────────────────────
 // LinkedIn-Import-Inbox — Triage-Queue VOR dem CRM.
@@ -39,6 +40,11 @@ export default function LinkedInInbox() {
   const [memById, setMemById]     = useState(() => new Map())// inbox_id → [campaign_id]
   const [filter, setFilter]       = useState('all')          // 'all' | 'none' | campaign_id
   const [assignOpen, setAssignOpen] = useState(false)
+
+  // Inbox-Listen (reine Auswahl-Sammlungen, getrennt von Kampagnen)
+  const { lists, membersByList, createList, addToList } = useInboxLists({ activeTeamId })
+  const [listOpen, setListOpen]     = useState(false)
+  const [listFilter, setListFilter] = useState('all')        // 'all' | list_id
 
   // Progressives Rendern — nur PAGE_SIZE Karten gleichzeitig im DOM, Rest per Infinite-Scroll.
   const PAGE_SIZE = 25
@@ -107,16 +113,23 @@ export default function LinkedInInbox() {
   const filterCampaigns = campaigns.filter(c => (campCounts.get(c.id) || 0) > 0)
 
   const displayed = rows.filter(r => {
-    if (filter === 'all') return true
-    const cs = memById.get(r.id) || []
-    if (filter === 'none') return cs.length === 0
-    return cs.includes(filter)
+    // Kampagnen-Filter
+    if (filter !== 'all') {
+      const cs = memById.get(r.id) || []
+      if (filter === 'none' ? cs.length !== 0 : !cs.includes(filter)) return false
+    }
+    // Listen-Filter (zusätzliche Einschränkung)
+    if (listFilter !== 'all') {
+      const set = membersByList.get(listFilter)
+      if (!set || !set.has(r.id)) return false
+    }
+    return true
   })
   const visible = displayed.slice(0, visibleCount)
   const hasMore = visibleCount < displayed.length
 
   // Beim Filter-/Team-Wechsel wieder auf die erste Seite zurücksetzen.
-  useEffect(() => { setVisibleCount(PAGE_SIZE) }, [filter, activeTeamId])
+  useEffect(() => { setVisibleCount(PAGE_SIZE) }, [filter, listFilter, activeTeamId])
 
   // Infinite-Scroll: sobald der Sentinel in den Viewport kommt, 25 weitere anhängen.
   useEffect(() => {
@@ -201,6 +214,27 @@ export default function LinkedInInbox() {
     setMsg({ text: `${toAdd.length} Kontakt(e) zu „${cName || 'Kampagne'}" hinzugefügt (nur gruppiert — kein Outreach gestartet).` })
   }
 
+  // Zu Liste = reine Auswahl-Sammlung (getrennt von Kampagnen/Outreach).
+  const assignToList = async ({ listId, newName, color }) => {
+    const ids = [...selected]; if (!ids.length) return
+    setBusy(true); setMsg(null)
+    let lid = listId
+    let lName = ''
+    if (!lid && newName && newName.trim()) {
+      const { data: created, error: cErr } = await createList(newName.trim(), color)
+      if (cErr || !created) { setBusy(false); setMsg({ text: 'Liste anlegen fehlgeschlagen: ' + (cErr?.message || '') }); return }
+      lid = created.id; lName = created.name
+    } else if (lid) {
+      lName = (lists.find(l => l.id === lid) || {}).name || 'Liste'
+    }
+    if (!lid) { setBusy(false); return }
+    const { error } = await addToList(lid, ids)
+    setBusy(false); setListOpen(false)
+    if (error) { setMsg({ text: 'Zu Liste hinzufügen fehlgeschlagen: ' + error.message }); return }
+    setSelected(new Set())
+    setMsg({ text: `${ids.length} Kontakt(e) zu „${lName || 'Liste'}" hinzugefügt.` })
+  }
+
   const card = 'var(--surface)', border = 'var(--border)', text = 'var(--text-primary)', muted = 'var(--text-muted)', primary = 'var(--primary)'
   const chip = (active) => ({ display: 'inline-flex', alignItems: 'center', gap: 6, padding: '5px 12px', borderRadius: 99, fontSize: 13, fontWeight: 600, cursor: 'pointer', border: `1.5px solid ${active ? primary : border}`, background: active ? 'var(--primary-soft)' : card, color: active ? primary : muted })
 
@@ -232,6 +266,23 @@ export default function LinkedInInbox() {
         </div>
       )}
 
+      {/* Listen-Filterleiste (reine Auswahl-Sammlungen) */}
+      {!loading && rows.length > 0 && lists.length > 0 && (
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap', marginBottom: 16 }}>
+          <span style={{ fontSize: 12, fontWeight: 700, color: muted, marginRight: 2 }}>Nach Liste:</span>
+          <span style={chip(listFilter === 'all')} onClick={() => setListFilter('all')}>Alle</span>
+          {lists.map(l => {
+            const set = membersByList.get(l.id)
+            const cnt = set ? rows.reduce((n, r) => n + (set.has(r.id) ? 1 : 0), 0) : 0
+            return (
+              <span key={l.id} style={chip(listFilter === l.id)} onClick={() => setListFilter(l.id)}>
+                <ListChecks size={13} /> {l.name} <b>{cnt}</b>
+              </span>
+            )
+          })}
+        </div>
+      )}
+
       {msg && (
         <div style={{ background: 'var(--primary-soft)', border: `1px solid ${border}`, borderRadius: 10, padding: '10px 14px', marginBottom: 16, fontSize: 14, color: text, display: 'flex', alignItems: 'center', gap: 10 }}>
           <span>{msg.text}</span>
@@ -245,6 +296,10 @@ export default function LinkedInInbox() {
             <input type="checkbox" checked={allSelected} onChange={toggleAll} /> Alle auswählen
           </label>
           <div style={{ marginLeft: 'auto', display: 'flex', gap: 8 }}>
+            <button onClick={() => setListOpen(true)} disabled={busy || selected.size === 0}
+              style={{ display: 'inline-flex', alignItems: 'center', gap: 8, background: card, color: selected.size ? primary : muted, border: `1.5px solid ${selected.size ? primary : border}`, borderRadius: 9, padding: '9px 16px', fontWeight: 700, fontSize: 14, cursor: selected.size ? 'pointer' : 'default' }}>
+              <ListChecks size={15} /> Zu Liste{selected.size ? ` (${selected.size})` : ''}
+            </button>
             <button onClick={() => setAssignOpen(true)} disabled={busy || selected.size === 0}
               style={{ display: 'inline-flex', alignItems: 'center', gap: 8, background: card, color: selected.size ? primary : muted, border: `1.5px solid ${selected.size ? primary : border}`, borderRadius: 9, padding: '9px 16px', fontWeight: 700, fontSize: 14, cursor: selected.size ? 'pointer' : 'default' }}>
               <Megaphone size={15} /> Zu Kampagne{selected.size ? ` (${selected.size})` : ''}
@@ -328,6 +383,16 @@ export default function LinkedInInbox() {
           onConfirm={assign}
         />
       )}
+
+      {listOpen && (
+        <ListModal
+          lists={lists}
+          count={selected.size}
+          busy={busy}
+          onClose={() => setListOpen(false)}
+          onConfirm={assignToList}
+        />
+      )}
     </div>
   )
 }
@@ -366,6 +431,60 @@ function AssignModal({ campaigns, count, busy, onClose, onConfirm }) {
           <button
             onClick={() => onConfirm(mode === 'existing' ? { campaignId } : { newName })}
             disabled={busy || (mode === 'existing' ? !campaignId : !newName.trim())}
+            style={{ flex: 1.4, padding: '10px 0', borderRadius: 10, border: 'none', background: primary, color: '#fff', fontWeight: 700, fontSize: 13, cursor: 'pointer', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: 6 }}>
+            {busy ? <Loader2 size={15} className="spin" /> : <Plus size={15} />} Hinzufügen
+          </button>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+function ListModal({ lists, count, busy, onClose, onConfirm }) {
+  const [mode, setMode] = useState(lists.length ? 'existing' : 'new')
+  const [listId, setListId] = useState(lists[0]?.id || '')
+  const [newName, setNewName] = useState('')
+  const COLORS = ['#3b82f6', '#8b5cf6', '#10b981', '#f59e0b', '#ef4444', '#0891b2']
+  const [color, setColor] = useState(COLORS[0])
+  const primary = 'var(--primary)', border = 'var(--border)', text = 'var(--text-primary)', muted = 'var(--text-muted)'
+
+  return (
+    <div onClick={onClose} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.45)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000 }}>
+      <div onClick={e => e.stopPropagation()} style={{ background: 'var(--surface)', borderRadius: 16, padding: 24, width: 460, maxWidth: '90vw', boxShadow: '0 20px 60px rgba(0,0,0,.18)' }}>
+        <div style={{ fontWeight: 800, fontSize: 17, color: text, marginBottom: 4 }}>{count} Kontakt(e) zu Liste</div>
+        <div style={{ fontSize: 13, color: muted, marginBottom: 18 }}>Reine Auswahl-Sammlung — später in Automatisierung und Vernetzung auswählbar. Startet keinen Outreach.</div>
+
+        <div style={{ display: 'flex', gap: 8, marginBottom: 14 }}>
+          <button onClick={() => setMode('existing')} disabled={!lists.length}
+            style={{ flex: 1, padding: '8px 0', borderRadius: 9, border: `1.5px solid ${mode === 'existing' ? primary : border}`, background: mode === 'existing' ? 'var(--primary-soft)' : 'var(--surface)', color: mode === 'existing' ? primary : muted, fontWeight: 700, fontSize: 13, cursor: lists.length ? 'pointer' : 'default' }}>Bestehende</button>
+          <button onClick={() => setMode('new')}
+            style={{ flex: 1, padding: '8px 0', borderRadius: 9, border: `1.5px solid ${mode === 'new' ? primary : border}`, background: mode === 'new' ? 'var(--primary-soft)' : 'var(--surface)', color: mode === 'new' ? primary : muted, fontWeight: 700, fontSize: 13, cursor: 'pointer' }}>Neue Liste</button>
+        </div>
+
+        {mode === 'existing' ? (
+          <select value={listId} onChange={e => setListId(e.target.value)}
+            style={{ width: '100%', boxSizing: 'border-box', padding: '10px 12px', borderRadius: 10, border: `1.5px solid ${border}`, fontSize: 14, background: 'var(--surface)', color: text, outline: 'none' }}>
+            {lists.map(l => <option key={l.id} value={l.id}>{l.name}</option>)}
+          </select>
+        ) : (
+          <>
+            <input value={newName} onChange={e => setNewName(e.target.value)} placeholder="Listenname (z.B. Q3 Follow-up)"
+              style={{ width: '100%', boxSizing: 'border-box', padding: '10px 12px', borderRadius: 10, border: `1.5px solid ${border}`, fontSize: 14, background: 'var(--surface)', color: text, outline: 'none' }} />
+            <div style={{ display: 'flex', gap: 8, marginTop: 12, alignItems: 'center' }}>
+              <span style={{ fontSize: 12, color: muted, fontWeight: 600 }}>Farbe:</span>
+              {COLORS.map(c => (
+                <span key={c} onClick={() => setColor(c)} title="Farbe wählen"
+                  style={{ width: 22, height: 22, borderRadius: '50%', background: c, cursor: 'pointer', border: color === c ? '2px solid var(--text-primary)' : '2px solid transparent' }} />
+              ))}
+            </div>
+          </>
+        )}
+
+        <div style={{ display: 'flex', gap: 10, marginTop: 20 }}>
+          <button onClick={onClose} style={{ flex: 1, padding: '10px 0', borderRadius: 10, border: `1px solid ${border}`, background: 'var(--surface)', color: muted, fontWeight: 600, fontSize: 13, cursor: 'pointer' }}>Abbrechen</button>
+          <button
+            onClick={() => onConfirm(mode === 'existing' ? { listId } : { newName, color })}
+            disabled={busy || (mode === 'existing' ? !listId : !newName.trim())}
             style={{ flex: 1.4, padding: '10px 0', borderRadius: 10, border: 'none', background: primary, color: '#fff', fontWeight: 700, fontSize: 13, cursor: 'pointer', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: 6 }}>
             {busy ? <Loader2 size={15} className="spin" /> : <Plus size={15} />} Hinzufügen
           </button>
