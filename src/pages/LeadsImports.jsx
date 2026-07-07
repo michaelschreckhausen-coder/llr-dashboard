@@ -8,6 +8,7 @@ import React, { useState } from 'react'
 import { Link } from 'react-router-dom'
 import { useImportJobs } from '../hooks/useImportJobs'
 import { useAddons } from '../hooks/useAddons'
+import { addonFreeUntilLabel } from '../lib/addonPricing'
 
 const PRIMARY = 'var(--wl-primary, rgb(49,90,231))'
 const ADDON_SLUG = 'sales-nav-sync'
@@ -151,7 +152,7 @@ export default function LeadsImports() {
             <div style={{ fontSize: 14, fontWeight: 600, color: '#92400E', marginBottom: 4 }}>Sales-Navigator-Sync nicht gebucht</div>
             <p style={{ fontSize: 13, color: '#B45309', lineHeight: 1.6, margin: '0 0 8px' }}>
               Der Import über die Chrome-Extension funktioniert weiterhin. Für die volle Nutzung in Leadesk
-              aktiviere das Addon im Marketplace — kostenfrei bis 31. August 2026.
+              aktiviere das Addon im Marketplace — kostenfrei bis {addonFreeUntilLabel(ADDON_SLUG)}.
             </p>
             <Link to="/marketplace" style={{ display: 'inline-block', background: PRIMARY, color: '#fff', textDecoration: 'none', fontWeight: 600, fontSize: 13, padding: '8px 16px', borderRadius: 9 }}>
               Im Marketplace aktivieren →

@@ -1,5 +1,8 @@
 -- 20260629180000_addon_freepaid_cutover_grandfather_gate.sql
--- Free→Paid-Cutover (Strike2 9€ / Sales-Nav 5€, Stichtag 31.08.2026) — Grandfather-Gate.
+-- Free→Paid-Cutover (Strike2 9€ / Sales-Nav 9€) — Grandfather-Gate.
+-- Sales-Nav: kostenfrei bis einschl. 31.08.2026, Preis-Switch 01.09.2026 00:00 (Europe/Berlin).
+-- Maßgeblicher Preis-Wert: addons.price_monthly_cents (slug='sales-nav-sync') = 900.
+-- Frontend-Frist = Single Source of Truth src/lib/addonPricing.js.
 --
 -- Problem: sobald strike2/sales-nav ein stripe_price_id bekommen (Pattern B → C),
 -- müssen Bestandskunden (alle is_grandfathered=true, KEINE stripe_subscription_id)

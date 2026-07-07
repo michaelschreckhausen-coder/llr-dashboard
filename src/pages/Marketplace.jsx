@@ -15,13 +15,16 @@ import { MarketplaceCard } from '../components/marketplace/MarketplaceCard'
 import CreditsTopupSection from '../components/marketplace/CreditsTopupSection'
 import { getAddonSettingsComponent } from '../components/marketplace/addonSettingsRegistry'
 import { ADDON_CATEGORIES, WAITLIST_RESULT_MESSAGES } from '../lib/addons'
+import { addonFreeUntilLabel } from '../lib/addonPricing'
 
 // Add-on-spezifische Redirect-Pfade nach erfolgreicher Stripe-Subscription.
 // Wenn das Add-on nach Subscribe noch eine Verbindung braucht (API-Key,
 // OAuth), führen wir den User direkt dorthin.
 // Free-Until-Konditionen pro Addon-Slug (für das Confirmation-Modal).
+// sales-nav-sync liest die Frist aus der Single Source of Truth (src/lib/addonPricing.js),
+// damit das Datum nicht mehr an mehreren Stellen hartkodiert driftet.
 const ADDON_FREE_UNTIL = {
-  'sales-nav-sync': '31. August 2026',
+  'sales-nav-sync': addonFreeUntilLabel('sales-nav-sync'),
   'strike2-zielgruppen-plus': '31. August 2026',
 }
 

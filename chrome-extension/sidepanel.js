@@ -585,6 +585,12 @@ function renderSalesNavView(ctx, addonActive) {
   // Kein Blocker mehr: der Import läuft in der Extension IMMER, unabhängig vom
   // sales-nav-sync-Addon. Ohne gebuchtes Addon zeigen wir nur einen nicht-
   // blockierenden Warnhinweis (Buchung im Leadesk-Marketplace).
+  //
+  // Frist-Datum ("kostenfrei bis 31.08.2026") = Single Source of Truth in
+  // src/lib/addonPricing.js (ADDON_PRICING['sales-nav-sync'].freeUntilLabel).
+  // Die Extension bundlet separat und kann die Datei nicht importieren —
+  // bei Änderung der Frist BEIDE Stellen synchron halten. Preis-Switch auf
+  // 9 €/Monat wird zum 01.09.2026 00:00 (Europe/Berlin) wirksam.
   const warnHtml = addonActive ? '' :
     '<div style="font-size:12px;color:#92400E;background:#FEF3C7;border:1px solid #FDE68A;padding:10px;border-radius:8px;margin-top:12px">' +
     '<strong>⚠️ Sales-Navigator-Sync nicht gebucht</strong><br>' +
