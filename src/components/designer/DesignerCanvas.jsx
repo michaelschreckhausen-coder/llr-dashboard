@@ -4542,7 +4542,7 @@ Antworte AUSSCHLIESSLICH mit JSON: {"ok":<bool>,"issues":["..."],"operations":[.
         }
         if (!snapped && left && !right) {
           // Finde ein Paar (a,b) links mit Gap G; wende G zwischen left und Node an.
-          const G = findKnownGapH(row, left, tol)
+          const G = neighborGapH(row, left, 'left', tol)
           if (G != null) {
             const targetLeft = left.x + left.w + G
             const diff = targetLeft - bx
@@ -4555,7 +4555,7 @@ Antworte AUSSCHLIESSLICH mit JSON: {"ok":<bool>,"issues":["..."],"operations":[.
           }
         }
         if (!snapped && right && !left) {
-          const G = findKnownGapH(row, right, tol)
+          const G = neighborGapH(row, right, 'right', tol)
           if (G != null) {
             const targetRight = right.x - G
             const diff = targetRight - (bx + bw)
@@ -4591,7 +4591,7 @@ Antworte AUSSCHLIESSLICH mit JSON: {"ok":<bool>,"issues":["..."],"operations":[.
           }
         }
         if (!snapped && top && !bottom) {
-          const G = findKnownGapV(col, top, tol)
+          const G = neighborGapV(col, top, 'above', tol)
           if (G != null) {
             const targetTop = top.y + top.h + G
             const diff = targetTop - by
@@ -4604,7 +4604,7 @@ Antworte AUSSCHLIESSLICH mit JSON: {"ok":<bool>,"issues":["..."],"operations":[.
           }
         }
         if (!snapped && bottom && !top) {
-          const G = findKnownGapV(col, bottom, tol)
+          const G = neighborGapV(col, bottom, 'below', tol)
           if (G != null) {
             const targetBottom = bottom.y - G
             const diff = targetBottom - (by + bh)
@@ -4621,28 +4621,33 @@ Antworte AUSSCHLIESSLICH mit JSON: {"ok":<bool>,"issues":["..."],"operations":[.
     return res
   }
 
-  // Sucht in einer Objektreihe (horizontal überlappend) eine bekannte horizontale
-  // Lücke G zwischen zwei direkt benachbarten Objekten, die NICHT 'anchor' sind,
-  // und liefert sie (oder null). Liefert die erste plausible (kleinste >0) Lücke.
-  function findKnownGapH(row, anchor, tol) {
+  // Referenzlücke = Abstand zwischen 'anchor' und seinem DIREKTEN Nachbarn auf der
+  // angegebenen Seite. So wird der „gleiche Abstand"-Fall (A über B mit Lücke G, drittes
+  // Element C in gleicher Lücke) korrekt erkannt — die Referenzlücke liegt zwischen dem
+  // Anker (B) und seinem Nachbarn (A), NICHT zwischen zwei fremden Objekten.
+  function neighborGapH(row, anchor, side, tol) {
     try {
-      const sorted = row.filter(o => o !== anchor).slice().sort((a, b) => a.x - b.x)
-      for (let i = 0; i < sorted.length - 1; i++) {
-        const g = sorted[i + 1].x - (sorted[i].x + sorted[i].w)
-        if (g > tol) return g
+      const aL = anchor.x, aR = anchor.x + anchor.w
+      let best = null
+      for (const o of row) {
+        if (o === anchor) continue
+        const g = side === 'left' ? aL - (o.x + o.w) : o.x - aR
+        if (g > tol && (best == null || g < best)) best = g
       }
-    } catch (_e) {}
-    return null
+      return best
+    } catch (_e) { return null }
   }
-  function findKnownGapV(col, anchor, tol) {
+  function neighborGapV(col, anchor, side, tol) {
     try {
-      const sorted = col.filter(o => o !== anchor).slice().sort((a, b) => a.y - b.y)
-      for (let i = 0; i < sorted.length - 1; i++) {
-        const g = sorted[i + 1].y - (sorted[i].y + sorted[i].h)
-        if (g > tol) return g
+      const aT = anchor.y, aB = anchor.y + anchor.h
+      let best = null
+      for (const o of col) {
+        if (o === anchor) continue
+        const g = side === 'above' ? aT - (o.y + o.h) : o.y - aB
+        if (g > tol && (best == null || g < best)) best = g
       }
-    } catch (_e) {}
-    return null
+      return best
+    } catch (_e) { return null }
   }
 
   // Snapping während des Drags einer einzelnen Node. Verschiebt die Node-Position so,
@@ -4744,6 +4749,51 @@ Antworte AUSSCHLIESSLICH mit JSON: {"ok":<bool>,"issues":["..."],"operations":[.
         if (drawnH.length) { node.scaleY(bh / nh); node.y(by) }
       }
       drawGuides(drawnV, drawnH)
+    } catch (_e) { /* Resize-Snap darf nie crashen */ }
+  }
+
+  // Snapping während des PROPORTIONALEN Skalierens (Ecken, Seitenverhältnis fix). Die
+  // nächstgelegene aktive Kante snappt an eine Guide-Linie; die Box wird EINHEITLICH um
+  // die gegenüberliegende (feste) Ecke skaliert, sodass das Verhältnis erhalten bleibt.
+  function applyResizeSnapProportional(node, anchor, skipIds) {
+    if (!node) return
+    try {
+      if ((node.rotation() || 0) !== 0) { clearGuides(); return }
+      const a = anchor || ''
+      const leftActive = a.includes('left'), rightActive = a.includes('right')
+      const topActive = a.includes('top'), bottomActive = a.includes('bottom')
+      // Nur Eck-Anker (beide Achsen aktiv). Seiten-Anker landen hier nicht.
+      if (!((leftActive || rightActive) && (topActive || bottomActive))) { clearGuides(); return }
+      const tol = SNAP_PX / effScale
+      const { vertical, horizontal } = collectGuideLines(skipIds)
+      const box = node.getClientRect({ relativeTo: node.getStage() })
+      const bx = box.x, by = box.y, bw = box.width, bh = box.height
+      if (bw < 1 || bh < 1) return
+      // Feste Ecke = gegenüber dem aktiven Anker.
+      const fixedX = rightActive ? bx : bx + bw
+      const fixedY = bottomActive ? by : by + bh
+      const movingXedge = rightActive ? (bx + bw) : bx
+      const movingYedge = bottomActive ? (by + bh) : by
+      let best = null
+      for (const g of vertical) {
+        const d = Math.abs(movingXedge - g); if (d >= tol) continue
+        const sc = rightActive ? (g - fixedX) / bw : (fixedX - g) / bw
+        if (sc > 0.05 && (!best || d < best.d)) best = { s: sc, d, v: g, h: null }
+      }
+      for (const g of horizontal) {
+        const d = Math.abs(movingYedge - g); if (d >= tol) continue
+        const sc = bottomActive ? (g - fixedY) / bh : (fixedY - g) / bh
+        if (sc > 0.05 && (!best || d < best.d)) best = { s: sc, d, v: null, h: g }
+      }
+      if (!best) { clearGuides(); return }
+      const s = best.s
+      const nw = node.width() || 1, nh = node.height() || 1
+      node.scaleX((bw * s) / nw)
+      node.scaleY((bh * s) / nh)
+      const newBw = bw * s, newBh = bh * s
+      node.x(rightActive ? fixedX : (fixedX - newBw))
+      node.y(bottomActive ? fixedY : (fixedY - newBh))
+      drawGuides(best.v != null ? [best.v] : [], best.h != null ? [best.h] : [])
     } catch (_e) { /* Resize-Snap darf nie crashen */ }
   }
 
@@ -4967,8 +5017,18 @@ Antworte AUSSCHLIESSLICH mit JSON: {"ok":<bool>,"issues":["..."],"operations":[.
         const isText = o.type === 'text'
         const singleSel = selectedIds.length === 1 && selectedIds[0] === o.id
         const proportional = singleSel && !isText && distortId !== o.id
-        if (proportional) return
+        if (proportional) {
+          // Auch beim proportionalen Größenändern an Hilfslinien einrasten (Canva-Verhalten).
+          applyResizeSnapProportional(node, anchor, [o.id])
+          return
+        }
         applyResizeSnap(node, anchor, [o.id])
+        // Text-Seiten-Anker: Breite LIVE anpassen (Umbruch) statt den Text optisch zu
+        // strecken — sonst wirkt die Vorschau, als würde die Schrift mitwachsen (tut sie
+        // beim Loslassen aber nicht). Ecken/oben-unten skalieren die fontSize bewusst.
+        if (isText && (anchor === 'middle-left' || anchor === 'middle-right')) {
+          try { node.width(Math.max(20, node.width() * node.scaleX())); node.scaleX(1); node.scaleY(1) } catch (_e) {}
+        }
       },
       onTransformEnd: (e) => {
         clearGuides()
