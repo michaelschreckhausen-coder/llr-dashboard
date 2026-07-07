@@ -3851,20 +3851,36 @@ Antworte AUSSCHLIESSLICH mit JSON: {"ok":<bool>,"issues":["..."],"operations":[.
       }
       return false
     }
-    // Objekt ragt aus der Auswahl NACH OBEN: von der Auswahl-Oberkante zeilenweise hoch
-    // gehen, solange zusammenhängend Änderungen vorliegen (eine Lücke stoppt) → Objekt-Top.
-    // So werden weder eine Lücke darüber noch entfernte Streu-Pixel mitgenommen.
-    const yTop = Math.max(0, by)
-    let objTop = bbox.y
-    for (let y = bbox.y - 1; y >= yTop; y--) { if (!rowHasChange(y)) break; objTop = y }
-    // Zurückgeschriebener Bereich: Auswahl-Breite (+Rand) × [Objekt-Top .. Auswahl-Unterkante + wenig Schatten]
-    const rx0 = hx0, rx1 = hx1
-    const ry0 = Math.min(bbox.y, objTop)
-    const ry1 = Math.min(Math.min(H, by + bh), bbox.y + bbox.h + Math.round(bbox.h * 0.2))
+    // Volle vertikale Ausdehnung der Änderung im Band (oberste + unterste veränderte Zeile).
+    let objTop = -1, objBottom = -1
+    for (let y = Math.max(0, by); y < Math.min(H, by + bh); y++) {
+      if (rowHasChange(y)) { if (objTop < 0) objTop = y; objBottom = y }
+    }
     const mg = Math.max(3, Math.round(Math.min(W, H) * 0.006))
-    const ox = Math.max(0, rx0 - mg), oy = Math.max(0, ry0 - mg)
-    const ow = Math.min(W - ox, (rx1 - rx0) + mg * 2), oh = Math.min(H - oy, (ry1 - ry0) + mg * 2)
-    return compositeRectFeather(baseEl, placed, ox, oy, ow, oh, W, H, 0.06)
+    // Keine Änderung erkannt → nur die Auswahl weich einblenden (Anpassungsfall).
+    if (objBottom < 0) {
+      return compositeRectFeather(baseEl, placed, Math.max(0, bbox.x - mg), Math.max(0, bbox.y - mg), Math.min(W, bbox.w + mg * 2), Math.min(H, bbox.h + mg * 2), W, H, 0.06)
+    }
+    // DETERMINISTISCHE HÖHE: die Unterkante (Basis) des Objekts EXAKT auf die Unterkante
+    // der Auswahl schieben — unabhängig davon, wo das Modell es gezeichnet hat. So sitzt
+    // das Objekt immer sauber auf der Fläche (nie zu hoch, nie zu tief).
+    const targetBottom = bbox.y + bbox.h
+    let shift = targetBottom - objBottom
+    const maxShift = Math.round(bbox.h * 0.7)
+    if (shift > maxShift) shift = maxShift
+    if (shift < -maxShift) shift = -maxShift
+    let src = placed
+    if (shift !== 0) {
+      const spc = document.createElement('canvas'); spc.width = W; spc.height = H
+      spc.getContext('2d').drawImage(placed, 0, shift)
+      src = spc
+    }
+    // Zurückgeschriebener Bereich: Auswahl-Breite (+winziger Rand) × [verschobener Objekt-Top .. Ziel-Unterkante + wenig Schatten]
+    const ry0 = Math.max(0, objTop + shift)
+    const ry1 = Math.min(H, targetBottom + Math.round(bbox.h * 0.12))
+    const ox = Math.max(0, hx0 - mg), oy = Math.max(0, ry0 - mg)
+    const ow = Math.min(W - ox, (hx1 - hx0) + mg * 2), oh = Math.min(H - oy, (ry1 - ry0) + mg * 2)
+    return compositeRectFeather(baseEl, src, ox, oy, ow, oh, W, H, 0.045)
   }
 
   function compositeByDifference(baseEl, placed, bx, by, bw, bh, W, H) {
