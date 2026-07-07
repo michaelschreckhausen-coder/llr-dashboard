@@ -2281,10 +2281,10 @@ function AnswerFormatSelect({ value = 'auto', onChange = () => {} }) {
         return (
           <Tip key={x.id} label={x.tip}>
             <button type="button" onClick={() => onChange(x.id)} aria-pressed={active}
-              style={{ width:32, height:30, display:'inline-flex', alignItems:'center', justifyContent:'center', borderRadius:7, border:'none', cursor:'pointer', background: active ? P : 'transparent', color: active ? '#fff' : 'var(--text-muted)', transition:'background .12s, color .12s' }}
+              style={{ width:34, height:30, display:'inline-flex', alignItems:'center', justifyContent:'center', borderRadius:7, border:'none', cursor:'pointer', background: active ? P : 'transparent', color: active ? '#fff' : 'var(--text-muted)', transition:'background .12s, color .12s' }}
               onMouseEnter={e => { if (!active) e.currentTarget.style.background = 'var(--page-bg,#F2F4F8)' }}
               onMouseLeave={e => { if (!active) e.currentTarget.style.background = 'transparent' }}>
-              <XI size={15} strokeWidth={1.9}/>
+              <XI size={16} strokeWidth={1.75}/>
             </button>
           </Tip>
         )
