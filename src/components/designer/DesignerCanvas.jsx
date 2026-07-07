@@ -3763,7 +3763,18 @@ Antworte AUSSCHLIESSLICH mit JSON: {"ok":<bool>,"issues":["..."],"operations":[.
       if (xl && yb && opaque(p + cw - 1) && !comp[p + cw - 1]) { comp[p + cw - 1] = 1; stack.push(p + cw - 1) }
       if (xr && yb && opaque(p + cw + 1) && !comp[p + cw + 1]) { comp[p + cw + 1] = 1; stack.push(p + cw + 1) }
     }
-    if (ox1 < 0) return out.toDataURL('image/png')
+    // Menge der freigestellten Objektpixel prüfen: ist der Cutout zu dünn (transparentes/
+    // durchscheinendes Objekt wie ein Wasserglas → Matting greift kaum), auf ein differenz-
+    // basiertes Composite ausweichen, das Kanten/Reflexionen erfasst (auf die zusammen-
+    // hängende Änderung um die Auswahl begrenzt → kein Drift, kein Stauchen).
+    let cnt = 0
+    for (let p = 0; p < comp.length; p++) if (comp[p]) cnt++
+    const minSolid = (bbox.w * cs) * (bbox.h * cs) * 0.1
+    if (ox1 < 0 || cnt < minSolid) {
+      const placed = mk(W, H)
+      placed.getContext('2d').drawImage(aic, 0, 0, cw, ch, bx2, by2, bw2, bh2)
+      return compositeConnectedObject(baseEl, placed, bbox, bx2, by2, bw2, bh2, W, H)
+    }
     const objW = ox1 - ox0 + 1, objH = oy1 - oy0 + 1
     const objCv = mk(objW, objH)
     const oc = objCv.getContext('2d')
