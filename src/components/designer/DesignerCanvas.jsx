@@ -3634,15 +3634,7 @@ Antworte AUSSCHLIESSLICH mit JSON: {"ok":<bool>,"issues":["..."],"operations":[.
       // LaMa entfernen (Objekt + Schatten). So sieht das Modell an der Stelle eine LEERE
       // Fläche und setzt dort das neue Objekt hinein — statt das alte zu behalten und das
       // neue nur daneben zu platzieren. baseEl dient danach als Crop-Quelle UND Composite-Basis.
-      let baseEl = origEl
-      if (!isHeal && selectionHasObject(origEl, bbox, W, H)) {
-        // Auswahl enthält ein Objekt → vorher leeren (Ersetzen). Bei leerer Fläche
-        // (Hinzufügen) NICHT löschen, sonst verwischt der saubere Hintergrund.
-        try {
-          const erasedUrl = await eraseRegionToDataUrl(origEl, W, H)
-          baseEl = await loadHtmlImage(erasedUrl)
-        } catch (_) { baseEl = origEl }
-      }
+      const baseEl = origEl
       let resultUrl
       if (isHeal) {
         // Heal (Objekt entfernen im Ausschnitt): großzügiger Kontext-Crop, generativ
@@ -3671,13 +3663,30 @@ Antworte AUSSCHLIESSLICH mit JSON: {"ok":<bool>,"issues":["..."],"operations":[.
         const blob = await compositeMaskedResult(origEl, placed, Math.max(2, Math.round(Math.min(W, H) * 0.008)))
         resultUrl = await blobToDataUrl(blob)
       } else {
-        // „Bereich ändern": Objekt generieren, per Matting (BiRefNet, self-hosted) sauber
-        // FREISTELLEN und als Cutout mit ECHTER Proportion auf das UNVERÄNDERTE Bild setzen.
-        // Der Hintergrund wird NIE neu gemalt → kein Drift („halbes Bild verändert"), keine
-        // sichtbare Naht, keine Stauchung (gleichmäßige Skalierung), Nachbarn bleiben 1:1.
-        resultUrl = await placeObjectByMatte(baseEl, bbox, rawPrompt.trim(), W, H)
+        // „Bereich ändern": VOLLBILD-Edit mit Ortsangabe aus der Auswahl. Das GANZE Bild geht
+        // an die KI (kein Crop, kein Freistellen, kein clientseitiges Zusammensetzen) → sie
+        // arbeitet das Objekt fotorealistisch INS Bild ein (Licht, Schatten, Perspektive,
+        // Körnung) statt ein ausgeschnittenes Bild aufzukleben. Der Vollbild-Kontext verhindert
+        // zudem, dass Nachbarobjekte als geschrumpfte Kopien neu erfunden werden.
+        const fc = document.createElement('canvas'); fc.width = W; fc.height = H
+        fc.getContext('2d').drawImage(origEl, 0, 0, W, H)
+        const fullB64 = fc.toDataURL('image/png').split(',')[1]
+        const cx = bbox.x + bbox.w / 2, cy = bbox.y + bbox.h / 2
+        const hpos = cx < W * 0.34 ? 'im linken Drittel' : (cx > W * 0.66 ? 'im rechten Drittel' : 'in der horizontalen Mitte')
+        const vpos = cy < H * 0.4 ? 'im oberen Bereich' : (cy > H * 0.66 ? 'im unteren Bereich' : 'auf mittlerer Höhe')
+        const basePct = Math.round(((bbox.y + bbox.h) / H) * 100)
+        const hPct = Math.round((bbox.h / H) * 100)
+        const wPct = Math.round((bbox.w / W) * 100)
+        const editPrompt = `Bearbeite dieses Foto und führe folgende Änderung aus: ${rawPrompt.trim()}.\nOrt der Änderung: ${hpos}, ${vpos} des Bildes. Die Unterkante/Standfläche des Objekts liegt etwa bei ${basePct}% der Bildhöhe (von oben gemessen); das Objekt ist ungefähr ${hPct}% der Bildhöhe hoch und ${wPct}% der Bildbreite breit — halte diese Größe realistisch zur Szene ein, nicht überdimensioniert.\nArbeite das Objekt FOTOREALISTISCH und vollständig in das bestehende Foto ein: gleiche Beleuchtung und Lichtrichtung, echter weicher Schlagschatten auf die vorhandene Oberfläche, korrekte Perspektive, gleiche Schärfentiefe, gleicher Bildstil und dieselbe Körnung/Rauschstruktur wie das restliche Foto. Es darf AUF KEINEN FALL wie ein ausgeschnittenes, freigestelltes und aufgeklebtes Bild wirken — keine harten Freistell-Kanten, kein aufgesetzter Fake-Schatten.\nÄndere den GESAMTEN REST des Bildes NICHT: alle bereits vorhandenen Objekte, der Hintergrund, Farben, Licht und Komposition bleiben exakt unverändert. Füge nichts anderes hinzu und entferne nichts anderes. Gib das vollständige Bild in identischer Größe und identischem Bildausschnitt zurück.`
+        const aiVisual = await callGenerateImage(editPrompt, { inlineRefs: [{ mimeType: 'image/png', data: fullB64 }] })
+        const aiEl = await loadImageEl(aiVisual.storage_path)
+        const oc = document.createElement('canvas')
+        oc.width = aiEl.naturalWidth || W; oc.height = aiEl.naturalHeight || H
+        oc.getContext('2d').drawImage(aiEl, 0, 0)
+        resultUrl = oc.toDataURL('image/png')
       }
-      await applyResultDirect(resultUrl, 'mask')   // direkt ins Bild (rückgängig via Undo)
+      if (resultUrl) await applyResultDirect(resultUrl, 'mask')   // direkt ins Bild (rückgängig via Undo)
+      else setAiError('KI hat kein Bild zurückgegeben. Bitte erneut versuchen.')
     } catch (e) {
       setAiError(e?.message || 'KI-Bearbeitung fehlgeschlagen. Das Bild bleibt unverändert.')
     } finally {
