@@ -2087,31 +2087,38 @@ Gib AUSSCHLIESSLICH gültiges JSON zurück (kein Markdown, keine Erklärung, KEI
   {"op":"edit_image","instruction":"inhaltliche Bildänderung am Motiv"}
 ]}
 Nutze nur die für den Befehl nötigen Operationen.`
-      const genCall = supabase.functions.invoke('generate', { body: { type: 'raw', model: 'claude-sonnet-4-6', prompt } })
-      const timeout = new Promise((_, rej) => setTimeout(() => rej(new Error('Zeitüberschreitung – bitte erneut versuchen')), 75000))
-      const { data, error } = await Promise.race([genCall, timeout])
-      if (error) throw new Error(error.message || 'KI fehlgeschlagen')
-      let txt = String(data?.text || data?.content || data?.output || '').trim()
-      txt = txt.replace(/^```(?:json)?/i, '').replace(/```\s*$/i, '').trim()
-      const a = txt.indexOf('{'), z = txt.lastIndexOf('}')
-      if (a >= 0 && z > a) txt = txt.slice(a, z + 1)
-      let parsed
-      try { parsed = JSON.parse(txt) }
-      catch (_pe1) {
-        // Häufigster Fehler: trailing commas → entfernen und erneut versuchen.
-        let rep = txt.replace(/,\s*([\]}])/g, '$1')
-        try { parsed = JSON.parse(rep) }
-        catch (_pe2) {
-          // Abgeschnittenes JSON reparieren: bis zum letzten vollständigen '}' kürzen + Array/Objekt schließen.
-          try {
-            const oi = rep.indexOf('"operations"')
-            const arrStart = oi >= 0 ? rep.indexOf('[', oi) : -1
-            const lastClose = rep.lastIndexOf('}')
-            if (arrStart > 0 && lastClose > arrStart) { parsed = JSON.parse(rep.slice(0, lastClose + 1) + ']}') }
-          } catch (_pe3) {}
-          if (!parsed) throw new Error('Die KI-Antwort war unvollständig/ungültig — bitte den Befehl etwas einfacher oder kürzer formulieren.')
+      // Robustes JSON-Extrahieren (Codeblöcke strippen, trailing commas, abgeschnittenes
+      // JSON bis zur letzten vollständigen Operation reparieren). Gibt null zurück statt zu werfen.
+      const extractOps = (raw) => {
+        let txt = String(raw || '').trim()
+        txt = txt.replace(/^```(?:json)?/i, '').replace(/```\s*$/i, '').trim()
+        const a = txt.indexOf('{'), z = txt.lastIndexOf('}')
+        if (a >= 0 && z > a) txt = txt.slice(a, z + 1)
+        const tryParse = (x) => { try { return JSON.parse(x) } catch (_e) { return null } }
+        let p = tryParse(txt)
+        if (!p) p = tryParse(txt.replace(/,\s*([\]}])/g, '$1'))
+        if (!p) {
+          const rep = txt.replace(/,\s*([\]}])/g, '$1')
+          const oi = rep.indexOf('"operations"')
+          const arrStart = oi >= 0 ? rep.indexOf('[', oi) : -1
+          const lastClose = rep.lastIndexOf('}')
+          if (arrStart > 0 && lastClose > arrStart) p = tryParse(rep.slice(0, lastClose + 1) + ']}')
         }
+        return (p && (Array.isArray(p.operations) || Array.isArray(p))) ? p : null
       }
+      // Bis zu 2 Versuche — die KI liefert bei komplexen Befehlen gelegentlich ungültiges/
+      // abgeschnittenes JSON; dann einmal mit strikterer Anweisung erneut, statt hart abzubrechen.
+      let parsed = null
+      for (let attempt = 0; attempt < 2 && !parsed; attempt++) {
+        const p2 = attempt === 0 ? prompt
+          : prompt + '\n\nWICHTIG: Deine vorherige Antwort war KEIN gültiges JSON. Antworte JETZT mit AUSSCHLIESSLICH einem einzigen, kompakten, vollständigen JSON-Objekt {"operations":[...]} — kein Text davor/danach, keine Erklärungen, keine Codeblöcke, alle Klammern geschlossen, keine trailing commas. Halte die Operationen so knapp wie möglich.'
+        const genCall = supabase.functions.invoke('generate', { body: { type: 'raw', model: 'claude-sonnet-4-6', prompt: p2, max_tokens: 8000 } })
+        const timeout = new Promise((_, rej) => setTimeout(() => rej(new Error('Zeitüberschreitung – bitte erneut versuchen')), 75000))
+        const { data, error } = await Promise.race([genCall, timeout])
+        if (error) { if (attempt === 1) throw new Error(error.message || 'KI fehlgeschlagen'); else continue }
+        parsed = extractOps(data?.text || data?.content || data?.output || '')
+      }
+      if (!parsed) throw new Error('Die KI-Antwort war unvollständig/ungültig — bitte den Befehl etwas einfacher oder kürzer formulieren.')
       const ops = Array.isArray(parsed.operations) ? parsed.operations : (Array.isArray(parsed) ? parsed : [])
       if (!ops.length) throw new Error('Keine Änderungen erhalten')
       pushHistory()
