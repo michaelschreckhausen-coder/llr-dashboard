@@ -22,10 +22,29 @@ function json(o: unknown, status = 200) {
 }
 
 Deno.serve(async (req) => {
-  const { unipile_account_id, search, max_pages } = await req.json().catch(() => ({} as any));
+  const { unipile_account_id, search, max_pages, inbox_list_id } = await req.json().catch(() => ({} as any));
   if (!unipile_account_id) return json({ error: "unipile_account_id required" }, 400);
   if (!search || typeof search !== "object") return json({ error: "search (sales_navigator params) required" }, 400);
   const maxPages = Math.min(Number(max_pages) || DEFAULT_MAX_PAGES, DEFAULT_MAX_PAGES);
+
+  // Optionale Listen-Zuordnung: aufrufenden User aus dem JWT ableiten + Listen-Zugriff prüfen (RLS-konsistent).
+  // member.user_id = Caller; Zugriff = Owner ODER (is_shared UND Team-Mitglied) — sonst 403 (kein Fremd-Listen-Write).
+  let callerId: string | null = null;
+  if (inbox_list_id) {
+    const jwt = (req.headers.get("Authorization") || "").replace(/^Bearer\s+/i, "");
+    const { data: gu } = await db.auth.getUser(jwt);
+    const caller = gu?.user;
+    if (!caller) return json({ error: "Auth erforderlich für inbox_list_id" }, 401);
+    callerId = caller.id;
+    const { data: listRow } = await db.from("inbox_lists").select("user_id, team_id, is_shared").eq("id", inbox_list_id).maybeSingle();
+    if (!listRow) return json({ error: "inbox_list nicht gefunden" }, 404);
+    let ok = listRow.user_id === callerId;
+    if (!ok && listRow.is_shared && listRow.team_id) {
+      const { data: tm } = await db.from("team_members").select("team_id").eq("user_id", callerId).eq("team_id", listRow.team_id).maybeSingle();
+      ok = !!tm;
+    }
+    if (!ok) return json({ error: "keine Berechtigung für diese Liste" }, 403);
+  }
 
   const { data: acct, error: aerr } = await db.from("unipile_accounts")
     .select("user_id, team_id, status").eq("unipile_account_id", unipile_account_id).maybeSingle();
@@ -82,9 +101,22 @@ Deno.serve(async (req) => {
     }
   } while (cursor && pages < maxPages);
 
+  // Listen-Zuordnung — idempotent via Unique (list_id, inbox_id) → ON CONFLICT DO NOTHING (ignoreDuplicates).
+  let list_linked = 0;
+  if (inbox_list_id && callerId && importedIds.length) {
+    const rows = importedIds.map((id) => ({ list_id: inbox_list_id, inbox_id: id, user_id: callerId }));
+    const { error: mErr } = await db.from("inbox_list_members")
+      .upsert(rows, { onConflict: "list_id,inbox_id", ignoreDuplicates: true });
+    if (mErr) {
+      return json({ unipile_account_id, team_id: acct.team_id, pages, seen, inserted, updated, failed, inbox_list_id, list_error: mErr.message });
+    }
+    list_linked = rows.length; // versuchte Zuordnungen (Duplikate werden idempotent übersprungen)
+  }
+
   return json({
     unipile_account_id, team_id: acct.team_id,
     pages, seen, inserted, updated, failed,
+    inbox_list_id: inbox_list_id ?? null, list_linked,
     more_available: !!cursor && pages >= maxPages,
   });
 });
