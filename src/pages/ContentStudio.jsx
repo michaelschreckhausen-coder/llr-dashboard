@@ -36,6 +36,16 @@ import { listVisualsForChat, linkVisualToChat, getVisual, signedVisualUrl, downl
 // verlässt und woanders in Leadesk weiterarbeitet.
 const pendingGens = new Map()
 function emitGenChange() { try { window.dispatchEvent(new CustomEvent('leadesk:gen-change')) } catch (_e) {} }
+// Live-Status einer laufenden Text-Generierung setzen (wie Claude/ChatGPT: „Durchsucht das Web…" etc.)
+function setGenStatus(chatId, status) {
+  const e = pendingGens.get(chatId)
+  if (e) { e.status = status; emitGenChange() }
+}
+// Zeitgesteuerte Status-Phasen abspielen; gibt Cleanup-Funktion zurück. phases: [{ after: ms, status: {icon,label} }]
+function runStatusPhases(chatId, phases) {
+  const timers = phases.map(p => setTimeout(() => setGenStatus(chatId, p.status), p.after))
+  return () => timers.forEach(clearTimeout)
+}
 function emitGenDone(chatId) { try { window.dispatchEvent(new CustomEvent('leadesk:gen-done', { detail: { chatId } })) } catch (_e) {} }
 // Höhe des Inline-Lade-Fensters aus dem Bildseitenverhältnis (Breite 320), begrenzt.
 function inlineLoaderHeight(ratio) {
@@ -191,6 +201,24 @@ function TypingIndicator() {
       <span style={{ width:7, height:7, borderRadius:'50%', background: P, animation: 'tw-blink 1.4s infinite ease-in-out', animationDelay:'0.2s' }}/>
       <span style={{ width:7, height:7, borderRadius:'50%', background: P, animation: 'tw-blink 1.4s infinite ease-in-out', animationDelay:'0.4s' }}/>
       <style>{`@keyframes tw-blink { 0%, 80%, 100% { opacity: 0.2; } 40% { opacity: 1; } }`}</style>
+    </div>
+  )
+}
+
+// Live-Status-Zeile während der Generierung — zeigt was der Assistent gerade tut
+// (wie Claude/ChatGPT: „Durchsucht das Web…", „Verfasst die Antwort…"). Fällt ohne
+// Status auf die klassische Punkt-Animation zurück.
+const STATUS_ICONS = { think: Sparkles, search: Globe, read: BookOpen, write: Pencil }
+function StatusIndicator({ status }) {
+  if (!status || !status.label) return <TypingIndicator />
+  const Icon = STATUS_ICONS[status.icon] || Sparkles
+  return (
+    <div style={{ display:'flex', alignItems:'center', gap:9, padding:'12px 14px', background:'#fff', border:'1px solid var(--border)', borderRadius:12, width:'fit-content', maxWidth:'100%' }}>
+      <Icon size={15} strokeWidth={1.9} style={{ color: P, flexShrink:0 }} />
+      <span style={{ fontSize:13, fontWeight:600, color:'var(--text-primary)', backgroundImage:`linear-gradient(90deg, var(--text-muted) 0%, var(--text-primary) 20%, var(--text-muted) 40%)`, backgroundSize:'200% 100%', WebkitBackgroundClip:'text', backgroundClip:'text', WebkitTextFillColor:'transparent', animation:'tw-shimmer 1.8s linear infinite' }}>
+        {status.label}
+      </span>
+      <style>{`@keyframes tw-shimmer { 0% { background-position: 100% 0; } 100% { background-position: -100% 0; } }`}</style>
     </div>
   )
 }
@@ -953,7 +981,22 @@ export default function ContentStudio({ session }) {
     setMessages(prev => [...prev, tempUser])
     setInput(''); setAttachments([])
     setTimeout(() => messagesEndRef.current?.scrollIntoView({ behavior:'smooth' }), 30)
-    pendingGens.set(chatIdForSend, { kind:'text', startedAt:Date.now(), expectedSeconds:20 }); emitGenChange()
+    const writeLabel = answerFormatArg === 'post' ? 'Verfasst deinen Beitrag…'
+      : answerFormatArg === 'chat' ? 'Formuliert die Antwort…'
+      : 'Verfasst die Antwort…'
+    const statusPhases = useWebSearch
+      ? [
+          { after: 0,    status: { icon:'think',  label:'Analysiert deine Anfrage…' } },
+          { after: 1400, status: { icon:'search', label:'Durchsucht das Web…' } },
+          { after: 5000, status: { icon:'read',   label:'Wertet Quellen aus…' } },
+          { after: 8500, status: { icon:'write',  label: writeLabel } },
+        ]
+      : [
+          { after: 0,    status: { icon:'think', label:'Analysiert deine Anfrage…' } },
+          { after: 1800, status: { icon:'write', label: writeLabel } },
+        ]
+    pendingGens.set(chatIdForSend, { kind:'text', startedAt:Date.now(), expectedSeconds:20, status: statusPhases[0].status }); emitGenChange()
+    const stopStatus = runStatusPhases(chatIdForSend, statusPhases.slice(1))
 
     try {
       const { data, error: fnErr } = await supabase.functions.invoke('text-werkstatt-chat', {
@@ -981,6 +1024,7 @@ export default function ContentStudio({ session }) {
     } catch (e) {
       if (chatIdForSend === activeChatIdRef.current) setError('Fehler: ' + (e?.message || String(e)))
     } finally {
+      stopStatus()
       pendingGens.delete(chatIdForSend); emitGenChange(); emitGenDone(chatIdForSend)
     }
   }
@@ -1450,6 +1494,7 @@ Neue Anfrage: "${p}"` },
             messagesLoading={messagesLoading}
             sending={activeGenerating}
             genKind={activePending?.kind}
+            genStatus={activePending?.status}
             genRatio={activePending?.ratio || '1:1'}
             genExpectedSeconds={activePending?.expectedSeconds}
             genStartedAt={activePending?.startedAt}
@@ -1921,7 +1966,7 @@ function CleanView({
 
 // ─── CHAT VIEW (klassisches Layout) ─────────────────────────────────────────
 function ChatView({
-  linkedPost, refDoc, messages, messagesLoading, sending, genKind, genRatio, genExpectedSeconds, genStartedAt, messagesEndRef, attachToPost, loadExistingPosts,
+  linkedPost, refDoc, messages, messagesLoading, sending, genKind, genStatus, genRatio, genExpectedSeconds, genStartedAt, messagesEndRef, attachToPost, loadExistingPosts,
   onInsertToDoc, onOpenInDesigner, onDownloadVisual, onImageToPost, signedVisualUrlFn,
   input, setInput,
   attachments, setAttachments,
@@ -1973,7 +2018,7 @@ function ChatView({
           {sending && (
             <div style={{ alignSelf:'flex-start', maxWidth:'100%' }}>
               {genKind === 'text'
-                ? <TypingIndicator />
+                ? <StatusIndicator status={genStatus} />
                 : <div style={{ width:320, maxWidth:'100%', height: inlineLoaderHeight(genRatio), border:'1px solid var(--border)', borderRadius:14, overflow:'hidden', background:'#fff', boxShadow:'0 1px 4px rgba(15,23,42,0.06)' }}>
                     <GenerationLoading embedded title="Bild wird erstellt" expectedSeconds={genExpectedSeconds || 22} startedAt={genStartedAt} />
                   </div>}
