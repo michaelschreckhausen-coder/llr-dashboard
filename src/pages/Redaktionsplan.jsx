@@ -1091,12 +1091,22 @@ function PostModal({ post, onClose, onSave, onDelete, session, activeTeamId, mem
           {/* Right — Metadaten */}
           <div style={{ display:'flex', flexDirection:'column', gap:16 }}>
 
-            {/* Company Brand (Ambassador) — Person schreibt für ein Unternehmen */}
-            {companyVoices.length > 0 && (previewBV ? previewBV.account_type !== 'company_page' : activeBrandVoice?.account_type !== 'company_page') && (
-              <div>
-                <label style={{ fontSize:11, fontWeight:700, color:'var(--text-muted)', textTransform:'uppercase', letterSpacing:'0.05em', display:'block', marginBottom:8 }}>Für Unternehmen (optional)</label>
-                <CompanyMultiSelect companies={companyVoices} value={form.company_voice_ids || []} onChange={(ids)=>upd('company_voice_ids', ids)} label="— Kein Unternehmen —" buttonStyle={{ width:'100%', maxWidth:'none', padding:'10px 12px', fontSize:13 }} />
-                <div style={{ fontSize:11, color:'var(--text-muted)', marginTop:6, lineHeight:1.4 }}>Du schreibst in deiner Stimme — Texte &amp; Bilder nutzen zusätzlich Fakten und CI dieses Unternehmens.</div>
+            {/* Unternehmen + Geplant für nebeneinander (über Status/Tags) */}
+            {((companyVoices.length > 0 && (previewBV ? previewBV.account_type !== 'company_page' : activeBrandVoice?.account_type !== 'company_page')) || isPersonalPost) && (
+              <div style={{ display:'flex', gap:12, alignItems:'flex-start', flexWrap:'wrap' }}>
+                {companyVoices.length > 0 && (previewBV ? previewBV.account_type !== 'company_page' : activeBrandVoice?.account_type !== 'company_page') && (
+                  <div style={{ flex:1, minWidth:150 }}>
+                    <label style={{ fontSize:11, fontWeight:700, color:'var(--text-muted)', textTransform:'uppercase', letterSpacing:'0.05em', display:'block', marginBottom:8 }}>Für Unternehmen</label>
+                    <CompanyMultiSelect companies={companyVoices} value={form.company_voice_ids || []} onChange={(ids)=>upd('company_voice_ids', ids)} label="— Kein Unternehmen —" buttonStyle={{ width:'100%', maxWidth:'none', padding:'10px 12px', fontSize:13 }} />
+                  </div>
+                )}
+                {isPersonalPost && (
+                  <div style={{ flex:1, minWidth:150 }}>
+                    <label style={{ fontSize:11, fontWeight:700, color:'var(--text-muted)', textTransform:'uppercase', letterSpacing:'0.05em', display:'block', marginBottom:8 }}>Geplant für</label>
+                    <input type="datetime-local" value={form.scheduled_at} onChange={e => upd('scheduled_at', e.target.value)}
+                      style={{ width:'100%', padding:'9px 10px', borderRadius:10, border:'1.5px solid #E5E7EB', fontSize:13, outline:'none', boxSizing:'border-box', color:'rgb(20,20,43)' }}/>
+                  </div>
+                )}
               </div>
             )}
 
@@ -1159,16 +1169,6 @@ function PostModal({ post, onClose, onSave, onDelete, session, activeTeamId, mem
               <TagPicker tags={tags} selTagIds={selTagIds} onToggle={toggleTag} onRename={renameTagLocal} onPersist={persistTag} onAddTag={addTag} />
             </div>
             </div>
-
-            {/* Geplant für — nur Personal Brands (Company-Posting noch nicht möglich) */}
-            {isPersonalPost && (
-            <div>
-              <label style={{ fontSize:11, fontWeight:700, color:'var(--text-muted)', textTransform:'uppercase', letterSpacing:'0.05em', display:'inline-flex', alignItems:'center', gap:6, marginBottom:6 }}><Calendar size={11}/>Geplant für</label>
-              <input type="datetime-local" value={form.scheduled_at} onChange={e => upd('scheduled_at', e.target.value)}
-                style={{ width:'100%', padding:'8px 10px', borderRadius:10, border:'1.5px solid #E5E7EB',
-                  fontSize:13, outline:'none', boxSizing:'border-box', color:'rgb(20,20,43)' }}/>
-            </div>
-            )}
 
             {/* Zugeordnete Team-Mitglieder */}
             <div>
