@@ -214,16 +214,19 @@ export default function Automatisierung({ session }) {
     if (!uid) return
     setLoading(true)
     const since24h = new Date(Date.now() - 24*60*60*1000).toISOString()
+    // Fallstrick #14: linkedin_inbox EXPLIZIT team-scopen. Sonst lässt RLS bei Multi-Team-Membership
+    // ALLE Teams des Users durch und limit(300) cappt fremde Teams über das aktive — Listen aus kleineren
+    // Teams fallen aus dem Fenster (medizin-Bug: 7 Rows jenseits Pos.300 von 1428 quer über 8 Teams).
+    let inboxQ = supabase.from('linkedin_inbox')
+      .select('id,first_name,last_name,name,company,job_title,linkedin_url,li_connection_status')
+      .eq('review_status', 'new').not('linkedin_url','is', null)
+    if (activeTeamId) inboxQ = inboxQ.eq('team_id', activeTeamId)
+    inboxQ = inboxQ.order('imported_at', { ascending:false }).limit(300)
     const [c, j, l, lg] = await Promise.all([
       supabase.from('automation_campaigns').select('*').eq('user_id', uid).order('created_at', { ascending:false }),
       supabase.from('automation_jobs').select('*').eq('user_id', uid)
         .in('status', ['pending','claimed','running']).order('scheduled_at', { ascending:true }).limit(100),
-      // Increment 3: Kampagnen-Ziele kommen aus der LinkedIn-Inbox (Prospects,
-      // noch keine Leads), nicht aus leads. RLS scoped auf das Team des Users.
-      supabase.from('linkedin_inbox')
-        .select('id,first_name,last_name,name,company,job_title,linkedin_url,li_connection_status')
-        .eq('review_status', 'new').not('linkedin_url','is', null)
-        .order('imported_at', { ascending:false }).limit(300),
+      inboxQ,
       supabase.from('automation_logs').select('action,success,created_at').eq('user_id', uid).gte('created_at', since24h),
     ])
     setCampaigns(c.data || [])
@@ -236,7 +239,7 @@ export default function Automatisierung({ session }) {
     const { data: ua } = await supabase.from('unipile_accounts').select('status').eq('user_id', uid).eq('status', 'OK').limit(1).maybeSingle()
     setUniConnected(!!ua)
     setLoading(false)
-  }, [uid])
+  }, [uid, activeTeamId])
 
   useEffect(() => { load() }, [load])
 
@@ -938,6 +941,7 @@ function NewCampaignWizard({
   const [source, setSource]         = useState(null)
   const [sourceListId, setSourceListId] = useState('')
   const [selectMode, setSelectMode] = useState(null) // null = Entscheidung, 'manual' = Checkbox-Liste
+  const [listLeads, setListLeads]   = useState([]) // Fix 3: Member-Rows der gewählten Liste, DIREKT geladen (ungecappt)
 
   // Eligibility (b): inbox_ids die AKTUELL in einer aktiven Kampagne enrollt sind.
   // Nur laufende Kampagnen (active/paused) sperren Kontakte — gestoppte,
@@ -963,14 +967,27 @@ function NewCampaignWizard({
     return () => { cancelled = true }
   }, [uid])
 
+  // Fix 3: bei gewählter Liste die Member-Rows DIREKT laden (ungecappt) statt gegen den
+  // limit(300)-Pool zu matchen — entfernt die 300-Fragilität für Listen dauerhaft.
+  useEffect(() => {
+    if (source !== 'inbox_list' || !sourceListId) { setListLeads([]); return }
+    const ids = [...(membersByList.get(sourceListId) || [])]
+    if (!ids.length) { setListLeads([]); return }
+    let cancelled = false
+    ;(async () => {
+      const { data } = await supabase.from('linkedin_inbox')
+        .select('id,first_name,last_name,name,company,job_title,linkedin_url,li_connection_status')
+        .in('id', ids).eq('review_status', 'new').not('linkedin_url', 'is', null)
+      if (!cancelled) setListLeads(data || [])
+    })()
+    return () => { cancelled = true }
+  }, [source, sourceListId, membersByList])
+
   // Kandidatenmenge je nach Quelle (Inbox-Kontakte mit linkedin_url).
   const candidates = useMemo(() => {
-    if (source === 'inbox_list') {
-      const set = membersByList.get(sourceListId) || new Set()
-      return linkedinLeads.filter(l => set.has(l.id))
-    }
-    return linkedinLeads // 'all' (und Default)
-  }, [source, sourceListId, linkedinLeads, membersByList])
+    if (source === 'inbox_list') return listLeads // Fix 3: direkt geladen, ungecappt
+    return linkedinLeads // 'all' — team-gescopeter Pool (Fix 2)
+  }, [source, listLeads, linkedinLeads])
 
   // Eligibility: (a) nicht bereits vernetzt, (b) nicht schon in einer Kampagne.
   const eligible = useMemo(
