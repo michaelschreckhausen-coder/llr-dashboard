@@ -60,7 +60,8 @@ export function BrandVoiceProvider({ session, children }) {
     }
     if (!active) active = list.find(bv => bv.user_id === session.user.id && bv.is_active)
     if (!active) active = list.find(bv => bv.user_id === session.user.id)
-    if (!active) active = list[0] || null
+    // Kein Brand vorhanden/ausgewählt → markenloser Modus (Content-Bereich funktioniert ohne Marke)
+    if (!active) active = list[0] || NO_BRAND
 
     setActiveBV(active)
     setLoading(false)
