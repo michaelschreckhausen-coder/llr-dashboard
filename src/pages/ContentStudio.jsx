@@ -19,6 +19,7 @@ import { useNavigate, useSearchParams } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
 import { sharedEntityIds, scopeByTeamOrShared } from '../lib/teamShares'
 import { useTeam } from '../context/TeamContext'
+import { useModel } from '../context/ModelContext'
 import { useBrandVoice } from '../context/BrandVoiceContext'
 import DocumentEditorPane from '../components/DocumentEditorPane'
 import { listDocumentsForChat, listDocuments, addDocumentToChat, listChatsForDocument } from '../lib/contentDocuments'
@@ -302,6 +303,7 @@ export default function ContentStudio({ session }) {
   const navigate = useNavigate()
   const [searchParams, setSearchParams] = useSearchParams()
   const { activeTeamId } = useTeam()
+  const { model: globalModel } = useModel()
   const { activeBrandVoice, brandVoices, noBrand } = useBrandVoice()
   const bvId = noBrand ? null : (activeBrandVoice?.id || null)
   const contentReady = noBrand || !!bvId
@@ -1003,6 +1005,7 @@ export default function ContentStudio({ session }) {
           strike2_persona_id: splitAudienceRef(selectedAudienceId).strike2_persona_id || undefined,
           company_voice_id: selectedCompanyVoiceIds[0] || null, company_voice_ids: selectedCompanyVoiceIds,
           user_message: userMsgText,
+          model: globalModel,
           answer_format: answerFormatArg || 'auto',
           knowledge_resource_ids: selectedKnowledgeIds,
           use_web_search: useWebSearch,
