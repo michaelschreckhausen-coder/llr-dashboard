@@ -111,74 +111,204 @@ function buildPostContext(post: any, postVisuals: any[]): string {
 }
 
 // Anthropic Messages API mit optionalem Web-Search-Tool
-async function callAnthropic(opts: {
-  apiKey: string;
-  model: string;
-  systemPrompt: string;
-  conversation: { role: "user" | "assistant"; content: any }[];
-  useWebSearch: boolean;
-  useWebFetch?: boolean;
-}): Promise<{ content: string; sources: { url: string; title: string }[]; stopReason?: string }> {
-  const body: any = {
-    model: opts.model,
-    max_tokens: 4096,
-    system: opts.systemPrompt,
-    messages: opts.conversation,
-  };
-  const tools: any[] = [];
-  if (opts.useWebSearch) tools.push({ type: "web_search_20250305", name: "web_search", max_uses: 5 });
-  // web_fetch: öffnet vom Nutzer gepostete Links direkt (statt nur zu suchen)
-  if (opts.useWebSearch || opts.useWebFetch) tools.push({ type: "web_fetch_20250910", name: "web_fetch", max_uses: 5, max_content_tokens: 60000 });
-  if (tools.length) body.tools = tools;
+// ─── Provider-Routing ───────────────────────────────────────────────────────
+// Das oben im Topbar gewählte Modell bestimmt Anbieter UND Tools. Jeder Anbieter
+// nutzt seine EIGENEN Tools (Anthropic web_search/web_fetch, OpenAI Responses
+// web_search, Google google_search/url_context, Mistral Conversations web_search).
+function getProvider(model: string): string {
+  if (model.startsWith("claude")) return "anthropic";
+  if (model.startsWith("gpt") || /^o[0-9]/.test(model)) return "openai";
+  if (model.startsWith("gemini")) return "google";
+  if (model.startsWith("mistral") || model.startsWith("magistral") || model.startsWith("open-mixtral") || model.startsWith("codestral") || model.startsWith("ministral") || model.startsWith("pixtral")) return "mistral";
+  return "anthropic";
+}
 
-  const res = await fetch("https://api.anthropic.com/v1/messages", {
-    method: "POST",
-    headers: {
-      "x-api-key": opts.apiKey,
-      "anthropic-version": "2023-06-01",
-      "anthropic-beta": "web-search-2025-03-05,web-fetch-2025-09-10",
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify(body),
-  });
+type Media = { type: "image" | "document"; mime: string; base64: string; name?: string };
+type LLMKeys = { anthropic?: string; openai?: string; google?: string; mistral?: string };
+type Msg = { role: "user" | "assistant"; content: string };
 
-  if (!res.ok) {
-    const errText = await res.text();
-    throw new Error(`Anthropic API ${res.status}: ${errText.slice(0, 400)}`);
-  }
-  const data = await res.json();
+function pushSrc(sources: { url: string; title: string }[], url?: string, title?: string) {
+  if (url && !sources.find((s) => s.url === url)) sources.push({ url, title: title || url });
+}
 
-  // Content-Blocks zusammenfassen + Sources sammeln
-  let textOut = "";
+// EIN Anbieter-Aufruf. withWeb schaltet die anbieter-eigenen Web-Tools zu.
+async function callProvider(opts: {
+  keys: LLMKeys; model: string; systemPrompt: string;
+  history: Msg[]; userText: string; media: Media[]; withWeb: boolean;
+}): Promise<{ content: string; sources: { url: string; title: string }[] }> {
+  const provider = getProvider(opts.model);
+  const web = opts.withWeb;
   const sources: { url: string; title: string }[] = [];
-  for (const block of data.content || []) {
-    if (block.type === "text") {
-      textOut += block.text;
-      // Citations in dem Text-Block
-      if (Array.isArray(block.citations)) {
-        for (const c of block.citations) {
-          const url = c.url || c.source_url;
-          const title = c.title || url;
-          if (url && !sources.find((s) => s.url === url)) sources.push({ url, title });
-        }
+
+  // ---------- ANTHROPIC ----------
+  if (provider === "anthropic") {
+    if (!opts.keys.anthropic) throw new Error("ANTHROPIC_API_KEY fehlt");
+    const blocks: any[] = [];
+    for (const m of opts.media) {
+      if (m.type === "image") blocks.push({ type: "image", source: { type: "base64", media_type: m.mime, data: m.base64 } });
+      else blocks.push({ type: "document", source: { type: "base64", media_type: "application/pdf", data: m.base64 } });
+    }
+    blocks.push({ type: "text", text: opts.userText || "Bitte schau dir den/die Anhang/Anhänge an." });
+    const messages = [...opts.history, { role: "user", content: blocks.length > 1 ? blocks : opts.userText }];
+    const body: any = { model: opts.model, max_tokens: 4096, system: opts.systemPrompt, messages };
+    if (web) body.tools = [
+      { type: "web_search_20250305", name: "web_search", max_uses: 5 },
+      { type: "web_fetch_20250910", name: "web_fetch", max_uses: 5, max_content_tokens: 60000 },
+    ];
+    const headers: any = { "x-api-key": opts.keys.anthropic, "anthropic-version": "2023-06-01", "Content-Type": "application/json" };
+    if (web) headers["anthropic-beta"] = "web-search-2025-03-05,web-fetch-2025-09-10";
+    else if (opts.media.some((m) => m.type === "document")) headers["anthropic-beta"] = "pdfs-2024-09-25";
+    const res = await fetch("https://api.anthropic.com/v1/messages", { method: "POST", headers, body: JSON.stringify(body) });
+    if (!res.ok) throw new Error(`Anthropic ${res.status}: ${(await res.text()).slice(0, 300)}`);
+    const data = await res.json();
+    let text = "";
+    for (const b of data.content || []) {
+      if (b.type === "text") {
+        text += b.text;
+        if (Array.isArray(b.citations)) for (const c of b.citations) pushSrc(sources, c.url || c.source_url, c.title);
+      } else if (b.type === "web_search_tool_result" && Array.isArray(b.content)) {
+        for (const r of b.content) pushSrc(sources, r.url, r.title);
+      } else if (b.type === "web_fetch_tool_result") {
+        const c = b.content; pushSrc(sources, c?.url || c?.content?.url || c?.retrieved_url, c?.content?.title);
       }
-    } else if (block.type === "web_search_tool_result") {
-      // Auch hier können Quellen drinstecken
-      if (Array.isArray(block.content)) {
-        for (const r of block.content) {
-          if (r.url && !sources.find((s) => s.url === r.url)) {
-            sources.push({ url: r.url, title: r.title || r.url });
-          }
-        }
+    }
+    return { content: text.trim(), sources };
+  }
+
+  // ---------- OPENAI ----------
+  if (provider === "openai") {
+    if (!opts.keys.openai) throw new Error("OPENAI_API_KEY fehlt");
+    if (web) {
+      // Responses API mit web_search-Tool (Standard-Chat-API kann keine Websuche für gpt-5.x)
+      const input: any[] = [];
+      for (const h of opts.history) input.push({ role: h.role, content: [{ type: h.role === "assistant" ? "output_text" : "input_text", text: h.content }] });
+      const cur: any[] = [];
+      for (const m of opts.media) if (m.type === "image") cur.push({ type: "input_image", image_url: `data:${m.mime};base64,${m.base64}` });
+      cur.push({ type: "input_text", text: opts.userText });
+      input.push({ role: "user", content: cur });
+      const res = await fetch("https://api.openai.com/v1/responses", {
+        method: "POST", headers: { Authorization: `Bearer ${opts.keys.openai}`, "content-type": "application/json" },
+        body: JSON.stringify({ model: opts.model, instructions: opts.systemPrompt, tools: [{ type: "web_search" }], input }),
+      });
+      if (!res.ok) throw new Error(`OpenAI ${res.status}: ${(await res.text()).slice(0, 300)}`);
+      const data = await res.json();
+      let text = "";
+      for (const o of data.output || []) if (o.type === "message") for (const c of o.content || []) if (c.type === "output_text") {
+        text += c.text; for (const a of c.annotations || []) if (a.type === "url_citation") pushSrc(sources, a.url, a.title);
       }
-    } else if (block.type === "web_fetch_tool_result") {
-      // Gefetchte URL als Quelle aufnehmen
-      const c = block.content;
-      const u = c?.url || c?.content?.url || c?.retrieved_url;
-      if (u && !sources.find((s) => s.url === u)) sources.push({ url: u, title: c?.content?.title || u });
+      return { content: text.trim(), sources };
+    } else {
+      // Chat Completions (mit Vision/PDF)
+      const content: any[] = [];
+      for (const m of opts.media) {
+        if (m.type === "image") content.push({ type: "image_url", image_url: { url: `data:${m.mime};base64,${m.base64}` } });
+        else content.push({ type: "file", file: { filename: m.name || "doc.pdf", file_data: `data:application/pdf;base64,${m.base64}` } });
+      }
+      content.push({ type: "text", text: opts.userText });
+      const messages: any[] = [{ role: "system", content: opts.systemPrompt }, ...opts.history, { role: "user", content: content.length > 1 ? content : opts.userText }];
+      const res = await fetch("https://api.openai.com/v1/chat/completions", {
+        method: "POST", headers: { Authorization: `Bearer ${opts.keys.openai}`, "content-type": "application/json" },
+        body: JSON.stringify({ model: opts.model, messages }),
+      });
+      if (!res.ok) throw new Error(`OpenAI ${res.status}: ${(await res.text()).slice(0, 300)}`);
+      const data = await res.json();
+      return { content: (data.choices?.[0]?.message?.content || "").trim(), sources };
     }
   }
-  return { content: textOut.trim(), sources, stopReason: data.stop_reason };
+
+  // ---------- GOOGLE ----------
+  if (provider === "google") {
+    if (!opts.keys.google) throw new Error("GOOGLE_API_KEY fehlt");
+    const contents: any[] = [];
+    for (const h of opts.history) contents.push({ role: h.role === "assistant" ? "model" : "user", parts: [{ text: h.content }] });
+    const parts: any[] = [];
+    for (const m of opts.media) parts.push({ inlineData: { mimeType: m.type === "document" ? "application/pdf" : m.mime, data: m.base64 } });
+    parts.push({ text: opts.userText });
+    contents.push({ role: "user", parts });
+    const reqBody: any = { contents, systemInstruction: { parts: [{ text: opts.systemPrompt }] } };
+    if (web) reqBody.tools = [{ google_search: {} }, { url_context: {} }];
+    const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${opts.model}:generateContent?key=${opts.keys.google}`, {
+      method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify(reqBody),
+    });
+    if (!res.ok) throw new Error(`Google ${res.status}: ${(await res.text()).slice(0, 300)}`);
+    const data = await res.json();
+    const cand = data.candidates?.[0] || {};
+    const text = (cand.content?.parts || []).map((pt: any) => pt.text || "").join("");
+    for (const ch of cand.groundingMetadata?.groundingChunks || []) pushSrc(sources, ch.web?.uri, ch.web?.title);
+    return { content: text.trim(), sources };
+  }
+
+  // ---------- MISTRAL ----------
+  if (provider === "mistral") {
+    if (!opts.keys.mistral) throw new Error("MISTRAL_API_KEY fehlt");
+    if (web) {
+      // Conversations API mit web_search-Connector (Chat-API kann keine Websuche)
+      const inputs: any[] = [];
+      for (const h of opts.history) inputs.push({ role: h.role, content: h.content });
+      const cur: any[] = [];
+      for (const m of opts.media) if (m.type === "image") cur.push({ type: "input_image", image_url: `data:${m.mime};base64,${m.base64}` });
+      cur.push({ type: "input_text", text: opts.userText });
+      inputs.push({ role: "user", content: cur.length > 1 ? cur : opts.userText });
+      const res = await fetch("https://api.mistral.ai/v1/conversations", {
+        method: "POST", headers: { Authorization: `Bearer ${opts.keys.mistral}`, "content-type": "application/json" },
+        body: JSON.stringify({ model: opts.model, instructions: opts.systemPrompt, tools: [{ type: "web_search" }], inputs }),
+      });
+      if (!res.ok) throw new Error(`Mistral ${res.status}: ${(await res.text()).slice(0, 300)}`);
+      const data = await res.json();
+      let text = "";
+      for (const o of data.outputs || []) {
+        if (o.type === "message.output") {
+          const c = o.content;
+          if (typeof c === "string") text += c;
+          else if (Array.isArray(c)) for (const pc of c) {
+            if (typeof pc === "string") text += pc;
+            else if (pc?.type === "text") text += pc.text;
+            else if (pc?.type === "tool_reference") pushSrc(sources, pc.url, pc.title);
+          }
+        } else if (o.type === "tool.execution" && o.info?.result) {
+          try {
+            const r = typeof o.info.result === "string" ? JSON.parse(o.info.result) : o.info.result;
+            for (const k in r) { const it = r[k]; if (it?.url) pushSrc(sources, it.url, it.title); }
+          } catch (_e) { /* ignore */ }
+        }
+      }
+      return { content: text.trim(), sources };
+    } else {
+      // Chat Completions (Vision auf Mistral Large 3 / Pixtral / Ministral)
+      const content: any[] = [];
+      for (const m of opts.media) if (m.type === "image") content.push({ type: "image_url", image_url: `data:${m.mime};base64,${m.base64}` });
+      content.push({ type: "text", text: opts.userText });
+      const messages: any[] = [{ role: "system", content: opts.systemPrompt }, ...opts.history, { role: "user", content: content.length > 1 ? content : opts.userText }];
+      const res = await fetch("https://api.mistral.ai/v1/chat/completions", {
+        method: "POST", headers: { Authorization: `Bearer ${opts.keys.mistral}`, "content-type": "application/json" },
+        body: JSON.stringify({ model: opts.model, messages }),
+      });
+      if (!res.ok) throw new Error(`Mistral ${res.status}: ${(await res.text()).slice(0, 300)}`);
+      const data = await res.json();
+      return { content: (data.choices?.[0]?.message?.content || "").trim(), sources };
+    }
+  }
+
+  throw new Error("Unbekannter Provider für Modell: " + opts.model);
+}
+
+// callLLM: ruft den gewählten Anbieter auf. Wenn Web gewünscht aber der Aufruf
+// scheitert (Modell/Anbieter unterstützt es nicht), einmal OHNE Web wiederholen
+// und einen kurzen Hinweis anhängen — nie heimlich den Anbieter wechseln.
+async function callLLM(opts: {
+  keys: LLMKeys; model: string; systemPrompt: string;
+  history: Msg[]; userText: string; media: Media[]; useWebSearch: boolean; wantFetch: boolean;
+}): Promise<{ content: string; sources: { url: string; title: string }[]; note?: string }> {
+  const wantWeb = opts.useWebSearch || opts.wantFetch;
+  try {
+    const r = await callProvider({ ...opts, withWeb: wantWeb });
+    return r;
+  } catch (e) {
+    if (!wantWeb) throw e;
+    console.log(`[text-werkstatt-chat] web-path failed for ${opts.model}, retry ohne Web:`, String((e as any)?.message || e));
+    const r = await callProvider({ ...opts, withWeb: false });
+    return { ...r, note: "Hinweis: Das gewählte Modell konnte für diese Anfrage keine Web-Recherche/Link-Öffnung ausführen. Die Antwort basiert daher ohne Web-Zugriff." };
+  }
 }
 
 // Entfernt verirrte Control-/Zitations-Tags, die Modelle (v.a. bei Web-Suche)
@@ -240,6 +370,12 @@ Deno.serve(async (req) => {
     const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
     const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
     const anthropicKey = Deno.env.get("ANTHROPIC_API_KEY");
+    const llmKeys: LLMKeys = {
+      anthropic: Deno.env.get("ANTHROPIC_API_KEY") || undefined,
+      openai: Deno.env.get("OPENAI_API_KEY") || undefined,
+      google: Deno.env.get("GOOGLE_API_KEY") || undefined,
+      mistral: Deno.env.get("MISTRAL_API_KEY") || undefined,
+    };
     if (!anthropicKey) return json({ error: "ANTHROPIC_API_KEY fehlt" }, 500);
 
     // User-Token aus Header für RLS-Auth
@@ -401,29 +537,20 @@ Deno.serve(async (req) => {
       .eq("chat_id", chat.id)
       .order("created_at", { ascending: true });
 
-    const conversation: { role: "user" | "assistant"; content: any }[] = (history || [])
-      .filter((m: any) => m.role === "user" || m.role === "assistant")
+    // Chat-History (nur Text vergangener Turns) — Anbieter-neutral.
+    const historyMsgs: Msg[] = (history || [])
+      .filter((m: any) => (m.role === "user" || m.role === "assistant") && typeof m.content === "string" && m.content.trim())
       .map((m: any) => ({ role: m.role as "user" | "assistant", content: m.content }));
 
-    // Anhänge dieses Turns in Vision-/Dokument-Blöcke umwandeln (wie ChatGPT/Claude:
-    // Screenshots & Bilder werden vom Modell tatsächlich angeschaut, PDFs gelesen).
+    // Anhänge dieses Turns → anbieter-neutrale Media-Parts (Vision/Dokument).
     const rawAtts: any[] = Array.isArray(body.attachments) ? body.attachments : [];
-    const contentBlocks: any[] = [];
+    const mediaParts: Media[] = [];
     for (const a of rawAtts) {
       const mime: string = (a?.type || "").toLowerCase();
       const b64: string | undefined = a?.base64;
       if (!b64) continue;
-      if (mime.startsWith("image/")) {
-        contentBlocks.push({ type: "image", source: { type: "base64", media_type: mime, data: b64 } });
-      } else if (mime === "application/pdf") {
-        contentBlocks.push({ type: "document", source: { type: "base64", media_type: "application/pdf", data: b64 } });
-      }
-    }
-    if (contentBlocks.length) {
-      contentBlocks.push({ type: "text", text: userMessage || "Bitte schau dir den/die Anhang/Anhänge an." });
-      conversation.push({ role: "user", content: contentBlocks });
-    } else {
-      conversation.push({ role: "user", content: userMessage });
+      if (mime.startsWith("image/")) mediaParts.push({ type: "image", mime, base64: b64, name: a?.name });
+      else if (mime === "application/pdf") mediaParts.push({ type: "document", mime: "application/pdf", base64: b64, name: a?.name });
     }
 
     // ─── User-Message persistieren (vor LLM-Call, damit bei Fehler trotzdem da) ─
@@ -440,11 +567,13 @@ Deno.serve(async (req) => {
     let assistantContent: string;
     let sources: { url: string; title: string }[] = [];
     try {
-      const result = await callAnthropic({
-        apiKey: anthropicKey, model, systemPrompt, conversation, useWebSearch,
-        useWebFetch: useWebSearch || hasUrlInMessage,
+      const result = await callLLM({
+        keys: llmKeys, model, systemPrompt,
+        history: historyMsgs, userText: userMessage, media: mediaParts,
+        useWebSearch, wantFetch: hasUrlInMessage,
       });
       assistantContent = stripEmDashes(stripCitations(result.content));
+      if (result.note) assistantContent = assistantContent + "\n\n" + result.note;
       sources = result.sources;
     } catch (e) {
       // Bei LLM-Fehler trotzdem versuchen die User-Message zu erhalten
