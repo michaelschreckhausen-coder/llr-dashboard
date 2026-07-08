@@ -1165,7 +1165,7 @@ ${transcript || '(noch leer)'}${extra.length ? '\n\n=== ZUSATZKONTEXT ===\n' + e
 "${prompt}"`
       try {
         const { data: dir } = await supabase.functions.invoke('generate', {
-          body: { type:'raw', model:'claude-sonnet-4-6', prompt: directorInstr },
+          body: { type:'raw', prompt: directorInstr },
         })
         const raw = String(dir?.text || '')
         const a = raw.indexOf('{'); const b = raw.lastIndexOf('}')
@@ -1255,7 +1255,7 @@ ${transcript || '(noch leer)'}${extra.length ? '\n\n=== ZUSATZKONTEXT ===\n' + e
     try {
       const recent = (messages || []).slice(-6).map(m => `${m.role}: ${String(m.content || '').replace(/<\/?beitragstext>/gi, '').slice(0, 280)}`).join('\n')
       const { data } = await supabase.functions.invoke('generate', {
-        body: { type:'raw', model:'claude-haiku-4-5', prompt:
+        body: { type:'raw', prompt:
 `In einer LinkedIn-Content-Werkstatt: Soll die folgende Anfrage ein BILD/Visual erzeugen oder TEXT (Beitrag schreiben bzw. chatten)? Nur wenn eindeutig ein Bild gewünscht ist (z.B. „erstelle ein Bild", „Visual dazu", „Grafik", „zeig mir ein Bild von…") → visual. Sonst (Beitrag schreiben, Feedback, Fragen, Brainstorming, Smalltalk) → text. Antworte NUR mit einem Wort: visual oder text.
 
 Bisher:

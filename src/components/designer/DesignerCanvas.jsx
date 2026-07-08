@@ -1146,7 +1146,7 @@ export default function DesignerCanvas({ visual, teamId, onSaved, onReplaceVisua
       try {
         const firstText = (objects.find(o => o.type === 'text' && (o.text || '').trim())?.text || '').slice(0, 200)
         const topic = firstText || visual?.prompt || 'Social-Media-Design'
-        const { data } = await supabase.functions.invoke('generate', { body: { model: 'claude-haiku-4-5', prompt: `Gib NUR einen kurzen, prägnanten Design-Namen (max. 4 Wörter, Deutsch, ohne Anführungszeichen, keine Erklärung) für ein Social-Media-Design zu folgendem Inhalt zurück:\n\n${topic}` } })
+        const { data } = await supabase.functions.invoke('generate', { body: { prompt: `Gib NUR einen kurzen, prägnanten Design-Namen (max. 4 Wörter, Deutsch, ohne Anführungszeichen, keine Erklärung) für ein Social-Media-Design zu folgendem Inhalt zurück:\n\n${topic}` } })
         let name = String(data?.text || data?.content || data?.output || '').trim().replace(/^["'\s]+|["'\s.]+$/g, '').split('\n')[0].slice(0, 60)
         if (name) {
           setDesignName(name)
@@ -2221,7 +2221,7 @@ Nutze nur die für den Befehl nötigen Operationen.`
       for (let attempt = 0; attempt < 2 && !parsed; attempt++) {
         const p2 = attempt === 0 ? prompt
           : prompt + '\n\nWICHTIG: Deine vorherige Antwort war KEIN gültiges JSON. Antworte JETZT mit AUSSCHLIESSLICH einem einzigen, kompakten, vollständigen JSON-Objekt {"operations":[...]} — kein Text davor/danach, keine Erklärungen, keine Codeblöcke, alle Klammern geschlossen, keine trailing commas. Halte die Operationen so knapp wie möglich.'
-        const genCall = supabase.functions.invoke('generate', { body: { type: 'raw', model: 'claude-sonnet-4-6', prompt: p2, max_tokens: 8000 } })
+        const genCall = supabase.functions.invoke('generate', { body: { type: 'raw', prompt: p2, max_tokens: 8000 } })
         const timeout = new Promise((_, rej) => setTimeout(() => rej(new Error('Zeitüberschreitung – bitte erneut versuchen')), 75000))
         const { data, error } = await Promise.race([genCall, timeout])
         if (error) { if (attempt === 1) throw new Error(error.message || 'KI fehlgeschlagen'); else continue }
@@ -2392,7 +2392,7 @@ Wenn alles gut ist, antworte {"ok":true,"operations":[]}. Sonst gib gezielte KOR
 
 Antworte AUSSCHLIESSLICH mit JSON: {"ok":<bool>,"issues":["..."],"operations":[...]}`
           const { data: rev } = await Promise.race([
-            supabase.functions.invoke('generate', { body: { type:'raw', model:'claude-sonnet-4-6', prompt: reviewPrompt, referenceMediaPaths: [up.path] } }),
+            supabase.functions.invoke('generate', { body: { type:'raw', prompt: reviewPrompt, referenceMediaPaths: [up.path] } }),
             new Promise((_, rej) => setTimeout(() => rej(new Error('review-timeout')), 45000)),
           ])
           try { supabase.storage.from('visuals').remove([up.path]) } catch (_e) {}
@@ -3334,7 +3334,7 @@ Antworte AUSSCHLIESSLICH mit JSON: {"ok":<bool>,"issues":["..."],"operations":[.
 - "font": Name einer bekannten Schriftart, die dem Aussehen am nächsten kommt (z.B. "Montserrat","Playfair Display","Bebas Neue","Pacifico","Lora","Oswald","Roboto Mono","Poppins","Anton","Dancing Script")
 Ignoriere reine Deko/Muster ohne Text. Antworte AUSSCHLIESSLICH mit JSON, ohne Erklärung: {"texts":[{...}]}. Wenn kein Text da ist: {"texts":[]}`
       const { data } = await Promise.race([
-        supabase.functions.invoke('generate', { body: { type: 'raw', model: 'claude-sonnet-4-6', prompt, referenceMediaPaths: [up.path] } }),
+        supabase.functions.invoke('generate', { body: { type: 'raw', prompt, referenceMediaPaths: [up.path] } }),
         new Promise((_, rej) => setTimeout(() => rej(new Error('Zeitüberschreitung – bitte erneut versuchen')), 60000)),
       ])
       try { supabase.storage.from('visuals').remove([up.path]) } catch (_e) {}

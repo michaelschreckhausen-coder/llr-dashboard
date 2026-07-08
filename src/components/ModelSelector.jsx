@@ -5,30 +5,28 @@ import { supabase } from '../lib/supabase'
 const MODELS = [
   { group: 'Anthropic', label: 'Anthropic', icon: <Bot size={16} strokeWidth={1.75}/>, models: [
     { id: 'claude-opus-4-8', name: 'Claude Opus 4.8', badge: 'Top' },
-    { id: 'claude-opus-4-7', name: 'Claude Opus 4.7' },
-    { id: 'claude-sonnet-4-6', name: 'Claude Sonnet 4.6' },
+    { id: 'claude-sonnet-5', name: 'Claude Sonnet 5' },
     { id: 'claude-haiku-4-5', name: 'Claude Haiku 4.5' },
   ]},
   { group: 'OpenAI', label: 'OpenAI', icon: <Star size={16} strokeWidth={1.75}/>, models: [
     { id: 'gpt-5.5', name: 'GPT-5.5', badge: 'Top' },
-    { id: 'gpt-5.4', name: 'GPT-5.4' },
+    { id: 'gpt-5.5-pro', name: 'GPT-5.5 Pro' },
     { id: 'gpt-5.4-mini', name: 'GPT-5.4 mini' },
   ]},
   { group: 'Google', label: 'Google Gemini', icon: '✦', models: [
-    { id: 'gemini-3-pro-preview', name: 'Gemini 3 Pro', badge: 'Top' },
+    { id: 'gemini-3.1-pro-preview', name: 'Gemini 3.1 Pro', badge: 'Top' },
     { id: 'gemini-3.5-flash', name: 'Gemini 3.5 Flash' },
-    { id: 'gemini-2.5-pro', name: 'Gemini 2.5 Pro' },
-    { id: 'gemini-2.5-flash', name: 'Gemini 2.5 Flash' },
+    { id: 'gemini-3.1-flash-lite-preview', name: 'Gemini 3.1 Flash Lite' },
   ]},
   { group: 'Mistral', label: 'Mistral', icon: '🌬', models: [
-    { id: 'mistral-large-latest', name: 'Mistral Large', badge: 'Top' },
+    { id: 'mistral-large-latest', name: 'Mistral Large 3', badge: 'Top' },
     { id: 'mistral-medium-latest', name: 'Mistral Medium 3.5' },
     { id: 'magistral-medium-latest', name: 'Magistral Medium (Reasoning)' },
     { id: 'mistral-small-latest', name: 'Mistral Small' },
   ]},
 ]
 
-export const DEFAULT_MODEL = 'claude-opus-4-7'
+export const DEFAULT_MODEL = 'claude-opus-4-8'
 
 export function getModelLabel(modelId) {
   for (const g of MODELS) {

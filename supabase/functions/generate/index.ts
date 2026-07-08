@@ -168,7 +168,7 @@ async function callLLM(
 
     const body: Record<string, unknown> = {
       model,
-      max_tokens: 4096,
+      max_tokens: 8192,
       messages: [{ role: 'user', content: contentBlocks.length > 1 ? contentBlocks : userPrompt }],
     };
     if (systemPrompt) body.system = systemPrompt;
@@ -299,7 +299,7 @@ serve(async (req) => {
     const { type, prompt, model: reqModel } = body;
     const referenceMediaPaths = (body.referenceMediaPaths as string[]) || [];
 
-    let model = reqModel || 'claude-sonnet-4-6';
+    let model = reqModel || 'claude-sonnet-5';
     if (!reqModel) {
       const { data: prof } = await supabaseAdmin.from('profiles').select('default_ai_model').eq('id', userId).single();
       if (prof?.default_ai_model) model = prof.default_ai_model;
@@ -384,7 +384,7 @@ serve(async (req) => {
     const provider = getProvider(model);
     const estimated = await estimateCredits(provider, model, 'text_generate', {
       input_chars: systemPrompt.length + effectivePrompt.length,
-      max_output_tokens: 4096,
+      max_output_tokens: 8192,
     }, supabaseAdmin);
     const check = await checkCredits(ctx.account_id, estimated, supabaseAdmin);
     if (!check.allowed) {

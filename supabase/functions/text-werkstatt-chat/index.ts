@@ -44,7 +44,7 @@ function json(body: unknown, status = 200) {
   });
 }
 
-const DEFAULT_MODEL = "claude-sonnet-4-6";
+const DEFAULT_MODEL = "claude-sonnet-5";
 
 const SYSTEM_PROMPT_BASE = `Du bist die Text-Werkstatt von Leadesk, ein erfahrener LinkedIn-Ghostwriter, der Beiträge exakt in der Brand Voice des Nutzers schreibt.
 

@@ -416,8 +416,8 @@ Deno.serve(async (req) => {
   }
 
   const generatedVisuals: any[] = [];
-  const PRO_MODEL = "gemini-3-pro-image-preview";
-  const NB2_MODEL = "gemini-3.1-flash-image-preview"; // Nano Banana 2 — Auto-Fallback
+  const PRO_MODEL = "gemini-3-pro-image";
+  const NB2_MODEL = "gemini-3.1-flash-image"; // Nano Banana 2 — Auto-Fallback
   let notice: string | null = null;
 
   for (let i = 0; i < variantsCount; i++) {

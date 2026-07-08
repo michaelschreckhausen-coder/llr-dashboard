@@ -66,7 +66,7 @@ async function myMemory(q) {
 async function edgeTranslate(q) {
   try {
     const { data, error } = await supabase.functions.invoke('generate', {
-      body: { model: 'claude-haiku-4-5', prompt: `Übersetze diesen Suchbegriff für eine Icon-/Stockfoto-Suche ins Englische. Antworte AUSSCHLIESSLICH mit der englischen Übersetzung (1-3 Wörter, klein, ohne Satzzeichen, ohne Anführungszeichen, ohne Erklärung).\n\nBegriff: ${q}` },
+      body: { prompt: `Übersetze diesen Suchbegriff für eine Icon-/Stockfoto-Suche ins Englische. Antworte AUSSCHLIESSLICH mit der englischen Übersetzung (1-3 Wörter, klein, ohne Satzzeichen, ohne Anführungszeichen, ohne Erklärung).\n\nBegriff: ${q}` },
     })
     if (error) return ''
     const out = String(data?.text || data?.content || data?.output || '').trim().toLowerCase().replace(/^["'\s]+|["'\s.]+$/g, '').split('\n')[0]
