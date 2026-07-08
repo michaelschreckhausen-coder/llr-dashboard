@@ -1583,8 +1583,8 @@ function PostModal({ post, onClose, onSave, onDelete, session, activeTeamId, mem
                           )
                         })()}
                         <div style={{ marginTop:10, paddingTop:8, borderTop:'1px solid var(--border)', display:'flex', gap:16 }}>
-                          {[{i:<ThumbsUpIcon size={13} strokeWidth={1.75}/>,t:'Gefällt mir'},{i:<MessageCircle size={13} strokeWidth={1.75}/>,t:'Kommentieren'},{i:<Share2 size={13} strokeWidth={1.75}/>,t:'Teilen'}].map(a => (
-                            <span key=<span style={{display:'inline-flex',alignItems:'center',gap:4}}>{a.i}{a.t}</span> style={{ fontSize:11, color:'#666', fontWeight:600 }}>{a}</span>
+                          {[{i:<ThumbsUpIcon size={13} strokeWidth={1.75}/>,t:'Gefällt mir'},{i:<MessageCircle size={13} strokeWidth={1.75}/>,t:'Kommentieren'},{i:<Share2 size={13} strokeWidth={1.75}/>,t:'Teilen'}].map((a, idx) => (
+                            <span key={idx} style={{ display:'inline-flex', alignItems:'center', gap:4, fontSize:11, color:'#666', fontWeight:600 }}>{a.i}{a.t}</span>
                           ))}
                         </div>
                       </div>
