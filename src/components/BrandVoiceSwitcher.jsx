@@ -25,7 +25,7 @@ export default function BrandVoiceSwitcher({ session, compact = false }) {
   if (loading) return null
 
   const own  = brandVoices.filter(bv => bv.user_id === session?.user?.id)
-  const team = brandVoices.filter(bv => bv.user_id !== session?.user?.id && bv.is_shared)
+  const team = brandVoices.filter(bv => bv.user_id !== session?.user?.id)   // eigene raus; Rest ist bereits nur team-scoped ODER ins Team geteilt (RLS + scopeByTeamOrShared)
 
   const activeIcon = noBrand ? <User size={14} strokeWidth={1.75}/> : (ACCOUNT_ICONS[activeBrandVoice?.account_type] || <Sparkles size={14} strokeWidth={1.75}/>)
   const activeName = noBrand ? 'Ohne Brand' : (activeBrandVoice?.name || 'Marke wählen')
@@ -83,7 +83,7 @@ export default function BrandVoiceSwitcher({ session, compact = false }) {
               <div style={{ padding:'10px 12px 4px', fontSize:10, fontWeight:700, color:'var(--text-muted)', textTransform:'uppercase', letterSpacing:'0.08em', borderTop:'1px solid var(--border-soft, #F1F5F9)', marginTop:4 }}>
                 Vom Team geteilt
               </div>
-              {team.map(bv => <BVItem key={bv.id} bv={bv} active={activeBrandVoice?.id === bv.id} onPick={() => { switchBrandVoice(bv.id); setOpen(false) }}/>)}
+              {team.map(bv => <BVItem key={bv.id} bv={bv} shared active={activeBrandVoice?.id === bv.id} onPick={() => { switchBrandVoice(bv.id); setOpen(false) }}/>)}
             </>
           )}
           <div style={{ borderTop:'1px solid var(--border-soft, #F1F5F9)', marginTop:6, padding:6 }}>
@@ -106,7 +106,7 @@ export default function BrandVoiceSwitcher({ session, compact = false }) {
   )
 }
 
-function BVItem({ bv, active, onPick }) {
+function BVItem({ bv, active, onPick, shared = false }) {
   const icon = ACCOUNT_ICONS[bv.account_type] || '✨'
   const typeLabel = ACCOUNT_LABELS[bv.account_type] || ''
   return (
@@ -128,7 +128,7 @@ function BVItem({ bv, active, onPick }) {
           {bv.name || '(Ohne Namen)'}
         </div>
         <div style={{ fontSize:10, color:'var(--text-muted)' }}>
-          {typeLabel}{bv.is_shared ? ' · geteilt' : ''}
+          {typeLabel}{(shared || bv.is_shared) ? ' · geteilt' : ''}
         </div>
       </div>
       {active && <span style={{ color:'var(--wl-primary, rgb(49,90,231))', fontSize:14 }}>✓</span>}
