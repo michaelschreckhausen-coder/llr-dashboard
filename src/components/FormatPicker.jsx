@@ -35,7 +35,7 @@ function RatioThumb({ w, h, active }) {
   )
 }
 
-export default function FormatPicker({ value, onChange, openUp = true }) {
+export default function FormatPicker({ value, onChange, openUp = true, compact = false }) {
   const [open, setOpen] = useState(false)
   const [cat, setCat] = useState('linkedin')
   const [freeW, setFreeW] = useState(value?.id === 'free' ? value.w : 1080)
@@ -55,7 +55,7 @@ export default function FormatPicker({ value, onChange, openUp = true }) {
   const applyFree = () => pick(freeformPreset(freeW, freeH))
 
   const activeCat = FORMAT_CATEGORIES.find((c) => c.key === cat)
-  const valLabel = value ? `${value.label}${value.w ? `  ·  ${value.w}×${value.h}` : ''}` : 'Format wählen'
+  const valLabel = value ? (compact ? value.label : `${value.label}${value.w ? `  ·  ${value.w}×${value.h}` : ''}`) : 'Format wählen'
 
   return (
     <div ref={rootRef} style={{ position: 'relative', display: 'inline-block' }}>
