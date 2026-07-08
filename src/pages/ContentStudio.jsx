@@ -2278,8 +2278,8 @@ function ChatInput({
           </span>
           {!noBrand && (
           <Tip label={useBrandImages ? 'Brand-Bilder werden als Referenz genutzt — klicken zum Ausschalten' : 'Brand-Bilder werden NICHT als Referenz genutzt — klicken zum Einschalten'}><button onClick={() => setUseBrandImages(v => !v)}
-            style={{ ...IconBtn(useBrandImages), padding:'0 10px', gap:6 }}>
-            <ImageIcon size={14} strokeWidth={1.75}/>Brand-Bilder {useBrandImages ? 'an' : 'aus'}
+            style={{ ...IconBtn(useBrandImages), padding:'0 12px' }}>
+            Brand-Bilder {useBrandImages ? 'an' : 'aus'}
           </button></Tip>
           )}
         </div>
@@ -2405,7 +2405,6 @@ function CountDropdown({ value = 'auto', onChange = () => {} }) {
     <div ref={ref} style={{ position:'relative', display:'inline-block' }}>
       <Tip label="Anzahl der Bilder"><button type="button" onClick={() => setOpen(o => !o)}
         style={{ height:34, padding:'0 11px', borderRadius:9, boxSizing:'border-box', border:'1.5px solid var(--border)', background:'#fff', color:'var(--text-primary)', fontSize:12.5, fontWeight:600, lineHeight:1, cursor:'pointer', whiteSpace:'nowrap', display:'inline-flex', alignItems:'center', gap:6, fontFamily:'inherit', flexShrink:0 }}>
-        <Layers size={14} strokeWidth={1.9} style={{ opacity:0.7 }}/>
         <span>{value === 'auto' ? 'Anzahl: Auto' : cur.label}</span>
         <ChevronDown size={14} strokeWidth={2} style={{ opacity:0.5, marginLeft:2, flexShrink:0 }}/>
       </button></Tip>
