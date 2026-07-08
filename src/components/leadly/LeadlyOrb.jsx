@@ -15,10 +15,54 @@
 // Farbe folgt dem Theme-Primary (Whitelabel-fähig via CSS-Variable).
 // Upgrade-Pfad Phase 2: gleiche Zustands-API, Rendering via Rive.
 
-import React from 'react';
+import React, { useEffect, useRef } from 'react';
 
 export default function LeadlyOrb({ state = 'idle', size = 96 }) {
   const s = size;
+  const wrapRef = useRef(null);
+  const eyeLRef = useRef(null);
+  const eyeRRef = useRef(null);
+
+  // ── Augen folgen dem Mauszeiger ──
+  // Offset auf dem ÄUSSEREN Auge-Wrapper (translate), Blinzeln als scaleY-
+  // Animation auf dem INNEREN Element — so kollidieren transform-Animation
+  // und Blick-Offset nicht. rAF-gedrosselt, passiver Listener, kein Re-Render.
+  useEffect(() => {
+    const maxX = Math.max(1.5, s * 0.035);
+    const maxY = Math.max(1, s * 0.025);
+    let raf = 0;
+    let lastX = null;
+    let lastY = null;
+
+    const apply = () => {
+      raf = 0;
+      const wrap = wrapRef.current;
+      if (!wrap || lastX == null) return;
+      const r = wrap.getBoundingClientRect();
+      if (!r.width) return;
+      const dx = lastX - (r.left + r.width / 2);
+      const dy = lastY - (r.top + r.height / 2);
+      const dist = Math.hypot(dx, dy) || 1;
+      const strength = Math.min(1, dist / 140);
+      const px = (dx / dist) * maxX * strength;
+      const py = (dy / dist) * maxY * strength;
+      const t = `translate(${px.toFixed(2)}px, calc(-50% + ${py.toFixed(2)}px))`;
+      if (eyeLRef.current) eyeLRef.current.style.transform = t;
+      if (eyeRRef.current) eyeRRef.current.style.transform = t;
+    };
+
+    const onMove = (e) => {
+      lastX = e.clientX;
+      lastY = e.clientY;
+      if (!raf) raf = requestAnimationFrame(apply);
+    };
+
+    window.addEventListener('mousemove', onMove, { passive: true });
+    return () => {
+      window.removeEventListener('mousemove', onMove);
+      if (raf) cancelAnimationFrame(raf);
+    };
+  }, [s]);
   const primary = 'var(--wl-primary, var(--primary, rgb(49,90,231)))';
   const fast = state === 'listening';
   const glassW = Math.round(s * 0.52);
@@ -27,15 +71,15 @@ export default function LeadlyOrb({ state = 'idle', size = 96 }) {
   const eyeH = Math.max(8, Math.round(s * 0.115));
 
   return (
-    <div aria-hidden="true" style={{ position: 'relative', width: s, height: s, flexShrink: 0 }}>
+    <div ref={wrapRef} aria-hidden="true" style={{ position: 'relative', width: s, height: s, flexShrink: 0 }}>
       <style>{`
         @keyframes lkorb-morph {
           0%, 100% { border-radius: 44% 56% 52% 48% / 50% 46% 54% 50%; transform: rotate(0deg); }
           50% { border-radius: 56% 44% 48% 52% / 46% 54% 46% 54%; transform: rotate(7deg); }
         }
         @keyframes lkorb-blink {
-          0%, 92%, 100% { transform: translateY(-50%) scaleY(1); }
-          95% { transform: translateY(-50%) scaleY(0.12); }
+          0%, 92%, 100% { transform: scaleY(1); }
+          95% { transform: scaleY(0.12); }
         }
         @keyframes lkorb-ring {
           0% { transform: scale(0.92); opacity: 0.4; }
@@ -96,18 +140,28 @@ export default function LeadlyOrb({ state = 'idle', size = 96 }) {
               fill="none" stroke="#fff" strokeWidth="15" />
             <rect x="87" y="8" width="16" height="92" fill="#fff" />
           </svg>
-          <div style={{
+          <div ref={eyeLRef} style={{
             position: 'absolute', top: '50%', left: '22%',
-            width: eyeW, height: eyeH, borderRadius: eyeW,
-            background: '#fff', transform: 'translateY(-50%)',
-            animation: 'lkorb-blink 4.5s infinite',
-          }} />
-          <div style={{
+            width: eyeW, height: eyeH,
+            transform: 'translateY(-50%)',
+            transition: 'transform 0.06s linear',
+          }}>
+            <div style={{
+              width: '100%', height: '100%', borderRadius: eyeW,
+              background: '#fff', animation: 'lkorb-blink 4.5s infinite',
+            }} />
+          </div>
+          <div ref={eyeRRef} style={{
             position: 'absolute', top: '50%', right: '22%',
-            width: eyeW, height: eyeH, borderRadius: eyeW,
-            background: '#fff', transform: 'translateY(-50%)',
-            animation: 'lkorb-blink 4.5s infinite 0.05s',
-          }} />
+            width: eyeW, height: eyeH,
+            transform: 'translateY(-50%)',
+            transition: 'transform 0.06s linear',
+          }}>
+            <div style={{
+              width: '100%', height: '100%', borderRadius: eyeW,
+              background: '#fff', animation: 'lkorb-blink 4.5s infinite 0.05s',
+            }} />
+          </div>
         </div>
 
         {state === 'happy' ? (
