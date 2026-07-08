@@ -650,6 +650,7 @@ function BVImagesEditor({ edit, u, session, activeTeamId, field, label, hint, ic
   const [paths, setPaths] = React.useState(initial)
   const [urls, setUrls] = React.useState({})
   const [uploading, setUploading] = React.useState(false)
+  const [dragOver, setDragOver] = React.useState(false)
 
   React.useEffect(() => {
     const next = Array.isArray(edit?.[field]) ? edit[field] : []
@@ -718,7 +719,11 @@ function BVImagesEditor({ edit, u, session, activeTeamId, field, label, hint, ic
   }
 
   return (
-    <div style={{ padding:'12px 14px', background:'#FAFAFA', border:'1.5px solid var(--border)', borderRadius:10, flex:'1 1 320px', minWidth:280 }}>
+    <div
+      onDragOver={e => { if (edit?.id && paths.length < max) { e.preventDefault(); setDragOver(true) } }}
+      onDragLeave={e => { e.preventDefault(); setDragOver(false) }}
+      onDrop={e => { e.preventDefault(); setDragOver(false); if (!edit?.id) return; const imgs = Array.from(e.dataTransfer.files || []).filter(x => x.type.startsWith('image/')); if (imgs.length) uploadImgs(imgs) }}
+      style={{ padding:'12px 14px', background: dragOver ? 'rgba(49,90,231,0.06)' : '#FAFAFA', border:'1.5px solid ' + (dragOver ? 'var(--wl-primary, rgb(49,90,231))' : 'var(--border)'), borderRadius:10, flex:'1 1 320px', minWidth:280, transition:'background .12s, border-color .12s' }}>
       <div style={{ fontSize:13, fontWeight:700, color:'var(--text-primary)', marginBottom:4 }}>
         {icon} {label}
       </div>
@@ -745,6 +750,9 @@ function BVImagesEditor({ edit, u, session, activeTeamId, field, label, hint, ic
           </label>
         )}
       </div>
+      {edit?.id && paths.length < max && (
+        <div style={{ fontSize:10.5, color:'var(--text-soft, #9CA3AF)', marginTop:8 }}>Mehrere Dateien auf einmal möglich — per Mehrfachauswahl oder Drag &amp; Drop hierher.</div>
+      )}
       {!edit?.id && (
         <div style={{ fontSize:11, color:'#92400E', marginTop:8 }}>Speichere die Brand Voice zuerst, dann kannst du hier hochladen.</div>
       )}
@@ -840,22 +848,33 @@ function BrandFontsEditor({ edit, u }) {
 function BookletEditor({ edit, u, activeTeamId }) {
   const paths = Array.isArray(edit?.ci_booklet_paths) ? edit.ci_booklet_paths : []
   const [uploading, setUploading] = React.useState(false)
+  const [dragOver, setDragOver] = React.useState(false)
   const MAX = 2
-  async function uploadPdf(file) {
-    if (!file) return
+  async function uploadPdfs(fileList) {
+    const files = Array.from(fileList || []).filter(x => x.type === 'application/pdf' || /\.pdf$/i.test(x.name))
+    if (!files.length) return
     if (!edit?.id) { alert('Bitte die Brand Voice zuerst speichern'); return }
     if (!activeTeamId) { alert('Kein Team aktiv — kann nicht hochladen'); return }
-    if (paths.length >= MAX) { alert('Max ' + MAX + ' Dateien'); return }
-    if (file.size > 25 * 1024 * 1024) { alert('Datei zu groß (max 25 MB)'); return }
+    const remaining = MAX - paths.length
+    if (remaining <= 0) { alert('Max ' + MAX + ' Dateien'); return }
+    const toUpload = files.slice(0, remaining)
+    if (files.length > remaining) alert('Max ' + MAX + ' Dateien — es werden nur die ersten ' + remaining + ' hochgeladen')
     setUploading(true)
+    const added = []
     try {
-      const newPath = activeTeamId + '/bv-booklet/' + edit.id + '/' + crypto.randomUUID() + '__' + file.name.replace(/[^a-zA-Z0-9._-]/g, '_')
-      const { error: upErr } = await supabase.storage.from('visuals').upload(newPath, file, { contentType: file.type || 'application/pdf', upsert: false })
-      if (upErr) { alert('Upload fehlgeschlagen: ' + upErr.message); return }
-      const nextPaths = [...paths, newPath]
-      const { error: dbErr } = await supabase.from('brand_voices').update({ ci_booklet_paths: nextPaths }).eq('id', edit.id)
-      if (dbErr) { alert('DB-Update fehlgeschlagen: ' + dbErr.message); return }
-      u('ci_booklet_paths', nextPaths)
+      for (const file of toUpload) {
+        if (file.size > 25 * 1024 * 1024) { alert('„' + file.name + '" zu groß (max 25 MB) — übersprungen'); continue }
+        const newPath = activeTeamId + '/bv-booklet/' + edit.id + '/' + crypto.randomUUID() + '__' + file.name.replace(/[^a-zA-Z0-9._-]/g, '_')
+        const { error: upErr } = await supabase.storage.from('visuals').upload(newPath, file, { contentType: file.type || 'application/pdf', upsert: false })
+        if (upErr) { alert('Upload „' + file.name + '" fehlgeschlagen: ' + upErr.message); continue }
+        added.push(newPath)
+      }
+      if (added.length) {
+        const nextPaths = [...paths, ...added]
+        const { error: dbErr } = await supabase.from('brand_voices').update({ ci_booklet_paths: nextPaths }).eq('id', edit.id)
+        if (dbErr) { alert('DB-Update fehlgeschlagen: ' + dbErr.message); return }
+        u('ci_booklet_paths', nextPaths)
+      }
     } finally { setUploading(false) }
   }
   async function removePdf(idx) {
@@ -874,7 +893,11 @@ function BookletEditor({ edit, u, activeTeamId }) {
     URL.revokeObjectURL(url)
   }
   return (
-    <div style={{ padding:'12px 14px', background:'#FAFAFA', border:'1.5px solid var(--border)', borderRadius:10, flex:'1 1 320px', minWidth:280 }}>
+    <div
+      onDragOver={e => { if (edit?.id && paths.length < MAX) { e.preventDefault(); setDragOver(true) } }}
+      onDragLeave={e => { e.preventDefault(); setDragOver(false) }}
+      onDrop={e => { e.preventDefault(); setDragOver(false); if (edit?.id) uploadPdfs(e.dataTransfer.files) }}
+      style={{ padding:'12px 14px', background: dragOver ? 'rgba(49,90,231,0.06)' : '#FAFAFA', border:'1.5px solid ' + (dragOver ? 'var(--wl-primary, rgb(49,90,231))' : 'var(--border)'), borderRadius:10, flex:'1 1 320px', minWidth:280, transition:'background .12s, border-color .12s' }}>
       <div style={{ fontSize:13, fontWeight:700, color:'var(--text-primary)', marginBottom:4 }}><FileText size={14} strokeWidth={1.75} style={{verticalAlign:'-2px'}}/> CI-Booklet / Brand Guide</div>
       <div style={{ fontSize:11, color:'var(--text-muted)', lineHeight:1.5, marginBottom:10 }}>Styleguide als PDF (max {MAX}). Dient als Referenz für das Team — Inhalte kannst du zusätzlich über den Import in die Voice einfließen lassen.</div>
       {paths.map((p, i) => (
@@ -886,8 +909,8 @@ function BookletEditor({ edit, u, activeTeamId }) {
       ))}
       {paths.length < MAX && (
         <label style={{ display:'inline-flex', alignItems:'center', gap:6, padding:'8px 14px', borderRadius:8, border:'1.5px dashed var(--border)', cursor: uploading ? 'wait' : 'pointer', fontSize:12, color:'var(--text-muted)', background:'#fff' }}>
-          {uploading ? <Loader2 size={13} className="lk-spin"/> : <Plus size={13}/>} {uploading ? 'Lade…' : 'PDF hochladen'}
-          <input type="file" accept="application/pdf" onChange={e => { const f = e.target.files?.[0]; if (f) uploadPdf(f); e.target.value = '' }} style={{ display:'none' }}/>
+          {uploading ? <Loader2 size={13} className="lk-spin"/> : <Plus size={13}/>} {uploading ? 'Lade…' : 'PDF hochladen (oder hierher ziehen)'}
+          <input type="file" multiple accept="application/pdf" onChange={e => { uploadPdfs(e.target.files); e.target.value = '' }} style={{ display:'none' }}/>
         </label>
       )}
       {!edit?.id && <div style={{ fontSize:11, color:'#92400E', marginTop:8 }}>Speichere die Brand Voice zuerst, dann kannst du hier hochladen.</div>}
@@ -902,6 +925,7 @@ function BrandFontUploadEditor({ edit, u, activeTeamId }) {
   const bvId = edit?.id || null
   const assets = Array.isArray(edit?.font_assets) ? edit.font_assets : []
   const [uploading, setUploading] = React.useState(false)
+  const [dragOver, setDragOver] = React.useState(false)
   const [error, setError] = React.useState('')
   const [renamingPath, setRenamingPath] = React.useState(null)
   const [renameValue, setRenameValue] = React.useState('')
@@ -973,7 +997,11 @@ function BrandFontUploadEditor({ edit, u, activeTeamId }) {
   }
 
   return (
-    <div style={{ padding:'12px 14px', background:'#FAFAFA', border:'1.5px solid var(--border)', borderRadius:10, flex:'1 1 100%', minWidth:280 }}>
+    <div
+      onDragOver={e => { if (edit?.id) { e.preventDefault(); setDragOver(true) } }}
+      onDragLeave={e => { e.preventDefault(); setDragOver(false) }}
+      onDrop={e => { e.preventDefault(); setDragOver(false); if (edit?.id) handleFiles(e.dataTransfer.files) }}
+      style={{ padding:'12px 14px', background: dragOver ? 'rgba(49,90,231,0.06)' : '#FAFAFA', border:'1.5px solid ' + (dragOver ? 'var(--wl-primary, rgb(49,90,231))' : 'var(--border)'), borderRadius:10, flex:'1 1 100%', minWidth:280, transition:'background .12s, border-color .12s' }}>
       <div style={{ fontSize:13, fontWeight:700, color:'var(--text-primary)', marginBottom:4 }}>Aa Schriftarten</div>
       <div style={{ fontSize:11, color:'var(--text-muted)', lineHeight:1.5, marginBottom:10 }}>Eigene Schrift-Dateien hochladen. Hochgeladene Schriften stehen anschließend im Content-Werkstatt-Designer zur Verfügung.</div>
 
@@ -984,7 +1012,7 @@ function BrandFontUploadEditor({ edit, u, activeTeamId }) {
           : <>
               <Upload size={18} strokeWidth={1.75} style={{ color:'var(--wl-primary, rgb(49,90,231))' }}/>
               <span style={{ fontWeight:600, color:'var(--text-primary)' }}>Schrift hochladen (.woff2, .woff, .ttf, .otf)</span>
-              <span style={{ fontSize:11 }}>Mehrere Dateien möglich</span>
+              <span style={{ fontSize:11 }}>Mehrere Dateien möglich · oder hierher ziehen</span>
             </>}
         <input type="file" multiple accept=".woff2,.woff,.ttf,.otf,font/woff2,font/woff,font/ttf,font/otf"
           disabled={uploading || !edit?.id}
