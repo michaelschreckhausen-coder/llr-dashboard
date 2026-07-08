@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback, useRef } from 'react'
+import React, { useState, useEffect, useCallback, useRef, useMemo } from 'react'
 import GenerationLoading from '../components/GenerationLoading'
 import { AlertTriangle, BarChart3, BookOpen, Brain, Briefcase, Calendar, CalendarRange, Check, ChevronDown, ChevronUp, Copy, Target, Trash2, Eye, FileText, Flame, Hammer, Image as ImageIcon, LayoutGrid, Lightbulb, List, Loader2, MessageCircle, MessageSquare, Paperclip, PenLine, Pencil, Plus, Rocket, Save, Scissors, Search, Share2, Sparkles, ThumbsUp as ThumbsUpIcon, User, Wand2, X, Zap } from 'lucide-react'
 import { LinkedinIcon } from '../components/icons'
@@ -114,8 +114,11 @@ const STATUS_SIMPLE = {
   failed:    { label: 'Fehler',         color: '#b91c1c', dot: '#EF4444' },
 }
 
+// Standard-Tag-Farben (Planner-Stil) — beim ersten Öffnen als leere, umbenennbare Kategorien angelegt.
+const DEFAULT_TAG_COLORS = ['#EF4444','#F59E0B','#EAB308','#10B981','#06B6D4','#3B82F6','#8B5CF6','#EC4899']
+
 // ─── PostCard ─────────────────────────────────────────────────────────────────
-function PostCard({ post, onClick, compact, showBVBadge }) {
+function PostCard({ post, onClick, compact, showBVBadge, tagMap = {} }) {
   const sts = STATUS_SIMPLE[post.status] || STATUS_SIMPLE.idee
   const hasContent = !!(post.content || '').trim()
   return (
@@ -142,9 +145,20 @@ function PostCard({ post, onClick, compact, showBVBadge }) {
           </span>
         )}
       </div>
+      {/* Tags (farbige Chips) */}
+      {Array.isArray(post.tag_ids) && post.tag_ids.length > 0 && (
+        <div style={{ display:'flex', flexWrap:'wrap', gap:4, marginBottom: compact ? 4 : 8 }}>
+          {post.tag_ids.map(id => { const t = tagMap[id]; if (!t) return null; return (
+            <span key={id} title={t.name || 'Tag'} style={{ display:'inline-flex', alignItems:'center', height:16, padding: t.name ? '0 7px' : '0 6px', borderRadius:5, background: t.color + '22', color: t.color, fontSize:10, fontWeight:700, border:'1px solid ' + t.color + '55', maxWidth:120, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>
+              {t.name || <span style={{ width:14, height:6, borderRadius:3, background:t.color, display:'inline-block' }}/>}
+            </span>
+          )})}
+        </div>
+      )}
       {/* Titel */}
       <div style={{
         fontSize: compact ? 13 : 14, fontWeight:600, color:'rgb(20,20,43)',
+
         lineHeight:1.35, overflow:'hidden', textOverflow:'ellipsis',
         display:'-webkit-box', WebkitLineClamp: compact ? 1 : 2, WebkitBoxOrient:'vertical',
       }}>{post.title || '(Kein Titel)'}</div>
@@ -181,9 +195,26 @@ function PostCard({ post, onClick, compact, showBVBadge }) {
 }
 
 // ─── PostModal ────────────────────────────────────────────────────────────────
-function PostModal({ post, onClose, onSave, onDelete, session, activeTeamId, members, workspace, selectedModel, activeBrandVoice, navigate }) {
+function PostModal({ post, onClose, onSave, onDelete, session, activeTeamId, members, workspace, selectedModel, activeBrandVoice, navigate, teamTags = [], onTagsChanged = () => {} }) {
+  const { isMobile } = useResponsive()
   const { brandVoices: __allBVs } = useBrandVoice()
   const companyVoices = (__allBVs || []).filter(v => v.account_type === 'company_page')
+  // Tags (Planner-Stil): team-weite Farb-Labels + Zuweisung pro Post
+  const [tags, setTags] = useState(teamTags)
+  useEffect(() => { setTags(teamTags) }, [teamTags])
+  const [selTagIds, setSelTagIds] = useState(Array.isArray(post?.tag_ids) ? post.tag_ids : [])
+  const toggleTag = (id) => setSelTagIds(prev => prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id])
+  const renameTagLocal = (id, name) => setTags(prev => prev.map(t => t.id === id ? { ...t, name } : t))
+  async function persistTag(id) {
+    const t = tags.find(x => x.id === id); if (!t) return
+    await supabase.from('content_tags').update({ name: t.name, updated_at: new Date().toISOString() }).eq('id', id)
+    onTagsChanged()
+  }
+  async function syncTags(postId) {
+    if (!postId) return
+    await supabase.from('content_post_tags').delete().eq('post_id', postId)
+    if (selTagIds.length) await supabase.from('content_post_tags').insert(selTagIds.map(tid => ({ post_id: postId, tag_id: tid })))
+  }
   const isNew = !post?.id
   const [form, setForm] = useState({
     title: '', content: '', platform: 'linkedin', status: 'idee',
@@ -757,6 +788,7 @@ function PostModal({ post, onClose, onSave, onDelete, session, activeTeamId, mem
     }
     await syncMentions(result.data.id)
     await syncVisuals(result.data.id)
+    await syncTags(result.data.id)
     onSave(result.data)
   }
 
@@ -1044,6 +1076,30 @@ function PostModal({ post, onClose, onSave, onDelete, session, activeTeamId, mem
                   </>
                 )
               })()}
+            </div>
+
+            {/* Tags (Planner-Stil): farbige, team-weite, umbenennbare Kategorien */}
+            <div>
+              <label style={{ fontSize:11, fontWeight:700, color:'var(--text-muted)', textTransform:'uppercase', letterSpacing:'0.05em', display:'block', marginBottom:8 }}>Tags</label>
+              <div style={{ display:'flex', flexDirection:'column', gap:4, border:'1px solid var(--border)', borderRadius:10, padding:8, maxHeight:200, overflowY:'auto' }}>
+                {tags.length === 0 && <div style={{ fontSize:11.5, color:'var(--text-muted)', padding:'4px 2px' }}>Tags werden geladen…</div>}
+                {tags.map(t => {
+                  const on = selTagIds.includes(t.id)
+                  return (
+                    <div key={t.id} style={{ display:'flex', alignItems:'center', gap:8, padding:'4px', borderRadius:7, background: on ? (t.color + '14') : 'transparent' }}>
+                      <button type="button" onClick={() => toggleTag(t.id)} title={on ? 'Zugewiesen — klick zum Entfernen' : 'Diesem Beitrag zuweisen'}
+                        style={{ width:18, height:18, flexShrink:0, borderRadius:5, cursor:'pointer', display:'inline-flex', alignItems:'center', justifyContent:'center', border:'1.5px solid ' + t.color, background: on ? t.color : '#fff', padding:0 }}>
+                        {on && <Check size={12} strokeWidth={3} color="#fff" />}
+                      </button>
+                      <span style={{ width:12, height:12, borderRadius:4, background:t.color, flexShrink:0 }} />
+                      <input value={t.name} onChange={e => renameTagLocal(t.id, e.target.value)} onBlur={() => persistTag(t.id)}
+                        placeholder="Kategorie benennen…"
+                        style={{ flex:1, minWidth:0, border:'none', outline:'none', background:'transparent', fontSize:12.5, color:'var(--text-primary)', fontFamily:'inherit', padding:'2px 0' }} />
+                    </div>
+                  )
+                })}
+              </div>
+              <div style={{ fontSize:11, color:'var(--text-muted)', marginTop:6, lineHeight:1.4 }}>Farbige Kategorien wie im Planner — Namen gelten teamweit und erscheinen in der Übersicht.</div>
             </div>
 
             {/* Geplant für — nur Personal Brands (Company-Posting noch nicht möglich) */}
@@ -1715,6 +1771,20 @@ export default function Redaktionsplan({ session }) {
   const { activeBrandVoice, brandVoices, switchBrandVoice, noBrand } = useBrandVoice()
   const brainstormCompanyVoices = (brandVoices || []).filter(v => v.account_type === 'company_page')
   const [posts, setPosts]         = useState([])
+  const [teamTags, setTeamTags]   = useState([])
+  const tagMap = useMemo(() => Object.fromEntries((teamTags || []).map(t => [t.id, t])), [teamTags])
+  async function loadTeamTags() {
+    if (!activeTeamId) { setTeamTags([]); return }
+    let { data } = await supabase.from('content_tags').select('*').eq('team_id', activeTeamId).order('position', { ascending: true })
+    if (!data || data.length === 0) {
+      const seed = DEFAULT_TAG_COLORS.map((c, i) => ({ team_id: activeTeamId, name: '', color: c, position: i }))
+      await supabase.from('content_tags').insert(seed)
+      const r = await supabase.from('content_tags').select('*').eq('team_id', activeTeamId).order('position', { ascending: true })
+      data = r.data
+    }
+    setTeamTags(data || [])
+  }
+  useEffect(() => { loadTeamTags() }, [activeTeamId])
   const [loading, setLoading]     = useState(true)
   const [view, setView]           = useState('kanban')  // kanban | kalender | liste
   const [modal, setModal]         = useState(null)      // null | {} | post
@@ -1935,7 +2005,7 @@ Danke für den Austausch! 🤝`,
     if (!activeTeamId) { setPosts([]); setLoading(false); return }
     const _sharedBv = await sharedBrandVoiceIds(activeTeamId)
     let q = scopeContentByTeamOrSharedBV(supabase.from('content_posts')
-      .select('*, post_publish_queue ( status, scheduled_for, attempts, error_message, last_response_status, created_at )'), activeTeamId, _sharedBv)
+      .select('*, post_publish_queue ( status, scheduled_for, attempts, error_message, last_response_status, created_at ), content_post_tags ( tag_id )'), activeTeamId, _sharedBv)
       .order('created_at', { ascending: false })
     // BV-Multi-Filter: ausgewaehlte BVs
     if (noBrand) q = q.eq('no_brand', true).eq('user_id', session.user.id)
@@ -1951,6 +2021,7 @@ Danke für den Austausch! 🤝`,
         publish_queue_error: latest?.error_message || null,
         publish_queue_attempts: latest?.attempts || 0,
         bv_name: bvNameMap[p.brand_voice_id] || null,
+        tag_ids: Array.isArray(p.content_post_tags) ? p.content_post_tags.map(x => x.tag_id) : [],
       }
     })
     setPosts(flattened)
@@ -2185,7 +2256,7 @@ Danke für den Austausch! 🤝`,
                         Noch nichts hier
                       </div>
                     )}
-                    {cols.map(p => <PostCard key={p.id} post={p} onClick={openEdit} showBVBadge={showBVBadges} />)}
+                    {cols.map(p => <PostCard key={p.id} post={p} onClick={openEdit} showBVBadge={showBVBadges} tagMap={tagMap} />)}
                   </div>
                 </div>
               )
@@ -2216,7 +2287,7 @@ Danke für den Austausch! 🤝`,
                     <div style={{ fontSize:18, fontWeight:800, color: isToday ? '#fff' : 'rgb(20,20,43)' }}>{day.getDate()}</div>
                   </div>
                   <div style={{ flex:1, overflowY:'auto', padding:'8px' }}>
-                    {dayPosts.map(p => <PostCard key={p.id} post={p} onClick={openEdit} compact showBVBadge={showBVBadges} />)}
+                    {dayPosts.map(p => <PostCard key={p.id} post={p} onClick={openEdit} compact showBVBadge={showBVBadges} tagMap={tagMap} />)}
                     <button onClick={() => openNew({ scheduled_at: day.toISOString().slice(0,10)+'T09:00' })}
                       style={{ width:'100%', padding:'4px', borderRadius:6, border:'1px dashed #CBD5E1',
                         background:'none', color:'var(--text-muted)', fontSize:11, cursor:'pointer', marginTop:4 }}>
@@ -2371,7 +2442,7 @@ Danke für den Austausch! 🤝`,
 
       {/* Modal */}
       {modal !== null && (
-        <PostModal post={modal} onClose={closeModal} onSave={handleSave} onDelete={handleDelete} session={session} activeTeamId={activeTeamId} members={members} workspace={workspace} selectedModel={selectedModel} activeBrandVoice={activeBrandVoice} navigate={navigate} />
+        <PostModal post={modal} onClose={closeModal} onSave={handleSave} onDelete={handleDelete} session={session} activeTeamId={activeTeamId} members={members} workspace={workspace} selectedModel={selectedModel} activeBrandVoice={activeBrandVoice} navigate={navigate} teamTags={teamTags} onTagsChanged={loadTeamTags} />
       )}
 
       {/* ── BRAINSTORM-MODAL ── */}
