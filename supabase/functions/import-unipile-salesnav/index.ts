@@ -27,15 +27,17 @@ Deno.serve(async (req) => {
   if (!search || typeof search !== "object") return json({ error: "search (sales_navigator params) required" }, 400);
   const maxPages = Math.min(Number(max_pages) || DEFAULT_MAX_PAGES, DEFAULT_MAX_PAGES);
 
-  // Optionale Listen-Zuordnung: aufrufenden User aus dem JWT ableiten + Listen-Zugriff prüfen (RLS-konsistent).
-  // member.user_id = Caller; Zugriff = Owner ODER (is_shared UND Team-Mitglied) — sonst 403 (kein Fremd-Listen-Write).
-  let callerId: string | null = null;
+  // Caller aus dem JWT ableiten (IMMER) — er bestimmt das Ziel-Team des User-initiierten Imports,
+  // NICHT acct.team_id (das Unipile-Account-Team kann ein anderes sein → cross-team-Orphan).
+  const jwt = (req.headers.get("Authorization") || "").replace(/^Bearer\s+/i, "");
+  const { data: gu } = await db.auth.getUser(jwt);
+  const callerId: string | null = gu?.user?.id ?? null;
+
+  // Ziel-Team: die gewählte Liste ist autoritativ (Inbox-Rows + Mitgliedschaft im SELBEN Team),
+  // sonst das aktive Team des Callers. Listen-Zugriff dabei prüfen (Owner ODER is_shared+Team).
+  let targetTeamId: string | null = null;
   if (inbox_list_id) {
-    const jwt = (req.headers.get("Authorization") || "").replace(/^Bearer\s+/i, "");
-    const { data: gu } = await db.auth.getUser(jwt);
-    const caller = gu?.user;
-    if (!caller) return json({ error: "Auth erforderlich für inbox_list_id" }, 401);
-    callerId = caller.id;
+    if (!callerId) return json({ error: "Auth erforderlich für inbox_list_id" }, 401);
     const { data: listRow } = await db.from("inbox_lists").select("user_id, team_id, is_shared").eq("id", inbox_list_id).maybeSingle();
     if (!listRow) return json({ error: "inbox_list nicht gefunden" }, 404);
     let ok = listRow.user_id === callerId;
@@ -44,6 +46,10 @@ Deno.serve(async (req) => {
       ok = !!tm;
     }
     if (!ok) return json({ error: "keine Berechtigung für diese Liste" }, 403);
+    targetTeamId = listRow.team_id;
+  } else if (callerId) {
+    const { data: up } = await db.from("user_preferences").select("active_team_id").eq("user_id", callerId).maybeSingle();
+    targetTeamId = up?.active_team_id ?? null;
   }
 
   const { data: acct, error: aerr } = await db.from("unipile_accounts")
@@ -52,6 +58,11 @@ Deno.serve(async (req) => {
   if (!acct) return json({ error: "unipile_account not found" }, 404);
   if (acct.status !== "OK") return json({ skipped: "account_status:" + acct.status });
   if (!acct.team_id) return json({ skipped: "no_team" });
+
+  // Ziel-Team/-User für die Inbox-Rows = Caller/Liste (User-Kontext), NICHT das Unipile-Account-Team.
+  // Fallback acct nur wenn kein Caller/kein aktives Team (z.B. service-role-Aufruf ohne Kontext).
+  const teamId = targetTeamId ?? acct.team_id;
+  const userId = callerId ?? acct.user_id;
 
   const searchBody = { ...search, api: "sales_navigator" };
   let cursor: string | null = null;
@@ -95,7 +106,7 @@ Deno.serve(async (req) => {
         source: "unipile_salesnav",
       };
       const { data: ins, error: uerr } = await db.rpc("sales_nav_upsert_inbox", {
-        p_team_id: acct.team_id, p_user_id: acct.user_id, p_lead: lead,
+        p_team_id: teamId, p_user_id: userId, p_lead: lead,
       });
       if (uerr) { failed++; continue; }
       const res = ins as any; // RPC gibt jetzt jsonb {id, inserted}
@@ -111,13 +122,13 @@ Deno.serve(async (req) => {
     const { error: mErr } = await db.from("inbox_list_members")
       .upsert(rows, { onConflict: "list_id,inbox_id", ignoreDuplicates: true });
     if (mErr) {
-      return json({ unipile_account_id, team_id: acct.team_id, pages, seen, inserted, updated, failed, inbox_list_id, list_error: mErr.message });
+      return json({ unipile_account_id, team_id: teamId, pages, seen, inserted, updated, failed, inbox_list_id, list_error: mErr.message });
     }
     list_linked = rows.length; // versuchte Zuordnungen (Duplikate werden idempotent übersprungen)
   }
 
   return json({
-    unipile_account_id, team_id: acct.team_id,
+    unipile_account_id, team_id: teamId,
     pages, seen, inserted, updated, failed,
     inbox_list_id: inbox_list_id ?? null, list_linked,
     more_available: !!cursor && pages >= maxPages,
