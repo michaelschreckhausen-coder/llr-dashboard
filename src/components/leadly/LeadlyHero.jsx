@@ -151,12 +151,16 @@ export default function LeadlyHero({ firstName, leadly, stats = {}, onOpenTasks 
       .filter(m => (m.role === 'user' || m.role === 'assistant') && m.content);
   }, [engaged, leadly.messages]);
 
-  // Synthetische User-Bubble auflösen, sobald die echte Nachricht da ist
-  const pendingUserShown = pendingUserText
-    && !visibleMessages.some(m => m.role === 'user' && m.content === pendingUserText);
+  // Synthetische User-Bubble erst auflösen, wenn die PERSISTIERTE Nachricht da
+  // ist (die optimistische 'opt-…'-Message wird vom Conversation-Load kurzzeitig
+  // weggewischt — sie zählt deshalb nicht als Ablösung).
+  const hasPersistedUserMsg = !!pendingUserText && visibleMessages.some(
+    m => m.role === 'user' && m.content === pendingUserText && !String(m.id).startsWith('opt-')
+  );
+  const pendingUserShown = !!pendingUserText && !hasPersistedUserMsg;
   useEffect(() => {
-    if (pendingUserText && !pendingUserShown) setPendingUserText(null);
-  }, [pendingUserText, pendingUserShown]);
+    if (pendingUserText && hasPersistedUserMsg) setPendingUserText(null);
+  }, [pendingUserText, hasPersistedUserMsg]);
 
   // Auto-Scroll ans Ende des Threads
   useEffect(() => {
@@ -281,7 +285,9 @@ export default function LeadlyHero({ firstName, leadly, stats = {}, onOpenTasks 
           display: 'flex', flexDirection: 'column', gap: 10,
           paddingRight: 4,
         }}>
-          {visibleMessages.map((m) => m.role === 'user' ? (
+          {visibleMessages
+            .filter(m => !(pendingUserShown && m.role === 'user' && m.content === pendingUserText && String(m.id).startsWith('opt-')))
+            .map((m) => m.role === 'user' ? (
             <div key={m.id} style={{ alignSelf: 'flex-end', maxWidth: '78%', background: 'var(--wl-primary, var(--primary, rgb(49,90,231)))', color: '#fff', borderRadius: '14px 14px 4px 14px', padding: '9px 14px', fontSize: 14, lineHeight: 1.5 }}>
               {m.content}
             </div>
