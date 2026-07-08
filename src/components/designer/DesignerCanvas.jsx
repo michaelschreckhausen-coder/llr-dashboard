@@ -5705,7 +5705,9 @@ Ignoriere reine Deko/Muster ohne Text. Antworte AUSSCHLIESSLICH mit JSON, ohne E
             onStart={commitHistoryOnce} onChange={(hex) => { setBgColor(hex); setBgGrad(null) }} onGradient={(g) => setBgGrad(g)} onEnd={endInteraction} />
           <Divider />
           <div style={{ display: 'flex', alignItems: 'center', gap: 6, flex: 1, minWidth: 0, maxWidth: 560 }}>
-            <Sparkles size={15} strokeWidth={1.9} style={{ color: P, flexShrink: 0 }} />
+            <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4, flexShrink: 0, fontSize: 12, fontWeight: 700, color: P }}>
+              <Sparkles size={14} strokeWidth={2} />KI-Agent
+            </span>
             <input value={pageAiCmd} onChange={e => setPageAiCmd(e.target.value)} disabled={pageAiBusy}
               onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); runPageAiCommand(pageAiCmd) } }}
               placeholder="KI: ganze Seite bearbeiten — z.B. „mach es wärmer & die Headline größer“"
