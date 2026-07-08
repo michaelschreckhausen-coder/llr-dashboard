@@ -3349,6 +3349,33 @@ Ignoriere reine Deko/Muster ohne Text. Antworte AUSSCHLIESSLICH mit JSON, ohne E
         const def = catDefault[cat]; const inCat = fontsInCategory(cat)
         return (inCat.includes(def) ? def : (inCat[0] || 'Inter'))
       }
+      // ── Text vom Bild LÖSEN: die Original-Textstellen aus dem Basisbild entfernen (LaMa-Inpainting),
+      //    damit die neuen Ebenen wirklich frei liegen und kein doppelter Text entsteht. Best-effort:
+      //    scheitert das Entfernen, bleiben die Ebenen trotzdem (liegen dann über dem Originaltext).
+      let detached = false
+      try {
+        setSavedMsg('Originaltext wird vom Bild gelöst …')
+        const ic = document.createElement('canvas'); ic.width = iw; ic.height = ih
+        ic.getContext('2d').drawImage(el, 0, 0, iw, ih)
+        const imageB64 = ic.toDataURL('image/png')
+        const mc = document.createElement('canvas'); mc.width = iw; mc.height = ih
+        const mctx = mc.getContext('2d'); mctx.fillStyle = '#000'; mctx.fillRect(0, 0, iw, ih)
+        mctx.fillStyle = '#fff'
+        const padX = Math.round(iw * 0.012), padY = Math.round(ih * 0.014)
+        for (const it of list) {
+          const rx = Math.round(Math.max(0, (Number(it.x) || 0) * iw) - padX)
+          const ry = Math.round(Math.max(0, (Number(it.y) || 0) * ih) - padY)
+          const rw = Math.round(Math.min(iw, (Number(it.w) || 0.1) * iw) + padX * 2)
+          const rh = Math.round(Math.min(ih, (Number(it.h) || 0.05) * ih) + padY * 2)
+          mctx.fillRect(rx, ry, rw, rh)
+        }
+        const { data: er, error: erErr } = await Promise.race([
+          supabase.functions.invoke('image-ai', { body: { op: 'erase', image: imageB64, mask: mc.toDataURL('image/png') } }),
+          new Promise((_, rej) => setTimeout(() => rej(new Error('erase-timeout')), 60000)),
+        ])
+        if (!erErr && !er?.error && er?.image) { await applyResultDirect(er.image, 'mask'); detached = true }
+      } catch (_e) { /* Best-effort */ }
+
       const px = primary.x || 0, py = primary.y || 0, pw = primary.width || iw, ph = primary.height || ih
       pushHistory()
       const newObjs = []; const fams = new Set()
@@ -3366,7 +3393,7 @@ Ignoriere reine Deko/Muster ohne Text. Antworte AUSSCHLIESSLICH mit JSON, ohne E
       if (!newObjs.length) { setSavedMsg('Kein Text übernommen.'); setBgMenuBusy(false); return }
       try { fams.forEach(fm => loadGoogleFont(fm).catch(() => {})) } catch (_e) {}
       setObjects(prev => [...prev, ...newObjs])
-      setSavedMsg(newObjs.length + ' Text' + (newObjs.length > 1 ? 'e' : '') + ' aus dem Bild übernommen ✓')
+      setSavedMsg(newObjs.length + ' Text' + (newObjs.length > 1 ? 'e' : '') + (detached ? ' extrahiert & vom Bild gelöst ✓' : ' übernommen ✓ (Originaltext blieb im Bild)'))
     } catch (e) {
       setAiError && setAiError('Text übernehmen: ' + (e?.message || 'fehlgeschlagen'))
     } finally { setBgMenuBusy(false) }
