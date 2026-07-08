@@ -66,13 +66,13 @@ export default function CompanyMultiSelect({
           background: count ? 'rgba(49,90,231,0.06)' : 'var(--surface, #fff)',
           color: count ? P : 'var(--text-primary)', cursor:'pointer', fontFamily:'inherit', flexShrink:0, position:'relative', ...buttonStyle,
         } : {
-          display:'inline-flex', alignItems:'center', gap:6, padding:'10px 12px', borderRadius:10,
+          display:'inline-flex', alignItems:'center', gap:8, padding:'9px 12px', borderRadius:10, minHeight:40, boxSizing:'border-box',
           border:'1.5px solid var(--border)', background:'var(--surface, #fff)',
-          color:'var(--text-primary)', fontSize:13, fontWeight:500,
+          color:'var(--text-primary)', fontSize:13, fontWeight:400,
           cursor:'pointer', fontFamily:'inherit', ...buttonStyle,
         }}>
         {iconOnly && <Building2 size={16} strokeWidth={1.75}/>}
-        {!iconOnly && <span style={{ flex:1, minWidth:0, overflow:'hidden', textOverflow:'ellipsis', textAlign:'left' }}>{btnLabel}</span>}
+        {!iconOnly && <span style={{ flex:1, minWidth:0, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap', textAlign:'left', fontSize:13 }}>{btnLabel}</span>}
         {!iconOnly && <ChevronDown size={13} strokeWidth={2} style={{ opacity:0.5, marginLeft:2, flexShrink:0 }}/>}
         {iconOnly && count > 1 && <span style={{ position:'absolute', top:-5, right:-5, minWidth:15, height:15, padding:'0 3px', borderRadius:8, background:P, color:'#fff', fontSize:9, fontWeight:800, display:'inline-flex', alignItems:'center', justifyContent:'center' }}>{count}</span>}
       </button>
