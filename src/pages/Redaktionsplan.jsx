@@ -116,6 +116,73 @@ const STATUS_SIMPLE = {
 
 // Standard-Tag-Farben (Planner-Stil) — beim ersten Öffnen als leere, umbenennbare Kategorien angelegt.
 const DEFAULT_TAG_COLORS = ['#EF4444','#F59E0B','#EAB308','#10B981','#06B6D4','#3B82F6','#8B5CF6','#EC4899']
+// Erweiterte Palette für „+ Tag hinzufügen" (die ersten 8 sind die Defaults).
+const TAG_PALETTE = ['#EF4444','#F59E0B','#EAB308','#10B981','#06B6D4','#3B82F6','#8B5CF6','#EC4899','#F97316','#84CC16','#14B8A6','#0EA5E9','#6366F1','#A855F7','#D946EF','#F43F5E','#64748B','#78716C','#DC2626','#0891B2']
+
+// Kompaktes Tag-Dropdown (rechts neben Status). Fixed positioniert (Modal-overflow schneidet sonst ab).
+function TagPicker({ tags = [], selTagIds = [], onToggle, onRename, onPersist, onAddTag }) {
+  const [open, setOpen] = useState(false)
+  const [coords, setCoords] = useState(null)
+  const ref = useRef(null)
+  const btnRef = useRef(null)
+  useEffect(() => {
+    function onDoc(e) { if (ref.current && !ref.current.contains(e.target)) setOpen(false) }
+    if (open) document.addEventListener('mousedown', onDoc)
+    return () => document.removeEventListener('mousedown', onDoc)
+  }, [open])
+  const selected = tags.filter(t => selTagIds.includes(t.id))
+  const openMenu = () => {
+    if (!open) {
+      const r = btnRef.current?.getBoundingClientRect()
+      if (r) {
+        const menuH = Math.min(340, 80 + tags.length * 34)
+        const below = window.innerHeight - r.bottom
+        const up = below < menuH + 12 && r.top > below
+        setCoords({ left: Math.max(8, Math.min(r.left, window.innerWidth - 258)), width: Math.max(238, r.width), ...(up ? { bottom: window.innerHeight - r.top + 6 } : { top: r.bottom + 6 }) })
+      }
+    }
+    setOpen(o => !o)
+  }
+  return (
+    <div ref={ref} style={{ position:'relative' }}>
+      <button ref={btnRef} type="button" onClick={openMenu}
+        style={{ width:'100%', minHeight:40, padding:'7px 12px', borderRadius:10, border:'1.5px solid var(--border)', background:'#fff', cursor:'pointer', fontFamily:'inherit', display:'flex', alignItems:'center', gap:6, boxSizing:'border-box' }}>
+        {selected.length === 0
+          ? <span style={{ fontSize:13, color:'var(--text-muted)', flex:1, textAlign:'left' }}>Tags wählen…</span>
+          : <span style={{ display:'flex', flexWrap:'wrap', gap:4, flex:1, minWidth:0 }}>
+              {selected.slice(0, 3).map(t => (
+                <span key={t.id} style={{ display:'inline-flex', alignItems:'center', height:16, padding: t.name ? '0 6px' : '0 5px', borderRadius:5, background: t.color + '22', color: t.color, fontSize:10, fontWeight:700, border:'1px solid ' + t.color + '55', maxWidth:78, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{t.name || <span style={{ width:12, height:5, borderRadius:3, background:t.color, display:'inline-block' }}/>}</span>
+              ))}
+              {selected.length > 3 && <span style={{ fontSize:10, fontWeight:700, color:'var(--text-muted)', alignSelf:'center' }}>+{selected.length - 3}</span>}
+            </span>}
+        <ChevronDown size={14} strokeWidth={2} style={{ opacity:0.5, flexShrink:0, marginLeft:'auto' }}/>
+      </button>
+      {open && coords && (
+        <div style={{ position:'fixed', zIndex:1000, left: coords.left, width: coords.width, ...(coords.top != null ? { top: coords.top } : { bottom: coords.bottom }), maxHeight:340, overflowY:'auto', background:'#fff', border:'1px solid var(--border)', borderRadius:10, boxShadow:'0 12px 32px rgba(15,23,42,0.16)', padding:6 }}>
+          {tags.map(t => {
+            const on = selTagIds.includes(t.id)
+            return (
+              <div key={t.id} style={{ display:'flex', alignItems:'center', gap:8, padding:'4px', borderRadius:7, background: on ? (t.color + '14') : 'transparent' }}>
+                <button type="button" onClick={() => onToggle(t.id)} title={on ? 'Zugewiesen — klick zum Entfernen' : 'Diesem Beitrag zuweisen'}
+                  style={{ width:18, height:18, flexShrink:0, borderRadius:5, cursor:'pointer', display:'inline-flex', alignItems:'center', justifyContent:'center', border:'1.5px solid ' + t.color, background: on ? t.color : '#fff', padding:0 }}>
+                  {on && <Check size={12} strokeWidth={3} color="#fff" />}
+                </button>
+                <span style={{ width:12, height:12, borderRadius:4, background:t.color, flexShrink:0 }} />
+                <input value={t.name} onChange={e => onRename(t.id, e.target.value)} onBlur={() => onPersist(t.id)}
+                  placeholder="Kategorie benennen…"
+                  style={{ flex:1, minWidth:0, border:'none', outline:'none', background:'transparent', fontSize:12.5, color:'var(--text-primary)', fontFamily:'inherit', padding:'2px 0' }} />
+              </div>
+            )
+          })}
+          <button type="button" onClick={onAddTag}
+            style={{ width:'100%', marginTop:4, display:'inline-flex', alignItems:'center', justifyContent:'center', gap:6, height:32, borderRadius:8, cursor:'pointer', fontFamily:'inherit', fontSize:12, fontWeight:600, border:'1px dashed var(--border)', background:'#fff', color:'var(--text-secondary,#475467)' }}>
+            <Plus size={14} strokeWidth={2} />Tag hinzufügen
+          </button>
+        </div>
+      )}
+    </div>
+  )
+}
 
 // ─── PostCard ─────────────────────────────────────────────────────────────────
 function PostCard({ post, onClick, compact, showBVBadge, tagMap = {} }) {
@@ -214,6 +281,12 @@ function PostModal({ post, onClose, onSave, onDelete, session, activeTeamId, mem
     if (!postId) return
     await supabase.from('content_post_tags').delete().eq('post_id', postId)
     if (selTagIds.length) await supabase.from('content_post_tags').insert(selTagIds.map(tid => ({ post_id: postId, tag_id: tid })))
+  }
+  async function addTag() {
+    const used = new Set(tags.map(t => t.color))
+    const nextColor = TAG_PALETTE.find(c => !used.has(c)) || ('#' + Math.floor(Math.random() * 0xffffff).toString(16).padStart(6, '0'))
+    const { data, error } = await supabase.from('content_tags').insert({ team_id: activeTeamId, name: '', color: nextColor, position: tags.length }).select().single()
+    if (!error && data) { setTags(prev => [...prev, data]); setSelTagIds(prev => [...prev, data.id]); onTagsChanged() }
   }
   const isNew = !post?.id
   const [form, setForm] = useState({
@@ -1027,8 +1100,10 @@ function PostModal({ post, onClose, onSave, onDelete, session, activeTeamId, mem
               </div>
             )}
 
+            {/* Status + Tags nebeneinander */}
+            <div style={{ display:'flex', gap:12, alignItems:'flex-start', flexWrap:'wrap' }}>
             {/* Status — 3 Board-Phasen (Idee / In Arbeit / Veröffentlicht) */}
-            <div>
+            <div style={{ flex:1, minWidth:130 }}>
               <label style={{ fontSize:11, fontWeight:700, color:'var(--text-muted)', textTransform:'uppercase', letterSpacing:'0.05em', display:'block', marginBottom:8 }}>Status</label>
               {(() => {
                 // Mapper: DB-Status → Board-Phase
@@ -1078,28 +1153,11 @@ function PostModal({ post, onClose, onSave, onDelete, session, activeTeamId, mem
               })()}
             </div>
 
-            {/* Tags (Planner-Stil): farbige, team-weite, umbenennbare Kategorien */}
-            <div>
+            {/* Tags — kompaktes Dropdown (rechts neben Status) */}
+            <div style={{ flex:1, minWidth:130 }}>
               <label style={{ fontSize:11, fontWeight:700, color:'var(--text-muted)', textTransform:'uppercase', letterSpacing:'0.05em', display:'block', marginBottom:8 }}>Tags</label>
-              <div style={{ display:'flex', flexDirection:'column', gap:4, border:'1px solid var(--border)', borderRadius:10, padding:8, maxHeight:200, overflowY:'auto' }}>
-                {tags.length === 0 && <div style={{ fontSize:11.5, color:'var(--text-muted)', padding:'4px 2px' }}>Tags werden geladen…</div>}
-                {tags.map(t => {
-                  const on = selTagIds.includes(t.id)
-                  return (
-                    <div key={t.id} style={{ display:'flex', alignItems:'center', gap:8, padding:'4px', borderRadius:7, background: on ? (t.color + '14') : 'transparent' }}>
-                      <button type="button" onClick={() => toggleTag(t.id)} title={on ? 'Zugewiesen — klick zum Entfernen' : 'Diesem Beitrag zuweisen'}
-                        style={{ width:18, height:18, flexShrink:0, borderRadius:5, cursor:'pointer', display:'inline-flex', alignItems:'center', justifyContent:'center', border:'1.5px solid ' + t.color, background: on ? t.color : '#fff', padding:0 }}>
-                        {on && <Check size={12} strokeWidth={3} color="#fff" />}
-                      </button>
-                      <span style={{ width:12, height:12, borderRadius:4, background:t.color, flexShrink:0 }} />
-                      <input value={t.name} onChange={e => renameTagLocal(t.id, e.target.value)} onBlur={() => persistTag(t.id)}
-                        placeholder="Kategorie benennen…"
-                        style={{ flex:1, minWidth:0, border:'none', outline:'none', background:'transparent', fontSize:12.5, color:'var(--text-primary)', fontFamily:'inherit', padding:'2px 0' }} />
-                    </div>
-                  )
-                })}
-              </div>
-              <div style={{ fontSize:11, color:'var(--text-muted)', marginTop:6, lineHeight:1.4 }}>Farbige Kategorien wie im Planner — Namen gelten teamweit und erscheinen in der Übersicht.</div>
+              <TagPicker tags={tags} selTagIds={selTagIds} onToggle={toggleTag} onRename={renameTagLocal} onPersist={persistTag} onAddTag={addTag} />
+            </div>
             </div>
 
             {/* Geplant für — nur Personal Brands (Company-Posting noch nicht möglich) */}
