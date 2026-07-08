@@ -308,6 +308,10 @@ export default function Automatisierung({ session }) {
   // ── Aktionen ────────────────────────────────────────────────────────────
   async function createCampaign() {
     if (!newCamp.name.trim()) { showFlash('Kampagnenname fehlt', 'err'); return }
+    // Bug1-Fix: Default 'active'; Entwurf nur bei 'Später'(=0 Leads) ODER Message-Erst-Sequenz
+    // (Message-Jobs sind eh Freigabe-pflichtig, Z353). Nutzt nur createCampaign-eigene Vars (source lebt im Wizard).
+    const firstAction = STEP_TO_ACTION[newCamp.sequence.find(s => s.type !== 'wait')?.type] || 'connect'
+    const isDraft = selectedLeads.length === 0 || firstAction === 'message'
     // #13: kanonisches automation_*-Schema (Prod = Repo) + inbox_id-dual-track.
     const { data, error } = await supabase.from('automation_campaigns').insert({
       user_id: uid,
@@ -316,7 +320,7 @@ export default function Automatisierung({ session }) {
       sponsoring_campaign_id: newCamp.sponsoring_campaign_id || null,
       sequence: newCamp.sequence,
       settings: newCamp.settings,
-      status: 'draft',
+      status: isDraft ? 'draft' : 'active',
       leads_total: selectedLeads.length,
     }).select().single()
 
@@ -361,7 +365,7 @@ export default function Automatisierung({ session }) {
 
     showFlash(`Kampagne "${data.name}" erstellt ✓`)
     resetModal()
-    setStatusTab('draft')   // neue Kampagne ist 'draft' → auf den Entwurf-Tab wechseln, sonst scheint sie im Laufend-Tab "verschwunden"
+    setStatusTab(isDraft ? 'draft' : 'active')   // Bug1: aktive Kampagne → Laufend-Tab, sonst scheint sie "verschwunden"
     load()
   }
 
