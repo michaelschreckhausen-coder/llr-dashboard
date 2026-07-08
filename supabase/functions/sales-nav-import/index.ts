@@ -146,7 +146,7 @@ async function handleIngest(
       failed++;
       continue;
     }
-    if (data === true) inserted++; else updated++;
+    (data as any)?.inserted ? inserted++ : updated++; // RPC gibt jsonb {id, inserted} (nicht mehr boolean)
   }
   const processed = inserted + updated;
 
