@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback, useRef, useMemo } from 'react'
 import GenerationLoading from '../components/GenerationLoading'
-import { AlertTriangle, BarChart3, BookOpen, Brain, Briefcase, Calendar, CalendarRange, Check, ChevronDown, ChevronUp, Copy, Target, Trash2, Eye, FileText, Flame, Hammer, Image as ImageIcon, LayoutGrid, Lightbulb, List, Loader2, MessageCircle, MessageSquare, Paperclip, PenLine, Pencil, Plus, Rocket, Save, Scissors, Search, Share2, Sparkles, ThumbsUp as ThumbsUpIcon, User, Wand2, X, Zap } from 'lucide-react'
+import { AlertTriangle, BarChart3, BookOpen, Brain, Briefcase, Calendar, CalendarRange, Check, ChevronDown, ChevronLeft, ChevronRight, ChevronUp, Clock, Copy, Target, Trash2, Eye, FileText, Flame, Hammer, Image as ImageIcon, LayoutGrid, Lightbulb, List, Loader2, MessageCircle, MessageSquare, Paperclip, PenLine, Pencil, Plus, Rocket, Save, Scissors, Search, Share2, Sparkles, ThumbsUp as ThumbsUpIcon, User, Wand2, X, Zap } from 'lucide-react'
 import { LinkedinIcon } from '../components/icons'
 import { useModel } from '../context/ModelContext'
 import { useResponsive } from '../hooks/useResponsive'
@@ -178,6 +178,95 @@ function TagPicker({ tags = [], selTagIds = [], onToggle, onRename, onPersist, o
             style={{ width:'100%', marginTop:4, display:'inline-flex', alignItems:'center', justifyContent:'center', gap:6, height:32, borderRadius:8, cursor:'pointer', fontFamily:'inherit', fontSize:12, fontWeight:600, border:'1px dashed var(--border)', background:'#fff', color:'var(--text-secondary,#475467)' }}>
             <Plus size={14} strokeWidth={2} />Tag hinzufügen
           </button>
+        </div>
+      )}
+    </div>
+  )
+}
+
+// ─── Leadesk-Datepicker (statt hässlichem nativen datetime-local) ────────────
+const _DTP_WD = ['Mo','Di','Mi','Do','Fr','Sa','So']
+const _DTP_MONTHS = ['Januar','Februar','März','April','Mai','Juni','Juli','August','September','Oktober','November','Dezember']
+const _dtpNav = { width:30, height:30, borderRadius:8, border:'1px solid var(--border)', background:'#fff', cursor:'pointer', display:'inline-flex', alignItems:'center', justifyContent:'center', color:'var(--text-secondary,#475467)' }
+const _dtpLink = { background:'transparent', border:'none', cursor:'pointer', fontFamily:'inherit', fontSize:12.5, fontWeight:600, padding:'4px 6px' }
+function DateTimePicker({ value = '', onChange = () => {} }) {
+  const P = 'var(--wl-primary, rgb(49,90,231))'
+  const [open, setOpen] = useState(false)
+  const [coords, setCoords] = useState(null)
+  const ref = useRef(null); const btnRef = useRef(null)
+  const parsed = value ? new Date(value) : null
+  const vp = parsed && !isNaN(parsed) ? parsed : null
+  const [view, setView] = useState(() => { const d = vp || new Date(); return { y: d.getFullYear(), m: d.getMonth() } })
+  const [time, setTime] = useState(vp ? `${String(vp.getHours()).padStart(2,'0')}:${String(vp.getMinutes()).padStart(2,'0')}` : '09:00')
+  useEffect(() => {
+    function onDoc(e){ if (ref.current && !ref.current.contains(e.target)) setOpen(false) }
+    if (open) document.addEventListener('mousedown', onDoc)
+    return () => document.removeEventListener('mousedown', onDoc)
+  }, [open])
+  const openMenu = () => {
+    if (!open) {
+      const d = vp || new Date()
+      setView({ y: d.getFullYear(), m: d.getMonth() })
+      if (vp) setTime(`${String(vp.getHours()).padStart(2,'0')}:${String(vp.getMinutes()).padStart(2,'0')}`)
+      const r = btnRef.current?.getBoundingClientRect()
+      if (r) {
+        const menuH = 360; const below = window.innerHeight - r.bottom
+        const up = below < menuH + 12 && r.top > below
+        setCoords({ left: Math.max(8, Math.min(r.left, window.innerWidth - 300)), ...(up ? { bottom: window.innerHeight - r.top + 6 } : { top: r.bottom + 6 }) })
+      }
+    }
+    setOpen(o => !o)
+  }
+  const emit = (y, m, d, t) => {
+    const [hh, mm] = (t || '09:00').split(':')
+    onChange(`${y}-${String(m+1).padStart(2,'0')}-${String(d).padStart(2,'0')}T${String(parseInt(hh)||0).padStart(2,'0')}:${String(parseInt(mm)||0).padStart(2,'0')}`)
+  }
+  const pickDay = (d) => emit(view.y, view.m, d, time)
+  const changeTime = (t) => { setTime(t); if (vp) emit(vp.getFullYear(), vp.getMonth(), vp.getDate(), t) }
+  const prevM = () => setView(v => { const m = v.m - 1; return m < 0 ? { y: v.y - 1, m: 11 } : { y: v.y, m } })
+  const nextM = () => setView(v => { const m = v.m + 1; return m > 11 ? { y: v.y + 1, m: 0 } : { y: v.y, m } })
+  const firstWd = (new Date(view.y, view.m, 1).getDay() + 6) % 7
+  const dim = new Date(view.y, view.m + 1, 0).getDate()
+  const today = new Date()
+  const isToday = (d) => today.getFullYear() === view.y && today.getMonth() === view.m && today.getDate() === d
+  const isSel = (d) => vp && vp.getFullYear() === view.y && vp.getMonth() === view.m && vp.getDate() === d
+  const label = vp ? (vp.toLocaleString('de-DE', { day:'2-digit', month:'short', year:'numeric', hour:'2-digit', minute:'2-digit' }) + ' Uhr') : ''
+  return (
+    <div ref={ref} style={{ position:'relative' }}>
+      <button ref={btnRef} type="button" onClick={openMenu}
+        style={{ width:'100%', minHeight:40, padding:'9px 12px', borderRadius:10, border:'1.5px solid var(--border)', background:'#fff', cursor:'pointer', fontFamily:'inherit', display:'flex', alignItems:'center', gap:8, boxSizing:'border-box' }}>
+        <Calendar size={14} strokeWidth={1.9} style={{ color:'var(--text-muted)', flexShrink:0 }}/>
+        <span style={{ flex:1, minWidth:0, textAlign:'left', fontSize:13, color: vp ? 'var(--text-primary)' : 'var(--text-muted)', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{label || 'Datum & Uhrzeit'}</span>
+        <ChevronDown size={14} strokeWidth={2} style={{ opacity:0.5, flexShrink:0 }}/>
+      </button>
+      {open && coords && (
+        <div style={{ position:'fixed', zIndex:1000, left: coords.left, width:284, ...(coords.top != null ? { top: coords.top } : { bottom: coords.bottom }), background:'#fff', border:'1px solid var(--border)', borderRadius:14, boxShadow:'0 16px 40px rgba(15,23,42,0.18)', padding:14 }}>
+          <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:10 }}>
+            <button type="button" onClick={prevM} style={_dtpNav}><ChevronLeft size={16} strokeWidth={2.2}/></button>
+            <span style={{ fontSize:13.5, fontWeight:700, color:'var(--text-primary)' }}>{_DTP_MONTHS[view.m]} {view.y}</span>
+            <button type="button" onClick={nextM} style={_dtpNav}><ChevronRight size={16} strokeWidth={2.2}/></button>
+          </div>
+          <div style={{ display:'grid', gridTemplateColumns:'repeat(7,1fr)', gap:2, marginBottom:4 }}>
+            {_DTP_WD.map(w => <div key={w} style={{ textAlign:'center', fontSize:10.5, fontWeight:700, color:'var(--text-muted)' }}>{w}</div>)}
+          </div>
+          <div style={{ display:'grid', gridTemplateColumns:'repeat(7,1fr)', gap:2 }}>
+            {Array.from({ length: firstWd }).map((_, i) => <div key={'e' + i} />)}
+            {Array.from({ length: dim }).map((_, i) => { const d = i + 1; const sel = isSel(d); const td = isToday(d); return (
+              <button key={d} type="button" onClick={() => pickDay(d)}
+                style={{ height:32, borderRadius:8, cursor:'pointer', fontFamily:'inherit', fontSize:12.5, fontWeight: sel ? 700 : 500,
+                  border: td && !sel ? '1.5px solid ' + P : '1.5px solid transparent',
+                  background: sel ? P : 'transparent', color: sel ? '#fff' : 'var(--text-primary)' }}>{d}</button>
+            )})}
+          </div>
+          <div style={{ display:'flex', alignItems:'center', gap:8, marginTop:12, paddingTop:12, borderTop:'1px solid var(--border)' }}>
+            <Clock size={14} strokeWidth={1.9} style={{ color:'var(--text-muted)', flexShrink:0 }}/>
+            <input type="time" value={time} onChange={e => changeTime(e.target.value)}
+              style={{ flex:1, height:34, padding:'0 10px', borderRadius:8, border:'1.5px solid var(--border)', fontSize:13, fontFamily:'inherit', outline:'none', color:'var(--text-primary)', boxSizing:'border-box' }}/>
+          </div>
+          <div style={{ display:'flex', justifyContent:'space-between', marginTop:10 }}>
+            <button type="button" onClick={() => { onChange(''); setOpen(false) }} style={{ ..._dtpLink, color:'#b91c1c' }}>Löschen</button>
+            <button type="button" onClick={() => setOpen(false)} style={{ ..._dtpLink, color:P, fontWeight:700 }}>Übernehmen</button>
+          </div>
         </div>
       )}
     </div>
@@ -1097,14 +1186,13 @@ function PostModal({ post, onClose, onSave, onDelete, session, activeTeamId, mem
                 {companyVoices.length > 0 && (previewBV ? previewBV.account_type !== 'company_page' : activeBrandVoice?.account_type !== 'company_page') && (
                   <div style={{ flex:1, minWidth:150 }}>
                     <label style={{ fontSize:11, fontWeight:700, color:'var(--text-muted)', textTransform:'uppercase', letterSpacing:'0.05em', display:'block', marginBottom:8 }}>Für Unternehmen</label>
-                    <CompanyMultiSelect companies={companyVoices} value={form.company_voice_ids || []} onChange={(ids)=>upd('company_voice_ids', ids)} label="— Kein Unternehmen —" buttonStyle={{ width:'100%', maxWidth:'none', padding:'10px 12px', fontSize:13 }} />
+                    <CompanyMultiSelect companies={companyVoices} value={form.company_voice_ids || []} onChange={(ids)=>upd('company_voice_ids', ids)} label="Kein Unternehmen" buttonStyle={{ width:'100%', maxWidth:'none', padding:'10px 12px', fontSize:13 }} />
                   </div>
                 )}
                 {isPersonalPost && (
                   <div style={{ flex:1, minWidth:150 }}>
                     <label style={{ fontSize:11, fontWeight:700, color:'var(--text-muted)', textTransform:'uppercase', letterSpacing:'0.05em', display:'block', marginBottom:8 }}>Geplant für</label>
-                    <input type="datetime-local" value={form.scheduled_at} onChange={e => upd('scheduled_at', e.target.value)}
-                      style={{ width:'100%', padding:'9px 10px', borderRadius:10, border:'1.5px solid #E5E7EB', fontSize:13, outline:'none', boxSizing:'border-box', color:'rgb(20,20,43)' }}/>
+                    <DateTimePicker value={form.scheduled_at} onChange={(v) => upd('scheduled_at', v)} />
                   </div>
                 )}
               </div>

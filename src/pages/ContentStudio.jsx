@@ -2274,7 +2274,7 @@ function ChatInput({
           <ModelDropdown value={imageModel} onChange={setImageModel} />
           <CountDropdown value={imageCount} onChange={setImageCount} />
           <span title="Format / Seitenverhältnis" style={{ display:'inline-flex' }}>
-            <FormatPicker value={imageFormat} onChange={setImageFormat} />
+            <FormatPicker value={imageFormat} onChange={setImageFormat} compact />
           </span>
           {!noBrand && (
           <Tip label={useBrandImages ? 'Brand-Bilder werden als Referenz genutzt — klicken zum Ausschalten' : 'Brand-Bilder werden NICHT als Referenz genutzt — klicken zum Einschalten'}><button onClick={() => setUseBrandImages(v => !v)}

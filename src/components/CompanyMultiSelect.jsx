@@ -66,13 +66,12 @@ export default function CompanyMultiSelect({
           background: count ? 'rgba(49,90,231,0.06)' : 'var(--surface, #fff)',
           color: count ? P : 'var(--text-primary)', cursor:'pointer', fontFamily:'inherit', flexShrink:0, position:'relative', ...buttonStyle,
         } : {
-          display:'inline-flex', alignItems:'center', gap:6, padding:'7px 10px', borderRadius:9,
-          border:'1.5px solid ' + (count ? P : 'var(--border)'),
-          background: count ? 'rgba(49,90,231,0.06)' : 'var(--surface, #fff)',
-          color: count ? P : 'var(--text-primary)', fontSize:12, fontWeight:500,
-          cursor:'pointer', fontFamily:'inherit', maxWidth:190, ...buttonStyle,
+          display:'inline-flex', alignItems:'center', gap:6, padding:'10px 12px', borderRadius:10,
+          border:'1.5px solid var(--border)', background:'var(--surface, #fff)',
+          color:'var(--text-primary)', fontSize:13, fontWeight:500,
+          cursor:'pointer', fontFamily:'inherit', ...buttonStyle,
         }}>
-        <Building2 size={iconOnly ? 16 : 13} strokeWidth={1.75}/>
+        {iconOnly && <Building2 size={16} strokeWidth={1.75}/>}
         {!iconOnly && <span style={{ flex:1, minWidth:0, overflow:'hidden', textOverflow:'ellipsis', textAlign:'left' }}>{btnLabel}</span>}
         {!iconOnly && <ChevronDown size={13} strokeWidth={2} style={{ opacity:0.5, marginLeft:2, flexShrink:0 }}/>}
         {iconOnly && count > 1 && <span style={{ position:'absolute', top:-5, right:-5, minWidth:15, height:15, padding:'0 3px', borderRadius:8, background:P, color:'#fff', fontSize:9, fontWeight:800, display:'inline-flex', alignItems:'center', justifyContent:'center' }}>{count}</span>}
