@@ -17,7 +17,27 @@ export default function CompanyMultiSelect({
 }) {
   const [open, setOpen] = useState(false)
   const [hover, setHover] = useState(false)
+  const [coords, setCoords] = useState(null)
   const ref = useRef(null)
+  const btnRef = useRef(null)
+  // Menü fixed positionieren (escaped Modal-/Aside-overflow, das sonst abschneidet).
+  // Richtung automatisch: unter dem Button, außer es ist unten zu wenig Platz.
+  const openMenu = () => {
+    if (!open) {
+      const r = btnRef.current?.getBoundingClientRect()
+      if (r) {
+        const menuH = Math.min(300, 44 + companies.length * 40)
+        const spaceBelow = window.innerHeight - r.bottom
+        const dropUp = spaceBelow < menuH + 12 && r.top > spaceBelow
+        setCoords({
+          left: Math.max(8, Math.min(r.left, window.innerWidth - 240)),
+          width: Math.max(220, r.width),
+          ...(dropUp ? { bottom: window.innerHeight - r.top + 6 } : { top: r.bottom + 6 }),
+        })
+      }
+    }
+    setOpen(o => !o)
+  }
   useEffect(() => {
     function onDoc(e) { if (ref.current && !ref.current.contains(e.target)) setOpen(false) }
     if (open) document.addEventListener('mousedown', onDoc)
@@ -37,7 +57,7 @@ export default function CompanyMultiSelect({
 
   return (
     <div ref={ref} style={{ position:'relative', display:'inline-block' }}>
-      <button type="button" onClick={() => setOpen(o => !o)}
+      <button ref={btnRef} type="button" onClick={openMenu}
         onMouseEnter={() => setHover(true)} onMouseLeave={() => setHover(false)} onMouseDown={() => setHover(false)}
         title={iconOnly ? undefined : (count ? `Unternehmen: ${btnLabel}` : 'Optional: Du schreibst in deiner Stimme als Ambassador für ein oder mehrere Unternehmen')}
         style={iconOnly ? {
@@ -60,9 +80,11 @@ export default function CompanyMultiSelect({
       {iconOnly && hover && !open && (
         <span style={{ position:'absolute', bottom:'calc(100% + 6px)', left:'50%', transform:'translateX(-50%)', zIndex:200, background:'#101828', color:'#fff', fontSize:11, fontWeight:600, lineHeight:1.2, padding:'4px 8px', borderRadius:6, whiteSpace:'nowrap', pointerEvents:'none', boxShadow:'0 4px 12px rgba(16,24,40,0.25)' }}>{count ? btnLabel : 'Unternehmen'}</span>
       )}
-      {open && (
+      {open && coords && (
         <div style={{
-          position:'absolute', zIndex:60, bottom:'calc(100% + 6px)', left:0, minWidth:220, maxHeight:280, overflowY:'auto',
+          position:'fixed', zIndex:1000, left: coords.left, width: coords.width,
+          ...(coords.top != null ? { top: coords.top } : { bottom: coords.bottom }),
+          minWidth:220, maxHeight:300, overflowY:'auto',
           background:'#fff', border:'1px solid var(--border)', borderRadius:10, boxShadow:'0 12px 32px rgba(15,23,42,0.16)', padding:6,
         }}>
           <div style={{ fontSize:10, fontWeight:700, color:'var(--text-muted)', textTransform:'uppercase', letterSpacing:'0.05em', padding:'6px 8px 4px' }}>
