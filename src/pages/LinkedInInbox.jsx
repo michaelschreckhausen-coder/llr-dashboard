@@ -91,24 +91,32 @@ export default function LinkedInInbox() {
     if (!impUrl.trim()) { setImportErr('Bitte eine Sales-Navigator-Such-URL eingeben.'); return }
     setImporting(true)
     let listId = null
+    let createdListId = null   // nur die HIER neu angelegte Liste → bei Fehler zurückrollen
     try {
       if (impListMode === 'new') {
-        if (!impNewList.trim()) { setImportErr('Bitte einen Namen für die neue Liste eingeben.'); setImporting(false); return }
-        const r = await createList(impNewList.trim(), '#30A0D0')
-        listId = r?.id ?? r?.data?.id ?? (Array.isArray(r?.data) ? r.data[0]?.id : null)
-        if (!listId) { setImportErr('Liste anlegen fehlgeschlagen.'); setImporting(false); return }
+        const name = impNewList.trim()
+        if (!name) { setImportErr('Bitte einen Namen für die neue Liste eingeben.'); setImporting(false); return }
+        // Dedupe: gleichnamige Liste wiederverwenden statt Duplikat anzulegen
+        const dupe = lists.find(l => (l.name || '').trim().toLowerCase() === name.toLowerCase())
+        if (dupe) { listId = dupe.id }
+        else {
+          const r = await createList(name, '#30A0D0')
+          listId = r?.id ?? r?.data?.id ?? (Array.isArray(r?.data) ? r.data[0]?.id : null)
+          if (!listId) { setImportErr('Liste anlegen fehlgeschlagen.'); setImporting(false); return }
+          createdListId = listId
+        }
       } else if (impListMode !== 'none') {
         listId = impListMode
       }
       const { data, error } = await supabase.functions.invoke('import-unipile-salesnav', {
         body: { unipile_account_id: okAccount, search: { url: impUrl.trim() }, ...(listId ? { inbox_list_id: listId } : {}) },
       })
-      if (error) {
-        let body = null
-        try { body = await error.context?.json?.() } catch { /* Body evtl. schon konsumiert / kein JSON */ }
+      if (error || data?.error) {
+        if (createdListId) { await supabase.from('inbox_lists').delete().eq('id', createdListId) } // leere Liste zurückrollen
+        let body = data?.error ? data : null
+        if (!body && error) { try { body = await error.context?.json?.() } catch { /* konsumiert / kein JSON */ } }
         setImportErr(friendlyImportError(body, error)); setImporting(false); return
       }
-      if (data?.error) { setImportErr(friendlyImportError(data, null)); setImporting(false); return }
       const n = (data?.inserted || 0) + (data?.updated || 0)
       setImporting(false); setImportOpen(false); setImpUrl(''); setImpListMode('none'); setImpNewList('')
       setMsg({ text: `${n} Kontakt${n === 1 ? '' : 'e'} importiert${listId ? ' + der Liste zugeordnet' : ''}.` })
