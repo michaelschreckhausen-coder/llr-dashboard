@@ -3,16 +3,15 @@
 // Genutzt in der Content-Werkstatt (In-Chat-Bilder + Designer) und in der Visuals-Galerie.
 
 export const IMAGE_MODELS = [
-  { value: 'gemini-2.5-flash-image|medium',         name: 'Nano Banana',     label: 'Nano Banana — schnell',          provider: 'Google' },
-  { value: 'gemini-3.1-flash-image-preview|medium', name: 'Nano Banana 2',   label: 'Nano Banana 2 — neuer',          provider: 'Google' },
-  { value: 'gemini-3-pro-image-preview|medium',     name: 'Nano Banana Pro', label: 'Nano Banana Pro — beste Qualität', provider: 'Google' },
-  { value: 'gpt-image-1-mini|low',                  name: 'GPT Image Mini',  label: 'GPT Image Mini — schnell',       provider: 'OpenAI' },
-  { value: 'gpt-image-1|medium',                    name: 'GPT Image',       label: 'GPT Image — Standard',           provider: 'OpenAI' },
-  { value: 'gpt-image-1|high',                      name: 'GPT Image Pro',   label: 'GPT Image — Premium',            provider: 'OpenAI' },
+  { value: 'gemini-3-pro-image|medium',      name: 'Nano Banana Pro', label: 'Nano Banana Pro — beste Qualität', provider: 'Google' },
+  { value: 'gemini-3.1-flash-image|medium',  name: 'Nano Banana 2',   label: 'Nano Banana 2 — schnell',         provider: 'Google' },
+  { value: 'gpt-image-2|high',               name: 'GPT Image 2 Pro', label: 'GPT Image 2 — Premium',           provider: 'OpenAI' },
+  { value: 'gpt-image-2|medium',             name: 'GPT Image 2',     label: 'GPT Image 2 — Standard',          provider: 'OpenAI' },
+  { value: 'gpt-image-1-mini|low',           name: 'GPT Image Mini',  label: 'GPT Image Mini — schnell',        provider: 'OpenAI' },
 ]
 
 // Default: Nano Banana Pro (beste Qualität) — auf Wunsch immer vorausgewählt, auch im Automatisch-Modus.
-export const DEFAULT_IMAGE_MODEL = 'gemini-3-pro-image-preview|medium'
+export const DEFAULT_IMAGE_MODEL = 'gemini-3-pro-image|medium'
 
 // "<model>|<quality>" -> { model, quality }
 export function splitModelValue(v) {

@@ -215,7 +215,7 @@ export default function Dashboard({ session }) {
       + '\n\nPriorisiere die wichtigsten für den Vertrieb heute. Antworte AUSSCHLIESSLICH mit einem JSON-Array '
       + '(keine Code-Fences): [{"id":"<id aus der Liste>","prio":<1=höchste Priorität, aufsteigend>,'
       + '"grund":"<knappe Begründung, max 1 kurzer Satz, Deutsch>"}]. Nutze nur IDs aus der Liste.';
-    supabase.functions.invoke('generate', { body: { type: 'leadly_suggestion_rank', prompt, model: 'claude-haiku-4-5' } })
+    supabase.functions.invoke('generate', { body: { type: 'leadly_suggestion_rank', prompt } })
       .then(({ data, error }) => {
         if (cancelled || error || !data?.text) return;
         const m = String(data.text).match(/\[[\s\S]*\]/);

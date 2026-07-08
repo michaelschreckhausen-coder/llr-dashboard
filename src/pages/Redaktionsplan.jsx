@@ -451,7 +451,7 @@ function PostModal({ post, onClose, onSave, onDelete, session, activeTeamId, mem
     setGeneratingVisual(true)
     try {
       const { data: promptData } = await supabase.functions.invoke('generate', {
-        body: { type: 'visual_prompt', prompt: 'Extrahiere aus diesem LinkedIn-Post einen kurzen Visual-Prompt fuer einen Bildgenerator. Beschreibe was visuell zu sehen ist (Personen, Szenerie, Stimmung, Komposition). Max 50 Wörter, kein Vorwort, kein Anfuehrungszeichen, einfach den Prompt:\n\n' + form.content.slice(0, 2000), userId: session.user.id, model: 'claude-sonnet-4-6' }
+        body: { type: 'visual_prompt', prompt: 'Extrahiere aus diesem LinkedIn-Post einen kurzen Visual-Prompt fuer einen Bildgenerator. Beschreibe was visuell zu sehen ist (Personen, Szenerie, Stimmung, Komposition). Max 50 Wörter, kein Vorwort, kein Anfuehrungszeichen, einfach den Prompt:\n\n' + form.content.slice(0, 2000), userId: session.user.id }
       })
       const visualPrompt = (promptData?.text || promptData?.result || form.content.slice(0, 200)).trim()
       const { data: imgData, error: imgErr } = await supabase.functions.invoke('generate-image', {
