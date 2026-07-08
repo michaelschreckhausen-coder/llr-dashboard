@@ -166,7 +166,6 @@ function fullName(l) {
 // ─── Component ────────────────────────────────────────────────────────────
 export default function Automatisierung({ session }) {
   const navigate = useNavigate()
-  const { isMobile } = useResponsive()   // Fix: main-only ReferenceError (Wizard nutzt isMobile @select-Step, Def fehlte nach Cherry-Pick)
   const { activeTeamId } = useTeam() || {}
   const [sponsoringCampaigns, setSponsoringCampaigns] = useState([]) // K3: für die Zuordnung
   const [view, setView]               = useState('campaigns')   // campaigns | queue
@@ -925,6 +924,7 @@ function NewCampaignWizard({
   addStep, removeStep, updateStep,
   onClose, onCreate,
 }) {
+  const { isMobile } = useResponsive()   // Fix: Wizard-Auswahl-Schritt nutzt isMobile (@1262); Def fehlte nach Cherry-Pick (spiegelt develop)
   const { activeTeamId } = useTeam() || {}
   const { lists: inboxLists, membersByList } = useInboxLists({ activeTeamId })
   const linkedinLeads = leads.filter(l => l.linkedin_url)
