@@ -950,7 +950,9 @@ function PostModal({ post, onClose, onSave, onDelete, session, activeTeamId, mem
     await syncMentions(result.data.id)
     await syncVisuals(result.data.id)
     await syncTags(result.data.id)
-    onSave(result.data)
+    // tag_ids sind nicht im .select() der content_posts-Row → für die Board-Karte manuell anhängen,
+    // sonst verschwinden die Tags nach dem Speichern (handleSave überschreibt den Post ohne tag_ids).
+    onSave({ ...result.data, tag_ids: [...selTagIds] })
   }
 
   const pltOptions = Object.entries(PLATFORMS)
