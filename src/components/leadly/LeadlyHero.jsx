@@ -35,8 +35,18 @@ function deriveEssence(briefingText) {
     .replace(/\s+/g, ' ')
     .trim();
   if (!plain) return '';
-  const parts = plain.split(/(?<=[.!?])\s+(?=[A-ZÄÖÜ])/);
+  let parts = plain.split(/(?<=[.!?])\s+(?=[A-ZÄÖÜ])/);
+  // Begrüßungs-/Boilerplate-Sätze überspringen ("Guten Morgen!", "Hier dein
+  // Überblick …") — die Begrüßung spricht schon der Hero selbst.
+  const boiler = /^(guten\s+(morgen|tag|abend)|hallo|hi|hey|servus|moin)\b|^hier\s+(ist\s+)?dein\s+(überblick|briefing)/i;
+  while (parts.length > 1 && boiler.test(parts[0].trim())) parts = parts.slice(1);
+  // Falls der erste Satz Gruß + Doppelpunkt-Einleitung kombiniert
+  // ("Guten Morgen! Hier dein Überblick für heute: Du hast …") → Teil nach ":" behalten.
+  if (boiler.test(parts[0]?.trim() || '') && parts[0].includes(':')) {
+    parts[0] = parts[0].slice(parts[0].indexOf(':') + 1).trim();
+  }
   let essence = parts.slice(0, 2).join(' ').trim();
+  if (essence) essence = essence.charAt(0).toUpperCase() + essence.slice(1);
   if (essence.length > 240) {
     const cut = essence.slice(0, 240);
     const lastSpace = cut.lastIndexOf(' ');
@@ -78,11 +88,17 @@ export default function LeadlyHero({ firstName, leadly, stats = {}, onOpenTasks 
     leadly.markBriefingRead?.();
   }, [leadly]);
 
+  // Während des Sendens die eigene Nachricht stabil anzeigen: useLeadly ersetzt
+  // die optimistische Message zwischenzeitlich durch den DB-Load der lazy
+  // angelegten Konversation (Panel-Verhalten) — der Hero überbrückt das hier.
+  const [pendingUserText, setPendingUserText] = useState(null);
+
   const handleSend = useCallback((value) => {
     const v = (value || '').trim();
     if (!v) return;
     engage();
     setText('');
+    setPendingUserText(v);
     leadly.sendMessage?.(v);
   }, [engage, leadly]);
 
@@ -135,10 +151,17 @@ export default function LeadlyHero({ firstName, leadly, stats = {}, onOpenTasks 
       .filter(m => (m.role === 'user' || m.role === 'assistant') && m.content);
   }, [engaged, leadly.messages]);
 
+  // Synthetische User-Bubble auflösen, sobald die echte Nachricht da ist
+  const pendingUserShown = pendingUserText
+    && !visibleMessages.some(m => m.role === 'user' && m.content === pendingUserText);
+  useEffect(() => {
+    if (pendingUserText && !pendingUserShown) setPendingUserText(null);
+  }, [pendingUserText, pendingUserShown]);
+
   // Auto-Scroll ans Ende des Threads
   useEffect(() => {
     if (threadRef.current) threadRef.current.scrollTop = threadRef.current.scrollHeight;
-  }, [visibleMessages.length, leadly.isSending, leadly.pendingActions]);
+  }, [visibleMessages.length, leadly.isSending, leadly.pendingActions, pendingUserShown]);
 
   // ── Antworten vorlesen (opt-in) ──
   useEffect(() => {
@@ -252,7 +275,7 @@ export default function LeadlyHero({ firstName, leadly, stats = {}, onOpenTasks 
       </div>
 
       {/* ── Inline-Thread (erscheint nach der ersten Interaktion) ── */}
-      {engaged && (visibleMessages.length > 0 || leadly.isSending || leadly.pendingActions.length > 0) && (
+      {engaged && (visibleMessages.length > 0 || pendingUserShown || leadly.isSending || leadly.pendingActions.length > 0) && (
         <div ref={threadRef} style={{
           marginTop: space[4], maxHeight: 400, overflowY: 'auto',
           display: 'flex', flexDirection: 'column', gap: 10,
@@ -270,6 +293,12 @@ export default function LeadlyHero({ firstName, leadly, stats = {}, onOpenTasks 
               </div>
             </div>
           ))}
+
+          {pendingUserShown && (
+            <div style={{ alignSelf: 'flex-end', maxWidth: '78%', background: 'var(--wl-primary, var(--primary, rgb(49,90,231)))', color: '#fff', borderRadius: '14px 14px 4px 14px', padding: '9px 14px', fontSize: 14, lineHeight: 1.5 }}>
+              {pendingUserText}
+            </div>
+          )}
 
           {leadly.isSending && (
             <div style={{ alignSelf: 'flex-start', display: 'flex', gap: 10, alignItems: 'center' }}>

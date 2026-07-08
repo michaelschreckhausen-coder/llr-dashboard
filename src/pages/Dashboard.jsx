@@ -10,7 +10,7 @@
 //   - Pipeline-Werte aus der deals-Tabelle (Top-Fallstrick #15)
 //   - team-scoped + Solo-Fallback (Top-Fallstrick #14)
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '../lib/supabase';
 import { colors, radii, shadows, space, motion, typography } from '../theme';
@@ -112,6 +112,7 @@ export default function Dashboard({ session }) {
   const nav = useNavigate();
   const data = useDashboardData({ session });
   const leadly = useLeadly({ autoOpenLatest: false });
+  const hasLoadedOnceRef = useRef(false);
   useEffect(() => { leadly.fetchBriefing?.(); }, [leadly.fetchBriefing]);
 
   // Affiliate-Discovery-Banner: nur wenn (noch) kein Affiliate + nicht dismissed.
@@ -239,7 +240,11 @@ export default function Dashboard({ session }) {
     : suggestions;
 
   // ── Ab hier early-return erlaubt (keine Hooks mehr darunter) ──
-  if (isLoading) {
+  // Loading-Screen NUR beim Erstload: useDashboardData refetcht alle 60s und
+  // setzt isLoading erneut — ein early-return würde dann den kompletten Baum
+  // (inkl. LeadlyHero-Inline-Chat) unmounten und allen State verlieren.
+  if (!isLoading) hasLoadedOnceRef.current = true;
+  if (isLoading && !hasLoadedOnceRef.current) {
     return (
       <div style={{ textAlign: 'center', padding: '80px 0', color: colors.inkSoft, fontSize: 14 }}>
         Dashboard wird geladen…
