@@ -292,13 +292,13 @@ function PostCard({ post, onClick, compact, showBVBadge, tagMap = {} }) {
       }}
       onMouseEnter={e => { e.currentTarget.style.boxShadow = '0 4px 12px rgba(15,23,42,0.06)'; e.currentTarget.style.borderColor = 'rgba(49,90,231,0.25)' }}
       onMouseLeave={e => { e.currentTarget.style.boxShadow = 'none'; e.currentTarget.style.borderColor = 'var(--border,#E5E7EB)' }}>
-      {/* Plattform + Status + Tags in einer Reihe */}
+      {/* Status + Plattform + Tags in einer Reihe */}
       <div style={{ display:'flex', alignItems:'center', flexWrap:'wrap', gap:6, marginBottom: compact ? 4 : 6 }}>
-        <span style={{ fontSize:10, fontWeight:700, color: plt.color, background: plt.bg, padding:'2px 7px', borderRadius:5, whiteSpace:'nowrap' }}>{plt.label}</span>
         <span style={{ display:'inline-flex', alignItems:'center', gap:5 }}>
           <span style={{ width:6, height:6, borderRadius:'50%', background: sts.dot, flexShrink:0 }}/>
           <span style={{ fontSize:11, fontWeight:600, color: sts.color }}>{sts.label}</span>
         </span>
+        <span style={{ fontSize:10, fontWeight:700, color: plt.color, background: plt.bg, padding:'2px 7px', borderRadius:5, whiteSpace:'nowrap' }}>{plt.label}</span>
         {Array.isArray(post.tag_ids) && post.tag_ids.map(id => { const t = tagMap[id]; if (!t) return null; return (
           <span key={id} title={t.name || 'Tag'} style={{ display:'inline-flex', alignItems:'center', height:16, padding: t.name ? '0 7px' : '0 6px', borderRadius:5, background: t.color + '22', color: t.color, fontSize:10, fontWeight:700, border:'1px solid ' + t.color + '55', maxWidth:120, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>
             {t.name || <span style={{ width:14, height:6, borderRadius:3, background:t.color, display:'inline-block' }}/>}
