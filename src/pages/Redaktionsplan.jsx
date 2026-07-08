@@ -276,6 +276,7 @@ function DateTimePicker({ value = '', onChange = () => {} }) {
 // ─── PostCard ─────────────────────────────────────────────────────────────────
 function PostCard({ post, onClick, compact, showBVBadge, tagMap = {} }) {
   const sts = STATUS_SIMPLE[post.status] || STATUS_SIMPLE.idee
+  const plt = PLATFORMS[post.platform] || PLATFORMS.linkedin
   const hasContent = !!(post.content || '').trim()
   return (
     <div
@@ -291,24 +292,31 @@ function PostCard({ post, onClick, compact, showBVBadge, tagMap = {} }) {
       }}
       onMouseEnter={e => { e.currentTarget.style.boxShadow = '0 4px 12px rgba(15,23,42,0.06)'; e.currentTarget.style.borderColor = 'rgba(49,90,231,0.25)' }}
       onMouseLeave={e => { e.currentTarget.style.boxShadow = 'none'; e.currentTarget.style.borderColor = 'var(--border,#E5E7EB)' }}>
-      {/* Status + BV-Badge */}
-      <div style={{ display:'flex', alignItems:'center', gap:8, marginBottom: compact ? 4 : 8 }}>
-        <span style={{ width:6, height:6, borderRadius:'50%', background: sts.dot, flexShrink:0 }}/>
-        <span style={{ fontSize:11, fontWeight:600, color: sts.color }}>{sts.label}</span>
+      {/* Plattform + Status + Tags in einer Reihe */}
+      <div style={{ display:'flex', alignItems:'center', flexWrap:'wrap', gap:6, marginBottom: compact ? 4 : 6 }}>
+        <span style={{ fontSize:10, fontWeight:700, color: plt.color, background: plt.bg, padding:'2px 7px', borderRadius:5, whiteSpace:'nowrap' }}>{plt.label}</span>
+        <span style={{ display:'inline-flex', alignItems:'center', gap:5 }}>
+          <span style={{ width:6, height:6, borderRadius:'50%', background: sts.dot, flexShrink:0 }}/>
+          <span style={{ fontSize:11, fontWeight:600, color: sts.color }}>{sts.label}</span>
+        </span>
+        {Array.isArray(post.tag_ids) && post.tag_ids.map(id => { const t = tagMap[id]; if (!t) return null; return (
+          <span key={id} title={t.name || 'Tag'} style={{ display:'inline-flex', alignItems:'center', height:16, padding: t.name ? '0 7px' : '0 6px', borderRadius:5, background: t.color + '22', color: t.color, fontSize:10, fontWeight:700, border:'1px solid ' + t.color + '55', maxWidth:120, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>
+            {t.name || <span style={{ width:14, height:6, borderRadius:3, background:t.color, display:'inline-block' }}/>}
+          </span>
+        )})}
         {showBVBadge && post.bv_name && (
           <span style={{ marginLeft:'auto', fontSize:10, fontWeight:600, color:'var(--text-muted)', background:'#F1F5F9', padding:'2px 7px', borderRadius:5, maxWidth:140, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>
             {post.bv_name}
           </span>
         )}
       </div>
-      {/* Tags (farbige Chips) */}
-      {Array.isArray(post.tag_ids) && post.tag_ids.length > 0 && (
-        <div style={{ display:'flex', flexWrap:'wrap', gap:4, marginBottom: compact ? 4 : 8 }}>
-          {post.tag_ids.map(id => { const t = tagMap[id]; if (!t) return null; return (
-            <span key={id} title={t.name || 'Tag'} style={{ display:'inline-flex', alignItems:'center', height:16, padding: t.name ? '0 7px' : '0 6px', borderRadius:5, background: t.color + '22', color: t.color, fontSize:10, fontWeight:700, border:'1px solid ' + t.color + '55', maxWidth:120, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>
-              {t.name || <span style={{ width:14, height:6, borderRadius:3, background:t.color, display:'inline-block' }}/>}
-            </span>
-          )})}
+      {/* Datum + Uhrzeit direkt unter der Meta-Reihe */}
+      {!compact && post.scheduled_at && (
+        <div style={{ fontSize:11, color:'var(--text-muted)', marginBottom:8 }}>
+          {new Date(post.scheduled_at).toLocaleDateString('de-DE', {day:'2-digit',month:'short',hour:'2-digit',minute:'2-digit'})}
+          {' · '}<span style={{ color: new Date(post.scheduled_at) < new Date() && post.status !== 'published' ? '#ef4444' : 'var(--text-muted)' }}>
+            {relativeDate(post.scheduled_at)}
+          </span>
         </div>
       )}
       {/* Titel */}
@@ -325,15 +333,6 @@ function PostCard({ post, onClick, compact, showBVBadge, tagMap = {} }) {
           overflow:'hidden', textOverflow:'ellipsis', display:'-webkit-box',
           WebkitLineClamp:2, WebkitBoxOrient:'vertical',
         }}>{post.content}</div>
-      )}
-      {/* Datum */}
-      {!compact && post.scheduled_at && (
-        <div style={{ fontSize:11, color:'var(--text-muted)', marginTop:8 }}>
-          {new Date(post.scheduled_at).toLocaleDateString('de-DE', {day:'2-digit',month:'short',hour:'2-digit',minute:'2-digit'})}
-          {' · '}<span style={{ color: new Date(post.scheduled_at) < new Date() && post.status !== 'published' ? '#ef4444' : 'var(--text-muted)' }}>
-            {relativeDate(post.scheduled_at)}
-          </span>
-        </div>
       )}
       {/* Queue-Status nur wenn aktiv */}
       {!compact && post.publish_queue_status && ['pending','in_progress','failed'].includes(post.publish_queue_status) && (
@@ -963,7 +962,6 @@ function PostModal({ post, onClose, onSave, onDelete, session, activeTeamId, mem
 
         {/* Header */}
         <div style={{ padding:'20px 24px 0', borderBottom:'1px solid #F1F5F9', display:'flex', alignItems:'center', gap:12 }}>
-          <span style={{ fontSize:22 }}>{plt.icon}</span>
           <div style={{ flex:1 }}>
             <input value={form.title} onChange={e => upd('title', e.target.value)}
               placeholder="Titel / Thema des Beitrags…"
@@ -977,24 +975,10 @@ function PostModal({ post, onClose, onSave, onDelete, session, activeTeamId, mem
 
           {/* Left — Content */}
           <div>
-            {/* Platform Pills (nur sichtbar bei mehr als 1 Platform) */}
-            {pltOptions.length > 1 && (
-              <div style={{ display:'flex', gap:6, flexWrap:'wrap', marginBottom:16 }}>
-                {pltOptions.map(([k, v]) => (
-                  <button key={k} onClick={() => upd('platform', k)}
-                    style={{ padding:'5px 12px', borderRadius:99, border:`1.5px solid ${form.platform===k?v.color:'#E5E7EB'}`,
-                      background: form.platform===k ? v.bg : '#fff', color: form.platform===k ? v.color : '#64748B',
-                      fontSize:12, fontWeight:700, cursor:'pointer', display:'flex', alignItems:'center', gap:5 }}>
-                    {v.icon} {v.label}
-                  </button>
-                ))}
-              </div>
-            )}
-
             <div style={{ position:'relative' }}>
               <textarea value={form.content}
                 onChange={e => { upd('content', e.target.value); setCharCount(e.target.value.length) }}
-                placeholder={(form.content?.trim() ? '' : `${plt.icon} Schreibe deinen ${plt.label}-Beitrag hier…\n\nTipps:\n• Starte mit einem starken Hook\n• Nutze Zeilenumbrüche für Lesbarkeit\n• Füge einen Call-to-Action ein`)}
+                placeholder={(form.content?.trim() ? '' : `Schreibe deinen ${plt.label}-Beitrag hier…\n\nTipps:\n• Starte mit einem starken Hook\n• Nutze Zeilenumbrüche für Lesbarkeit\n• Füge einen Call-to-Action ein`)}
                 rows={12}
                 style={{ width:'100%', padding:'14px', paddingTop: form.content?.trim() ? 48 : 14, borderRadius:12, border:'1.5px solid #E5E7EB',
                   fontSize:14, lineHeight:1.7, resize:'vertical', outline:'none', boxSizing:'border-box',
@@ -1179,6 +1163,23 @@ function PostModal({ post, onClose, onSave, onDelete, session, activeTeamId, mem
 
           {/* Right — Metadaten */}
           <div style={{ display:'flex', flexDirection:'column', gap:16 }}>
+
+            {/* Kanal (Plattform) — oben rechts, gleiches Button-Design */}
+            {pltOptions.length > 1 && (
+              <div>
+                <label style={{ fontSize:11, fontWeight:700, color:'var(--text-muted)', textTransform:'uppercase', letterSpacing:'0.05em', display:'block', marginBottom:8 }}>Kanal</label>
+                <div style={{ display:'flex', gap:8 }}>
+                  {pltOptions.map(([k, v]) => (
+                    <button key={k} onClick={() => upd('platform', k)}
+                      style={{ flex:1, padding:'9px 12px', borderRadius:10, border:`1.5px solid ${form.platform===k?v.color:'var(--border)'}`,
+                        background: form.platform===k ? v.bg : '#fff', color: form.platform===k ? v.color : 'var(--text-primary)',
+                        fontSize:13, fontWeight:600, cursor:'pointer', boxSizing:'border-box', transition:'all .12s' }}>
+                      {v.label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
 
             {/* Unternehmen + Geplant für nebeneinander (über Status/Tags) */}
             {((companyVoices.length > 0 && (previewBV ? previewBV.account_type !== 'company_page' : activeBrandVoice?.account_type !== 'company_page')) || isPersonalPost) && (
