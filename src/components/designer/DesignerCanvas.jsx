@@ -108,12 +108,16 @@ function rectsIntersect(a, b) {
 
 // Fill-Props für Konva: Verlauf (o.fillGrad) → lineare Gradient-Props, sonst solide
 // Farbe. w/h = Objektmaße; centered=true für Ellipse (lokale Koords um 0).
-function fillKonvaProps(o, w, h, centered) {
+function fillKonvaProps(o, w, h, centered, gradBox) {
   const g = o.fillGrad
   if (g && Array.isArray(g.stops) && g.stops.length >= 2) {
     const a = ((g.angle || 0) * Math.PI) / 180
-    const cx = centered ? 0 : w / 2, cy = centered ? 0 : h / 2
-    const len = (Math.abs(w * Math.cos(a)) + Math.abs(h * Math.sin(a))) || Math.max(w, h)
+    // Verlauf spannt sich über die tatsächliche Text-/Objektbox (gradBox), nicht über die
+    // Rahmenbreite — sonst verliert sich der Verlauf, wenn das Textfeld viel breiter ist als der Text.
+    const bw = gradBox ? gradBox.w : w, bh = gradBox ? gradBox.h : h
+    const cx = gradBox ? gradBox.cx : (centered ? 0 : w / 2)
+    const cy = gradBox ? gradBox.cy : (centered ? 0 : h / 2)
+    const len = (Math.abs(bw * Math.cos(a)) + Math.abs(bh * Math.sin(a))) || Math.max(bw, bh)
     const hx = Math.cos(a) * len / 2, hy = Math.sin(a) * len / 2
     const stops = []
     g.stops.forEach(st => { stops.push(st[0], st[1]) })
@@ -5329,8 +5333,15 @@ Ignoriere reine Deko/Muster ohne Text. Antworte AUSSCHLIESSLICH mit JSON, ohne E
         // Effekt-Props (Schatten/Glühen/Lift/Neon) haben Vorrang; ohne Effekt greift
         // optional ein manuell gesetzter Schatten (shadowBlur am Objekt).
         const effProps = (o.effect && o.effect !== 'none') ? textEffectProps(o) : {}
+        let _gradBox
+        if (o.fillGrad) {
+          const _mb = measureTextBox(o)
+          const _tw = o.width || 360, _al = o.align || 'left'
+          const _gx = _al === 'center' ? (_tw - _mb.w) / 2 : _al === 'right' ? (_tw - _mb.w) : 0
+          _gradBox = { cx: _gx + _mb.w / 2, cy: _mb.h / 2, w: _mb.w, h: _mb.h }
+        }
         const txt = <KText key={o.id} {...base} text={o.text} fontSize={o.fontSize} fontFamily={o.fontFamily}
-          {...fillKonvaProps(o, o.width || 360, (o.fontSize || 44) * 1.35, false)} fontStyle={o.fontStyle || 'normal'} align={o.align || 'left'} width={o.width || 360}
+          {...fillKonvaProps(o, o.width || 360, (o.fontSize || 44) * 1.35, false, _gradBox)} fontStyle={o.fontStyle || 'normal'} align={o.align || 'left'} width={o.width || 360}
           lineHeight={o.lineHeight || 1.2} letterSpacing={o.letterSpacing || 0} textDecoration={o.textDecoration || ''}
           shadowColor={o.shadowColor} shadowBlur={o.shadowBlur || 0} shadowOffsetX={o.shadowOffsetX || 0} shadowOffsetY={o.shadowOffsetY || 0}
           {...effProps}
@@ -5776,7 +5787,6 @@ Ignoriere reine Deko/Muster ohne Text. Antworte AUSSCHLIESSLICH mit JSON, ohne E
           onRunFreeCommand={() => runFreeAiCommand(aiCommand)}
           onBgRemove={() => runBackgroundReplace('remove')}
           onBgReplace={(txt) => runBackgroundReplace('replace', txt)}
-          onExtractText={runExtractText}
           onClearMask={clearMask} onInvertMask={invertMask}
           setCropMode={setCropMode} setSelectedId={setSelectedId} setAiError={setAiError}
           segBusy={segBusy} segMsg={segMsg} onUndo={undo} onRedo={redo}
@@ -6279,7 +6289,7 @@ function TransparencyIcon({ size = 15 }) {
   )
 }
 // Kompaktes Dropdown für die Kontext-Leiste (Icon-Trigger + Popover).
-function BarMenu({ title, trigger, width = 180, children }) {
+function BarMenu({ title, trigger, width = 180, children, closeOnClick = true }) {
   const [open, setOpen] = useState(false)
   const ref = useRef(null)
   useEffect(() => {
@@ -6298,7 +6308,7 @@ function BarMenu({ title, trigger, width = 180, children }) {
         <ChevronDown size={12} strokeWidth={2} style={{ opacity: 0.5 }} />
       </button>
       {open && (
-        <div onClick={() => setOpen(false)} style={{ position: 'absolute', top: 'calc(100% + 6px)', left: 0, zIndex: 130, minWidth: width,
+        <div onClick={closeOnClick ? () => setOpen(false) : undefined} style={{ position: 'absolute', top: 'calc(100% + 6px)', left: 0, zIndex: 130, minWidth: width,
           background: '#fff', border: '1px solid var(--border)', borderRadius: 10, boxShadow: '0 12px 32px rgba(16,24,40,0.16)', padding: 6 }}>
           {children}
         </div>
@@ -6402,13 +6412,13 @@ function ContextBar({
             <BarMenuItem icon={<AlignCenter size={15} strokeWidth={2} />} label="Zentriert" active={o.align === 'center'} onClick={() => setOnce({ align: 'center' })} />
             <BarMenuItem icon={<AlignRight size={15} strokeWidth={2} />} label="Rechts" active={o.align === 'right'} onClick={() => setOnce({ align: 'right' })} />
           </BarMenu>
-          <BarMenu title="Abstand" width={210} trigger={<MoveVertical size={15} strokeWidth={2} />}>
+          <BarMenu title="Abstand" width={210} closeOnClick={false} trigger={<MoveVertical size={15} strokeWidth={2} />}>
             <div style={{ display: 'flex', flexDirection: 'column', gap: 10, padding: '4px 6px' }}>
               {numField('Zeilenhöhe', o.lineHeight || 1.2, v => setOnce({ lineHeight: v || 1.2 }), { step: 0.05, min: 0.5, w: 70 })}
               {numField('Laufweite', o.letterSpacing || 0, v => setOnce({ letterSpacing: v || 0 }), { step: 0.5, w: 70 })}
             </div>
           </BarMenu>
-          <BarMenu title="Effekte" width={252} trigger={<span style={{ fontSize: 12.5, fontWeight: 600 }}>Effekte</span>}>
+          <BarMenu title="Effekte" width={252} closeOnClick={false} trigger={<span style={{ fontSize: 12.5, fontWeight: 600 }}>Effekte</span>}>
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 8, padding: '4px 4px 2px' }}>
               {TEXT_EFFECTS.map(ef => {
                 const on = (o.effect || 'none') === ef.id
@@ -6464,7 +6474,7 @@ function ContextBar({
         <ColorPopover value={o.fill} gradient={o.fillGrad || null} allowGradient={o.type === 'rect' || o.type === 'ellipse'} brandColors={brandColors} title="Füllfarbe" round allowNone onStart={startEdit} onChange={(hex) => liveEdit({ fill: hex, fillGrad: null })} onGradient={(g) => liveEdit(g ? { fillGrad: g, fill: (g.stops[0] && g.stops[0][1]) || o.fill } : { fillGrad: null })} onEnd={endInteraction} size={30} />
       )}
       {!isText && (hasStroke || isRect || hasFill) && (hasStroke || isRect) && (
-        <BarMenu title="Stil" width={210} trigger={<Sliders size={15} strokeWidth={2} />}>
+        <BarMenu title="Stil" width={210} closeOnClick={false} trigger={<Sliders size={15} strokeWidth={2} />}>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 10, padding: '4px 6px' }}>
             {hasStroke && (
               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10 }}>
@@ -6545,7 +6555,7 @@ function ContextBar({
       </BarMenu>
 
       {/* ── Deckkraft (Icon-Dropdown) ── */}
-      <BarMenu title="Deckkraft" width={200} trigger={isImage ? <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: 12.5, fontWeight: 600 }}><TransparencyIcon size={14} />Deckkraft</span> : <TransparencyIcon size={15} />}>
+      <BarMenu title="Deckkraft" width={200} closeOnClick={false} trigger={isImage ? <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: 12.5, fontWeight: 600 }}><TransparencyIcon size={14} />Deckkraft</span> : <TransparencyIcon size={15} />}>
         <div onClick={e => e.stopPropagation()} style={{ padding: '6px 8px' }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 11.5, color: 'var(--text-muted)', marginBottom: 8 }}><span>Deckkraft</span><span>{opacityPct}%</span></div>
           <input type="range" min={0} max={100} step={1} value={opacityPct}
@@ -7320,7 +7330,7 @@ function BrandPanelBody({ brandData, brandLoading, onApplyBrandColor, onInsertBr
 function AiPanelBody({
   aiMode, setAiMode, maskTool, setMaskTool, brushSize, setBrushSize, feather, setFeather,
   aiPrompt, setAiPrompt, aiCommand, setAiCommand, aiBusy, aiError, bgMenuBusy, hasMask,
-  onRunMaskEdit, onRunFreeCommand, onBgRemove, onBgReplace, onExtractText, onClearMask, onInvertMask,
+  onRunMaskEdit, onRunFreeCommand, onBgRemove, onBgReplace, onClearMask, onInvertMask,
   setCropMode, setSelectedId, setAiError, segBusy, segMsg, onUndo, onRedo,
 }) {
   const [bgText, setBgText] = useState('')
@@ -7416,12 +7426,6 @@ function AiPanelBody({
         <PanelBtn full disabled={bgMenuBusy || !bgText.trim()} onClick={() => { if (bgText.trim()) { onBgReplace(bgText.trim()); setBgText('') } }}><ImageIcon size={14} strokeWidth={1.9} />Hintergrund erzeugen</PanelBtn>
       </div>
 
-      {/* Karte: Text aus Bild übernehmen */}
-      <div style={CARD}>
-        <div style={CTITLE}>Text aus Bild übernehmen</div>
-        <div style={CHINT}>Liest den im Bild enthaltenen Text und legt ihn als bearbeitbare Ebenen in einer möglichst ähnlichen Schriftart an.</div>
-        <PanelBtn full disabled={bgMenuBusy} onClick={onExtractText}><Type size={14} strokeWidth={1.9} />{bgMenuBusy ? 'Wird gelesen…' : 'Text extrahieren'}</PanelBtn>
-      </div>
 
       {(aiBusy || bgMenuBusy) && <div style={{ fontSize: 11.5, color: P, display: 'flex', alignItems: 'center', gap: 6 }}><Loader2 size={13} className="lk-spin" />KI arbeitet … einen Moment.</div>}
       {aiError && <div style={{ fontSize: 12, color: '#b91c1c', background: 'rgba(185,28,28,0.06)', border: '1px solid rgba(185,28,28,0.18)', borderRadius: 8, padding: '8px 10px', lineHeight: 1.4 }}>{aiError}</div>}
