@@ -1,16 +1,14 @@
 // src/pages/Dashboard.jsx
 //
-// Tagesreise-Layout (Morgens / Vormittags / Mittags / Nachmittags).
-// Single-Path — keine Widget-Grid-Alternative mehr (Legacy-Code archiviert
-// in src/pages/_archive/DashboardWidgetsLegacy.jsx, wird später für die
-// geplante /cockpit-Surface wiederverwendet).
+// Command-Center-Startseite (Phase 1, Juli 2026):
+//   - LeadlyHero: Leadly begrüßt mit Gesicht (Orb + Favicon-Brille),
+//     Tages-Essenz, Eingabe per Text/Sprache, Antworten INLINE + Guardrail
+//   - „Leadlys Plan für heute": LLM-priorisierte Vorschlagskarten (B2.1)
+//     mit Prio-Nummer + „Alle durchgehen"-Handoff an den Hero
 //
 // Datenquelle: useDashboardData-Hook.
 //   - Pipeline-Werte aus der deals-Tabelle (Top-Fallstrick #15)
 //   - team-scoped + Solo-Fallback (Top-Fallstrick #14)
-//   - SSI conditional: nur rendern wenn Daten vorhanden
-//
-// Refactored 2026-05-29 (1539 → ~480 LOC).
 
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
@@ -19,6 +17,7 @@ import { colors, radii, shadows, space, motion, typography } from '../theme';
 import { useDashboardData } from '../hooks/useDashboardData';
 import { useLeadly } from '../hooks/useLeadly';
 import { detectLeadeskExtension } from '../lib/leadeskExtension';
+import LeadlyHero from '../components/leadly/LeadlyHero';
 
 // ─── Helpers ─────────────────────────────────────────────────────────────
 const leadName = (l) => (`${l.first_name || ''} ${l.last_name || ''}`.trim() || l.name || '—');
@@ -195,9 +194,9 @@ export default function Dashboard({ session }) {
     .filter(t => t.source === 'lead_task' || t.source === 'pm_task')
     .slice(0, SUG_CAP).map(taskCard);
   const suggestions = [...followupCards, ...kontaktCards, ...dealCards, ...aufgabeCards];
-  const briefingText = leadly.briefing?.briefing_text || '';
-  const askLeadly = (text) => window.dispatchEvent(new CustomEvent('leadly:prompt', { detail: { text } }));
-  const takeAction = (action) => window.dispatchEvent(new CustomEvent('leadly:action', { detail: action }));
+  // Inline-Handoff an den LeadlyHero (Startseiten-Chat statt Side-Panel).
+  const askLeadly = (text) => window.dispatchEvent(new CustomEvent('leadly:hero-prompt', { detail: { text } }));
+  const takeAction = (action) => window.dispatchEvent(new CustomEvent('leadly:hero-action', { detail: action }));
 
   // B2.1 — LLM-Priorisierung/Begründung der Vorschläge über die bestehende generate-EF.
   // Rein lesend; bei Fehler/Parse-Problem greift der Regel-Fallback → Dashboard nie leer.
@@ -285,27 +284,41 @@ export default function Dashboard({ session }) {
             style={{ marginLeft: 'auto', border: 'none', background: 'transparent', color: '#92400E', cursor: 'pointer', fontSize: 15, fontWeight: 700 }} aria-label="Ausblenden">✕</button>
         </div>
       )}
-      {/* Begrüßung — schlicht, ohne Karte */}
-      <div style={{ marginBottom: space[6] }}>
-        <div style={{ fontSize: 13, color: colors.inkMuted, fontWeight: 500, marginBottom: space[1] }}>
-          {now.toLocaleDateString('de-DE', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })}
-        </div>
-        <div style={{ fontSize: 'clamp(24px, 3vw, 32px)', fontWeight: 600, letterSpacing: '-0.03em', lineHeight: 1.1, color: colors.ink }}>
-          Hallo {firstName || 'dort'} 👋
-        </div>
-      </div>
+      {/* Leadly-Hero — Gesicht + Essenz + Eingabe + Inline-Antworten */}
+      <LeadlyHero
+        firstName={firstName}
+        leadly={leadly}
+        stats={{
+          leads: (leads || []).length,
+          activeDeals: _deals.length,
+          overdue: totalOverdue,
+          today: _today.length,
+        }}
+        onOpenTasks={() => nav('/aufgaben')}
+      />
       <div>
 
-        {/* Leadly-Vorschläge — übernehmbare Aktionen, oder Hinweis wenn nichts ansteht */}
+        {/* Leadlys Plan für heute — priorisierte, übernehmbare Aktionen */}
         <div style={{ marginTop: space[5] }}>
-          <div style={{ fontSize: 12, fontWeight: 700, color: colors.inkMuted, textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: space[3] }}>
-            Leadly schlägt vor
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 8, marginBottom: space[3] }}>
+            <div style={{ fontSize: 12, fontWeight: 700, color: colors.inkMuted, textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+              Leadlys Plan für heute
+            </div>
+            {suggestions.length > 1 && (
+              <button type="button"
+                onClick={() => askLeadly(
+                  `Hier ist mein heutiger Plan:\n${displayedSuggestions.map((s, i) => `${i + 1}. [${s.area.label}] ${s.title}${s.reason ? ` (${s.reason})` : ''}`).join('\n')}\nGeh ihn mit mir durch: Womit starte ich am besten, und welche Schritte kannst du direkt für mich vorbereiten?`
+                )}
+                style={{ padding: '5px 12px', borderRadius: radii.pill, border: `1px solid ${colors.border}`, background: colors.white, color: colors.inkMuted, fontSize: 12, fontWeight: 600, cursor: 'pointer' }}>
+                Alle mit Leadly durchgehen
+              </button>
+            )}
           </div>
           {suggestions.length > 0 ? (
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: space[3] }}>
-              {displayedSuggestions.map((s) => (
+              {displayedSuggestions.map((s, idx) => (
                 <div key={s.id} style={{ background: colors.white, border: `1px solid ${colors.border}`, borderRadius: radii.lg, padding: '14px 16px', display: 'flex', flexDirection: 'column', gap: 8 }}>
-                  <span style={{ alignSelf: 'flex-start', fontSize: 10, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.04em', color: s.area.color, background: s.area.bg, padding: '2px 8px', borderRadius: radii.pill }}>{s.area.label}</span>
+                  <span style={{ alignSelf: 'flex-start', fontSize: 10, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.04em', color: s.area.color, background: s.area.bg, padding: '2px 8px', borderRadius: radii.pill }}>{idx + 1} · {s.area.label}</span>
                   <div style={{ fontSize: 14, fontWeight: 600, color: colors.ink, lineHeight: 1.35 }}>{s.title}</div>
                   {s.reason && <div style={{ fontSize: 12, color: colors.inkMuted }}>{s.reason}</div>}
                   <div style={{ display: 'flex', gap: 8, marginTop: 'auto', paddingTop: 4 }}>
