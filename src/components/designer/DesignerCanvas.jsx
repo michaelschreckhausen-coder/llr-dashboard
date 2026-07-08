@@ -40,12 +40,14 @@ import {
   AlignLeft, AlignCenter, AlignRight, Baseline, MoveVertical,
   AlignStartVertical, AlignCenterVertical, AlignEndVertical,
   AlignStartHorizontal, AlignCenterHorizontal, AlignEndHorizontal,
-  AlignHorizontalDistributeCenter, AlignVerticalDistributeCenter,
+  AlignHorizontalDistributeCenter, AlignVerticalDistributeCenter, Info,
 } from 'lucide-react'
 import { supabase } from '../../lib/supabase'
 import { visualDataUrl, uploadDesignRender, updateVisual, getVisual, listTeamVisuals, signedVisualUrl, signedThumbUrl, uploadImageBlob, createImageVisual } from '../../lib/contentVisuals'
 import { prepareSegment, segmentAt, isSegmentReady, resetSegment } from '../../lib/segment'
-import { splitModelValue, DEFAULT_IMAGE_MODEL } from '../../lib/imageModels'
+import { splitModelValue, DEFAULT_IMAGE_MODEL, imageModelName } from '../../lib/imageModels'
+import { useModel } from '../../context/ModelContext'
+import { getModelLabel } from '../ModelSelector'
 import { DESIGN_TEMPLATES } from '../../lib/designTemplates'
 import { DESIGN_ASSETS, ASSET_CATEGORIES } from '../../lib/designAssets'
 import { useBrandVoice } from '../../context/BrandVoiceContext'
@@ -858,6 +860,7 @@ export default function DesignerCanvas({ visual, teamId, onSaved, onReplaceVisua
   // Hintergrund-Füllfarbe (für Vorlagen ohne Bild)
   const [bgColor, setBgColor] = useState(null)        // null = kein Farbgrund (Bild-Modus)
   const [bgGrad, setBgGrad] = useState(null)          // optionaler Hintergrund-Verlauf {type,angle,stops}
+  const { model: globalModel } = useModel()
   const [pageAiCmd, setPageAiCmd] = useState('')
   const [pageAiBusy, setPageAiBusy] = useState(false)
 
@@ -5709,6 +5712,10 @@ Ignoriere reine Deko/Muster ohne Text. Antworte AUSSCHLIESSLICH mit JSON, ohne E
               style={{ flex: 1, minWidth: 0, height: 32, padding: '0 11px', borderRadius: 9, border: '1px solid var(--border,#E9ECF2)', fontSize: 12.5, outline: 'none', fontFamily: 'inherit', color: 'var(--text-primary)', background: '#fff' }} />
             <SmallBtn primary disabled={pageAiBusy || !pageAiCmd.trim()} onClick={() => runPageAiCommand(pageAiCmd)}>{pageAiBusy ? 'KI…' : 'Anwenden'}</SmallBtn>
           </div>
+          <div style={{ flexBasis: '100%', display: 'flex', alignItems: 'center', gap: 5, fontSize: 10.5, color: 'var(--text-muted)', marginTop: 1 }}>
+            <Info size={11} strokeWidth={2} style={{ flexShrink: 0 }} />
+            <span>KI-Agent nutzt dein gewähltes Sprachmodell (<strong style={{ fontWeight: 600 }}>{getModelLabel(globalModel)}</strong>, oben rechts) für Text · <strong style={{ fontWeight: 600 }}>{imageModelName(DEFAULT_IMAGE_MODEL)}</strong> für Bilder.</span>
+          </div>
         </div>
       )}
       {cropMode && (
@@ -7351,6 +7358,12 @@ function AiPanelBody({
           style={{ flex: 1, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: 6, height: 30, borderRadius: 8, cursor: 'pointer', fontFamily: 'inherit', fontSize: 12, fontWeight: 600, border: '1px solid var(--border)', background: '#fff', color: 'var(--text-secondary,#475467)' }}>
           <Redo2 size={13} strokeWidth={2} />Wiederholen
         </button>
+      </div>
+
+      {/* Hinweis: welche Modelle die KI-Fotobearbeitung nutzt */}
+      <div style={{ display: 'flex', gap: 6, alignItems: 'flex-start', fontSize: 10.8, color: 'var(--text-muted)', lineHeight: 1.4, background: 'rgba(2,6,23,0.025)', borderRadius: 10, padding: '8px 10px' }}>
+        <Info size={12} strokeWidth={2} style={{ flexShrink: 0, marginTop: 1 }} />
+        <span>Freistellen, Objekt entfernen &amp; Auswahl laufen über Leadesk&apos;s eigene Bild-KI (auf unseren Servern). Generative Änderungen nutzen <strong style={{ fontWeight: 600 }}>{imageModelName(DEFAULT_IMAGE_MODEL)}</strong>.</span>
       </div>
 
       {/* Hero: Freitext-Befehl fürs ganze Bild */}
