@@ -12,6 +12,7 @@
 import React, { useState, useEffect, useCallback, useMemo } from 'react'
 import { useNavigate } from 'react-router-dom'
 import InboxLink from '../components/InboxLink'
+import { useResponsive } from '../hooks/useResponsive'
 import {
   Zap, Plus, Play, Pause, RotateCw, Send, Users, BarChart3,
   Clock, X, Trash2, Eye, UserPlus, UserCheck, MessageSquare, Hourglass, Download,
@@ -165,6 +166,7 @@ function fullName(l) {
 // ─── Component ────────────────────────────────────────────────────────────
 export default function Automatisierung({ session }) {
   const navigate = useNavigate()
+  const { isMobile } = useResponsive()   // Fix: main-only ReferenceError (Wizard nutzt isMobile @select-Step, Def fehlte nach Cherry-Pick)
   const { activeTeamId } = useTeam() || {}
   const [sponsoringCampaigns, setSponsoringCampaigns] = useState([]) // K3: für die Zuordnung
   const [view, setView]               = useState('campaigns')   // campaigns | queue
