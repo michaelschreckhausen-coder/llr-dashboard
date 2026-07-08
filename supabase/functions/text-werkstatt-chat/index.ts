@@ -70,6 +70,8 @@ Die unten mitgegebene Brand Voice und ihre Vorgaben (Tonalität, Wortwahl, Satzb
 **Weitere Regeln:**
 - Die Kontextblöcke unten (Brand Voice, Zielgruppe, Wissensressourcen, bisherige Inhalte) sind verbindlich und müssen den Beitrag spürbar prägen: Blickwinkel und Stil aus der Brand, Relevanz und Beispiele aus der Zielgruppe, Fakten und Zahlen ausschließlich aus den Wissensressourcen (nichts erfinden).
 - Bei Anpassungswünschen gib den überarbeiteten Beitrag erneut komplett in <beitragstext>-Tags zurück.
+- Du kannst angehängte Bilder und Screenshots tatsächlich sehen und PDFs lesen — analysiere sie direkt und ziehe die relevanten Infos heraus. Behaupte NIEMALS, du könntest Bilder oder Screenshots nicht ansehen.
+- Postet der Nutzer einen Link, öffne ihn mit dem web_fetch-Tool und lies die Seite aus. Behaupte NIEMALS, du könntest eine URL nicht abrufen, ohne es per web_fetch versucht zu haben.
 - Bei aktivierter Web-Suche: nutze die Quellen für Fakten und Aktualität. Quellen-URLs gehören in die Abrundung außerhalb der <beitragstext>-Tags.
 - Verwende im Beitragstext NIEMALS <cite>- oder <thinking>-Tags, Fußnoten-Marker, eckige Quellen-Verweise oder Lupen-/Such-Emojis.`;
 
@@ -113,8 +115,9 @@ async function callAnthropic(opts: {
   apiKey: string;
   model: string;
   systemPrompt: string;
-  conversation: { role: "user" | "assistant"; content: string }[];
+  conversation: { role: "user" | "assistant"; content: any }[];
   useWebSearch: boolean;
+  useWebFetch?: boolean;
 }): Promise<{ content: string; sources: { url: string; title: string }[]; stopReason?: string }> {
   const body: any = {
     model: opts.model,
@@ -122,16 +125,18 @@ async function callAnthropic(opts: {
     system: opts.systemPrompt,
     messages: opts.conversation,
   };
-  if (opts.useWebSearch) {
-    body.tools = [{ type: "web_search_20250305", name: "web_search", max_uses: 5 }];
-  }
+  const tools: any[] = [];
+  if (opts.useWebSearch) tools.push({ type: "web_search_20250305", name: "web_search", max_uses: 5 });
+  // web_fetch: öffnet vom Nutzer gepostete Links direkt (statt nur zu suchen)
+  if (opts.useWebSearch || opts.useWebFetch) tools.push({ type: "web_fetch_20250910", name: "web_fetch", max_uses: 5, max_content_tokens: 60000 });
+  if (tools.length) body.tools = tools;
 
   const res = await fetch("https://api.anthropic.com/v1/messages", {
     method: "POST",
     headers: {
       "x-api-key": opts.apiKey,
       "anthropic-version": "2023-06-01",
-      "anthropic-beta": "web-search-2025-03-05",
+      "anthropic-beta": "web-search-2025-03-05,web-fetch-2025-09-10",
       "Content-Type": "application/json",
     },
     body: JSON.stringify(body),
@@ -166,6 +171,11 @@ async function callAnthropic(opts: {
           }
         }
       }
+    } else if (block.type === "web_fetch_tool_result") {
+      // Gefetchte URL als Quelle aufnehmen
+      const c = block.content;
+      const u = c?.url || c?.content?.url || c?.retrieved_url;
+      if (u && !sources.find((s) => s.url === u)) sources.push({ url: u, title: c?.content?.title || u });
     }
   }
   return { content: textOut.trim(), sources, stopReason: data.stop_reason };
@@ -259,6 +269,9 @@ Deno.serve(async (req) => {
     const answerFormat: string = (body.answer_format || "post").toString();
     const knowledgeIds: string[] = Array.isArray(body.knowledge_resource_ids) ? body.knowledge_resource_ids : [];
     const useWebSearch: boolean = !!body.use_web_search;
+    // Enthält die Nachricht einen Link? Dann web_fetch aktivieren (auch ohne Websuche-Toggle),
+    // damit gepostete URLs zuverlässig geöffnet werden.
+    const hasUrlInMessage: boolean = /https?:\/\/[^\s]+/i.test(body.user_message || "");
     const documentContext: string = (body.document_context || "").trim();
     const model: string = body.model || DEFAULT_MODEL;
     const noBrand: boolean = !!body.no_brand;
@@ -388,10 +401,30 @@ Deno.serve(async (req) => {
       .eq("chat_id", chat.id)
       .order("created_at", { ascending: true });
 
-    const conversation = (history || [])
+    const conversation: { role: "user" | "assistant"; content: any }[] = (history || [])
       .filter((m: any) => m.role === "user" || m.role === "assistant")
       .map((m: any) => ({ role: m.role as "user" | "assistant", content: m.content }));
-    conversation.push({ role: "user", content: userMessage });
+
+    // Anhänge dieses Turns in Vision-/Dokument-Blöcke umwandeln (wie ChatGPT/Claude:
+    // Screenshots & Bilder werden vom Modell tatsächlich angeschaut, PDFs gelesen).
+    const rawAtts: any[] = Array.isArray(body.attachments) ? body.attachments : [];
+    const contentBlocks: any[] = [];
+    for (const a of rawAtts) {
+      const mime: string = (a?.type || "").toLowerCase();
+      const b64: string | undefined = a?.base64;
+      if (!b64) continue;
+      if (mime.startsWith("image/")) {
+        contentBlocks.push({ type: "image", source: { type: "base64", media_type: mime, data: b64 } });
+      } else if (mime === "application/pdf") {
+        contentBlocks.push({ type: "document", source: { type: "base64", media_type: "application/pdf", data: b64 } });
+      }
+    }
+    if (contentBlocks.length) {
+      contentBlocks.push({ type: "text", text: userMessage || "Bitte schau dir den/die Anhang/Anhänge an." });
+      conversation.push({ role: "user", content: contentBlocks });
+    } else {
+      conversation.push({ role: "user", content: userMessage });
+    }
 
     // ─── User-Message persistieren (vor LLM-Call, damit bei Fehler trotzdem da) ─
     const { data: userMsgRow, error: umErr } = await admin
@@ -409,6 +442,7 @@ Deno.serve(async (req) => {
     try {
       const result = await callAnthropic({
         apiKey: anthropicKey, model, systemPrompt, conversation, useWebSearch,
+        useWebFetch: useWebSearch || hasUrlInMessage,
       });
       assistantContent = stripEmDashes(stripCitations(result.content));
       sources = result.sources;
