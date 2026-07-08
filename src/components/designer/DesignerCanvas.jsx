@@ -206,47 +206,108 @@ const FONTS = [
 // ─── Text-Effekte (Stage 3) → Konva-Schatten/Stroke-Props ───────────────────
 // effect: 'none' | 'shadow' | 'glow' | 'lift' | 'neon'
 const TEXT_EFFECTS = [
-  { id: 'none',    label: 'Keiner',     css: {} },
-  { id: 'shadow',  label: 'Schatten',   css: { textShadow: '2px 3px 4px rgba(0,0,0,0.55)' } },
-  { id: 'lift',    label: 'Lift',       css: { textShadow: '0 7px 9px rgba(0,0,0,0.32)' } },
-  { id: 'hollow',  label: 'Hohl',       css: { color: 'transparent', WebkitTextStroke: '1.5px #111827' } },
-  { id: 'outline', label: 'Umriss',     css: { WebkitTextStroke: '1px #111827' } },
-  { id: 'echo',    label: 'Echo',       css: { textShadow: '4px 4px 0 rgba(17,24,39,0.32), 8px 8px 0 rgba(17,24,39,0.16)' } },
-  { id: 'glow',    label: 'Glühen',     css: { textShadow: '0 0 9px rgba(49,90,231,0.9)' } },
-  { id: 'neon',    label: 'Neon',       css: { color: '#39FF14', textShadow: '0 0 8px #39FF14, 0 0 14px #39FF14' } },
+  { id: 'none',       label: 'Keiner',          css: {} },
+  { id: 'shadow',     label: 'Schatten',        css: { textShadow: '2px 3px 4px rgba(0,0,0,0.55)' } },
+  { id: 'lift',       label: 'Lift',            css: { textShadow: '0 7px 9px rgba(0,0,0,0.32)' } },
+  { id: 'hollow',     label: 'Hohl',            css: { color: 'transparent', WebkitTextStroke: '1.5px #111827' } },
+  { id: 'splice',     label: 'Kontur+Schatten', css: { WebkitTextStroke: '1px #111827', textShadow: '3px 3px 0 rgba(0,0,0,0.45)' } },
+  { id: 'outline',    label: 'Umriss',          css: { WebkitTextStroke: '1px #111827' } },
+  { id: 'echo',       label: 'Echo',            css: { textShadow: '4px 4px 0 rgba(17,24,39,0.32), 8px 8px 0 rgba(17,24,39,0.16)' } },
+  { id: 'glow',       label: 'Glühen',          css: { textShadow: '0 0 9px rgba(49,90,231,0.9)' } },
+  { id: 'neon',       label: 'Neon',            css: { color: '#39FF14', textShadow: '0 0 8px #39FF14, 0 0 14px #39FF14' } },
+  { id: 'background', label: 'Hintergrund',     css: { background: '#111827', color: '#fff', padding: '3px 7px', borderRadius: 5 } },
 ]
+
+// Parameter-Definitionen je Effekt (Canva-artig: Regler + optional Effektfarbe).
+// def = Standardwert 0..100 bzw. Grad; colorDef=null → nutzt die Textfarbe.
+function textEffectParams(eff) {
+  const dir = { key: 'effectDirection', label: 'Richtung', min: -180, max: 180, def: 135 }
+  const off = { key: 'effectOffset', label: 'Versatz', min: 0, max: 100, def: 40 }
+  const blur = { key: 'effectBlur', label: 'Weichzeichnen', min: 0, max: 100, def: 30 }
+  const tr = { key: 'effectTransparency', label: 'Transparenz', min: 0, max: 100, def: 40 }
+  const th = { key: 'effectThickness', label: 'Dicke', min: 0, max: 100, def: 50 }
+  const inten = { key: 'effectIntensity', label: 'Intensität', min: 0, max: 100, def: 50 }
+  const rnd = { key: 'effectRoundness', label: 'Rundung', min: 0, max: 100, def: 50 }
+  const spr = { key: 'effectSpread', label: 'Spanne', min: 0, max: 100, def: 50 }
+  switch (eff) {
+    case 'shadow':     return { sliders: [dir, off, blur, tr], color: true, colorDef: '#000000' }
+    case 'lift':       return { sliders: [inten], color: false }
+    case 'glow':       return { sliders: [inten], color: true, colorDef: null }
+    case 'neon':       return { sliders: [inten], color: true, colorDef: null }
+    case 'hollow':     return { sliders: [th], color: true, colorDef: null }
+    case 'outline':    return { sliders: [th], color: true, colorDef: '#111827' }
+    case 'splice':     return { sliders: [dir, off, th], color: true, colorDef: '#000000' }
+    case 'echo':       return { sliders: [dir, off], color: true, colorDef: null }
+    case 'background': return { sliders: [rnd, spr, tr], color: true, colorDef: '#111827' }
+    default:           return { sliders: [], color: false }
+  }
+}
+// Defaults beim Auswählen eines Effekts (damit er sofort gut aussieht).
+function textEffectDefaults(eff) {
+  const pd = textEffectParams(eff); const patch = { effect: eff }
+  pd.sliders.forEach(s => { patch[s.key] = s.def })
+  return patch
+}
+const _effNum = (v, d) => (v == null || isNaN(Number(v))) ? d : Number(v)
+
 function textEffectProps(o) {
   const fs = o.fontSize || 44
   const eff = o.effect || 'none'
-  if (eff === 'shadow') {
-    return { shadowColor: 'rgba(0,0,0,0.55)', shadowBlur: Math.round(fs * 0.12), shadowOffsetX: Math.round(fs * 0.05), shadowOffsetY: Math.round(fs * 0.08), shadowOpacity: 1 }
+  const col = o.effectColor
+  if (eff === 'shadow' || eff === 'splice') {
+    const off = _effNum(o.effectOffset, 40) / 100 * fs * 0.6
+    const dir = _effNum(o.effectDirection, 135) * Math.PI / 180
+    const base = {
+      shadowColor: col || '#000000',
+      shadowBlur: eff === 'shadow' ? Math.round(_effNum(o.effectBlur, 30) / 100 * fs * 0.6) : 0,
+      shadowOffsetX: Math.round(Math.cos(dir) * off),
+      shadowOffsetY: Math.round(Math.sin(dir) * off),
+      shadowOpacity: eff === 'shadow' ? (1 - _effNum(o.effectTransparency, 40) / 100) : 0.9,
+    }
+    if (eff === 'splice') return { ...base, stroke: col || '#000000', strokeWidth: Math.max(1, Math.round((0.02 + _effNum(o.effectThickness, 50) / 100 * 0.06) * fs)), fillAfterStrokeEnabled: true }
+    return base
   }
   if (eff === 'lift') {
-    // weicher, mittiger Schatten nach unten (Objekt "schwebt").
-    return { shadowColor: 'rgba(0,0,0,0.35)', shadowBlur: Math.round(fs * 0.45), shadowOffsetX: 0, shadowOffsetY: Math.round(fs * 0.18), shadowOpacity: 0.7 }
+    const I = _effNum(o.effectIntensity, 40) / 100
+    return { shadowColor: '#000000', shadowBlur: Math.round((0.2 + I * 0.6) * fs), shadowOffsetX: 0, shadowOffsetY: Math.round(fs * 0.12), shadowOpacity: 0.3 + I * 0.4 }
   }
   if (eff === 'glow') {
-    // Schein in Textfarbe, kein Versatz.
-    return { shadowColor: o.fill || '#ffffff', shadowBlur: Math.round(fs * 0.5), shadowOffsetX: 0, shadowOffsetY: 0, shadowOpacity: 0.95 }
+    const I = _effNum(o.effectIntensity, 50) / 100
+    return { shadowColor: col || o.fill || '#ffffff', shadowBlur: Math.round((0.2 + I * 0.8) * fs), shadowOffsetX: 0, shadowOffsetY: 0, shadowOpacity: 0.55 + I * 0.45 }
   }
   if (eff === 'neon') {
-    // heller Schein + farbige Kontur.
-    return { shadowColor: o.fill || '#39FF14', shadowBlur: Math.round(fs * 0.7), shadowOffsetX: 0, shadowOffsetY: 0, shadowOpacity: 1,
-      stroke: o.fill || '#39FF14', strokeWidth: Math.max(1, Math.round(fs * 0.03)) }
+    const I = _effNum(o.effectIntensity, 60) / 100
+    const c = col || o.fill || '#39FF14'
+    return { shadowColor: c, shadowBlur: Math.round((0.3 + I * 0.9) * fs), shadowOffsetX: 0, shadowOffsetY: 0, shadowOpacity: 1, stroke: c, strokeWidth: Math.max(1, Math.round(fs * 0.025)), fillAfterStrokeEnabled: true }
   }
   if (eff === 'hollow') {
-    // Hohle Buchstaben: transparente Füllung + Kontur in Textfarbe.
-    return { fill: 'transparent', stroke: o.fill || '#111827', strokeWidth: Math.max(1.2, Math.round(fs * 0.035)), fillAfterStrokeEnabled: true, shadowOpacity: 0 }
+    const t = _effNum(o.effectThickness, 50) / 100
+    return { fill: 'transparent', stroke: col || o.fill || '#111827', strokeWidth: Math.max(1.2, Math.round((0.02 + t * 0.06) * fs)), fillAfterStrokeEnabled: true, shadowOpacity: 0 }
   }
   if (eff === 'outline') {
-    // Gefüllte Buchstaben mit dunkler Kontur (Füllung liegt über der Kontur).
-    return { stroke: '#111827', strokeWidth: Math.max(1, Math.round(fs * 0.03)), fillAfterStrokeEnabled: true, shadowOpacity: 0 }
+    const t = _effNum(o.effectThickness, 50) / 100
+    return { stroke: col || '#111827', strokeWidth: Math.max(1, Math.round((0.02 + t * 0.06) * fs)), fillAfterStrokeEnabled: true, shadowOpacity: 0 }
   }
   if (eff === 'echo') {
-    // versetzte „Echo"-Kopie über einen harten Schatten in Textfarbe.
-    return { shadowColor: o.fill || '#111827', shadowBlur: 0, shadowOffsetX: Math.round(fs * 0.14), shadowOffsetY: Math.round(fs * 0.14), shadowOpacity: 0.32 }
+    const off = _effNum(o.effectOffset, 50) / 100 * fs * 0.5
+    const dir = _effNum(o.effectDirection, 135) * Math.PI / 180
+    return { shadowColor: col || o.fill || '#111827', shadowBlur: 0, shadowOffsetX: Math.round(Math.cos(dir) * off), shadowOffsetY: Math.round(Math.sin(dir) * off), shadowOpacity: 0.4 }
   }
+  // background → über eine begleitende Rect gerendert; kein KText-Prop
   return { shadowBlur: 0, shadowOpacity: 0, stroke: undefined, strokeWidth: 0 }
+}
+
+// Maß des Text-Blocks (für den „Hintergrund"-Effekt) — geteilter Offscreen-Node.
+let _txtMeasNode = null
+function measureTextBox(o) {
+  try {
+    if (typeof Konva === 'undefined') return { w: o.width || 360, h: (o.fontSize || 44) * 1.3 }
+    if (!_txtMeasNode) _txtMeasNode = new Konva.Text({ listening: false })
+    _txtMeasNode.setAttrs({ text: String(o.text || ''), fontSize: o.fontSize || 44, fontFamily: o.fontFamily || 'Inter', fontStyle: o.fontStyle || 'normal', width: o.width || 360, align: o.align || 'left', lineHeight: o.lineHeight || 1.2, letterSpacing: o.letterSpacing || 0 })
+    const tw = Math.min(o.width || 360, Math.ceil(_txtMeasNode.getTextWidth ? _txtMeasNode.getTextWidth() : (o.width || 360)))
+    const h = _txtMeasNode.height()
+    return { w: Math.max(20, tw), h: Math.max(12, h) }
+  } catch (_e) { return { w: o.width || 360, h: (o.fontSize || 44) * 1.3 } }
 }
 
 const HEAL_PROMPT = 'Entferne den Inhalt im markierten Bereich vollständig und fülle ihn natürlich und nahtlos passend zum Umfeld auf. Keine Artefakte, keine Kanten, fotorealistisch und stilistisch konsistent mit dem Rest des Bildes.'
@@ -5241,13 +5302,31 @@ Ignoriere reine Deko/Muster ohne Text. Antworte AUSSCHLIESSLICH mit JSON, ohne E
         // Effekt-Props (Schatten/Glühen/Lift/Neon) haben Vorrang; ohne Effekt greift
         // optional ein manuell gesetzter Schatten (shadowBlur am Objekt).
         const effProps = (o.effect && o.effect !== 'none') ? textEffectProps(o) : {}
-        return <KText key={o.id} {...base} text={o.text} fontSize={o.fontSize} fontFamily={o.fontFamily}
+        const txt = <KText key={o.id} {...base} text={o.text} fontSize={o.fontSize} fontFamily={o.fontFamily}
           {...fillKonvaProps(o, o.width || 360, (o.fontSize || 44) * 1.35, false)} fontStyle={o.fontStyle || 'normal'} align={o.align || 'left'} width={o.width || 360}
           lineHeight={o.lineHeight || 1.2} letterSpacing={o.letterSpacing || 0} textDecoration={o.textDecoration || ''}
           shadowColor={o.shadowColor} shadowBlur={o.shadowBlur || 0} shadowOffsetX={o.shadowOffsetX || 0} shadowOffsetY={o.shadowOffsetY || 0}
           {...effProps}
           visible={editingTextId !== o.id}
           onDblClick={() => startTextEdit(o.id)} onDblTap={() => startTextEdit(o.id)} />
+        if (o.effect === 'background' && editingTextId !== o.id) {
+          // Begleitende Farbfläche hinter dem Text (bewegt/rotiert über dieselben o.x/o.y mit).
+          const mb = measureTextBox(o)
+          const fs2 = o.fontSize || 44
+          const pad = Math.round((_effNum(o.effectSpread, 50) / 100) * fs2 * 0.5) + Math.round(fs2 * 0.12)
+          const tw = o.width || 360
+          const al = o.align || 'left'
+          const bx = al === 'center' ? (o.x || 0) + (tw - mb.w) / 2 : al === 'right' ? (o.x || 0) + (tw - mb.w) : (o.x || 0)
+          const bw = mb.w + pad * 2, bh = mb.h + pad * 2
+          const cr = Math.round((_effNum(o.effectRoundness, 50) / 100) * (bh / 2))
+          const bgRect = (
+            <Rect key={o.id + '-txtbg'} x={Math.round(bx - pad)} y={Math.round((o.y || 0) - pad)} width={bw} height={bh}
+              cornerRadius={cr} fill={o.effectColor || '#111827'} opacity={(o.opacity == null ? 1 : o.opacity) * (1 - _effNum(o.effectTransparency, 0) / 100)}
+              rotation={o.rotation || 0} offsetX={0} offsetY={0} listening={false} />
+          )
+          return [bgRect, txt]
+        }
+        return txt
       }
       case 'rect':
         return <Rect key={o.id} {...base} width={o.width} height={o.height} {...fillKonvaProps(o, o.width, o.height, false)} stroke={o.stroke} strokeWidth={o.strokeWidth || 0} cornerRadius={o.cornerRadius || 0} />
@@ -5393,14 +5472,14 @@ Ignoriere reine Deko/Muster ohne Text. Antworte AUSSCHLIESSLICH mit JSON, ohne E
         onChange={(e) => { const f = e.target.files?.[0]; onPickImageFile(f); e.target.value = '' }} />
       {/* Tier 1 — globale Werkzeugleiste: links Undo/Redo + Zoom, rechts Format/Export/Speichern */}
       <div style={{ display: 'flex', flexWrap: 'wrap', rowGap: 6, alignItems: 'center', gap: 6, padding: '9px 10px', borderBottom: '1px solid var(--border,#E9ECF2)', background: 'var(--surface,#fff)', flexShrink: 0 }}>
+        {/* Format/Größe (nur Button; öffnet nach unten, damit die Tabelle voll sichtbar ist) */}
+        <div style={{ flexShrink: 0 }}><FormatPicker value={formatForSize(stageSize.width, stageSize.height)} onChange={(p) => applyFormatPreset(p)} openUp={false} /></div>
+        <div style={{ flexShrink: 0 }}><Divider /></div>
         {/* Undo / Redo */}
         <div style={{ display: 'inline-flex', alignItems: 'center', gap: 2, flexShrink: 0 }}>
           <ToolBtn onClick={undo} title="Rückgängig (Cmd/Ctrl+Z)"><Undo2 size={15} strokeWidth={1.9} /></ToolBtn>
           <ToolBtn onClick={redo} title="Wiederholen (Cmd/Ctrl+Shift+Z)"><Redo2 size={15} strokeWidth={1.9} /></ToolBtn>
         </div>
-        <div style={{ flexShrink: 0 }}><Divider /></div>
-        {/* Format/Größe (nur Button; öffnet nach unten, damit die Tabelle voll sichtbar ist) */}
-        <div style={{ flexShrink: 0 }}><FormatPicker value={formatForSize(stageSize.width, stageSize.height)} onChange={(p) => applyFormatPreset(p)} openUp={false} /></div>
         <input value={designName} onChange={e => commitName(e.target.value)} placeholder="Unbenanntes Design" title={designName || 'Unbenanntes Design'}
           style={{ flex: 1, minWidth: 40, border: 'none', outline: 'none', background: 'transparent', fontSize: 17, fontWeight: 800, letterSpacing: '-0.01em', color: 'var(--text-primary,#101828)', fontFamily: 'inherit', textOverflow: 'ellipsis', whiteSpace: 'nowrap', overflow: 'hidden' }} />
 
@@ -6302,12 +6381,12 @@ function ContextBar({
               {numField('Laufweite', o.letterSpacing || 0, v => setOnce({ letterSpacing: v || 0 }), { step: 0.5, w: 70 })}
             </div>
           </BarMenu>
-          <BarMenu title="Effekte" width={236} trigger={<span style={{ fontSize: 12.5, fontWeight: 600 }}>Effekte</span>}>
+          <BarMenu title="Effekte" width={252} trigger={<span style={{ fontSize: 12.5, fontWeight: 600 }}>Effekte</span>}>
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 8, padding: '4px 4px 2px' }}>
               {TEXT_EFFECTS.map(ef => {
                 const on = (o.effect || 'none') === ef.id
                 return (
-                  <button key={ef.id} type="button" onClick={() => setOnce({ effect: ef.id })} title={ef.label}
+                  <button key={ef.id} type="button" onClick={() => setOnce(ef.id === 'none' ? { effect: 'none' } : textEffectDefaults(ef.id))} title={ef.label}
                     style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 5, padding: 0, border: 'none', background: 'transparent', cursor: 'pointer', fontFamily: 'inherit' }}>
                     <span style={{ width: '100%', height: 44, borderRadius: 9, display: 'flex', alignItems: 'center', justifyContent: 'center',
                       background: ef.id === 'neon' ? '#15171c' : '#F4F6FA',
@@ -6320,6 +6399,35 @@ function ContextBar({
                 )
               })}
             </div>
+            {(o.effect && o.effect !== 'none') && (() => {
+              const pd = textEffectParams(o.effect)
+              if (!pd.sliders.length && !pd.color) return null
+              return (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 9, padding: '10px 6px 4px', marginTop: 6, borderTop: '1px solid var(--border,#E9ECF2)' }}>
+                  {pd.sliders.map(sl => {
+                    const val = _effNum(o[sl.key], sl.def)
+                    return (
+                      <div key={sl.key} style={{ fontSize: 11 }}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 3 }}>
+                          <span style={{ color: 'var(--text-secondary,#475467)', fontWeight: 600 }}>{sl.label}</span>
+                          <span style={{ fontVariantNumeric: 'tabular-nums', fontWeight: 700, color: P }}>{Math.round(val)}</span>
+                        </div>
+                        <input type="range" min={sl.min} max={sl.max} value={val}
+                          onMouseDown={startEdit} onChange={e => setOnce({ [sl.key]: parseInt(e.target.value, 10) })} onMouseUp={endInteraction} onTouchStart={startEdit} onTouchEnd={endInteraction}
+                          style={{ width: '100%', accentColor: P }} />
+                      </div>
+                    )
+                  })}
+                  {pd.color && (
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 2 }}>
+                      <span style={{ fontSize: 11, color: 'var(--text-secondary,#475467)', fontWeight: 600 }}>Farbe</span>
+                      <ColorPopover value={o.effectColor || pd.colorDef || o.fill || '#000000'} brandColors={brandColors} title="Effektfarbe" round size={26}
+                        onStart={startEdit} onChange={(hex) => liveEdit({ effectColor: hex })} onEnd={endInteraction} />
+                    </div>
+                  )}
+                </div>
+              )
+            })()}
           </BarMenu>
         </>
       )}
