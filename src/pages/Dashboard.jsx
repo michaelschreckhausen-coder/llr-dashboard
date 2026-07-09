@@ -297,6 +297,17 @@ export default function Dashboard({ session }) {
             style={{ flexShrink: 0, border: 'none', background: 'transparent', color: '#991B1B', cursor: 'pointer', fontSize: 15, fontWeight: 700 }} aria-label="Ausblenden">✕</button>
         </div>
       )}
+      {affBanner && (
+        <div onClick={() => nav('/settings/affiliate')} style={{
+          display: 'flex', alignItems: 'center', gap: 10, cursor: 'pointer',
+          background: '#FFFBEB', border: '1px solid #FDE68A', borderRadius: 10,
+          padding: '10px 14px', marginBottom: space[6], fontSize: 13, color: '#92400E',
+        }}>
+          <span>💡 <strong>Wusstest du?</strong> Empfiehl Leadesk weiter und verdiene 20 % Provision für 12 Monate — <span style={{ textDecoration: 'underline' }}>Mehr erfahren →</span></span>
+          <button onClick={(e) => { e.stopPropagation(); localStorage.setItem('lk_aff_banner_dismissed', '1'); setAffBanner(false); }}
+            style={{ marginLeft: 'auto', border: 'none', background: 'transparent', color: '#92400E', cursor: 'pointer', fontSize: 15, fontWeight: 700 }} aria-label="Ausblenden">✕</button>
+        </div>
+      )}
       {/* Leadly-Hero — Gesicht + Essenz + Eingabe + Inline-Antworten */}
       <LeadlyHero
         firstName={firstName}
@@ -309,18 +320,6 @@ export default function Dashboard({ session }) {
         }}
         onOpenTasks={() => nav('/aufgaben')}
       />
-      {/* Affiliate-Hinweis — unterhalb des Heros: der erste Blick gehört Leadly */}
-      {affBanner && (
-        <div onClick={() => nav('/settings/affiliate')} style={{
-          display: 'flex', alignItems: 'center', gap: 10, cursor: 'pointer',
-          background: '#FFFBEB', border: '1px solid #FDE68A', borderRadius: 10,
-          padding: '10px 14px', marginBottom: space[6], fontSize: 13, color: '#92400E',
-        }}>
-          <span>💡 <strong>Wusstest du?</strong> Empfiehl Leadesk weiter und verdiene 20 % Provision für 12 Monate — <span style={{ textDecoration: 'underline' }}>Mehr erfahren →</span></span>
-          <button onClick={(e) => { e.stopPropagation(); localStorage.setItem('lk_aff_banner_dismissed', '1'); setAffBanner(false); }}
-            style={{ marginLeft: 'auto', border: 'none', background: 'transparent', color: '#92400E', cursor: 'pointer', fontSize: 15, fontWeight: 700 }} aria-label="Ausblenden">✕</button>
-        </div>
-      )}
       <div>
 
         {/* Leadlys Plan für heute — priorisierte, übernehmbare Aktionen */}
