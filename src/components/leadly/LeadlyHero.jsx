@@ -79,6 +79,19 @@ export default function LeadlyHero({ firstName, leadly, stats = {}, onOpenTasks 
 
   const tts = useTextToSpeech();
 
+  // Stimme ist OPT-IN: Wenn der User noch nie eine Wahl getroffen hat
+  // (kein localStorage-Key), einmalig auf stumm initialisieren.
+  const ttsInitRef = useRef(false);
+  useEffect(() => {
+    if (ttsInitRef.current) return;
+    ttsInitRef.current = true;
+    try {
+      if (window.localStorage?.getItem('leadly_tts_muted') == null && !tts.muted) {
+        tts.toggleMuted();
+      }
+    } catch { /* ignore */ }
+  }, [tts]);
+
   const briefingText = leadly.briefing?.briefing_text || '';
   const essence = useMemo(() => deriveEssence(briefingText), [briefingText]);
 
