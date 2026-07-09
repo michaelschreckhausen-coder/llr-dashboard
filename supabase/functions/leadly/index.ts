@@ -1161,20 +1161,29 @@ async function executeTool(
 
 async function buildBriefingContext(supabase: ReturnType<typeof createClient>) {
   const today = new Date().toISOString().split('T')[0];
-  const [overdueRes, todayRes, hotRes, dealsRes] = await Promise.all([
+  const tomorrow = new Date(Date.now() + 86400000).toISOString().split('T')[0];
+  const [overdueRes, todayRes, hotRes, dealsRes, postsDueRes, draftsRes] = await Promise.all([
     supabase.from('lead_tasks').select('id, title, lead_id, due_date').eq('status', 'open').lt('due_date', today).limit(10),
     supabase.from('lead_tasks').select('id, title, lead_id, due_date').eq('status', 'open').eq('due_date', today).limit(10),
     supabase.from('leads').select('id, first_name, last_name, company, lead_score').gte('lead_score', 70).eq('archived', false).limit(5),
     supabase.from('deals').select('id, title, value, stage').not('stage', 'in', '("verloren","gewonnen","kein_deal")').limit(5),
+    // Redaktionsplan: heute fällige ODER überfällige (terminiert, aber nicht veröffentlicht) Beiträge
+    supabase.from('content_posts').select('id, title, status, scheduled_at').neq('status', 'published').not('scheduled_at', 'is', null).lt('scheduled_at', tomorrow).limit(5),
+    // Redaktionsplan: unterminierte Entwürfe/Reviews (liegengeblieben)
+    supabase.from('content_posts').select('id, title, status').in('status', ['draft', 'in_review', 'approved']).is('scheduled_at', null).limit(5),
   ]);
   return {
     overdue_count: overdueRes.data?.length || 0,
     today_count:   todayRes.data?.length || 0,
     hot_count:     hotRes.data?.length || 0,
     open_deals_count: dealsRes.data?.length || 0,
+    posts_due_count: postsDueRes.data?.length || 0,
+    content_drafts_count: draftsRes.data?.length || 0,
     overdue_tasks: overdueRes.data || [],
     today_tasks:   todayRes.data || [],
     hot_leads:     hotRes.data || [],
+    posts_due:     postsDueRes.data || [],
+    content_drafts: draftsRes.data || [],
   };
 }
 
@@ -1339,7 +1348,7 @@ serve(async (req) => {
       }
 
       const context = await buildBriefingContext(supabase);
-      const total = context.overdue_count + context.today_count + context.hot_count;
+      const total = context.overdue_count + context.today_count + context.hot_count + context.posts_due_count + context.content_drafts_count;
 
       const admin = createClient(SUPABASE_URL, SUPABASE_SERVICE_KEY);
       const persistBriefing = async (text: string) => {
@@ -1363,6 +1372,8 @@ serve(async (req) => {
 - ${context.today_count} Aufgaben heute fällig
 - ${context.hot_count} Hot Leads (Score ≥ 70)
 - ${context.open_deals_count} offene Deals
+- ${context.posts_due_count} Redaktionsplan-Beiträge heute fällig oder überfällig (terminiert, aber noch nicht veröffentlicht)
+- ${context.content_drafts_count} liegengebliebene Content-Entwürfe ohne Termin
 
 Konkret aufzählen sind nur die ersten 2-3 Items pro Kategorie. Schließe mit einer Empfehlung wo der User anfangen soll. Sprich den User direkt an, freundlich aber knapp.
 

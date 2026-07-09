@@ -70,6 +70,7 @@ const AREA_META = {
   'kontakt':   { key: 'kontakt',   label: 'Kontakt',   color: '#047857', bg: '#ECFDF5' },
   'deal':      { key: 'deal',      label: 'Deal',      color: '#7C3AED', bg: '#F5F3FF' },
   'aufgabe':   { key: 'aufgabe',   label: 'Aufgabe',   color: '#B45309', bg: '#FFFBEB' },
+  'content':   { key: 'content',   label: 'Content',   color: '#0F766E', bg: '#F0FDFA' },
 };
 // Task-Quelle → Bereich (für Task-basierte Karten)
 const SUGGESTION_AREAS = {
@@ -79,6 +80,7 @@ const SUGGESTION_AREAS = {
   pm_task:             AREA_META['aufgabe'],
   stale_lead:          AREA_META['kontakt'],
   linkedin_unanswered: AREA_META['kontakt'],
+  content_post:        AREA_META['content'],
 };
 
 function suggestionReason(t) {
@@ -103,6 +105,7 @@ function suggestionPrompt(t) {
     case 'pm_task':             return `Hilf mir, diese Aufgabe abzuarbeiten: „${t.title}". Schlag konkrete nächste Schritte vor.`;
     case 'stale_lead':          return `Der Kontakt ${who || 'dieser Lead'} ist seit einer Weile inaktiv. Wie reaktiviere/anreichere ich ihn am besten?`;
     case 'linkedin_unanswered': return `Entwirf eine Antwort auf die offene LinkedIn-Nachricht von ${who || 'diesem Kontakt'}.`;
+    case 'content_post':        return `Hilf mir, den Redaktionsplan-Beitrag „${t.title}" weiterzubringen (${t.description || 'Entwurf'}). Mach mir einen konkreten Vorschlag — gern direkt mit Textentwurf.`;
     default:                    return `Hilf mir mit: „${t.title}".`;
   }
 }
@@ -147,6 +150,7 @@ export default function Dashboard({ session }) {
 
   const {
     leads, ssi, firstName,
+    tasks,
     isLoading,
     hotLeads, overdueTasks, todayTasks,
     activeDeals, wonDeals, lostDeals,
@@ -168,7 +172,9 @@ export default function Dashboard({ session }) {
   const taskCard = (t, i) => {
     const card = {
       id: t.id || `${t.source}-${i}`, area: SUGGESTION_AREAS[t.source],
-      title: t.title, reason: suggestionReason(t), href: t.href, prompt: suggestionPrompt(t),
+      title: t.title,
+      reason: suggestionReason(t) || (t.source === 'content_post' ? t.description : ''),
+      href: t.href, prompt: suggestionPrompt(t),
     };
     // lead_task → strukturierter Handoff mit echter task_id (id ist als "lead_task:<uuid>" geprefixt).
     if (t.source === 'lead_task' && typeof t.id === 'string' && t.id.startsWith('lead_task:')) {
@@ -194,7 +200,13 @@ export default function Dashboard({ session }) {
   const aufgabeCards = _overdue
     .filter(t => t.source === 'lead_task' || t.source === 'pm_task')
     .slice(0, SUG_CAP).map(taskCard);
-  const suggestions = [...followupCards, ...kontaktCards, ...dealCards, ...aufgabeCards];
+  // Content/Redaktionsplan: heute fällige/überfällige Posts zuerst, dann
+  // liegengebliebene unterminierte Entwürfe (aus dem vollen Task-Hub).
+  const _allTasks = tasks || [];
+  const dueContent = dayTasks.filter(t => t.source === 'content_post');
+  const stuckContent = _allTasks.filter(t => t.source === 'content_post' && !t.due_date);
+  const contentCards = [...dueContent, ...stuckContent].slice(0, SUG_CAP).map(taskCard);
+  const suggestions = [...followupCards, ...kontaktCards, ...dealCards, ...contentCards, ...aufgabeCards];
   // Inline-Handoff an den LeadlyHero (Startseiten-Chat statt Side-Panel).
   const askLeadly = (text) => window.dispatchEvent(new CustomEvent('leadly:hero-prompt', { detail: { text } }));
   const takeAction = (action) => window.dispatchEvent(new CustomEvent('leadly:hero-action', { detail: action }));
