@@ -89,9 +89,9 @@ Deno.serve(async () => {
       .select("unipile_account_id, team_id").eq("user_id", job.user_id).eq("status", "OK").limit(1).maybeSingle();
     if (!acct) { await finish(job.id, "error", { error: "Kein verbundener LinkedIn-Account (Unipile) für diesen User" }); continue; }
 
-    // GATING: Team→Account braucht AKTIVES 'automation'-Addon (status active + laufende Periode).
+    // GATING (member-aware): Team→Account braucht AKTIVES 'automation'-Addon — account-weit ODER member-grant für job.user_id.
     // Ohne Addon: Job NICHT ausführen (pending lassen), sonst zahlen wir Unipile für Nicht-Zahler.
-    const { data: paid } = await db.rpc("team_has_addon", { p_team_id: acct.team_id, p_slug: "automation" });
+    const { data: paid } = await db.rpc("team_member_has_addon", { p_team_id: acct.team_id, p_user_id: job.user_id, p_slug: "automation" });
     if (!paid) { out.push({ id: job.id, skipped: "no_automation_addon" }); continue; }
 
     const accountId = acct.unipile_account_id;
