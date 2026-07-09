@@ -68,6 +68,32 @@ export default function LeadlyOrb({ state = 'idle', size = 96 }) {
   const thinking = state === 'thinking';
   const happy = state === 'happy';
   const listening = state === 'listening';
+  // Unter 48px: Kopf-only — Körper/Headset/Brauen sind bei Mini-Größen
+  // (z.B. 26px-Avatar im Chat-Thread) nicht mehr lesbar.
+  const compact = s < 48;
+
+  if (compact) {
+    return (
+      <div ref={wrapRef} aria-hidden="true" style={{ position: 'relative', width: s, height: s, flexShrink: 0 }}>
+        <svg viewBox="0 0 512 512" width={s} height={s} style={{ display: 'block' }}>
+          <defs>
+            <radialGradient id={`lkbh${uid}`} cx="38%" cy="30%" r="85%">
+              <stop offset="0%" stopColor="#5B8CFF" />
+              <stop offset="45%" stopColor="#3563E9" />
+              <stop offset="100%" stopColor="#1B2F7A" />
+            </radialGradient>
+          </defs>
+          <circle cx="256" cy="256" r="240" fill={`url(#lkbh${uid})`} />
+          <path d="M 178 190 H 334 A 82 82 0 0 1 334 354 H 178 A 82 82 0 0 1 178 190 Z"
+            fill="none" stroke="#FFFFFF" strokeWidth="34" />
+          <rect x="240" y="190" width="32" height="164" fill="#FFFFFF" />
+          <g ref={eyeLRef}><rect x="196" y="238" width="34" height="68" rx="17" fill="#FFFFFF" /></g>
+          <g ref={eyeRRef}><rect x="282" y="238" width="34" height="68" rx="17" fill="#FFFFFF" /></g>
+          <path d="M 210 408 Q 256 446 302 408" fill="none" stroke="#FFFFFF" strokeWidth="22" strokeLinecap="round" />
+        </svg>
+      </div>
+    );
+  }
 
   // CSS-transform überschreibt in SVG das transform-Attribut → Grundrotation
   // der Brauen hier mitführen (fill-box, Rotation ums eigene Zentrum).

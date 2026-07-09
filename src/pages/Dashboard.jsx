@@ -202,9 +202,16 @@ export default function Dashboard({ session }) {
     .slice(0, SUG_CAP).map(taskCard);
   // Content/Redaktionsplan: heute fällige/überfällige Posts zuerst, dann
   // liegengebliebene unterminierte Entwürfe (aus dem vollen Task-Hub).
+  // Substanz-Filter für unterminierte Entwürfe: Platzhalter-/Tipp-Titel
+  // („(ohne Titel)", „asdfasf") gehören nicht in „Leadlys Plan für heute".
+  const hasSubstance = (t) => {
+    const title = (t.title || '').trim();
+    if (!title || title === '(ohne Titel)') return false;
+    return title.length >= 15 || (title.includes(' ') && title.length >= 8);
+  };
   const _allTasks = tasks || [];
   const dueContent = dayTasks.filter(t => t.source === 'content_post');
-  const stuckContent = _allTasks.filter(t => t.source === 'content_post' && !t.due_date);
+  const stuckContent = _allTasks.filter(t => t.source === 'content_post' && !t.due_date && hasSubstance(t));
   const contentCards = [...dueContent, ...stuckContent].slice(0, SUG_CAP).map(taskCard);
   const suggestions = [...followupCards, ...kontaktCards, ...dealCards, ...contentCards, ...aufgabeCards];
   // Inline-Handoff an den LeadlyHero (Startseiten-Chat statt Side-Panel).
@@ -290,17 +297,6 @@ export default function Dashboard({ session }) {
             style={{ flexShrink: 0, border: 'none', background: 'transparent', color: '#991B1B', cursor: 'pointer', fontSize: 15, fontWeight: 700 }} aria-label="Ausblenden">✕</button>
         </div>
       )}
-      {affBanner && (
-        <div onClick={() => nav('/settings/affiliate')} style={{
-          display: 'flex', alignItems: 'center', gap: 10, cursor: 'pointer',
-          background: '#FFFBEB', border: '1px solid #FDE68A', borderRadius: 10,
-          padding: '10px 14px', marginBottom: space[6], fontSize: 13, color: '#92400E',
-        }}>
-          <span>💡 <strong>Wusstest du?</strong> Empfiehl Leadesk weiter und verdiene 20 % Provision für 12 Monate — <span style={{ textDecoration: 'underline' }}>Mehr erfahren →</span></span>
-          <button onClick={(e) => { e.stopPropagation(); localStorage.setItem('lk_aff_banner_dismissed', '1'); setAffBanner(false); }}
-            style={{ marginLeft: 'auto', border: 'none', background: 'transparent', color: '#92400E', cursor: 'pointer', fontSize: 15, fontWeight: 700 }} aria-label="Ausblenden">✕</button>
-        </div>
-      )}
       {/* Leadly-Hero — Gesicht + Essenz + Eingabe + Inline-Antworten */}
       <LeadlyHero
         firstName={firstName}
@@ -313,6 +309,18 @@ export default function Dashboard({ session }) {
         }}
         onOpenTasks={() => nav('/aufgaben')}
       />
+      {/* Affiliate-Hinweis — unterhalb des Heros: der erste Blick gehört Leadly */}
+      {affBanner && (
+        <div onClick={() => nav('/settings/affiliate')} style={{
+          display: 'flex', alignItems: 'center', gap: 10, cursor: 'pointer',
+          background: '#FFFBEB', border: '1px solid #FDE68A', borderRadius: 10,
+          padding: '10px 14px', marginBottom: space[6], fontSize: 13, color: '#92400E',
+        }}>
+          <span>💡 <strong>Wusstest du?</strong> Empfiehl Leadesk weiter und verdiene 20 % Provision für 12 Monate — <span style={{ textDecoration: 'underline' }}>Mehr erfahren →</span></span>
+          <button onClick={(e) => { e.stopPropagation(); localStorage.setItem('lk_aff_banner_dismissed', '1'); setAffBanner(false); }}
+            style={{ marginLeft: 'auto', border: 'none', background: 'transparent', color: '#92400E', cursor: 'pointer', fontSize: 15, fontWeight: 700 }} aria-label="Ausblenden">✕</button>
+        </div>
+      )}
       <div>
 
         {/* Leadlys Plan für heute — priorisierte, übernehmbare Aktionen */}
@@ -321,7 +329,7 @@ export default function Dashboard({ session }) {
             <div style={{ fontSize: 12, fontWeight: 700, color: colors.inkMuted, textTransform: 'uppercase', letterSpacing: '0.05em' }}>
               Leadlys Plan für heute
             </div>
-            {suggestions.length > 1 && (
+            {suggestions.length >= 3 && (
               <button type="button"
                 onClick={() => askLeadly(
                   `Hier ist mein heutiger Plan:\n${displayedSuggestions.map((s, i) => `${i + 1}. [${s.area.label}] ${s.title}${s.reason ? ` (${s.reason})` : ''}`).join('\n')}\nGeh ihn mit mir durch: Womit starte ich am besten, und welche Schritte kannst du direkt für mich vorbereiten?`
@@ -341,7 +349,7 @@ export default function Dashboard({ session }) {
                   <div style={{ display: 'flex', gap: 8, marginTop: 'auto', paddingTop: 4 }}>
                     <button onClick={() => (s.action ? takeAction(s.action) : askLeadly(s.prompt))}
                       style={{ padding: '7px 14px', borderRadius: 8, border: 'none', background: colors.primary, color: '#fff', fontSize: 12, fontWeight: 700, cursor: 'pointer' }}>
-                      Übernehmen
+                      {s.action ? 'Erledigen' : 'Mit Leadly angehen'}
                     </button>
                     {s.href && (
                       <button onClick={() => nav(s.href)}
