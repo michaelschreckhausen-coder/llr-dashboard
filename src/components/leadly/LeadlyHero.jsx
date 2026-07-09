@@ -26,7 +26,26 @@ import { renderMarkdown } from '../../lib/renderMarkdown';
 import LeadlyOrb from './LeadlyOrb';
 
 // ─── Kern-Essenz aus dem Briefing ableiten (client-seitig) ───────────────
-function deriveEssence(briefingText) {
+function cleanupMd(s) {
+  return String(s || '')
+    .replace(/```[\s\S]*?```/g, ' ')
+    .replace(/[#>*_`~|]+/g, ' ')
+    .replace(/\[(.*?)\]\(.*?\)/g, '$1')
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+
+function deriveEssence(briefingText, contextJson) {
+  // 1. Bevorzugt: dediziertes Essenz-Feld aus der Briefing-EF
+  const fromEF = contextJson?.essence;
+  if (fromEF && String(fromEF).trim()) return String(fromEF).trim();
+  // 2. Fallback: „Mein Tipp"-Zeile des Briefings (handlungsorientierter Satz)
+  const tip = String(briefingText || '').match(/Tipp:?\*{0,2}\s*([^\n]+)/i);
+  if (tip && tip[1] && cleanupMd(tip[1]).length > 20) {
+    const t = cleanupMd(tip[1]);
+    return t.length > 220 ? t.slice(0, 220).trimEnd() + '…' : t;
+  }
+  // 3. Letzter Fallback: erste Sätze (ohne Begrüßungs-Boilerplate)
   if (!briefingText) return '';
   const plain = String(briefingText)
     .replace(/```[\s\S]*?```/g, ' ')
@@ -93,7 +112,8 @@ export default function LeadlyHero({ firstName, leadly, stats = {}, onOpenTasks 
   }, [tts]);
 
   const briefingText = leadly.briefing?.briefing_text || '';
-  const essence = useMemo(() => deriveEssence(briefingText), [briefingText]);
+  const briefingCtx = leadly.briefing?.context_json || null;
+  const essence = useMemo(() => deriveEssence(briefingText, briefingCtx), [briefingText, briefingCtx]);
 
   const engage = useCallback(() => {
     setEngaged(true);
@@ -120,13 +140,18 @@ export default function LeadlyHero({ firstName, leadly, stats = {}, onOpenTasks 
     onFinalTranscript: (t) => { const v = (t || '').trim(); if (v) handleSend(v); },
   });
 
-  // ── Typewriter für die Essenz ──
-  useEffect(() => { setTypedChars(0); }, [essence]);
+  // ── Typewriter für die Essenz — nur beim ERSTEN Besuch des Tages ──
+  const typedKey = `leadly_essence_typed_${leadly.briefing?.briefing_date || new Date().toISOString().slice(0, 10)}`;
+  const alreadyTypedToday = (() => { try { return window.localStorage?.getItem(typedKey) === '1'; } catch { return false; } })();
+  useEffect(() => { setTypedChars(alreadyTypedToday && essence ? essence.length : 0); }, [essence, alreadyTypedToday]);
   useEffect(() => {
-    if (!essence || typedChars >= essence.length) return undefined;
+    if (!essence || typedChars >= essence.length) {
+      if (essence && typedChars >= essence.length) { try { window.localStorage?.setItem(typedKey, '1'); } catch { /* ignore */ } }
+      return undefined;
+    }
     const id = setTimeout(() => setTypedChars(c => Math.min(essence.length, c + 3)), 24);
     return () => clearTimeout(id);
-  }, [essence, typedChars]);
+  }, [essence, typedChars, typedKey]);
 
   // Fallback-Text, falls das Briefing nicht (rechtzeitig) kommt
   useEffect(() => {
@@ -270,13 +295,6 @@ export default function LeadlyHero({ firstName, leadly, stats = {}, onOpenTasks 
         <div style={{ flex: 1, minWidth: 220 }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 12.5, color: colors.inkMuted, fontWeight: 500 }}>
             <span>{dateLabel}</span>
-            <span aria-hidden="true">·</span>
-            <span>Leadly</span>
-            <button type="button" onClick={toggleVoiceOutput}
-              title={tts.muted ? 'Leadly-Stimme aktivieren (EU, opt-in)' : 'Leadly-Stimme stummschalten'}
-              style={{ border: 'none', background: 'transparent', cursor: 'pointer', color: tts.muted ? colors.inkSoft : colors.primary, display: 'inline-flex', alignItems: 'center', padding: 2 }}>
-              {tts.muted ? <VolumeX size={15} /> : <Volume2 size={15} />}
-            </button>
           </div>
           <div style={{ fontSize: 'clamp(22px, 2.6vw, 28px)', fontWeight: 600, letterSpacing: '-0.03em', lineHeight: 1.12, color: colors.ink, marginTop: 3 }}>
             {salute}, {firstName || 'dort'} 👋
@@ -307,7 +325,7 @@ export default function LeadlyHero({ firstName, leadly, stats = {}, onOpenTasks 
           ) : (
             <div key={m.id} style={{ alignSelf: 'flex-start', maxWidth: '92%', display: 'flex', gap: 10, alignItems: 'flex-start' }}>
               <div style={{ marginTop: 2, flexShrink: 0 }}><LeadlyOrb state="idle" size={26} /></div>
-              <div style={{ background: 'var(--page-bg, #F8FAFC)', border: `1px solid ${colors.border}`, borderRadius: '4px 14px 14px 14px', padding: '10px 14px', fontSize: 14, lineHeight: 1.6, color: colors.ink, minWidth: 0 }}>
+              <div style={{ background: colors.cream, border: `1px solid ${colors.border}`, borderRadius: '4px 14px 14px 14px', padding: '10px 14px', fontSize: 14, lineHeight: 1.6, color: colors.ink, minWidth: 0 }}>
                 {renderMarkdown(m.content)}
               </div>
             </div>
@@ -365,7 +383,7 @@ export default function LeadlyHero({ firstName, leadly, stats = {}, onOpenTasks 
         marginTop: space[4],
         display: 'flex', gap: 6, alignItems: 'center',
         border: `1px solid ${colors.border}`, borderRadius: 12,
-        background: 'var(--page-bg, #F8FAFC)', padding: '5px 5px 5px 14px',
+        background: colors.cream, padding: '5px 5px 5px 14px',
       }}>
         <textarea
           value={text}
@@ -382,6 +400,11 @@ export default function LeadlyHero({ firstName, leadly, stats = {}, onOpenTasks 
             minHeight: 22, maxHeight: 120, background: 'transparent', color: colors.ink,
           }}
         />
+        <button type="button" onClick={toggleVoiceOutput}
+          title={tts.muted ? 'Leadly-Stimme aktivieren (liest Antworten vor · EU, opt-in)' : 'Leadly-Stimme stummschalten'}
+          style={{ ...iconBtn(false), color: tts.muted ? colors.inkSoft : colors.primary }}>
+          {tts.muted ? <VolumeX size={16} /> : <Volume2 size={16} />}
+        </button>
         <button type="button"
           onClick={voice.isRecording ? voice.stop : voice.start}
           title={voice.isRecording ? 'Aufnahme stoppen' : 'Mit Leadly sprechen'}
@@ -390,9 +413,11 @@ export default function LeadlyHero({ firstName, leadly, stats = {}, onOpenTasks 
         </button>
         <button type="submit" disabled={!text.trim()} aria-label="Senden"
           style={{
-            width: 36, height: 36, borderRadius: 10, border: 'none', flexShrink: 0,
-            background: text.trim() ? 'var(--wl-primary, var(--primary, rgb(49,90,231)))' : '#CBD5E1',
-            color: '#fff', cursor: text.trim() ? 'pointer' : 'not-allowed',
+            width: 36, height: 36, borderRadius: 10, flexShrink: 0,
+            border: text.trim() ? 'none' : `1px solid ${colors.border}`,
+            background: text.trim() ? 'var(--wl-primary, var(--primary, rgb(49,90,231)))' : 'transparent',
+            color: text.trim() ? '#fff' : colors.inkSoft,
+            cursor: text.trim() ? 'pointer' : 'not-allowed',
             display: 'flex', alignItems: 'center', justifyContent: 'center',
           }}>
           <ArrowUp size={17} />
@@ -418,13 +443,21 @@ export default function LeadlyHero({ firstName, leadly, stats = {}, onOpenTasks 
         fontSize: 12.5, color: colors.inkMuted,
       }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
-          <span>{leads} {leads === 1 ? 'Kontakt' : 'Kontakte'}</span>
-          <span aria-hidden="true">·</span>
-          <span>{activeDeals} {activeDeals === 1 ? 'Deal' : 'Deals'}</span>
-          <span aria-hidden="true">·</span>
-          <span style={{ color: overdue > 0 ? colors.danger : undefined }}>{overdue} überfällig</span>
-          <span aria-hidden="true">·</span>
-          <span>{today} heute</span>
+          {(() => {
+            const stats2 = [
+              leads > 0 && `${leads} ${leads === 1 ? 'Kontakt' : 'Kontakte'}`,
+              activeDeals > 0 && `${activeDeals} ${activeDeals === 1 ? 'Deal' : 'Deals'}`,
+              overdue > 0 && `${overdue} überfällig`,
+              today > 0 && `${today} heute`,
+            ].filter(Boolean);
+            if (!stats2.length) return <span style={{ color: colors.inkSoft }}>Noch keine offenen Aufgaben</span>;
+            return stats2.map((s, i) => (
+              <React.Fragment key={s}>
+                {i > 0 && <span aria-hidden="true">·</span>}
+                <span style={{ color: s.includes('überfällig') ? colors.danger : undefined }}>{s}</span>
+              </React.Fragment>
+            ));
+          })()}
           <button type="button" onClick={onOpenTasks}
             style={{ background: 'transparent', border: 'none', color: colors.primary, cursor: 'pointer', fontSize: 12.5, fontWeight: 500, padding: 0, marginLeft: 4, textDecoration: 'underline', textUnderlineOffset: 2 }}>
             alle Aufgaben →
@@ -438,7 +471,7 @@ export default function LeadlyHero({ firstName, leadly, stats = {}, onOpenTasks 
             <button type="button" onClick={() => setShowTranscript(v => !v)}
               style={{ display: 'inline-flex', alignItems: 'center', gap: 3, background: 'transparent', border: 'none', padding: 0, color: colors.inkMuted, fontSize: 12.5, fontWeight: 500, cursor: 'pointer' }}>
               {showTranscript ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
-              Tages-Briefing
+              {showTranscript ? 'Briefing ausblenden' : 'Ganzes Briefing anzeigen'}
             </button>
           )}
         </div>

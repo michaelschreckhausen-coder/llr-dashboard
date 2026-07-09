@@ -1363,6 +1363,7 @@ serve(async (req) => {
 
       if (total === 0) {
         const text = `Guten Morgen! Heute ist deine Pipeline ruhig — keine überfälligen Aufgaben, kein dringender Follow-up. Gute Gelegenheit, neue Hot Leads zu identifizieren.`;
+        (context as Record<string, unknown>).essence = 'Heute ist alles ruhig: gute Gelegenheit, neue Hot Leads zu identifizieren oder Content vorzubereiten.';
         await persistBriefing(text);
         return json({ briefing_text: text, context, briefing_date: today });
       }
@@ -1423,6 +1424,25 @@ ${JSON.stringify(context, null, 2)}`;
       }, adminForCredits).catch(() => null);
 
       const text = (aj.content || []).filter((c: { type: string }) => c.type === 'text').map((c: { text: string }) => c.text).join('\n').trim();
+
+      // Essenz: EIN handlungsorientierter Satz für den Startseiten-Hero
+      // (destilliert per Haiku — billig; Fallback: Client-Heuristik).
+      try {
+        const eres = await fetch('https://api.anthropic.com/v1/messages', {
+          method: 'POST',
+          headers: { 'x-api-key': ANTHROPIC_API_KEY!, 'anthropic-version': '2023-06-01', 'content-type': 'application/json' },
+          body: JSON.stringify({
+            model: 'claude-haiku-4-5', max_tokens: 120,
+            messages: [{ role: 'user', content: 'Destilliere aus diesem Tages-Briefing EINEN vollständigen Satz (max. 160 Zeichen), der das Wichtigste des Tages nennt und zum Handeln motiviert. Sprich direkt an (du). Keine Begrüßung, keine Anführungszeichen, keine Emojis, kein Markdown. Antworte NUR mit dem Satz.\n\n' + text }],
+          }),
+        });
+        if (eres.ok) {
+          const ej = await eres.json();
+          const ess = (ej.content || []).filter((c: { type: string }) => c.type === 'text').map((c: { text: string }) => c.text).join(' ').trim();
+          if (ess && ess.length <= 260) (context as Record<string, unknown>).essence = ess.replace(/^["„'»]+|["'"«]+$/g, '');
+        }
+      } catch (e) { console.warn('[briefing] essence distill failed:', (e as Error).message); }
+
       await persistBriefing(text);
       return json({ briefing_text: text, context, briefing_date: today });
     }
