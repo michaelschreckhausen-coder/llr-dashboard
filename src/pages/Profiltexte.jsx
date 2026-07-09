@@ -444,7 +444,7 @@ REGELN (hart):
       '- ' + visibleHint,
       '- Struktur-Empfehlung: [Rolle/Titel] | [Wem du hilfst] | [Wie + Differenzierung]',
       '- Pipe-Separator "|" für Lesbarkeit (alternativ "•")',
-      '- Zahlen/Metriken wo glaubwürdig möglich (z.B. „+500 begleitete Kund:innen")',
+      '- Zahlen/Metriken NUR wenn sie im Kontext belegt sind — sonst Platzhalter wie [Zahl] statt erfundener Werte.',
       '- Keine Standard-Floskeln wie „Passionate about…" oder „Results-driven…"',
       '- 2–4 relevante Keywords natürlich einbauen',
       ]),

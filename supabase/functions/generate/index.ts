@@ -371,6 +371,13 @@ serve(async (req) => {
       }
     }
 
+    // Aufrufer-spezifischer System-Prompt (Profiltexte, Vernetzungen, Messages …):
+    // body.systemPrompt wurde historisch ignoriert — die harten Qualitätsregeln
+    // dieser Seiten erreichten das Modell nie. Jetzt: ans System-Prompt anhängen.
+    if (typeof body.systemPrompt === 'string' && body.systemPrompt.trim()) {
+      systemPrompt += body.systemPrompt.trim() + '\n\n';
+    }
+
     // Multi-Modal: Referenz-Medien laden
     const reqStart = Date.now();
     console.log(`[generate] start model=${model} provider=${getProvider(model)} mediaPaths=${referenceMediaPaths.length}`);
