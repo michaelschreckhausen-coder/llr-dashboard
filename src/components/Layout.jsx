@@ -119,8 +119,9 @@ function getNav(t) {
   { to: '/linkedin-suche',  icon: IcSearch,   label: 'Suche' },
   { to: '/linkedin-inbox',  icon: IcInbox,    label: 'Import-Inbox' },
   { to: '/vernetzungen',    icon: IcHeart,    label: 'Vernetzung' },
-  { to: '/automatisierung', icon: IcZap,      label: 'Automatisierung' },
-  ...(isFlagEnabled('linkedinAutomationV2') || import.meta.env.VITE_APP_ENV === 'staging' ? [{ to: '/automatisierung-neu', icon: IcZap, label: 'Automatisierung ⚡Beta', module: 'linkedin' }] : []),
+  // Ein Eintrag „Automatisierung"; Ziel flag-bedingt: V2 (la_*) auf Staging/Flag-an,
+  // sonst Alt-Seite (Prod bis P6-Cutover). Alt-Route /automatisierung + automation_* bleiben.
+  { to: (isFlagEnabled('linkedinAutomationV2') || import.meta.env.VITE_APP_ENV === 'staging') ? '/automatisierung-neu' : '/automatisierung', icon: IcZap, label: 'Automatisierung' },
   { to: '/messages',        icon: IcMail,     label: 'Nachrichten' },
   { to: '/ssi',             icon: IcTarget,   label: t('nav.ssiTracker') },
   { to: '/profil-checker',  icon: IcLinkedIn, label: 'Profil-Checker' },
