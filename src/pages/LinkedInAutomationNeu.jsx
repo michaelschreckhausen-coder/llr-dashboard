@@ -205,8 +205,8 @@ export default function LinkedInAutomationNeu({ session }) {
     <div style={pageOuterStyle}><div style={pageStyle}>
       <div style={headerRowStyle}>
         <div>
-          <h1 style={titleStyle}>Automatisierung <span style={{ fontSize: 12, color: PRIMARY_VAR, border: `1px solid ${PRIMARY_VAR}`, borderRadius: 6, padding: '2px 6px', verticalAlign: 'middle' }}>Beta · Unipile</span></h1>
-          <p style={subtitleStyle}>Greenfield-Engine (la_*) — Builder + ehrlicher Funnel-Monitor. Getrennt vom Altsystem.</p>
+          <h1 style={titleStyle}>Automatisierung</h1>
+          <p style={subtitleStyle}>Kampagnen-Builder + Funnel-Monitor.</p>
         </div>
         <button style={primaryBtn} onClick={createCampaign} disabled={creating}><Plus size={16} /> Neue Kampagne</button>
       </div>
