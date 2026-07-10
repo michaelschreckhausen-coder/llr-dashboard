@@ -1,3 +1,10 @@
+/* ═══ Inter — self-hosted (DSGVO/ISO-konform, kein Google-Fonts-Call) ═══ */
+@font-face{font-family:'Inter';font-style:normal;font-weight:400;font-display:swap;src:url('/fonts/inter-400.woff2') format('woff2');}
+@font-face{font-family:'Inter';font-style:normal;font-weight:500;font-display:swap;src:url('/fonts/inter-500.woff2') format('woff2');}
+@font-face{font-family:'Inter';font-style:normal;font-weight:600;font-display:swap;src:url('/fonts/inter-600.woff2') format('woff2');}
+@font-face{font-family:'Inter';font-style:normal;font-weight:700;font-display:swap;src:url('/fonts/inter-700.woff2') format('woff2');}
+@font-face{font-family:'Inter';font-style:normal;font-weight:800;font-display:swap;src:url('/fonts/inter-800.woff2') format('woff2');}
+
 /* ═══════════════════════════════════════════════════════════════
    LEADESK THEME TOKENS — Phase Theme-1
    ═══════════════════════════════════════════════════════════════
@@ -22,16 +29,19 @@
   --primary-softer:      rgba(0,48,96,0.04);
   --primary-glow:        rgba(0,48,96,0.22);
 
-  --accent:              rgb(48,160,208);
-  --accent-soft:         rgb(120,195,225);
-  --accent-glow:         rgba(48,160,208,0.30);
+  --accent:              #16A8DC;                 /* CI Cyan */
+  --accent-mid:          #0A6FB0;                 /* CI Blau */
+  --accent-soft:         #9FDcF2;
+  --accent-glow:         rgba(22,168,220,0.30);
+  /* Marken-Verlauf 120° (CI) */
+  --grad:                linear-gradient(120deg, #16A8DC 0%, #0A6FB0 50%, #003060 100%);
 
   /* ── Surfaces ────────────────────────────────────────────── */
-  --bg-body:             #F8F9FB;          /* Page-Background */
+  --bg-body:             #F6F7FB;          /* CI Soft-BG */
   --bg-body-gradient:    none;             /* Light: kein Gradient */
   --bg-grain-opacity:    0;                /* Light: kein Grain */
   --surface:             #FFFFFF;          /* Card-Background */
-  --surface-muted:       #F8F9FB;          /* Secondary surface */
+  --surface-muted:       #F6F7FB;          /* CI Soft-BG */
   --surface-tint:        #EFF4F9;          /* Tinted surface */
   --surface-tint-2:      #E3ECF5;
   --surface-hover:       rgba(0,0,0,0.03); /* Hover-Overlay */
@@ -52,9 +62,9 @@
   --text-on-brand-soft:  rgba(255,255,255,0.78);
 
   /* ── Borders ─────────────────────────────────────────────── */
-  --border:              #E4E5EB;
-  --border-soft:         #EEEFF4;
-  --border-strong:       #D2D4DE;
+  --border:              #E6E8EF;          /* CI Border */
+  --border-soft:         #EEF1F6;
+  --border-strong:       #D6DAE4;
 
   /* ── Status ──────────────────────────────────────────────── */
   --warm:                #F59E0B;
@@ -100,9 +110,11 @@
   --primary-softer:      rgba(48,160,208,0.08);
   --primary-glow:        rgba(48,160,208,0.45);
 
-  --accent:              rgb(48,160,208);
-  --accent-soft:         rgb(120,195,225);
-  --accent-glow:         rgba(48,160,208,0.35);
+  --accent:              #16A8DC;
+  --accent-mid:          #0A6FB0;
+  --accent-soft:         #9FDcF2;
+  --accent-glow:         rgba(22,168,220,0.35);
+  --grad:                linear-gradient(120deg, #16A8DC 0%, #0A6FB0 50%, #003060 100%);
 
   /* ── Surfaces ────────────────────────────────────────────── */
   --bg-body:             #0B1020;
