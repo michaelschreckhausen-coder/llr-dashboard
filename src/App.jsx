@@ -13,7 +13,7 @@ import Leads         from './pages/Leads'
 import LeadDetail    from './pages/LeadDetail'
 import LeadProfile   from './pages/LeadProfile'
 import LeadsImports  from './pages/LeadsImports'
-import './lib/featureFlags' // installs window.__lk_features proxy
+import { isFlagEnabled } from './lib/featureFlags' // installs window.__lk_features proxy + flag API
 import Settings      from './pages/Settings'
 import BrandVoice    from './pages/BrandVoice'
 import Zielgruppen      from './pages/Zielgruppen'
@@ -50,6 +50,7 @@ import Pipeline      from './pages/Pipeline'
 import Vernetzungen  from './pages/Vernetzungen'
 import ProfilChecker from './pages/ProfilChecker'
 import LinkedInInbox from './pages/LinkedInInbox'
+import LinkedInAutomationNeu from './pages/LinkedInAutomationNeu'
 import LinkedInSuche from './pages/LinkedInSuche'
 import Reports       from './pages/Reports'
 import ICP           from './pages/ICP'
@@ -330,6 +331,9 @@ export default function App() {
             <Route path="/profil-checker" element={<ModuleGuard module="linkedin"><ProfilChecker session={session} /></ModuleGuard>} />
             <Route path="/linkedin-inbox" element={<ModuleGuard module="linkedin"><LinkedInInbox session={session} /></ModuleGuard>} />
             <Route path="/linkedin-suche" element={<ModuleGuard module="linkedin"><LinkedInSuche session={session} /></ModuleGuard>} />
+            {(isFlagEnabled('linkedinAutomationV2') || import.meta.env.VITE_APP_ENV === 'staging') && (
+              <Route path="/automatisierung-neu" element={<ModuleGuard module="linkedin"><LinkedInAutomationNeu session={session} /></ModuleGuard>} />
+            )}
             <Route path="/pipeline" element={<Navigate to="/deals?view=pipeline" replace />} />
             <Route path="/brand-voice" element={<Navigate to="/personal-brand" replace />} />
             <Route path="/personal-brand" element={

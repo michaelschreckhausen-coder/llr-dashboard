@@ -7,7 +7,7 @@ import { search, getRelations, type Person, type Page, type UnipileResult } from
 
 const db = createClient(Deno.env.get("SUPABASE_URL")!, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!, { auth: { persistSession: false } });
 
-const MAX_PAGES = 20;        // Runaway-Backstop
+const PAGES_PER_INVOKE = 5;  // Chunk pro Invoke — Cursor-Checkpoint (sync_cursor) gegen EF-Wall-Clock
 const DEFAULT_PER_DAY = 20;  // Fallback-Cap
 const WINDOW_H = 10;         // Arbeits-Fenster/Tag (h) für die Staffelung
 
@@ -33,7 +33,7 @@ Deno.serve(async (req) => {
   const { audience_id, campaign_id } = await req.json().catch(() => ({} as any));
   if (!audience_id) return json({ error: "audience_id required" }, 400);
 
-  const { data: aud } = await db.from("la_audiences").select("id, team_id, kind, query, search_url").eq("id", audience_id).maybeSingle();
+  const { data: aud } = await db.from("la_audiences").select("id, team_id, kind, query, search_url, sync_cursor").eq("id", audience_id).maybeSingle();
   if (!aud) return json({ error: "audience_not_found" }, 404);
 
   // Ziel-Kampagne: input ODER via la_campaigns.audience_id-Bindung (team-scoped).
@@ -53,7 +53,7 @@ Deno.serve(async (req) => {
 
   // Personen paginieren (Cursor bis erschöpft, MAX_PAGES-Backstop)
   const persons: Person[] = [];
-  let cursor: string | null = null, pages = 0; let fetchErr: unknown = null;
+  let cursor: string | null = aud.sync_cursor ?? null, pages = 0; let fetchErr: unknown = null; // ab Checkpoint fortsetzen
   do {
     const res: UnipileResult<Page> = aud.kind === "relations"
       ? await getRelations(accountId, cursor)
@@ -61,7 +61,7 @@ Deno.serve(async (req) => {
     if (!res.ok) { fetchErr = { status: res.status, type: res.type, detail: res.detail }; break; }
     persons.push(...res.data.items);
     cursor = res.data.cursor; pages++;
-  } while (cursor && pages < MAX_PAGES);
+  } while (cursor && pages < PAGES_PER_INVOKE);
 
   // Dedup gegen bestehende Enrollments (provider_id ODER public_identifier)
   const { data: existing } = await db.from("la_enrollments").select("provider_id, public_identifier").eq("campaign_id", campId);
@@ -90,6 +90,9 @@ Deno.serve(async (req) => {
     if (!jErr) jobs++;
   }
 
-  await db.from("la_audiences").update({ last_run_at: new Date().toISOString() }).eq("id", audience_id);
-  return json({ audience_id, campaign_id: campId, kind: aud.kind, pages, fetched: persons.length, inserted, deduped, jobs, per_day: perDay, fetch_error: fetchErr });
+  const done = !cursor || !!fetchErr;   // Cursor erschöpft ODER Fehler → Pull beendet; sonst Checkpoint für Fortsetzung
+  await db.from("la_audiences").update({
+    sync_cursor: done ? null : cursor, sync_done: done, last_run_at: new Date().toISOString(),
+  }).eq("id", audience_id);
+  return json({ audience_id, campaign_id: campId, kind: aud.kind, pages, fetched: persons.length, inserted, deduped, jobs, per_day: perDay, more_available: !done, fetch_error: fetchErr });
 });
