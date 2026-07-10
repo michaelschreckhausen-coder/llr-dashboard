@@ -152,10 +152,14 @@ export function useLeadly({ autoOpenLatest = true } = {}) {
   const fetchBriefing = useCallback(async () => {
     if (!uid) return null;
     const today = new Date().toISOString().split('T')[0];
-    const { data: existing } = await supabase
+    // TEAM-ISOLATION: Briefing-Cache ist pro Team — nie das Briefing eines
+    // anderen Teams anzeigen (Multi-Team-User!).
+    let bq = supabase
       .from('assistant_briefings')
       .select('briefing_text, context_json, briefing_date, read_at')
-      .eq('user_id', uid).eq('briefing_date', today).maybeSingle();
+      .eq('user_id', uid).eq('briefing_date', today);
+    bq = activeTeamId ? bq.eq('team_id', activeTeamId) : bq.is('team_id', null);
+    const { data: existing } = await bq.maybeSingle();
     if (existing) { setBriefing(existing); return existing; }
     const { data: fnData, error: fnErr } = await supabase.functions.invoke('leadly', {
       body: { mode: 'briefing', team_id: activeTeamId || null },
