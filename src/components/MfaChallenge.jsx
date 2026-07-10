@@ -97,8 +97,8 @@ export default function MfaChallenge({ onVerified }) {
           style={{ width: '100%', padding: '14px', borderRadius: 10, border: '1.5px solid var(--border)', fontSize: mode === 'totp' ? 26 : 20, letterSpacing: mode === 'totp' ? '0.4em' : '0.15em', textAlign: 'center', fontFamily: 'monospace', boxSizing: 'border-box', marginBottom: 16 }}
         />
 
-        <button onClick={verify} disabled={busy}
-          style={{ width: '100%', padding: '13px', borderRadius: 10, border: 'none', background: PRIMARY, color: '#fff', fontSize: 15, fontWeight: 700, cursor: busy ? 'default' : 'pointer', opacity: busy ? 0.7 : 1 }}>
+        <button className="lk-btn lk-btn-primary" onClick={verify} disabled={busy}
+          style={{ width: '100%', opacity: busy ? 0.7 : 1 }}>
           {busy ? 'Prüfe…' : 'Bestätigen'}
         </button>
 

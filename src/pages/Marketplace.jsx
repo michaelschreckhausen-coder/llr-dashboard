@@ -409,8 +409,8 @@ export default function Marketplace() {
                 style={{ border: '0.5px solid #CBD5E1', background: '#fff', borderRadius: 10, padding: '10px 18px', fontSize: 13.5, fontWeight: 500, cursor: 'pointer', color: '#475569' }}>
                 Abbrechen
               </button>
-              <button onClick={() => doActivateFree(pendingAddon)} disabled={activating}
-                style={{ border: 'none', background: 'var(--wl-primary, #0A6FB0)', color: '#fff', borderRadius: 10, padding: '10px 20px', fontSize: 13.5, fontWeight: 600, cursor: 'pointer', opacity: activating ? 0.6 : 1 }}>
+              <button className="lk-btn lk-btn-primary" onClick={() => doActivateFree(pendingAddon)} disabled={activating}
+                style={{ opacity: activating ? 0.6 : 1 }}>
                 {activating ? 'Aktiviere…' : 'Aktivieren'}
               </button>
             </div>

@@ -230,15 +230,9 @@ export default function GettingStarted() {
                     <a href={step.action.href} style={actionStyle}>{step.action.label} ↗</a>
                   )
                 )}
-                <button
+                <button className="lk-btn lk-btn-ghost"
                   onClick={() => toggle(step.id)}
-                  style={{
-                    fontSize:11, fontWeight:700, padding:'6px 12px', borderRadius:8,
-                    border:'1px solid var(--border)',
-                    background: done ? 'var(--surface-muted)' : 'var(--surface)',
-                    color: done ? 'var(--text-muted)' : 'var(--text-secondary)',
-                    cursor:'pointer', whiteSpace:'nowrap'
-                  }}>
+                  style={{ whiteSpace:'nowrap' }}>
                   {done ? 'Rückgängig' : 'Als erledigt markieren'}
                 </button>
               </div>

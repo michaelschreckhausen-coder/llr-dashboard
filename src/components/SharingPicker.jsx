@@ -242,8 +242,8 @@ export default function SharingPicker({
       )}
 
       <div style={{ display:'flex', justifyContent:'flex-end', marginTop:4 }}>
-        <button onClick={save} disabled={saving || (mode === 'selective' && selectedUserIds.length === 0 && otherMembers.length > 0)}
-          style={{ padding:'7px 16px', borderRadius:8, border:'none', background: saving ? '#94A3B8' : P, color:'#fff', fontSize:12, fontWeight:700, cursor: saving ? 'wait' : 'pointer' }}>
+        <button className="lk-btn lk-btn-primary" onClick={save} disabled={saving || (mode === 'selective' && selectedUserIds.length === 0 && otherMembers.length > 0)}
+          >
           {saving ? 'Speichere…' : 'Sichtbarkeit übernehmen'}
         </button>
       </div>

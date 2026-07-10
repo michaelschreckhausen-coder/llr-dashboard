@@ -358,8 +358,8 @@ export default function LeadlyHero({ firstName, leadly, stats = {}, onOpenTasks 
               <span style={{ fontSize: 13, color: colors.ink, flex: 1, minWidth: 180 }}>
                 <strong style={{ fontWeight: 600 }}>Leadly möchte:</strong> {a.summary || a.name}
               </span>
-              <button type="button" onClick={() => leadly.confirmAction?.(a)} disabled={leadly.isSending}
-                style={{ padding: '7px 14px', borderRadius: 8, border: 'none', background: 'var(--wl-primary, var(--primary, #0A6FB0))', color: '#fff', fontSize: 12.5, fontWeight: 700, cursor: 'pointer', opacity: leadly.isSending ? 0.6 : 1 }}>
+              <button className="lk-btn lk-btn-primary" type="button" onClick={() => leadly.confirmAction?.(a)} disabled={leadly.isSending}
+                style={{ opacity: leadly.isSending ? 0.6 : 1 }}>
                 Ausführen
               </button>
               <button type="button" onClick={() => leadly.dismissActions?.()}
@@ -411,15 +411,8 @@ export default function LeadlyHero({ firstName, leadly, stats = {}, onOpenTasks 
           style={iconBtn(voice.isRecording)}>
           {voice.isRecording ? <Square size={14} /> : <Mic size={16} />}
         </button>
-        <button type="submit" disabled={!text.trim()} aria-label="Senden"
-          style={{
-            width: 36, height: 36, borderRadius: 10, flexShrink: 0,
-            border: text.trim() ? 'none' : `1px solid ${colors.border}`,
-            background: text.trim() ? 'var(--wl-primary, var(--primary, #0A6FB0))' : 'transparent',
-            color: text.trim() ? '#fff' : colors.inkSoft,
-            cursor: text.trim() ? 'pointer' : 'not-allowed',
-            display: 'flex', alignItems: 'center', justifyContent: 'center',
-          }}>
+        <button className="lk-btn lk-btn-primary" type="submit" disabled={!text.trim()} aria-label="Senden"
+          style={{ width: 36, height: 36, flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
           <ArrowUp size={17} />
         </button>
       </form>

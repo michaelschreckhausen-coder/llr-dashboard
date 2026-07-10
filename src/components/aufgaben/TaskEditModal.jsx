@@ -290,19 +290,13 @@ export default function TaskEditModal({ task, members = [], uid, onClose, onSave
             )}
           </div>
           <div style={{ display: 'flex', gap: 8 }}>
-            <button onClick={onClose} disabled={saving}
-              style={{
-                padding: '8px 16px', borderRadius: 10, border: '1px solid #E5E7EB',
-                background: '#fff', color: '#374151', fontSize: 13, fontWeight: 600, cursor: saving ? 'wait' : 'pointer',
-              }}>
+            <button className="lk-btn lk-btn-ghost" onClick={onClose} disabled={saving}
+              >
               Abbrechen
             </button>
             {!isSynthetic && caps?.save && (
-              <button onClick={handleSave} disabled={saving}
-                style={{
-                  padding: '8px 18px', borderRadius: 10, border: 'none',
-                  background: PRIMARY, color: '#fff', fontSize: 13, fontWeight: 700, cursor: saving ? 'wait' : 'pointer',
-                }}>
+              <button className="lk-btn lk-btn-primary" onClick={handleSave} disabled={saving}
+                >
                 {saving ? 'Speichert…' : 'Speichern'}
               </button>
             )}

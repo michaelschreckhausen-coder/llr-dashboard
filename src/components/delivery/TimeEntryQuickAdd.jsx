@@ -283,15 +283,11 @@ export default function TimeEntryQuickAdd({
           >
             Abbrechen
           </button>
-          <button
+          <button className="lk-btn lk-btn-primary"
             type="button"
             onClick={handleSubmit}
             disabled={submitting}
-            style={{
-              padding: '8px 16px', backgroundColor: 'var(--wl-primary, #0A6FB0)', color: 'white',
-              border: 'none', borderRadius: 6, fontWeight: 600,
-              cursor: submitting ? 'not-allowed' : 'pointer', opacity: submitting ? 0.6 : 1,
-            }}
+            style={{ opacity: submitting ? 0.6 : 1 }}
           >
             {submitting ? 'Speichert…' : 'Speichern'}
           </button>

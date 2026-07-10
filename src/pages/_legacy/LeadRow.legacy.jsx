@@ -318,9 +318,9 @@ function LeadRowImpl({
                   const dt = new Date(); dt.setDate(dt.getDate()+days)
                   const iso = dt.toISOString().split('T')[0]
                   return (
-                    <button key={days}
+                    <button className="lk-btn lk-btn-ghost" key={days}
                       onClick={e => { e.stopPropagation(); onFollowupSet(lead.id, iso, label) }}
-                      style={{ padding:'6px 10px', borderRadius:7, border:'1px solid var(--border)', background:'var(--surface-muted)', fontSize:12, fontWeight:500, cursor:'pointer', color:'var(--text-primary)', textAlign:'left' }}>
+                      style={{ textAlign:'left' }}>
                       {label}
                     </button>
                   )

@@ -319,8 +319,8 @@ export default function Strike2PersonaWizard() {
             {gen.running ? `Phase ${gen.phase + 1}/7…` : gen.done ? '✓ Erneut generieren' : '⚡ 70 Ideen generieren'}
           </button>
         ) : (
-          <button type="button" onClick={() => gotoStep(stepIdx + 1)} disabled={missingRequired} title={missingRequired ? 'Pflichtfeld ausfüllen' : ''}
-            style={{ border: 'none', background: missingRequired ? '#CBD5E1' : PRIMARY, color: '#fff', borderRadius: 10, padding: '10px 20px', fontSize: 13.5, fontWeight: 600, cursor: missingRequired ? 'not-allowed' : 'pointer' }}>
+          <button className="lk-btn lk-btn-primary" type="button" onClick={() => gotoStep(stepIdx + 1)} disabled={missingRequired} title={missingRequired ? 'Pflichtfeld ausfüllen' : ''}
+            >
             Weiter
           </button>
         )}

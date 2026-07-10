@@ -243,10 +243,10 @@ function UrlImport({ edit, onUpdate, onExtractedText }) {
               disabled={loading}
               style={{flex:1,padding:'8px 11px',border:'1.5px solid #dde3ea',borderRadius:8,fontSize:13,outline:'none',boxSizing:'border-box'}}
             />
-            <button
+            <button className="lk-btn lk-btn-primary"
               onClick={extract}
               disabled={loading || !url.trim()}
-              style={{padding:'8px 18px',background:P,color:'#fff',border:'none',borderRadius:8,fontSize:13,fontWeight:600,cursor:loading||!url.trim()?'not-allowed':'pointer',opacity:loading||!url.trim()?.5:1,whiteSpace:'nowrap'}}
+              style={{ opacity:loading||!url.trim()?.5:1, whiteSpace:'nowrap' }}
             >
               {loading ? <span style={{display:'inline-flex',alignItems:'center',gap:6}}><Loader2 size={14} className='lk-spin'/>Lädt…</span> : 'Extrahieren'}
             </button>
@@ -325,10 +325,10 @@ function LinkedInImport({ edit, onUpdate, onExtractedText }) {
               disabled={loading}
               style={{flex:1,padding:'8px 11px',border:'1.5px solid #dde3ea',borderRadius:8,fontSize:13,outline:'none',boxSizing:'border-box'}}
             />
-            <button
+            <button className="lk-btn lk-btn-primary"
               onClick={extract}
               disabled={loading || !url.trim()}
-              style={{padding:'8px 18px',background:P,color:'#fff',border:'none',borderRadius:8,fontSize:13,fontWeight:600,cursor:loading||!url.trim()?'not-allowed':'pointer',opacity:loading||!url.trim()?.5:1,whiteSpace:'nowrap'}}
+              style={{ opacity:loading||!url.trim()?.5:1, whiteSpace:'nowrap' }}
             >
               {loading ? <span style={{display:'inline-flex',alignItems:'center',gap:6}}><Loader2 size={14} className='lk-spin'/>Lädt…</span> : 'Profil importieren'}
             </button>
@@ -443,12 +443,12 @@ export default function Wissensdatenbank({ session }) {
         <p style={{ fontSize:13, color:'var(--text-muted)', margin:'8px 0 0', lineHeight:1.6 }}>Faktenmaterial für die KI — Dokumente, URLs, LinkedIn-Profile. Fließt automatisch in alle generierten Inhalte ein.</p>
       </div>
       <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:16, gap:12, flexWrap:'wrap' }}>
-        <button data-tour-id="kb-add" onClick={()=>{setEdit({...E0,user_id:session.user.id});setView('editor')}} style={{padding:'10px 20px',background:P,color:'#fff',border:'none',borderRadius:10,fontSize:13,fontWeight:600,cursor:'pointer',boxShadow:'0 2px 8px rgba(10,111,176,.18)'}}>+ Wissen hinzufügen</button>
+        <button className="lk-btn lk-btn-primary" data-tour-id="kb-add" onClick={()=>{setEdit({...E0,user_id:session.user.id});setView('editor')}} >+ Wissen hinzufügen</button>
         <input value={search} onChange={e=>setSearch(e.target.value)} placeholder="Suchen…" style={{padding:'8px 14px',border:'1.5px solid var(--border)',borderRadius:10,fontSize:13,width:220}}/>
       </div>
       <div style={{ display:'flex', flexWrap:'wrap', gap:6, marginBottom:16 }}>
-        <button onClick={()=>setFilter('alle')} style={{padding:'5px 12px',borderRadius:20,border:filter==='alle'?`1.5px solid ${P}`:'1.5px solid #dde3ea',background:filter==='alle'?P:'#fff',color:filter==='alle'?'#fff':'#666',fontSize:12,cursor:'pointer',fontWeight:filter==='alle'?600:400}}>Alle ({items.length})</button>
-        {CATEGORIES.map(c => { const cnt=counts[c.v]||0; if(cnt===0&&filter!==c.v) return null; return <button key={c.v} onClick={()=>setFilter(c.v)} style={{padding:'5px 12px',borderRadius:20,border:filter===c.v?`1.5px solid ${P}`:'1.5px solid #dde3ea',background:filter===c.v?P:'#fff',color:filter===c.v?'#fff':'#666',fontSize:12,cursor:'pointer',fontWeight:filter===c.v?600:400}}>{c.icon} {c.l} ({cnt})</button> })}
+        <button className="lk-btn lk-btn-primary" onClick={()=>setFilter('alle')} >Alle ({items.length})</button>
+        {CATEGORIES.map(c => { const cnt=counts[c.v]||0; if(cnt===0&&filter!==c.v) return null; return <button className="lk-btn lk-btn-primary" key={c.v} onClick={()=>setFilter(c.v)} >{c.icon} {c.l} ({cnt})</button> })}
       </div>
       {filtered.length === 0 ? (
         <div style={{textAlign:'center',color:'#888',padding:40}}>{items.length===0?'Noch kein Wissen hinterlegt. Füge dein erstes Kontextdokument hinzu!':'Keine Einträge für diesen Filter.'}</div>
@@ -469,8 +469,8 @@ export default function Wissensdatenbank({ session }) {
               <div style={{display:'flex',alignItems:'center',gap:8}}>
                 <span style={{fontSize:10,background:'#f0f0f0',padding:'3px 8px',borderRadius:6,color:'#666'}}>{cat.l}</span>
                 <span style={{fontSize:10,color:'#aaa'}}>{v.content?(v.content.length>1000?Math.round(v.content.length/1000)+'k':v.content.length)+' Zeichen':''}</span>
-                {team && v.user_id === session.user.id && <button onClick={e=>{e.stopPropagation();setSharingModalFor(v)}}
-                  style={{padding:'4px 10px',borderRadius:6,border:'1px solid var(--border)',background: v.is_shared ? 'rgba(16,185,129,0.08)':'#fff',fontSize:11,cursor:'pointer',color:'var(--text-primary)'}}>
+                {team && v.user_id === session.user.id && <button className="lk-btn lk-btn-ghost" onClick={e=>{e.stopPropagation();setSharingModalFor(v)}}
+                  >
                   {v.is_shared ? `${team.name || 'Team'}` : 'Sichtbarkeit'}
                 </button>}
                 {v.user_id === session.user.id && <button onClick={e=>{e.stopPropagation();remove(v.id)}} style={{background:'none',border:'none',cursor:'pointer',color:'#ccc',fontSize:14}}><Trash2 size={14} strokeWidth={1.75}/></button>}
@@ -610,11 +610,11 @@ export default function Wissensdatenbank({ session }) {
       <div style={{ marginTop:24, marginBottom:16, padding:'18px 0 0', borderTop:'1.5px solid var(--border, #E5E7EB)', display:'flex', gap:10, justifyContent:'space-between', alignItems:'center' }}>
         <button onClick={()=>{setView('list');setEdit(null)}} style={{ padding:'11px 20px', background:'transparent', border:'1.5px solid var(--border, #E5E7EB)', borderRadius:10, fontSize:13.5, cursor:'pointer', color:'var(--text-muted)', fontFamily:'inherit', fontWeight:500 }}>Abbrechen</button>
         <div style={{ display:'flex', alignItems:'center', gap:8 }}>
-          <button type="button" onClick={()=>setShowVisibilityModal(true)} title="Sichtbarkeit anpassen"
-            style={{ padding:'11px 16px', background:'var(--surface, #fff)', color:'var(--text-primary)', border:'1.5px solid var(--border)', borderRadius:10, fontSize:13, fontWeight:600, cursor:'pointer', display:'inline-flex', alignItems:'center', gap:7, fontFamily:'inherit' }}>
+          <button className="lk-btn lk-btn-ghost" type="button" onClick={()=>setShowVisibilityModal(true)} title="Sichtbarkeit anpassen"
+            style={{ display:'inline-flex', alignItems:'center', gap:7, fontFamily:'inherit' }}>
             <Eye size={15} strokeWidth={1.75}/><span>{edit.is_shared ? 'Geteilt' : 'Sichtbarkeit'}</span>
           </button>
-          <button onClick={save} disabled={!edit.name?.trim()} style={{ padding:'12px 26px', background:edit.name?.trim()?P:'#94A3B8', color:'#fff', border:'none', borderRadius:10, fontSize:14, fontWeight:600, cursor:edit.name?.trim()?'pointer':'not-allowed', boxShadow:edit.name?.trim()?'0 2px 10px rgba(10,111,176,.25)':'none', display:'inline-flex', alignItems:'center', gap:8, fontFamily:'inherit', opacity:edit.name?.trim()?1:.8 }}>
+          <button className="lk-btn lk-btn-primary" onClick={save} disabled={!edit.name?.trim()} style={{ display:'inline-flex', alignItems:'center', gap:8, fontFamily:'inherit', opacity:edit.name?.trim()?1:.8 }}>
             <span style={{display:'inline-flex'}}><Save size={14}/></span><span>Speichern</span>
           </button>
         </div>

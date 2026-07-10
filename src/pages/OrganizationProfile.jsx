@@ -337,7 +337,7 @@ export default function OrganizationProfile({ session }) {
   if (!org) return (
     <div style={{ padding: 40, textAlign: 'center' }}>
       <div style={{ fontSize: 15, color: '#6B7280', marginBottom: 12 }}>Organisation nicht gefunden</div>
-      <button onClick={() => navigate('/organizations')} style={{ padding: '8px 16px', borderRadius: 10, border: '1px solid #E4E7EC', background: 'var(--surface)', fontSize: 13, color: PRIMARY, cursor: 'pointer' }}>← Zurück zur Liste</button>
+      <button className="lk-btn lk-btn-ghost" onClick={() => navigate('/organizations')} >← Zurück zur Liste</button>
     </div>
   )
 
@@ -384,17 +384,17 @@ export default function OrganizationProfile({ session }) {
           </div>
           <div style={{ display: 'flex', gap: 8 }}>
             {!editing && sponsoringActive && (
-              <button onClick={() => toggleSponsor(!isSponsor)} disabled={extMarking}
+              <button className="lk-btn lk-btn-primary" onClick={() => toggleSponsor(!isSponsor)} disabled={extMarking}
                 title={isSponsor ? 'Aus der Sponsoren-Lens entfernen' : 'Als Sponsor markieren — erscheint in der Sponsoren-Lens'}
-                style={{ padding: '7px 14px', borderRadius: 9, border: isSponsor ? '1px solid #E4E7EC' : 'none', background: isSponsor ? 'var(--surface)' : PRIMARY, color: isSponsor ? '#6B7280' : '#fff', fontSize: 12, fontWeight: 700, cursor: extMarking ? 'wait' : 'pointer', opacity: extMarking ? 0.6 : 1, whiteSpace: 'nowrap' }}>
+                style={{ opacity: extMarking ? 0.6 : 1, whiteSpace: 'nowrap' }}>
                 {extMarking ? '…' : (isSponsor ? 'Kein Sponsor mehr' : '★ Als Sponsor markieren')}
               </button>
             )}
-            {!editing && <button onClick={() => setEditing(true)} style={{ padding: '7px 14px', borderRadius: 9, border: '1px solid #E4E7EC', background: 'var(--surface)', fontSize: 12, fontWeight: 700, cursor: 'pointer', color: '#374151' }}>Bearbeiten</button>}
+            {!editing && <button className="lk-btn lk-btn-ghost" onClick={() => setEditing(true)} >Bearbeiten</button>}
             {editing && (
               <>
-                <button onClick={() => { setEditing(false); setEditForm(org) }} style={{ padding: '7px 14px', borderRadius: 9, border: '1px solid #E4E7EC', background: 'var(--surface)', fontSize: 12, fontWeight: 700, cursor: 'pointer', color: '#374151' }}>Abbrechen</button>
-                <button onClick={saveEdit} disabled={saving} style={{ padding: '7px 16px', borderRadius: 9, border: 'none', background: PRIMARY, color: '#fff', fontSize: 12, fontWeight: 700, cursor: 'pointer' }}>{saving ? '⏳…' : 'Speichern'}</button>
+                <button className="lk-btn lk-btn-ghost" onClick={() => { setEditing(false); setEditForm(org) }} >Abbrechen</button>
+                <button className="lk-btn lk-btn-primary" onClick={saveEdit} disabled={saving} >{saving ? '⏳…' : 'Speichern'}</button>
               </>
             )}
           </div>
@@ -581,9 +581,9 @@ export default function OrganizationProfile({ session }) {
           {/* Add-Contact Control */}
           <div style={{ marginBottom: 12 }}>
             {!addOpen ? (
-              <button
+              <button className="lk-btn lk-btn-primary"
                 onClick={() => { setAddOpen(true); searchLeadsForAdd('') }}
-                style={{ background: PRIMARY, color: '#fff', border: 'none', borderRadius: 8, padding: '8px 14px', fontSize: 13, fontWeight: 700, cursor: 'pointer' }}>
+                >
                 + Kontakt hinzufügen
               </button>
             ) : (
@@ -702,7 +702,7 @@ export default function OrganizationProfile({ session }) {
         ) : extError ? (
           <div style={{ padding: 40, textAlign: 'center' }}>
             <div style={{ fontSize: 13, color: '#DC2626', marginBottom: 12 }}>Sponsoring-Profil konnte nicht geladen werden: {extError}</div>
-            <button onClick={loadSponsorExt} style={{ padding: '8px 16px', borderRadius: 10, border: '1px solid #E4E7EC', background: 'var(--surface)', fontSize: 13, color: PRIMARY, cursor: 'pointer' }}>Erneut versuchen</button>
+            <button className="lk-btn lk-btn-ghost" onClick={loadSponsorExt} >Erneut versuchen</button>
           </div>
         ) : !ext ? (
           <div style={{ padding: 40, textAlign: 'center', color: '#9CA3AF' }}>Kein Sponsoring-Profil verfügbar.</div>
@@ -714,8 +714,8 @@ export default function OrganizationProfile({ session }) {
                   {typeof ext.fit_score === 'number' ? ext.fit_score : '—'}
                   <span style={{ fontSize: 14, fontWeight: 600, color: '#9CA3AF' }}> / 100</span>
                 </div>
-                <button onClick={scoreSponsor} disabled={extScoring}
-                  style={{ padding: '8px 16px', borderRadius: 9, border: 'none', background: PRIMARY, color: '#fff', fontSize: 12, fontWeight: 700, cursor: extScoring ? 'wait' : 'pointer', opacity: extScoring ? 0.6 : 1 }}>
+                <button className="lk-btn lk-btn-primary" onClick={scoreSponsor} disabled={extScoring}
+                  style={{ opacity: extScoring ? 0.6 : 1 }}>
                   {extScoring ? '⏳ Berechne…' : 'KI-Score berechnen'}
                 </button>
               </div>
@@ -765,8 +765,8 @@ export default function OrganizationProfile({ session }) {
                     ))}
                   </select>
                   {cycleStages.length === 0 && (
-                    <button type="button" onClick={seedCycle} disabled={seedingCycle}
-                      style={{ marginTop: 6, padding: '6px 12px', borderRadius: 8, border: '1px solid var(--border)', background: 'var(--surface)', color: PRIMARY, fontSize: 12, fontWeight: 600, cursor: 'pointer', opacity: seedingCycle ? 0.6 : 1 }}>
+                    <button className="lk-btn lk-btn-ghost" type="button" onClick={seedCycle} disabled={seedingCycle}
+                      style={{ marginTop: 6, opacity: seedingCycle ? 0.6 : 1 }}>
                       {seedingCycle ? 'Lege an…' : '+ Standard-Phasen anlegen'}
                     </button>
                   )}

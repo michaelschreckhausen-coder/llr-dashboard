@@ -335,9 +335,9 @@ function OrganizationModal({ org, industries, teamId, uid, onSave, onClose }) {
         </div>
 
         <div style={{ padding: '14px 22px', borderTop: '1px solid #F1F5F9', display: 'flex', gap: 10, justifyContent: 'flex-end' }}>
-          <button onClick={onClose} style={{ padding: '9px 16px', borderRadius: 10, border: '1px solid #E4E7EC', background: 'var(--surface)', fontSize: 13, fontWeight: 600, cursor: 'pointer', color: '#374151' }}>Abbrechen</button>
-          <button onClick={save} disabled={saving}
-            style={{ padding: '9px 20px', borderRadius: 10, border: 'none', background: PRIMARY, color: '#fff', fontSize: 13, fontWeight: 700, cursor: 'pointer', opacity: saving ? 0.6 : 1 }}>
+          <button className="lk-btn lk-btn-ghost" onClick={onClose} >Abbrechen</button>
+          <button className="lk-btn lk-btn-primary" onClick={save} disabled={saving}
+            style={{ opacity: saving ? 0.6 : 1 }}>
             {saving ? 'Speichern…' : 'Speichern'}
           </button>
         </div>
@@ -498,12 +498,12 @@ export default function Organizations({ session }) {
         <span style={scriptHintStyle}>Auf und zuklappen</span>
         <CurvedArrow/>
       </div>
-      <button onClick={toggleDash} title={showDash ? 'Dashboard ausblenden' : 'Dashboard einblenden'}
-        style={{ padding: '9px 14px', borderRadius: 10, border: '1.5px solid #E2E8F0', background: 'var(--surface-muted)', color: '#475569', fontSize: 13, fontWeight: 600, cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: 6, whiteSpace: 'nowrap' }}>
+      <button className="lk-btn lk-btn-ghost" onClick={toggleDash} title={showDash ? 'Dashboard ausblenden' : 'Dashboard einblenden'}
+        style={{ display: 'inline-flex', alignItems: 'center', gap: 6, whiteSpace: 'nowrap' }}>
         {showDash ? <ChevronUp size={15}/> : <ChevronDown size={15}/>}Dashboard
       </button>
-      <button onClick={() => setModal('new')}
-        style={{ padding: '9px 18px', borderRadius: 10, border: 'none', background: PRIMARY, color: '#fff', fontSize: 13, fontWeight: 700, cursor: 'pointer', whiteSpace: 'nowrap' }}>
+      <button className="lk-btn lk-btn-primary" onClick={() => setModal('new')}
+        style={{ whiteSpace: 'nowrap' }}>
         + Neues Unternehmen
       </button>
     </div>
@@ -568,8 +568,8 @@ export default function Organizations({ session }) {
         )}
         <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Firma, Ort oder Branche suchen…"
           style={{ flex: 1, minWidth: 180, padding: '9px 14px', borderRadius: 10, border: '1.5px solid #E2E8F0', fontSize: 13, outline: 'none', background: 'var(--surface)', color: 'var(--text-primary, #111827)' }}/>
-        <button onClick={exportCsv}
-          style={{ padding: '8px 14px', borderRadius: 10, border: '1.5px solid #E2E8F0', background: 'var(--surface-muted)', fontSize: 12, fontWeight: 600, color: 'var(--text-muted)', cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+        <button className="lk-btn lk-btn-ghost" onClick={exportCsv}
+          style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
           <Download size={13} strokeWidth={1.75}/>CSV
         </button>
       </div>
@@ -578,10 +578,10 @@ export default function Organizations({ session }) {
       {sponsoringActive && selected.size > 0 && filter !== 'sponsoren' && (
         <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 14, padding: '10px 14px', borderRadius: 12, background: 'rgba(10,111,176,0.06)', border: '1px solid ' + PRIMARY + '33' }}>
           <span style={{ fontSize: 13, fontWeight: 700, color: PRIMARY }}>{selected.size} ausgewählt</span>
-          <button onClick={() => bulkMarkSponsor(true)} disabled={bulkMarking}
-            style={{ padding: '7px 14px', borderRadius: 9, border: 'none', background: PRIMARY, color: '#fff', fontSize: 12, fontWeight: 700, cursor: bulkMarking ? 'wait' : 'pointer', opacity: bulkMarking ? 0.6 : 1 }}>★ Als Sponsor markieren</button>
-          <button onClick={() => bulkMarkSponsor(false)} disabled={bulkMarking}
-            style={{ padding: '7px 14px', borderRadius: 9, border: '1px solid #E4E7EC', background: 'var(--surface)', color: '#6B7280', fontSize: 12, fontWeight: 700, cursor: bulkMarking ? 'wait' : 'pointer', opacity: bulkMarking ? 0.6 : 1 }}>Sponsor entfernen</button>
+          <button className="lk-btn lk-btn-primary" onClick={() => bulkMarkSponsor(true)} disabled={bulkMarking}
+            style={{ opacity: bulkMarking ? 0.6 : 1 }}>★ Als Sponsor markieren</button>
+          <button className="lk-btn lk-btn-ghost" onClick={() => bulkMarkSponsor(false)} disabled={bulkMarking}
+            style={{ opacity: bulkMarking ? 0.6 : 1 }}>Sponsor entfernen</button>
           <button onClick={() => setSelected(new Set())} style={{ marginLeft: 'auto', padding: '7px 12px', borderRadius: 9, border: 'none', background: 'transparent', color: '#6B7280', fontSize: 12, fontWeight: 600, cursor: 'pointer' }}>Auswahl aufheben</button>
         </div>
       )}

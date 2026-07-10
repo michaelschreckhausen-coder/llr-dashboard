@@ -165,10 +165,7 @@ export default function Instagram() {
           Verbinde dein Instagram-Konto in den Einstellungen, um Analysen zu sehen und
           Beiträge direkt aus dem Redaktionsplan zu veröffentlichen.
         </div>
-        <button onClick={() => navigate('/settings/instagram')} style={{
-          padding: '10px 20px', borderRadius: 9, border: 'none', background: PRIMARY,
-          color: '#fff', fontSize: 14, fontWeight: 700, cursor: 'pointer',
-        }}>
+        <button className="lk-btn lk-btn-primary" onClick={() => navigate('/settings/instagram')} >
           Instagram verbinden
         </button>
       </div>

@@ -124,8 +124,8 @@ export default function ProfilChecker({ session }) {
         title="Profil-Checker"
         subtitle="Prüft dein LinkedIn-Profil auf Vollständigkeit — Banner, Foto, Slogan, Info-Box, Erfahrung und mehr — und merkt sich deine früheren Analysen."
         action={
-          <button onClick={run} disabled={loading}
-            style={{ padding: '9px 16px', borderRadius: 10, border: 'none', background: P, color: '#fff', fontSize: 13, fontWeight: 700, cursor: loading ? 'default' : 'pointer', display: 'inline-flex', alignItems: 'center', gap: 7 }}>
+          <button className="lk-btn lk-btn-primary" onClick={run} disabled={loading}
+            style={{ display: 'inline-flex', alignItems: 'center', gap: 7 }}>
             {loading ? <Loader2 size={15} className="lk-spin" /> : (result ? <RefreshCw size={15} /> : <Sparkles size={15} />)}
             {loading ? 'Prüfe…' : (result ? 'Erneut prüfen' : 'Profil prüfen')}
           </button>
@@ -151,7 +151,7 @@ export default function ProfilChecker({ session }) {
           <div style={{ fontSize: 13, color: 'var(--text-muted)', maxWidth: '52ch', margin: '0 auto 18px', lineHeight: 1.6 }}>
             Klick auf „Profil prüfen". Die Leadesk-Extension öffnet kurz dein eigenes LinkedIn-Profil, liest die wichtigsten Bereiche aus und bewertet die Vollständigkeit.
           </div>
-          <button onClick={run} style={{ padding: '10px 22px', borderRadius: 10, border: 'none', background: P, color: '#fff', fontSize: 14, fontWeight: 700, cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: 8 }}>
+          <button className="lk-btn lk-btn-primary" onClick={run} style={{ display: 'inline-flex', alignItems: 'center', gap: 8 }}>
             <Sparkles size={16} /> Profil prüfen
           </button>
         </div>

@@ -198,7 +198,7 @@ export default function SSI({ session }) {
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><path d="M12 8v8M8 12h8"/></svg>
             SSI per Extension auslesen
           </a>
-          <button onClick={() => setShowForm(f=>!f)} style={{ padding:'10px 20px', borderRadius:12, border:'none', background:'linear-gradient(135deg, #0A6FB0, #16A8DC)', color:'white', fontSize:13, fontWeight:700, cursor:'pointer', boxShadow:'0 4px 14px rgba(10,111,176,0.3)' }}>
+          <button className="lk-btn lk-btn-primary" onClick={() => setShowForm(f=>!f)} >
             {showForm ? 'Abbrechen' : '+ Eintragen'}
           </button>
         </div>
@@ -241,8 +241,8 @@ export default function SSI({ session }) {
               <textarea value={form.notes} onChange={e=>setForm(f=>({...f,notes:e.target.value}))} style={{...inp,minHeight:60,resize:'vertical'}} placeholder="Was hast du diese Woche gemacht?"/>
             </div>
             <div style={{ display:'flex', gap:10 }}>
-              <button type="submit" disabled={saving} style={{ padding:'10px 24px', borderRadius:12, border:'none', background:'linear-gradient(135deg,#0A6FB0,#16A8DC)', color:'white', fontSize:13, fontWeight:700, cursor:'pointer' }}>{saving?'Speichert...':'Speichern'}</button>
-              <button type="button" onClick={()=>setShowForm(false)} style={{ padding:'10px 18px', borderRadius:12, border:'1px solid var(--border)', background:'var(--surface)', color:'var(--text-muted)', fontSize:13, fontWeight:600, cursor:'pointer' }}>Abbrechen</button>
+              <button className="lk-btn lk-btn-primary" type="submit" disabled={saving} >{saving?'Speichert...':'Speichern'}</button>
+              <button className="lk-btn lk-btn-ghost" type="button" onClick={()=>setShowForm(false)} >Abbrechen</button>
             </div>
           </form>
         </div>

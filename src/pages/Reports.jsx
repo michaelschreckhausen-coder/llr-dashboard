@@ -409,8 +409,8 @@ function PipelineSection({ data }) {
       {members.length > 0 && (
         <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 14, flexWrap: 'wrap' }}>
           <span style={{ fontSize: 11, fontWeight: 600, color: COLORS.text3, textTransform: 'uppercase', letterSpacing: '0.06em' }}>Owner-Filter:</span>
-          <button type="button" onClick={() => setOwnerFilter(null)}
-            style={{ padding: '5px 11px', borderRadius: 99, border: `1.5px solid ${ownerFilter === null ? COLORS.primary : COLORS.border}`, background: ownerFilter === null ? COLORS.primary : '#fff', color: ownerFilter === null ? '#fff' : COLORS.text2, fontSize: 12, fontWeight: 600, cursor: 'pointer' }}>
+          <button className="lk-btn lk-btn-primary" type="button" onClick={() => setOwnerFilter(null)}
+            >
             Alle ({allDeals.length})
           </button>
           {members.map(m => {
@@ -419,8 +419,8 @@ function PipelineSection({ data }) {
             if (count === 0) return null;
             const active = ownerFilter === userId;
             return (
-              <button key={userId} type="button" onClick={() => setOwnerFilter(active ? null : userId)}
-                style={{ padding: '5px 11px', borderRadius: 99, border: `1.5px solid ${active ? COLORS.primary : COLORS.border}`, background: active ? COLORS.primary : '#fff', color: active ? '#fff' : COLORS.text2, fontSize: 12, fontWeight: 600, cursor: 'pointer' }}>
+              <button className="lk-btn lk-btn-primary" key={userId} type="button" onClick={() => setOwnerFilter(active ? null : userId)}
+                >
                 {memberName(userId)} ({count})
               </button>
             );
@@ -1009,13 +1009,8 @@ export default function Reports({ session }) {
           action={(
             <div style={{ display: 'flex', gap: 6, alignItems: 'center', flexWrap: 'wrap', justifyContent: 'flex-end' }}>
               {[7, 30, 90].map(d => (
-                <button key={d} type="button" onClick={() => setRange(d)}
-                  style={{
-                    padding: '7px 14px', borderRadius: 8, fontSize: 13, fontWeight: 600, cursor: 'pointer',
-                    background: range === d ? PRIMARY : COLORS.surface,
-                    color: range === d ? '#fff' : COLORS.text2,
-                    border: range === d ? `1px solid ${PRIMARY}` : `1px solid ${COLORS.border}`,
-                  }}>{d} Tage</button>
+                <button className="lk-btn lk-btn-primary" key={d} type="button" onClick={() => setRange(d)}
+                  >{d} Tage</button>
               ))}
               <button type="button" onClick={refetch} title="Aktualisieren" style={iconBtnStyle}>
                 <RefreshCw size={14} />

@@ -32,23 +32,8 @@ export default function BrandVoiceSwitcher({ session, compact = false }) {
 
   return (
     <div ref={ref} style={{ position:'relative' }}>
-      <button onClick={() => setOpen(o => !o)}
-        style={{
-          display:'inline-flex', alignItems:'center', gap:8,
-          height: 38, boxSizing: 'border-box',
-          padding: compact ? '0 12px' : '0 14px',
-          borderRadius: 11,
-          border:'1px solid var(--border)',
-          background:'var(--surface)',
-          fontSize: compact ? 12 : 13,
-          fontWeight: 600,
-          color:'var(--text-primary)',
-          cursor:'pointer',
-          maxWidth: 280,
-          whiteSpace:'nowrap',
-          overflow:'hidden',
-          textOverflow:'ellipsis',
-        }}>
+      <button className="lk-btn lk-btn-ghost" onClick={() => setOpen(o => !o)}
+        style={{ display:'inline-flex', alignItems:'center', gap:8, height: 38, boxSizing: 'border-box', maxWidth: 280, whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis' }}>
         <span style={{ fontSize: compact ? 14 : 16 }}>{activeIcon}</span>
         <span style={{ overflow:'hidden', textOverflow:'ellipsis' }}>{activeName}</span>
         <span style={{ marginLeft:2, opacity:.5, fontSize:10 }}>▼</span>

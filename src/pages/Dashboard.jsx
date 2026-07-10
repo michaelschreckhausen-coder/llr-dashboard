@@ -346,8 +346,8 @@ export default function Dashboard({ session }) {
                   <div style={{ fontSize: 14, fontWeight: 600, color: colors.ink, lineHeight: 1.35 }}>{s.title}</div>
                   {s.reason && <div style={{ fontSize: 12, color: colors.inkMuted }}>{s.reason}</div>}
                   <div style={{ display: 'flex', gap: 8, marginTop: 'auto', paddingTop: 4 }}>
-                    <button onClick={() => (s.action ? takeAction(s.action) : askLeadly(s.prompt))}
-                      style={{ padding: '7px 14px', borderRadius: 8, border: 'none', background: colors.primary, color: '#fff', fontSize: 12, fontWeight: 700, cursor: 'pointer' }}>
+                    <button className="lk-btn lk-btn-primary" onClick={() => (s.action ? takeAction(s.action) : askLeadly(s.prompt))}
+                      >
                       {s.action ? 'Erledigen' : 'Mit Leadly angehen'}
                     </button>
                     {s.href && (

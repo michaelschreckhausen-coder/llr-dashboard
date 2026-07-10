@@ -115,8 +115,8 @@ export default function LeadPicker({ value, valueName, onChange, placeholder, di
           }}
         />
         {display && allowClear && !disabled && (
-          <button type="button" onClick={clearLead}
-            style={{ padding: '6px 10px', border: '1px solid #E4E7EC', background: 'var(--surface)', borderRadius: 8, fontSize: 12, color: '#6B7280', cursor: 'pointer' }}>
+          <button className="lk-btn lk-btn-ghost" type="button" onClick={clearLead}
+            >
             ×
           </button>
         )}

@@ -652,8 +652,8 @@ const DocumentEditorPane = forwardRef(function DocumentEditorPane({
                     onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); runCustomInstruction() } if (e.key === 'Escape') closeBubble() }}
                     placeholder="Anweisung an die KI … z. B. „knackiger“"
                     style={{ flex:1, minWidth:0, border:'none', outline:'none', background:'transparent', color:'var(--text-primary)', fontSize:13, fontFamily:'inherit' }}/>
-                  <button onClick={runCustomInstruction} disabled={!aiInstruction.trim()}
-                    style={{ width:30, height:30, flexShrink:0, display:'inline-flex', alignItems:'center', justifyContent:'center', border:'none', borderRadius:8, background: aiInstruction.trim() ? P : '#E4E7EC', color:'#fff', cursor: aiInstruction.trim() ? 'pointer' : 'default' }}>
+                  <button className="lk-btn lk-btn-primary" onClick={runCustomInstruction} disabled={!aiInstruction.trim()}
+                    style={{ width:30, height:30, flexShrink:0, display:'inline-flex', alignItems:'center', justifyContent:'center' }}>
                     <Send size={13} strokeWidth={2}/>
                   </button>
                 </div>
@@ -713,9 +713,9 @@ function Chip({ children, onClick, active, accent }) {
 
 function IconBtn({ onClick, title, children }) {
   return (
-    <button type="button" onClick={onClick} title={title}
-      style={{ display:'inline-flex', alignItems:'center', justifyContent:'center', width:32, height:32, border:'1px solid var(--border,#E9ECF2)', background:'var(--surface,#fff)', borderRadius:9, cursor:'pointer', color:'var(--text-muted,#667085)', flexShrink:0 }}
-      onMouseEnter={e=>e.currentTarget.style.background='#F1F3F7'} onMouseLeave={e=>e.currentTarget.style.background='var(--surface,#fff)'}>
+    <button className="lk-btn lk-btn-ghost" type="button" onClick={onClick} title={title}
+      style={{ display:'inline-flex', alignItems:'center', justifyContent:'center', width:32, height:32, flexShrink:0 }}
+       >
       {children}
     </button>
   )
@@ -735,9 +735,9 @@ function Toolbar({ editor, onContinue, continuing }) {
   if (!editor) return null
   const c = () => editor.chain().focus()
   const Btn = ({ on, active, title, children }) => (
-    <button type="button" title={title} onMouseDown={e => e.preventDefault()} onClick={on}
-      style={{ display:'inline-flex', alignItems:'center', justifyContent:'center', width:30, height:30, border:'none', borderRadius:7, background: active ? P : 'transparent', color: active ? '#fff' : 'var(--text-muted,#475467)', cursor:'pointer', flexShrink:0 }}
-      onMouseEnter={e=>{ if(!active) e.currentTarget.style.background='#EEF1F6' }} onMouseLeave={e=>{ if(!active) e.currentTarget.style.background='transparent' }}>
+    <button className="lk-btn lk-btn-primary" type="button" title={title} onMouseDown={e => e.preventDefault()} onClick={on}
+      style={{ display:'inline-flex', alignItems:'center', justifyContent:'center', width:30, height:30, flexShrink:0 }}
+       >
       {children}
     </button>
   )
@@ -760,9 +760,9 @@ function Toolbar({ editor, onContinue, continuing }) {
       <Div/>
       {/* Markieren / Highlight */}
       <div style={{ position:'relative', display:'inline-flex' }}>
-        <button type="button" title="Text farbig markieren" onMouseDown={e => e.preventDefault()} onClick={() => { setHlOpen(o => !o); setEmojiOpen(false) }}
-          style={{ display:'inline-flex', alignItems:'center', justifyContent:'center', width:30, height:30, border:'none', borderRadius:7, background: (hlOpen || editor.isActive('highlight')) ? (editor.isActive('highlight') ? P : '#EEF1F6') : 'transparent', color: editor.isActive('highlight') ? '#fff' : 'var(--text-muted,#475467)', cursor:'pointer', flexShrink:0 }}
-          onMouseEnter={e=>{ if(!hlOpen && !editor.isActive('highlight')) e.currentTarget.style.background='#EEF1F6' }} onMouseLeave={e=>{ if(!hlOpen && !editor.isActive('highlight')) e.currentTarget.style.background='transparent' }}>
+        <button className="lk-btn lk-btn-primary" type="button" title="Text farbig markieren" onMouseDown={e => e.preventDefault()} onClick={() => { setHlOpen(o => !o); setEmojiOpen(false) }}
+          style={{ display:'inline-flex', alignItems:'center', justifyContent:'center', width:30, height:30, flexShrink:0 }}
+           >
           <Highlighter size={16} strokeWidth={2}/>
         </button>
         {hlOpen && (
@@ -776,9 +776,9 @@ function Toolbar({ editor, onContinue, continuing }) {
                   style={{ width:24, height:24, borderRadius:6, border:'1px solid rgba(16,24,40,0.12)', background:h.c, cursor:'pointer', flexShrink:0 }}/>
               ))}
               <span style={{ width:1, height:20, background:'var(--border,#E9ECF2)', margin:'0 2px' }}/>
-              <button type="button" title="Markierung entfernen" onMouseDown={e => e.preventDefault()}
+              <button className="lk-btn lk-btn-ghost" type="button" title="Markierung entfernen" onMouseDown={e => e.preventDefault()}
                 onClick={() => { editor.chain().focus().unsetHighlight().run(); setHlOpen(false) }}
-                style={{ width:24, height:24, borderRadius:6, border:'1px solid var(--border,#E9ECF2)', background:'#fff', cursor:'pointer', display:'inline-flex', alignItems:'center', justifyContent:'center', color:'var(--text-muted,#667085)', flexShrink:0 }}>
+                style={{ width:24, height:24, display:'inline-flex', alignItems:'center', justifyContent:'center', flexShrink:0 }}>
                 <X size={13} strokeWidth={2}/>
               </button>
             </div>

@@ -197,12 +197,12 @@ export default function LeadDrawer({ lead, session, onClose, onUpdate, onDelete 
                 title={lead.is_shared?'Sharing aufheben':`Mit "${team.name}" teilen`}
                 style={{ width:30, height:30, borderRadius:7, border:`1px solid ${lead.is_shared?'#6EE7B7':'#E5E7EB'}`, background:lead.is_shared?'#ECFDF5':'#fff', display:'flex', alignItems:'center', justifyContent:'center', cursor:'pointer', fontSize:14, transition:'all 0.15s' }}>👥</button>
             )}
-            <button className="ld-ib" onClick={async () => { const v=!lead.is_favorite; await supabase.from('leads').update({is_favorite:v}).eq('id',lead.id); onUpdate({...lead,is_favorite:v}) }}
-              style={{ width:30, height:30, borderRadius:7, border:'1px solid #E5E7EB', background:'#fff', display:'flex', alignItems:'center', justifyContent:'center', cursor:'pointer', fontSize:15, transition:'background 0.15s' }}>
+            <button className="ld-ib lk-btn lk-btn-ghost" onClick={async () => { const v=!lead.is_favorite; await supabase.from('leads').update({is_favorite:v}).eq('id',lead.id); onUpdate({...lead,is_favorite:v}) }}
+              style={{ width:30, height:30, display:'flex', alignItems:'center', justifyContent:'center' }}>
               {lead.is_favorite?'⭐':'☆'}
             </button>
-            <button className="ld-ib" onClick={onClose}
-              style={{ width:30, height:30, borderRadius:7, border:'1px solid #E5E7EB', background:'#fff', display:'flex', alignItems:'center', justifyContent:'center', cursor:'pointer', fontSize:17, color:'#64748B' }}>×</button>
+            <button className="ld-ib lk-btn lk-btn-ghost" onClick={onClose}
+              style={{ width:30, height:30, display:'flex', alignItems:'center', justifyContent:'center' }}>×</button>
           </div>
         </div>
 
@@ -235,8 +235,8 @@ export default function LeadDrawer({ lead, session, onClose, onUpdate, onDelete 
             ['✏','Notiz', ()=>{ setActiveTab('aktivitaet'); setQuickLog(null) }],
             ['↗','Profil', ()=>navigate(`/leads/${lead.id}`)],
           ].map(([icon,label,fn]) => (
-            <button key={label} className="ld-qa" onClick={fn}
-              style={{ padding:'7px 2px', borderRadius:8, border:'1px solid #E5E7EB', background:'#fff', fontSize:11, fontWeight:600, color:'#475569', cursor:'pointer', transition:'all 0.15s' }}>
+            <button key={label} className="ld-qa lk-btn lk-btn-ghost" onClick={fn}
+              >
               {icon} {label}
             </button>
           ))}
@@ -558,8 +558,8 @@ export default function LeadDrawer({ lead, session, onClose, onUpdate, onDelete 
               </div>
 
               {/* Speichern */}
-              <button onClick={saveEdit} disabled={editSaving || !editDirty}
-                style={{ padding:'10px', borderRadius:8, border:'none', background:editDirty?'var(--wl-primary, #2563eb)':'#E5E7EB', color:editDirty?'#fff':'#9CA3AF', fontSize:13, fontWeight:700, cursor:editDirty?'pointer':'default', transition:'all 0.15s' }}>
+              <button className="lk-btn lk-btn-primary" onClick={saveEdit} disabled={editSaving || !editDirty}
+                >
                 {editSaving ? 'Speichere…' : editDirty ? 'Änderungen speichern' : 'Keine Änderungen'}
               </button>
 
@@ -583,8 +583,8 @@ export default function LeadDrawer({ lead, session, onClose, onUpdate, onDelete 
             style={{ flex:1, padding:'8px', borderRadius:8, border:'none', background:saving?'#94A3B8':'#2563eb', color:'#fff', fontSize:13, fontWeight:700, cursor:'pointer' }}>
             {saving?'Speichere…':'Speichern'}
           </button>
-          <button onClick={()=>{ setForm(f=>({...f,deal_value:lead.deal_value||'',deal_expected_close:lead.deal_expected_close||'',deal_probability:lead.deal_probability||0,notes:lead.notes||'',ai_need_detected:lead.ai_need_detected||''})); setFormDirty(false) }}
-            style={{ padding:'8px 14px', borderRadius:8, border:'1px solid #E5E7EB', background:'#fff', color:'#64748B', fontSize:13, cursor:'pointer' }}>
+          <button className="lk-btn lk-btn-ghost" onClick={()=>{ setForm(f=>({...f,deal_value:lead.deal_value||'',deal_expected_close:lead.deal_expected_close||'',deal_probability:lead.deal_probability||0,notes:lead.notes||'',ai_need_detected:lead.ai_need_detected||''})); setFormDirty(false) }}
+            >
             Verwerfen
           </button>
         </div>

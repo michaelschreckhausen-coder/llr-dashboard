@@ -423,13 +423,7 @@ export default function SettingsKonto() {
           {/* Monthly/Yearly Toggle */}
           <div style={{ display: 'inline-flex', background: 'var(--surface-muted)', padding: 3, borderRadius: 99, border: '1px solid var(--border)' }}>
             {['monthly', 'yearly'].map(p => (
-              <button key={p} onClick={() => setBilling(p)} disabled={!!pendingPlan} style={{
-                padding: '6px 14px', border: 'none', borderRadius: 99, fontSize: 12, fontWeight: 700,
-                background: billing === p ? PRIMARY : 'transparent',
-                color: billing === p ? '#fff' : 'var(--text-primary)',
-                cursor: pendingPlan ? 'default' : 'pointer', transition: 'all 0.2s', letterSpacing: '-0.01em',
-                opacity: pendingPlan ? 0.5 : 1,
-              }}>
+              <button className="lk-btn lk-btn-primary" key={p} onClick={() => setBilling(p)} disabled={!!pendingPlan} style={{ letterSpacing: '-0.01em', opacity: pendingPlan ? 0.5 : 1 }}>
                 {p === 'monthly' ? 'Monatlich' : 'Jährlich −20%'}
               </button>
             ))}
@@ -533,17 +527,10 @@ export default function SettingsKonto() {
                       ✓ Aktueller Plan
                     </div>
                   ) : hasStripeCheckout ? (
-                    <button
+                    <button className="lk-btn lk-btn-primary"
                       onClick={() => handleCheckout(plan.slug)}
                       disabled={!!pendingPlan}
-                      style={{
-                        padding: '10px 14px', borderRadius: 10, textAlign: 'center', fontSize: 13, fontWeight: 700,
-                        background: highlighted ? '#fff' : PRIMARY,
-                        color: highlighted ? PRIMARY : '#fff',
-                        border: 'none', letterSpacing: '-0.01em',
-                        cursor: pendingPlan ? 'default' : 'pointer',
-                        opacity: pendingPlan && !isPending ? 0.5 : 1,
-                      }}
+                      style={{ textAlign: 'center', letterSpacing: '-0.01em', opacity: pendingPlan && !isPending ? 0.5 : 1 }}
                     >
                       {isPending ? 'Wird geladen…' : 'Plan aktivieren →'}
                     </button>

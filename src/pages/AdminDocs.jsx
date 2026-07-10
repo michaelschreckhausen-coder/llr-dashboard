@@ -19,7 +19,7 @@ function Section({ title, icon, children, defaultOpen = false }) {
   const [open, setOpen] = useState(defaultOpen)
   return (
     <div style={{ marginBottom:12 }}>
-      <button onClick={() => setOpen(v => !v)} style={{ width:'100%', display:'flex', alignItems:'center', gap:10, padding:'12px 16px', borderRadius:10, border:'1px solid var(--border)', background:'var(--surface-muted)', cursor:'pointer', textAlign:'left' }}>
+      <button className="lk-btn lk-btn-ghost" onClick={() => setOpen(v => !v)} style={{ width:'100%', display:'flex', alignItems:'center', gap:10, textAlign:'left' }}>
         <span style={{ fontSize:16 }}>{icon}</span>
         <span style={{ fontWeight:700, fontSize:14, color:'var(--text-strong)', flex:1 }}>{title}</span>
         <span style={{ color:'var(--text-muted)', fontSize:12 }}>{open ? '▲' : '▼'}</span>

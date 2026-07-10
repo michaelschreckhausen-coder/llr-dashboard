@@ -137,22 +137,11 @@ export default function CreditsTopupSection({ onFlash }) {
                         </span>
                       )}
                     </div>
-                    <button
+                    <button className="lk-btn lk-btn-primary"
                       onClick={() => handleBuy(offer)}
                       disabled={!hasStripe || !!pendingSlug}
                       title={!hasStripe ? 'Stripe-Price-ID fehlt (Setup pending)' : undefined}
-                      style={{
-                        marginTop: 6,
-                        padding: '8px 14px',
-                        borderRadius: 8,
-                        fontSize: 13,
-                        fontWeight: 700,
-                        background: !hasStripe ? '#E4E7EC' : (isPending ? '#94A3B8' : PRIMARY),
-                        color: !hasStripe ? '#9CA3AF' : '#fff',
-                        border: 'none',
-                        cursor: (!hasStripe || pendingSlug) ? 'default' : 'pointer',
-                        opacity: pendingSlug && !isPending ? 0.5 : 1,
-                      }}
+                      style={{ marginTop: 6, opacity: pendingSlug && !isPending ? 0.5 : 1 }}
                     >
                       {isPending ? 'Wird geladen…' : !hasStripe ? 'Bald verfügbar' : (offer.is_recurring ? 'Abo starten' : 'Kaufen')}
                     </button>

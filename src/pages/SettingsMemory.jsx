@@ -118,8 +118,8 @@ export default function SettingsMemory({ session }) {
             style={{ padding:'9px 18px', borderRadius:9, border:'1px solid var(--border)', background: memEnabled === false ? '#F1F5F9' : 'transparent', color: memEnabled === false ? 'var(--text-primary)' : 'var(--text-muted)', fontSize:13, fontWeight:600, cursor: saving ? 'wait' : 'pointer' }}>
             Deaktivieren
           </button>
-          <button onClick={() => toggleMemory(true)} disabled={saving || memEnabled === true}
-            style={{ padding:'9px 22px', borderRadius:9, border:'none', background: memEnabled === true ? '#10B981' : P, color:'#fff', fontSize:13, fontWeight:700, cursor: saving ? 'wait' : 'pointer', boxShadow: memEnabled === true ? '0 2px 10px rgba(16,185,129,.25)' : '0 2px 10px rgba(10,111,176,.25)' }}>
+          <button className="lk-btn lk-btn-primary" onClick={() => toggleMemory(true)} disabled={saving || memEnabled === true}
+            >
             {memEnabled === true ? 'Aktiviert' : 'Aktivieren'}
           </button>
         </div>
@@ -141,16 +141,8 @@ export default function SettingsMemory({ session }) {
           ].map(opt => {
             const active = leadlyScope === opt.id
             return (
-              <button key={opt.id} onClick={() => updateLeadlyScope(opt.id)} disabled={savingScope}
-                style={{
-                  textAlign: 'left',
-                  padding: '14px 16px',
-                  borderRadius: 12,
-                  border: active ? `1.5px solid ${P}` : '1px solid var(--border)',
-                  background: active ? 'rgba(10,111,176,0.04)' : 'var(--surface)',
-                  cursor: savingScope ? 'wait' : 'pointer',
-                  transition: 'all 0.15s',
-                }}>
+              <button className="lk-btn lk-btn-ghost" key={opt.id} onClick={() => updateLeadlyScope(opt.id)} disabled={savingScope}
+                style={{ textAlign: 'left' }}>
                 <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 6 }}>
                   <div style={{ fontSize: 22 }}>{opt.icon}</div>
                   {active && <div style={{ fontSize: 11, fontWeight: 700, color: P, background: 'rgba(10,111,176,0.1)', padding: '2px 9px', borderRadius: 99 }}>Aktiv</div>}

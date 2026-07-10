@@ -59,12 +59,8 @@ export default function WhiteLabel() {
         <div style={{ fontSize:13, fontWeight:700, color:'var(--text-strong)', marginBottom:14 }}>Tenant auswählen</div>
         <div style={{ display:'flex', gap:8, flexWrap:'wrap' }}>
           {tenants.map(t => (
-            <button key={t.id} onClick={() => selectTenant(t)}
-              style={{ padding:'7px 14px', borderRadius:8, fontSize:12, fontWeight:600, cursor:'pointer', transition:'all 0.15s',
-                background: selTenant?.id === t.id ? 'var(--wl-primary, #0A6FB0)' : '#F8FAFC',
-                color:      selTenant?.id === t.id ? '#fff' : '#475569',
-                border:     selTenant?.id === t.id ? 'none' : '1px solid #E5E7EB',
-              }}>
+            <button className="lk-btn lk-btn-primary" key={t.id} onClick={() => selectTenant(t)}
+              >
               {t.name}
               <span style={{ marginLeft:6, fontSize:10, opacity:0.7 }}>({t.subdomain || t.custom_domain || '?'})</span>
             </button>
@@ -197,8 +193,8 @@ export default function WhiteLabel() {
       {/* Speichern */}
       <div style={{ display:'flex', justifyContent:'flex-end', alignItems:'center', gap:14, paddingBottom:16 }}>
         {saved && <span style={{ color:'#059669', fontSize:13, fontWeight:600 }}>Gespeichert!</span>}
-        <button onClick={handleSave} disabled={saving||!selTenant}
-          style={{ padding:'10px 28px', borderRadius:999, border:'none', background:selTenant?'var(--wl-primary, #0A6FB0)':'#E5E7EB', color:'#fff', fontSize:13, fontWeight:700, cursor:selTenant?'pointer':'default', opacity:saving?0.6:1 }}>
+        <button className="lk-btn lk-btn-primary" onClick={handleSave} disabled={saving||!selTenant}
+          style={{ opacity:saving?0.6:1 }}>
           {saving ? 'Speichere…' : 'WhiteLabel speichern'}
         </button>
       </div>

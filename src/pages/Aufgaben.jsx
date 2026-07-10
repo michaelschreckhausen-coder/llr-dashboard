@@ -196,8 +196,8 @@ export default function Aufgaben({ session }) {
         title="Alles an einem Ort."
         subtitle={<span style={{display:'inline-flex',alignItems:'center',gap:4,flexWrap:'wrap'}}>{team ? `Team: ${team.name}` : 'Meine Aufgaben'} · {counts.all} offen{counts.overdue > 0 && <> · <AlertTriangle size={12} strokeWidth={1.75}/> {counts.overdue} überfällig</>}</span>}
         actions={
-          <button type="button" onClick={() => setNewTaskOpen(true)}
-            style={{ padding: '9px 18px', background: 'var(--wl-primary, ' + PRIMARY + ')', color: '#fff', border: 'none', borderRadius: 10, fontSize: 13, fontWeight: 700, display: 'inline-flex', alignItems: 'center', gap: 6, cursor: 'pointer' }}>
+          <button className="lk-btn lk-btn-primary" type="button" onClick={() => setNewTaskOpen(true)}
+            style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
             + Neue Aufgabe
           </button>
         }
@@ -205,13 +205,8 @@ export default function Aufgaben({ session }) {
 
       {/* Quell-Filter — als Dropdown (kompakt statt langer Pill-Reihe) */}
       <div style={{ position: 'relative', marginBottom: 14, display: 'inline-block' }} data-source-menu>
-        <button onClick={() => setShowSourceMenu(v => !v)}
-          style={{
-            display: 'inline-flex', alignItems: 'center', gap: 8,
-            padding: '7px 12px', borderRadius: 10,
-            border: '1.5px solid #E5E7EB', background: '#fff',
-            color: '#374151', fontSize: 12, fontWeight: 600, cursor: 'pointer',
-          }}>
+        <button className="lk-btn lk-btn-ghost" onClick={() => setShowSourceMenu(v => !v)}
+          style={{ display: 'inline-flex', alignItems: 'center', gap: 8 }}>
           <SlidersHorizontal size={14} strokeWidth={1.75} />
           Quellen
           <span style={{ background: 'var(--wl-primary, ' + PRIMARY + ')', color: '#fff', borderRadius: 99, padding: '0 7px', fontSize: 10, fontWeight: 700, minWidth: 16, textAlign: 'center' }}>
@@ -260,14 +255,8 @@ export default function Aufgaben({ session }) {
       <div style={{ display: 'flex', gap: 12, marginBottom: 20, flexWrap: 'wrap', alignItems: 'center' }}>
         <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
           {STATUS_FILTERS.map(f => (
-            <button key={f.id} onClick={() => setStatusFilter(f.id)}
-              style={{
-                padding: '6px 12px', borderRadius: 20, border: '1.5px solid',
-                borderColor: statusFilter === f.id ? PRIMARY : '#E5E7EB',
-                background: statusFilter === f.id ? PRIMARY : '#fff',
-                color: statusFilter === f.id ? '#fff' : '#374151',
-                fontSize: 12, fontWeight: 600, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 5, transition: 'all 0.15s',
-              }}>
+            <button className="lk-btn lk-btn-primary" key={f.id} onClick={() => setStatusFilter(f.id)}
+              style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
               {f.label}
               {counts[f.id] > 0 && (
                 <span style={{ background: statusFilter === f.id ? 'rgba(255,255,255,0.3)' : '#F3F4F6', color: statusFilter === f.id ? '#fff' : '#6B7280', borderRadius: 99, padding: '0 6px', fontSize: 11, fontWeight: 700, minWidth: 18, textAlign: 'center' }}>
@@ -442,19 +431,19 @@ export default function Aufgaben({ session }) {
 
                       {/* Actions: SSI-Dismiss + Lead-Task-Delete */}
                       {task.source === 'ssi_daily' && (
-                        <button onClick={(e) => { e.stopPropagation(); dismissSsi() }}
+                        <button className="lk-btn lk-btn-ghost" onClick={(e) => { e.stopPropagation(); dismissSsi() }}
                           title="Für heute ausblenden"
-                          style={{ width: 28, height: 28, borderRadius: 8, border: '1px solid #E5E7EB', background: 'var(--surface)', cursor: 'pointer', fontSize: 12, color: '#9CA3AF', flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', transition: 'all 0.15s' }}
-                          onMouseEnter={e => { e.currentTarget.style.borderColor = '#FCA5A5'; e.currentTarget.style.color = '#DC2626' }}
-                          onMouseLeave={e => { e.currentTarget.style.borderColor = '#E5E7EB'; e.currentTarget.style.color = '#9CA3AF' }}>
+                          style={{ width: 28, height: 28, flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+                          
+                          >
                           ×
                         </button>
                       )}
                       {!isVirtual && task.created_by === uid && (
-                        <button onClick={(e) => { e.stopPropagation(); if (window.confirm('Aufgabe wirklich löschen?')) deleteLeadTask(task.rawId) }}
-                          style={{ width: 28, height: 28, borderRadius: 8, border: '1px solid #E5E7EB', background: 'var(--surface)', cursor: 'pointer', fontSize: 14, color: '#D1D5DB', flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', transition: 'all 0.15s' }}
-                          onMouseEnter={e => { e.currentTarget.style.borderColor = '#FCA5A5'; e.currentTarget.style.color = '#DC2626' }}
-                          onMouseLeave={e => { e.currentTarget.style.borderColor = '#E5E7EB'; e.currentTarget.style.color = '#D1D5DB' }}
+                        <button className="lk-btn lk-btn-ghost" onClick={(e) => { e.stopPropagation(); if (window.confirm('Aufgabe wirklich löschen?')) deleteLeadTask(task.rawId) }}
+                          style={{ width: 28, height: 28, flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+                          
+                          
                           title="Löschen">
                           ×
                         </button>

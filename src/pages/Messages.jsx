@@ -482,8 +482,8 @@ export default function Messages({ session }) {
           </p>
         </div>
         <div style={{ display:'flex', alignItems:'center', gap:8, flexWrap:'wrap' }}>
-          <button onClick={() => setShowHistory(h => !h)}
-            style={{ display:'flex', alignItems:'center', gap:6, padding:'7px 14px', borderRadius:8, border:'1px solid var(--border)', background:'var(--surface)', fontSize:12, fontWeight:600, color:'#475569', cursor:'pointer' }}>
+          <button className="lk-btn lk-btn-ghost" onClick={() => setShowHistory(h => !h)}
+            style={{ display:'flex', alignItems:'center', gap:6 }}>
             <span style={{display:'inline-flex',alignItems:'center',gap:6}}><Clock size={13} strokeWidth={1.75}/>Verlauf ({history.length})</span>
           </button>
         </div>
@@ -566,8 +566,8 @@ export default function Messages({ session }) {
                 style={{ padding:'3px 10px', borderRadius:6, border:'1px solid rgba(10,111,176,0.3)', background:'rgba(10,111,176,0.08)', color:P, fontSize:11, fontWeight:700, cursor:'pointer' }}>
                 ↗ Profil
               </button>
-              <button onClick={clearLead}
-                style={{ padding:'3px 10px', borderRadius:6, border:'1px solid #E5E7EB', background:'#fff', color:'#475569', fontSize:11, fontWeight:600, cursor:'pointer' }}>
+              <button className="lk-btn lk-btn-ghost" onClick={clearLead}
+                >
                 ✕ Lösen
               </button>
             </div>
@@ -608,15 +608,8 @@ export default function Messages({ session }) {
 
         {generating && <GenerationLoading title="KI-Nachricht wird formuliert" expectedSeconds={20} />}
 
-        <button onClick={generate} disabled={generating}
-          style={{
-            marginTop:6, width:'100%', padding:'12px', borderRadius:999, border:'none',
-            background: generating ? '#94A3B8' : 'linear-gradient(135deg,#0A6FB0,#0A6FB0)',
-            color:'#fff', fontSize:14, fontWeight:700,
-            cursor: generating ? 'not-allowed' : 'pointer',
-            display:'flex', alignItems:'center', justifyContent:'center', gap:8,
-            boxShadow: generating ? 'none' : '0 4px 14px rgba(10,111,176,0.25)',
-          }}>
+        <button className="lk-btn lk-btn-primary" onClick={generate} disabled={generating}
+          style={{ marginTop:6, width:'100%', display:'flex', alignItems:'center', justifyContent:'center', gap:8 }}>
           {generating ? 'Generiere…' : <span style={{display:'inline-flex',alignItems:'center',gap:6}}><Sparkles size={14}/>Nachricht generieren</span>}
         </button>
       </section>
@@ -642,8 +635,8 @@ export default function Messages({ session }) {
               )}
             </div>
             <div style={{ display:'flex', gap:7, flexWrap:'wrap' }}>
-              <button onClick={generate} disabled={generating}
-                style={{ padding:'5px 10px', borderRadius:8, border:'1px solid var(--border)', background:'var(--surface)', color:'#475569', fontSize:11, fontWeight:600, cursor:generating?'wait':'pointer', display:'flex', alignItems:'center', gap:5 }}>
+              <button className="lk-btn lk-btn-ghost" onClick={generate} disabled={generating}
+                style={{ display:'flex', alignItems:'center', gap:5 }}>
                 🔄 Neu
               </button>
               <button onClick={copy}

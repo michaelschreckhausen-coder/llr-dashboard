@@ -266,9 +266,9 @@ export default function Media({ session }) {
         </select>
 
         <div style={{ flex:1 }}/>
-        <button type="button" onClick={() => fileInputRef.current?.click()}
+        <button className="lk-btn lk-btn-primary" type="button" onClick={() => fileInputRef.current?.click()}
           disabled={uploading}
-          style={{ padding:'9px 16px', borderRadius:9, border:'none', background: uploading ? '#94A3B8' : P, color:'#fff', fontSize:13, fontWeight:700, cursor: uploading ? 'wait' : 'pointer', display:'inline-flex', alignItems:'center', gap:5, boxShadow: uploading ? 'none' : '0 2px 10px rgba(10,111,176,.18)' }}>
+          style={{ display:'inline-flex', alignItems:'center', gap:5 }}>
           {uploading ? 'Lade hoch…' : 'Datei hochladen'}
         </button>
         <input ref={fileInputRef} type="file" multiple
@@ -349,14 +349,14 @@ export default function Media({ session }) {
                 </div>
               </div>
               {!lightbox.identity && (
-                <button onClick={() => openAttachModal(lightbox)}
-                  style={{ padding:'7px 14px', borderRadius:8, border:'none', background: P, color:'#fff', cursor:'pointer', fontSize:12, fontWeight:700, display:'inline-flex', alignItems:'center', gap:6, boxShadow:'0 2px 6px rgba(10,111,176,.25)' }}>
+                <button className="lk-btn lk-btn-primary" onClick={() => openAttachModal(lightbox)}
+                  style={{ display:'inline-flex', alignItems:'center', gap:6 }}>
                   📅 Zu Beitrag hinzufügen
                 </button>
               )}
-              <button onClick={() => downloadItem(lightbox)} style={{ padding:'6px 12px', borderRadius:7, border:'1px solid var(--border)', background:'#fff', cursor:'pointer', fontSize:12, fontWeight:600 }}>⬇ Download</button>
+              <button className="lk-btn lk-btn-ghost" onClick={() => downloadItem(lightbox)} >⬇ Download</button>
               {lightbox.media_type === 'document' && (
-                <button onClick={() => window.open(lightbox.signed_url, '_blank', 'noopener')} style={{ padding:'6px 12px', borderRadius:7, border:'1px solid var(--border)', background:'#fff', cursor:'pointer', fontSize:12, fontWeight:600 }}>Öffnen</button>
+                <button className="lk-btn lk-btn-ghost" onClick={() => window.open(lightbox.signed_url, '_blank', 'noopener')} >Öffnen</button>
               )}
               {!lightbox.identity && (
                 <button onClick={() => archiveItem(lightbox.id)} style={{ padding:'6px 12px', borderRadius:7, border:'1px solid #FCA5A5', background:'#FEF2F2', color:'#b91c1c', cursor:'pointer', fontSize:12, fontWeight:600 }}>Entfernen</button>
@@ -447,10 +447,10 @@ export default function Media({ session }) {
                 const statusLabels = { idee:'Idee', draft:'Entwurf', in_review:'Review', approved:'Approved', scheduled:'Eingeplant', failed:'Fehler' }
                 const hasOther = p.visual_id && p.visual_id !== attachModal.id
                 return (
-                  <button key={p.id} onClick={() => attachMediaToPost(p)}
-                    style={{ width:'100%', textAlign:'left', padding:'12px 14px', marginBottom:8, borderRadius:10, border:'1.5px solid var(--border)', background:'#fff', cursor:'pointer', display:'flex', gap:12, alignItems:'flex-start' }}
-                    onMouseEnter={e => e.currentTarget.style.borderColor = P}
-                    onMouseLeave={e => e.currentTarget.style.borderColor = 'var(--border)'}>
+                  <button className="lk-btn lk-btn-ghost" key={p.id} onClick={() => attachMediaToPost(p)}
+                    style={{ width:'100%', textAlign:'left', marginBottom:8, display:'flex', gap:12, alignItems:'flex-start' }}
+                    
+                    >
                     <div style={{ flex:1, minWidth:0 }}>
                       <div style={{ display:'flex', alignItems:'center', gap:8, marginBottom:4, flexWrap:'wrap' }}>
                         <span style={{ fontSize:11, fontWeight:600, color:'var(--text-muted)', padding:'2px 8px', background:'#F1F5F9', borderRadius:6 }}>{statusLabels[p.status] || p.status}</span>
@@ -476,8 +476,8 @@ export default function Media({ session }) {
             </div>
 
             <div style={{ display:'flex', justifyContent:'flex-end', marginTop:10, paddingTop:10, borderTop:'1px solid var(--border)', flexShrink:0 }}>
-              <button onClick={() => setAttachModal(null)}
-                style={{ padding:'8px 16px', borderRadius:8, border:'1px solid var(--border)', background:'#fff', cursor:'pointer', fontSize:13, fontWeight:600 }}>
+              <button className="lk-btn lk-btn-ghost" onClick={() => setAttachModal(null)}
+                >
                 Schließen
               </button>
             </div>

@@ -190,8 +190,8 @@ function DealCard({ lead, stage, onOpen, onMove, dragging, onDragStart, onDragEn
             → {STAGE_CONFIG[s].label.split('/')[0].trim()}
           </button>
         ))}
-        <button onClick={() => onMove(lead.id, 'verloren')}
-          style={{ fontSize:10, padding:'2px 8px', borderRadius:6, border:'1px solid var(--border)', background:'var(--surface-muted)', color:'#94a3b8', cursor:'pointer', fontWeight:600 }}><X size={14} strokeWidth={1.75}/></button>
+        <button className="lk-btn lk-btn-ghost" onClick={() => onMove(lead.id, 'verloren')}
+          ><X size={14} strokeWidth={1.75}/></button>
         {stage !== 'gewonnen' && (
           <button onClick={() => onMove(lead.id, 'gewonnen')}
             title="Als Gewonnen markieren"
@@ -713,8 +713,8 @@ export default function Pipeline({ session }) {
         <div style={{ marginLeft:'auto', display:'flex', gap:8, alignItems:'center' }}>
           <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Suchen..."
             style={{ padding:'8px 14px', borderRadius:10, border:'1.5px solid #E2E8F0', fontSize:13, outline:'none', width:200, fontFamily:'inherit' }}/>
-          <button onClick={() => setView(v => v==='kanban'?'list':'kanban')}
-            style={{ padding:'8px 14px', borderRadius:10, border:'1.5px solid #E2E8F0', background:'var(--surface-muted)', fontSize:12, fontWeight:700, cursor:'pointer', color:'#475569' }}>
+          <button className="lk-btn lk-btn-ghost" onClick={() => setView(v => v==='kanban'?'list':'kanban')}
+            >
             {effectiveView === 'kanban' ? 'Liste' : '⬚ Kanban'}
           </button>
           {effectiveView === 'list' && (
@@ -729,9 +729,9 @@ export default function Pipeline({ session }) {
               {showLost ? 'Mit Verloren' : 'Ohne Verloren'}
             </button>
           )}
-          <button onClick={() => setEditStages(true)}
+          <button className="lk-btn lk-btn-ghost" onClick={() => setEditStages(true)}
             title="Pipeline-Reiter umbenennen oder hinzufügen"
-            style={{ padding:'8px 14px', borderRadius:10, border:'1.5px solid #E2E8F0', background:'var(--surface-muted)', fontSize:12, fontWeight:700, cursor:'pointer', color:'#475569', display:'flex', alignItems:'center', gap:5 }}>
+            style={{ display:'flex', alignItems:'center', gap:5 }}>
             ✏ Reiter
           </button>
         </div>
@@ -851,8 +851,8 @@ export default function Pipeline({ session }) {
                             <div>
                               <div style={{ display:'flex', alignItems:'center', gap:6 }}>
                                 <div style={{ fontWeight:700, fontSize:13, color:'var(--text-strong)' }}>{fullName(lead)}</div>
-                                <button onClick={e => { e.stopPropagation(); navigate(`/leads/${lead.id}`) }}
-                                  style={{ padding:'2px 8px', borderRadius:6, border:'1px solid rgba(var(--wl-primary-rgb, 10,111,176),0.25)', background:'rgba(var(--wl-primary-rgb, 10,111,176),0.07)', color:'var(--wl-primary, #0A6FB0)', fontSize:10, fontWeight:700, cursor:'pointer' }}>Profil</button>
+                                <button className="lk-btn lk-btn-primary" onClick={e => { e.stopPropagation(); navigate(`/leads/${lead.id}`) }}
+                                  >Profil</button>
                               </div>
                               <div style={{ fontSize:11, color:'var(--text-muted)' }}>{lead.job_title || lead.headline}</div>
                             </div>
@@ -928,8 +928,8 @@ export default function Pipeline({ session }) {
                 </select>
               </div>
               <div style={{ textAlign:'center', color:'var(--text-muted)', fontSize:12 }}>oder</div>
-              <button onClick={() => { setQuickAddStage(null); navigate('/leads') }}
-                style={{ padding:'10px', borderRadius:10, border:'1.5px solid #E2E8F0', background:'var(--surface-muted)', color:'#475569', fontSize:13, fontWeight:600, cursor:'pointer' }}>
+              <button className="lk-btn lk-btn-ghost" onClick={() => { setQuickAddStage(null); navigate('/leads') }}
+                >
                 + Neuen Lead hinzufügen → Interessenten
               </button>
             </div>

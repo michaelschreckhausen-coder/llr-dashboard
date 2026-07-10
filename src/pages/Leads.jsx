@@ -1315,14 +1315,8 @@ export default function Leads() {
                   <div style={{ display:'flex', alignItems:'center', gap:8 }}>
                     <span style={{ fontSize:12, color: COLORS.textTertiary }}>Pro Seite:</span>
                     {[25, 50, 100].map(n => (
-                      <button key={n} type="button" onClick={() => changePageSize(n)}
-                        style={{
-                          padding:'5px 11px', borderRadius:8, fontSize:12, fontWeight: pageSize===n ? 700 : 500,
-                          cursor:'pointer',
-                          border:`1.5px solid ${pageSize===n ? PRIMARY : '#E4E7EC'}`,
-                          background: pageSize===n ? PRIMARY : 'var(--surface)',
-                          color: pageSize===n ? '#fff' : COLORS.textSecondary,
-                        }}>{n}</button>
+                      <button className="lk-btn lk-btn-primary" key={n} type="button" onClick={() => changePageSize(n)}
+                        >{n}</button>
                     ))}
                   </div>
                   <div style={{ display:'flex', alignItems:'center', gap:10 }}>

@@ -183,8 +183,8 @@ export default function LeadTasks({ leadId, teamId, session, members = [] }) {
           {open.length > 0 && <span style={{ marginLeft: 6, fontSize: 11, background: PRIMARY, color: '#fff', borderRadius: 99, padding: '1px 7px', fontWeight: 700 }}>{open.length}</span>}
         </div>
         {!showForm && (
-          <button onClick={() => setShowForm(true)}
-            style={{ padding: '5px 12px', borderRadius: 8, border: 'none', background: PRIMARY, color: '#fff', fontSize: 12, fontWeight: 700, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 4 }}>
+          <button className="lk-btn lk-btn-primary" onClick={() => setShowForm(true)}
+            style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
             + Neue Aufgabe
           </button>
         )}
@@ -254,12 +254,12 @@ export default function LeadTasks({ leadId, teamId, session, members = [] }) {
 
           {/* Buttons */}
           <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
-            <button onClick={resetForm}
-              style={{ padding: '7px 14px', borderRadius: 8, border: '1px solid #E5E7EB', background: '#fff', fontSize: 12, fontWeight: 600, cursor: 'pointer', color: '#374151' }}>
+            <button className="lk-btn lk-btn-ghost" onClick={resetForm}
+              >
               Abbrechen
             </button>
-            <button onClick={save} disabled={saving}
-              style={{ padding: '7px 16px', borderRadius: 8, border: 'none', background: saving ? '#E5E7EB' : PRIMARY, color: saving ? '#9CA3AF' : '#fff', fontSize: 12, fontWeight: 700, cursor: saving ? 'default' : 'pointer' }}>
+            <button className="lk-btn lk-btn-primary" onClick={save} disabled={saving}
+              >
               {saving ? '…' : editId ? 'Speichern' : '+ Erstellen'}
             </button>
           </div>
@@ -336,8 +336,8 @@ export default function LeadTasks({ leadId, teamId, session, members = [] }) {
                 {/* Aktionen */}
                 {isOwn && (
                   <div style={{ display: 'flex', gap: 4, flexShrink: 0 }}>
-                    <button onClick={() => startEdit(task)}
-                      style={{ width: 26, height: 26, borderRadius: 7, border: '1px solid #E5E7EB', background: '#fff', cursor: 'pointer', fontSize: 12, color: '#6B7280', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+                    <button className="lk-btn lk-btn-ghost" onClick={() => startEdit(task)}
+                      style={{ width: 26, height: 26, display: 'flex', alignItems: 'center', justifyContent: 'center' }}
                       title="Bearbeiten"><Pencil size={14} strokeWidth={1.75}/></button>
                     <button onClick={() => deleteTask(task.id)}
                       style={{ width: 26, height: 26, borderRadius: 7, border: '1px solid #FECACA', background: '#fff', cursor: 'pointer', fontSize: 12, color: '#DC2626', display: 'flex', alignItems: 'center', justifyContent: 'center' }}

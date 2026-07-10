@@ -752,7 +752,7 @@ export default function Projektmanagement({session}){
         <div style={{display:'flex',gap:6,flexWrap:'wrap',flex:1}}>
           {projects.map(p=>(
             <div key={p.id} style={{display:'flex',alignItems:'center',gap:0}}>
-              <button onClick={()=>setActiveProj(p.id)} style={{padding:'6px 12px',borderRadius:activeProj===p.id?'8px 0 0 8px':8,border:activeProj===p.id?`2px solid ${p.color}`:'1.5px solid #E2E8F0',borderRight:activeProj===p.id?`1px solid ${p.color}66`:'none',background:activeProj===p.id?p.color+'18':'#fff',color:activeProj===p.id?p.color:'var(--text-muted)',fontSize:12,fontWeight:activeProj===p.id?800:500,cursor:'pointer',display:'flex',alignItems:'center',gap:6}}>
+              <button className="lk-btn lk-btn-ghost" onClick={()=>setActiveProj(p.id)} style={{ borderRight:activeProj===p.id?`1px solid ${p.color}66`:'none', display:'flex', alignItems:'center', gap:6 }}>
                 <div style={{width:8,height:8,borderRadius:'50%',background:p.color}}/>{p.name}
               </button>
               {activeProj===p.id&&(
@@ -768,7 +768,7 @@ export default function Projektmanagement({session}){
         </div>
         <div style={{display:'flex',gap:8,alignItems:'center'}}>
           {/* Kanban-Board-Umschalter ausgeblendet — Board-Ansicht aktuell nicht nutzbar, nur Liste */}
-          <button onClick={()=>setShowLabelManager(true)} style={{padding:'6px 12px',borderRadius:8,border:'1.5px solid #E2E8F0',background:'var(--surface)',color:'var(--text-muted)',fontSize:12,fontWeight:600,cursor:'pointer'}}>Labels</button>
+          <button className="lk-btn lk-btn-ghost" onClick={()=>setShowLabelManager(true)} >Labels</button>
           <select value={sortBy} onChange={e=>setSortBy(e.target.value)} style={{padding:'6px 10px',borderRadius:8,border:'1.5px solid #E2E8F0',fontSize:12,fontFamily:'inherit',color:'var(--text-muted)',background:'var(--surface)'}}>
             <option value="position">Standard</option><option value="priority">Priorität</option><option value="due_date">Fälligkeit</option><option value="name">Name A→Z</option>
           </select>
@@ -848,7 +848,7 @@ export default function Projektmanagement({session}){
         <Modal title={`+ Task — ${columns.find(c=>c.id===addTaskCol)?.name||''}`} onClose={()=>setAddTaskCol(null)} width={420}>
           <input value={quickTitle} onChange={e=>setQuickTitle(e.target.value)} onKeyDown={e=>e.key==='Enter'&&handleQuickAdd()} placeholder="Task-Titel…" style={{...inp,marginBottom:14,fontSize:15}} autoFocus/>
           <div style={{display:'flex',justifyContent:'flex-end',gap:8}}>
-            <button onClick={()=>setAddTaskCol(null)} style={{padding:'9px 16px',borderRadius:10,border:'1.5px solid #E2E8F0',background:'var(--surface)',color:'var(--text-muted)',fontSize:13,cursor:'pointer'}}>Abbrechen</button>
+            <button className="lk-btn lk-btn-ghost" onClick={()=>setAddTaskCol(null)} >Abbrechen</button>
             <button onClick={handleQuickAdd} disabled={saving||!quickTitle.trim()} style={{padding:'9px 20px',borderRadius:10,border:'none',background:'#0A66C2',color:'#fff',fontSize:13,fontWeight:700,cursor:'pointer',opacity:!quickTitle.trim()?0.5:1}}>{saving?'…':'+ Erstellen'}</button>
           </div>
         </Modal>
@@ -867,7 +867,7 @@ export default function Projektmanagement({session}){
             <div style={{display:'flex',justifyContent:'space-between',paddingTop:8}}>
               {colModal!=='new'&&<button onClick={()=>handleDeleteCol(colModal)} style={{padding:'9px 16px',borderRadius:10,border:'1.5px solid #FECACA',background:'#FEF2F2',color:'#ef4444',fontSize:13,fontWeight:700,cursor:'pointer'}}>Löschen</button>}
               <div style={{display:'flex',gap:8,marginLeft:'auto'}}>
-                <button onClick={()=>setColModal(null)} style={{padding:'9px 16px',borderRadius:10,border:'1.5px solid #E2E8F0',background:'var(--surface)',color:'var(--text-muted)',fontSize:13,cursor:'pointer'}}>Abbrechen</button>
+                <button className="lk-btn lk-btn-ghost" onClick={()=>setColModal(null)} >Abbrechen</button>
                 <button onClick={handleSaveCol} disabled={saving||!colForm.name.trim()} style={{padding:'9px 20px',borderRadius:10,border:'none',background:'#0A66C2',color:'#fff',fontSize:13,fontWeight:700,cursor:'pointer',opacity:!colForm.name.trim()?0.5:1}}>Speichern</button>
               </div>
             </div>
@@ -894,7 +894,7 @@ export default function Projektmanagement({session}){
                 }} style={{padding:'9px 16px',borderRadius:10,border:'1.5px solid #FECACA',background:'#FEF2F2',color:'#ef4444',fontSize:13,fontWeight:700,cursor:'pointer'}}>Löschen</button>
               )}
               <div style={{display:'flex',gap:8,marginLeft:'auto'}}>
-                <button onClick={()=>setProjModal(null)} style={{padding:'9px 16px',borderRadius:10,border:'1.5px solid #E2E8F0',background:'var(--surface)',color:'var(--text-muted)',fontSize:13,cursor:'pointer'}}>Abbrechen</button>
+                <button className="lk-btn lk-btn-ghost" onClick={()=>setProjModal(null)} >Abbrechen</button>
                 <button onClick={handleSaveProject} disabled={saving||!projForm.name.trim()} style={{padding:'9px 20px',borderRadius:10,border:'none',background:'#0A66C2',color:'#fff',fontSize:13,fontWeight:700,cursor:'pointer',opacity:!projForm.name.trim()?0.5:1}}>{saving?'…':projModal==='new'?'+ Erstellen':'Speichern'}</button>
               </div>
             </div>

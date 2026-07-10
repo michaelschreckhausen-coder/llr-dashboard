@@ -318,7 +318,7 @@ export default function AdminPanel({ session }) {
               </select>
             </div>
             <div style={{display:'flex',gap:10,justifyContent:'flex-end',marginTop:24}}>
-              <button onClick={()=>setEditUser(null)} style={{padding:'9px 18px',borderRadius:10,border:'1px solid var(--border)',background:'var(--surface)',fontSize:13,fontWeight:700,cursor:'pointer',color:'var(--text-muted)'}}>Abbrechen</button>
+              <button className="lk-btn lk-btn-ghost" onClick={()=>setEditUser(null)} >Abbrechen</button>
               <button className='bp' onClick={()=>saveUser(editUser)}>Speichern</button>
             </div>
           </div>
@@ -350,7 +350,7 @@ export default function AdminPanel({ session }) {
               </select>
             </div>
             <div style={{display:'flex',gap:10,justifyContent:'flex-end',marginTop:24}}>
-              <button onClick={()=>setEditLic(null)} style={{padding:'9px 18px',borderRadius:10,border:'1px solid var(--border)',background:'var(--surface)',fontSize:13,fontWeight:700,cursor:'pointer',color:'var(--text-muted)'}}>Abbrechen</button>
+              <button className="lk-btn lk-btn-ghost" onClick={()=>setEditLic(null)} >Abbrechen</button>
               <button className='bp' onClick={()=>saveLicense(editLic)}>Speichern</button>
             </div>
           </div>

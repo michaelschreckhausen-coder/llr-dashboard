@@ -49,8 +49,8 @@ class DesignerErrorBoundary extends React.Component {
         <div style={{ padding: 24, textAlign: 'center', color: 'var(--text-muted)' }}>
           <div style={{ fontSize: 13, fontWeight: 600, marginBottom: 6 }}>Der Designer ist auf einen Fehler gestoßen</div>
           <div style={{ fontSize: 12, marginBottom: 12 }}>{chunk ? 'Es gibt eine neue Version — bitte neu laden.' : String(this.state.error?.message || this.state.error)}</div>
-          <button onClick={() => { if (chunk) window.location.reload(); else this.setState({ error: null }) }}
-            style={{ padding: '7px 14px', borderRadius: 8, border: '1px solid var(--border)', background: '#fff', cursor: 'pointer', fontSize: 12, fontWeight: 600, fontFamily: 'inherit' }}>
+          <button className="lk-btn lk-btn-ghost" onClick={() => { if (chunk) window.location.reload(); else this.setState({ error: null }) }}
+            style={{ fontFamily: 'inherit' }}>
             {chunk ? 'Neu laden' : 'Erneut versuchen'}
           </button>
         </div>

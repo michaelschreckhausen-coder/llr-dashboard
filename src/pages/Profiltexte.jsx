@@ -891,10 +891,7 @@ REGELN (hart):
             
             {hLoading && <GenerationLoading title="Profilslogan wird formuliert" expectedSeconds={15} />}
 
-            <div style={{display:'flex',gap:10,alignItems:'center',flexWrap:'wrap',marginTop:4}}>              <button onClick={genHeadline} disabled={hLoading} style={{
-                padding:'10px 22px',background:hLoading?'#94A3B8':P,color:'#fff',border:'none',borderRadius:8,
-                fontSize:13,fontWeight:600,cursor:hLoading?'wait':'pointer'
-              }}>
+            <div style={{display:'flex',gap:10,alignItems:'center',flexWrap:'wrap',marginTop:4}}>              <button className="lk-btn lk-btn-primary" onClick={genHeadline} disabled={hLoading} >
                 {hLoading ? 'Generiere…' : (isCompany ? 'Tagline generieren' : 'Profilslogan generieren')}
               </button>
             </div>
@@ -909,7 +906,7 @@ REGELN (hart):
                     <span style={{fontSize:11,color:hResult.length>(isCompany?120:220)?'#DC2626':hResult.length>(isCompany?100:180)?'#D97706':'#64748B'}}>
                       {hResult.length} / {isCompany?120:220} Zeichen
                     </span>
-<button onClick={()=>copy(hResult, setHCopied)} style={{padding:'6px 12px',background:hCopied?'#059669':'#fff',color:hCopied?'#fff':'var(--text-primary)',border:'1.5px solid var(--border)',borderRadius:7,fontSize:11.5,fontWeight:600,cursor:'pointer'}}>
+<button className="lk-btn lk-btn-ghost" onClick={()=>copy(hResult, setHCopied)} >
                       {hCopied ? 'Kopiert ✓' : 'Kopieren'}
                     </button>
                   </div>
@@ -940,10 +937,7 @@ REGELN (hart):
                   rows={2}
                   style={{width:'100%',padding:'8px 11px',border:'1.5px solid #dde3ea',borderRadius:8,fontSize:13,boxSizing:'border-box',resize:'vertical',fontFamily:'inherit'}}
                 />
-                <button onClick={() => refine({type:'linkedin_headline',currentText:hResult,instruction:hRefine,setResult:setHResult,setLoading:setHLoading,setError:setHError,historyLabel:'Profilslogan',inputFields:{ausrichtung:hAusrichtung,length:hLength,keywords:hKeywords,audiences:selectedAudiences,knowledge:selectedKnowledge,refineInstruction:hRefine},refineSetter:setHRefine})} disabled={hLoading || !hRefine.trim()} style={{
-                  marginTop:8,padding:'8px 16px',background:hLoading?'#94A3B8':(!hRefine.trim()?'#CBD5E1':P),color:'#fff',border:'none',borderRadius:8,
-                  fontSize:12,fontWeight:600,cursor:hLoading?'wait':(!hRefine.trim()?'not-allowed':'pointer')
-                }}>
+                <button className="lk-btn lk-btn-primary" onClick={() => refine({type:'linkedin_headline',currentText:hResult,instruction:hRefine,setResult:setHResult,setLoading:setHLoading,setError:setHError,historyLabel:'Profilslogan',inputFields:{ausrichtung:hAusrichtung,length:hLength,keywords:hKeywords,audiences:selectedAudiences,knowledge:selectedKnowledge,refineInstruction:hRefine},refineSetter:setHRefine})} disabled={hLoading || !hRefine.trim()} style={{ marginTop:8 }}>
                   {hLoading ? 'Überarbeite…' : 'Text mit KI nachbessern'}
                 </button>
               </div>
@@ -981,10 +975,7 @@ REGELN (hart):
             
             {aLoading && <GenerationLoading title="Info-Box wird gestaltet" expectedSeconds={25} />}
 
-            <div style={{display:'flex',gap:10,alignItems:'center',flexWrap:'wrap',marginTop:4}}>              <button onClick={genAbout} disabled={aLoading} style={{
-                padding:'10px 22px',background:aLoading?'#94A3B8':P,color:'#fff',border:'none',borderRadius:8,
-                fontSize:13,fontWeight:600,cursor:aLoading?'wait':'pointer'
-              }}>
+            <div style={{display:'flex',gap:10,alignItems:'center',flexWrap:'wrap',marginTop:4}}>              <button className="lk-btn lk-btn-primary" onClick={genAbout} disabled={aLoading} >
                 {aLoading ? 'Generiere…' : 'Info-Box generieren'}
               </button>
             </div>
@@ -999,7 +990,7 @@ REGELN (hart):
                     <span style={{fontSize:11,color:aResult.length>(isCompany?2000:2600)?'#DC2626':aResult.length>(isCompany?1800:2400)?'#D97706':'#64748B'}}>
                       {aResult.length} / {isCompany?'2.000':'2.600'} Zeichen
                     </span>
-<button onClick={()=>copy(aResult, setACopied)} style={{padding:'6px 12px',background:aCopied?'#059669':'#fff',color:aCopied?'#fff':'var(--text-primary)',border:'1.5px solid var(--border)',borderRadius:7,fontSize:11.5,fontWeight:600,cursor:'pointer'}}>
+<button className="lk-btn lk-btn-ghost" onClick={()=>copy(aResult, setACopied)} >
                       {aCopied ? 'Kopiert ✓' : 'Kopieren'}
                     </button>
                   </div>
@@ -1030,10 +1021,7 @@ REGELN (hart):
                   rows={2}
                   style={{width:'100%',padding:'8px 11px',border:'1.5px solid #dde3ea',borderRadius:8,fontSize:13,boxSizing:'border-box',resize:'vertical',fontFamily:'inherit'}}
                 />
-                <button onClick={() => refine({type:'linkedin_about',currentText:aResult,instruction:aRefine,setResult:setAResult,setLoading:setALoading,setError:setAError,historyLabel:'Info-Box',inputFields:{ausrichtung:aAusrichtung,length:aLength,structure:aStructure,audiences:selectedAudiences,knowledge:selectedKnowledge,refineInstruction:aRefine},refineSetter:setARefine})} disabled={aLoading || !aRefine.trim()} style={{
-                  marginTop:8,padding:'8px 16px',background:aLoading?'#94A3B8':(!aRefine.trim()?'#CBD5E1':P),color:'#fff',border:'none',borderRadius:8,
-                  fontSize:12,fontWeight:600,cursor:aLoading?'wait':(!aRefine.trim()?'not-allowed':'pointer')
-                }}>
+                <button className="lk-btn lk-btn-primary" onClick={() => refine({type:'linkedin_about',currentText:aResult,instruction:aRefine,setResult:setAResult,setLoading:setALoading,setError:setAError,historyLabel:'Info-Box',inputFields:{ausrichtung:aAusrichtung,length:aLength,structure:aStructure,audiences:selectedAudiences,knowledge:selectedKnowledge,refineInstruction:aRefine},refineSetter:setARefine})} disabled={aLoading || !aRefine.trim()} style={{ marginTop:8 }}>
                   {aLoading ? 'Überarbeite…' : 'Text mit KI nachbessern'}
                 </button>
               </div>
@@ -1095,10 +1083,7 @@ REGELN (hart):
             
             {pLoading && <GenerationLoading title="Positionsbeschreibung wird verfasst" expectedSeconds={20} />}
 
-            <div style={{display:'flex',gap:10,alignItems:'center',flexWrap:'wrap',marginTop:4}}>              <button onClick={genPosition} disabled={pLoading} style={{
-                padding:'10px 22px',background:pLoading?'#94A3B8':P,color:'#fff',border:'none',borderRadius:8,
-                fontSize:13,fontWeight:600,cursor:pLoading?'wait':'pointer'
-              }}>
+            <div style={{display:'flex',gap:10,alignItems:'center',flexWrap:'wrap',marginTop:4}}>              <button className="lk-btn lk-btn-primary" onClick={genPosition} disabled={pLoading} >
                 {pLoading ? 'Generiere…' : 'Positionsbeschreibung generieren'}
               </button>
             </div>
@@ -1113,7 +1098,7 @@ REGELN (hart):
                     <span style={{fontSize:11,color:pResult.length>(isCompany?256:2000)?'#DC2626':pResult.length>(isCompany?220:1800)?'#D97706':'#64748B'}}>
                       {pResult.length} / {isCompany?'256':'2.000'} Zeichen
                     </span>
-<button onClick={()=>copy(pResult, setPCopied)} style={{padding:'6px 12px',background:pCopied?'#059669':'#fff',color:pCopied?'#fff':'var(--text-primary)',border:'1.5px solid var(--border)',borderRadius:7,fontSize:11.5,fontWeight:600,cursor:'pointer'}}>
+<button className="lk-btn lk-btn-ghost" onClick={()=>copy(pResult, setPCopied)} >
                       {pCopied ? 'Kopiert ✓' : 'Kopieren'}
                     </button>
                   </div>
@@ -1144,10 +1129,7 @@ REGELN (hart):
                   rows={2}
                   style={{width:'100%',padding:'8px 11px',border:'1.5px solid #dde3ea',borderRadius:8,fontSize:13,boxSizing:'border-box',resize:'vertical',fontFamily:'inherit'}}
                 />
-                <button onClick={() => refine({type:'linkedin_position',currentText:pResult,instruction:pRefine,setResult:setPResult,setLoading:setPLoading,setError:setPError,historyLabel:'Positionsbeschreibung',inputFields:{title:pTitle,company:pCompany,ausrichtung:pAusrichtung,length:pLength,focus:pFocus,audiences:selectedAudiences,knowledge:selectedKnowledge,refineInstruction:pRefine},refineSetter:setPRefine})} disabled={pLoading || !pRefine.trim()} style={{
-                  marginTop:8,padding:'8px 16px',background:pLoading?'#94A3B8':(!pRefine.trim()?'#CBD5E1':P),color:'#fff',border:'none',borderRadius:8,
-                  fontSize:12,fontWeight:600,cursor:pLoading?'wait':(!pRefine.trim()?'not-allowed':'pointer')
-                }}>
+                <button className="lk-btn lk-btn-primary" onClick={() => refine({type:'linkedin_position',currentText:pResult,instruction:pRefine,setResult:setPResult,setLoading:setPLoading,setError:setPError,historyLabel:'Positionsbeschreibung',inputFields:{title:pTitle,company:pCompany,ausrichtung:pAusrichtung,length:pLength,focus:pFocus,audiences:selectedAudiences,knowledge:selectedKnowledge,refineInstruction:pRefine},refineSetter:setPRefine})} disabled={pLoading || !pRefine.trim()} style={{ marginTop:8 }}>
                   {pLoading ? 'Überarbeite…' : 'Text mit KI nachbessern'}
                 </button>
               </div>
@@ -1181,10 +1163,7 @@ REGELN (hart):
               />
             </Collapsible>
 
-            <div style={{display:'flex',gap:10,alignItems:'center',flexWrap:'wrap',marginTop:4}}>              <button onClick={genAll} disabled={allLoading} style={{
-                padding:'10px 22px',background:allLoading?'#94A3B8':P,color:'#fff',border:'none',borderRadius:8,
-                fontSize:13,fontWeight:600,cursor:allLoading?'wait':'pointer'
-              }}>
+            <div style={{display:'flex',gap:10,alignItems:'center',flexWrap:'wrap',marginTop:4}}>              <button className="lk-btn lk-btn-primary" onClick={genAll} disabled={allLoading} >
                 {allLoading ? 'Generiere alle drei…' : 'Alle drei generieren'}
               </button>
             </div>
@@ -1197,7 +1176,7 @@ REGELN (hart):
                   <div style={{padding:16,background:'var(--surface-muted)',borderRadius:10,border:'1px solid var(--border)'}}>
                     <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:8}}>
                       <div style={{fontSize:11,fontWeight:700,color:'var(--text-muted)',textTransform:'uppercase',letterSpacing:'0.07em'}}>Profilslogan · {allResult.headline.length} / 220</div>
-                      <button onClick={()=>copy(allResult.headline, ()=>showFlash('Profilslogan kopiert'))} style={{padding:'4px 10px',background:'var(--surface)',border:'1px solid var(--border)',borderRadius:6,fontSize:11,fontWeight:600,cursor:'pointer'}}>Kopieren</button>
+                      <button className="lk-btn lk-btn-ghost" onClick={()=>copy(allResult.headline, ()=>showFlash('Profilslogan kopiert'))} >Kopieren</button>
                     </div>
                     <textarea
                       value={allResult.headline}
@@ -1226,10 +1205,7 @@ REGELN (hart):
                           rows={2}
                           style={{width:'100%',padding:'7px 10px',border:'1.5px solid #dde3ea',borderRadius:7,fontSize:12,boxSizing:'border-box',resize:'vertical',fontFamily:'inherit'}}
                         />
-                        <button onClick={() => refine({type:'linkedin_headline',currentText:allResult.headline,instruction:allRefineH,setResult:(t)=>setAllResult(prev=>({...prev,headline:t})),setLoading:setAllLoading,setError:setAllError,historyLabel:'Profilslogan',inputFields:{audiences:selectedAudiences,knowledge:selectedKnowledge,refineInstruction:allRefineH},refineSetter:setAllRefineH})} disabled={allLoading || !allRefineH.trim()} style={{
-                          marginTop:6,padding:'6px 12px',background:allLoading?'#94A3B8':(!allRefineH.trim()?'#CBD5E1':P),color:'#fff',border:'none',borderRadius:7,
-                          fontSize:11,fontWeight:600,cursor:allLoading?'wait':(!allRefineH.trim()?'not-allowed':'pointer')
-                        }}>
+                        <button className="lk-btn lk-btn-primary" onClick={() => refine({type:'linkedin_headline',currentText:allResult.headline,instruction:allRefineH,setResult:(t)=>setAllResult(prev=>({...prev,headline:t})),setLoading:setAllLoading,setError:setAllError,historyLabel:'Profilslogan',inputFields:{audiences:selectedAudiences,knowledge:selectedKnowledge,refineInstruction:allRefineH},refineSetter:setAllRefineH})} disabled={allLoading || !allRefineH.trim()} style={{ marginTop:6 }}>
                           {allLoading ? 'Überarbeite…' : 'Mit KI nachbessern'}
                         </button>
                       </div>
@@ -1240,7 +1216,7 @@ REGELN (hart):
                   <div style={{padding:16,background:'var(--surface-muted)',borderRadius:10,border:'1px solid var(--border)'}}>
                     <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:8}}>
                       <div style={{fontSize:11,fontWeight:700,color:'var(--text-muted)',textTransform:'uppercase',letterSpacing:'0.07em'}}>Info-Box · {allResult.about.length} / 2.600</div>
-                      <button onClick={()=>copy(allResult.about, ()=>showFlash('Info-Box kopiert'))} style={{padding:'4px 10px',background:'var(--surface)',border:'1px solid var(--border)',borderRadius:6,fontSize:11,fontWeight:600,cursor:'pointer'}}>Kopieren</button>
+                      <button className="lk-btn lk-btn-ghost" onClick={()=>copy(allResult.about, ()=>showFlash('Info-Box kopiert'))} >Kopieren</button>
                     </div>
                     <textarea
                       value={allResult.about}
@@ -1269,10 +1245,7 @@ REGELN (hart):
                           rows={2}
                           style={{width:'100%',padding:'7px 10px',border:'1.5px solid #dde3ea',borderRadius:7,fontSize:12,boxSizing:'border-box',resize:'vertical',fontFamily:'inherit'}}
                         />
-                        <button onClick={() => refine({type:'linkedin_about',currentText:allResult.about,instruction:allRefineA,setResult:(t)=>setAllResult(prev=>({...prev,about:t})),setLoading:setAllLoading,setError:setAllError,historyLabel:'Info-Box',inputFields:{audiences:selectedAudiences,knowledge:selectedKnowledge,refineInstruction:allRefineA},refineSetter:setAllRefineA})} disabled={allLoading || !allRefineA.trim()} style={{
-                          marginTop:6,padding:'6px 12px',background:allLoading?'#94A3B8':(!allRefineA.trim()?'#CBD5E1':P),color:'#fff',border:'none',borderRadius:7,
-                          fontSize:11,fontWeight:600,cursor:allLoading?'wait':(!allRefineA.trim()?'not-allowed':'pointer')
-                        }}>
+                        <button className="lk-btn lk-btn-primary" onClick={() => refine({type:'linkedin_about',currentText:allResult.about,instruction:allRefineA,setResult:(t)=>setAllResult(prev=>({...prev,about:t})),setLoading:setAllLoading,setError:setAllError,historyLabel:'Info-Box',inputFields:{audiences:selectedAudiences,knowledge:selectedKnowledge,refineInstruction:allRefineA},refineSetter:setAllRefineA})} disabled={allLoading || !allRefineA.trim()} style={{ marginTop:6 }}>
                           {allLoading ? 'Überarbeite…' : 'Mit KI nachbessern'}
                         </button>
                       </div>
@@ -1283,7 +1256,7 @@ REGELN (hart):
                   <div style={{padding:16,background:'var(--surface-muted)',borderRadius:10,border:'1px solid var(--border)'}}>
                     <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:8}}>
                       <div style={{fontSize:11,fontWeight:700,color:'var(--text-muted)',textTransform:'uppercase',letterSpacing:'0.07em'}}>Positionsbeschreibung · {allResult.position.length} / 2.000</div>
-                      <button onClick={()=>copy(allResult.position, ()=>showFlash('Position kopiert'))} style={{padding:'4px 10px',background:'var(--surface)',border:'1px solid var(--border)',borderRadius:6,fontSize:11,fontWeight:600,cursor:'pointer'}}>Kopieren</button>
+                      <button className="lk-btn lk-btn-ghost" onClick={()=>copy(allResult.position, ()=>showFlash('Position kopiert'))} >Kopieren</button>
                     </div>
                     <textarea
                       value={allResult.position}
@@ -1312,10 +1285,7 @@ REGELN (hart):
                           rows={2}
                           style={{width:'100%',padding:'7px 10px',border:'1.5px solid #dde3ea',borderRadius:7,fontSize:12,boxSizing:'border-box',resize:'vertical',fontFamily:'inherit'}}
                         />
-                        <button onClick={() => refine({type:'linkedin_position',currentText:allResult.position,instruction:allRefineP,setResult:(t)=>setAllResult(prev=>({...prev,position:t})),setLoading:setAllLoading,setError:setAllError,historyLabel:'Positionsbeschreibung',inputFields:{title:pTitle,company:pCompany,audiences:selectedAudiences,knowledge:selectedKnowledge,refineInstruction:allRefineP},refineSetter:setAllRefineP})} disabled={allLoading || !allRefineP.trim()} style={{
-                          marginTop:6,padding:'6px 12px',background:allLoading?'#94A3B8':(!allRefineP.trim()?'#CBD5E1':P),color:'#fff',border:'none',borderRadius:7,
-                          fontSize:11,fontWeight:600,cursor:allLoading?'wait':(!allRefineP.trim()?'not-allowed':'pointer')
-                        }}>
+                        <button className="lk-btn lk-btn-primary" onClick={() => refine({type:'linkedin_position',currentText:allResult.position,instruction:allRefineP,setResult:(t)=>setAllResult(prev=>({...prev,position:t})),setLoading:setAllLoading,setError:setAllError,historyLabel:'Positionsbeschreibung',inputFields:{title:pTitle,company:pCompany,audiences:selectedAudiences,knowledge:selectedKnowledge,refineInstruction:allRefineP},refineSetter:setAllRefineP})} disabled={allLoading || !allRefineP.trim()} style={{ marginTop:6 }}>
                           {allLoading ? 'Überarbeite…' : 'Mit KI nachbessern'}
                         </button>
                       </div>
@@ -1339,7 +1309,7 @@ REGELN (hart):
                     <span style={{padding:'2px 8px',borderRadius:999,background:'rgba(10,111,176,0.1)',color:P,fontSize:10,fontWeight:700}}>{h.template_label}</span>
                     <span style={{color:'var(--text-muted)',fontSize:11}}>{new Date(h.created_at).toLocaleString('de-DE')}</span>
                   </div>
-                  <button onClick={()=>{copy(h.generated_text, ()=>showFlash('Kopiert'))}} style={{padding:'3px 9px',background:'var(--surface)',border:'1px solid var(--border)',borderRadius:6,fontSize:10,fontWeight:600,cursor:'pointer'}}>Kopieren</button>
+                  <button className="lk-btn lk-btn-ghost" onClick={()=>{copy(h.generated_text, ()=>showFlash('Kopiert'))}} >Kopieren</button>
                 </div>
                 <div style={{color:'#475569',lineHeight:1.5,whiteSpace:'pre-wrap',maxHeight:90,overflow:'hidden',position:'relative'}}>
                   {h.generated_text.slice(0, 350)}{h.generated_text.length > 350 ? '…' : ''}

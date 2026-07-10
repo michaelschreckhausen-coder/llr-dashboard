@@ -54,8 +54,8 @@ export default function MemoryConsentModal({ session, onClose }) {
             style={{ padding:'10px 18px', borderRadius:10, border:'1px solid var(--border)', background:'transparent', color:'var(--text-muted)', fontSize:13, fontWeight:600, cursor: saving ? 'wait' : 'pointer' }}>
             Nein, danke
           </button>
-          <button onClick={() => decide(true)} disabled={saving}
-            style={{ padding:'10px 22px', borderRadius:10, border:'none', background: P, color:'#fff', fontSize:13, fontWeight:700, cursor: saving ? 'wait' : 'pointer', boxShadow:'0 2px 10px rgba(10,111,176,.25)' }}>
+          <button className="lk-btn lk-btn-primary" onClick={() => decide(true)} disabled={saving}
+            >
             {saving ? 'Speichere…' : 'Ja, lern von mir'}
           </button>
         </div>

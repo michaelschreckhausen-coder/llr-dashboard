@@ -112,8 +112,8 @@ export default function AdminTenants({ session }) {
         <div style={{ display:'flex', gap:8, alignItems:'center' }}>
           <input value={search} onChange={e=>setSearch(e.target.value)} placeholder="Suche…"
             style={{ ...inp, width:200, padding:'7px 12px' }}/>
-          <button onClick={openNew}
-            style={{ padding:'8px 18px', borderRadius:8, border:'none', background:'var(--wl-primary, #0A6FB0)', color:'#fff', fontSize:13, fontWeight:700, cursor:'pointer', whiteSpace:'nowrap' }}>
+          <button className="lk-btn lk-btn-primary" onClick={openNew}
+            style={{ whiteSpace:'nowrap' }}>
             + Neuer Tenant
           </button>
         </div>
@@ -198,13 +198,13 @@ export default function AdminTenants({ session }) {
 
               {/* Aktionen */}
               <div style={{ display:'flex', gap:5 }}>
-                <button onClick={() => openEdit(t)}
-                  style={{ padding:'4px 9px', borderRadius:6, border:'1px solid var(--border)', background:'var(--surface)', fontSize:11, fontWeight:600, color:'#475569', cursor:'pointer' }}>
+                <button className="lk-btn lk-btn-ghost" onClick={() => openEdit(t)}
+                  >
                   ✏ Edit
                 </button>
-                <button onClick={() => navigate(`/admin/whitelabel?tenant=${t.id}`)}
+                <button className="lk-btn lk-btn-ghost" onClick={() => navigate(`/admin/whitelabel?tenant=${t.id}`)}
                   title="WhiteLabel bearbeiten"
-                  style={{ padding:'4px 7px', borderRadius:6, border:'1px solid var(--border)', background:'var(--surface)', fontSize:11, cursor:'pointer' }}>
+                  >
                   🎨
                 </button>
                 <button onClick={() => toggleActive(t)}
@@ -317,12 +317,12 @@ export default function AdminTenants({ session }) {
 
             {/* Footer */}
             <div style={{ display:'flex', justifyContent:'flex-end', gap:8, marginTop:22 }}>
-              <button onClick={() => setModal(null)}
-                style={{ padding:'8px 18px', borderRadius:8, border:'1px solid var(--border)', background:'var(--surface)', color:'var(--text-muted)', fontSize:13, fontWeight:600, cursor:'pointer' }}>
+              <button className="lk-btn lk-btn-ghost" onClick={() => setModal(null)}
+                >
                 Abbrechen
               </button>
-              <button onClick={saveTenant} disabled={saving || !form.name.trim()}
-                style={{ padding:'8px 24px', borderRadius:8, border:'none', background:(saving||!form.name.trim())?'#E5E7EB':'var(--wl-primary, #0A6FB0)', color:'#fff', fontSize:13, fontWeight:700, cursor:(saving||!form.name.trim())?'default':'pointer' }}>
+              <button className="lk-btn lk-btn-primary" onClick={saveTenant} disabled={saving || !form.name.trim()}
+                >
                 {saving ? 'Speichere…' : modal==='new' ? '+ Anlegen' : 'Speichern'}
               </button>
             </div>

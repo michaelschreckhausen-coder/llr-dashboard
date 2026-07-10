@@ -306,8 +306,8 @@ export default function TeamSettings({ session }) {
         Erstelle ein Team um Leads, Listen und Inhalte mit Kollegen zu teilen.
       </p>
       {!creatingTeam ? (
-        <button onClick={() => setCreatingTeam(true)}
-          style={{ padding:'12px 28px', borderRadius:10, border:'none', background:'var(--wl-primary, #0A6FB0)', color:'#fff', fontSize:14, fontWeight:700, cursor:'pointer' }}>
+        <button className="lk-btn lk-btn-primary" onClick={() => setCreatingTeam(true)}
+          >
           + Neues Team erstellen
         </button>
       ) : (
@@ -322,12 +322,12 @@ export default function TeamSettings({ session }) {
             autoFocus
           />
           <div style={{ display:'flex', gap:10 }}>
-            <button onClick={handleCreateTeam} disabled={!newTeamName.trim() || teamCreating}
-              style={{ flex:1, padding:'10px', borderRadius:8, border:'none', background:newTeamName.trim()?'var(--wl-primary, #0A6FB0)':' #E4E7EC', color:newTeamName.trim()?'#fff':'#9CA3AF', fontSize:13, fontWeight:700, cursor:newTeamName.trim()?'pointer':'default' }}>
+            <button className="lk-btn lk-btn-primary" onClick={handleCreateTeam} disabled={!newTeamName.trim() || teamCreating}
+              style={{ flex:1 }}>
               {teamCreating ? 'Erstelle…' : 'Team erstellen'}
             </button>
-            <button onClick={() => setCreatingTeam(false)}
-              style={{ padding:'10px 16px', borderRadius:8, border:'1px solid #E4E7EC', background:'var(--surface)', color:'var(--text-primary)', fontSize:13, cursor:'pointer' }}>
+            <button className="lk-btn lk-btn-ghost" onClick={() => setCreatingTeam(false)}
+              >
               Abbrechen
             </button>
           </div>
@@ -402,8 +402,8 @@ export default function TeamSettings({ session }) {
 
         {/* Neues Team erstellen */}
         {!creatingTeam ? (
-          <button onClick={() => setCreatingTeam(true)}
-            style={{ padding:'8px 14px', borderRadius:9, border:'1px solid var(--border)', background:'var(--surface-muted)', fontSize:12, fontWeight:600, color:'var(--text-primary)', cursor:'pointer', flexShrink:0 }}>
+          <button className="lk-btn lk-btn-ghost" onClick={() => setCreatingTeam(true)}
+            style={{ flexShrink:0 }}>
             + Neues Team
           </button>
         ) : (
@@ -416,12 +416,12 @@ export default function TeamSettings({ session }) {
               style={{ padding:'7px 12px', border:'1.5px solid var(--wl-primary, #0A6FB0)', borderRadius:8, fontSize:13, outline:'none', width:180 }}
               autoFocus
             />
-            <button onClick={handleCreateTeam} disabled={!newTeamName.trim() || teamCreating}
-              style={{ padding:'7px 14px', borderRadius:8, border:'none', background:'var(--wl-primary, #0A6FB0)', color:'#fff', fontSize:12, fontWeight:700, cursor:'pointer' }}>
+            <button className="lk-btn lk-btn-primary" onClick={handleCreateTeam} disabled={!newTeamName.trim() || teamCreating}
+              >
               {teamCreating ? '⏳' : 'Erstellen'}
             </button>
-            <button onClick={() => { setCreatingTeam(false); setNewTeamName('') }}
-              style={{ padding:'7px 10px', borderRadius:8, border:'1px solid var(--border)', background:'var(--surface)', fontSize:12, cursor:'pointer', color:'var(--text-primary)' }}>
+            <button className="lk-btn lk-btn-ghost" onClick={() => { setCreatingTeam(false); setNewTeamName('') }}
+              >
               ✕
             </button>
           </div>

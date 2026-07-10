@@ -496,14 +496,14 @@ export default function AdminUsers({ session }) {
                           {showPw ? '🙈' : '👁'}
                         </button>
                       </div>
-                      <button type="button"
+                      <button className="lk-btn lk-btn-ghost" type="button"
                         onClick={() => {
                           const pw = Math.random().toString(36).slice(-4) + Math.random().toString(36).toUpperCase().slice(-4) + '!'
                           setForm(f => ({...f, password:pw}))
                           setShowPw(true)
                         }}
                         title="Sicheres Passwort generieren"
-                        style={{ padding:'0 12px', borderRadius:8, border:'1.5px solid #E2E8F0', background:'var(--surface-muted)', color:'#475569', fontSize:12, fontWeight:700, cursor:'pointer', whiteSpace:'nowrap', flexShrink:0 }}>
+                        style={{ whiteSpace:'nowrap', flexShrink:0 }}>
                         🎲 Generieren
                       </button>
                     </div>

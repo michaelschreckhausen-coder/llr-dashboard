@@ -199,13 +199,13 @@ function AnfrageModal({ lead, onClose, onSaved, session }) {
           style={{ width:'100%', boxSizing:'border-box', padding:'10px 12px', borderRadius:10, border:'1.5px solid #E2E8F0', fontSize:14, resize:'vertical', outline:'none' }}/>
         <div style={{ textAlign:'right', fontSize:11, color:'var(--text-muted)', marginTop:4 }}>{msg.length}/300</div>
         <div style={{ display:'flex', gap:10, marginTop:16 }}>
-          <button onClick={generate} disabled={gen} style={{ flex:1, padding:'10px 0', borderRadius:10, border:'1px solid var(--border)', background:'var(--surface-muted)', color:P, fontWeight:700, fontSize:13, cursor:'pointer' }}>
+          <button className="lk-btn lk-btn-ghost" onClick={generate} disabled={gen} style={{ flex:1 }}>
             {gen ? <span style={{display:'inline-flex',alignItems:'center',gap:6}}><Loader2 size={14} className='lk-spin'/>Generiere…</span> : <span style={{display:'inline-flex',alignItems:'center',gap:6}}><Sparkles size={14}/>KI-Nachricht</span>}
           </button>
-          <button onClick={queueConnect} disabled={saving||sent} title="Wird automatisch über die Leadesk Chrome Extension gesendet" style={{ flex:1.4, padding:'10px 0', borderRadius:10, border:'none', background:sent?'#10B981':P, color:'#fff', fontWeight:700, fontSize:13, cursor:!sent?'pointer':'default', transition:'background 0.3s' }}>
+          <button className="lk-btn lk-btn-primary" onClick={queueConnect} disabled={saving||sent} title="Wird automatisch über die Leadesk Chrome Extension gesendet" style={{ flex:1.4 }}>
             {sent ? <span style={{display:'inline-flex',alignItems:'center',gap:6}}><Check size={14}/>In Queue!</span> : saving ? <Loader2 size={14} className='lk-spin'/> : <span style={{display:'inline-flex',alignItems:'center',gap:6}}><Bot size={14}/>Auto-vernetzen</span>}
           </button>
-          <button onClick={saveManual} disabled={saving||sent||!msg} title="Nur Nachricht merken & Status setzen (manuell auf LinkedIn senden)" style={{ flex:1, padding:'10px 0', borderRadius:10, border:'1px solid var(--border)', background:'var(--surface-muted)', color:'#475569', fontWeight:600, fontSize:12, cursor:msg&&!sent?'pointer':'default' }}>
+          <button className="lk-btn lk-btn-ghost" onClick={saveManual} disabled={saving||sent||!msg} title="Nur Nachricht merken & Status setzen (manuell auf LinkedIn senden)" style={{ flex:1 }}>
             {saving ? '…' : 'Nur Nachricht'}
           </button>
         </div>
@@ -261,8 +261,8 @@ function StatusModal({ lead, onClose, onSaved }) {
         </div>
 
         <div style={{ display:'flex', gap:10 }}>
-          <button onClick={onClose} style={{ flex:1, padding:'10px 0', borderRadius:10, border:'1px solid var(--border)', background:'var(--surface)', color:'var(--text-muted)', fontWeight:600, cursor:'pointer' }}>Abbrechen</button>
-          <button onClick={save} disabled={saving} style={{ flex:1, padding:'10px 0', borderRadius:10, border:'none', background:P, color:'#fff', fontWeight:700, cursor:'pointer' }}>
+          <button className="lk-btn lk-btn-ghost" onClick={onClose} style={{ flex:1 }}>Abbrechen</button>
+          <button className="lk-btn lk-btn-primary" onClick={save} disabled={saving} style={{ flex:1 }}>
             {saving ? <Loader2 size={14} className='lk-spin'/> : <span style={{display:'inline-flex',alignItems:'center',gap:6}}><Save size={14}/>Speichern</span>}
           </button>
         </div>
@@ -424,9 +424,9 @@ export default function Vernetzungen({ session }) {
   const headerAction = (
     <div style={{ display:'flex', gap:8, alignItems:'center', flexWrap:'wrap', justifyContent:'flex-end' }}>
       <InboxLink />
-      <button onClick={abgleichen} disabled={syncing}
+      <button className="lk-btn lk-btn-primary" onClick={abgleichen} disabled={syncing}
         title="Scannt deine LinkedIn-Connections-Seite und erkennt angenommene Anfragen automatisch"
-        style={{ padding:'9px 16px', borderRadius:10, border:'none', background:P, color:'#fff', fontSize:13, fontWeight:700, cursor:syncing?'default':'pointer', display:'inline-flex', alignItems:'center', gap:7 }}>
+        style={{ display:'inline-flex', alignItems:'center', gap:7 }}>
         {syncing ? <Loader2 size={15} className='lk-spin'/> : <RefreshCw size={15}/>}
         {syncing ? 'Gleiche ab…' : 'Verbindungen abgleichen'}
       </button>
@@ -486,7 +486,7 @@ export default function Vernetzungen({ session }) {
 
       {/* Toolbar: Bulk-Vernetzen + Sort + Suche + CSV */}
       <div style={{ display:'flex', gap:8, marginBottom:16, flexWrap:'wrap', alignItems:'center' }}>
-        <button onClick={async () => {
+        <button className="lk-btn lk-btn-primary" onClick={async () => {
           const toQueue = filtered.filter(l => !['verbunden','pending'].includes(l.li_connection_status) && (l.linkedin_url || l.profile_url))
           if (!toQueue.length) { alert('Keine offenen Kontakte zum Vernetzen'); return }
           if (!window.confirm(`${toQueue.length} Kontakte automatisch vernetzen?`)) return
@@ -499,7 +499,7 @@ export default function Vernetzungen({ session }) {
             setLeads(ls => ls.map(l => toQueue.find(t=>t.id===l.id) ? {...l, li_connection_status:'pending', li_connection_requested_at:now} : l))
             alert(`${jobs.length} Kontakte in die Vernetzungs-Queue gestellt.`)
           } else alert('Fehler: '+error.message)
-        }} style={{ padding:'8px 16px', borderRadius:10, border:'none', background:P, color:'#fff', fontSize:13, fontWeight:700, cursor:'pointer', display:'inline-flex', alignItems:'center', gap:6 }}>
+        }} style={{ display:'inline-flex', alignItems:'center', gap:6 }}>
           <Bot size={14}/>Auto-vernetzen
           <span style={{ background:'rgba(255,255,255,0.25)', borderRadius:99, padding:'1px 7px', fontSize:11 }}>{filtered.filter(l => !['verbunden','pending'].includes(l.li_connection_status)).length}</span>
         </button>
@@ -525,12 +525,12 @@ export default function Vernetzungen({ session }) {
         <input value={search} onChange={e=>setSearch(e.target.value)} placeholder="Name, Firma oder Jobtitel suchen…"
           style={{ flex:1, minWidth:180, padding:'9px 14px', borderRadius:10, border:'1.5px solid #E2E8F0', fontSize:13, outline:'none' }}/>
 
-        <button onClick={() => {
+        <button className="lk-btn lk-btn-ghost" onClick={() => {
           const rows = [['Name','Jobtitel','Unternehmen','Status','LinkedIn']]
           filtered.forEach(l => rows.push([fullName(l), l.job_title||l.headline||'', l.company||'', l.li_connection_status||'', l.linkedin_url||l.profile_url||'']))
           const csv = rows.map(r => r.map(c => `"${String(c).replace(/"/g,'""')}"`).join(',')).join('\n')
           const a = document.createElement('a'); a.href='data:text/csv;charset=utf-8,﻿'+encodeURIComponent(csv); a.download=`vernetzungen-${new Date().toISOString().substring(0,10)}.csv`; a.click()
-        }} style={{ padding:'8px 14px', borderRadius:10, border:'1.5px solid #E2E8F0', background:'var(--surface-muted)', fontSize:12, fontWeight:600, color:'var(--text-muted)', cursor:'pointer', display:'inline-flex', alignItems:'center', gap:6 }}>
+        }} style={{ display:'inline-flex', alignItems:'center', gap:6 }}>
           <Download size={13} strokeWidth={1.75}/>CSV
         </button>
       </div>
@@ -589,8 +589,8 @@ export default function Vernetzungen({ session }) {
                 <div style={{ display:'flex', gap:6, alignItems:'center', flexShrink:0 }}>
                   <span style={{ fontSize:11, padding:'4px 10px', borderRadius:8, background:conn.bg, color:conn.color, border:'1px solid '+conn.border, fontWeight:700, whiteSpace:'nowrap' }}>{conn.label}</span>
                   {!alreadySent && (
-                    <button onClick={e => { e.stopPropagation(); setAnfrageModal(lead) }}
-                      style={{ padding:'6px 12px', borderRadius:8, fontSize:12, fontWeight:700, cursor:'pointer', border:'none', background:P, color:'#fff', whiteSpace:'nowrap' }}>
+                    <button className="lk-btn lk-btn-primary" onClick={e => { e.stopPropagation(); setAnfrageModal(lead) }}
+                      style={{ whiteSpace:'nowrap' }}>
                       <span style={{display:'inline-flex',alignItems:'center',gap:4}}><Sparkles size={10} strokeWidth={1.75}/>Anfrage</span>
                     </button>
                   )}
@@ -600,8 +600,8 @@ export default function Vernetzungen({ session }) {
                       <MessageSquare size={11} strokeWidth={1.75}/>
                     </button>
                   )}
-                  <button onClick={e => { e.stopPropagation(); setStatusModal(lead) }} title="Status manuell setzen"
-                    style={{ padding:'6px 10px', borderRadius:8, border:'1px solid var(--border)', background:'var(--surface-muted)', color:'#475569', fontSize:12, fontWeight:600, cursor:'pointer' }}>
+                  <button className="lk-btn lk-btn-ghost" onClick={e => { e.stopPropagation(); setStatusModal(lead) }} title="Status manuell setzen"
+                    >
                     ↺
                   </button>
                   <button onClick={e => { e.stopPropagation(); navigate(`/leads/${lead.id}`) }} title="Kontakt öffnen"

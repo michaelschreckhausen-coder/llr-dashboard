@@ -145,8 +145,8 @@ function TagPicker({ tags = [], selTagIds = [], onToggle, onRename, onPersist, o
   }
   return (
     <div ref={ref} style={{ position:'relative' }}>
-      <button ref={btnRef} type="button" onClick={openMenu}
-        style={{ width:'100%', minHeight:40, padding:'7px 12px', borderRadius:10, border:'1.5px solid var(--border)', background:'#fff', cursor:'pointer', fontFamily:'inherit', display:'flex', alignItems:'center', gap:6, boxSizing:'border-box' }}>
+      <button className="lk-btn lk-btn-ghost" ref={btnRef} type="button" onClick={openMenu}
+        style={{ width:'100%', minHeight:40, fontFamily:'inherit', display:'flex', alignItems:'center', gap:6, boxSizing:'border-box' }}>
         {selected.length === 0
           ? <span style={{ fontSize:13, color:'var(--text-muted)', flex:1, textAlign:'left' }}>Tags wählen…</span>
           : <span style={{ display:'flex', flexWrap:'wrap', gap:4, flex:1, minWidth:0 }}>
@@ -233,8 +233,8 @@ function DateTimePicker({ value = '', onChange = () => {} }) {
   const label = vp ? (vp.toLocaleString('de-DE', { day:'2-digit', month:'short', year:'numeric', hour:'2-digit', minute:'2-digit' }) + ' Uhr') : ''
   return (
     <div ref={ref} style={{ position:'relative' }}>
-      <button ref={btnRef} type="button" onClick={openMenu}
-        style={{ width:'100%', minHeight:40, padding:'9px 12px', borderRadius:10, border:'1.5px solid var(--border)', background:'#fff', cursor:'pointer', fontFamily:'inherit', display:'flex', alignItems:'center', gap:8, boxSizing:'border-box' }}>
+      <button className="lk-btn lk-btn-ghost" ref={btnRef} type="button" onClick={openMenu}
+        style={{ width:'100%', minHeight:40, fontFamily:'inherit', display:'flex', alignItems:'center', gap:8, boxSizing:'border-box' }}>
         <Calendar size={14} strokeWidth={1.9} style={{ color:'var(--text-muted)', flexShrink:0 }}/>
         <span style={{ flex:1, minWidth:0, textAlign:'left', fontSize:13, color: vp ? 'var(--text-primary)' : 'var(--text-muted)', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{label || 'Datum & Uhrzeit'}</span>
         <ChevronDown size={14} strokeWidth={2} style={{ opacity:0.5, flexShrink:0 }}/>
@@ -252,10 +252,8 @@ function DateTimePicker({ value = '', onChange = () => {} }) {
           <div style={{ display:'grid', gridTemplateColumns:'repeat(7,1fr)', gap:2 }}>
             {Array.from({ length: firstWd }).map((_, i) => <div key={'e' + i} />)}
             {Array.from({ length: dim }).map((_, i) => { const d = i + 1; const sel = isSel(d); const td = isToday(d); return (
-              <button key={d} type="button" onClick={() => pickDay(d)}
-                style={{ height:32, borderRadius:8, cursor:'pointer', fontFamily:'inherit', fontSize:12.5, fontWeight: sel ? 700 : 500,
-                  border: td && !sel ? '1.5px solid ' + P : '1.5px solid transparent',
-                  background: sel ? P : 'transparent', color: sel ? '#fff' : 'var(--text-primary)' }}>{d}</button>
+              <button className="lk-btn lk-btn-primary" key={d} type="button" onClick={() => pickDay(d)}
+                style={{ height:32, fontFamily:'inherit' }}>{d}</button>
             )})}
           </div>
           <div style={{ display:'flex', alignItems:'center', gap:8, marginTop:12, paddingTop:12, borderTop:'1px solid var(--border)' }}>
@@ -995,8 +993,8 @@ function PostModal({ post, onClose, onSave, onDelete, session, activeTeamId, mem
               {!form.content?.trim() ? (
                 /* Empty-State: prominenter Button-Overlay UNTERHALB der Tipps */
                 <div style={{ position:'absolute', bottom:30, left:'50%', transform:'translateX(-50%)', pointerEvents:'none', display:'flex', flexDirection:'column', alignItems:'center', gap:8, padding:'12px 16px', background:'rgba(255,255,255,0.95)', borderRadius:14, boxShadow:'0 4px 18px rgba(15,23,42,0.08)', maxWidth:'88%' }}>
-                  <button type="button" onClick={() => jumpToTextStudio('auto')}
-                    style={{ pointerEvents:'auto', padding:'10px 18px', borderRadius:9, border:'none', background:'var(--wl-primary, #0A6FB0)', color:'#fff', fontSize:13, fontWeight:700, cursor:'pointer', display:'inline-flex', alignItems:'center', gap:6, boxShadow:'0 2px 10px rgba(10,111,176,.25)', whiteSpace:'nowrap' }}>
+                  <button className="lk-btn lk-btn-primary" type="button" onClick={() => jumpToTextStudio('auto')}
+                    style={{ pointerEvents:'auto', display:'inline-flex', alignItems:'center', gap:6, whiteSpace:'nowrap' }}>
                     <span style={{display:'inline-flex',alignItems:'center',gap:6}}><Sparkles size={13}/>In Content-Werkstatt schreiben →</span>
                   </button>
                   <div style={{ fontSize:11, color:'var(--text-muted)', textAlign:'center', lineHeight:1.4 }}>
@@ -1114,8 +1112,8 @@ function PostModal({ post, onClose, onSave, onDelete, session, activeTeamId, mem
                               style={{ padding:'6px 12px', borderRadius:7, border:'none', background:'#fff', color:'var(--text-primary, rgb(20,20,43))', fontSize:11, fontWeight:700, cursor:'pointer', display:'inline-flex', alignItems:'center', gap:5, whiteSpace:'nowrap' }}>
                               ⬇ Download
                             </button>
-                            <button onClick={(e) => { e.stopPropagation(); openVisualInEditor(v) }}
-                              style={{ padding:'6px 12px', borderRadius:7, border:'none', background:'var(--wl-primary, #0A6FB0)', color:'#fff', fontSize:11, fontWeight:700, cursor:'pointer', display:'inline-flex', alignItems:'center', gap:5, whiteSpace:'nowrap' }}>
+                            <button className="lk-btn lk-btn-primary" onClick={(e) => { e.stopPropagation(); openVisualInEditor(v) }}
+                              style={{ display:'inline-flex', alignItems:'center', gap:5, whiteSpace:'nowrap' }}>
                               <span style={{display:'inline-flex',alignItems:'center',gap:6}}><Pencil size={12}/>Bild bearbeiten</span>
                             </button>
                           </div>
@@ -1126,14 +1124,14 @@ function PostModal({ post, onClose, onSave, onDelete, session, activeTeamId, mem
                 </div>
               )}
               <div style={{ display:'flex', gap:6, flexWrap:'wrap' }}>
-                <button type="button"
+                <button className="lk-btn lk-btn-ghost" type="button"
                   onClick={() => {
                     console.log('[upload-btn] clicked', { hasRef: !!fileInputRef.current, uploadingMedia })
                     if (uploadingMedia) return
                     fileInputRef.current?.click()
                   }}
                   disabled={uploadingMedia}
-                  style={{ flex:'1 1 auto', padding:'9px 12px', borderRadius:8, border:'1.5px solid var(--border)', background:'#fff', color:'var(--text-primary)', fontSize:12, fontWeight:600, cursor: uploadingMedia ? 'wait' : 'pointer', display:'inline-flex', alignItems:'center', justifyContent:'center', gap:5 }}>
+                  style={{ flex:'1 1 auto', display:'inline-flex', alignItems:'center', justifyContent:'center', gap:5 }}>
                   {uploadingMedia ? <span style={{display:'inline-flex',alignItems:'center',gap:6}}><Loader2 size={12} className='lk-spin'/>Lade hoch…</span> : <span style={{display:'inline-flex',alignItems:'center',gap:6}}><Paperclip size={12}/>Datei hochladen</span>}
                 </button>
                 <input ref={fileInputRef} type="file" multiple
@@ -1148,12 +1146,12 @@ function PostModal({ post, onClose, onSave, onDelete, session, activeTeamId, mem
                     uploadMediaFiles(files)
                   }}
                   style={{ position:'absolute', left:'-9999px', width:1, height:1, opacity:0, pointerEvents:'none' }}/>
-                <button onClick={openVisualPicker}
-                  style={{ flex:'1 1 auto', padding:'9px 12px', borderRadius:8, border:'1.5px solid var(--border)', background:'#fff', color:'var(--text-primary)', fontSize:12, fontWeight:600, cursor:'pointer', display:'inline-flex', alignItems:'center', justifyContent:'center', gap:5 }}>
+                <button className="lk-btn lk-btn-ghost" onClick={openVisualPicker}
+                  style={{ flex:'1 1 auto', display:'inline-flex', alignItems:'center', justifyContent:'center', gap:5 }}>
                   <span style={{display:'inline-flex',alignItems:'center',gap:6}}><BookOpen size={12}/>Aus Bibliothek</span>
                 </button>
-                <button onClick={() => { if (navigate) navigate('/content-studio?post_id=' + post.id + '&gen=image'); onClose() }}
-                  style={{ flex:'1 1 auto', padding:'9px 12px', borderRadius:8, border:'1.5px solid var(--border)', background:'#fff', color:'var(--text-primary)', fontSize:12, fontWeight:600, cursor:'pointer', display:'inline-flex', alignItems:'center', justifyContent:'center', gap:5 }}>
+                <button className="lk-btn lk-btn-ghost" onClick={() => { if (navigate) navigate('/content-studio?post_id=' + post.id + '&gen=image'); onClose() }}
+                  style={{ flex:'1 1 auto', display:'inline-flex', alignItems:'center', justifyContent:'center', gap:5 }}>
                   <span style={{display:'inline-flex',alignItems:'center',gap:6}}><Wand2 size={12}/>KI-Bild generieren</span>
                 </button>
               </div>
@@ -1287,9 +1285,9 @@ function PostModal({ post, onClose, onSave, onDelete, session, activeTeamId, mem
                 </div>
               )}
               <div style={{ position:'relative' }}>
-                <button type="button" onClick={() => setMentionPickerOpen(o => !o)}
+                <button className="lk-btn lk-btn-ghost" type="button" onClick={() => setMentionPickerOpen(o => !o)}
                   disabled={mentionableMembers.length === 0}
-                  style={{ width:'100%', padding:'7px 10px', borderRadius:8, border:'1.5px solid var(--border)', background:'#fff', fontSize:12, fontWeight:600, color: mentionableMembers.length === 0 ? 'var(--text-muted)' : 'var(--text-primary)', cursor: mentionableMembers.length === 0 ? 'not-allowed' : 'pointer', display:'inline-flex', alignItems:'center', justifyContent:'center', gap:5 }}>
+                  style={{ width:'100%', display:'inline-flex', alignItems:'center', justifyContent:'center', gap:5 }}>
                   {mentionableMembers.length === 0 ? 'Keine Team-Mitglieder verfügbar' : '+ Mitglied zuordnen'}
                 </button>
                 {mentionPickerOpen && mentionableMembers.length > 0 && (
@@ -1387,9 +1385,9 @@ function PostModal({ post, onClose, onSave, onDelete, session, activeTeamId, mem
                     style={{ width:'100%', padding:'8px 10px', borderRadius:7, border:'1.5px solid #E5E7EB', fontSize:12, resize:'vertical', outline:'none', boxSizing:'border-box', fontFamily:'inherit' }}/>
                   <div style={{ display:'flex', gap:6, marginTop:6, alignItems:'center', flexWrap:'wrap' }}>
                     <div style={{ position:'relative' }}>
-                      <button type="button" onClick={() => setCommentMentionPickerOpen(o => !o)}
+                      <button className="lk-btn lk-btn-ghost" type="button" onClick={() => setCommentMentionPickerOpen(o => !o)}
                         disabled={mentionableMembers.length === 0}
-                        style={{ padding:'5px 9px', borderRadius:7, border:'1px solid var(--border)', background:'#fff', fontSize:11, fontWeight:600, color: mentionableMembers.length === 0 ? 'var(--text-muted)' : 'var(--text-primary)', cursor: mentionableMembers.length === 0 ? 'not-allowed' : 'pointer' }}>
+                        >
                         @ erwähnen
                       </button>
                       {commentMentionPickerOpen && (
@@ -1417,8 +1415,8 @@ function PostModal({ post, onClose, onSave, onDelete, session, activeTeamId, mem
                         </>
                       )}
                     </div>
-                    <button onClick={addComment} disabled={!newComment.trim()}
-                      style={{ marginLeft:'auto', padding:'5px 12px', borderRadius:7, border:'none', background: newComment.trim() ? 'var(--wl-primary, #0A6FB0)' : '#CBD5E1', color:'#fff', fontSize:11, fontWeight:700, cursor: newComment.trim() ? 'pointer' : 'not-allowed', whiteSpace:'nowrap' }}>
+                    <button className="lk-btn lk-btn-primary" onClick={addComment} disabled={!newComment.trim()}
+                      style={{ marginLeft:'auto', whiteSpace:'nowrap' }}>
                       Senden
                     </button>
                   </div>
@@ -1460,8 +1458,8 @@ function PostModal({ post, onClose, onSave, onDelete, session, activeTeamId, mem
               const initials = (dispName || 'BV').split(' ').map(s => s[0]).filter(Boolean).slice(0, 2).join('').toUpperCase() || 'BV'
               return (
                 <div>
-                  <button onClick={() => setShowPreview(s => !s)}
-                    style={{ width:'100%', padding:'9px 12px', borderRadius:10, border:'1.5px solid var(--border)', background:'#fff', color:'var(--text-primary)', fontSize:12, fontWeight:600, cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'center', gap:8 }}>
+                  <button className="lk-btn lk-btn-ghost" onClick={() => setShowPreview(s => !s)}
+                    style={{ width:'100%', display:'flex', alignItems:'center', justifyContent:'center', gap:8 }}>
                     {showPreview ? <span style={{display:'inline-flex',alignItems:'center',gap:6}}><ChevronUp size={12}/>Vorschau verbergen</span> : <span style={{display:'inline-flex',alignItems:'center',gap:6}}><Eye size={12}/>LinkedIn-Vorschau anzeigen</span>}
                   </button>
                   {showPreview && (
@@ -1645,12 +1643,12 @@ function PostModal({ post, onClose, onSave, onDelete, session, activeTeamId, mem
                       PDF{v.page_count ? ` · ${v.page_count} Seiten` : ''}{v.file_size_bytes ? ` · ${(v.file_size_bytes / 1024 / 1024).toFixed(1)} MB` : ''}
                     </div>
                     <div style={{ display:'flex', gap:10, justifyContent:'center', flexWrap:'wrap' }}>
-                      <button onClick={() => window.open(v.signed_url, '_blank', 'noopener')}
-                        style={{ padding:'10px 18px', borderRadius:9, border:'none', background:'var(--wl-primary, #0A6FB0)', color:'#fff', fontSize:13, fontWeight:700, cursor:'pointer', display:'inline-flex', alignItems:'center', gap:6 }}>
+                      <button className="lk-btn lk-btn-primary" onClick={() => window.open(v.signed_url, '_blank', 'noopener')}
+                        style={{ display:'inline-flex', alignItems:'center', gap:6 }}>
                         📄 Im neuen Tab öffnen
                       </button>
-                      <button onClick={() => downloadPostVisual(v)}
-                        style={{ padding:'10px 18px', borderRadius:9, border:'1.5px solid var(--border)', background:'#fff', color:'var(--text-primary)', fontSize:13, fontWeight:600, cursor:'pointer', display:'inline-flex', alignItems:'center', gap:6 }}>
+                      <button className="lk-btn lk-btn-ghost" onClick={() => downloadPostVisual(v)}
+                        style={{ display:'inline-flex', alignItems:'center', gap:6 }}>
                         ⬇ Download
                       </button>
                     </div>
@@ -1719,8 +1717,8 @@ function PostModal({ post, onClose, onSave, onDelete, session, activeTeamId, mem
                 )}
               </div>
               <div style={{ display:'flex', justifyContent:'flex-end', marginTop:10, paddingTop:10, borderTop:'1px solid var(--border)', flexShrink:0 }}>
-                <button onClick={() => setVisualPickerOpen(false)}
-                  style={{ padding:'8px 16px', borderRadius:8, border:'1px solid var(--border)', background:'#fff', cursor:'pointer', fontSize:13, fontWeight:600 }}>
+                <button className="lk-btn lk-btn-ghost" onClick={() => setVisualPickerOpen(false)}
+                  >
                   Fertig
                 </button>
               </div>
@@ -1776,8 +1774,8 @@ function PostModal({ post, onClose, onSave, onDelete, session, activeTeamId, mem
           )}
 
           {/* RECHTS: Speichern · Auf LinkedIn posten / planen — gleiche Brand-Primary-Farbe */}
-          <button onClick={save} disabled={saving}
-            style={{ padding:'9px 20px', borderRadius:10, border:'none', background:'var(--wl-primary, #0A6FB0)', color:'#fff', fontSize:13, fontWeight:700, cursor:'pointer', opacity: saving ? 0.7 : 1, display:'inline-flex', alignItems:'center', gap:5 }}>
+          <button className="lk-btn lk-btn-primary" onClick={save} disabled={saving}
+            style={{ opacity: saving ? 0.7 : 1, display:'inline-flex', alignItems:'center', gap:5 }}>
             {saving ? <span style={{display:'inline-flex',alignItems:'center',gap:6}}><Loader2 size={12} className='lk-spin'/>Speichere…</span> : isNew ? <span style={{display:'inline-flex',alignItems:'center',gap:6}}><Plus size={12}/>Erstellen</span> : <span style={{display:'inline-flex',alignItems:'center',gap:6}}><Save size={12}/>Speichern</span>}
           </button>
           {/* Phase 2a: Unipile-Route-Schalter (nur Person-Posts) — schaltet Monitoring frei */}
@@ -1794,7 +1792,7 @@ function PostModal({ post, onClose, onSave, onDelete, session, activeTeamId, mem
             const hasSchedule = !!form.scheduled_at
             const future = hasSchedule && new Date(form.scheduled_at) > new Date()
             return (
-              <button onClick={async () => {
+              <button className="lk-btn lk-btn-primary" onClick={async () => {
                 // ── Phase 2a: Unipile-Route (mit Monitoring) ──
                 if (viaUnipile) {
                   if (!post?.id) { alert('Bitte zuerst speichern.'); return }
@@ -1901,7 +1899,7 @@ function PostModal({ post, onClose, onSave, onDelete, session, activeTeamId, mem
                 } catch (e) {
                   alert('Posten fehlgeschlagen: ' + (e.message || 'Unbekannt'))
                 } finally { setSaving(false) }
-              }} disabled={saving} title={(!liConnected && !viaUnipile) ? ((activeBrandVoice?.noBrand || !form.brand_voice_id) ? 'Nur im Redaktionsplan einer Marke möglich' : 'Kein LinkedIn-Profil mit dieser Brand verknüpft — erst verbinden') : undefined} style={{ padding:'9px 16px', borderRadius:10, border:'none', background: (!liConnected && !viaUnipile) ? '#CBD5E1' : (saving ? '#94A3B8' : 'var(--wl-primary, #0A6FB0)'), color:'#fff', fontSize:13, fontWeight:700, cursor: saving ? 'wait' : 'pointer', display:'flex', alignItems:'center', gap:5, opacity: (!liConnected && !viaUnipile) ? 0.9 : 1 }}>
+              }} disabled={saving} title={(!liConnected && !viaUnipile) ? ((activeBrandVoice?.noBrand || !form.brand_voice_id) ? 'Nur im Redaktionsplan einer Marke möglich' : 'Kein LinkedIn-Profil mit dieser Brand verknüpft — erst verbinden') : undefined} style={{ display:'flex', alignItems:'center', gap:5, opacity: (!liConnected && !viaUnipile) ? 0.9 : 1 }}>
                 {future
                   ? <span style={{display:'inline-flex',alignItems:'center',gap:6}}><Calendar size={13}/>{viaUnipile ? 'Über Unipile einplanen' : 'Auto-Publish einplanen'}</span>
                   : <span style={{display:'inline-flex',alignItems:'center',gap:6}}><Rocket size={13}/>{viaUnipile ? 'Jetzt über Unipile posten' : 'Jetzt auf LinkedIn posten'}</span>}
@@ -2323,10 +2321,8 @@ Danke für den Austausch! 🤝`,
           </button>
 
           {/* Neu Button */}
-          <button data-tour-id="rp-new-post" onClick={() => openNew()}
-            style={{ padding:'8px 18px', borderRadius:10, border:'none', background:'var(--wl-primary, #0A6FB0)', color:'#fff',
-              fontSize:13, fontWeight:700, cursor:'pointer', display:'flex', alignItems:'center', gap:6,
-              boxShadow:'0 2px 8px rgba(10,111,176,0.3)', whiteSpace:'nowrap' }}>
+          <button className="lk-btn lk-btn-primary" data-tour-id="rp-new-post" onClick={() => openNew()}
+            style={{ display:'flex', alignItems:'center', gap:6, whiteSpace:'nowrap' }}>
             <span style={{display:'inline-flex',alignItems:'center',gap:6}}><PenLine size={13}/>Neuer Beitrag</span>
           </button>
         </div>
@@ -2379,38 +2375,13 @@ Danke für den Austausch! 🤝`,
             Hier wird dein Redaktionsplan aufgebaut. Lass dir Ideen von der KI vorschlagen oder leg direkt mit einem ersten Entwurf los.
           </p>
           <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap', justifyContent: 'center' }}>
-            <button onClick={() => setShowBrainstorm(true)}
-              style={{
-                padding: '14px 26px',
-                borderRadius: 12,
-                border: 'none',
-                background: 'linear-gradient(135deg, #0A6FB0, #0A6FB0)',
-                color: '#fff',
-                fontSize: 15,
-                fontWeight: 700,
-                cursor: 'pointer',
-                boxShadow: '0 4px 14px rgba(10,111,176,0.28)',
-                display: 'inline-flex',
-                alignItems: 'center',
-                gap: 8,
-              }}>
+            <button className="lk-btn lk-btn-primary" onClick={() => setShowBrainstorm(true)}
+              style={{ display: 'inline-flex', alignItems: 'center', gap: 8 }}>
               <Brain size={18} strokeWidth={1.75} style={{ color:'var(--wl-primary, #0A6FB0)' }}/>
               Mit KI brainstormen
             </button>
-            <button onClick={() => openNew()}
-              style={{
-                padding: '14px 22px',
-                borderRadius: 12,
-                border: '1.5px solid var(--border)',
-                background: 'var(--surface)',
-                color: 'var(--text-primary)',
-                fontSize: 14,
-                fontWeight: 600,
-                cursor: 'pointer',
-                display: 'inline-flex',
-                alignItems: 'center',
-                gap: 8,
-              }}>
+            <button className="lk-btn lk-btn-ghost" onClick={() => openNew()}
+              style={{ display: 'inline-flex', alignItems: 'center', gap: 8 }}>
               <PenLine size={14} strokeWidth={1.75}/>
               Manuell anlegen
             </button>
@@ -2518,15 +2489,15 @@ Danke für den Austausch! 🤝`,
         <div style={{ flex:1, display:'flex', flexDirection:'column', minHeight:0 }}>
           {/* Monat Navigation */}
           <div style={{ display:'flex', alignItems:'center', gap:12, marginBottom:16, flexShrink:0 }}>
-            <button onClick={() => setCalDate(d => new Date(d.getFullYear(), d.getMonth()-1, 1))}
-              style={{ padding:'6px 12px', borderRadius:8, border:'1px solid var(--border)', background:'var(--surface)', cursor:'pointer', fontSize:16 }}>‹</button>
+            <button className="lk-btn lk-btn-ghost" onClick={() => setCalDate(d => new Date(d.getFullYear(), d.getMonth()-1, 1))}
+              >‹</button>
             <div style={{ fontSize:18, fontWeight:800, color:'rgb(20,20,43)', flex:1, textAlign:'center' }}>
               {MONTHS[calMonth]} {calYear}
             </div>
-            <button onClick={() => setCalDate(new Date())}
-              style={{ padding:'6px 12px', borderRadius:8, border:'1px solid var(--border)', background:'var(--surface)', cursor:'pointer', fontSize:12, fontWeight:600 }}>Heute</button>
-            <button onClick={() => setCalDate(d => new Date(d.getFullYear(), d.getMonth()+1, 1))}
-              style={{ padding:'6px 12px', borderRadius:8, border:'1px solid var(--border)', background:'var(--surface)', cursor:'pointer', fontSize:16 }}>›</button>
+            <button className="lk-btn lk-btn-ghost" onClick={() => setCalDate(new Date())}
+              >Heute</button>
+            <button className="lk-btn lk-btn-ghost" onClick={() => setCalDate(d => new Date(d.getFullYear(), d.getMonth()+1, 1))}
+              >›</button>
           </div>
 
           {/* ── MOBILE: Agenda-Liste statt 7-Spalten-Raster ── */}
@@ -2540,8 +2511,8 @@ Danke für den Austausch! 🤝`,
               return (
                 <div style={{ flex:1, display:'flex', flexDirection:'column', alignItems:'center', justifyContent:'center', gap:12, padding:'40px 16px', color:'var(--text-muted)', textAlign:'center' }}>
                   <div style={{ fontSize:14 }}>Keine Beiträge im {MONTHS[calMonth]} {calYear}.</div>
-                  <button onClick={() => openNew()}
-                    style={{ padding:'10px 18px', borderRadius:10, border:'none', background:'var(--wl-primary, #0A6FB0)', color:'#fff', fontWeight:700, cursor:'pointer', fontSize:13 }}>
+                  <button className="lk-btn lk-btn-primary" onClick={() => openNew()}
+                    >
                     Beitrag planen
                   </button>
                 </div>
@@ -2654,9 +2625,8 @@ Danke für den Austausch! 🤝`,
               <div style={{ marginBottom:12, display:'inline-flex', color:'var(--wl-primary, #0A6FB0)' }}><PenLine size={40} strokeWidth={1.5}/></div>
               <div style={{ fontSize:16, fontWeight:700 }}>Noch keine Beiträge</div>
               <div style={{ fontSize:13, marginTop:8 }}>Erstelle deinen ersten Content-Plan</div>
-              <button onClick={() => openNew()}
-                style={{ marginTop:16, padding:'10px 20px', borderRadius:10, border:'none',
-                  background:'var(--wl-primary, #0A6FB0)', color:'#fff', fontWeight:700, cursor:'pointer' }}>
+              <button className="lk-btn lk-btn-primary" onClick={() => openNew()}
+                style={{ marginTop:16 }}>
                 <span style={{display:'inline-flex',alignItems:'center',gap:6}}><PenLine size={13}/>Ersten Beitrag erstellen</span>
               </button>
             </div>
@@ -2777,8 +2747,8 @@ Danke für den Austausch! 🤝`,
                     )}
                   </div>
                 )}
-                <button onClick={() => generateIdeas(brainstormTopic.trim())} disabled={generating}
-                  style={{ height:38, boxSizing:'border-box', padding:'0 16px', borderRadius:9, border:'none', background:'var(--wl-primary, #0A6FB0)', color:'#fff', fontSize:13, fontWeight:700, cursor:generating?'wait':'pointer', whiteSpace:'nowrap', display:'inline-flex', alignItems:'center' }}>
+                <button className="lk-btn lk-btn-primary" onClick={() => generateIdeas(brainstormTopic.trim())} disabled={generating}
+                  style={{ height:38, boxSizing:'border-box', whiteSpace:'nowrap', display:'inline-flex', alignItems:'center' }}>
                   {generating ? <span style={{display:'inline-flex',alignItems:'center',gap:6}}><Loader2 size={12} className='lk-spin'/>Generiere…</span> : <span style={{display:'inline-flex',alignItems:'center',gap:6}}><Wand2 size={12}/>Generieren</span>}
                 </button>
                 </div>
@@ -2829,8 +2799,8 @@ Danke für den Austausch! 🤝`,
                   style={{ padding:'9px 16px', borderRadius:9, border:'1px solid var(--border)', background:'transparent', color:'var(--text-muted)', fontSize:13, cursor:'pointer' }}>
                   Abbrechen
                 </button>
-                <button onClick={adoptSelectedIdeas} disabled={brainstormSelected.size === 0}
-                  style={{ padding:'9px 18px', borderRadius:9, border:'none', background: brainstormSelected.size === 0 ? '#CBD5E1' : 'var(--wl-primary, #0A6FB0)', color:'#fff', fontSize:13, fontWeight:700, cursor: brainstormSelected.size === 0 ? 'not-allowed' : 'pointer' }}>
+                <button className="lk-btn lk-btn-primary" onClick={adoptSelectedIdeas} disabled={brainstormSelected.size === 0}
+                  >
                   <span style={{display:'inline-flex',alignItems:'center',gap:6}}><Lightbulb size={13}/>{brainstormSelected.size > 0 ? brainstormSelected.size + ' Idee' + (brainstormSelected.size === 1 ? '' : 'n') + ' übernehmen' : 'Auswählen'}</span>
                 </button>
               </div>

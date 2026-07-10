@@ -255,10 +255,10 @@ function UrlTab({ current, onMetaChange, onContentExtracted, disabled, linkedInM
           disabled={loading || disabled}
           style={{flex:1,padding:'8px 11px',border:'1.5px solid var(--border)',borderRadius:8,fontSize:13,outline:'none',boxSizing:'border-box',background:'var(--surface)',color:'var(--text-primary)'}}
         />
-        <button
+        <button className="lk-btn lk-btn-primary"
           onClick={extract}
           disabled={loading || disabled || !url.trim()}
-          style={{padding:'8px 18px',background:P,color:'#fff',border:'none',borderRadius:8,fontSize:13,fontWeight:600,cursor:(loading||disabled||!url.trim())?'not-allowed':'pointer',opacity:(loading||disabled||!url.trim())?.5:1,whiteSpace:'nowrap'}}
+          style={{ opacity:(loading||disabled||!url.trim())?.5:1, whiteSpace:'nowrap' }}
         >
           {loading ? <span style={{display:'inline-flex',alignItems:'center',gap:6}}><Loader2 size={14} className='lk-spin'/>Lädt…</span> : 'Extrahieren'}
         </button>

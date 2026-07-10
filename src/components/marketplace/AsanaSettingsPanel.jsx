@@ -149,8 +149,8 @@ export default function AsanaSettingsPanel({ onFlash }) {
             </div>
           )}
 
-          <button onClick={connect} disabled={connecting || !activeTeamId}
-            style={{ padding: '10px 20px', borderRadius: 10, border: 'none', background: (connecting || !activeTeamId) ? '#E4E7EC' : PRIMARY, color: (connecting || !activeTeamId) ? '#9CA3AF' : '#fff', fontSize: 13, fontWeight: 700, cursor: (connecting || !activeTeamId) ? 'default' : 'pointer' }}>
+          <button className="lk-btn lk-btn-primary" onClick={connect} disabled={connecting || !activeTeamId}
+            >
             {connecting ? 'Weiterleiten…' : 'Mit Asana verbinden'}
           </button>
         </>

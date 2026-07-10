@@ -286,7 +286,7 @@ export default function DealDetail({ session }) {
           {deal.stage === 'gewonnen' && (
             <button onClick={() => setShowStartProjekt(true)} style={{ padding: '7px 14px', borderRadius: 8, border: '1px solid #059669', background: '#F0FDF4', fontSize: 12, fontWeight: 700, cursor: 'pointer', color: '#059669', display: 'inline-flex', alignItems: 'center', gap: 5 }}><Rocket size={14} /> Projekt starten</button>
           )}
-          <button onClick={() => setEditing(true)} style={{ padding: '7px 14px', borderRadius: 8, border: '1px solid #E4E7EC', background: 'var(--surface, #fff)', fontSize: 12, fontWeight: 700, cursor: 'pointer', color: '#374151', display: 'inline-flex', alignItems: 'center', gap: 5 }}><Pencil size={14} /> Bearbeiten</button>
+          <button className="lk-btn lk-btn-ghost" onClick={() => setEditing(true)} style={{ display: 'inline-flex', alignItems: 'center', gap: 5 }}><Pencil size={14} /> Bearbeiten</button>
         </div>
       </div>
 
@@ -379,8 +379,8 @@ export default function DealDetail({ session }) {
                   <div style={{ fontSize: 12, fontWeight: 600, color: '#111827', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{att.name}</div>
                   <div style={{ fontSize: 10, color: '#9CA3AF' }}>{fmtSize(att.file_size)} · {new Date(att.created_at).toLocaleDateString('de-DE', { day: '2-digit', month: 'short' })}</div>
                 </div>
-                <button onClick={() => openFile(att)} style={{ padding: '5px 11px', borderRadius: 7, border: '1px solid #E4E7EC', background: 'var(--surface, #fff)', fontSize: 11, fontWeight: 600, cursor: 'pointer', color: PRIMARY, display: 'inline-flex', alignItems: 'center', gap: 4 }}><Eye size={13} /> Öffnen</button>
-                <button onClick={() => downloadFile(att)} style={{ padding: '5px 11px', borderRadius: 7, border: '1px solid #E4E7EC', background: 'var(--surface, #fff)', fontSize: 11, fontWeight: 600, cursor: 'pointer', color: PRIMARY, display: 'inline-flex', alignItems: 'center', gap: 4 }}><Download size={13} /> Download</button>
+                <button className="lk-btn lk-btn-ghost" onClick={() => openFile(att)} style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}><Eye size={13} /> Öffnen</button>
+                <button className="lk-btn lk-btn-ghost" onClick={() => downloadFile(att)} style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}><Download size={13} /> Download</button>
                 {att.uploaded_by === uid && (
                   <button onClick={() => deleteFile(att)} disabled={deleting === att.id} style={{ width: 26, height: 26, borderRadius: 6, border: 'none', background: 'none', cursor: 'pointer', color: '#D1D5DB', display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }}>
                     <Trash2 size={14} />

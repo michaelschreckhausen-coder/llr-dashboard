@@ -355,12 +355,12 @@ export default function LeadProfile({ session }) {
             return (
               <div style={{ marginLeft:'auto', display:'flex', alignItems:'center', gap:6 }}>
                 <span style={{ fontSize:11, color:'var(--text-muted)' }}>{idx+1} / {navIds.length}</span>
-                <button onClick={() => navigate(`/leads/${navIds[idx-1]}`)} disabled={idx===0}
-                  style={{ padding:'4px 10px', borderRadius:8, border:'1px solid var(--border)', background: idx===0?'#F8FAFC':'#fff', color:idx===0?'#CBD5E1':'#374151', fontSize:12, fontWeight:700, cursor:idx===0?'not-allowed':'pointer' }}>
+                <button className="lk-btn lk-btn-ghost" onClick={() => navigate(`/leads/${navIds[idx-1]}`)} disabled={idx===0}
+                  >
                   ‹ Vorheriger
                 </button>
-                <button onClick={() => navigate(`/leads/${navIds[idx+1]}`)} disabled={idx===navIds.length-1}
-                  style={{ padding:'4px 10px', borderRadius:8, border:'1px solid var(--border)', background:idx===navIds.length-1?'#F8FAFC':'#fff', color:idx===navIds.length-1?'#CBD5E1':'#374151', fontSize:12, fontWeight:700, cursor:idx===navIds.length-1?'not-allowed':'pointer' }}>
+                <button className="lk-btn lk-btn-ghost" onClick={() => navigate(`/leads/${navIds[idx+1]}`)} disabled={idx===navIds.length-1}
+                  >
                   Nächster ›
                 </button>
               </div>
@@ -438,15 +438,15 @@ export default function LeadProfile({ session }) {
         <div style={{ flex:1 }}/>
         <div style={{ display:'flex', gap:6 }}>
           {[{type:'call',icon: <Phone size={16} strokeWidth={1.75}/>,label:'Anruf'},{type:'email',icon: <Mail size={16} strokeWidth={1.75}/>,label:'Email'},{type:'linkedin_message',icon: <MessageSquare size={16} strokeWidth={1.75}/>,label:'LinkedIn'},{type:'meeting',icon: <Handshake size={16} strokeWidth={1.75}/>,label:'Meeting'}].map(({type,icon,label}) => (
-            <button key={type} onClick={async () => {
+            <button className="lk-btn lk-btn-ghost" key={type} onClick={async () => {
               const subj = `${label} mit ${name}`
               await supabase.from('activities').insert({lead_id:lead.id,team_id:lead.team_id || team?.id || null,user_id:user.id,type,subject:subj,occurred_at:new Date().toISOString()})
               setActivities(prev => [{id:Date.now(),type,subject:subj,occurred_at:new Date().toISOString()},...prev])
               showToast(`${icon} ${label} geloggt ✓`)
-            }} style={{ height:28, padding:'0 10px', borderRadius:6, border:'1px solid #E4E7EC', background:'var(--surface-muted)', fontSize:12, fontWeight:500, color:'var(--text-primary)', cursor:'pointer' }}>
+            }} style={{ height:28 }}>
               {icon} {label}
             </button>
-          ))}          <button onClick={async () => {
+          ))}          <button className="lk-btn lk-btn-ghost" onClick={async () => {
             setPitchModal(true); setPitchLoading(true); setPitchText('')
             try {
               const { data: fnData, error: fnErr } = await supabase.functions.invoke('generate', {
@@ -456,7 +456,7 @@ export default function LeadProfile({ session }) {
               setPitchText(fnData?.text || fnData?.result || 'Fehler')
             } catch(e) { setPitchText('Fehler') }
             setPitchLoading(false)
-          }} style={{ height:28, padding:'0 10px', borderRadius:6, border:'1px solid #E4E7EC', background:'var(--surface-muted)', fontSize:12, fontWeight:500, color:'#003060', cursor:'pointer' }}>
+          }} style={{ height:28 }}>
             🤖 Pitch
           </button>
         </div>
@@ -624,7 +624,7 @@ export default function LeadProfile({ session }) {
                             setNotes(prev => prev.map(x => x.id===n.id ? {...x,content:editingNote.content} : x))
                             setEditingNote(null)
                           }} style={{ height:28, padding:'0 12px', borderRadius:5, border:'none', background:'#2563EB', color:'#fff', fontSize:12, cursor:'pointer' }}>Speichern</button>
-                          <button onClick={() => setEditingNote(null)} style={{ height:28, padding:'0 12px', borderRadius:5, border:'1px solid #E4E7EC', background:'var(--surface)', color:'var(--text-primary)', fontSize:12, cursor:'pointer' }}>Abbrechen</button>
+                          <button className="lk-btn lk-btn-ghost" onClick={() => setEditingNote(null)} style={{ height:28 }}>Abbrechen</button>
                         </div>
                       </div>
                     ) : (
@@ -844,10 +844,10 @@ export default function LeadProfile({ session }) {
                   <label style={{ fontSize:11, fontWeight:600, color:'var(--text-muted)', display:'block', marginBottom:6, textTransform:'uppercase', letterSpacing:'0.05em' }}>LinkedIn Nachricht</label>
                   <div style={{ display:'flex', gap:6, marginBottom:8 }}>
                     {[['Freundlich','Hi {name}, ich hoffe es läuft gut!'],['Anfrage','Hallo {name}, ich würde gerne mit dir vernetzen.'],['Follow-up','Hi {name}, ich melde mich nochmal wegen meiner Anfrage.']].map(([l,t]) => (
-                      <button key={l} onClick={() => setMsgText(t.replace('{name}',lead.first_name||name))}
-                        style={{ padding:'4px 10px', borderRadius:5, border:'1px solid #E4E7EC', background:'var(--surface-muted)', fontSize:11, cursor:'pointer', color:'var(--text-primary)' }}>{l}</button>
+                      <button className="lk-btn lk-btn-ghost" key={l} onClick={() => setMsgText(t.replace('{name}',lead.first_name||name))}
+                        >{l}</button>
                     ))}
-                    <button onClick={async () => {
+                    <button className="lk-btn lk-btn-ghost" onClick={async () => {
                       try {
                         const { data: fnData, error: fnErr } = await supabase.functions.invoke('generate', {
                           body: { type: 'content_post', prompt: `Schreibe eine kurze LinkedIn-Nachricht an ${name} (${lead.job_title||''} bei ${lead.company||''}). Persönlich, direkt, auf Deutsch. Max 200 Zeichen.`, userId: session.user.id, model: selectedModel }
@@ -855,15 +855,15 @@ export default function LeadProfile({ session }) {
                         if (fnErr) throw fnErr
                         setMsgText(fnData?.text || fnData?.result || '')
                       } catch(e) { showToast('KI-Fehler') }
-                    }} style={{ padding:'4px 10px', borderRadius:5, border:'1px solid #E4E7EC', background:'var(--surface-muted)', fontSize:11, cursor:'pointer', color:'#003060' }}>KI</button>
+                    }} >KI</button>
                   </div>
                   <textarea value={msgText} onChange={e => setMsgText(e.target.value)} rows={5}
                     placeholder="Nachrichtentext…" className="lp-inp" style={{ resize:'vertical', lineHeight:1.6 }}/>
                   <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginTop:6 }}>
                     <span style={{ fontSize:11, color:msgText.length>300?'#DC2626':'#9CA3AF' }}>{msgText.length}/300 Zeichen</span>
                     <div style={{ display:'flex', gap:6 }}>
-                      <button onClick={() => { navigator.clipboard.writeText(msgText); showToast('Kopiert ✓') }}
-                        style={{ padding:'6px 12px', borderRadius:6, border:'1px solid #E4E7EC', background:'var(--surface)', fontSize:12, cursor:'pointer', color:'var(--text-primary)' }}>Kopieren</button>
+                      <button className="lk-btn lk-btn-ghost" onClick={() => { navigator.clipboard.writeText(msgText); showToast('Kopiert ✓') }}
+                        >Kopieren</button>
                       {(lead.profile_url||lead.linkedin_url) && <a href={lead.profile_url||lead.linkedin_url} target="_blank" rel="noreferrer"
                         style={{ padding:'6px 12px', borderRadius:6, border:'none', background:'#0A66C2', fontSize:12, fontWeight:600, cursor:'pointer', color:'#fff', textDecoration:'none' }}>in LinkedIn öffnen</a>}
                     </div>
@@ -901,12 +901,12 @@ export default function LeadProfile({ session }) {
                 {pitchText}
               </div>
               <div style={{ display:'flex', gap:8 }}>
-                <button onClick={() => { navigator.clipboard.writeText(pitchText); showToast('Pitch kopiert!') }}
-                  style={{ flex:1, padding:'9px', borderRadius:9, border:'1.5px solid #E2E8F0', background:'var(--surface)', color:'#475569', fontSize:12, fontWeight:600, cursor:'pointer' }}>
+                <button className="lk-btn lk-btn-ghost" onClick={() => { navigator.clipboard.writeText(pitchText); showToast('Pitch kopiert!') }}
+                  style={{ flex:1 }}>
                   📋 Kopieren
                 </button>
-                <button onClick={() => setPitchModal(false)}
-                  style={{ flex:1, padding:'9px', borderRadius:9, border:'none', background:'var(--wl-primary, #0A6FB0)', color:'white', fontSize:12, fontWeight:700, cursor:'pointer' }}>
+                <button className="lk-btn lk-btn-primary" onClick={() => setPitchModal(false)}
+                  style={{ flex:1 }}>
                   ✓ Fertig
                 </button>
               </div>

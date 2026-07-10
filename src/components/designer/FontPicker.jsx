@@ -113,13 +113,8 @@ export default function FontPicker({ value, onPick, brandFonts = [] }) {
 
   return (
     <>
-      <button ref={btnRef} type="button" onClick={() => (open ? setOpen(false) : openPanel())} title="Schriftart"
-        style={{
-          height: 32, minWidth: 116, maxWidth: 150, flexShrink: 0, display: 'inline-flex',
-          alignItems: 'center', justifyContent: 'space-between', gap: 6, padding: '0 9px',
-          borderRadius: 9, border: '1px solid var(--border,#E9ECF2)', background: '#fff',
-          cursor: 'pointer', color: 'var(--text-primary)', fontSize: 12.5,
-        }}>
+      <button className="lk-btn lk-btn-ghost" ref={btnRef} type="button" onClick={() => (open ? setOpen(false) : openPanel())} title="Schriftart"
+        style={{ height: 32, minWidth: 116, maxWidth: 150, flexShrink: 0, display: 'inline-flex', alignItems: 'center', justifyContent: 'space-between', gap: 6 }}>
         <span style={{ fontFamily: `"${current}", sans-serif`, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{current}</span>
         <ChevronDown size={14} style={{ flexShrink: 0, opacity: 0.6 }} />
       </button>
@@ -151,13 +146,8 @@ export default function FontPicker({ value, onPick, brandFonts = [] }) {
           {!query && (
             <div style={{ display: 'flex', gap: 5, padding: '8px 10px', overflowX: 'auto', borderBottom: '1px solid var(--border,#EEF1F5)', flexShrink: 0 }}>
               {chips.map(([id, label]) => (
-                <button key={id} type="button" onClick={() => { setCat(id); setScrollTop(0); if (listRef.current) listRef.current.scrollTop = 0 }}
-                  style={{
-                    flexShrink: 0, height: 26, padding: '0 11px', borderRadius: 999, cursor: 'pointer', fontSize: 12,
-                    border: '1px solid ' + (cat === id ? 'transparent' : 'var(--border,#E9ECF2)'),
-                    background: cat === id ? PRIMARY : '#fff', color: cat === id ? '#fff' : 'var(--text-secondary,#475467)',
-                    fontFamily: 'inherit', whiteSpace: 'nowrap',
-                  }}>{label}</button>
+                <button className="lk-btn lk-btn-primary" key={id} type="button" onClick={() => { setCat(id); setScrollTop(0); if (listRef.current) listRef.current.scrollTop = 0 }}
+                  style={{ flexShrink: 0, height: 26, fontFamily: 'inherit', whiteSpace: 'nowrap' }}>{label}</button>
               ))}
             </div>
           )}

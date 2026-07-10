@@ -59,12 +59,8 @@ export default function FormatPicker({ value, onChange, openUp = true, compact =
 
   return (
     <div ref={rootRef} style={{ position: 'relative', display: 'inline-block' }}>
-      <button type="button" onClick={() => setOpen((v) => !v)}
-        style={{
-          display: 'inline-flex', alignItems: 'center', gap: 6, height: 34, padding: '0 11px',
-          borderRadius: 9, border: '1.5px solid var(--border, #D7DCE5)', background: 'var(--surface, #FFFFFF)',
-          color: 'var(--text-primary, #1B2333)', fontSize: 12.5, fontWeight: 600, cursor: 'pointer', maxWidth: 320,
-        }}>
+      <button className="lk-btn lk-btn-ghost" type="button" onClick={() => setOpen((v) => !v)}
+        style={{ display: 'inline-flex', alignItems: 'center', gap: 6, height: 34, maxWidth: 320 }}>
         <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{valLabel}</span>
         <ChevronDown size={14} strokeWidth={2} style={{ opacity: 0.5, marginLeft: 2, flexShrink: 0 }} />
       </button>
@@ -123,8 +119,8 @@ export default function FormatPicker({ value, onChange, openUp = true, compact =
                       style={{ display: 'block', width: 92, height: 34, marginTop: 4, padding: '0 8px', borderRadius: 8, border: '1px solid var(--border, #D7DCE5)', background: 'var(--surface, #FFFFFF)', color: 'var(--text-primary, #1B2333)' }} />
                   </label>
                 </div>
-                <button type="button" onClick={applyFree}
-                  style={{ marginTop: 14, height: 36, padding: '0 16px', borderRadius: 9, border: 'none', cursor: 'pointer', fontSize: 13.5, fontWeight: 600, color: '#fff', background: 'var(--wl-primary, #0A6FB0)' }}>
+                <button className="lk-btn lk-btn-primary" type="button" onClick={applyFree}
+                  style={{ marginTop: 14, height: 36 }}>
                   Übernehmen
                 </button>
               </div>
@@ -132,14 +128,10 @@ export default function FormatPicker({ value, onChange, openUp = true, compact =
               activeCat?.presets.map((p) => {
                 const on = value?.id === p.id
                 return (
-                  <button key={p.id} type="button" onClick={() => pick(p)}
-                    style={{
-                      display: 'flex', alignItems: 'center', gap: 11, width: '100%', minHeight: 42, padding: '6px 10px',
-                      border: 'none', borderRadius: 9, cursor: 'pointer', textAlign: 'left',
-                      background: on ? 'color-mix(in srgb, var(--wl-primary, #0A6FB0) 8%, transparent)' : 'transparent',
-                    }}
-                    onMouseEnter={(e) => { if (!on) e.currentTarget.style.background = 'var(--page-bg, #F2F4F8)' }}
-                    onMouseLeave={(e) => { if (!on) e.currentTarget.style.background = 'transparent' }}>
+                  <button className="lk-btn lk-btn-primary" key={p.id} type="button" onClick={() => pick(p)}
+                    style={{ display: 'flex', alignItems: 'center', gap: 11, width: '100%', minHeight: 42, textAlign: 'left' }}
+                    
+                    >
                     <RatioThumb w={p.w} h={p.h} active={on} />
                     <span style={{ flex: 1 }}>
                       <span style={{ display: 'block', fontSize: 13.5, color: 'var(--text-primary, #1B2333)', fontWeight: on ? 600 : 500 }}>{p.label}</span>

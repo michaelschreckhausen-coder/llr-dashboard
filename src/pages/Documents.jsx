@@ -162,8 +162,8 @@ export default function Documents({ embedded = false }) {
         </div>
         )}
         {!embedded && (
-        <button onClick={handleNew} disabled={creating}
-          style={{ padding:'9px 16px', borderRadius:9, border:'none', background: creating ? '#94A3B8' : P, color:'#fff', fontSize:13, fontWeight:700, cursor: creating ? 'wait' : 'pointer', whiteSpace:'nowrap', boxShadow: creating ? 'none' : '0 2px 10px rgba(10,111,176,.18)' }}>
+        <button className="lk-btn lk-btn-primary" onClick={handleNew} disabled={creating}
+          style={{ whiteSpace:'nowrap' }}>
           {creating ? 'Lege an…' : 'Neues Dokument'}
         </button>
         )}
@@ -237,8 +237,8 @@ export default function Documents({ embedded = false }) {
                 <>
                   {docChats.length > 0 && !showOther && (
                     <>
-                      <button onClick={() => openWith(docChats[0].id)}
-                        style={{ width:'100%', display:'flex', alignItems:'center', gap:8, padding:'11px 12px', borderRadius:10, border:'none', background:P, color:'#fff', fontSize:13, fontWeight:700, cursor:'pointer', fontFamily:'inherit', marginBottom:10 }}>
+                      <button className="lk-btn lk-btn-primary" onClick={() => openWith(docChats[0].id)}
+                        style={{ width:'100%', display:'flex', alignItems:'center', gap:8, fontFamily:'inherit', marginBottom:10 }}>
                         <MessageSquare size={15} strokeWidth={2}/><span style={{ minWidth:0, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>Zuletzt bearbeitender Chat · {docChats[0].title || 'Chat'}</span>
                       </button>
                       <div style={{ fontSize:10.5, fontWeight:700, color:'var(--text-soft,#98a2b3)', textTransform:'uppercase', letterSpacing:'0.06em', padding:'2px 2px 6px' }}>Zugeordnete Chats</div>
@@ -311,8 +311,8 @@ export default function Documents({ embedded = false }) {
               <button onClick={() => setPostPickDoc(null)} style={{ border:'none', background:'transparent', cursor:'pointer', color:'var(--text-muted)', padding:4, display:'inline-flex', flexShrink:0 }}><X size={18}/></button>
             </div>
             <div style={{ flex:1, overflowY:'auto', padding:'8px 14px 14px' }}>
-              <button onClick={() => createPostFromDoc(postPickDoc)} disabled={busyId===postPickDoc.id}
-                style={{ width:'100%', display:'flex', alignItems:'center', gap:8, padding:'11px 12px', borderRadius:10, border:'none', background:P, color:'#fff', fontSize:13, fontWeight:700, cursor: busyId===postPickDoc.id ? 'wait' : 'pointer', fontFamily:'inherit', marginBottom:10 }}>
+              <button className="lk-btn lk-btn-primary" onClick={() => createPostFromDoc(postPickDoc)} disabled={busyId===postPickDoc.id}
+                style={{ width:'100%', display:'flex', alignItems:'center', gap:8, fontFamily:'inherit', marginBottom:10 }}>
                 <Plus size={15} strokeWidth={2.4}/>Als neuen Beitrag anlegen
               </button>
               <div style={{ fontSize:10.5, fontWeight:700, color:'var(--text-soft,#98a2b3)', textTransform:'uppercase', letterSpacing:'0.06em', padding:'2px 2px 6px' }}>Zu bestehendem Beitrag</div>
@@ -343,8 +343,8 @@ export default function Documents({ embedded = false }) {
             <div style={{ flex:1, overflowY:'auto', padding:'8px 14px 14px' }}>
               {!newDocPick ? (
                 <>
-                  <button onClick={createInNewChat} disabled={creating}
-                    style={{ width:'100%', display:'flex', alignItems:'center', gap:8, padding:'11px 12px', borderRadius:10, border:'none', background:P, color:'#fff', fontSize:13, fontWeight:700, cursor: creating ? 'wait' : 'pointer', fontFamily:'inherit', marginBottom:8 }}>
+                  <button className="lk-btn lk-btn-primary" onClick={createInNewChat} disabled={creating}
+                    style={{ width:'100%', display:'flex', alignItems:'center', gap:8, fontFamily:'inherit', marginBottom:8 }}>
                     <Plus size={15} strokeWidth={2.4}/>In neuem Chat
                   </button>
                   <button onClick={loadBrandChatsForNew} disabled={creating}

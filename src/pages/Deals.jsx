@@ -276,9 +276,9 @@ export function DealModal({ deal, leads, teamMembers = [], teamId, uid, onSave, 
 
           {/* Buttons */}
           <div style={{ display: 'flex', gap: 10, justifyContent: 'flex-end', marginTop: 4 }}>
-            <button onClick={onClose} style={{ padding: '9px 18px', borderRadius: 9, border: '1px solid #E4E7EC', background: 'var(--surface)', fontSize: 13, cursor: 'pointer', color: '#374151' }}>{t('common.cancel')}</button>
-            <button onClick={save} disabled={saving}
-              style={{ padding: '9px 20px', borderRadius: 9, border: 'none', background: saving ? '#E4E7EC' : PRIMARY, color: saving ? '#9CA3AF' : '#fff', fontSize: 13, fontWeight: 700, cursor: saving ? 'default' : 'pointer' }}>
+            <button className="lk-btn lk-btn-ghost" onClick={onClose} >{t('common.cancel')}</button>
+            <button className="lk-btn lk-btn-primary" onClick={save} disabled={saving}
+              >
               {saving ? '…' : deal?.id ? 'Speichern' : '+ Deal erstellen'}
             </button>
           </div>
@@ -400,12 +400,12 @@ export default function Deals({ session }) {
               <span style={scriptHintStyle}>Auf und zuklappen</span>
               <CurvedArrow/>
             </div>
-            <button onClick={toggleDash} title={showDash ? 'Dashboard ausblenden' : 'Dashboard einblenden'}
-              style={{ padding:'9px 14px', borderRadius:10, border:'1.5px solid #E2E8F0', background:'var(--surface-muted)', color:'#475569', fontSize:13, fontWeight:600, cursor:'pointer', display:'inline-flex', alignItems:'center', gap:6, whiteSpace:'nowrap' }}>
+            <button className="lk-btn lk-btn-ghost" onClick={toggleDash} title={showDash ? 'Dashboard ausblenden' : 'Dashboard einblenden'}
+              style={{ display:'inline-flex', alignItems:'center', gap:6, whiteSpace:'nowrap' }}>
               {showDash ? <ChevronUp size={15}/> : <ChevronDown size={15}/>}Dashboard
             </button>
-            <button onClick={() => setModal('new')}
-              style={{ padding:'9px 18px', borderRadius:10, border:'none', background:PRIMARY, color:'#fff', fontSize:13, fontWeight:700, cursor:'pointer', whiteSpace:'nowrap' }}>
+            <button className="lk-btn lk-btn-primary" onClick={() => setModal('new')}
+              style={{ whiteSpace:'nowrap' }}>
               + Neuer Deal
             </button>
           </div>
@@ -440,8 +440,8 @@ export default function Deals({ session }) {
       <div style={{ display: 'flex', gap: 10, marginBottom: 20, flexWrap: 'wrap', alignItems: 'center' }}>
         <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
           {FILTERS.map(f => (
-            <button key={f.id} onClick={() => setFilter(f.id)}
-              style={{ padding: '6px 12px', borderRadius: 20, border: '1.5px solid', borderColor: filter === f.id ? PRIMARY : '#E5E7EB', background: filter === f.id ? PRIMARY : '#fff', color: filter === f.id ? '#fff' : '#374151', fontSize: 12, fontWeight: 600, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 5 }}>
+            <button className="lk-btn lk-btn-primary" key={f.id} onClick={() => setFilter(f.id)}
+              style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
               {f.label}
               {f.count > 0 && <span style={{ background: filter===f.id?'rgba(255,255,255,0.3)':'#F3F4F6', color: filter===f.id?'#fff':'#6B7280', borderRadius: 99, padding: '0 6px', fontSize: 11, fontWeight: 700 }}>{f.count}</span>}
             </button>

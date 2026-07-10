@@ -246,12 +246,12 @@ function QuickSetup({ session, onDone, onSkip, onBack }) {
           )}
           {prefillError && <div style={{ color:'var(--danger)', fontSize:12, marginTop:8 }}>{prefillError}</div>}
           <div style={{ display:'flex', gap:10, flexWrap:'wrap', marginTop:16 }}>
-            <button onClick={async () => { await prefillFromContext(); setStep(1) }} disabled={prefilling || (!importedText && !importData.linkedin_template_url)}
-              style={{ padding:'11px 20px', background:P, color:'#fff', border:'none', borderRadius:10, fontSize:13.5, fontWeight:600, cursor:(prefilling||(!importedText && !importData.linkedin_template_url))?'not-allowed':'pointer', opacity:(prefilling||(!importedText && !importData.linkedin_template_url))?.5:1, display:'inline-flex', alignItems:'center', gap:8, fontFamily:'inherit' }}>
+            <button className="lk-btn lk-btn-primary" onClick={async () => { await prefillFromContext(); setStep(1) }} disabled={prefilling || (!importedText && !importData.linkedin_template_url)}
+              style={{ opacity:(prefilling||(!importedText && !importData.linkedin_template_url))?.5:1, display:'inline-flex', alignItems:'center', gap:8, fontFamily:'inherit' }}>
               {prefilling ? <span style={{display:'inline-flex',alignItems:'center',gap:6}}><Loader2 size={14} className="lk-spin"/>Analysiere…</span> : <span style={{display:'inline-flex',alignItems:'center',gap:6}}><Sparkles size={14}/>Automatisch befüllen</span>}
             </button>
-            <button onClick={() => setStep(1)} disabled={prefilling}
-              style={{ padding:'11px 20px', background:'var(--surface)', border:'1.5px solid var(--border)', borderRadius:10, fontSize:13.5, fontWeight:500, cursor:prefilling?'not-allowed':'pointer', color:'var(--text-primary)', fontFamily:'inherit', display:'inline-flex', alignItems:'center', gap:6 }}>
+            <button className="lk-btn lk-btn-ghost" onClick={() => setStep(1)} disabled={prefilling}
+              style={{ fontFamily:'inherit', display:'inline-flex', alignItems:'center', gap:6 }}>
               <span>Manuell ausfüllen</span><span>→</span>
             </button>
           </div>
@@ -278,8 +278,8 @@ function QuickSetup({ session, onDone, onSkip, onBack }) {
             style={{ padding:'11px 20px', background:'transparent', border:'1.5px solid var(--border)', borderRadius:10, fontSize:13.5, color:'var(--text-muted)', cursor:generating?'not-allowed':'pointer', fontFamily:'inherit', fontWeight:500, display:'inline-flex', alignItems:'center', gap:6 }}>
             <span>←</span><span>Zurück</span>
           </button>
-          <button onClick={generate} disabled={generating}
-            style={{ padding:'13px 28px', background:generating?'#94A3B8':P, color:'#fff', border:'none', borderRadius:10, fontSize:14, fontWeight:600, cursor:generating?'not-allowed':'pointer', opacity:generating?.7:1, boxShadow:generating?'none':'0 2px 10px rgba(10,111,176,.25)', display:'inline-flex', alignItems:'center', gap:8, fontFamily:'inherit' }}>
+          <button className="lk-btn lk-btn-primary" onClick={generate} disabled={generating}
+            style={{ opacity:generating?.7:1, display:'inline-flex', alignItems:'center', gap:8, fontFamily:'inherit' }}>
             <span style={{display:'inline-flex'}}>{generating ? <Loader2 size={14} className="lk-spin"/> : <Target size={14}/>}</span>
             <span>{generating ? 'KI generiert…' : 'Zielgruppe generieren'}</span>
           </button>
@@ -404,7 +404,7 @@ export default function Zielgruppen({ session }) {
               <div style={{ fontSize:13, fontWeight:600, color:'#92400E' }}>Du hast einen unfertigen Zielgruppen-Entwurf</div>
               <div style={{ fontSize:11, color:'#92400E', opacity:.9 }}>Deine Eingaben sind gespeichert — du kannst dort weitermachen.</div>
             </div>
-            <button onClick={()=>setView('wizard')} style={{ padding:'7px 14px', background:P, color:'#fff', border:'none', borderRadius:7, fontSize:12, fontWeight:600, cursor:'pointer' }}><span style={{display:"inline-flex",alignItems:"center",gap:6}}><Target size={12}/>Fortsetzen</span></button>
+            <button className="lk-btn lk-btn-primary" onClick={()=>setView('wizard')} ><span style={{display:"inline-flex",alignItems:"center",gap:6}}><Target size={12}/>Fortsetzen</span></button>
             <button onClick={()=>{ clearDraftsByPrefix('aud_w_'); setDraftCheckTick(t=>t+1) }} style={{ padding:'7px 14px', background:'transparent', color:'#92400E', border:'1px solid rgba(146,64,14,0.30)', borderRadius:7, fontSize:12, fontWeight:600, cursor:'pointer' }}>Verwerfen</button>
           </div>
         )}
@@ -432,9 +432,9 @@ export default function Zielgruppen({ session }) {
       </div>
 
       <div style={{ display:'flex', gap:10, marginBottom:18 }}>
-        <button data-tour-id="aud-new-ai" onClick={()=>{ clearDraftsByPrefix('aud_w_'); clearTabPersistedKey('ki_tab_audience'); setView('wizard') }} style={{ padding:'10px 20px', background:P, color:'#fff', border:'none', borderRadius:10, fontSize:13, fontWeight:600, cursor:'pointer', boxShadow:'0 2px 8px rgba(10,111,176,.18)' }}><span style={{display:"inline-flex",alignItems:"center",gap:6}}><Target size={14}/>Neue Zielgruppe mit KI</span></button>
-        <button onClick={()=>{ setEdit({...E0, user_id:session.user.id}); setView('editor'); setTab('grundlagen') }}
-          style={{ padding:'10px 20px', background:'var(--surface)', border:'1.5px solid var(--border)', borderRadius:10, fontSize:13, cursor:'pointer', color:'var(--text-primary)', fontWeight:500 }}>+ Manuell erstellen</button>
+        <button className="lk-btn lk-btn-primary" data-tour-id="aud-new-ai" onClick={()=>{ clearDraftsByPrefix('aud_w_'); clearTabPersistedKey('ki_tab_audience'); setView('wizard') }} ><span style={{display:"inline-flex",alignItems:"center",gap:6}}><Target size={14}/>Neue Zielgruppe mit KI</span></button>
+        <button className="lk-btn lk-btn-ghost" onClick={()=>{ setEdit({...E0, user_id:session.user.id}); setView('editor'); setTab('grundlagen') }}
+          >+ Manuell erstellen</button>
       </div>
 
       {hasWizardDraft && (
@@ -444,7 +444,7 @@ export default function Zielgruppen({ session }) {
             <div style={{ fontSize:13, fontWeight:600, color:'#92400E' }}>Du hast einen unfertigen Zielgruppen-Entwurf</div>
             <div style={{ fontSize:11, color:'#92400E', opacity:.9 }}>Deine Eingaben sind gespeichert — du kannst dort weitermachen.</div>
           </div>
-          <button onClick={()=>setView('wizard')} style={{ padding:'7px 14px', background:P, color:'#fff', border:'none', borderRadius:7, fontSize:12, fontWeight:600, cursor:'pointer' }}><span style={{display:"inline-flex",alignItems:"center",gap:6}}><Target size={12}/>Fortsetzen</span></button>
+          <button className="lk-btn lk-btn-primary" onClick={()=>setView('wizard')} ><span style={{display:"inline-flex",alignItems:"center",gap:6}}><Target size={12}/>Fortsetzen</span></button>
           <button onClick={()=>{ clearDraftsByPrefix('aud_w_'); setDraftCheckTick(t=>t+1) }} style={{ padding:'7px 14px', background:'transparent', color:'#92400E', border:'1px solid rgba(146,64,14,0.30)', borderRadius:7, fontSize:12, fontWeight:600, cursor:'pointer' }}>Verwerfen</button>
         </div>
       )}
@@ -471,9 +471,9 @@ export default function Zielgruppen({ session }) {
                   {v.pain_points && <div style={{ fontSize:12, color:'var(--text-muted)', lineHeight:1.4 }}>{v.pain_points.slice(0,150)}{v.pain_points.length>150?'…':''}</div>}
                 </div>
                 <div style={{ display:'flex', flexDirection:'column', gap:6, marginLeft:12 }}>
-                  <button onClick={()=>{ setEdit(v); setView('editor'); setTab('grundlagen') }} style={{ padding:'6px 14px', borderRadius:8, border:'1.5px solid var(--border)', background:'var(--surface)', fontSize:12, cursor:'pointer', color:'var(--text-primary)' }}>Bearbeiten</button>
-                  {team && v.user_id === session.user.id && <button onClick={() => setSharingModalFor(v)}
-                    style={{ padding:'6px 14px', borderRadius:8, border:'1.5px solid var(--border)', background: v.is_shared ? 'rgba(16,185,129,0.08)' : 'var(--surface)', fontSize:12, cursor:'pointer', color:'var(--text-primary)' }}>
+                  <button className="lk-btn lk-btn-ghost" onClick={()=>{ setEdit(v); setView('editor'); setTab('grundlagen') }} >Bearbeiten</button>
+                  {team && v.user_id === session.user.id && <button className="lk-btn lk-btn-ghost" onClick={() => setSharingModalFor(v)}
+                    >
                     {v.is_shared ? `${team.name || 'Team'}` : 'Sichtbarkeit'}
                   </button>}
                   {v.user_id === session.user.id && <button onClick={()=>remove(v.id)} style={{ padding:'6px 10px', borderRadius:8, border:'1.5px solid #FCA5A5', background:'var(--danger-soft)', color:'var(--danger-text)', fontSize:12, cursor:'pointer' }}><Trash2 size={14} strokeWidth={1.75}/></button>}
@@ -552,11 +552,11 @@ export default function Zielgruppen({ session }) {
           <div style={{ fontSize:12, color:'var(--text-muted)', marginTop:2 }}>Definiere dein LinkedIn-Zielpublikum</div>
         </div>
         <div style={{ display:'flex', alignItems:'center', gap:8, flexShrink:0 }}>
-          <button type="button" onClick={()=>setShowVisibilityModal(true)} title="Sichtbarkeit anpassen"
-            style={{ padding:'10px 16px', background:'var(--surface, #fff)', color:'var(--text-primary)', border:'1.5px solid var(--border)', borderRadius:10, fontSize:13, fontWeight:600, cursor:'pointer', display:'inline-flex', alignItems:'center', gap:7, fontFamily:'inherit' }}>
+          <button className="lk-btn lk-btn-ghost" type="button" onClick={()=>setShowVisibilityModal(true)} title="Sichtbarkeit anpassen"
+            style={{ display:'inline-flex', alignItems:'center', gap:7, fontFamily:'inherit' }}>
             <Eye size={15} strokeWidth={1.75}/><span>{edit.is_shared ? 'Geteilt' : 'Sichtbarkeit'}</span>
           </button>
-          <button onClick={save} style={{ padding:'11px 22px', background:P, color:'#fff', border:'none', borderRadius:10, fontSize:13.5, fontWeight:600, cursor:'pointer', boxShadow:'0 2px 10px rgba(10,111,176,.25)', display:'inline-flex', alignItems:'center', gap:8, fontFamily:'inherit' }}>
+          <button className="lk-btn lk-btn-primary" onClick={save} style={{ display:'inline-flex', alignItems:'center', gap:8, fontFamily:'inherit' }}>
             <span style={{display:'inline-flex'}}><Save size={14}/></span><span>Zielgruppe speichern</span>
           </button>
         </div>
@@ -633,11 +633,11 @@ export default function Zielgruppen({ session }) {
             <span>✓</span><span>Fertig & Speichern</span>
           </button>
         ) : (
-          <button onClick={() => {
+          <button className="lk-btn lk-btn-primary" onClick={() => {
             const i = TABS.findIndex(t => t.v === tab)
             if (i < TABS.length-1) setTab(TABS[i+1].v)
           }}
-            style={{ padding:'12px 28px', background:P, color:'#fff', border:'none', borderRadius:10, fontSize:14, fontWeight:600, cursor:'pointer', boxShadow:'0 2px 10px rgba(10,111,176,.25)', display:'inline-flex', alignItems:'center', gap:8, fontFamily:'inherit' }}>
+            style={{ display:'inline-flex', alignItems:'center', gap:8, fontFamily:'inherit' }}>
             <span>Weiter</span><span>→</span>
           </button>
         )}

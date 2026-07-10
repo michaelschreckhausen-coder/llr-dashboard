@@ -137,13 +137,8 @@ export default function Pakete() {
                         {rights.map((r) => {
                           const on = selected.has(r.id)
                           return (
-                            <button key={r.id} onClick={() => toggleRight(p.id, r.id)}
-                              style={{
-                                display: 'inline-flex', alignItems: 'center', gap: 6, padding: '6px 12px', borderRadius: 999,
-                                border: '1px solid ' + (on ? PRIMARY : 'var(--border)'),
-                                background: on ? PRIMARY : 'var(--surface)', color: on ? '#fff' : 'var(--text-strong)',
-                                fontSize: 12.5, fontWeight: 600, cursor: 'pointer',
-                              }}>
+                            <button className="lk-btn lk-btn-primary" key={r.id} onClick={() => toggleRight(p.id, r.id)}
+                              style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
                               {on ? <X size={12} /> : <Plus size={12} />}
                               {r.name}{r.list_price != null ? ` · ${fmt(r.list_price)}` : ''}
                             </button>

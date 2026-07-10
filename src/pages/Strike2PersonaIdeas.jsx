@@ -168,8 +168,8 @@ export default function Strike2PersonaIdeas() {
                           Im Redaktionsplan ✓
                         </Link>
                       ) : (
-                        <button type="button" onClick={() => uebernehmenOne(idx)} disabled={busyIdx === idx || bulk}
-                          style={{ border: 'none', background: PRIMARY, color: '#fff', borderRadius: 8, padding: '7px 12px', fontSize: 12, fontWeight: 600, cursor: 'pointer', whiteSpace: 'nowrap', opacity: (busyIdx === idx || bulk) ? 0.6 : 1 }}>
+                        <button className="lk-btn lk-btn-primary" type="button" onClick={() => uebernehmenOne(idx)} disabled={busyIdx === idx || bulk}
+                          style={{ whiteSpace: 'nowrap', opacity: (busyIdx === idx || bulk) ? 0.6 : 1 }}>
                           {busyIdx === idx ? '…' : '→ In Redaktionsplan'}
                         </button>
                       )}

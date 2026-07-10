@@ -130,8 +130,8 @@ function SolidControls({ hex, onStart, onChange, onEnd }) {
           placeholder="#RRGGBB oder R,G,B"
           style={{ flex: 1, minWidth: 0, height: 30, padding: '0 9px', borderRadius: 7, border: '1px solid var(--border,#E9ECF2)', fontSize: 12.5, fontFamily: 'inherit', outline: 'none', color: 'var(--text-primary)', textTransform: 'uppercase' }} />
         {eyeSupported && (
-          <button type="button" onClick={pickEye} title="Pipette – Farbe vom Bildschirm aufnehmen"
-            style={{ width: 30, height: 30, flexShrink: 0, borderRadius: 7, border: '1px solid var(--border,#E9ECF2)', background: 'var(--surface,#fff)', cursor: 'pointer', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', color: 'var(--text-muted,#475467)' }}>
+          <button className="lk-btn lk-btn-ghost" type="button" onClick={pickEye} title="Pipette – Farbe vom Bildschirm aufnehmen"
+            style={{ width: 30, height: 30, flexShrink: 0, display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }}>
             <Pipette size={15} strokeWidth={2} />
           </button>
         )}

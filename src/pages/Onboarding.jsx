@@ -169,10 +169,10 @@ export default function Onboarding({ session }) {
 
           {/* Actions */}
           <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', gap:12 }}>
-            <button
+            <button className="lk-btn lk-btn-ghost"
               onClick={() => step > 0 && setStep(s => s-1)}
               disabled={isFirst}
-              style={{ padding:'10px 20px', borderRadius:10, border:'1px solid var(--border)', background:'var(--surface)', color:'var(--text-muted)', fontSize:13, fontWeight:600, cursor:isFirst?'not-allowed':'pointer', opacity:isFirst?0.4:1 }}
+              style={{ opacity:isFirst?0.4:1 }}
             >
               ← Zurück
             </button>
