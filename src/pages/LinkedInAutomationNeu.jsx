@@ -2,7 +2,7 @@
 // Berührt NICHT das Altsystem (/automatisierung, automation_*). Liest RLS-scoped (Team-Policies P1) +
 // funnel-RPC (la_campaign_funnel) + health-View (la_runner_health). 0 reale Sends aus dem UI (Runner sendet
 // nur bei aktiver Kampagne + fälligem Job; die "ehrliche UI" zeigt genau das an).
-import { useEffect, useState, useCallback } from 'react'
+import { useEffect, useState, useCallback, useRef } from 'react'
 import { supabase } from '../lib/supabase'
 import { useTeam } from '../context/TeamContext'
 import { Plus, Zap, Play, Pause, Square, RefreshCw, Users, AlertTriangle, Activity, Archive, RotateCcw, Trash2, X } from 'lucide-react'
@@ -46,6 +46,9 @@ export default function LinkedInAutomationNeu({ session }) {
   const [creating, setCreating] = useState(false)
   const [showArchived, setShowArchived] = useState(false)   // Listen-Tab Aktiv/Archiviert
   const [deleteModal, setDeleteModal] = useState(null)       // Kampagne im Confirm-Dialog
+  const [stepsDirty, setStepsDirty] = useState(false)        // ungespeicherte Sequenz-Änderungen
+  const stepsDirtyRef = useRef(false)                        // Poll darf lokale Edits nicht überschreiben
+  const markStepsDirty = () => { stepsDirtyRef.current = true; setStepsDirty(true) }
 
   const show = (msg, err) => { setFlash({ msg, err }); setTimeout(() => setFlash(null), 3500) }
 
@@ -70,9 +73,11 @@ export default function LinkedInAutomationNeu({ session }) {
       supabase.from('la_steps').select('*').eq('campaign_id', campId).order('position', { ascending: true }),
       supabase.rpc('la_campaign_funnel', { p_campaign_id: campId }),
     ])
-    setSteps(s.data || []); setFunnel(f.data && !f.data.error ? f.data : null)
+    // Poll: lokale, ungespeicherte Sequenz-Edits NICHT überschreiben (nur Funnel aktualisieren).
+    if (!stepsDirtyRef.current) setSteps(s.data || [])
+    setFunnel(f.data && !f.data.error ? f.data : null)
   }, [])
-  useEffect(() => { loadDetail(sel?.id) }, [sel?.id, loadDetail])
+  useEffect(() => { stepsDirtyRef.current = false; setStepsDirty(false); loadDetail(sel?.id) }, [sel?.id, loadDetail])
   useEffect(() => {
     if (!sel?.id) return
     const t = setInterval(() => { loadDetail(sel.id); load() }, 8000)
@@ -124,19 +129,29 @@ export default function LinkedInAutomationNeu({ session }) {
     load()
   }
 
-  async function saveStep(idx, patch) {
-    const st = steps[idx]
-    const { error } = await supabase.from('la_steps').update(patch).eq('id', st.id)
-    if (error) { show(error.message, true); return }
-    setSteps(steps.map((s, i) => i === idx ? { ...s, ...patch } : s))
+  // Sequenz-Edits sind lokal gepuffert (kein Direkt-Write mehr → kein FK-Bruch, kein
+  // Positions-Gap). Persistiert erst „Sequenz speichern" atomar via RPC.
+  function saveStep(idx, patch) {
+    setSteps(steps.map((s, i) => i === idx ? { ...s, ...patch } : s)); markStepsDirty()
   }
-  async function addStep() {
-    const pos = steps.length
-    const { data, error } = await supabase.from('la_steps').insert({ campaign_id: sel.id, position: pos, action: 'message', condition: 'if_accepted', template: {} }).select().single()
-    if (error) { show(error.message, true); return }
-    setSteps([...steps, data])
+  function addStep() {
+    setSteps([...steps, { _key: `new-${Date.now()}-${steps.length}`, action: 'message', condition: 'if_accepted', template: {} }]); markStepsDirty()
   }
-  async function delStep(idx) { const st = steps[idx]; await supabase.from('la_steps').delete().eq('id', st.id); loadDetail(sel.id) }
+  function delStep(idx) { setSteps(steps.filter((_, i) => i !== idx)); markStepsDirty() }
+
+  async function saveSteps() {
+    if (!sel) return
+    const payload = steps.map(st => ({
+      ...(st.id ? { id: st.id } : {}),
+      action: st.action, condition: st.condition, template: st.template || {},
+    }))
+    const { data, error } = await supabase.rpc('la_campaign_save_steps', { p_campaign_id: sel.id, p_steps: payload })
+    if (error) { show(error.message.includes('active') ? 'Erst pausieren — aktive Kampagne kann die Sequenz nicht ändern' : error.message, true); return }
+    stepsDirtyRef.current = false; setStepsDirty(false)
+    const rm = data?.rematerialized || 0, cp = data?.completed || 0
+    show(`Sequenz gespeichert${(rm || cp) ? ` · ${rm} Jobs neu materialisiert, ${cp} abgeschlossen` : ''}`)
+    loadDetail(sel.id)
+  }
 
   async function createAudience(kind) {
     const initialQuery = kind === 'list' ? { list_id: null } : kind.startsWith('search') ? { keywords: '' } : null
@@ -325,26 +340,44 @@ export default function LinkedInAutomationNeu({ session }) {
               </div>
 
               {/* Steps */}
-              <div style={{ marginTop: 18 }}>
-                <label style={labelStyle}>Sequenz</label>
-                {steps.map((st, i) => (
-                  <div key={st.id} style={{ display: 'flex', gap: 8, alignItems: 'center', marginBottom: 8, flexWrap: 'wrap' }}>
-                    <span style={{ width: 22, height: 22, borderRadius: 6, background: PRIMARY_VAR + '18', color: PRIMARY_VAR, fontSize: 11, fontWeight: 800, display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }}>{i + 1}</span>
-                    <select style={{ ...inputStyle, width: 130 }} value={st.action} onChange={e => saveStep(i, { action: e.target.value })}>{ACTIONS.map(a => <option key={a} value={a}>{a}</option>)}</select>
-                    <select style={{ ...inputStyle, width: 170 }} value={st.condition} onChange={e => saveStep(i, { condition: e.target.value })}>{CONDITIONS.map(([c, l]) => <option key={c} value={c}>{l}</option>)}</select>
-                    {(st.action === 'message' || st.action === 'follow_up' || st.action === 'inmail' || st.action === 'comment') && (
-                      <input style={{ ...inputStyle, flex: 1, minWidth: 180 }} defaultValue={st.template?.text || ''} placeholder={st.action === 'comment' ? 'Kommentartext (öffentlich!)…' : 'Nachrichtentext…'} onBlur={e => saveStep(i, { template: { ...(st.template || {}), text: e.target.value } })} />
+              {(() => {
+                const seqLocked = sel.status === 'active'   // aktive Kampagne: kein Sequenz-Edit mitten im Versand
+                return (
+                  <div style={{ marginTop: 18 }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}>
+                      <label style={{ ...labelStyle, marginBottom: 0 }}>Sequenz</label>
+                      {stepsDirty && !seqLocked && <span style={{ fontSize: 11, color: '#B45309', fontWeight: 700 }}>● ungespeichert</span>}
+                    </div>
+                    {seqLocked && (
+                      <div style={{ display: 'flex', gap: 8, alignItems: 'center', fontSize: 12.5, color: '#B45309', background: '#FFFBEB', border: '1px solid #FDE68A', borderRadius: 8, padding: '8px 12px', marginBottom: 10 }}>
+                        <AlertTriangle size={14} /> Kampagne läuft — zum Bearbeiten der Sequenz erst pausieren.
+                      </div>
                     )}
-                    {st.action === 'react' && (
-                      <select style={{ ...inputStyle, width: 130 }} value={st.template?.reaction_type || 'like'} onChange={e => saveStep(i, { template: { ...(st.template || {}), reaction_type: e.target.value } })}>
-                        {['like', 'celebrate', 'support', 'love', 'insightful', 'funny'].map(t => <option key={t} value={t}>{t}</option>)}
-                      </select>
+                    {steps.map((st, i) => (
+                      <div key={st.id || st._key} style={{ display: 'flex', gap: 8, alignItems: 'center', marginBottom: 8, flexWrap: 'wrap' }}>
+                        <span style={{ width: 22, height: 22, borderRadius: 6, background: PRIMARY_VAR + '18', color: PRIMARY_VAR, fontSize: 11, fontWeight: 800, display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }}>{i + 1}</span>
+                        <select disabled={seqLocked} style={{ ...inputStyle, width: 130 }} value={st.action} onChange={e => saveStep(i, { action: e.target.value })}>{ACTIONS.map(a => <option key={a} value={a}>{a}</option>)}</select>
+                        <select disabled={seqLocked} style={{ ...inputStyle, width: 170 }} value={st.condition} onChange={e => saveStep(i, { condition: e.target.value })}>{CONDITIONS.map(([c, l]) => <option key={c} value={c}>{l}</option>)}</select>
+                        {(st.action === 'message' || st.action === 'follow_up' || st.action === 'inmail' || st.action === 'comment') && (
+                          <input disabled={seqLocked} style={{ ...inputStyle, flex: 1, minWidth: 180 }} defaultValue={st.template?.text || ''} placeholder={st.action === 'comment' ? 'Kommentartext (öffentlich!)…' : 'Nachrichtentext…'} onBlur={e => saveStep(i, { template: { ...(st.template || {}), text: e.target.value } })} />
+                        )}
+                        {st.action === 'react' && (
+                          <select disabled={seqLocked} style={{ ...inputStyle, width: 130 }} value={st.template?.reaction_type || 'like'} onChange={e => saveStep(i, { template: { ...(st.template || {}), reaction_type: e.target.value } })}>
+                            {['like', 'celebrate', 'support', 'love', 'insightful', 'funny'].map(t => <option key={t} value={t}>{t}</option>)}
+                          </select>
+                        )}
+                        {!seqLocked && <button style={{ ...ghostBtn, padding: '6px 8px' }} onClick={() => delStep(i)}>✕</button>}
+                      </div>
+                    ))}
+                    {!seqLocked && (
+                      <div style={{ display: 'flex', gap: 8, marginTop: 4 }}>
+                        <button style={ghostBtn} onClick={addStep}><Plus size={13} /> Schritt</button>
+                        <button style={{ ...primaryBtn, opacity: stepsDirty ? 1 : 0.5, cursor: stepsDirty ? 'pointer' : 'default' }} disabled={!stepsDirty} onClick={saveSteps}>Sequenz speichern</button>
+                      </div>
                     )}
-                    <button style={{ ...ghostBtn, padding: '6px 8px' }} onClick={() => delStep(i)}>✕</button>
                   </div>
-                ))}
-                <button style={ghostBtn} onClick={addStep}><Plus size={13} /> Schritt</button>
-              </div>
+                )
+              })()}
 
               {/* Caps */}
               <div style={{ marginTop: 18, display: 'flex', gap: 16, alignItems: 'flex-end', flexWrap: 'wrap' }}>
