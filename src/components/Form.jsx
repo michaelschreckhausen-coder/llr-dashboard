@@ -173,27 +173,10 @@ export function PrimaryButton({ children, onClick, disabled, loading, icon, styl
       type={type}
       onClick={onClick}
       disabled={disabled || loading}
-      style={{
-        background: disabled || loading ? '#94A3B8' : P,
-        color: '#fff',
-        border: 'none',
-        padding: '11px 22px',
-        borderRadius: 10,
-        fontSize: 13.5,
-        fontWeight: 600,
-        cursor: disabled || loading ? 'not-allowed' : 'pointer',
-        boxShadow: '0 2px 8px rgba(10,111,176,.18)',
-        display: 'inline-flex',
-        alignItems: 'center',
-        gap: 8,
-        fontFamily: 'inherit',
-        transition: 'transform .12s, box-shadow .12s',
-        ...style,
-      }}
-      onMouseEnter={e => { if(!disabled && !loading) e.currentTarget.style.transform='translateY(-1px)' }}
-      onMouseLeave={e => { e.currentTarget.style.transform='translateY(0)' }}
+      className="lk-btn lk-btn-primary"
+      style={style}
     >
-      {loading ? '' : icon ? <span>{icon}</span> : null}
+      {loading ? null : icon ? <span>{icon}</span> : null}
       <span>{loading ? 'Lade…' : children}</span>
     </button>
   )
@@ -205,24 +188,8 @@ export function SecondaryButton({ children, onClick, disabled, icon, style={}, t
       type={type}
       onClick={onClick}
       disabled={disabled}
-      style={{
-        background: 'var(--surface, #fff)',
-        color: 'var(--text-primary, rgb(20,20,43))',
-        border: '1.5px solid var(--border, #E5E7EB)',
-        padding: '11px 22px',
-        borderRadius: 10,
-        fontSize: 13.5,
-        fontWeight: 500,
-        cursor: disabled ? 'not-allowed' : 'pointer',
-        display: 'inline-flex',
-        alignItems: 'center',
-        gap: 8,
-        fontFamily: 'inherit',
-        transition: 'border-color .12s, background .12s',
-        ...style,
-      }}
-      onMouseEnter={e => { if(!disabled) { e.currentTarget.style.borderColor = P; e.currentTarget.style.color = P } }}
-      onMouseLeave={e => { e.currentTarget.style.borderColor = 'var(--border, #E5E7EB)'; e.currentTarget.style.color = 'var(--text-primary, rgb(20,20,43))' }}
+      className="lk-btn lk-btn-ghost"
+      style={style}
     >
       {icon && <span>{icon}</span>}
       <span>{children}</span>

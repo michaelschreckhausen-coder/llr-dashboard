@@ -34,7 +34,25 @@
   --accent-soft:         #9FDcF2;
   --accent-glow:         rgba(22,168,220,0.30);
   /* Marken-Verlauf 120° (CI) */
-  --grad:                linear-gradient(120deg, #16A8DC 0%, #0A6FB0 50%, #003060 100%);
+  --grad:                linear-gradient(120deg, #16A8DC 0%, #0A6FB0 48%, #003060 100%);
+  /* ── Live-CI: Tints / Radii / Shadows / Kategoriefarben (1:1 leadesk.de) ── */
+  --tint-blue:  #EEF4FE;
+  --tint-cyan:  #EAF8FE;
+  --tint-lav:   #F2F1FE;
+  --tint-green: #EBFAF3;
+  --tint-navy:  #EDF2F8;
+  --tint-peach: #FFF7F2;
+  --radius-btn:  8px;
+  --radius-card: 16px;
+  --radius-sm:   10px;
+  --shadow-card:  0 10px 30px rgba(14,22,51,.06);
+  --shadow-hover: 0 18px 46px rgba(14,22,51,.12);
+  --ci-orange:  #E07B39;
+  --ci-purple:  #7A5AF8;
+  --ci-li:      #2E6BE6;
+  --ci-content: #12B886;
+  --ci-success: #039855;
+  --ci-pink:    #DD2A7B;
 
   /* ── Surfaces ────────────────────────────────────────────── */
   --bg-body:             #F6F7FB;          /* CI Soft-BG */
@@ -114,7 +132,7 @@
   --accent-mid:          #0A6FB0;
   --accent-soft:         #9FDcF2;
   --accent-glow:         rgba(22,168,220,0.35);
-  --grad:                linear-gradient(120deg, #16A8DC 0%, #0A6FB0 50%, #003060 100%);
+  --grad:                linear-gradient(120deg, #16A8DC 0%, #0A6FB0 48%, #003060 100%);
 
   /* ── Surfaces ────────────────────────────────────────────── */
   --bg-body:             #0B1020;
@@ -391,3 +409,66 @@ main { padding: 24px !important; }
 /* Globale Spin-Animation fuer Lucide-Loader-Icons */
 @keyframes lk-spin { to { transform: rotate(360deg); } }
 .lk-spin { animation: lk-spin 0.9s linear infinite; }
+
+/* ═══════════════════════════════════════════════════════════════
+   WEBSITE-GETREUE CI-KOMPONENTEN (1:1 leadesk.de)
+   Buttons mit Hover, Eyebrow mit Strich, Cards, Pulsing-Rings-Orb.
+   Inline-Styles können kein :hover — daher diese globalen Klassen.
+   ═══════════════════════════════════════════════════════════════ */
+
+.lk-btn{
+  display:inline-flex;align-items:center;justify-content:center;gap:8px;
+  font-family:'Inter',-apple-system,sans-serif;font-size:15px;font-weight:700;
+  letter-spacing:-0.005em;line-height:1.1;padding:10px 18px;border-radius:var(--radius-btn);
+  border:none;cursor:pointer;white-space:nowrap;text-decoration:none;
+  transition:transform .18s ease,box-shadow .18s ease,background .18s ease,border-color .18s ease,color .18s ease,filter .18s ease;
+}
+.lk-btn-lg{padding:13px 24px;font-size:16px;}
+.lk-btn-sm{padding:8px 14px;font-size:14px;}
+.lk-btn-block{width:100%;}
+.lk-btn-primary{background:var(--grad);color:#fff;box-shadow:0 8px 22px rgba(0,48,96,.22);}
+.lk-btn-primary:hover{transform:translateY(-2px);box-shadow:0 12px 30px rgba(10,111,176,.40);filter:saturate(1.1);}
+.lk-btn-navy{background:var(--primary);color:#fff;box-shadow:0 6px 18px rgba(0,48,96,.12);}
+.lk-btn-navy:hover{transform:translateY(-1px);box-shadow:0 8px 22px rgba(0,48,96,.28);}
+.lk-btn-ghost{background:var(--surface);color:var(--text-primary);border:1px solid var(--border);}
+.lk-btn-ghost:hover{border-color:var(--accent);color:var(--accent-mid);background:var(--tint-cyan);}
+.lk-btn-danger{background:linear-gradient(135deg,#EF4444,#DC2626);color:#fff;box-shadow:0 8px 20px rgba(239,68,68,.28);}
+.lk-btn-danger:hover{transform:translateY(-1px);box-shadow:0 10px 26px rgba(239,68,68,.42);}
+.lk-btn:disabled,.lk-btn[disabled]{opacity:.55;cursor:not-allowed;transform:none;filter:none;box-shadow:none;}
+
+/* Eyebrow — Inter 700, 12px, Versalien, LS 1.68, Navy + Verlaufs-Strich */
+.lk-eyebrow{display:inline-flex;align-items:center;gap:10px;font-family:'Inter',sans-serif;
+  font-size:12px;font-weight:700;letter-spacing:1.68px;text-transform:uppercase;color:var(--primary);margin-bottom:10px;}
+.lk-eyebrow::before{content:'';width:26px;height:3px;border-radius:2px;background:var(--grad);flex-shrink:0;}
+
+/* Card — Radius 16, Website-Shadow, optional Hover-Lift */
+.lk-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-card);box-shadow:var(--shadow-card);}
+.lk-card-hover{transition:transform .2s ease,box-shadow .2s ease;}
+.lk-card-hover:hover{transform:translateY(-3px);box-shadow:var(--shadow-hover);}
+
+/* Pulsing-Rings-Orb — für leere Screens (Website-Animation, favicon-Mark) */
+@keyframes lk-ripple{0%{transform:scale(.82);opacity:.5;}70%{opacity:0;}100%{transform:scale(1.75);opacity:0;}}
+@keyframes lk-bob{0%,100%{transform:translateY(0);}50%{transform:translateY(-6px);}}
+.lk-orb{position:relative;width:150px;height:150px;display:flex;align-items:center;justify-content:center;margin:0 auto;}
+.lk-orb__mark{width:82px;height:auto;position:relative;z-index:2;animation:lk-bob 4.5s ease-in-out infinite;filter:drop-shadow(0 10px 22px rgba(0,48,96,.18));}
+.lk-orb__ring{position:absolute;top:50%;left:50%;width:104px;height:76px;margin:-38px 0 0 -52px;border-radius:38px;border:2px solid var(--accent);opacity:0;animation:lk-ripple 3.2s ease-out infinite;}
+.lk-orb__ring:nth-of-type(2){animation-delay:1.06s;border-color:var(--accent-mid);}
+.lk-orb__ring:nth-of-type(3){animation-delay:2.12s;border-color:var(--primary);}
+@media (prefers-reduced-motion: reduce){
+  .lk-orb__mark,.lk-orb__ring{animation:none;}
+  .lk-orb__ring:nth-of-type(1){opacity:.35;}
+}
+
+/* Dark-Theme: Tints/Shadows angepasst */
+[data-theme="dark"]{
+  --tint-blue:  rgba(46,107,230,.12);
+  --tint-cyan:  rgba(22,168,220,.14);
+  --tint-lav:   rgba(122,90,248,.14);
+  --tint-green: rgba(18,184,134,.14);
+  --tint-navy:  rgba(255,255,255,.06);
+  --tint-peach: rgba(224,123,57,.14);
+  --shadow-card:  0 10px 30px rgba(0,0,0,.35);
+  --shadow-hover: 0 18px 46px rgba(0,0,0,.5);
+}
+[data-theme="dark"] .lk-btn-ghost{background:var(--surface);color:var(--text-primary);}
+[data-theme="dark"] .lk-btn-ghost:hover{background:var(--tint-cyan);color:var(--accent);}

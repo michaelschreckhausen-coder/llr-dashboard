@@ -813,12 +813,12 @@ export default function Layout({ session, role, onLogout, children }) {
               <img
                 src="/Leadesk_Favicon (1).png"
                 alt="Leadesk"
-                style={{ width: 36, height: 36, objectFit: 'contain', borderRadius: 8, cursor:'pointer' }}
+                style={{ width: 30, height: 30, objectFit: 'contain', borderRadius: 8, cursor:'pointer' }}
               />
             ) : (
               wl?.logo_url
-                ? <img src={wl.logo_url} alt={wl.app_name||'Leadesk'} style={{ height: isMobile ? 44 : 68, width: 'auto', objectFit: 'contain', maxWidth:160, cursor:'pointer' }}/>
-                : <img src="/Leadesk_Logo.png" alt="Leadesk" style={{ height: isMobile ? 44 : 68, width: 'auto', objectFit: 'contain', cursor:'pointer' }}/>
+                ? <img src={wl.logo_url} alt={wl.app_name||'Leadesk'} style={{ height: isMobile ? 30 : 34, width: 'auto', objectFit: 'contain', maxWidth:150, cursor:'pointer' }}/>
+                : <img src="/Leadesk_Logo.png" alt="Leadesk" style={{ height: isMobile ? 30 : 34, width: 'auto', objectFit: 'contain', cursor:'pointer' }}/>
             )}
           </NavLink>
           {isMobile && (
@@ -932,7 +932,7 @@ export default function Layout({ session, role, onLogout, children }) {
 
         {/* TOP BAR */}
         <header style={{
-          height: isMobile ? 56 : 68,
+          height: isMobile ? 52 : 56,
           background: isMobile ? 'var(--surface)' : 'transparent',
           backdropFilter: isMobile ? 'var(--glass-blur)' : 'none',
           WebkitBackdropFilter: isMobile ? 'var(--glass-blur)' : 'none',

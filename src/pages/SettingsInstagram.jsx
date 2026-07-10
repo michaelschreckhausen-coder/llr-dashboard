@@ -166,7 +166,7 @@ export default function SettingsInstagram() {
             „Verbindung prüfen“ klicken.
           </div>
           <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
-            <button onClick={onConnect} disabled={busy} style={btnPrimary()}>
+            <button onClick={onConnect} disabled={busy} className="lk-btn lk-btn-primary">
               <ExternalLink size={16} /> {linkOpened ? 'Link erneut öffnen' : 'Instagram verbinden'}
             </button>
             {linkOpened && (
