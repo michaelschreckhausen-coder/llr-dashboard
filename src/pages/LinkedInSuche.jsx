@@ -3,9 +3,11 @@
 // Feature 1 — LinkedIn-Suche / Prospecting (Frontend).
 // Gespeicherte Suchen (linkedin_searches) anlegen und ausführen. Das Ausführen
 // ruft ausschließlich die Edge Function `unipile-search` via
-// supabase.functions.invoke auf (keine hardcoded URL). Treffer importiert der
-// Worker als leads (source='linkedin_search'); diese Page schreibt selbst keine
-// Leads, nur die Such-Definitionen.
+// supabase.functions.invoke auf (keine hardcoded URL). Personen-Treffer landen
+// in der Import-Inbox (linkedin_inbox) — NICHT im CRM. Prozess-Vereinheitlichung
+// 2026-07: eine Listen-Quelle (inbox_lists). Optionale Ziel-Liste = Import-Inbox-Liste.
+// Von dort werden Kontakte in Listen gepflegt und in der Automatisierung als
+// Zielgruppe gewählt. Diese Page schreibt selbst keine Kontakte, nur Such-Definitionen.
 //
 // Backend-Anschluss: unipile_accounts (status='OK') über getUnipileConnection,
 // Addon-Gate 'automation'. Fehlercodes der EF: 403 no_addon, 409 kein OK-Account,
@@ -15,7 +17,7 @@ import React, { useState, useEffect, useCallback } from 'react'
 import { useNavigate } from 'react-router-dom'
 import {
   Search, Plus, Play, Trash2, Save, Users, Building2,
-  ExternalLink, AlertCircle, CheckCircle2, Loader2, UserPlus, Check, MapPin,
+  ExternalLink, AlertCircle, CheckCircle2, Loader2, MapPin, Inbox as InboxIcon,
 } from 'lucide-react'
 import { supabase } from '../lib/supabase'
 import { useTeam } from '../context/TeamContext'
@@ -61,7 +63,7 @@ const CATEGORY_OPTIONS = [
 const EMPTY_FORM = {
   name:'', api:'classic', category:'people',
   keywords:'', location:'', company:'', industry:'',
-  search_url:'', auto_import_leads:true, target_list_id:'',
+  search_url:'', target_list_id:'',
 }
 
 export default function LinkedInSuche() {
@@ -70,16 +72,14 @@ export default function LinkedInSuche() {
 
   const [uid, setUid]             = useState(null)
   const [searches, setSearches]   = useState([])
-  const [leadLists, setLeadLists] = useState([])
+  const [inboxLists, setInboxLists] = useState([])
   const [loading, setLoading]     = useState(true)
   const [saving, setSaving]       = useState(false)
   const [runningId, setRunningId] = useState(null)
   const [form, setForm]           = useState(EMPTY_FORM)
   const [flash, setFlash]         = useState(null)      // { type:'error'|'success', text, action?:{label,to} }
   const [lastResult, setLastResult] = useState(null)    // { found, imported, cursor }
-  const [results, setResults]     = useState(null)      // { searchId, searchName, items:[], truncated:bool }
-  const [importState, setImportState] = useState({})    // linkedin_url -> { state:'idle'|'importing'|'done'|'exists', leadId? }
-  const [bulkRunning, setBulkRunning] = useState(false)
+  const [results, setResults]     = useState(null)      // { searchId, searchName, items:[], truncated:bool, category }
 
   useEffect(() => { supabase.auth.getUser().then(({ data }) => setUid(data?.user?.id || null)) }, [])
 
@@ -95,19 +95,20 @@ export default function LinkedInSuche() {
     setLoading(false)
   }, [])
 
-  const fetchLeadLists = useCallback(async () => {
-    // Team-Listen (oder Solo-Listen ohne Team) für das optionale Ziel-Dropdown.
-    let q = supabase.from('lead_lists').select('id,name,color').order('created_at', { ascending:false })
+  const fetchInboxLists = useCallback(async () => {
+    // Import-Inbox-Listen (kanonische Quelle) für das optionale Ziel-Dropdown.
+    // Team-gescopet mit Solo-Fallback (Top-Fallstrick #14), analog useInboxLists.
+    let q = supabase.from('inbox_lists').select('id,name,color').order('created_at', { ascending:true })
     if (activeTeamId) q = q.eq('team_id', activeTeamId)
     else if (uid)     q = q.eq('user_id', uid).is('team_id', null)
-    else { setLeadLists([]); return }
+    else { setInboxLists([]); return }
     const { data, error } = await q
-    if (error) { console.warn('[linkedin-suche] lead_lists:', error.message); setLeadLists([]); return }
-    setLeadLists(data || [])
+    if (error) { console.warn('[linkedin-suche] inbox_lists:', error.message); setInboxLists([]); return }
+    setInboxLists(data || [])
   }, [activeTeamId, uid])
 
   useEffect(() => { fetchSearches() }, [fetchSearches])
-  useEffect(() => { fetchLeadLists() }, [fetchLeadLists])
+  useEffect(() => { fetchInboxLists() }, [fetchInboxLists])
 
   const setField = (k, v) => setForm(f => ({ ...f, [k]: v }))
 
@@ -132,7 +133,6 @@ export default function LinkedInSuche() {
       category: form.category,
       params,
       search_url: form.search_url.trim() || null,
-      auto_import_leads: form.auto_import_leads,
       target_list_id: form.target_list_id || null,
     })
     if (error) { setFlash({ type:'error', text:'Speichern fehlgeschlagen: ' + error.message }); setSaving(false); return }  // Fallstrick #12
@@ -146,7 +146,6 @@ export default function LinkedInSuche() {
     setRunningId(search.id)
     setLastResult(null)
     setResults(null)
-    setImportState({})
     setFlash(null)
     const { data, error } = await supabase.functions.invoke('unipile-search', { body: { search_id: search.id } })
     if (error) {
@@ -168,85 +167,17 @@ export default function LinkedInSuche() {
     }
     setLastResult(data)   // { ok, found, imported, cursor }
     const items = Array.isArray(data?.items) ? data.items : []
-    setResults({ searchId: search.id, searchName: search.name, items, truncated: !!data?.preview_truncated })
-    setFlash({ type:'success', text:`${data?.found ?? 0} Treffer gefunden, ${data?.imported ?? 0} als Leads importiert.` })
+    setResults({ searchId: search.id, searchName: search.name, items, truncated: !!data?.preview_truncated, category: search.category })
+    const isPeople = search.category === 'people'
+    setFlash({
+      type:'success',
+      text: isPeople
+        ? `${data?.found ?? 0} Treffer gefunden, ${data?.imported ?? 0} neu in der Import-Inbox.`
+        : `${data?.found ?? 0} Unternehmens-Treffer gefunden (nur Personen landen in der Inbox).`,
+      action: isPeople ? { label:'Zur Import-Inbox', to:'/linkedin-inbox' } : undefined,
+    })
     setRunningId(null)
     fetchSearches()       // aktualisierte results_imported / status / last_run_at
-
-    // Batch-Dedupe: bereits im CRM vorhandene Treffer in einer Query markieren
-    // (statt N Einzelqueries). Dedupe-Schlüssel = leads(user_id, linkedin_url).
-    const urls = [...new Set(items.map(it => it.linkedin_url).filter(Boolean))]
-    if (uid && urls.length) {
-      const { data: existing, error: dErr } = await supabase
-        .from('leads').select('id,linkedin_url').eq('user_id', uid).in('linkedin_url', urls)
-      if (dErr) { console.warn('[linkedin-suche] dedupe-batch:', dErr.message); return }
-      if (existing?.length) {
-        setImportState(prev => {
-          const next = { ...prev }
-          for (const row of existing) next[row.linkedin_url] = { state:'exists', leadId: row.id }
-          return next
-        })
-      }
-    }
-  }
-
-  // Einen Treffer selektiv als Lead übernehmen (mit Einzel-Dedupe-Guard vor Insert).
-  // Gibt true zurück, wenn der Treffer danach im CRM ist (neu oder bereits vorhanden).
-  const importLead = async (item) => {
-    const url = item.linkedin_url
-    const cur = url ? importState[url]?.state : null
-    if (cur === 'done' || cur === 'exists' || cur === 'importing') return true
-    if (url) setImportState(prev => ({ ...prev, [url]: { state:'importing' } }))
-
-    // Dedupe-Guard direkt vor dem Insert (Race-Schutz zusätzlich zum Batch-Check).
-    if (uid && url) {
-      const { data: existing, error: dErr } = await supabase
-        .from('leads').select('id').eq('user_id', uid).eq('linkedin_url', url).maybeSingle()
-      if (dErr) { console.warn('[linkedin-suche] dedupe:', dErr.message) }
-      if (existing?.id) { setImportState(prev => ({ ...prev, [url]: { state:'exists', leadId: existing.id } })); return true }
-    }
-
-    const leadRow = {
-      user_id: uid,
-      team_id: activeTeamId,               // Multi-Tenant: team_id bei jedem Insert (CLAUDE.md)
-      name: item.name || 'Unbekannt',
-      first_name: item.first_name ?? null,
-      last_name: item.last_name ?? null,
-      headline: item.headline ?? null,
-      company: item.company ?? null,
-      job_title: item.job_title ?? null,
-      location: item.location ?? null,
-      linkedin_url: url ?? null,
-      profile_url: url ?? null,
-      avatar_url: item.avatar_url ?? null,
-      status: 'Lead',                      // Fallstrick #2: gültiger Lead-Status (Einzel-Insert, kein .in()-Bulk)
-      source: 'linkedin_search',
-      lead_source: 'linkedin',
-    }
-    const { data: inserted, error } = await supabase.from('leads').insert(leadRow).select('id').maybeSingle()
-    if (error) {   // Fallstrick #12
-      console.warn('[linkedin-suche] lead insert:', error.message)
-      if (url) setImportState(prev => ({ ...prev, [url]: { state:'idle' } }))
-      setFlash({ type:'error', text:'Übernehmen fehlgeschlagen: ' + error.message })
-      return false
-    }
-    if (url) setImportState(prev => ({ ...prev, [url]: { state:'done', leadId: inserted?.id } }))
-    return true
-  }
-
-  const importAll = async () => {
-    if (!results?.items?.length) return
-    setBulkRunning(true)
-    let ok = 0
-    for (const item of results.items) {
-      const url = item.linkedin_url
-      const st = url ? importState[url]?.state : null
-      if (st === 'done' || st === 'exists') { ok++; continue }
-      const res = await importLead(item)
-      if (res) ok++
-    }
-    setBulkRunning(false)
-    setFlash({ type:'success', text:`${ok}/${results.items.length} Treffer im CRM.` })
   }
 
   const deleteSearch = async (id) => {
@@ -264,7 +195,7 @@ export default function LinkedInSuche() {
         <div style={headerRowStyle}>
           <div>
             <h1 style={titleStyle}><Search size={22} color={PRIMARY_VAR} /> LinkedIn-Suche</h1>
-            <div style={subtitleStyle}>Gespeicherte Suchen anlegen und ausführen — Treffer landen automatisch als Leads im CRM.</div>
+            <div style={subtitleStyle}>Gespeicherte Suchen anlegen und ausführen — Personen-Treffer landen in der Import-Inbox (nicht im CRM).</div>
           </div>
         </div>
 
@@ -311,7 +242,7 @@ export default function LinkedInSuche() {
 
             {form.category === 'company' && (
               <div style={{ fontSize:12, color:'#B45309', background:'#FFFBEB', border:'1px solid #FDE68A', borderRadius:8, padding:'8px 12px' }}>
-                Hinweis: Bei der Kategorie „Unternehmen" werden Treffer nur gezählt, aber <strong>nicht als Leads importiert</strong> — der automatische Lead-Import gilt nur für Personen-Treffer.
+                Hinweis: Bei der Kategorie „Unternehmen" werden Treffer nur gezählt, aber <strong>nicht importiert</strong> — nur Personen-Treffer landen in der Import-Inbox.
               </div>
             )}
 
@@ -340,19 +271,14 @@ export default function LinkedInSuche() {
               <div style={{ fontSize:11, color:'var(--text-muted, #6B7280)', marginTop:4 }}>Wenn gesetzt, hat die URL Vorrang vor den Keyword-Filtern.</div>
             </div>
 
-            <div style={gridStyle}>
-              <div>
-                <label style={labelStyle}>Ziel-Liste (optional)</label>
-                <select style={inputStyle} value={form.target_list_id} onChange={e => setField('target_list_id', e.target.value)}>
-                  <option value="">— keine —</option>
-                  {leadLists.map(l => <option key={l.id} value={l.id}>{l.name}</option>)}
-                </select>
-              </div>
-              <div style={{ display:'flex', alignItems:'flex-end' }}>
-                <label style={{ display:'flex', alignItems:'center', gap:8, fontSize:13, color:'#374151', cursor:'pointer', paddingBottom:8 }}>
-                  <input type="checkbox" checked={form.auto_import_leads} onChange={e => setField('auto_import_leads', e.target.checked)} />
-                  Treffer automatisch als Leads importieren
-                </label>
+            <div>
+              <label style={labelStyle}>Ziel-Liste in der Import-Inbox (optional)</label>
+              <select style={{ ...inputStyle, maxWidth:360 }} value={form.target_list_id} onChange={e => setField('target_list_id', e.target.value)}>
+                <option value="">— keine (nur in die Inbox) —</option>
+                {inboxLists.map(l => <option key={l.id} value={l.id}>{l.name}</option>)}
+              </select>
+              <div style={{ fontSize:11, color:'var(--text-muted, #6B7280)', marginTop:4 }}>
+                Personen-Treffer werden dieser Import-Inbox-Liste zugeordnet — dieselbe Liste wählst du später in der Automatisierung als Zielgruppe.
               </div>
             </div>
 
@@ -368,7 +294,7 @@ export default function LinkedInSuche() {
         {lastResult && (
           <div style={{ ...cardStyle, marginBottom:20, borderColor:'#BBF7D0', background:'#F0FDF4' }}>
             <div style={{ fontSize:13, fontWeight:700, color:'#15803D' }}>
-              Letzter Lauf: {lastResult.found ?? 0} Treffer · {lastResult.imported ?? 0} importiert
+              Letzter Lauf: {lastResult.found ?? 0} Treffer · {lastResult.imported ?? 0} neu in der Import-Inbox
             </div>
           </div>
         )}
@@ -424,9 +350,9 @@ export default function LinkedInSuche() {
           <div style={{ marginTop:24 }}>
             <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', gap:12, marginBottom:10, flexWrap:'wrap' }}>
               <div style={sectionTitle}><Users size={14} /> Ergebnisse für „{results.searchName}"</div>
-              {results.items.length > 0 && (
-                <button style={{ ...primaryBtnStyle, opacity: bulkRunning ? 0.6 : 1 }} disabled={bulkRunning} onClick={importAll}>
-                  {bulkRunning ? <Loader2 size={15} className="lk-spin" /> : <UserPlus size={15} />} Alle übernehmen
+              {results.category === 'people' && (
+                <button style={ghostBtnStyle} onClick={() => navigate('/linkedin-inbox')}>
+                  <InboxIcon size={14} /> Zur Import-Inbox
                 </button>
               )}
             </div>
@@ -444,8 +370,6 @@ export default function LinkedInSuche() {
             ) : (
               <div style={{ display:'flex', flexDirection:'column', gap:8 }}>
                 {results.items.map((it, idx) => {
-                  const st = it.linkedin_url ? importState[it.linkedin_url] : null
-                  const state = st?.state || 'idle'
                   return (
                     <div key={(it.linkedin_url || 'x') + idx} style={{ ...cardStyle, padding:'12px 16px', display:'flex', alignItems:'center', gap:14, flexWrap:'wrap' }}>
                       <Avatar name={it.name} avatar_url={it.avatar_url} />
@@ -467,16 +391,10 @@ export default function LinkedInSuche() {
                           Profil öffnen <ExternalLink size={13} />
                         </a>
                       )}
-                      {state === 'exists' ? (
-                        st?.leadId
-                          ? <button style={{ ...ghostBtnStyle, color:'#15803D', borderColor:'#BBF7D0' }} onClick={() => navigate(`/leads/${st.leadId}`)}>bereits im CRM <ExternalLink size={13} /></button>
-                          : <span style={{ ...ghostBtnStyle, color:'#15803D', borderColor:'#BBF7D0', cursor:'default' }}>bereits im CRM</span>
-                      ) : state === 'done' ? (
-                        <span style={{ ...ghostBtnStyle, color:'#15803D', borderColor:'#BBF7D0', cursor:'default' }}><Check size={14} /> übernommen</span>
-                      ) : (
-                        <button style={{ ...primaryBtnStyle, opacity: state === 'importing' ? 0.6 : 1 }} disabled={state === 'importing'} onClick={() => importLead(it)}>
-                          {state === 'importing' ? <Loader2 size={15} className="lk-spin" /> : <UserPlus size={15} />} Als Lead übernehmen
-                        </button>
+                      {results.category === 'people' && (
+                        <span style={{ ...ghostBtnStyle, color:'#15803D', borderColor:'#BBF7D0', cursor:'default' }}>
+                          <InboxIcon size={14} /> in Import-Inbox
+                        </span>
                       )}
                     </div>
                   )

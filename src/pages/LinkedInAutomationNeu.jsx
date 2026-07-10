@@ -37,6 +37,7 @@ export default function LinkedInAutomationNeu({ session }) {
   const [campaigns, setCampaigns] = useState([])
   const [accounts, setAccounts] = useState([])
   const [audiences, setAudiences] = useState([])
+  const [inboxLists, setInboxLists] = useState([])   // Import-Inbox-Listen = kanonische Zielgruppen-Quelle
   const [health, setHealth] = useState(null)
   const [sel, setSel] = useState(null)          // ausgewählte Kampagne
   const [steps, setSteps] = useState([])
@@ -48,13 +49,15 @@ export default function LinkedInAutomationNeu({ session }) {
 
   const load = useCallback(async () => {
     if (!activeTeamId) return
-    const [c, a, au, h] = await Promise.all([
+    const [c, a, au, h, il] = await Promise.all([
       supabase.from('la_campaigns').select('*').eq('team_id', activeTeamId).order('created_at', { ascending: false }),
       supabase.from('la_accounts').select('*').eq('team_id', activeTeamId),
       supabase.from('la_audiences').select('*').eq('team_id', activeTeamId).order('created_at', { ascending: false }),
       supabase.from('la_runner_health').select('*').maybeSingle(),
+      supabase.from('inbox_lists').select('id, name').eq('team_id', activeTeamId).order('created_at', { ascending: true }),
     ])
     setCampaigns(c.data || []); setAccounts(a.data || []); setAudiences(au.data || []); setHealth(h.data || null)
+    setInboxLists(il.data || [])
   }, [activeTeamId])
   useEffect(() => { load() }, [load])
 
@@ -111,7 +114,8 @@ export default function LinkedInAutomationNeu({ session }) {
   async function delStep(idx) { const st = steps[idx]; await supabase.from('la_steps').delete().eq('id', st.id); loadDetail(sel.id) }
 
   async function createAudience(kind) {
-    const { data, error } = await supabase.from('la_audiences').insert({ team_id: activeTeamId, kind, query: kind.startsWith('search') ? { keywords: '' } : null }).select().single()
+    const initialQuery = kind === 'list' ? { list_id: null } : kind.startsWith('search') ? { keywords: '' } : null
+    const { data, error } = await supabase.from('la_audiences').insert({ team_id: activeTeamId, kind, query: initialQuery }).select().single()
     if (error) { show(error.message, true); return }
     await supabase.from('la_campaigns').update({ audience_id: data.id }).eq('id', sel.id)
     setSel({ ...sel, audience_id: data.id }); load()
@@ -122,6 +126,8 @@ export default function LinkedInAutomationNeu({ session }) {
   }
   async function runAudience() {
     if (!sel?.audience_id) { show('Keine Audience gewählt', true); return }
+    const aud = audiences.find(a => a.id === sel.audience_id)
+    if (aud?.kind === 'list' && !aud.query?.list_id) { show('Bitte zuerst eine Import-Inbox-Liste wählen', true); return }
     show('Audience wird ausgeführt…')
     const { data, error } = await supabase.functions.invoke('la-audience', { body: { audience_id: sel.audience_id, campaign_id: sel.id } })
     if (error) { show('Fehler: ' + error.message, true); return }
@@ -252,6 +258,15 @@ export default function LinkedInAutomationNeu({ session }) {
                     {selAudience.kind?.startsWith('search') && (
                       <div style={{ flex: 1, minWidth: 200 }}><label style={labelStyle}>Keywords</label>
                         <input style={inputStyle} defaultValue={selAudience.query?.keywords || ''} onBlur={e => saveAudience({ query: { ...(selAudience.query || {}), keywords: e.target.value } })} placeholder="z.B. growth marketing berlin" /></div>
+                    )}
+                    {selAudience.kind === 'list' && (
+                      <div style={{ flex: 1, minWidth: 220 }}><label style={labelStyle}>Import-Inbox-Liste</label>
+                        <select style={inputStyle} value={selAudience.query?.list_id || ''} onChange={e => saveAudience({ query: { ...(selAudience.query || {}), list_id: e.target.value || null } })}>
+                          <option value="">— Liste wählen —</option>
+                          {inboxLists.map(l => <option key={l.id} value={l.id}>{l.name}</option>)}
+                        </select>
+                        {inboxLists.length === 0 && <div style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 4 }}>Noch keine Listen — in der Import-Inbox anlegen.</div>}
+                      </div>
                     )}
                     <button style={primaryBtn} onClick={runAudience}><Zap size={14} /> Audience ausführen</button>
                     {selAudience.last_run_at && <span style={{ fontSize: 11, color: 'var(--text-muted)' }}>zuletzt: {new Date(selAudience.last_run_at).toLocaleString('de-DE')}</span>}

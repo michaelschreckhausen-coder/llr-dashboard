@@ -1,9 +1,18 @@
-// la-audience — führt eine la_audiences aus (Suche classic/salesnav/recruiter ODER Relations-Pull),
+// la-audience — führt eine la_audiences aus (Suche classic/salesnav/recruiter, Relations-Pull ODER
+// Import-Inbox-Liste kind='list' via query.list_id → inbox_list_members → linkedin_inbox),
 // legt la_enrollments an (Dedup je campaign über provider_id ODER public_identifier) und materialisiert
 // den ersten Step-Job GESTAFFELT nach la_campaigns.caps (per-Tag/Aktion, Jitter) — kein all-at-once.
 // On-demand-Invoke oder via Relations-Cron. service_role. Kein Real-Send (Runner sendet nur bei aktiver Kampagne + fälligem Job).
+// Prozess-Vereinheitlichung 2026-07: kind='list' ist die kanonische Zielgruppe aus der Import-Inbox (eine Listen-Quelle).
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { search, getRelations, type Person, type Page, type UnipileResult } from "../_shared/unipile-client.ts";
+
+// public_identifier aus einer LinkedIn-URL ziehen (…/in/<slug>) — Fallback-Arbiter wenn provider_id fehlt.
+function publicIdFromUrl(url: string | null): string | null {
+  if (!url) return null;
+  const m = url.match(/\/in\/([^/?#]+)/i);
+  return m ? decodeURIComponent(m[1]) : null;
+}
 
 const db = createClient(Deno.env.get("SUPABASE_URL")!, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!, { auth: { persistSession: false } });
 
@@ -51,17 +60,41 @@ Deno.serve(async (req) => {
   const { data: step0 } = await db.from("la_steps").select("id, action").eq("campaign_id", campId).eq("position", 0).maybeSingle();
   if (!step0) return json({ error: "no_step0" }, 400);
 
-  // Personen paginieren (Cursor bis erschöpft, MAX_PAGES-Backstop)
+  // Personen sammeln — kind='list' aus der Import-Inbox (endlich, ein Pass), sonst Unipile paginiert.
   const persons: Person[] = [];
   let cursor: string | null = aud.sync_cursor ?? null, pages = 0; let fetchErr: unknown = null; // ab Checkpoint fortsetzen
-  do {
-    const res: UnipileResult<Page> = aud.kind === "relations"
-      ? await getRelations(accountId, cursor)
-      : await search(accountId, { kind: aud.kind, params: (aud.query as any) ?? undefined, search_url: aud.search_url ?? undefined, cursor });
-    if (!res.ok) { fetchErr = { status: res.status, type: res.type, detail: res.detail }; break; }
-    persons.push(...res.data.items);
-    cursor = res.data.cursor; pages++;
-  } while (cursor && pages < PAGES_PER_INVOKE);
+  if (aud.kind === "list") {
+    // query.list_id → inbox_list_members → linkedin_inbox (team-scoped auf audience-Team).
+    const listId: string | null = (aud.query as any)?.list_id ?? null;
+    if (!listId) return json({ error: "list_audience_missing_list_id" }, 400);
+    const { data: members } = await db.from("inbox_list_members").select("inbox_id").eq("list_id", listId);
+    const inboxIds = (members ?? []).map((m: any) => m.inbox_id).filter(Boolean);
+    if (inboxIds.length) {
+      const { data: rows } = await db.from("linkedin_inbox")
+        .select("id, provider_id, linkedin_url, name, headline, job_title, company")
+        .eq("team_id", aud.team_id).in("id", inboxIds);
+      for (const r of rows ?? []) {
+        persons.push({
+          provider_id: (r as any).provider_id ?? null,
+          public_identifier: publicIdFromUrl((r as any).linkedin_url ?? null),
+          name: (r as any).name ?? null,
+          headline: (r as any).headline ?? (r as any).job_title ?? null,
+          profile_url: (r as any).linkedin_url ?? null,
+          raw: r,
+        });
+      }
+    }
+    cursor = null; // Inbox-Liste ist endlich → kein Checkpoint
+  } else {
+    do {
+      const res: UnipileResult<Page> = aud.kind === "relations"
+        ? await getRelations(accountId, cursor)
+        : await search(accountId, { kind: aud.kind, params: (aud.query as any) ?? undefined, search_url: aud.search_url ?? undefined, cursor });
+      if (!res.ok) { fetchErr = { status: res.status, type: res.type, detail: res.detail }; break; }
+      persons.push(...res.data.items);
+      cursor = res.data.cursor; pages++;
+    } while (cursor && pages < PAGES_PER_INVOKE);
+  }
 
   // Dedup gegen bestehende Enrollments (provider_id ODER public_identifier)
   const { data: existing } = await db.from("la_enrollments").select("provider_id, public_identifier").eq("campaign_id", campId);

@@ -1,9 +1,13 @@
 // =====================================================================
 // Feature 1 — LinkedIn-Suche / Prospecting
 // User-getriggert: invoke('unipile-search', { body: { search_id } })
-//   ODER Ad-hoc: { params, api, category, auto_import_leads }
-// Führt eine Unipile-LinkedIn-Suche aus und importiert Treffer als leads
-// (source='linkedin_search'), dedupe über leads.linkedin_url.
+//   ODER Ad-hoc: { params, api, category, target_list_id }
+// Führt eine Unipile-LinkedIn-Suche aus und importiert Personen-Treffer in die
+// Import-Inbox (public.linkedin_inbox, source='linkedin_search') via RPC
+// sales_nav_upsert_inbox — NICHT mehr ins CRM (public.leads). Prozess-Vereinheitlichung
+// 2026-07: eine Listen-Quelle (inbox_lists). Optionale target_list_id = inbox_lists.id
+// → Mitgliedschaft in inbox_list_members. Dedup team-scoped über sales_nav_id/provider_id
+// in der RPC. Sales-Nav-Treffer: it.id = sales_nav_id (ACwAA); Classic: it.id = provider_id.
 // =====================================================================
 import { handlePreflight, jsonResponse } from "../_shared/cors.ts";
 import {
@@ -59,7 +63,8 @@ Deno.serve(async (req) => {
     const category = search?.category ?? input.category ?? "people";
     const params = search?.params ?? input.params ?? {};
     const searchUrl = search?.search_url ?? input.search_url ?? null;
-    const autoImport = search?.auto_import_leads ?? input.auto_import_leads ?? true;
+    const isSalesNav = api === "sales_navigator";
+    // target_list_id zeigt jetzt auf inbox_lists (nicht mehr lead_lists) — Prozess-Vereinheitlichung.
     const targetListId = search?.target_list_id ?? input.target_list_id ?? null;
 
     // Body für Unipile: entweder Parameter- oder URL-basierte Suche.
@@ -106,36 +111,33 @@ Deno.serve(async (req) => {
         // Vorschau-Liste (gedeckelt) für die Anzeige im Frontend.
         if (results.length < PREVIEW_CAP) results.push(mapped);
 
-        if (!autoImport || category !== "people") continue;
+        // Nur Personen-Treffer werden in die Inbox importiert (Unternehmen: nur gezählt).
+        if (category !== "people") continue;
 
-        // Dedupe: Upsert über leads.linkedin_url (Partial-Unique-Index existiert).
-        const leadRow: Record<string, unknown> = {
-          user_id: auth.userId,
-          team_id: conn.teamId,          // team_id von Anfang an (späterer Modul-Lockdown ohne Backfill)
-          ...mapped,
-          profile_url: linkedinUrl,
-          status: "Lead",               // Fallstrick #2: gültiger Lead-Status
+        // Import in die Import-Inbox (linkedin_inbox) via RPC — NICHT ins CRM.
+        // it.id = sales_nav_id (Sales-Nav, ACwAA) bzw. provider_id (Classic, ACoAA).
+        const idRaw: string | null = (it.id ?? it.provider_id ?? it.member_id) ?? null;
+        const lead: Record<string, unknown> = {
+          ...mapped,                                   // name/first/last/headline/company/job_title/location/linkedin_url/avatar_url
+          sales_nav_id: isSalesNav ? idRaw : null,
+          provider_id: isSalesNav ? (it.provider_id ?? null) : idRaw,
           source: "linkedin_search",
-          lead_source: "linkedin",
         };
-        // Dedupe manuell: der Unique-Index auf leads(user_id, linkedin_url) ist
-        // PARTIAL (WHERE linkedin_url IS NOT NULL AND != '') und daher per
-        // ON CONFLICT nicht zuverlässig inferierbar -> erst prüfen, dann einfügen.
-        let leadId: string | null = null;
-        if (linkedinUrl) {
-          const { data: existing } = await sb.from("leads")
-            .select("id").eq("user_id", auth.userId).eq("linkedin_url", linkedinUrl).maybeSingle();
-          leadId = existing?.id ?? null;
-        }
-        if (!leadId) {
-          const { data: inserted, error } = await sb.from("leads").insert(leadRow).select("id").maybeSingle();
-          if (!error) { imported++; leadId = inserted?.id ?? null; }
-          else console.warn(`[unipile-search] lead insert: ${error.message}`);
-        }
-        if (targetListId && leadId) {
-          await sb.from("lead_list_members")
-            .upsert({ list_id: targetListId, lead_id: leadId },
-              { onConflict: "list_id,lead_id", ignoreDuplicates: true });
+        // RPC dedupt team-scoped über sales_nav_id/provider_id. Ohne beide Arbiter → skip.
+        if (!lead.sales_nav_id && !lead.provider_id) continue;
+        const { data: up, error: upErr } = await sb.rpc("sales_nav_upsert_inbox", {
+          p_team_id: conn.teamId, p_user_id: auth.userId, p_lead: lead,
+        });
+        if (upErr) { console.warn(`[unipile-search] inbox upsert: ${upErr.message}`); continue; }
+        const res = up as { id?: string; inserted?: boolean } | null;
+        if (res?.inserted) imported++;
+        const inboxId = res?.id ?? null;
+        // Optionale Ziel-Liste = inbox_lists.id → Mitgliedschaft (idempotent).
+        if (targetListId && inboxId) {
+          const { error: mErr } = await sb.from("inbox_list_members")
+            .upsert({ list_id: targetListId, inbox_id: inboxId, user_id: auth.userId },
+              { onConflict: "list_id,inbox_id", ignoreDuplicates: true });
+          if (mErr) console.warn(`[unipile-search] inbox_list_members: ${mErr.message}`);
         }
       }
       cursor = resp?.cursor ?? resp?.paging?.cursor ?? undefined;
