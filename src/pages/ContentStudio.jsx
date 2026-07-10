@@ -10,6 +10,7 @@
 //   - Toggle-Button oben links bleibt sichtbar
 //   - Beim ersten Send im Clean-Modus → Sidebar klappt automatisch auf
 
+import EmptyOrb from '../components/EmptyOrb'
 import React, { useState, useEffect, useRef } from 'react'
 import { Pencil, Pin, BookOpen, Target, Send, Loader2, Globe, Plus, FileText, ChevronLeft, ChevronRight, ChevronsRight, ChevronDown, X, Mic, Square, Image as ImageIcon, Download, Sparkles, Wand2, FilePlus2, Brush, MessageSquare, CalendarPlus, Maximize2, Minimize2, Paperclip, Trash2, MoreVertical, Unlink, Layers, Images } from 'lucide-react'
 import { useVoiceInput } from '../hooks/useVoiceInput'
@@ -1937,7 +1938,7 @@ function CleanView({
           // Hero (aufgeräumt)
           <div style={{ textAlign:'center', marginBottom:26 }}>
             <div style={{ display:'flex', justifyContent:'center', marginBottom:12 }}>
-              <img src="/Leadesk_Favicon (1).png" alt="Leadesk" width={54} height={54} style={{ display:'block', opacity:0.95 }}/>
+              <EmptyOrb size={120}/>
             </div>
             <h1 style={{ fontSize:22, fontWeight:800, margin:0, letterSpacing:'-0.02em', lineHeight:1.2, color:'var(--text-primary)' }}>Content-Werkstatt</h1>
             <p style={{ fontSize:13.5, color:'var(--text-muted)', margin:'8px auto 0', lineHeight:1.6, maxWidth:460 }}>
