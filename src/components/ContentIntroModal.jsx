@@ -103,10 +103,10 @@ function Column({ title, sub, icon, list, empty, ICON, cardRefs, onPick, kind })
       <div style={{ display:'flex', flexDirection:'column', gap:8, marginTop:12 }}>
         {list.length === 0 && <div style={{ fontSize:12, color:'var(--text-muted)', fontStyle:'italic', padding:'10px 0' }}>{empty}</div>}
         {list.map(bv => (
-          <button className="lk-btn lk-btn-ghost" key={bv.id} ref={el => { if (el) cardRefs.current[bv.id] = el }} onClick={() => onPick(bv)}
-            style={{ display:'flex', alignItems:'center', gap:10, textAlign:'left', fontFamily:'inherit' }}
-            
-            >
+          <button key={bv.id} ref={el => { if (el) cardRefs.current[bv.id] = el }} onClick={() => onPick(bv)}
+            style={{ display:'flex', alignItems:'center', gap:10, padding:'11px 13px', borderRadius:12, border:'1.5px solid var(--border, #E5E7EB)', background:'#fff', cursor:'pointer', textAlign:'left', fontFamily:'inherit', transition:'border-color .12s, background .12s' }}
+            onMouseEnter={e=>{ e.currentTarget.style.borderColor = kind==='company'?'#10B981':P; e.currentTarget.style.background = kind==='company'?'rgba(16,185,129,0.05)':'rgba(10,111,176,0.04)' }}
+            onMouseLeave={e=>{ e.currentTarget.style.borderColor='var(--border, #E5E7EB)'; e.currentTarget.style.background='#fff' }}>
             <span style={{ color: kind==='company'?'#10B981':P, flexShrink:0 }}>{ICON[bv.account_type] || ICON.other}</span>
             <span style={{ fontSize:13.5, fontWeight:600, color:'var(--text-primary)', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{bv.name || '(Ohne Namen)'}</span>
           </button>

@@ -990,8 +990,8 @@ export default function Layout({ session, role, onLogout, children }) {
             <span style={{ display:'inline-flex', alignItems:'center', gap:6 }}>
               <span id="bv-switcher-anchor" data-tour-id="bv-switcher" style={{ display:'inline-flex' }}><BrandVoiceSwitcher session={session} /></span>
               {false && _isContentRoute && (
-                <button className="lk-btn lk-btn-ghost" onClick={() => setIntroManual(true)} title="Wie funktioniert der Content-Bereich?"
-                  style={{ width:38, height:38, display:'inline-flex', alignItems:'center', justifyContent:'center' }}>
+                <button onClick={() => setIntroManual(true)} title="Wie funktioniert der Content-Bereich?"
+                  style={{ width:38, height:38, borderRadius:11, border:'1px solid var(--border)', background:'var(--surface)', cursor:'pointer', display:'inline-flex', alignItems:'center', justifyContent:'center', color:'var(--text-muted)' }}>
                   <HelpCircle size={15} strokeWidth={1.9}/>
                 </button>
               )}
@@ -999,8 +999,8 @@ export default function Layout({ session, role, onLogout, children }) {
           )}
 
           {!isMobile && currentArea && AREA_TOURS[currentArea] && (
-            <button className="lk-btn lk-btn-ghost" onClick={() => setActiveAreaTour(currentArea)} title={'Tour: ' + AREA_TOURS[currentArea].label + ' neu starten'}
-              style={{ width:38, height:38, display:'inline-flex', alignItems:'center', justifyContent:'center' }}>
+            <button onClick={() => setActiveAreaTour(currentArea)} title={'Tour: ' + AREA_TOURS[currentArea].label + ' neu starten'}
+              style={{ width:38, height:38, borderRadius:11, border:'1px solid var(--border)', background:'var(--surface)', cursor:'pointer', display:'inline-flex', alignItems:'center', justifyContent:'center', color:'var(--text-muted)' }}>
               <HelpCircle size={15} strokeWidth={1.9}/>
             </button>
           )}

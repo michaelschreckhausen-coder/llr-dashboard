@@ -224,8 +224,8 @@ export default function LinkedInConnect({ session }) {
                   { label:'Nachrichten synchronisieren', desc:'Alle Konversationen archivieren', type:'profile', url:'https://www.linkedin.com/messaging/', color:'#0A6FB0' },
                   { label:'Angenommene Anfragen', desc:'Wer hat deine Anfragen angenommen', type:'connections', url:'https://www.linkedin.com/mynetwork/invitation-manager/sent/', color:'#F59E0B' },
                 ].map((item,i) => (
-                  <button className="lk-btn lk-btn-ghost" key={i} onClick={()=>addSyncJob(item.type,item.url)} disabled={syncing}
-                    style={{ display:'flex', flexDirection:'column', gap:8, textAlign:'left', borderTop:'3px solid '+item.color }}>
+                  <button key={i} onClick={()=>addSyncJob(item.type,item.url)} disabled={syncing}
+                    style={{ display:'flex', flexDirection:'column', gap:8, padding:'16px', borderRadius:14, border:'1px solid var(--border)', background:'var(--surface)', cursor:syncing?'wait':'pointer', textAlign:'left', transition:'all 0.15s', borderTop:'3px solid '+item.color }}>
                     <div style={{ fontSize:13, fontWeight:800, color:'rgb(20,20,43)' }}>{item.label}</div>
                     <div style={{ fontSize:11, color:'#9CA3AF' }}>{item.desc}</div>
                   </button>

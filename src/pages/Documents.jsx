@@ -237,8 +237,8 @@ export default function Documents({ embedded = false }) {
                 <>
                   {docChats.length > 0 && !showOther && (
                     <>
-                      <button className="lk-btn lk-btn-primary" onClick={() => openWith(docChats[0].id)}
-                        style={{ width:'100%', display:'flex', alignItems:'center', gap:8, fontFamily:'inherit', marginBottom:10 }}>
+                      <button onClick={() => openWith(docChats[0].id)}
+                        style={{ width:'100%', display:'flex', alignItems:'center', gap:8, padding:'11px 12px', borderRadius:10, border:'none', background:P, color:'#fff', fontSize:13, fontWeight:700, cursor:'pointer', fontFamily:'inherit', marginBottom:10 }}>
                         <MessageSquare size={15} strokeWidth={2}/><span style={{ minWidth:0, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>Zuletzt bearbeitender Chat · {docChats[0].title || 'Chat'}</span>
                       </button>
                       <div style={{ fontSize:10.5, fontWeight:700, color:'var(--text-soft,#98a2b3)', textTransform:'uppercase', letterSpacing:'0.06em', padding:'2px 2px 6px' }}>Zugeordnete Chats</div>

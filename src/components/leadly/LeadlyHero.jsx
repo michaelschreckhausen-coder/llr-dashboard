@@ -411,8 +411,15 @@ export default function LeadlyHero({ firstName, leadly, stats = {}, onOpenTasks 
           style={iconBtn(voice.isRecording)}>
           {voice.isRecording ? <Square size={14} /> : <Mic size={16} />}
         </button>
-        <button className="lk-btn lk-btn-primary" type="submit" disabled={!text.trim()} aria-label="Senden"
-          style={{ width: 36, height: 36, flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+        <button type="submit" disabled={!text.trim()} aria-label="Senden"
+          style={{
+            width: 36, height: 36, borderRadius: 10, flexShrink: 0,
+            border: text.trim() ? 'none' : `1px solid ${colors.border}`,
+            background: text.trim() ? 'var(--wl-primary, var(--primary, #0A6FB0))' : 'transparent',
+            color: text.trim() ? '#fff' : colors.inkSoft,
+            cursor: text.trim() ? 'pointer' : 'not-allowed',
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+          }}>
           <ArrowUp size={17} />
         </button>
       </form>

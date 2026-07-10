@@ -336,8 +336,8 @@ export default function LeadTasks({ leadId, teamId, session, members = [] }) {
                 {/* Aktionen */}
                 {isOwn && (
                   <div style={{ display: 'flex', gap: 4, flexShrink: 0 }}>
-                    <button className="lk-btn lk-btn-ghost" onClick={() => startEdit(task)}
-                      style={{ width: 26, height: 26, display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+                    <button onClick={() => startEdit(task)}
+                      style={{ width: 26, height: 26, borderRadius: 7, border: '1px solid #E5E7EB', background: '#fff', cursor: 'pointer', fontSize: 12, color: '#6B7280', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
                       title="Bearbeiten"><Pencil size={14} strokeWidth={1.75}/></button>
                     <button onClick={() => deleteTask(task.id)}
                       style={{ width: 26, height: 26, borderRadius: 7, border: '1px solid #FECACA', background: '#fff', cursor: 'pointer', fontSize: 12, color: '#DC2626', display: 'flex', alignItems: 'center', justifyContent: 'center' }}

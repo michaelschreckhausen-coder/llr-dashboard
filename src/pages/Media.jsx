@@ -447,10 +447,10 @@ export default function Media({ session }) {
                 const statusLabels = { idee:'Idee', draft:'Entwurf', in_review:'Review', approved:'Approved', scheduled:'Eingeplant', failed:'Fehler' }
                 const hasOther = p.visual_id && p.visual_id !== attachModal.id
                 return (
-                  <button className="lk-btn lk-btn-ghost" key={p.id} onClick={() => attachMediaToPost(p)}
-                    style={{ width:'100%', textAlign:'left', marginBottom:8, display:'flex', gap:12, alignItems:'flex-start' }}
-                    
-                    >
+                  <button key={p.id} onClick={() => attachMediaToPost(p)}
+                    style={{ width:'100%', textAlign:'left', padding:'12px 14px', marginBottom:8, borderRadius:10, border:'1.5px solid var(--border)', background:'#fff', cursor:'pointer', display:'flex', gap:12, alignItems:'flex-start' }}
+                    onMouseEnter={e => e.currentTarget.style.borderColor = P}
+                    onMouseLeave={e => e.currentTarget.style.borderColor = 'var(--border)'}>
                     <div style={{ flex:1, minWidth:0 }}>
                       <div style={{ display:'flex', alignItems:'center', gap:8, marginBottom:4, flexWrap:'wrap' }}>
                         <span style={{ fontSize:11, fontWeight:600, color:'var(--text-muted)', padding:'2px 8px', background:'#F1F5F9', borderRadius:6 }}>{statusLabels[p.status] || p.status}</span>

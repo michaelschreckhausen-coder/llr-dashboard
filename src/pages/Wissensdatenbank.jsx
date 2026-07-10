@@ -610,11 +610,11 @@ export default function Wissensdatenbank({ session }) {
       <div style={{ marginTop:24, marginBottom:16, padding:'18px 0 0', borderTop:'1.5px solid var(--border, #E5E7EB)', display:'flex', gap:10, justifyContent:'space-between', alignItems:'center' }}>
         <button onClick={()=>{setView('list');setEdit(null)}} style={{ padding:'11px 20px', background:'transparent', border:'1.5px solid var(--border, #E5E7EB)', borderRadius:10, fontSize:13.5, cursor:'pointer', color:'var(--text-muted)', fontFamily:'inherit', fontWeight:500 }}>Abbrechen</button>
         <div style={{ display:'flex', alignItems:'center', gap:8 }}>
-          <button className="lk-btn lk-btn-ghost" type="button" onClick={()=>setShowVisibilityModal(true)} title="Sichtbarkeit anpassen"
-            style={{ display:'inline-flex', alignItems:'center', gap:7, fontFamily:'inherit' }}>
+          <button type="button" onClick={()=>setShowVisibilityModal(true)} title="Sichtbarkeit anpassen"
+            style={{ padding:'11px 16px', background:'var(--surface, #fff)', color:'var(--text-primary)', border:'1.5px solid var(--border)', borderRadius:10, fontSize:13, fontWeight:600, cursor:'pointer', display:'inline-flex', alignItems:'center', gap:7, fontFamily:'inherit' }}>
             <Eye size={15} strokeWidth={1.75}/><span>{edit.is_shared ? 'Geteilt' : 'Sichtbarkeit'}</span>
           </button>
-          <button className="lk-btn lk-btn-primary" onClick={save} disabled={!edit.name?.trim()} style={{ display:'inline-flex', alignItems:'center', gap:8, fontFamily:'inherit', opacity:edit.name?.trim()?1:.8 }}>
+          <button onClick={save} disabled={!edit.name?.trim()} style={{ padding:'12px 26px', background:edit.name?.trim()?P:'#94A3B8', color:'#fff', border:'none', borderRadius:10, fontSize:14, fontWeight:600, cursor:edit.name?.trim()?'pointer':'not-allowed', boxShadow:edit.name?.trim()?'0 2px 10px rgba(10,111,176,.25)':'none', display:'inline-flex', alignItems:'center', gap:8, fontFamily:'inherit', opacity:edit.name?.trim()?1:.8 }}>
             <span style={{display:'inline-flex'}}><Save size={14}/></span><span>Speichern</span>
           </button>
         </div>

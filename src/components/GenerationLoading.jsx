@@ -108,9 +108,15 @@ export default function GenerationLoading({ premium = false, expectedSeconds, ti
             </div>
           </div>
         </div>
-        <button className="lk-btn lk-btn-primary"
+        <button
           onClick={() => setMode(m => m === 'art' ? 'game' : 'art')}
-          style={{ flexShrink: 0, whiteSpace: 'nowrap', display: 'inline-flex', alignItems: 'center', gap: 6 }}
+          style={{
+            padding: embedded ? '5px 10px' : '7px 14px', borderRadius: 8, border: '1.5px solid rgba(10,111,176,0.3)',
+            background: mode === 'game' ? P : 'transparent',
+            color: mode === 'game' ? '#fff' : P,
+            fontSize: embedded ? 11 : 12, fontWeight: 600, cursor: 'pointer', flexShrink: 0, whiteSpace: 'nowrap',
+            display: 'inline-flex', alignItems: 'center', gap: 6,
+          }}
         >
           {mode === 'art'
             ? (embedded ? '🎮 Mini-Spiel' : 'Mini-Spiel zur Überbrückung')

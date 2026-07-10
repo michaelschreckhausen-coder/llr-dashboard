@@ -431,19 +431,19 @@ export default function Aufgaben({ session }) {
 
                       {/* Actions: SSI-Dismiss + Lead-Task-Delete */}
                       {task.source === 'ssi_daily' && (
-                        <button className="lk-btn lk-btn-ghost" onClick={(e) => { e.stopPropagation(); dismissSsi() }}
+                        <button onClick={(e) => { e.stopPropagation(); dismissSsi() }}
                           title="Für heute ausblenden"
-                          style={{ width: 28, height: 28, flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center' }}
-                          
-                          >
+                          style={{ width: 28, height: 28, borderRadius: 8, border: '1px solid #E5E7EB', background: 'var(--surface)', cursor: 'pointer', fontSize: 12, color: '#9CA3AF', flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', transition: 'all 0.15s' }}
+                          onMouseEnter={e => { e.currentTarget.style.borderColor = '#FCA5A5'; e.currentTarget.style.color = '#DC2626' }}
+                          onMouseLeave={e => { e.currentTarget.style.borderColor = '#E5E7EB'; e.currentTarget.style.color = '#9CA3AF' }}>
                           ×
                         </button>
                       )}
                       {!isVirtual && task.created_by === uid && (
-                        <button className="lk-btn lk-btn-ghost" onClick={(e) => { e.stopPropagation(); if (window.confirm('Aufgabe wirklich löschen?')) deleteLeadTask(task.rawId) }}
-                          style={{ width: 28, height: 28, flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center' }}
-                          
-                          
+                        <button onClick={(e) => { e.stopPropagation(); if (window.confirm('Aufgabe wirklich löschen?')) deleteLeadTask(task.rawId) }}
+                          style={{ width: 28, height: 28, borderRadius: 8, border: '1px solid #E5E7EB', background: 'var(--surface)', cursor: 'pointer', fontSize: 14, color: '#D1D5DB', flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', transition: 'all 0.15s' }}
+                          onMouseEnter={e => { e.currentTarget.style.borderColor = '#FCA5A5'; e.currentTarget.style.color = '#DC2626' }}
+                          onMouseLeave={e => { e.currentTarget.style.borderColor = '#E5E7EB'; e.currentTarget.style.color = '#D1D5DB' }}
                           title="Löschen">
                           ×
                         </button>

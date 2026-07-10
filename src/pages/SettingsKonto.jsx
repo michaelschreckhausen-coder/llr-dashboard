@@ -423,7 +423,13 @@ export default function SettingsKonto() {
           {/* Monthly/Yearly Toggle */}
           <div style={{ display: 'inline-flex', background: 'var(--surface-muted)', padding: 3, borderRadius: 99, border: '1px solid var(--border)' }}>
             {['monthly', 'yearly'].map(p => (
-              <button className="lk-btn lk-btn-primary" key={p} onClick={() => setBilling(p)} disabled={!!pendingPlan} style={{ letterSpacing: '-0.01em', opacity: pendingPlan ? 0.5 : 1 }}>
+              <button key={p} onClick={() => setBilling(p)} disabled={!!pendingPlan} style={{
+                padding: '6px 14px', border: 'none', borderRadius: 99, fontSize: 12, fontWeight: 700,
+                background: billing === p ? PRIMARY : 'transparent',
+                color: billing === p ? '#fff' : 'var(--text-primary)',
+                cursor: pendingPlan ? 'default' : 'pointer', transition: 'all 0.2s', letterSpacing: '-0.01em',
+                opacity: pendingPlan ? 0.5 : 1,
+              }}>
                 {p === 'monthly' ? 'Monatlich' : 'Jährlich −20%'}
               </button>
             ))}

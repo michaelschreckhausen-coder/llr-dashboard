@@ -113,8 +113,13 @@ export default function FontPicker({ value, onPick, brandFonts = [] }) {
 
   return (
     <>
-      <button className="lk-btn lk-btn-ghost" ref={btnRef} type="button" onClick={() => (open ? setOpen(false) : openPanel())} title="Schriftart"
-        style={{ height: 32, minWidth: 116, maxWidth: 150, flexShrink: 0, display: 'inline-flex', alignItems: 'center', justifyContent: 'space-between', gap: 6 }}>
+      <button ref={btnRef} type="button" onClick={() => (open ? setOpen(false) : openPanel())} title="Schriftart"
+        style={{
+          height: 32, minWidth: 116, maxWidth: 150, flexShrink: 0, display: 'inline-flex',
+          alignItems: 'center', justifyContent: 'space-between', gap: 6, padding: '0 9px',
+          borderRadius: 9, border: '1px solid var(--border,#E9ECF2)', background: '#fff',
+          cursor: 'pointer', color: 'var(--text-primary)', fontSize: 12.5,
+        }}>
         <span style={{ fontFamily: `"${current}", sans-serif`, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{current}</span>
         <ChevronDown size={14} style={{ flexShrink: 0, opacity: 0.6 }} />
       </button>

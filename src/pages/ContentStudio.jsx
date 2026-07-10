@@ -127,8 +127,8 @@ function PostActions({ text, onInsertToDoc, onAttachToPost, loadExistingPosts, c
   return (
     <div style={{ display:'flex', gap:8, flexWrap:'wrap', marginTop:12 }}>
       <div style={{ position:'relative' }}>
-        <Tip label="Ins Dokument"><button className="lk-btn lk-btn-primary" data-tour-id="cs-insert-doc" onClick={() => { if ((chatDocs||[]).length || hasOpenDoc) setMenuOpen(o => !o); else onInsertToDoc && onInsertToDoc(text, 'new') }}
-          style={{ width:34, height:34, justifyContent:'center', display:'inline-flex', alignItems:'center' }}>
+        <Tip label="Ins Dokument"><button data-tour-id="cs-insert-doc" onClick={() => { if ((chatDocs||[]).length || hasOpenDoc) setMenuOpen(o => !o); else onInsertToDoc && onInsertToDoc(text, 'new') }}
+          style={{ width:34, height:34, padding:0, justifyContent:'center', borderRadius:8, border:'none', background:P, color:'#fff', cursor:'pointer', display:'inline-flex', alignItems:'center' }}>
           <FileText size={15} strokeWidth={1.9}/>
         </button></Tip>
         {menuOpen && (
@@ -1392,8 +1392,8 @@ Neue Anfrage: "${p}"` },
         <aside style={{ width: isMobile ? 280 : 264, borderRight:'1px solid var(--border,#E9ECF2)', background:'var(--page-bg, #F7F8FA)', display:'flex', flexDirection:'column', flexShrink:0,
           ...(isMobile ? { position:'fixed', top:0, left:0, bottom:0, zIndex:400, boxShadow:'2px 0 16px rgba(16,24,40,0.18)' } : {}) }}>
           <div style={{ padding:'14px 12px 10px', display:'flex', gap:8 }}>
-            <button className="lk-btn lk-btn-ghost" onClick={() => setSidebarOpen(false)} title="Sidebar einklappen"
-              style={{ width:36, height:36, display:'inline-flex', alignItems:'center', justifyContent:'center' }}>☰</button>
+            <button onClick={() => setSidebarOpen(false)} title="Sidebar einklappen"
+              style={{ width:36, height:36, display:'inline-flex', alignItems:'center', justifyContent:'center', borderRadius:9, border:'1px solid var(--border)', background:'var(--surface,#fff)', fontSize:14, cursor:'pointer', color:'var(--text-muted,#667085)' }}>☰</button>
             <button className="lk-btn lk-btn-primary" onClick={newChat}
               style={{ flex:1, height:36, display:'inline-flex', alignItems:'center', justifyContent:'center', gap:6 }}>
               <Pencil size={13} strokeWidth={2}/>Neuer Chat
@@ -1726,8 +1726,9 @@ Neue Anfrage: "${p}"` },
             {page && (
               <div style={{ position:'fixed', bottom:20, left:'50%', transform:'translateX(-50%)', zIndex:1001, display:'flex', flexDirection:'row', alignItems:'center', gap:8 }}>
                 <Switcher rounded horizontal/>
-                <button className="lk-btn lk-btn-ghost" onClick={() => setPaneView('split')} title="Seiten-Vollbild verlassen"
-                  style={{ width:46, height:46, display:'inline-flex', alignItems:'center', justifyContent:'center' }}>
+                <button onClick={() => setPaneView('split')} title="Seiten-Vollbild verlassen"
+                  style={{ width:46, height:46, display:'inline-flex', alignItems:'center', justifyContent:'center',
+                    borderRadius:10, border:'1px solid var(--border,#E9ECF2)', background:'var(--surface,#fff)', cursor:'pointer', color:'var(--text-secondary,#475569)', boxShadow:'0 2px 10px rgba(16,24,40,0.12)' }}>
                   <Minimize2 size={18} strokeWidth={2}/>
                 </button>
               </div>
@@ -1804,8 +1805,8 @@ Neue Anfrage: "${p}"` },
                 ) : openPicker.type === 'design' ? (
                   <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fill, minmax(120px,1fr))', gap:10 }}>
                     {pickerItems.map(it => (
-                      <button className="lk-btn lk-btn-ghost" key={it.id} onClick={() => pickerSelectItem(it)} title={it.title || 'Design'}
-                        style={{ display:'flex', flexDirection:'column', gap:5, fontFamily:'inherit', overflow:'hidden', textAlign:'left' }}>
+                      <button key={it.id} onClick={() => pickerSelectItem(it)} title={it.title || 'Design'}
+                        style={{ display:'flex', flexDirection:'column', gap:5, padding:0, border:'1px solid var(--border,#E9ECF2)', borderRadius:10, background:'#fff', cursor:'pointer', fontFamily:'inherit', overflow:'hidden', textAlign:'left' }}>
                         <div style={{ width:'100%', aspectRatio:'1 / 1', background:'#f4f6fa center/cover no-repeat' + (it.signed_url ? ` url(${it.signed_url})` : '') }}/>
                         <div style={{ padding:'7px 9px 9px', fontSize:12, fontWeight:600, color:'var(--text-primary)', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{it.title || 'Design'}</div>
                       </button>
@@ -1827,8 +1828,8 @@ Neue Anfrage: "${p}"` },
                 <>
                   {pickerChats.length > 0 && !pickerShowOther && (
                     <>
-                      <button className="lk-btn lk-btn-primary" onClick={() => pickerOpenWith(pickerChats[0].id)}
-                        style={{ width:'100%', display:'flex', alignItems:'center', gap:8, fontFamily:'inherit', marginBottom:10 }}>
+                      <button onClick={() => pickerOpenWith(pickerChats[0].id)}
+                        style={{ width:'100%', display:'flex', alignItems:'center', gap:8, padding:'11px 12px', borderRadius:10, border:'none', background:'var(--wl-primary, #0A6FB0)', color:'#fff', fontSize:13, fontWeight:700, cursor:'pointer', fontFamily:'inherit', marginBottom:10 }}>
                         <MessageSquare size={15} strokeWidth={2}/><span style={{ minWidth:0, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>Letzter Chat · {pickerChats[0].title || 'Chat'}</span>
                       </button>
                       <div style={{ fontSize:10.5, fontWeight:700, color:'var(--text-soft,#98a2b3)', textTransform:'uppercase', letterSpacing:'0.06em', padding:'2px 2px 6px' }}>Zugeordnete Chats</div>
@@ -2120,8 +2121,8 @@ function ChatInput({
             const isImg = (a.type || '').startsWith('image/')
             const src = a.preview || null
             const remove = (
-              <button className="lk-btn lk-btn-ghost" onClick={() => setAttachments(prev => prev.filter((_, j) => j !== i))} title="Entfernen"
-                style={{ position:'absolute', top:-6, right:-6, width:18, height:18, lineHeight:'16px', display:'flex', alignItems:'center', justifyContent:'center' }}>×</button>
+              <button onClick={() => setAttachments(prev => prev.filter((_, j) => j !== i))} title="Entfernen"
+                style={{ position:'absolute', top:-6, right:-6, width:18, height:18, borderRadius:9, border:'1px solid var(--border)', background:'#fff', color:'#64748B', cursor:'pointer', fontSize:12, lineHeight:'16px', padding:0, display:'flex', alignItems:'center', justifyContent:'center', boxShadow:'0 1px 3px rgba(0,0,0,.12)' }}>×</button>
             )
             return (
               <div key={i} title={a.name} style={{ position:'relative' }}>
@@ -2332,10 +2333,10 @@ function AnswerFormatSelect({ value = 'auto', onChange = () => {} }) {
         const XI = x.Icon; const active = x.id === value
         return (
           <Tip key={x.id} label={x.tip}>
-            <button className="lk-btn lk-btn-primary" type="button" onClick={() => onChange(x.id)} aria-pressed={active}
-              style={{ width:34, height:30, display:'inline-flex', alignItems:'center', justifyContent:'center' }}
-              
-              >
+            <button type="button" onClick={() => onChange(x.id)} aria-pressed={active}
+              style={{ width:34, height:30, display:'inline-flex', alignItems:'center', justifyContent:'center', borderRadius:7, border:'none', cursor:'pointer', background: active ? P : 'transparent', color: active ? '#fff' : 'var(--text-primary)', transition:'background .12s, color .12s' }}
+              onMouseEnter={e => { if (!active) e.currentTarget.style.background = 'var(--page-bg,#F2F4F8)' }}
+              onMouseLeave={e => { if (!active) e.currentTarget.style.background = 'transparent' }}>
               <XI size={16} strokeWidth={1.75}/>
             </button>
           </Tip>
@@ -2355,8 +2356,8 @@ function ModelDropdown({ value, onChange }) {
   }, [open])
   return (
     <div ref={ref} style={{ position:'relative', display:'inline-block' }}>
-      <button className="lk-btn lk-btn-ghost" type="button" onClick={() => setOpen(o => !o)} title="Bildmodell"
-        style={{ height:34, boxSizing:'border-box', lineHeight:1, whiteSpace:'nowrap', display:'inline-flex', alignItems:'center', gap:6, fontFamily:'inherit', flexShrink:0, maxWidth:210 }}>
+      <button type="button" onClick={() => setOpen(o => !o)} title="Bildmodell"
+        style={{ height:34, padding:'0 11px', borderRadius:9, boxSizing:'border-box', border:'1.5px solid var(--border)', background:'#fff', color:'var(--text-primary)', fontSize:12.5, fontWeight:600, lineHeight:1, cursor:'pointer', whiteSpace:'nowrap', display:'inline-flex', alignItems:'center', gap:6, fontFamily:'inherit', flexShrink:0, maxWidth:210 }}>
         <span style={{ flex:1, minWidth:0, overflow:'hidden', textOverflow:'ellipsis', textAlign:'left' }}>{imageModelName(value)}</span>
         <ChevronDown size={14} strokeWidth={2} style={{ opacity:0.5, marginLeft:2, flexShrink:0 }}/>
       </button>
@@ -2396,8 +2397,8 @@ function CountDropdown({ value = 'auto', onChange = () => {} }) {
   const cur = IMAGE_COUNT_OPTS.find(o => o.v === value) || IMAGE_COUNT_OPTS[0]
   return (
     <div ref={ref} style={{ position:'relative', display:'inline-block' }}>
-      <Tip label="Anzahl der Bilder"><button className="lk-btn lk-btn-ghost" type="button" onClick={() => setOpen(o => !o)}
-        style={{ height:34, boxSizing:'border-box', lineHeight:1, whiteSpace:'nowrap', display:'inline-flex', alignItems:'center', gap:6, fontFamily:'inherit', flexShrink:0 }}>
+      <Tip label="Anzahl der Bilder"><button type="button" onClick={() => setOpen(o => !o)}
+        style={{ height:34, padding:'0 11px', borderRadius:9, boxSizing:'border-box', border:'1.5px solid var(--border)', background:'#fff', color:'var(--text-primary)', fontSize:12.5, fontWeight:600, lineHeight:1, cursor:'pointer', whiteSpace:'nowrap', display:'inline-flex', alignItems:'center', gap:6, fontFamily:'inherit', flexShrink:0 }}>
         <span>{value === 'auto' ? 'Anzahl: Auto' : cur.label}</span>
         <ChevronDown size={14} strokeWidth={2} style={{ opacity:0.5, marginLeft:2, flexShrink:0 }}/>
       </button></Tip>
@@ -2472,8 +2473,8 @@ function SingleImage({ item, chatDesigns = [], onOpenInDesigner, onDownloadVisua
       )}
       <div style={{ display:'flex', gap:8, flexWrap:'wrap', alignItems:'center' }}>
         <div style={{ position:'relative' }}>
-          <Tip label="In den Designer öffnen"><button className="lk-btn lk-btn-primary" onClick={() => { if ((chatDesigns||[]).length) setDesignMenuOpen(o => !o); else onOpenInDesigner && onOpenInDesigner(item) }}
-            style={{ width:34, height:34, justifyContent:'center', display:'inline-flex', alignItems:'center' }}>
+          <Tip label="In den Designer öffnen"><button onClick={() => { if ((chatDesigns||[]).length) setDesignMenuOpen(o => !o); else onOpenInDesigner && onOpenInDesigner(item) }}
+            style={{ width:34, height:34, padding:0, justifyContent:'center', borderRadius:8, border:'none', background:P, color:'#fff', cursor:'pointer', display:'inline-flex', alignItems:'center' }}>
             <Brush size={15} strokeWidth={1.9}/>
           </button></Tip>
           {designMenuOpen && (
@@ -2661,8 +2662,8 @@ function DocTabsRail({ docs = [], activeDocId, chatId, teamId, brandVoiceId, onS
               <button onClick={() => setPickerOpen(false)} style={{ border:'none', background:'transparent', cursor:'pointer', color:'var(--text-muted)', padding:4, display:'inline-flex' }}><X size={18}/></button>
             </div>
             <div style={{ padding:'0 16px 12px' }}>
-              <button className="lk-btn lk-btn-primary" onClick={() => { setPickerOpen(false); onNew() }}
-                style={{ width:'100%', display:'inline-flex', alignItems:'center', justifyContent:'center', gap:7, height:38, fontFamily:'inherit' }}>
+              <button onClick={() => { setPickerOpen(false); onNew() }}
+                style={{ width:'100%', display:'inline-flex', alignItems:'center', justifyContent:'center', gap:7, height:38, borderRadius:10, border:'none', background:P, color:'#fff', fontSize:13, fontWeight:700, cursor:'pointer', fontFamily:'inherit' }}>
                 <Plus size={16} strokeWidth={2.2}/>Neues Dokument
               </button>
             </div>
@@ -2754,8 +2755,8 @@ function VisualRail({ visuals = [], activeVisualId, onSelect = () => {}, onNew =
                 : <span style={{ display:'flex', width:'100%', height:'100%', alignItems:'center', justifyContent:'center', color:'var(--text-soft,#98a2b3)' }}><ImageIcon size={16} strokeWidth={1.8}/></span>}
             </button>
             {(onUnlink || onDelete) && (
-              <button className="lk-btn lk-btn-ghost" onClick={(e) => { e.stopPropagation(); if (showMenu) { setMenuFor(null); return } const r = e.currentTarget.getBoundingClientRect(); setMenuFor({ id: v.id, x: r.left, y: r.top }) }} title="Optionen"
-                style={{ position:'absolute', top:-5, right:-5, width:18, height:18, display:'flex', alignItems:'center', justifyContent:'center', zIndex:2 }}>
+              <button onClick={(e) => { e.stopPropagation(); if (showMenu) { setMenuFor(null); return } const r = e.currentTarget.getBoundingClientRect(); setMenuFor({ id: v.id, x: r.left, y: r.top }) }} title="Optionen"
+                style={{ position:'absolute', top:-5, right:-5, width:18, height:18, borderRadius:'50%', border:'1px solid var(--border,#E9ECF2)', background:'#fff', cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'center', boxShadow:'0 1px 3px rgba(16,24,40,0.18)', color:'var(--text-muted,#667085)', padding:0, zIndex:2 }}>
                 <MoreVertical size={12} strokeWidth={2}/>
               </button>
             )}

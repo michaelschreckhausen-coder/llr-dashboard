@@ -211,11 +211,18 @@ function CategoryRow({ icon, title, description, isOptedOut, onToggle, disabled 
 
 function ToggleSwitch({ enabled, onClick, disabled }) {
   return (
-    <button className="lk-btn lk-btn-primary"
+    <button
       onClick={onClick}
       disabled={disabled}
       aria-label={enabled ? 'Abmelden' : 'Anmelden'}
-      style={{ width: 44, height: 24, position: 'relative', opacity: disabled ? 0.6 : 1, flexShrink: 0 }}
+      style={{
+        width: 44, height: 24, borderRadius: 999, border: 'none', padding: 0,
+        background: enabled ? PRIMARY : '#cbd5e1',
+        position: 'relative', cursor: disabled ? 'wait' : 'pointer',
+        transition: 'background 0.15s',
+        opacity: disabled ? 0.6 : 1,
+        flexShrink: 0,
+      }}
     >
       <div style={{
         width: 20, height: 20, borderRadius: '50%', background: '#fff',

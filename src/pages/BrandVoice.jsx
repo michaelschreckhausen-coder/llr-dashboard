@@ -1399,7 +1399,7 @@ export default function BrandVoice({ session, brandType = 'personal' }) {
               <div style={{ fontSize:13, fontWeight:600, color:'#92400E' }}>Du hast einen unfertigen Brand-Entwurf</div>
               <div style={{ fontSize:11, color:'#92400E', opacity:.9 }}>Deine Eingaben sind gespeichert — du kannst dort weitermachen.</div>
             </div>
-            <button className="lk-btn lk-btn-primary" onClick={()=>setView('wizard')} >
+            <button onClick={()=>setView('wizard')} style={{ padding:'7px 14px', background:P, color:'#fff', border:'none', borderRadius:7, fontSize:12, fontWeight:600, cursor:'pointer' }}>
               <span style={{display:'inline-flex',alignItems:'center',gap:6}}><Sparkles size={14}/>Fortsetzen</span>
             </button>
             <button onClick={()=>{ const draftSuffix = isCompanyPage ? '_co' : ''; ['step','name','position','company','offering','motivation','goal','examples','sliders2','importData','importedText'].forEach(f => { try { window.localStorage.removeItem('bv_w_'+f+'_'+uid+draftSuffix) } catch(_) {} }); setDraftCheckTick(t=>t+1) }} style={{ padding:'7px 14px', background:'transparent', color:'#92400E', border:'1px solid rgba(146,64,14,0.30)', borderRadius:7, fontSize:12, fontWeight:600, cursor:'pointer' }}>
@@ -1451,7 +1451,7 @@ export default function BrandVoice({ session, brandType = 'personal' }) {
             <div style={{ fontSize:13, fontWeight:600, color:'#92400E' }}>Du hast einen unfertigen Brand-Entwurf</div>
             <div style={{ fontSize:11, color:'#92400E', opacity:.9 }}>Deine Eingaben sind gespeichert — du kannst dort weitermachen.</div>
           </div>
-          <button className="lk-btn lk-btn-primary" onClick={()=>setView('wizard')} >
+          <button onClick={()=>setView('wizard')} style={{ padding:'7px 14px', background:P, color:'#fff', border:'none', borderRadius:7, fontSize:12, fontWeight:600, cursor:'pointer' }}>
             <span style={{display:'inline-flex',alignItems:'center',gap:6}}><Sparkles size={14}/>Fortsetzen</span>
           </button>
           <button onClick={()=>{ const draftSuffix = isCompanyPage ? '_co' : ''; ['step','name','position','company','offering','motivation','goal','examples','sliders2','importData','importedText'].forEach(f => { try { window.localStorage.removeItem('bv_w_'+f+'_'+uid+draftSuffix) } catch(_) {} }); setDraftCheckTick(t=>t+1) }} style={{ padding:'7px 14px', background:'transparent', color:'#92400E', border:'1px solid rgba(146,64,14,0.30)', borderRadius:7, fontSize:12, fontWeight:600, cursor:'pointer' }}>
@@ -1569,8 +1569,8 @@ export default function BrandVoice({ session, brandType = 'personal' }) {
           <div style={{ fontSize:12, color:'var(--text-muted)', marginTop:2 }}>{editIsCompany ? 'Markenstimme des Unternehmens — für Page-Content, Profiltexte und Visuals' : 'Persönlicher Kommunikationsstil für alle LinkedIn-Inhalte'}</div>
         </div>
         <div style={{ display:'flex', alignItems:'center', gap:8, flexShrink:0 }}>
-          <button className="lk-btn lk-btn-ghost" type="button" onClick={()=>setShowVisibilityModal(true)} title="Sichtbarkeit anpassen"
-            style={{ display:'inline-flex', alignItems:'center', gap:7, fontFamily:'inherit' }}>
+          <button type="button" onClick={()=>setShowVisibilityModal(true)} title="Sichtbarkeit anpassen"
+            style={{ padding:'10px 16px', background:'var(--surface, #fff)', color:'var(--text-primary)', border:'1.5px solid var(--border)', borderRadius:10, fontSize:13, fontWeight:600, cursor:'pointer', display:'inline-flex', alignItems:'center', gap:7, fontFamily:'inherit' }}>
             <Eye size={15} strokeWidth={1.75}/><span>{edit.is_shared ? 'Geteilt' : 'Sichtbarkeit'}</span>
           </button>
           {!editIsCompany && (
@@ -1579,7 +1579,7 @@ export default function BrandVoice({ session, brandType = 'personal' }) {
               <LinkedinIcon size={15}/><span>{edit.linkedin_member_id ? 'LinkedIn verbunden' : 'LinkedIn verbinden'}</span>
             </button>
           )}
-          <button className="lk-btn lk-btn-primary" onClick={saveVoice} style={{ display:'inline-flex', alignItems:'center', gap:8, fontFamily:'inherit', flexShrink:0 }}>
+          <button onClick={saveVoice} style={{ padding:'11px 22px', background:P, color:'#fff', border:'none', borderRadius:10, fontSize:13.5, fontWeight:600, cursor:'pointer', boxShadow:'0 2px 10px rgba(10,111,176,.25)', display:'inline-flex', alignItems:'center', gap:8, fontFamily:'inherit', flexShrink:0 }}>
             <span style={{display:'inline-flex'}}><Save size={14}/></span><span>{editIsCompany ? 'Company Brand speichern' : 'Personal Brand speichern'}</span>
           </button>
         </div>
@@ -1733,11 +1733,11 @@ export default function BrandVoice({ session, brandType = 'personal' }) {
             <span>✓</span><span>Fertig & Speichern</span>
           </button>
         ) : (
-          <button className="lk-btn lk-btn-primary" onClick={() => {
+          <button onClick={() => {
             const i = TABS.findIndex(t => t.v === tab)
             if (i < TABS.length-1) setTab(TABS[i+1].v)
           }}
-            style={{ display:'inline-flex', alignItems:'center', gap:8, fontFamily:'inherit' }}>
+            style={{ padding:'12px 28px', background:P, color:'#fff', border:'none', borderRadius:10, fontSize:14, fontWeight:600, cursor:'pointer', boxShadow:'0 2px 10px rgba(10,111,176,.25)', display:'inline-flex', alignItems:'center', gap:8, fontFamily:'inherit' }}>
             <span>Weiter</span><span>→</span>
           </button>
         )}

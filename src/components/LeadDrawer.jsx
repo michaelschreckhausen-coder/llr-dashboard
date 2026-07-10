@@ -197,12 +197,12 @@ export default function LeadDrawer({ lead, session, onClose, onUpdate, onDelete 
                 title={lead.is_shared?'Sharing aufheben':`Mit "${team.name}" teilen`}
                 style={{ width:30, height:30, borderRadius:7, border:`1px solid ${lead.is_shared?'#6EE7B7':'#E5E7EB'}`, background:lead.is_shared?'#ECFDF5':'#fff', display:'flex', alignItems:'center', justifyContent:'center', cursor:'pointer', fontSize:14, transition:'all 0.15s' }}>👥</button>
             )}
-            <button className="ld-ib lk-btn lk-btn-ghost" onClick={async () => { const v=!lead.is_favorite; await supabase.from('leads').update({is_favorite:v}).eq('id',lead.id); onUpdate({...lead,is_favorite:v}) }}
-              style={{ width:30, height:30, display:'flex', alignItems:'center', justifyContent:'center' }}>
+            <button className="ld-ib" onClick={async () => { const v=!lead.is_favorite; await supabase.from('leads').update({is_favorite:v}).eq('id',lead.id); onUpdate({...lead,is_favorite:v}) }}
+              style={{ width:30, height:30, borderRadius:7, border:'1px solid #E5E7EB', background:'#fff', display:'flex', alignItems:'center', justifyContent:'center', cursor:'pointer', fontSize:15, transition:'background 0.15s' }}>
               {lead.is_favorite?'⭐':'☆'}
             </button>
-            <button className="ld-ib lk-btn lk-btn-ghost" onClick={onClose}
-              style={{ width:30, height:30, display:'flex', alignItems:'center', justifyContent:'center' }}>×</button>
+            <button className="ld-ib" onClick={onClose}
+              style={{ width:30, height:30, borderRadius:7, border:'1px solid #E5E7EB', background:'#fff', display:'flex', alignItems:'center', justifyContent:'center', cursor:'pointer', fontSize:17, color:'#64748B' }}>×</button>
           </div>
         </div>
 

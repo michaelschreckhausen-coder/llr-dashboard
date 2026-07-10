@@ -5530,16 +5530,16 @@ Ignoriere reine Deko/Muster ohne Text. Antworte AUSSCHLIESSLICH mit JSON, ohne E
             {autosaving ? 'Speichert…' : savedMsg}
           </span>
         )}
-        <button className="lk-btn lk-btn-ghost" onClick={() => openPagesAction('post')} title="In Beitrag — Seiten zu einem Beitrag hinzufügen"
-          style={{ flexShrink: 0, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', width: 34, height: 32, fontFamily: 'inherit' }}>
+        <button onClick={() => openPagesAction('post')} title="In Beitrag — Seiten zu einem Beitrag hinzufügen"
+          style={{ flexShrink: 0, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', width: 34, height: 32, borderRadius: 9, border: '1px solid var(--border,#E9ECF2)', background: 'var(--surface,#fff)', color: 'var(--text-primary)', cursor: 'pointer', fontFamily: 'inherit' }}>
           <CalendarPlus size={15} strokeWidth={1.9} />
         </button>
-        <button className="lk-btn lk-btn-ghost" onClick={() => openPagesAction('download')} title="Herunterladen (PDF / PNG / JPG)"
-          style={{ flexShrink: 0, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', width: 34, height: 32, fontFamily: 'inherit' }}>
+        <button onClick={() => openPagesAction('download')} title="Herunterladen (PDF / PNG / JPG)"
+          style={{ flexShrink: 0, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', width: 34, height: 32, borderRadius: 9, border: '1px solid var(--border,#E9ECF2)', background: 'var(--surface,#fff)', color: 'var(--text-primary)', cursor: 'pointer', fontFamily: 'inherit' }}>
           <Download size={15} strokeWidth={1.9} />
         </button>
-        <button className="lk-btn lk-btn-primary" onClick={() => openPagesAction('media')} title="Bilder in Medien speichern — einzelne oder mehrere Seiten auswählen"
-          style={{ flexShrink: 0, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', width: 34, height: 32, fontFamily: 'inherit' }}>
+        <button onClick={() => openPagesAction('media')} title="Bilder in Medien speichern — einzelne oder mehrere Seiten auswählen"
+          style={{ flexShrink: 0, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', width: 34, height: 32, borderRadius: 9, border: 'none', background: P, color: '#fff', cursor: 'pointer', fontFamily: 'inherit', boxShadow: '0 1px 2px rgba(16,24,40,0.10)' }}>
           <Save size={15} strokeWidth={2} />
         </button>
       </div>
@@ -5659,8 +5659,8 @@ Ignoriere reine Deko/Muster ohne Text. Antworte AUSSCHLIESSLICH mit JSON, ohne E
                     {!postLoading && postList.filter(p => !postSearch || (p.title || '').toLowerCase().includes(postSearch.toLowerCase())).length === 0 &&
                       <div style={{ fontSize: 12, color: 'var(--text-muted)', padding: 8 }}>Keine Beiträge gefunden.</div>}
                     {!postLoading && postList.filter(p => !postSearch || (p.title || '').toLowerCase().includes(postSearch.toLowerCase())).map(p => (
-                      <button className="lk-btn lk-btn-ghost" key={p.id} onClick={() => executePost(p.id)} disabled={pagesBusy}
-                        style={{ display: 'flex', alignItems: 'center', gap: 10, textAlign: 'left' }}>
+                      <button key={p.id} onClick={() => executePost(p.id)} disabled={pagesBusy}
+                        style={{ display: 'flex', alignItems: 'center', gap: 10, textAlign: 'left', padding: '9px 10px', borderRadius: 9, cursor: pagesBusy ? 'default' : 'pointer', border: '1px solid var(--border,#E9ECF2)', background: '#fff' }}>
                         <FileText size={15} color="var(--text-muted)" />
                         <span style={{ fontSize: 13, fontWeight: 600, color: 'var(--text-primary)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{p.title || 'Ohne Titel'}</span>
                       </button>
@@ -6727,10 +6727,13 @@ function ToolRail({ active, onSelect }) {
         }
         const on = active === t.id
         return (
-          <button className="lk-btn lk-btn-primary" key={t.id} onClick={() => onSelect(t.id)} title={t.label}
-            style={{ position: 'relative', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4, fontFamily: 'inherit' }}
-            
-            >
+          <button key={t.id} onClick={() => onSelect(t.id)} title={t.label}
+            style={{ position: 'relative', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4, padding: '9px 2px',
+              borderRadius: 11, border: 'none', cursor: 'pointer', fontFamily: 'inherit', transition: 'background .12s',
+              background: on ? 'color-mix(in srgb, var(--wl-primary, #0A6FB0) 13%, transparent)' : 'transparent',
+              color: on ? P : 'var(--text-muted,#475467)' }}
+            onMouseEnter={e => { if (!on) e.currentTarget.style.background = 'rgba(16,24,40,0.04)' }}
+            onMouseLeave={e => { if (!on) e.currentTarget.style.background = 'transparent' }}>
             {on && <span style={{ position: 'absolute', left: 0, top: 8, bottom: 8, width: 3, borderRadius: 3, background: P }} />}
             <t.Icon size={20} strokeWidth={on ? 2.1 : 1.9} />
             <span style={{ fontSize: 10, fontWeight: on ? 700 : 600, letterSpacing: '0.01em' }}>{t.label}</span>
@@ -7019,8 +7022,10 @@ function ToolPanel(props) {
 
 function PanelBtn({ children, onClick, primary, full, disabled }) {
   return (
-    <button className="lk-btn lk-btn-primary" onClick={onClick} disabled={disabled}
-      style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: 6, height: 36, width: full ? '100%' : 'auto', fontFamily: 'inherit', opacity: disabled ? 0.6 : 1 }}>
+    <button onClick={onClick} disabled={disabled}
+      style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: 6, height: 36, padding: '0 12px',
+        width: full ? '100%' : 'auto', borderRadius: 9, cursor: disabled ? 'wait' : 'pointer', fontSize: 12.5, fontWeight: 700, fontFamily: 'inherit',
+        border: primary ? 'none' : '1px solid var(--border)', background: primary ? P : '#fff', color: primary ? '#fff' : 'var(--text-primary)', opacity: disabled ? 0.6 : 1 }}>
       {children}
     </button>
   )
@@ -7038,8 +7043,8 @@ function TemplatesPanelBody({ onApplyTemplate, onClose }) {
       </div>
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: 10 }}>
         {DESIGN_TEMPLATES.map(t => (
-          <button className="lk-btn lk-btn-ghost" key={t.id} onClick={() => { onApplyTemplate(t); onClose && onClose() }} title={t.desc}
-            style={{ display: 'flex', flexDirection: 'column', gap: 5, fontFamily: 'inherit', textAlign: 'left' }}>
+          <button key={t.id} onClick={() => { onApplyTemplate(t); onClose && onClose() }} title={t.desc}
+            style={{ display: 'flex', flexDirection: 'column', gap: 5, padding: 6, borderRadius: 10, border: '1px solid var(--border)', background: '#fff', cursor: 'pointer', fontFamily: 'inherit', textAlign: 'left' }}>
             <TemplateThumb tpl={t} />
             <span style={{ fontSize: 11.5, fontWeight: 700, color: 'var(--text-primary)' }}>{t.label}</span>
           </button>
@@ -7088,8 +7093,8 @@ function ElementsPanelBody({ elementTab, setElementTab, onAddRect, onAddEllipse,
             style={{ width: '100%', height: 32, padding: '0 12px', borderRadius: 8, border: '1px solid var(--border)', fontSize: 12.5, fontFamily: 'inherit', outline: 'none', marginBottom: 8, boxSizing: 'border-box' }} />
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(46px, 1fr))', gap: 8 }}>
             {assetList.map(a => (
-              <button className="lk-btn lk-btn-ghost" key={a.id} onClick={() => onAddAsset(a)} title={a.label}
-                style={{ height: 46, display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }}>
+              <button key={a.id} onClick={() => onAddAsset(a)} title={a.label}
+                style={{ height: 46, borderRadius: 9, border: '1px solid var(--border)', background: '#fff', cursor: 'pointer', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', color: P }}>
                 <svg width="26" height="26" viewBox="0 0 100 100"><path d={a.d} fill="currentColor" /></svg>
               </button>
             ))}
@@ -7103,8 +7108,8 @@ function ElementsPanelBody({ elementTab, setElementTab, onAddRect, onAddEllipse,
           <div style={{ fontSize: 11.5, color: 'var(--text-muted)', margin: '0 0 8px', lineHeight: 1.4 }}>Rahmen einfügen, dann auswählen und ein Bild einsetzen (Upload/Medien) — es füllt die Form (cover).</div>
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(52px, 1fr))', gap: 8 }}>
             {FRAME_SHAPES.map(s => (
-              <button className="lk-btn lk-btn-ghost" key={s.id} onClick={() => onAddFrame(s.id)} title={s.label}
-                style={{ height: 52, display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }}>
+              <button key={s.id} onClick={() => onAddFrame(s.id)} title={s.label}
+                style={{ height: 52, borderRadius: 9, border: '1px solid var(--border)', background: '#fff', cursor: 'pointer', display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }}>
                 <svg width="30" height="30" viewBox="0 0 100 100"><path d={s.svg} fill="#CBD5E1" stroke="#94A3B8" strokeWidth="3" strokeLinejoin="round" /></svg>
               </button>
             ))}
@@ -7117,8 +7122,8 @@ function ElementsPanelBody({ elementTab, setElementTab, onAddRect, onAddEllipse,
           <div style={{ fontSize: 11.5, color: 'var(--text-muted)', margin: '0 0 8px', lineHeight: 1.4 }}>Layout einfügen — es platziert mehrere Rahmen. Jede Zelle auswählen und ein Bild einsetzen.</div>
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(58px, 1fr))', gap: 8 }}>
             {COLLAGE_LAYOUTS.map(l => (
-              <button className="lk-btn lk-btn-ghost" key={l.id} onClick={() => onAddCollage(l.id)} title={l.label}
-                style={{ height: 58, display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }}>
+              <button key={l.id} onClick={() => onAddCollage(l.id)} title={l.label}
+                style={{ height: 58, borderRadius: 9, border: '1px solid var(--border)', background: '#fff', cursor: 'pointer', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', padding: 6 }}>
                 <svg width="42" height="42" viewBox="0 0 100 100">
                   {l.cells.map((ce, i) => (<rect key={i} x={ce[0] * 100 + 2} y={ce[1] * 100 + 2} width={Math.max(0, ce[2] * 100 - 4)} height={Math.max(0, ce[3] * 100 - 4)} rx="3" fill="#CBD5E1" stroke="#94A3B8" strokeWidth="2" />))}
                 </svg>
@@ -7180,9 +7185,9 @@ function TextPanelBody({ onAddText, onAddTextPreset, onAddTextCombo, brandData, 
       <PanelLabel>Schrift-Kombinationen</PanelLabel>
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: 8 }}>
         {TEXT_COMBOS.map(cfg => (
-          <button className="lk-btn lk-btn-ghost" key={cfg.id} onClick={() => onAddTextCombo && onAddTextCombo(cfg.id)} title={`Kombination „${cfg.label}" einfügen`}
-            style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start', gap: 3, fontFamily: 'inherit', textAlign: 'left', overflow: 'hidden' }}
-             >
+          <button key={cfg.id} onClick={() => onAddTextCombo && onAddTextCombo(cfg.id)} title={`Kombination „${cfg.label}" einfügen`}
+            style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start', gap: 3, padding: '10px 11px', borderRadius: 10, border: '1px solid var(--border,#E9ECF2)', background: 'var(--surface,#fff)', cursor: 'pointer', fontFamily: 'inherit', textAlign: 'left', overflow: 'hidden' }}
+            onMouseEnter={e => { e.currentTarget.style.borderColor = P }} onMouseLeave={e => { e.currentTarget.style.borderColor = 'var(--border,#E9ECF2)' }}>
             <span style={{ fontFamily: `"${cfg.headFont}", sans-serif`, fontSize: 16, fontWeight: 700, color: cfg.light.head, lineHeight: 1.05, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', maxWidth: '100%' }}>{cfg.label}</span>
             <span style={{ fontFamily: `"${cfg.subFont}", sans-serif`, fontSize: 11, color: cfg.light.sub, lineHeight: 1.05 }}>Subline &amp; Text</span>
             <div style={{ display: 'flex', gap: 3, marginTop: 3 }}>

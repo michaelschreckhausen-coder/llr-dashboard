@@ -141,8 +141,16 @@ export default function SettingsMemory({ session }) {
           ].map(opt => {
             const active = leadlyScope === opt.id
             return (
-              <button className="lk-btn lk-btn-ghost" key={opt.id} onClick={() => updateLeadlyScope(opt.id)} disabled={savingScope}
-                style={{ textAlign: 'left' }}>
+              <button key={opt.id} onClick={() => updateLeadlyScope(opt.id)} disabled={savingScope}
+                style={{
+                  textAlign: 'left',
+                  padding: '14px 16px',
+                  borderRadius: 12,
+                  border: active ? `1.5px solid ${P}` : '1px solid var(--border)',
+                  background: active ? 'rgba(10,111,176,0.04)' : 'var(--surface)',
+                  cursor: savingScope ? 'wait' : 'pointer',
+                  transition: 'all 0.15s',
+                }}>
                 <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 6 }}>
                   <div style={{ fontSize: 22 }}>{opt.icon}</div>
                   {active && <div style={{ fontSize: 11, fontWeight: 700, color: P, background: 'rgba(10,111,176,0.1)', padding: '2px 9px', borderRadius: 99 }}>Aktiv</div>}

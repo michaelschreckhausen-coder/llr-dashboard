@@ -589,8 +589,8 @@ export default function Vernetzungen({ session }) {
                 <div style={{ display:'flex', gap:6, alignItems:'center', flexShrink:0 }}>
                   <span style={{ fontSize:11, padding:'4px 10px', borderRadius:8, background:conn.bg, color:conn.color, border:'1px solid '+conn.border, fontWeight:700, whiteSpace:'nowrap' }}>{conn.label}</span>
                   {!alreadySent && (
-                    <button className="lk-btn lk-btn-primary" onClick={e => { e.stopPropagation(); setAnfrageModal(lead) }}
-                      style={{ whiteSpace:'nowrap' }}>
+                    <button onClick={e => { e.stopPropagation(); setAnfrageModal(lead) }}
+                      style={{ padding:'6px 12px', borderRadius:8, fontSize:12, fontWeight:700, cursor:'pointer', border:'none', background:P, color:'#fff', whiteSpace:'nowrap' }}>
                       <span style={{display:'inline-flex',alignItems:'center',gap:4}}><Sparkles size={10} strokeWidth={1.75}/>Anfrage</span>
                     </button>
                   )}

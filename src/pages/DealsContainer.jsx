@@ -46,12 +46,25 @@ export default function DealsContainer({ session }) {
         {VIEWS.map(v => {
           const active = view === v.id
           return (
-            <button className="lk-btn lk-btn-primary"
+            <button
               key={v.id}
               onClick={() => setView(v.id)}
-              style={{ display:'inline-flex', alignItems:'center', gap:6 }}
-              
-              
+              style={{
+                padding:'7px 14px',
+                borderRadius:8,
+                border:`1.5px solid ${active ? 'var(--wl-primary, #0A6FB0)' : '#E5E7EB'}`,
+                background: active ? 'var(--wl-primary, #0A6FB0)' : '#fff',
+                color: active ? '#fff' : '#475569',
+                fontSize:13,
+                fontWeight:600,
+                cursor:'pointer',
+                transition:'all 0.15s',
+                display:'inline-flex',
+                alignItems:'center',
+                gap:6,
+              }}
+              onMouseEnter={e => { if (!active) e.currentTarget.style.background = '#F8FAFC' }}
+              onMouseLeave={e => { if (!active) e.currentTarget.style.background = '#fff' }}
             >
               <span>{v.icon}</span>
               <span>{v.label}</span>
