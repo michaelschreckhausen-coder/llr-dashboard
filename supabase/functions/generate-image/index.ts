@@ -15,6 +15,7 @@
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { createClient } from "npm:@supabase/supabase-js@2";
 import { getCallerContext, checkCredits, recordUsage, estimateCredits } from "../_shared/credits.ts";
+import { getCallerTeamIds, loadBrandVoiceIfAllowed, filterOwnedStoragePaths } from "../_shared/tenant.ts";
 import { coverCropToSize } from "./imageCropDeno.ts";
 
 const CORS = {
@@ -295,6 +296,7 @@ Deno.serve(async (req) => {
   const ctx = await getCallerContext(req, admin);
   if (!ctx) return json({ error: "Nicht autorisiert oder Session abgelaufen" }, 401);
   const user = { id: ctx.user_id };
+  const callerTeamIds = await getCallerTeamIds(admin, ctx.user_id);
 
   // Body
   let body: any;
@@ -331,7 +333,10 @@ Deno.serve(async (req) => {
   let bvHeroImagePaths: string[] = [];
   let bvCIImagePaths: string[] = [];
   if (brandVoiceId) {
-    const { data: bv } = await admin.from("brand_voices").select("visual_style_description, visual_color_palette, visual_keywords, visual_negative_prompt, hero_image_paths, ci_image_paths").eq("id", brandVoiceId).single();
+    // MANDANTEN-TRENNUNG: brandVoiceId aus Body via SERVICE_ROLE → Ownership prüfen.
+    const bv = await loadBrandVoiceIfAllowed(admin, brandVoiceId, user.id, callerTeamIds,
+      "visual_style_description, visual_color_palette, visual_keywords, visual_negative_prompt, hero_image_paths, ci_image_paths");
+    if (!bv) return json({ error: "Kein Zugriff auf diese Brand Voice.", code: "brand_forbidden" }, 403);
     brandVoice = bv;
     if (useBVRefs) {
       bvHeroImagePaths = Array.isArray(bv?.hero_image_paths) ? bv.hero_image_paths : [];
@@ -342,7 +347,13 @@ Deno.serve(async (req) => {
   // Ambassador: Company Brand laden — CI (Logos, Farben, Stil) fließt zusätzlich ein
   let companyVoices: any[] = [];
   let companyRefPaths: string[] = [];
-  const companyIdsToLoad = companyVoiceIds.filter((id) => id && id !== brandVoiceId);
+  const companyIdsRequested = companyVoiceIds.filter((id) => id && id !== brandVoiceId);
+  // MANDANTEN-TRENNUNG: nur Company-Brands laden, auf die der Aufrufer Zugriff hat.
+  const companyIdsToLoad: string[] = [];
+  for (const cid of companyIdsRequested) {
+    const ok = await loadBrandVoiceIfAllowed(admin, cid, user.id, callerTeamIds, "id");
+    if (ok) companyIdsToLoad.push(cid);
+  }
   if (companyIdsToLoad.length) {
     const { data: cvs } = await admin.from("brand_voices").select("brand_name, name, visual_style_description, visual_color_palette, brand_colors, visual_keywords, visual_negative_prompt, logo_paths, favicon_paths, ci_image_paths, brand_fonts").in("id", companyIdsToLoad);
     companyVoices = cvs || [];
@@ -358,7 +369,10 @@ Deno.serve(async (req) => {
 
   // Reference-Images: BV-Hero (Personen) + BV-CI (Logos/CI) + Company-CI + Custom-Refs
   // Reihenfolge: erst Personen (höchste Identity-Priorität), dann CI, dann Custom
-  const userRefPaths: string[] = Array.isArray(body?.referenceImagePaths) ? body.referenceImagePaths : [];
+  const userRefPathsRaw: string[] = Array.isArray(body?.referenceImagePaths) ? body.referenceImagePaths : [];
+  // MANDANTEN-TRENNUNG: nur Referenz-Bilder aus eigenen/Team-Pfaden zulassen.
+  // (BV-Hero/CI-Pfade stammen aus der bereits ownership-geprüften Brand.)
+  const userRefPaths: string[] = await filterOwnedStoragePaths(admin, userRefPathsRaw, user.id, callerTeamIds);
   const parentVisualId: string | null = (body?.parentVisualId as string) || null;
   const allReferencePaths: string[] = [...bvHeroImagePaths, ...bvCIImagePaths, ...companyRefPaths, ...userRefPaths].slice(0, 14); // Nano Banana max 14
 
