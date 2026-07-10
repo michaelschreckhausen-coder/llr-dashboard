@@ -143,18 +143,22 @@ function withQuery(url: string, q: Query): string {
 async function call(
   method: "GET" | "POST" | "DELETE",
   path: string,
-  opts: { dsn?: string | null; query?: Query; body?: unknown } = {},
+  opts: { dsn?: string | null; query?: Query; body?: unknown; form?: FormData } = {},
 ): Promise<any> {
   const { apiKey } = unipileConfig();
   const url = withQuery(`${baseUrl(opts.dsn)}${path}`, opts.query ?? {});
+  // Multipart-Zweig: wenn opts.form gesetzt ist, sendet fetch multipart/form-data.
+  // WICHTIG: Content-Type NICHT manuell setzen — fetch generiert die boundary selbst.
+  // (Unipile POST /posts erwartet multipart, nicht JSON.)
+  const isForm = opts.form !== undefined;
+  const headers: Record<string, string> = { "X-API-KEY": apiKey, accept: "application/json" };
+  if (!isForm) headers["Content-Type"] = "application/json";
   const res = await fetch(url, {
     method,
-    headers: {
-      "X-API-KEY": apiKey,
-      "Content-Type": "application/json",
-      accept: "application/json",
-    },
-    body: opts.body !== undefined ? JSON.stringify(opts.body) : undefined,
+    headers,
+    body: isForm
+      ? opts.form
+      : (opts.body !== undefined ? JSON.stringify(opts.body) : undefined),
   });
   const text = await res.text();
   let parsed: any = null;
@@ -203,15 +207,31 @@ export async function linkedinSearch(
 }
 
 // -- Feature 2: Post veröffentlichen ---------------------------------
-// POST /api/v1/posts  { account_id, text, ... }
+// POST /api/v1/posts — multipart/form-data (NICHT JSON!).
+// Erfolg: 201 -> { object: "PostCreated", post_id: "<numerisch>" }.
+export interface CreatePostExtra {
+  /** Bilder/Files als multipart-`attachments` (aus dem visuals-Storage-Bucket). */
+  attachments?: Blob[];
+  // as_organization?: string;  // Phase 2b — Company-Page-Targeting (hier bewusst NICHT verdrahtet)
+}
 export async function createPost(
   conn: UnipileConn,
   text: string,
-  extra: Record<string, unknown> = {},
+  extra: CreatePostExtra = {},
 ): Promise<any> {
+  const fd = new FormData();
+  fd.append("account_id", conn.accountId); // Default: account_id als Form-Feld
+  fd.append("text", text);
+  const attachments = extra.attachments ?? [];
+  for (let i = 0; i < attachments.length; i++) {
+    const file = attachments[i];
+    const name = (file as unknown as { name?: string }).name ?? `attachment_${i}`;
+    fd.append("attachments", file, name);
+  }
   return await call("POST", "/api/v1/posts", {
     dsn: conn.dsn,
-    body: { account_id: conn.accountId, text, ...extra },
+    query: { account_id: conn.accountId }, // Query-Fallback (Unipile akzeptiert account_id auch als Query)
+    form: fd,
   });
 }
 
