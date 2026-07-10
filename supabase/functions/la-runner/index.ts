@@ -3,7 +3,7 @@
 // claimed→running→done|failed. failed: attempts++; retryable & attempts<max → pending+Backoff; sonst dead.
 // done: nächsten Step (position+1, condition='always') materialisieren (la_materialize_next). Heartbeat je Lauf.
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
-import { getProfile, sendInvitation } from "../_shared/unipile-client.ts";
+import { getProfile, sendInvitation, sendMessage } from "../_shared/unipile-client.ts";
 
 const SB_URL = Deno.env.get("SUPABASE_URL")!;
 const SB_SERVICE = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
@@ -53,8 +53,13 @@ Deno.serve(async () => {
 
     // 3c) Kontext: enrollment → campaign → account (unipile_account_id)
     const { data: enr } = await db.from("la_enrollments")
-      .select("id, campaign_id, provider_id, public_identifier").eq("id", job.enrollment_id).maybeSingle();
+      .select("id, campaign_id, provider_id, public_identifier, state").eq("id", job.enrollment_id).maybeSingle();
     if (!enr) { const r = await fail(job, false, "enrollment_missing"); out.push({ id: job.id, [r]: "enrollment_missing" }); continue; }
+    // Reply-Stop-Doppelsicherung (if_no_reply u.a.): repliedes/gestopptes Enrollment → NICHT senden.
+    if (enr.state === "replied" || enr.state === "stopped") {
+      await patch(job.id, { state: "skipped", error: `enrollment_${enr.state}` });
+      out.push({ id: job.id, skipped: `enrollment_${enr.state}` }); continue;
+    }
     const { data: camp } = await db.from("la_campaigns").select("account_id").eq("id", enr.campaign_id).maybeSingle();
     const { data: acct } = camp
       ? await db.from("la_accounts").select("unipile_account_id, status").eq("id", camp.account_id).maybeSingle()
@@ -73,7 +78,7 @@ Deno.serve(async () => {
     }
     if (!providerId) { const r = await fail(job, false, "no_provider_id"); out.push({ id: job.id, [r]: "no_provider_id" }); continue; }
 
-    // 3d) Dispatch nach action — P1: invite (weitere Actions folgen in P2+)
+    // 3d) Dispatch nach action — P1: invite; P2: message/follow_up (visit/react/comment/follow/inmail → P4)
     if (job.action === "invite") {
       const note = (job.request as any)?.note ?? undefined;
       const inv = await sendInvitation(accountId, providerId, note);
@@ -85,8 +90,22 @@ Deno.serve(async () => {
         const r = await fail(job, inv.retryable, `invite ${inv.status}: ${inv.detail}`, inv);
         out.push({ id: job.id, [r]: `invite_${inv.status}` });
       }
+    } else if (job.action === "message" || job.action === "follow_up") {
+      // Text aus dem Step-Template (la_steps.template.text), Fallback job.request.text.
+      const { data: step } = await db.from("la_steps").select("template").eq("id", job.step_id).maybeSingle();
+      const text = (step?.template as any)?.text ?? (job.request as any)?.text ?? "";
+      if (!text) { const r = await fail(job, false, "no_message_text"); out.push({ id: job.id, [r]: "no_text" }); continue; }
+      const msg = await sendMessage(accountId, providerId, text);
+      if (msg.ok) {
+        await patch(job.id, { state: "done", provider_ref: msg.data.chat_id ?? msg.data.message_id ?? null, response: msg.data, error: null });
+        const { data: mat } = await db.rpc("la_materialize_next", { p_enrollment_id: enr.id });
+        out.push({ id: job.id, done: job.action, chat_id: msg.data.chat_id ?? null, next: mat });
+      } else {
+        const r = await fail(job, msg.retryable, `message ${msg.status}: ${msg.detail}`, msg);
+        out.push({ id: job.id, [r]: `message_${msg.status}` });
+      }
     } else {
-      const r = await fail(job, false, `action_not_implemented_p1: ${job.action}`);
+      const r = await fail(job, false, `action_not_implemented: ${job.action}`);
       out.push({ id: job.id, [r]: `action_${job.action}` });
     }
   }
