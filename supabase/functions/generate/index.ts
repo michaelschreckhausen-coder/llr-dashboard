@@ -9,6 +9,7 @@ import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { encodeBase64 } from "https://deno.land/std@0.214.0/encoding/base64.ts";
 import { getCallerContext, checkCredits, recordUsage, estimateCredits } from "../_shared/credits.ts";
+import { getCallerTeamIds, loadBrandVoiceIfAllowed, filterOwnedStoragePaths } from "../_shared/tenant.ts";
 import { buildBrandPrompt, buildBrandCorpus, HUMAN_STYLE_GUIDE, stripEmDashes } from "../_shared/brandPrompt.ts";
 
 const ANTHROPIC_API_KEY    = Deno.env.get("ANTHROPIC_API_KEY")!;
@@ -307,15 +308,21 @@ serve(async (req) => {
 
     // Brand wird über die globale Topbar-Auswahl bestimmt (body.brand_voice_id),
     // Fallback: user_preferences.active_brand_voice_id. Kein is_active-Flag mehr.
+    // MANDANTEN-TRENNUNG: brand_voice_id kommt aus dem Body (User-Input) und
+    // wird via SERVICE_ROLE geladen (RLS umgangen) → Ownership MUSS geprüft
+    // werden, sonst lädt jeder User beliebige Fremd-Brands.
+    const callerTeamIds = await getCallerTeamIds(supabaseAdmin, userId);
     let activeBV: any = null;
     const reqBvId = (body.brand_voice_id as string) || null;
     if (reqBvId) {
-      activeBV = (await supabaseAdmin.from('brand_voices').select('*').eq('id', reqBvId).maybeSingle()).data;
+      activeBV = await loadBrandVoiceIfAllowed(supabaseAdmin, reqBvId, userId, callerTeamIds);
+      if (!activeBV) return json({ error: 'Kein Zugriff auf diese Brand Voice.', code: 'brand_forbidden' }, 403);
     }
     if (!activeBV) {
       const { data: prefs } = await supabaseAdmin.from('user_preferences').select('active_brand_voice_id').eq('user_id', userId).maybeSingle();
       if (prefs?.active_brand_voice_id) {
-        activeBV = (await supabaseAdmin.from('brand_voices').select('*').eq('id', prefs.active_brand_voice_id).maybeSingle()).data;
+        // pref-ID ist per Definition die eigene aktive Brand — trotzdem defensiv scopen.
+        activeBV = await loadBrandVoiceIfAllowed(supabaseAdmin, prefs.active_brand_voice_id, userId, callerTeamIds);
       }
     }
     // Zielgruppe & Wissen werden NICHT automatisch injiziert — nur über explizite
@@ -381,7 +388,13 @@ serve(async (req) => {
     // Multi-Modal: Referenz-Medien laden
     const reqStart = Date.now();
     console.log(`[generate] start model=${model} provider=${getProvider(model)} mediaPaths=${referenceMediaPaths.length}`);
-    const { parts: mediaParts, videoHints, skipped } = await loadReferenceMedia(referenceMediaPaths);
+    // MANDANTEN-TRENNUNG: Storage-Pfade aus dem Body gegen Team/Owner filtern,
+    // sonst könnte ein User Dateien fremder Teams als Referenz einschleusen.
+    const ownedMediaPaths = await filterOwnedStoragePaths(supabaseAdmin, referenceMediaPaths, userId, callerTeamIds);
+    if (referenceMediaPaths.length && ownedMediaPaths.length !== referenceMediaPaths.length) {
+      console.warn(`[generate] ${referenceMediaPaths.length - ownedMediaPaths.length} Referenz-Pfad(e) ohne Zugriff verworfen`);
+    }
+    const { parts: mediaParts, videoHints, skipped } = await loadReferenceMedia(ownedMediaPaths);
     console.log(`[generate] media loaded: ${mediaParts.length} parts, ${videoHints.length} video hints, ${skipped.length} skipped, total=${Date.now()-reqStart}ms`);
     let effectivePrompt = prompt || '';
     if (videoHints.length) effectivePrompt += '\n\n' + videoHints.map(h => '(' + h + ')').join('\n');

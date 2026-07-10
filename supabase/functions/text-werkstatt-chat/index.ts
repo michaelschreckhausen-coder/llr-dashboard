@@ -30,6 +30,7 @@
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { buildBrandPrompt, buildAudiencePrompt, buildStrike2AudiencePrompt, buildKnowledgePrompt, buildBrandCorpus, HUMAN_STYLE_GUIDE, LINKEDIN_POST_GUIDE, stripEmDashes } from "../_shared/brandPrompt.ts";
 import { createClient } from "npm:@supabase/supabase-js@2";
+import { getCallerTeamIds, filterOwnedIds } from "../_shared/tenant.ts";
 
 const CORS = {
   "Access-Control-Allow-Origin": "*",
@@ -403,7 +404,11 @@ Deno.serve(async (req) => {
     const companyIdsProvided: boolean = body.company_voice_ids !== undefined || companyVoiceId !== undefined;
     const userMessage: string = (body.user_message || "").trim();
     const answerFormat: string = (body.answer_format || "post").toString();
-    const knowledgeIds: string[] = Array.isArray(body.knowledge_resource_ids) ? body.knowledge_resource_ids : [];
+    const knowledgeIdsRaw: string[] = Array.isArray(body.knowledge_resource_ids) ? body.knowledge_resource_ids : [];
+    // MANDANTEN-TRENNUNG: knowledge-IDs aus dem Body via SERVICE_ROLE → nur
+    // eigene/Team-Ressourcen zulassen (sonst Injektion fremder Wissensinhalte).
+    const _twTeamIds = await getCallerTeamIds(admin, user.id);
+    const knowledgeIds: string[] = await filterOwnedIds(admin, 'knowledge_base', knowledgeIdsRaw, user.id, _twTeamIds);
     const useWebSearch: boolean = !!body.use_web_search;
     // Enthält die Nachricht einen Link? Dann web_fetch aktivieren (auch ohne Websuche-Toggle),
     // damit gepostete URLs zuverlässig geöffnet werden.
@@ -491,7 +496,9 @@ Deno.serve(async (req) => {
     const chatCompanyIds: string[] = (Array.isArray(chat.company_voice_ids) && chat.company_voice_ids.length)
       ? chat.company_voice_ids
       : (chat.company_voice_id ? [chat.company_voice_id] : []);
-    const companyIdsToLoad = chatCompanyIds.filter((id: string) => id && id !== chat.brand_voice_id);
+    const companyIdsRequested = chatCompanyIds.filter((id: string) => id && id !== chat.brand_voice_id);
+    // MANDANTEN-TRENNUNG: nur zugängliche Company-Brands laden.
+    const companyIdsToLoad = await filterOwnedIds(admin, 'brand_voices', companyIdsRequested, user.id, _twTeamIds);
     if (companyIdsToLoad.length) {
       const { data: cbvs } = await admin.from("brand_voices").select("*").in("id", companyIdsToLoad);
       companyBvs = cbvs || [];
