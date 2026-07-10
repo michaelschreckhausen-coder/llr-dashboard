@@ -69,3 +69,31 @@ export function sendInvitation(account_id: string, provider_id: string, note?: s
   if (note) body.message = note;
   return call<InvitationSent>("POST", "/users/invite", body);
 }
+
+export interface ChatStarted { object?: string; chat_id?: string; message_id?: string; [k: string]: unknown; }
+
+/** POST /chats (multipart) — startet/findet den Chat mit provider_id und sendet Text (message/follow_up). */
+export async function sendMessage(account_id: string, provider_id: string, text: string): Promise<UnipileResult<ChatStarted>> {
+  if (!UNIPILE_DSN || !UNIPILE_API_KEY) {
+    return { ok: false, retryable: false, status: null, type: "config", detail: "UNIPILE_DSN/UNIPILE_API_KEY fehlen im Env" };
+  }
+  const form = new FormData();
+  form.append("account_id", account_id);
+  form.append("text", text);
+  form.append("attendees_ids", provider_id);
+  let r: Response;
+  try {
+    r = await fetch(`${BASE}/chats`, { method: "POST", headers: { "X-API-KEY": UNIPILE_API_KEY, "accept": "application/json" }, body: form });
+  } catch (e) {
+    return { ok: false, retryable: true, status: null, type: "network", detail: String((e as Error)?.message ?? e) };
+  }
+  const txt = await r.text();
+  if (!r.ok) {
+    let type: string | null = null;
+    try { type = JSON.parse(txt)?.type ?? null; } catch { /* nicht-JSON */ }
+    return { ok: false, retryable: isRetryable(r.status), status: r.status, type, detail: txt.slice(0, 300) };
+  }
+  let data: ChatStarted;
+  try { data = txt ? (JSON.parse(txt) as ChatStarted) : ({} as ChatStarted); } catch { data = ({} as ChatStarted); }
+  return { ok: true, data };
+}
