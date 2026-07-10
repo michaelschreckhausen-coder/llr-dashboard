@@ -1,16 +1,16 @@
 import React, { useEffect, useState, useCallback, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { Check, X, Loader2, UserPlus, Building2, Inbox as InboxIcon, Megaphone, Plus, ListChecks } from 'lucide-react'
+import { Check, X, Loader2, UserPlus, Building2, Inbox as InboxIcon, Plus, ListChecks, Pencil, Trash2, AlertTriangle } from 'lucide-react'
 import { supabase } from '../lib/supabase'
 import { useTeam } from '../context/TeamContext'
 import { useInboxLists } from '../hooks/useInboxLists'
 
 // ─────────────────────────────────────────────────────────────────────────────
 // LinkedIn-Import-Inbox — Triage-Queue VOR dem CRM.
-// Importierte Kontakte (linkedin_inbox) werden hier gesichtet, nach Outreach-
-// Kampagnen gruppiert und per 1-Klick in echte CRM-Leads überführt.
-// Kampagnen-Zuordnung = reine Gruppierung (automation_campaign_leads.inbox_id),
-// KEIN Auto-Start von Outreach (das passiert bewusst im Automatisierung-Modul).
+// Importierte Kontakte (linkedin_inbox) werden hier gesichtet, in Listen
+// (inbox_lists) gruppiert und per 1-Klick in echte CRM-Leads überführt.
+// Listen = reine Auswahl-Sammlungen (später in der Automatisierung als Zielgruppe
+// wählbar) — KEIN Outreach-Start hier.
 // ─────────────────────────────────────────────────────────────────────────────
 
 const fullName = r => ((r.first_name || '') + ' ' + (r.last_name || '')).trim() || r.name || 'Unbekannt'
@@ -52,15 +52,16 @@ export default function LinkedInInbox() {
   const [uid, setUid]           = useState(null)
 
   // Kampagnen-Gruppierung
-  const [campaigns, setCampaigns] = useState([])             // [{id, name}]
-  const [memById, setMemById]     = useState(() => new Map())// inbox_id → [campaign_id]
-  const [filter, setFilter]       = useState('all')          // 'all' | 'none' | campaign_id
-  const [assignOpen, setAssignOpen] = useState(false)
-
-  // Inbox-Listen (reine Auswahl-Sammlungen, getrennt von Kampagnen)
-  const { lists, membersByList, createList, addToList } = useInboxLists({ activeTeamId })
+  // Inbox-Listen (reine Auswahl-Sammlungen — die einzige Gruppierung auf dieser Seite)
+  const { lists, membersByList, createList, addToList, renameList, deleteList } = useInboxLists({ activeTeamId })
   const [listOpen, setListOpen]     = useState(false)
   const [listFilter, setListFilter] = useState('all')        // 'all' | list_id
+  const [showNewList, setShowNewList] = useState(false)      // Inline-Create in der „Nach Liste"-Zeile
+  const [newListName, setNewListName] = useState('')
+  const [creatingList, setCreatingList] = useState(false)
+  const [editingListId, setEditingListId] = useState(null)   // Inline-Rename am Chip
+  const [editListName, setEditListName]   = useState('')
+  const [deleteListModal, setDeleteListModal] = useState(null) // { list, refs:[campaignName], checking }
 
   // Sales-Navigator-Import (Unipile) → Import-Inbox, optional direkt in eine Liste
   const [importOpen, setImportOpen] = useState(false)
@@ -150,46 +151,12 @@ export default function LinkedInInbox() {
       for (const r of list) if (r.sales_nav_id && snSet.has(r.sales_nav_id)) hit.add(r.id)
     }
     setExisting(hit)
-
-    // Kampagnen + Mitgliedschaften (Outreach-Kampagnen, user-scoped via RLS).
-    const [{ data: camps }, { data: acl }] = await Promise.all([
-      supabase.from('automation_campaigns').select('id, name').order('created_at', { ascending: false }),
-      list.length
-        ? supabase.from('automation_campaign_leads').select('inbox_id, campaign_id').in('inbox_id', list.map(r => r.id))
-        : Promise.resolve({ data: [] }),
-    ])
-    setCampaigns(camps || [])
-    const m = new Map()
-    for (const r of (acl || [])) {
-      if (!r.inbox_id) continue
-      const arr = m.get(r.inbox_id) || []
-      arr.push(r.campaign_id)
-      m.set(r.inbox_id, arr)
-    }
-    setMemById(m)
     setLoading(false)
   }, [activeTeamId])
 
   useEffect(() => { load() }, [load])
 
-  const campName = id => (campaigns.find(c => c.id === id) || {}).name || 'Kampagne'
-  // Counts pro Kampagne (nur geladene Inbox-Rows) + "Ohne Kampagne"
-  const campCounts = new Map()
-  let noneCount = 0
-  for (const r of rows) {
-    const cs = memById.get(r.id)
-    if (cs && cs.length) cs.forEach(cid => campCounts.set(cid, (campCounts.get(cid) || 0) + 1))
-    else noneCount++
-  }
-  const filterCampaigns = campaigns.filter(c => (campCounts.get(c.id) || 0) > 0)
-
   const displayed = rows.filter(r => {
-    // Kampagnen-Filter
-    if (filter !== 'all') {
-      const cs = memById.get(r.id) || []
-      if (filter === 'none' ? cs.length !== 0 : !cs.includes(filter)) return false
-    }
-    // Listen-Filter (zusätzliche Einschränkung)
     if (listFilter !== 'all') {
       const set = membersByList.get(listFilter)
       if (!set || !set.has(r.id)) return false
@@ -200,7 +167,7 @@ export default function LinkedInInbox() {
   const hasMore = visibleCount < displayed.length
 
   // Beim Filter-/Team-Wechsel wieder auf die erste Seite zurücksetzen.
-  useEffect(() => { setVisibleCount(PAGE_SIZE) }, [filter, listFilter, activeTeamId])
+  useEffect(() => { setVisibleCount(PAGE_SIZE) }, [listFilter, activeTeamId])
 
   // Infinite-Scroll: sobald der Sentinel in den Viewport kommt, 25 weitere anhängen.
   useEffect(() => {
@@ -255,44 +222,76 @@ export default function LinkedInInbox() {
     removeRows([row.id])
   }
 
-  // Zuordnen = nur Gruppierung (Mitgliedschaft), KEIN Outreach-Start.
-  const assign = async ({ campaignId, newName }) => {
-    const ids = [...selected]; if (!ids.length) return
-    setBusy(true); setMsg(null)
-    let cid = campaignId
-    let cName = campaignId ? campName(campaignId) : ''
-    if (!cid && newName && newName.trim()) {
-      const { data: created, error: cErr } = await supabase
-        .from('automation_campaigns').insert({ user_id: uid, name: newName.trim() }).select('id, name').single()
-      if (cErr) { setBusy(false); setMsg({ text: 'Kampagne anlegen fehlgeschlagen: ' + cErr.message }); return }
-      cid = created.id; cName = created.name
-      setCampaigns(prev => [created, ...prev])
-    }
-    if (!cid) { setBusy(false); return }
-    // nur Kontakte, die noch nicht in dieser Kampagne sind
-    const toAdd = ids.filter(id => !(memById.get(id) || []).includes(cid))
-    if (!toAdd.length) { setBusy(false); setAssignOpen(false); setMsg({ text: 'Alle ausgewählten sind bereits in dieser Kampagne.' }); return }
-    const ins = toAdd.map(inbox_id => ({ campaign_id: cid, inbox_id, user_id: uid, status: 'queued', current_step: 0 }))
-    const { error } = await supabase.from('automation_campaign_leads').insert(ins)
-    setBusy(false); setAssignOpen(false)
-    if (error) { setMsg({ text: 'Zuordnen fehlgeschlagen: ' + error.message }); return }
-    setMemById(prev => {
-      const n = new Map(prev)
-      toAdd.forEach(id => n.set(id, [...(n.get(id) || []), cid]))
-      return n
-    })
-    setSelected(new Set())
-    setMsg({ text: `${toAdd.length} Kontakt(e) zu „${cName || 'Kampagne'}" hinzugefügt (nur gruppiert — kein Outreach gestartet).` })
+  // Liste anlegen ODER gleichnamige Team-Liste wiederverwenden (Dedup, case-insensitiv).
+  // createList (useInboxLists) schreibt team-scoped in inbox_lists (RLS + GRANT vorhanden).
+  const createOrReuseList = async (name, color) => {
+    const trimmed = (name || '').trim()
+    if (!trimmed) return { error: new Error('Name fehlt') }
+    const dupe = lists.find(l => (l.name || '').trim().toLowerCase() === trimmed.toLowerCase())
+    if (dupe) return { data: dupe, reused: true }
+    return await createList(trimmed, color)
   }
 
-  // Zu Liste = reine Auswahl-Sammlung (getrennt von Kampagnen/Outreach).
+  // Standalone „+ Neue Liste" (ohne Kontakt-Zuweisung) aus der „Nach Liste"-Zeile.
+  const createStandaloneList = async () => {
+    const name = newListName.trim()
+    if (!name) return
+    setCreatingList(true)
+    const { data, error, reused } = await createOrReuseList(name, '#30A0D0')
+    setCreatingList(false)
+    if (error) { setMsg({ text: 'Liste anlegen fehlgeschlagen: ' + error.message }); return }
+    setShowNewList(false); setNewListName('')
+    setMsg({ text: reused ? `Liste „${data.name}" existiert bereits.` : `Liste „${data.name}" angelegt.` })
+  }
+
+  // Liste umbenennen (inline am Chip) — Team-Check via RLS, Dedup gegen gleichnamige Team-Liste.
+  const startRename = (l) => { setEditingListId(l.id); setEditListName(l.name || '') }
+  const saveRename = async () => {
+    const l = lists.find(x => x.id === editingListId)
+    const name = editListName.trim()
+    if (!l) { setEditingListId(null); return }
+    if (!name || name === l.name) { setEditingListId(null); return }
+    const dupe = lists.find(x => x.id !== l.id && (x.name || '').trim().toLowerCase() === name.toLowerCase())
+    if (dupe) { setMsg({ text: `Es gibt bereits eine Liste „${dupe.name}".` }); return }
+    const { error } = await renameList(l.id, name)
+    if (error) { setMsg({ text: 'Umbenennen fehlgeschlagen: ' + error.message }); return }
+    setEditingListId(null)
+    setMsg({ text: `Liste umbenannt in „${name}".` })
+  }
+
+  // Löschen vorbereiten: prüfen, ob eine la_audience (kind='list') die Liste als Zielgruppe nutzt.
+  const openDeleteList = async (l) => {
+    setDeleteListModal({ list: l, refs: [], checking: true })
+    let refs = []
+    try {
+      const { data: auds } = await supabase.from('la_audiences').select('id')
+        .eq('team_id', activeTeamId).eq('kind', 'list').eq('query->>list_id', l.id)
+      const audIds = (auds || []).map(a => a.id)
+      if (audIds.length) {
+        const { data: camps } = await supabase.from('la_campaigns').select('name').in('audience_id', audIds)
+        refs = [...new Set((camps || []).map(c => c.name).filter(Boolean))]
+      }
+    } catch { /* la_* evtl. nicht sichtbar → keine Referenz annehmen */ }
+    setDeleteListModal(m => (m && m.list.id === l.id ? { ...m, refs, checking: false } : m))
+  }
+  const confirmDeleteList = async () => {
+    const l = deleteListModal?.list
+    if (!l) return
+    const { error } = await deleteList(l.id)
+    setDeleteListModal(null)
+    if (error) { setMsg({ text: 'Löschen fehlgeschlagen: ' + error.message }); return }
+    if (listFilter === l.id) setListFilter('all')
+    setMsg({ text: `Liste „${l.name}" gelöscht — die Kontakte bleiben in deinen LinkedIn Kontakten.` })
+  }
+
+  // Zu Liste = reine Auswahl-Sammlung.
   const assignToList = async ({ listId, newName, color }) => {
     const ids = [...selected]; if (!ids.length) return
     setBusy(true); setMsg(null)
     let lid = listId
     let lName = ''
     if (!lid && newName && newName.trim()) {
-      const { data: created, error: cErr } = await createList(newName.trim(), color)
+      const { data: created, error: cErr } = await createOrReuseList(newName.trim(), color)
       if (cErr || !created) { setBusy(false); setMsg({ text: 'Liste anlegen fehlgeschlagen: ' + (cErr?.message || '') }); return }
       lid = created.id; lName = created.name
     } else if (lid) {
@@ -308,6 +307,7 @@ export default function LinkedInInbox() {
 
   const card = 'var(--surface)', border = 'var(--border)', text = 'var(--text-primary)', muted = 'var(--text-muted)', primary = 'var(--primary)'
   const chip = (active) => ({ display: 'inline-flex', alignItems: 'center', gap: 6, padding: '5px 12px', borderRadius: 99, fontSize: 13, fontWeight: 600, cursor: 'pointer', border: `1.5px solid ${active ? primary : border}`, background: active ? 'var(--primary-soft)' : card, color: active ? primary : muted })
+  const miniBtn = { background: 'none', border: 'none', padding: 2, cursor: 'pointer', display: 'inline-flex', alignItems: 'center' }
 
   return (
     <div style={{ width: '100%', maxWidth: 1100, margin: '0 auto', padding: '24px 16px 40px' }}>
@@ -317,7 +317,7 @@ export default function LinkedInInbox() {
         <div onClick={() => !importing && setImportOpen(false)} style={{ position: 'fixed', inset: 0, background: 'rgba(15,23,42,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000, padding: 16 }}>
           <div onClick={e => e.stopPropagation()} style={{ background: card, border: `1px solid ${border}`, borderRadius: 14, width: 520, maxWidth: '94vw', padding: 24, boxShadow: '0 24px 64px rgba(15,23,42,0.25)' }}>
             <div style={{ fontSize: 17, fontWeight: 700, color: text, marginBottom: 4 }}>Sales-Navigator-Suche importieren</div>
-            <p style={{ fontSize: 13, color: muted, margin: '0 0 16px', lineHeight: 1.5 }}>Füge die URL einer Sales-Navigator-Personensuche ein — die Treffer landen in deiner Import-Inbox (optional direkt in einer Liste).</p>
+            <p style={{ fontSize: 13, color: muted, margin: '0 0 16px', lineHeight: 1.5 }}>Füge die URL einer Sales-Navigator-Personensuche ein — die Treffer landen in deinen LinkedIn Kontakten (optional direkt in einer Liste).</p>
 
             {okAccount === undefined ? (
               <div style={{ color: muted, fontSize: 14, padding: '12px 0' }}>Lade LinkedIn-Verbindung…</div>
@@ -362,9 +362,9 @@ export default function LinkedInInbox() {
       )}
       {/* Journal-Header (analog /messages, /automatisierung) */}
       <div style={{ marginBottom: 22 }}>
-        <div style={{ fontSize: 20, color: '#30A0D0', fontFamily: '"Caveat", cursive', fontWeight: 600, marginBottom: 6 }}>LinkedIn · Import-Inbox</div>
+        <div style={{ fontSize: 20, color: '#30A0D0', fontFamily: '"Caveat", cursive', fontWeight: 600, marginBottom: 6 }}>LinkedIn · Kontakte</div>
         <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-          <h1 style={{ fontSize: 26, fontWeight: 700, margin: 0, letterSpacing: '-0.3px', lineHeight: 1.2, color: 'var(--text-primary, rgb(20,20,43))' }}>Deine Import-Inbox.</h1>
+          <h1 style={{ fontSize: 26, fontWeight: 700, margin: 0, letterSpacing: '-0.3px', lineHeight: 1.2, color: 'var(--text-primary, rgb(20,20,43))' }}>Deine LinkedIn Kontakte.</h1>
           {!loading && <span style={{ background: primary, color: '#fff', borderRadius: 99, padding: '2px 10px', fontSize: 13, fontWeight: 700 }}>{rows.length}</span>}
           <button onClick={() => { setImportErr(null); setImportOpen(true) }}
             style={{ marginLeft: 'auto', display: 'inline-flex', alignItems: 'center', gap: 6, background: primary, color: '#fff', border: 'none', borderRadius: 8, padding: '8px 14px', fontSize: 13, fontWeight: 700, cursor: 'pointer' }}>
@@ -372,37 +372,61 @@ export default function LinkedInInbox() {
           </button>
         </div>
         <p style={{ fontSize: 13, color: muted, margin: '8px 0 0', lineHeight: 1.6, maxWidth: 600 }}>
-          Aus LinkedIn importierte Kontakte — noch keine CRM-Kontakte. Nach Kampagnen sortieren, sichten und per Klick ins CRM übernehmen.
+          Aus LinkedIn importierte Kontakte — noch keine CRM-Kontakte. Nach Listen sichten und per Klick ins CRM übernehmen.
         </p>
       </div>
 
-      {/* Kampagnen-Filterleiste */}
+      {/* Listen-Filterleiste (reine Auswahl-Sammlungen) — inkl. „+ Neue Liste" */}
       {!loading && rows.length > 0 && (
-        <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap', marginBottom: 16 }}>
-          <span style={chip(filter === 'all')} onClick={() => setFilter('all')}>Alle <b>{rows.length}</b></span>
-          {filterCampaigns.map(c => (
-            <span key={c.id} style={chip(filter === c.id)} onClick={() => setFilter(c.id)}>
-              <Megaphone size={13} /> {c.name} <b>{campCounts.get(c.id)}</b>
-            </span>
-          ))}
-          {noneCount > 0 && <span style={chip(filter === 'none')} onClick={() => setFilter('none')}>Ohne Kampagne <b>{noneCount}</b></span>}
-        </div>
-      )}
-
-      {/* Listen-Filterleiste (reine Auswahl-Sammlungen) */}
-      {!loading && rows.length > 0 && lists.length > 0 && (
         <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap', marginBottom: 16 }}>
           <span style={{ fontSize: 12, fontWeight: 700, color: muted, marginRight: 2 }}>Nach Liste:</span>
           <span style={chip(listFilter === 'all')} onClick={() => setListFilter('all')}>Alle</span>
           {lists.map(l => {
             const set = membersByList.get(l.id)
             const cnt = set ? rows.reduce((n, r) => n + (set.has(r.id) ? 1 : 0), 0) : 0
+            if (editingListId === l.id) {
+              return (
+                <span key={l.id} style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+                  <input autoFocus value={editListName} onChange={e => setEditListName(e.target.value)}
+                    onKeyDown={e => { if (e.key === 'Enter') saveRename(); if (e.key === 'Escape') setEditingListId(null) }}
+                    style={{ padding: '5px 10px', borderRadius: 99, border: `1.5px solid ${primary}`, fontSize: 13, background: card, color: text, outline: 'none', width: 140 }} />
+                  <button onClick={saveRename} title="Speichern" style={{ ...miniBtn, color: primary }}><Check size={14} /></button>
+                  <button onClick={() => setEditingListId(null)} title="Abbrechen" style={{ ...miniBtn, color: muted }}><X size={14} /></button>
+                </span>
+              )
+            }
+            const active = listFilter === l.id
             return (
-              <span key={l.id} style={chip(listFilter === l.id)} onClick={() => setListFilter(l.id)}>
-                <ListChecks size={13} /> {l.name} <b>{cnt}</b>
+              <span key={l.id} style={{ ...chip(active), cursor: 'default', paddingRight: 8 }}>
+                <span onClick={() => setListFilter(l.id)} style={{ display: 'inline-flex', alignItems: 'center', gap: 6, cursor: 'pointer' }}>
+                  <ListChecks size={13} /> {l.name} <b>{cnt}</b>
+                </span>
+                <button onClick={() => startRename(l)} title="Umbenennen" style={{ ...miniBtn, color: active ? primary : muted, marginLeft: 2 }}><Pencil size={12} /></button>
+                <button onClick={() => openDeleteList(l)} title="Löschen" style={{ ...miniBtn, color: active ? primary : muted }}><Trash2 size={12} /></button>
               </span>
             )
           })}
+          {!showNewList ? (
+            <span style={{ ...chip(false), color: primary, borderStyle: 'dashed' }} onClick={() => setShowNewList(true)}>
+              <Plus size={13} /> Neue Liste
+            </span>
+          ) : (
+            <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+              <input
+                autoFocus value={newListName} onChange={e => setNewListName(e.target.value)}
+                onKeyDown={e => { if (e.key === 'Enter') createStandaloneList(); if (e.key === 'Escape') { setShowNewList(false); setNewListName('') } }}
+                placeholder="Listenname" disabled={creatingList}
+                style={{ padding: '5px 10px', borderRadius: 99, border: `1.5px solid ${primary}`, fontSize: 13, background: card, color: text, outline: 'none', width: 150 }} />
+              <button onClick={createStandaloneList} disabled={creatingList || !newListName.trim()}
+                style={{ display: 'inline-flex', alignItems: 'center', gap: 4, background: primary, color: '#fff', border: 'none', borderRadius: 99, padding: '5px 12px', fontSize: 13, fontWeight: 700, cursor: newListName.trim() ? 'pointer' : 'default', opacity: newListName.trim() ? 1 : 0.6 }}>
+                {creatingList ? <Loader2 size={13} className="spin" /> : <Check size={13} />} Anlegen
+              </button>
+              <button onClick={() => { setShowNewList(false); setNewListName('') }} title="Abbrechen"
+                style={{ background: 'none', border: `1px solid ${border}`, borderRadius: 99, padding: 5, color: muted, cursor: 'pointer', display: 'inline-flex' }}>
+                <X size={13} />
+              </button>
+            </span>
+          )}
         </div>
       )}
 
@@ -423,13 +447,9 @@ export default function LinkedInInbox() {
               style={{ display: 'inline-flex', alignItems: 'center', gap: 8, background: card, color: selected.size ? primary : muted, border: `1.5px solid ${selected.size ? primary : border}`, borderRadius: 9, padding: '9px 16px', fontWeight: 700, fontSize: 14, cursor: selected.size ? 'pointer' : 'default' }}>
               <ListChecks size={15} /> Zu Liste{selected.size ? ` (${selected.size})` : ''}
             </button>
-            <button onClick={() => setAssignOpen(true)} disabled={busy || selected.size === 0}
-              style={{ display: 'inline-flex', alignItems: 'center', gap: 8, background: card, color: selected.size ? primary : muted, border: `1.5px solid ${selected.size ? primary : border}`, borderRadius: 9, padding: '9px 16px', fontWeight: 700, fontSize: 14, cursor: selected.size ? 'pointer' : 'default' }}>
-              <Megaphone size={15} /> Zu Kampagne{selected.size ? ` (${selected.size})` : ''}
-            </button>
             <button onClick={promoteSelected} disabled={busy || selected.size === 0}
               style={{ display: 'inline-flex', alignItems: 'center', gap: 8, background: selected.size ? primary : 'var(--border)', color: '#fff', border: 'none', borderRadius: 9, padding: '9px 16px', fontWeight: 700, fontSize: 14, cursor: selected.size ? 'pointer' : 'default' }}>
-              {busy ? <Loader2 size={15} className="spin" /> : <UserPlus size={15} />} Übernehmen{selected.size ? ` (${selected.size})` : ''}
+              {busy ? <Loader2 size={15} className="spin" /> : <UserPlus size={15} />} In CRM übernehmen{selected.size ? ` (${selected.size})` : ''}
             </button>
           </div>
         </div>
@@ -448,7 +468,6 @@ export default function LinkedInInbox() {
           {visible.map(row => {
             const sel = selected.has(row.id)
             const inCrm = existing.has(row.id)
-            const memberOf = memById.get(row.id) || []
             return (
               <div key={row.id} style={{ display: 'flex', alignItems: 'center', gap: 14, background: card, border: `1px solid ${sel ? primary : border}`, borderRadius: 12, padding: '12px 16px' }}>
                 <input type="checkbox" checked={sel} onChange={() => toggle(row.id)} style={{ flexShrink: 0 }} />
@@ -457,11 +476,6 @@ export default function LinkedInInbox() {
                   <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
                     <span style={{ fontWeight: 700, color: text, fontSize: 15, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{fullName(row)}</span>
                     {inCrm && <span style={{ background: '#FFFBEB', color: '#92400E', border: '1px solid #FCD34D', borderRadius: 99, padding: '1px 8px', fontSize: 11, fontWeight: 700, whiteSpace: 'nowrap' }}>bereits im CRM</span>}
-                    {memberOf.map(cid => (
-                      <span key={cid} style={{ display: 'inline-flex', alignItems: 'center', gap: 4, background: 'var(--primary-soft)', color: primary, borderRadius: 99, padding: '1px 8px', fontSize: 11, fontWeight: 700, whiteSpace: 'nowrap' }}>
-                        <Megaphone size={10} /> {campName(cid)}
-                      </span>
-                    ))}
                   </div>
                   <div style={{ color: muted, fontSize: 13, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
                     {row.headline || row.job_title || '—'}{row.company ? <> · <Building2 size={11} style={{ display: 'inline', verticalAlign: -1 }} /> {row.company}</> : null}
@@ -469,7 +483,7 @@ export default function LinkedInInbox() {
                 </div>
                 <button onClick={() => promoteOne(row)} disabled={busy} title={inCrm ? 'Mit bestehendem CRM-Kontakt zusammenführen' : 'Als CRM-Kontakt übernehmen'}
                   style={{ display: 'inline-flex', alignItems: 'center', gap: 6, background: primary, color: '#fff', border: 'none', borderRadius: 8, padding: '8px 14px', fontWeight: 700, fontSize: 13, cursor: 'pointer', flexShrink: 0 }}>
-                  <Check size={14} /> {inCrm ? 'Zusammenführen' : 'Übernehmen'}
+                  <Check size={14} /> {inCrm ? 'Zusammenführen' : 'In CRM übernehmen'}
                 </button>
                 <button onClick={() => dismiss(row)} disabled={busy} title="Verwerfen"
                   style={{ display: 'inline-flex', alignItems: 'center', background: 'none', color: muted, border: `1px solid ${border}`, borderRadius: 8, padding: 8, cursor: 'pointer', flexShrink: 0 }}>
@@ -497,16 +511,6 @@ export default function LinkedInInbox() {
         </div>
       )}
 
-      {assignOpen && (
-        <AssignModal
-          campaigns={campaigns}
-          count={selected.size}
-          busy={busy}
-          onClose={() => setAssignOpen(false)}
-          onConfirm={assign}
-        />
-      )}
-
       {listOpen && (
         <ListModal
           lists={lists}
@@ -516,49 +520,34 @@ export default function LinkedInInbox() {
           onConfirm={assignToList}
         />
       )}
-    </div>
-  )
-}
 
-function AssignModal({ campaigns, count, busy, onClose, onConfirm }) {
-  const [mode, setMode] = useState(campaigns.length ? 'existing' : 'new')
-  const [campaignId, setCampaignId] = useState(campaigns[0]?.id || '')
-  const [newName, setNewName] = useState('')
-  const primary = 'var(--primary)', border = 'var(--border)', text = 'var(--text-primary)', muted = 'var(--text-muted)'
-
-  return (
-    <div onClick={onClose} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.45)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000 }}>
-      <div onClick={e => e.stopPropagation()} style={{ background: 'var(--surface)', borderRadius: 16, padding: 24, width: 460, maxWidth: '90vw', boxShadow: '0 20px 60px rgba(0,0,0,.18)' }}>
-        <div style={{ fontWeight: 800, fontSize: 17, color: text, marginBottom: 4 }}>{count} Kontakt(e) zu Kampagne</div>
-        <div style={{ fontSize: 13, color: muted, marginBottom: 18 }}>Nur Gruppierung — startet keinen Outreach. Das Losschicken machst du im Automatisierung-Modul.</div>
-
-        <div style={{ display: 'flex', gap: 8, marginBottom: 14 }}>
-          <button onClick={() => setMode('existing')} disabled={!campaigns.length}
-            style={{ flex: 1, padding: '8px 0', borderRadius: 9, border: `1.5px solid ${mode === 'existing' ? primary : border}`, background: mode === 'existing' ? 'var(--primary-soft)' : 'var(--surface)', color: mode === 'existing' ? primary : muted, fontWeight: 700, fontSize: 13, cursor: campaigns.length ? 'pointer' : 'default' }}>Bestehende</button>
-          <button onClick={() => setMode('new')}
-            style={{ flex: 1, padding: '8px 0', borderRadius: 9, border: `1.5px solid ${mode === 'new' ? primary : border}`, background: mode === 'new' ? 'var(--primary-soft)' : 'var(--surface)', color: mode === 'new' ? primary : muted, fontWeight: 700, fontSize: 13, cursor: 'pointer' }}>Neue Kampagne</button>
+      {deleteListModal && (
+        <div onClick={() => setDeleteListModal(null)} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.45)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000, padding: 16 }}>
+          <div onClick={e => e.stopPropagation()} style={{ background: 'var(--surface)', borderRadius: 16, padding: 24, width: 460, maxWidth: '90vw', boxShadow: '0 20px 60px rgba(0,0,0,.18)' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 6 }}>
+              <Trash2 size={18} style={{ color: '#DC2626' }} />
+              <div style={{ fontWeight: 800, fontSize: 17, color: text }}>Liste löschen?</div>
+            </div>
+            <p style={{ fontSize: 13.5, color: text, margin: '0 0 12px', lineHeight: 1.5 }}>
+              „<b>{deleteListModal.list.name}</b>" wird gelöscht. Die zugeordneten <b>Kontakte bleiben</b> in deinen LinkedIn Kontakten — nur die Listen-Zuordnung geht weg.
+            </p>
+            {deleteListModal.checking ? (
+              <div style={{ fontSize: 12.5, color: muted, marginBottom: 14 }}>Prüfe Verwendung…</div>
+            ) : deleteListModal.refs.length > 0 && (
+              <div style={{ display: 'flex', gap: 8, alignItems: 'flex-start', fontSize: 12.5, color: '#B45309', background: '#FFFBEB', border: '1px solid #FDE68A', borderRadius: 8, padding: '10px 12px', marginBottom: 14 }}>
+                <AlertTriangle size={15} style={{ flexShrink: 0, marginTop: 1 }} />
+                <span>Wird von {deleteListModal.refs.length === 1 ? 'Kampagne' : 'Kampagnen'} <b>{deleteListModal.refs.map(n => `„${n}"`).join(', ')}</b> als Zielgruppe genutzt. Nach dem Löschen läuft diese Zielgruppe leer.</span>
+              </div>
+            )}
+            <div style={{ display: 'flex', gap: 10, justifyContent: 'flex-end', marginTop: 6 }}>
+              <button onClick={() => setDeleteListModal(null)} style={{ border: `1px solid ${border}`, background: 'var(--surface)', color: muted, borderRadius: 10, padding: '9px 16px', fontSize: 13, fontWeight: 600, cursor: 'pointer' }}>Abbrechen</button>
+              <button onClick={confirmDeleteList} disabled={deleteListModal.checking} style={{ border: 'none', background: '#DC2626', color: '#fff', borderRadius: 10, padding: '9px 18px', fontSize: 13, fontWeight: 700, cursor: deleteListModal.checking ? 'not-allowed' : 'pointer', opacity: deleteListModal.checking ? 0.6 : 1, display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+                <Trash2 size={14} /> Liste löschen
+              </button>
+            </div>
+          </div>
         </div>
-
-        {mode === 'existing' ? (
-          <select value={campaignId} onChange={e => setCampaignId(e.target.value)}
-            style={{ width: '100%', boxSizing: 'border-box', padding: '10px 12px', borderRadius: 10, border: `1.5px solid ${border}`, fontSize: 14, background: 'var(--surface)', color: text, outline: 'none' }}>
-            {campaigns.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
-          </select>
-        ) : (
-          <input value={newName} onChange={e => setNewName(e.target.value)} placeholder="Kampagnenname (z.B. Q3 Kaltakquise)"
-            style={{ width: '100%', boxSizing: 'border-box', padding: '10px 12px', borderRadius: 10, border: `1.5px solid ${border}`, fontSize: 14, background: 'var(--surface)', color: text, outline: 'none' }} />
-        )}
-
-        <div style={{ display: 'flex', gap: 10, marginTop: 20 }}>
-          <button onClick={onClose} style={{ flex: 1, padding: '10px 0', borderRadius: 10, border: `1px solid ${border}`, background: 'var(--surface)', color: muted, fontWeight: 600, fontSize: 13, cursor: 'pointer' }}>Abbrechen</button>
-          <button
-            onClick={() => onConfirm(mode === 'existing' ? { campaignId } : { newName })}
-            disabled={busy || (mode === 'existing' ? !campaignId : !newName.trim())}
-            style={{ flex: 1.4, padding: '10px 0', borderRadius: 10, border: 'none', background: primary, color: '#fff', fontWeight: 700, fontSize: 13, cursor: 'pointer', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: 6 }}>
-            {busy ? <Loader2 size={15} className="spin" /> : <Plus size={15} />} Hinzufügen
-          </button>
-        </div>
-      </div>
+      )}
     </div>
   )
 }

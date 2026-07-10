@@ -525,7 +525,7 @@ export default function Messages({ session }) {
         </div>
 
         {/* Empfänger: Lead-Autocomplete */}
-        <Field label="Empfänger (Kontakt)" hint={selectedLead ? 'Aus CRM verknüpft — Activity + Vernetzungs-Queue verfügbar.' : 'Nur Kontakte aus der Import-Inbox. Tippen oder klicken zum Wählen.'}>
+        <Field label="Empfänger (Kontakt)" hint={selectedLead ? 'Aus CRM verknüpft — Activity + Vernetzungs-Queue verfügbar.' : 'Nur LinkedIn Kontakte. Tippen oder klicken zum Wählen.'}>
           <div style={{ position:'relative' }}>
             <input
               value={leadSearch}

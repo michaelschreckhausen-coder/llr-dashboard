@@ -2,10 +2,10 @@
 // Berührt NICHT das Altsystem (/automatisierung, automation_*). Liest RLS-scoped (Team-Policies P1) +
 // funnel-RPC (la_campaign_funnel) + health-View (la_runner_health). 0 reale Sends aus dem UI (Runner sendet
 // nur bei aktiver Kampagne + fälligem Job; die "ehrliche UI" zeigt genau das an).
-import { useEffect, useState, useCallback } from 'react'
+import { useEffect, useState, useCallback, useRef } from 'react'
 import { supabase } from '../lib/supabase'
 import { useTeam } from '../context/TeamContext'
-import { Plus, Zap, Play, Pause, Square, RefreshCw, Users, AlertTriangle, Activity } from 'lucide-react'
+import { Plus, Zap, Play, Pause, Square, RefreshCw, Users, AlertTriangle, Activity, Archive, RotateCcw, Trash2, X } from 'lucide-react'
 
 const PRIMARY = 'rgb(49,90,231)'
 const PRIMARY_VAR = `var(--wl-primary, ${PRIMARY})`
@@ -37,24 +37,32 @@ export default function LinkedInAutomationNeu({ session }) {
   const [campaigns, setCampaigns] = useState([])
   const [accounts, setAccounts] = useState([])
   const [audiences, setAudiences] = useState([])
+  const [inboxLists, setInboxLists] = useState([])   // Import-Inbox-Listen = kanonische Zielgruppen-Quelle
   const [health, setHealth] = useState(null)
   const [sel, setSel] = useState(null)          // ausgewählte Kampagne
   const [steps, setSteps] = useState([])
   const [funnel, setFunnel] = useState(null)
   const [flash, setFlash] = useState(null)
   const [creating, setCreating] = useState(false)
+  const [showArchived, setShowArchived] = useState(false)   // Listen-Tab Aktiv/Archiviert
+  const [deleteModal, setDeleteModal] = useState(null)       // Kampagne im Confirm-Dialog
+  const [stepsDirty, setStepsDirty] = useState(false)        // ungespeicherte Sequenz-Änderungen
+  const stepsDirtyRef = useRef(false)                        // Poll darf lokale Edits nicht überschreiben
+  const markStepsDirty = () => { stepsDirtyRef.current = true; setStepsDirty(true) }
 
   const show = (msg, err) => { setFlash({ msg, err }); setTimeout(() => setFlash(null), 3500) }
 
   const load = useCallback(async () => {
     if (!activeTeamId) return
-    const [c, a, au, h] = await Promise.all([
+    const [c, a, au, h, il] = await Promise.all([
       supabase.from('la_campaigns').select('*').eq('team_id', activeTeamId).order('created_at', { ascending: false }),
       supabase.from('la_accounts').select('*').eq('team_id', activeTeamId),
       supabase.from('la_audiences').select('*').eq('team_id', activeTeamId).order('created_at', { ascending: false }),
       supabase.from('la_runner_health').select('*').maybeSingle(),
+      supabase.from('inbox_lists').select('id, name').eq('team_id', activeTeamId).order('created_at', { ascending: true }),
     ])
     setCampaigns(c.data || []); setAccounts(a.data || []); setAudiences(au.data || []); setHealth(h.data || null)
+    setInboxLists(il.data || [])
   }, [activeTeamId])
   useEffect(() => { load() }, [load])
 
@@ -65,9 +73,11 @@ export default function LinkedInAutomationNeu({ session }) {
       supabase.from('la_steps').select('*').eq('campaign_id', campId).order('position', { ascending: true }),
       supabase.rpc('la_campaign_funnel', { p_campaign_id: campId }),
     ])
-    setSteps(s.data || []); setFunnel(f.data && !f.data.error ? f.data : null)
+    // Poll: lokale, ungespeicherte Sequenz-Edits NICHT überschreiben (nur Funnel aktualisieren).
+    if (!stepsDirtyRef.current) setSteps(s.data || [])
+    setFunnel(f.data && !f.data.error ? f.data : null)
   }, [])
-  useEffect(() => { loadDetail(sel?.id) }, [sel?.id, loadDetail])
+  useEffect(() => { stepsDirtyRef.current = false; setStepsDirty(false); loadDetail(sel?.id) }, [sel?.id, loadDetail])
   useEffect(() => {
     if (!sel?.id) return
     const t = setInterval(() => { loadDetail(sel.id); load() }, 8000)
@@ -96,22 +106,56 @@ export default function LinkedInAutomationNeu({ session }) {
 
   async function setStatus(status) { await saveCampaign({ status }); show(`Kampagne → ${statusLabel[status]}`) }
 
-  async function saveStep(idx, patch) {
-    const st = steps[idx]
-    const { error } = await supabase.from('la_steps').update(patch).eq('id', st.id)
+  async function setArchived(archived) {
+    if (!sel) return
+    const { error } = await supabase.rpc('la_campaign_set_archived', { p_campaign_id: sel.id, p_archived: archived })
     if (error) { show(error.message, true); return }
-    setSteps(steps.map((s, i) => i === idx ? { ...s, ...patch } : s))
+    show(archived ? 'Kampagne archiviert' : 'Kampagne wiederhergestellt')
+    setSel(archived ? null : { ...sel, archived_at: null })
+    load()
   }
-  async function addStep() {
-    const pos = steps.length
-    const { data, error } = await supabase.from('la_steps').insert({ campaign_id: sel.id, position: pos, action: 'message', condition: 'if_accepted', template: {} }).select().single()
-    if (error) { show(error.message, true); return }
-    setSteps([...steps, data])
+
+  async function deleteCampaign() {
+    const c = deleteModal
+    if (!c) return
+    const { data, error } = await supabase.rpc('la_campaign_delete', { p_campaign_id: c.id })
+    setDeleteModal(null)
+    if (error) {
+      show(error.message.includes('active') ? 'Erst stoppen — aktive Kampagne kann nicht gelöscht werden' : error.message, true)
+      return
+    }
+    show(`Gelöscht: ${data?.deleted_enrollments ?? 0} Enrollments, ${data?.deleted_jobs ?? 0} Jobs`)
+    if (sel?.id === c.id) setSel(null)
+    load()
   }
-  async function delStep(idx) { const st = steps[idx]; await supabase.from('la_steps').delete().eq('id', st.id); loadDetail(sel.id) }
+
+  // Sequenz-Edits sind lokal gepuffert (kein Direkt-Write mehr → kein FK-Bruch, kein
+  // Positions-Gap). Persistiert erst „Sequenz speichern" atomar via RPC.
+  function saveStep(idx, patch) {
+    setSteps(steps.map((s, i) => i === idx ? { ...s, ...patch } : s)); markStepsDirty()
+  }
+  function addStep() {
+    setSteps([...steps, { _key: `new-${Date.now()}-${steps.length}`, action: 'message', condition: 'if_accepted', template: {} }]); markStepsDirty()
+  }
+  function delStep(idx) { setSteps(steps.filter((_, i) => i !== idx)); markStepsDirty() }
+
+  async function saveSteps() {
+    if (!sel) return
+    const payload = steps.map(st => ({
+      ...(st.id ? { id: st.id } : {}),
+      action: st.action, condition: st.condition, template: st.template || {},
+    }))
+    const { data, error } = await supabase.rpc('la_campaign_save_steps', { p_campaign_id: sel.id, p_steps: payload })
+    if (error) { show(error.message.includes('active') ? 'Erst pausieren — aktive Kampagne kann die Sequenz nicht ändern' : error.message, true); return }
+    stepsDirtyRef.current = false; setStepsDirty(false)
+    const rm = data?.rematerialized || 0, cp = data?.completed || 0
+    show(`Sequenz gespeichert${(rm || cp) ? ` · ${rm} Jobs neu materialisiert, ${cp} abgeschlossen` : ''}`)
+    loadDetail(sel.id)
+  }
 
   async function createAudience(kind) {
-    const { data, error } = await supabase.from('la_audiences').insert({ team_id: activeTeamId, kind, query: kind.startsWith('search') ? { keywords: '' } : null }).select().single()
+    const initialQuery = kind === 'list' ? { list_id: null } : kind.startsWith('search') ? { keywords: '' } : null
+    const { data, error } = await supabase.from('la_audiences').insert({ team_id: activeTeamId, kind, query: initialQuery }).select().single()
     if (error) { show(error.message, true); return }
     await supabase.from('la_campaigns').update({ audience_id: data.id }).eq('id', sel.id)
     setSel({ ...sel, audience_id: data.id }); load()
@@ -122,6 +166,8 @@ export default function LinkedInAutomationNeu({ session }) {
   }
   async function runAudience() {
     if (!sel?.audience_id) { show('Keine Audience gewählt', true); return }
+    const aud = audiences.find(a => a.id === sel.audience_id)
+    if (aud?.kind === 'list' && !aud.query?.list_id) { show('Bitte zuerst eine Liste wählen', true); return }
     show('Audience wird ausgeführt…')
     const { data, error } = await supabase.functions.invoke('la-audience', { body: { audience_id: sel.audience_id, campaign_id: sel.id } })
     if (error) { show('Fehler: ' + error.message, true); return }
@@ -159,8 +205,8 @@ export default function LinkedInAutomationNeu({ session }) {
     <div style={pageOuterStyle}><div style={pageStyle}>
       <div style={headerRowStyle}>
         <div>
-          <h1 style={titleStyle}>Automatisierung <span style={{ fontSize: 12, color: PRIMARY_VAR, border: `1px solid ${PRIMARY_VAR}`, borderRadius: 6, padding: '2px 6px', verticalAlign: 'middle' }}>Beta · Unipile</span></h1>
-          <p style={subtitleStyle}>Greenfield-Engine (la_*) — Builder + ehrlicher Funnel-Monitor. Getrennt vom Altsystem.</p>
+          <h1 style={titleStyle}>Automatisierung</h1>
+          <p style={subtitleStyle}>Kampagnen-Builder + Funnel-Monitor.</p>
         </div>
         <button style={primaryBtn} onClick={createCampaign} disabled={creating}><Plus size={16} /> Neue Kampagne</button>
       </div>
@@ -179,14 +225,29 @@ export default function LinkedInAutomationNeu({ session }) {
       <div style={{ display: 'grid', gridTemplateColumns: '320px 1fr', gap: 16, alignItems: 'start' }}>
         {/* Kampagnen-Liste */}
         <div style={{ ...cardStyle, padding: 8 }}>
-          {campaigns.length === 0 && <div style={{ padding: 16, fontSize: 13, color: 'var(--text-muted)' }}>Noch keine Kampagne. Lege eine an.</div>}
-          {campaigns.map(c => (
-            <div key={c.id} onClick={() => setSel(c)} style={{ padding: '10px 12px', borderRadius: 8, cursor: 'pointer', background: sel?.id === c.id ? PRIMARY_VAR + '12' : 'transparent', border: sel?.id === c.id ? `1.5px solid ${PRIMARY_VAR}55` : '1.5px solid transparent', marginBottom: 4 }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 8 }}>
-                <span style={{ fontWeight: 700, fontSize: 13.5 }}>{c.name}</span><Pill status={c.status} />
-              </div>
-            </div>
-          ))}
+          {/* Tabs Aktiv / Archiviert */}
+          {(() => {
+            const activeC = campaigns.filter(c => !c.archived_at)
+            const archivedC = campaigns.filter(c => c.archived_at)
+            const visible = showArchived ? archivedC : activeC
+            const tabStyle = on => ({ flex: 1, padding: '6px 8px', borderRadius: 7, fontSize: 12, fontWeight: 700, cursor: 'pointer', textAlign: 'center', border: 'none', background: on ? PRIMARY_VAR + '18' : 'transparent', color: on ? PRIMARY_VAR : 'var(--text-muted)' })
+            return (
+              <>
+                <div style={{ display: 'flex', gap: 4, marginBottom: 8 }}>
+                  <button style={tabStyle(!showArchived)} onClick={() => setShowArchived(false)}>Aktiv ({activeC.length})</button>
+                  <button style={tabStyle(showArchived)} onClick={() => setShowArchived(true)}>Archiviert ({archivedC.length})</button>
+                </div>
+                {visible.length === 0 && <div style={{ padding: 16, fontSize: 13, color: 'var(--text-muted)' }}>{showArchived ? 'Keine archivierten Kampagnen.' : 'Noch keine Kampagne. Lege eine an.'}</div>}
+                {visible.map(c => (
+                  <div key={c.id} onClick={() => setSel(c)} style={{ padding: '10px 12px', borderRadius: 8, cursor: 'pointer', background: sel?.id === c.id ? PRIMARY_VAR + '12' : 'transparent', border: sel?.id === c.id ? `1.5px solid ${PRIMARY_VAR}55` : '1.5px solid transparent', marginBottom: 4 }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 8 }}>
+                      <span style={{ fontWeight: 700, fontSize: 13.5, display: 'inline-flex', alignItems: 'center', gap: 6 }}>{c.archived_at && <Archive size={12} color="var(--text-muted)" />}{c.name}</span><Pill status={c.status} />
+                    </div>
+                  </div>
+                ))}
+              </>
+            )
+          })()}
         </div>
 
         {/* Detail: Monitor + Builder */}
@@ -205,10 +266,20 @@ export default function LinkedInAutomationNeu({ session }) {
             <div style={cardStyle}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 14 }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}><b style={{ fontSize: 15 }}>{sel.name}</b><Pill status={sel.status} /></div>
-                <div style={{ display: 'flex', gap: 6 }}>
+                <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
                   {sel.status !== 'active' && <button style={primaryBtn} onClick={() => setStatus('active')}><Play size={14} /> Aktivieren</button>}
                   {sel.status === 'active' && <button style={ghostBtn} onClick={() => setStatus('paused')}><Pause size={13} /> Pausieren</button>}
                   <button style={ghostBtn} onClick={() => setStatus('completed')}><Square size={13} /> Stoppen</button>
+                  {sel.archived_at
+                    ? <button style={ghostBtn} onClick={() => setArchived(false)}><RotateCcw size={13} /> Wiederherstellen</button>
+                    : <button style={ghostBtn} onClick={() => setArchived(true)}><Archive size={13} /> Archivieren</button>}
+                  <button
+                    style={{ ...ghostBtn, color: sel.status === 'active' ? '#9CA3AF' : '#DC2626', borderColor: sel.status === 'active' ? '#E4E7EC' : '#FECACA', cursor: sel.status === 'active' ? 'not-allowed' : 'pointer' }}
+                    disabled={sel.status === 'active'}
+                    title={sel.status === 'active' ? 'Erst stoppen' : 'Kampagne löschen'}
+                    onClick={() => setDeleteModal(sel)}>
+                    <Trash2 size={13} /> Löschen
+                  </button>
                 </div>
               </div>
               <div style={{ display: 'flex', gap: 8 }}>
@@ -253,6 +324,15 @@ export default function LinkedInAutomationNeu({ session }) {
                       <div style={{ flex: 1, minWidth: 200 }}><label style={labelStyle}>Keywords</label>
                         <input style={inputStyle} defaultValue={selAudience.query?.keywords || ''} onBlur={e => saveAudience({ query: { ...(selAudience.query || {}), keywords: e.target.value } })} placeholder="z.B. growth marketing berlin" /></div>
                     )}
+                    {selAudience.kind === 'list' && (
+                      <div style={{ flex: 1, minWidth: 220 }}><label style={labelStyle}>Liste</label>
+                        <select style={inputStyle} value={selAudience.query?.list_id || ''} onChange={e => saveAudience({ query: { ...(selAudience.query || {}), list_id: e.target.value || null } })}>
+                          <option value="">— Liste wählen —</option>
+                          {inboxLists.map(l => <option key={l.id} value={l.id}>{l.name}</option>)}
+                        </select>
+                        {inboxLists.length === 0 && <div style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 4 }}>Noch keine Listen — unter „LinkedIn Kontakte" anlegen.</div>}
+                      </div>
+                    )}
                     <button style={primaryBtn} onClick={runAudience}><Zap size={14} /> Audience ausführen</button>
                     {selAudience.last_run_at && <span style={{ fontSize: 11, color: 'var(--text-muted)' }}>zuletzt: {new Date(selAudience.last_run_at).toLocaleString('de-DE')}</span>}
                   </div>
@@ -260,26 +340,44 @@ export default function LinkedInAutomationNeu({ session }) {
               </div>
 
               {/* Steps */}
-              <div style={{ marginTop: 18 }}>
-                <label style={labelStyle}>Sequenz</label>
-                {steps.map((st, i) => (
-                  <div key={st.id} style={{ display: 'flex', gap: 8, alignItems: 'center', marginBottom: 8, flexWrap: 'wrap' }}>
-                    <span style={{ width: 22, height: 22, borderRadius: 6, background: PRIMARY_VAR + '18', color: PRIMARY_VAR, fontSize: 11, fontWeight: 800, display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }}>{i + 1}</span>
-                    <select style={{ ...inputStyle, width: 130 }} value={st.action} onChange={e => saveStep(i, { action: e.target.value })}>{ACTIONS.map(a => <option key={a} value={a}>{a}</option>)}</select>
-                    <select style={{ ...inputStyle, width: 170 }} value={st.condition} onChange={e => saveStep(i, { condition: e.target.value })}>{CONDITIONS.map(([c, l]) => <option key={c} value={c}>{l}</option>)}</select>
-                    {(st.action === 'message' || st.action === 'follow_up' || st.action === 'inmail' || st.action === 'comment') && (
-                      <input style={{ ...inputStyle, flex: 1, minWidth: 180 }} defaultValue={st.template?.text || ''} placeholder={st.action === 'comment' ? 'Kommentartext (öffentlich!)…' : 'Nachrichtentext…'} onBlur={e => saveStep(i, { template: { ...(st.template || {}), text: e.target.value } })} />
+              {(() => {
+                const seqLocked = sel.status === 'active'   // aktive Kampagne: kein Sequenz-Edit mitten im Versand
+                return (
+                  <div style={{ marginTop: 18 }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}>
+                      <label style={{ ...labelStyle, marginBottom: 0 }}>Sequenz</label>
+                      {stepsDirty && !seqLocked && <span style={{ fontSize: 11, color: '#B45309', fontWeight: 700 }}>● ungespeichert</span>}
+                    </div>
+                    {seqLocked && (
+                      <div style={{ display: 'flex', gap: 8, alignItems: 'center', fontSize: 12.5, color: '#B45309', background: '#FFFBEB', border: '1px solid #FDE68A', borderRadius: 8, padding: '8px 12px', marginBottom: 10 }}>
+                        <AlertTriangle size={14} /> Kampagne läuft — zum Bearbeiten der Sequenz erst pausieren.
+                      </div>
                     )}
-                    {st.action === 'react' && (
-                      <select style={{ ...inputStyle, width: 130 }} value={st.template?.reaction_type || 'like'} onChange={e => saveStep(i, { template: { ...(st.template || {}), reaction_type: e.target.value } })}>
-                        {['like', 'celebrate', 'support', 'love', 'insightful', 'funny'].map(t => <option key={t} value={t}>{t}</option>)}
-                      </select>
+                    {steps.map((st, i) => (
+                      <div key={st.id || st._key} style={{ display: 'flex', gap: 8, alignItems: 'center', marginBottom: 8, flexWrap: 'wrap' }}>
+                        <span style={{ width: 22, height: 22, borderRadius: 6, background: PRIMARY_VAR + '18', color: PRIMARY_VAR, fontSize: 11, fontWeight: 800, display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }}>{i + 1}</span>
+                        <select disabled={seqLocked} style={{ ...inputStyle, width: 130 }} value={st.action} onChange={e => saveStep(i, { action: e.target.value })}>{ACTIONS.map(a => <option key={a} value={a}>{a}</option>)}</select>
+                        <select disabled={seqLocked} style={{ ...inputStyle, width: 170 }} value={st.condition} onChange={e => saveStep(i, { condition: e.target.value })}>{CONDITIONS.map(([c, l]) => <option key={c} value={c}>{l}</option>)}</select>
+                        {(st.action === 'message' || st.action === 'follow_up' || st.action === 'inmail' || st.action === 'comment') && (
+                          <input disabled={seqLocked} style={{ ...inputStyle, flex: 1, minWidth: 180 }} defaultValue={st.template?.text || ''} placeholder={st.action === 'comment' ? 'Kommentartext (öffentlich!)…' : 'Nachrichtentext…'} onBlur={e => saveStep(i, { template: { ...(st.template || {}), text: e.target.value } })} />
+                        )}
+                        {st.action === 'react' && (
+                          <select disabled={seqLocked} style={{ ...inputStyle, width: 130 }} value={st.template?.reaction_type || 'like'} onChange={e => saveStep(i, { template: { ...(st.template || {}), reaction_type: e.target.value } })}>
+                            {['like', 'celebrate', 'support', 'love', 'insightful', 'funny'].map(t => <option key={t} value={t}>{t}</option>)}
+                          </select>
+                        )}
+                        {!seqLocked && <button style={{ ...ghostBtn, padding: '6px 8px' }} onClick={() => delStep(i)}>✕</button>}
+                      </div>
+                    ))}
+                    {!seqLocked && (
+                      <div style={{ display: 'flex', gap: 8, marginTop: 4 }}>
+                        <button style={ghostBtn} onClick={addStep}><Plus size={13} /> Schritt</button>
+                        <button style={{ ...primaryBtn, opacity: stepsDirty ? 1 : 0.5, cursor: stepsDirty ? 'pointer' : 'default' }} disabled={!stepsDirty} onClick={saveSteps}>Sequenz speichern</button>
+                      </div>
                     )}
-                    <button style={{ ...ghostBtn, padding: '6px 8px' }} onClick={() => delStep(i)}>✕</button>
                   </div>
-                ))}
-                <button style={ghostBtn} onClick={addStep}><Plus size={13} /> Schritt</button>
-              </div>
+                )
+              })()}
 
               {/* Caps */}
               <div style={{ marginTop: 18, display: 'flex', gap: 16, alignItems: 'flex-end', flexWrap: 'wrap' }}>
@@ -290,6 +388,36 @@ export default function LinkedInAutomationNeu({ session }) {
           </div>
         )}
       </div>
+
+      {/* Löschen-Confirm-Dialog (eigenes Modal, kein window.confirm) */}
+      {deleteModal && (() => {
+        const enr = funnel?.enrollment_total || 0
+        const pending = funnel?.jobs?.pending || 0
+        const sent = Object.values(funnel?.done_by_action || {}).reduce((a, b) => a + b, 0)
+        return (
+          <div onClick={() => setDeleteModal(null)} style={{ position: 'fixed', inset: 0, background: 'rgba(17,24,39,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 200 }}>
+            <div onClick={e => e.stopPropagation()} style={{ background: 'var(--surface, #fff)', borderRadius: 14, padding: 24, width: 440, maxWidth: '92vw', boxShadow: '0 20px 60px rgba(0,0,0,0.3)' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 12 }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}><Trash2 size={18} color="#DC2626" /><b style={{ fontSize: 16 }}>Kampagne löschen?</b></div>
+                <button style={{ ...ghostBtn, padding: 6 }} onClick={() => setDeleteModal(null)}><X size={15} /></button>
+              </div>
+              <p style={{ fontSize: 13.5, color: 'var(--text-strong)', margin: '0 0 12px' }}>
+                „<b>{deleteModal.name}</b>" wird endgültig gelöscht — inklusive <b>{enr} Enrollments</b> und <b>{pending} offener Jobs</b>. Das kann nicht rückgängig gemacht werden.
+              </p>
+              {sent > 0 && (
+                <div style={{ display: 'flex', gap: 8, alignItems: 'flex-start', fontSize: 12.5, color: '#B45309', background: '#FFFBEB', border: '1px solid #FDE68A', borderRadius: 8, padding: '10px 12px', marginBottom: 14 }}>
+                  <AlertTriangle size={15} style={{ flexShrink: 0, marginTop: 1 }} />
+                  <span><b>{sent} bereits gesendete Aktionen</b> (Invites/Nachrichten) bleiben bei LinkedIn bestehen — das Löschen entfernt nur die Kampagnen-Daten hier, zieht nichts bei LinkedIn zurück.</span>
+                </div>
+              )}
+              <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
+                <button style={ghostBtn} onClick={() => setDeleteModal(null)}>Abbrechen</button>
+                <button style={{ ...primaryBtn, background: '#DC2626' }} onClick={deleteCampaign}><Trash2 size={14} /> Endgültig löschen</button>
+              </div>
+            </div>
+          </div>
+        )
+      })()}
 
       {flash && <div style={{ position: 'fixed', bottom: 24, left: '50%', transform: 'translateX(-50%)', background: flash.err ? '#DC2626' : '#111827', color: '#fff', padding: '10px 18px', borderRadius: 10, fontSize: 13, fontWeight: 600, zIndex: 100 }}>{flash.msg}</div>}
     </div></div>

@@ -50,6 +50,7 @@ import Vernetzungen  from './pages/Vernetzungen'
 import ProfilChecker from './pages/ProfilChecker'
 import LinkedInInbox from './pages/LinkedInInbox'
 import LinkedInAutomationNeu from './pages/LinkedInAutomationNeu'
+import LinkedInSuche from './pages/LinkedInSuche'
 import Reports       from './pages/Reports'
 import ICP           from './pages/ICP'
 import ContentStudio      from './pages/ContentStudio'
@@ -328,6 +329,7 @@ export default function App() {
             <Route path="/vernetzungen" element={<CompanyBrandGate feature="vernetzungen"><Vernetzungen session={session} /></CompanyBrandGate>} />
             <Route path="/profil-checker" element={<ModuleGuard module="linkedin"><ProfilChecker session={session} /></ModuleGuard>} />
             <Route path="/linkedin-inbox" element={<ModuleGuard module="linkedin"><LinkedInInbox session={session} /></ModuleGuard>} />
+            <Route path="/linkedin-suche" element={<ModuleGuard module="linkedin"><LinkedInSuche session={session} /></ModuleGuard>} />
             {(isFlagEnabled('linkedinAutomationV2') || import.meta.env.VITE_APP_ENV === 'staging') && (
               <Route path="/automatisierung-neu" element={<ModuleGuard module="linkedin"><LinkedInAutomationNeu session={session} /></ModuleGuard>} />
             )}

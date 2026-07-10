@@ -442,7 +442,7 @@ export default function Vernetzungen({ session }) {
       <PageHeader
         overline="LinkedIn · Outreach"
         title="Vernetzungen"
-        subtitle="Kontakte aus der Import-Inbox vernetzen — automatisch über die Extension oder mit eigener Nachricht. Angenommene Anfragen erkennt der Abgleich von selbst."
+        subtitle="LinkedIn Kontakte vernetzen — automatisch über die Extension oder mit eigener Nachricht. Angenommene Anfragen erkennt der Abgleich von selbst."
         action={headerAction}
       />
 
