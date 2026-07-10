@@ -117,7 +117,7 @@ function getNav(t) {
 
   { divider: true, label: 'LinkedIn', tourId: 'nav-linkedin' },
   { to: '/linkedin-suche',  icon: IcSearch,   label: 'Suche' },
-  { to: '/linkedin-inbox',  icon: IcInbox,    label: 'Import-Inbox' },
+  { to: '/linkedin-inbox',  icon: IcInbox,    label: 'LinkedIn Kontakte' },
   { to: '/vernetzungen',    icon: IcHeart,    label: 'Vernetzung' },
   // Ein Eintrag „Automatisierung"; Ziel flag-bedingt: V2 (la_*) auf Staging/Flag-an,
   // sonst Alt-Seite (Prod bis P6-Cutover). Alt-Route /automatisierung + automation_* bleiben.

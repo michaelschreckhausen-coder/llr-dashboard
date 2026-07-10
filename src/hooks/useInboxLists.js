@@ -125,6 +125,32 @@ export function useInboxLists({ activeTeamId } = {}) {
     return { data: { added: ids.length } }
   }, [uid])
 
+  const renameList = useCallback(async (listId, name) => {
+    const trimmed = (name || '').trim()
+    if (!listId || !trimmed) return { error: new Error('Name fehlt') }
+    const { data, error } = await supabase
+      .from('inbox_lists')
+      .update({ name: trimmed, updated_at: new Date().toISOString() })
+      .eq('id', listId)
+      .select('id, name, color, user_id, team_id, is_shared, created_at, updated_at')
+      .single()
+    if (error) return { error }
+    if (mountedRef.current) setLists(prev => prev.map(l => (l.id === listId ? { ...l, ...data } : l)))
+    return { data }
+  }, [])
+
+  const deleteList = useCallback(async (listId) => {
+    if (!listId) return { error: new Error('Liste fehlt') }
+    // inbox_list_members cascadet via FK (ON DELETE CASCADE) — linkedin_inbox bleibt.
+    const { error } = await supabase.from('inbox_lists').delete().eq('id', listId)
+    if (error) return { error }
+    if (mountedRef.current) {
+      setLists(prev => prev.filter(l => l.id !== listId))
+      setMembersByList(prev => { const n = new Map(prev); n.delete(listId); return n })
+    }
+    return { data: { deleted: listId } }
+  }, [])
+
   const removeFromList = useCallback(async (listId, inboxId) => {
     if (!listId || !inboxId) return { error: new Error('Liste oder Kontakt fehlt') }
     const { error } = await supabase
@@ -152,6 +178,8 @@ export function useInboxLists({ activeTeamId } = {}) {
     createList,
     addToList,
     removeFromList,
+    renameList,
+    deleteList,
     refresh: fetchAll,
-  }), [lists, membersByList, isLoading, createList, addToList, removeFromList, fetchAll])
+  }), [lists, membersByList, isLoading, createList, addToList, removeFromList, renameList, deleteList, fetchAll])
 }

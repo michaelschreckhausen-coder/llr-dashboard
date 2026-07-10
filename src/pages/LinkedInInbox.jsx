@@ -1,6 +1,6 @@
 import React, { useEffect, useState, useCallback, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { Check, X, Loader2, UserPlus, Building2, Inbox as InboxIcon, Plus, ListChecks } from 'lucide-react'
+import { Check, X, Loader2, UserPlus, Building2, Inbox as InboxIcon, Plus, ListChecks, Pencil, Trash2, AlertTriangle } from 'lucide-react'
 import { supabase } from '../lib/supabase'
 import { useTeam } from '../context/TeamContext'
 import { useInboxLists } from '../hooks/useInboxLists'
@@ -53,12 +53,15 @@ export default function LinkedInInbox() {
 
   // Kampagnen-Gruppierung
   // Inbox-Listen (reine Auswahl-Sammlungen — die einzige Gruppierung auf dieser Seite)
-  const { lists, membersByList, createList, addToList } = useInboxLists({ activeTeamId })
+  const { lists, membersByList, createList, addToList, renameList, deleteList } = useInboxLists({ activeTeamId })
   const [listOpen, setListOpen]     = useState(false)
   const [listFilter, setListFilter] = useState('all')        // 'all' | list_id
   const [showNewList, setShowNewList] = useState(false)      // Inline-Create in der „Nach Liste"-Zeile
   const [newListName, setNewListName] = useState('')
   const [creatingList, setCreatingList] = useState(false)
+  const [editingListId, setEditingListId] = useState(null)   // Inline-Rename am Chip
+  const [editListName, setEditListName]   = useState('')
+  const [deleteListModal, setDeleteListModal] = useState(null) // { list, refs:[campaignName], checking }
 
   // Sales-Navigator-Import (Unipile) → Import-Inbox, optional direkt in eine Liste
   const [importOpen, setImportOpen] = useState(false)
@@ -241,6 +244,46 @@ export default function LinkedInInbox() {
     setMsg({ text: reused ? `Liste „${data.name}" existiert bereits.` : `Liste „${data.name}" angelegt.` })
   }
 
+  // Liste umbenennen (inline am Chip) — Team-Check via RLS, Dedup gegen gleichnamige Team-Liste.
+  const startRename = (l) => { setEditingListId(l.id); setEditListName(l.name || '') }
+  const saveRename = async () => {
+    const l = lists.find(x => x.id === editingListId)
+    const name = editListName.trim()
+    if (!l) { setEditingListId(null); return }
+    if (!name || name === l.name) { setEditingListId(null); return }
+    const dupe = lists.find(x => x.id !== l.id && (x.name || '').trim().toLowerCase() === name.toLowerCase())
+    if (dupe) { setMsg({ text: `Es gibt bereits eine Liste „${dupe.name}".` }); return }
+    const { error } = await renameList(l.id, name)
+    if (error) { setMsg({ text: 'Umbenennen fehlgeschlagen: ' + error.message }); return }
+    setEditingListId(null)
+    setMsg({ text: `Liste umbenannt in „${name}".` })
+  }
+
+  // Löschen vorbereiten: prüfen, ob eine la_audience (kind='list') die Liste als Zielgruppe nutzt.
+  const openDeleteList = async (l) => {
+    setDeleteListModal({ list: l, refs: [], checking: true })
+    let refs = []
+    try {
+      const { data: auds } = await supabase.from('la_audiences').select('id')
+        .eq('team_id', activeTeamId).eq('kind', 'list').eq('query->>list_id', l.id)
+      const audIds = (auds || []).map(a => a.id)
+      if (audIds.length) {
+        const { data: camps } = await supabase.from('la_campaigns').select('name').in('audience_id', audIds)
+        refs = [...new Set((camps || []).map(c => c.name).filter(Boolean))]
+      }
+    } catch { /* la_* evtl. nicht sichtbar → keine Referenz annehmen */ }
+    setDeleteListModal(m => (m && m.list.id === l.id ? { ...m, refs, checking: false } : m))
+  }
+  const confirmDeleteList = async () => {
+    const l = deleteListModal?.list
+    if (!l) return
+    const { error } = await deleteList(l.id)
+    setDeleteListModal(null)
+    if (error) { setMsg({ text: 'Löschen fehlgeschlagen: ' + error.message }); return }
+    if (listFilter === l.id) setListFilter('all')
+    setMsg({ text: `Liste „${l.name}" gelöscht — die Kontakte bleiben in deinen LinkedIn Kontakten.` })
+  }
+
   // Zu Liste = reine Auswahl-Sammlung.
   const assignToList = async ({ listId, newName, color }) => {
     const ids = [...selected]; if (!ids.length) return
@@ -264,6 +307,7 @@ export default function LinkedInInbox() {
 
   const card = 'var(--surface)', border = 'var(--border)', text = 'var(--text-primary)', muted = 'var(--text-muted)', primary = 'var(--primary)'
   const chip = (active) => ({ display: 'inline-flex', alignItems: 'center', gap: 6, padding: '5px 12px', borderRadius: 99, fontSize: 13, fontWeight: 600, cursor: 'pointer', border: `1.5px solid ${active ? primary : border}`, background: active ? 'var(--primary-soft)' : card, color: active ? primary : muted })
+  const miniBtn = { background: 'none', border: 'none', padding: 2, cursor: 'pointer', display: 'inline-flex', alignItems: 'center' }
 
   return (
     <div style={{ width: '100%', maxWidth: 1100, margin: '0 auto', padding: '24px 16px 40px' }}>
@@ -273,7 +317,7 @@ export default function LinkedInInbox() {
         <div onClick={() => !importing && setImportOpen(false)} style={{ position: 'fixed', inset: 0, background: 'rgba(15,23,42,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000, padding: 16 }}>
           <div onClick={e => e.stopPropagation()} style={{ background: card, border: `1px solid ${border}`, borderRadius: 14, width: 520, maxWidth: '94vw', padding: 24, boxShadow: '0 24px 64px rgba(15,23,42,0.25)' }}>
             <div style={{ fontSize: 17, fontWeight: 700, color: text, marginBottom: 4 }}>Sales-Navigator-Suche importieren</div>
-            <p style={{ fontSize: 13, color: muted, margin: '0 0 16px', lineHeight: 1.5 }}>Füge die URL einer Sales-Navigator-Personensuche ein — die Treffer landen in deiner Import-Inbox (optional direkt in einer Liste).</p>
+            <p style={{ fontSize: 13, color: muted, margin: '0 0 16px', lineHeight: 1.5 }}>Füge die URL einer Sales-Navigator-Personensuche ein — die Treffer landen in deinen LinkedIn Kontakten (optional direkt in einer Liste).</p>
 
             {okAccount === undefined ? (
               <div style={{ color: muted, fontSize: 14, padding: '12px 0' }}>Lade LinkedIn-Verbindung…</div>
@@ -318,9 +362,9 @@ export default function LinkedInInbox() {
       )}
       {/* Journal-Header (analog /messages, /automatisierung) */}
       <div style={{ marginBottom: 22 }}>
-        <div style={{ fontSize: 20, color: '#30A0D0', fontFamily: '"Caveat", cursive', fontWeight: 600, marginBottom: 6 }}>LinkedIn · Import-Inbox</div>
+        <div style={{ fontSize: 20, color: '#30A0D0', fontFamily: '"Caveat", cursive', fontWeight: 600, marginBottom: 6 }}>LinkedIn · Kontakte</div>
         <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-          <h1 style={{ fontSize: 26, fontWeight: 700, margin: 0, letterSpacing: '-0.3px', lineHeight: 1.2, color: 'var(--text-primary, rgb(20,20,43))' }}>Deine Import-Inbox.</h1>
+          <h1 style={{ fontSize: 26, fontWeight: 700, margin: 0, letterSpacing: '-0.3px', lineHeight: 1.2, color: 'var(--text-primary, rgb(20,20,43))' }}>Deine LinkedIn Kontakte.</h1>
           {!loading && <span style={{ background: primary, color: '#fff', borderRadius: 99, padding: '2px 10px', fontSize: 13, fontWeight: 700 }}>{rows.length}</span>}
           <button onClick={() => { setImportErr(null); setImportOpen(true) }}
             style={{ marginLeft: 'auto', display: 'inline-flex', alignItems: 'center', gap: 6, background: primary, color: '#fff', border: 'none', borderRadius: 8, padding: '8px 14px', fontSize: 13, fontWeight: 700, cursor: 'pointer' }}>
@@ -340,9 +384,25 @@ export default function LinkedInInbox() {
           {lists.map(l => {
             const set = membersByList.get(l.id)
             const cnt = set ? rows.reduce((n, r) => n + (set.has(r.id) ? 1 : 0), 0) : 0
+            if (editingListId === l.id) {
+              return (
+                <span key={l.id} style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+                  <input autoFocus value={editListName} onChange={e => setEditListName(e.target.value)}
+                    onKeyDown={e => { if (e.key === 'Enter') saveRename(); if (e.key === 'Escape') setEditingListId(null) }}
+                    style={{ padding: '5px 10px', borderRadius: 99, border: `1.5px solid ${primary}`, fontSize: 13, background: card, color: text, outline: 'none', width: 140 }} />
+                  <button onClick={saveRename} title="Speichern" style={{ ...miniBtn, color: primary }}><Check size={14} /></button>
+                  <button onClick={() => setEditingListId(null)} title="Abbrechen" style={{ ...miniBtn, color: muted }}><X size={14} /></button>
+                </span>
+              )
+            }
+            const active = listFilter === l.id
             return (
-              <span key={l.id} style={chip(listFilter === l.id)} onClick={() => setListFilter(l.id)}>
-                <ListChecks size={13} /> {l.name} <b>{cnt}</b>
+              <span key={l.id} style={{ ...chip(active), cursor: 'default', paddingRight: 8 }}>
+                <span onClick={() => setListFilter(l.id)} style={{ display: 'inline-flex', alignItems: 'center', gap: 6, cursor: 'pointer' }}>
+                  <ListChecks size={13} /> {l.name} <b>{cnt}</b>
+                </span>
+                <button onClick={() => startRename(l)} title="Umbenennen" style={{ ...miniBtn, color: active ? primary : muted, marginLeft: 2 }}><Pencil size={12} /></button>
+                <button onClick={() => openDeleteList(l)} title="Löschen" style={{ ...miniBtn, color: active ? primary : muted }}><Trash2 size={12} /></button>
               </span>
             )
           })}
@@ -459,6 +519,34 @@ export default function LinkedInInbox() {
           onClose={() => setListOpen(false)}
           onConfirm={assignToList}
         />
+      )}
+
+      {deleteListModal && (
+        <div onClick={() => setDeleteListModal(null)} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.45)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000, padding: 16 }}>
+          <div onClick={e => e.stopPropagation()} style={{ background: 'var(--surface)', borderRadius: 16, padding: 24, width: 460, maxWidth: '90vw', boxShadow: '0 20px 60px rgba(0,0,0,.18)' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 6 }}>
+              <Trash2 size={18} style={{ color: '#DC2626' }} />
+              <div style={{ fontWeight: 800, fontSize: 17, color: text }}>Liste löschen?</div>
+            </div>
+            <p style={{ fontSize: 13.5, color: text, margin: '0 0 12px', lineHeight: 1.5 }}>
+              „<b>{deleteListModal.list.name}</b>" wird gelöscht. Die zugeordneten <b>Kontakte bleiben</b> in deinen LinkedIn Kontakten — nur die Listen-Zuordnung geht weg.
+            </p>
+            {deleteListModal.checking ? (
+              <div style={{ fontSize: 12.5, color: muted, marginBottom: 14 }}>Prüfe Verwendung…</div>
+            ) : deleteListModal.refs.length > 0 && (
+              <div style={{ display: 'flex', gap: 8, alignItems: 'flex-start', fontSize: 12.5, color: '#B45309', background: '#FFFBEB', border: '1px solid #FDE68A', borderRadius: 8, padding: '10px 12px', marginBottom: 14 }}>
+                <AlertTriangle size={15} style={{ flexShrink: 0, marginTop: 1 }} />
+                <span>Wird von {deleteListModal.refs.length === 1 ? 'Kampagne' : 'Kampagnen'} <b>{deleteListModal.refs.map(n => `„${n}"`).join(', ')}</b> als Zielgruppe genutzt. Nach dem Löschen läuft diese Zielgruppe leer.</span>
+              </div>
+            )}
+            <div style={{ display: 'flex', gap: 10, justifyContent: 'flex-end', marginTop: 6 }}>
+              <button onClick={() => setDeleteListModal(null)} style={{ border: `1px solid ${border}`, background: 'var(--surface)', color: muted, borderRadius: 10, padding: '9px 16px', fontSize: 13, fontWeight: 600, cursor: 'pointer' }}>Abbrechen</button>
+              <button onClick={confirmDeleteList} disabled={deleteListModal.checking} style={{ border: 'none', background: '#DC2626', color: '#fff', borderRadius: 10, padding: '9px 18px', fontSize: 13, fontWeight: 700, cursor: deleteListModal.checking ? 'not-allowed' : 'pointer', opacity: deleteListModal.checking ? 0.6 : 1, display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+                <Trash2 size={14} /> Liste löschen
+              </button>
+            </div>
+          </div>
+        </div>
       )}
     </div>
   )

@@ -167,7 +167,7 @@ export default function LinkedInAutomationNeu({ session }) {
   async function runAudience() {
     if (!sel?.audience_id) { show('Keine Audience gewählt', true); return }
     const aud = audiences.find(a => a.id === sel.audience_id)
-    if (aud?.kind === 'list' && !aud.query?.list_id) { show('Bitte zuerst eine Import-Inbox-Liste wählen', true); return }
+    if (aud?.kind === 'list' && !aud.query?.list_id) { show('Bitte zuerst eine Liste wählen', true); return }
     show('Audience wird ausgeführt…')
     const { data, error } = await supabase.functions.invoke('la-audience', { body: { audience_id: sel.audience_id, campaign_id: sel.id } })
     if (error) { show('Fehler: ' + error.message, true); return }
@@ -325,12 +325,12 @@ export default function LinkedInAutomationNeu({ session }) {
                         <input style={inputStyle} defaultValue={selAudience.query?.keywords || ''} onBlur={e => saveAudience({ query: { ...(selAudience.query || {}), keywords: e.target.value } })} placeholder="z.B. growth marketing berlin" /></div>
                     )}
                     {selAudience.kind === 'list' && (
-                      <div style={{ flex: 1, minWidth: 220 }}><label style={labelStyle}>Import-Inbox-Liste</label>
+                      <div style={{ flex: 1, minWidth: 220 }}><label style={labelStyle}>Liste</label>
                         <select style={inputStyle} value={selAudience.query?.list_id || ''} onChange={e => saveAudience({ query: { ...(selAudience.query || {}), list_id: e.target.value || null } })}>
                           <option value="">— Liste wählen —</option>
                           {inboxLists.map(l => <option key={l.id} value={l.id}>{l.name}</option>)}
                         </select>
-                        {inboxLists.length === 0 && <div style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 4 }}>Noch keine Listen — in der Import-Inbox anlegen.</div>}
+                        {inboxLists.length === 0 && <div style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 4 }}>Noch keine Listen — unter „LinkedIn Kontakte" anlegen.</div>}
                       </div>
                     )}
                     <button style={primaryBtn} onClick={runAudience}><Zap size={14} /> Audience ausführen</button>

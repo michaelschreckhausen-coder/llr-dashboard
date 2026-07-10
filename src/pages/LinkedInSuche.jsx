@@ -172,9 +172,9 @@ export default function LinkedInSuche() {
     setFlash({
       type:'success',
       text: isPeople
-        ? `${data?.found ?? 0} Treffer gefunden, ${data?.imported ?? 0} neu in der Import-Inbox.`
+        ? `${data?.found ?? 0} Treffer gefunden, ${data?.imported ?? 0} neu in den LinkedIn Kontakten.`
         : `${data?.found ?? 0} Unternehmens-Treffer gefunden (nur Personen landen in der Inbox).`,
-      action: isPeople ? { label:'Zur Import-Inbox', to:'/linkedin-inbox' } : undefined,
+      action: isPeople ? { label:'Zu den LinkedIn Kontakten', to:'/linkedin-inbox' } : undefined,
     })
     setRunningId(null)
     fetchSearches()       // aktualisierte results_imported / status / last_run_at
@@ -195,7 +195,7 @@ export default function LinkedInSuche() {
         <div style={headerRowStyle}>
           <div>
             <h1 style={titleStyle}><Search size={22} color={PRIMARY_VAR} /> LinkedIn-Suche</h1>
-            <div style={subtitleStyle}>Gespeicherte Suchen anlegen und ausführen — Personen-Treffer landen in der Import-Inbox (nicht im CRM).</div>
+            <div style={subtitleStyle}>Gespeicherte Suchen anlegen und ausführen — Personen-Treffer landen in den LinkedIn Kontakten (nicht im CRM).</div>
           </div>
         </div>
 
@@ -242,7 +242,7 @@ export default function LinkedInSuche() {
 
             {form.category === 'company' && (
               <div style={{ fontSize:12, color:'#B45309', background:'#FFFBEB', border:'1px solid #FDE68A', borderRadius:8, padding:'8px 12px' }}>
-                Hinweis: Bei der Kategorie „Unternehmen" werden Treffer nur gezählt, aber <strong>nicht importiert</strong> — nur Personen-Treffer landen in der Import-Inbox.
+                Hinweis: Bei der Kategorie „Unternehmen" werden Treffer nur gezählt, aber <strong>nicht importiert</strong> — nur Personen-Treffer landen in den LinkedIn Kontakten.
               </div>
             )}
 
@@ -272,13 +272,13 @@ export default function LinkedInSuche() {
             </div>
 
             <div>
-              <label style={labelStyle}>Ziel-Liste in der Import-Inbox (optional)</label>
+              <label style={labelStyle}>Ziel-Liste in den LinkedIn Kontakten (optional)</label>
               <select style={{ ...inputStyle, maxWidth:360 }} value={form.target_list_id} onChange={e => setField('target_list_id', e.target.value)}>
                 <option value="">— keine (nur in die Inbox) —</option>
                 {inboxLists.map(l => <option key={l.id} value={l.id}>{l.name}</option>)}
               </select>
               <div style={{ fontSize:11, color:'var(--text-muted, #6B7280)', marginTop:4 }}>
-                Personen-Treffer werden dieser Import-Inbox-Liste zugeordnet — dieselbe Liste wählst du später in der Automatisierung als Zielgruppe.
+                Personen-Treffer werden dieser Liste zugeordnet — dieselbe Liste wählst du später in der Automatisierung als Zielgruppe.
               </div>
             </div>
 
@@ -294,7 +294,7 @@ export default function LinkedInSuche() {
         {lastResult && (
           <div style={{ ...cardStyle, marginBottom:20, borderColor:'#BBF7D0', background:'#F0FDF4' }}>
             <div style={{ fontSize:13, fontWeight:700, color:'#15803D' }}>
-              Letzter Lauf: {lastResult.found ?? 0} Treffer · {lastResult.imported ?? 0} neu in der Import-Inbox
+              Letzter Lauf: {lastResult.found ?? 0} Treffer · {lastResult.imported ?? 0} neu in den LinkedIn Kontakten
             </div>
           </div>
         )}
@@ -352,7 +352,7 @@ export default function LinkedInSuche() {
               <div style={sectionTitle}><Users size={14} /> Ergebnisse für „{results.searchName}"</div>
               {results.category === 'people' && (
                 <button style={ghostBtnStyle} onClick={() => navigate('/linkedin-inbox')}>
-                  <InboxIcon size={14} /> Zur Import-Inbox
+                  <InboxIcon size={14} /> Zu den LinkedIn Kontakten
                 </button>
               )}
             </div>
@@ -393,7 +393,7 @@ export default function LinkedInSuche() {
                       )}
                       {results.category === 'people' && (
                         <span style={{ ...ghostBtnStyle, color:'#15803D', borderColor:'#BBF7D0', cursor:'default' }}>
-                          <InboxIcon size={14} /> in Import-Inbox
+                          <InboxIcon size={14} /> in LinkedIn Kontakten
                         </span>
                       )}
                     </div>

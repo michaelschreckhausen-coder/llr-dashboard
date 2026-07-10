@@ -27,10 +27,10 @@ export default function InboxLink({ style }) {
   return (
     <button
       onClick={() => navigate('/linkedin-inbox')}
-      title="Import-Inbox öffnen"
+      title="LinkedIn Kontakte öffnen"
       style={{ display:'inline-flex', alignItems:'center', gap:6, padding:'7px 12px', background:'var(--surface)', color:'#374151', border:'1.5px solid #E4E7EC', borderRadius:10, fontSize:12, fontWeight:600, cursor:'pointer', ...style }}
     >
-      <Inbox size={15} /> Import-Inbox
+      <Inbox size={15} /> LinkedIn Kontakte
       {count > 0 && (
         <span style={{ background:'var(--wl-primary, rgb(49,90,231))', color:'#fff', borderRadius:99, padding:'1px 7px', fontSize:11, fontWeight:700 }}>{count}</span>
       )}
