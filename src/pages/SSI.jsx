@@ -184,7 +184,7 @@ export default function SSI({ session }) {
       <div style={{ marginBottom:22, display:'flex', alignItems:'flex-end', justifyContent:'space-between', gap:20, flexWrap:'wrap' }}>
 
         <div style={{ flex:'1 1 auto', minWidth:280 }}>
-          <div style={{ fontSize:12, fontWeight:700, letterSpacing:'1.6px', textTransform:'uppercase', fontFamily:'Inter, sans-serif', color:'var(--primary, #003060)', marginBottom:6 }}>LinkedIn · SSI</div>
+          <div className="lk-eyebrow" style={{ fontSize:12, fontWeight:700, letterSpacing:'1.6px', textTransform:'uppercase', fontFamily:'Inter, sans-serif', color:'var(--primary, #003060)', marginBottom:6 }}>LinkedIn · SSI</div>
           <h1 style={{ fontSize:26, fontWeight:700, margin:0, letterSpacing:'-0.3px', lineHeight:1.2, color:'var(--text-primary, rgb(20,20,43))' }}>Dein Social Selling Index.</h1>
           <p style={{ fontSize:13, color:'var(--text-muted)', margin:'8px 0 0', lineHeight:1.6, maxWidth:600 }}>
             Dein LinkedIn-SSI im Blick — automatisch über die Extension ausgelesen oder manuell erfasst.

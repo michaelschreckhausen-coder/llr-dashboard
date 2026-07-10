@@ -228,7 +228,7 @@ export function PageHeader({ eyebrow, title, subtitle, action, style={} }) {
     <div style={{ marginBottom: 22, display: 'flex', alignItems: 'flex-end', justifyContent: 'space-between', gap: 16, flexWrap: 'wrap', ...style }}>
       <div style={{ flex: '1 1 auto', minWidth: 240 }}>
         {eyebrow && (
-          <div style={{ fontSize:12, fontWeight:700, letterSpacing:'1.6px', textTransform:'uppercase', fontFamily:'Inter, sans-serif', color:'var(--primary, #003060)', marginBottom:6 }}>{eyebrow}</div>
+          <div className="lk-eyebrow" style={{ fontSize:12, fontWeight:700, letterSpacing:'1.6px', textTransform:'uppercase', fontFamily:'Inter, sans-serif', color:'var(--primary, #003060)', marginBottom:6 }}>{eyebrow}</div>
         )}
         {title && (
           <h1 style={{

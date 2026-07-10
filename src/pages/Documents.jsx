@@ -154,7 +154,7 @@ export default function Documents({ embedded = false }) {
       <div style={{ display:'flex', alignItems:'flex-end', justifyContent: embedded ? 'flex-end' : 'space-between', gap:16, marginBottom: embedded ? 12 : 22, flexWrap:'wrap' }}>
         {!embedded && (
         <div>
-          <div style={{ fontSize:12, fontWeight:700, letterSpacing:'1.6px', textTransform:'uppercase', fontFamily:'Inter, sans-serif', color:'var(--primary, #003060)', marginBottom:6 }}>Content · Dokumente</div>
+          <div className="lk-eyebrow" style={{ fontSize:12, fontWeight:700, letterSpacing:'1.6px', textTransform:'uppercase', fontFamily:'Inter, sans-serif', color:'var(--primary, #003060)', marginBottom:6 }}>Content · Dokumente</div>
           <h1 style={{ fontSize:26, fontWeight:700, margin:0, letterSpacing:'-0.3px', lineHeight:1.2 }}>Deine Dokumente.</h1>
           <p style={{ fontSize:13, color:'var(--text-muted)', margin:'8px 0 0', lineHeight:1.6 }}>
             Bearbeitbare Texte aus der Content-Werkstatt{activeBrandVoice?.name ? ` von ${activeBrandVoice.name}` : ''} — öffnen sich zusammen mit dem zugehörigen Chat.

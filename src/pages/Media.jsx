@@ -243,7 +243,7 @@ export default function Media({ session }) {
     <div style={{ width:'100%', maxWidth:1200, margin:'0 auto', padding:'24px 16px 40px' }}>
       {/* Header */}
       <div style={{ marginBottom:22 }}>
-        <div style={{ fontSize:12, fontWeight:700, letterSpacing:'1.6px', textTransform:'uppercase', fontFamily:'Inter, sans-serif', color:'var(--primary, #003060)', marginBottom:6 }}>Content · Medien</div>
+        <div className="lk-eyebrow" style={{ fontSize:12, fontWeight:700, letterSpacing:'1.6px', textTransform:'uppercase', fontFamily:'Inter, sans-serif', color:'var(--primary, #003060)', marginBottom:6 }}>Content · Medien</div>
         <h1 style={{ fontSize:26, fontWeight:700, margin:0, letterSpacing:'-0.3px', lineHeight:1.2 }}>Deine Medien.</h1>
         <p style={{ fontSize:13, color:'var(--text-muted)', margin:'8px 0 0', lineHeight:1.6 }}>
           Alle Medien dieser Brand an einem Ort — Uploads (Bilder, Videos, PDFs) und KI-generierte Visuals.

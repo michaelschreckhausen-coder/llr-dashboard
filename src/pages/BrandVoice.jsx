@@ -1428,7 +1428,7 @@ export default function BrandVoice({ session, brandType = 'personal' }) {
     <div style={{ width:'100%', maxWidth:1100, margin:'0 auto', padding:'24px 16px 40px' }}>
       {/* Journal-Style-Header */}
       <div style={{ marginBottom:22 }}>
-        <div style={{ fontSize:12, fontWeight:700, letterSpacing:'1.6px', textTransform:'uppercase', fontFamily:'Inter, sans-serif', color:'var(--primary, #003060)', marginBottom:6 }}>Branding · Schritt 1 von 3</div>
+        <div className="lk-eyebrow" style={{ fontSize:12, fontWeight:700, letterSpacing:'1.6px', textTransform:'uppercase', fontFamily:'Inter, sans-serif', color:'var(--primary, #003060)', marginBottom:6 }}>Branding · Schritt 1 von 3</div>
         <h1 style={{ fontSize:26, fontWeight:700, margin:0, letterSpacing:'-0.3px', lineHeight:1.2 }}>{isCompanyPage ? 'Deine Company Brands.' : 'Deine Personal Brands.'}</h1>
         <p style={{ fontSize:13, color:'var(--text-muted)', margin:'8px 0 0', lineHeight:1.6 }}>{isCompanyPage ? 'Die Markenstimme deines Unternehmens — für Page-Content, Profiltexte und CI-konforme Visuals.' : 'Markenstimme, die jeden generierten Text trägt. Eine ist aktiv, weitere als Vorlagen.'}</p>
       </div>
@@ -1564,7 +1564,7 @@ export default function BrandVoice({ session, brandType = 'personal' }) {
       <div style={{ display:'flex', alignItems:'flex-start', gap:14, marginBottom:18 }}>
         <button onClick={()=>{ setView('list'); setEdit(null) }} style={{ background:'transparent', border:'1.5px solid var(--border)', borderRadius:10, width:36, height:36, fontSize:16, cursor:'pointer', color:'var(--text-muted)', display:'inline-flex', alignItems:'center', justifyContent:'center', flexShrink:0 }}>←</button>
         <div style={{ flex:1, minWidth:0 }}>
-          <div style={{ fontSize:12, fontWeight:700, letterSpacing:'1.6px', textTransform:'uppercase', fontFamily:'Inter, sans-serif', color:'var(--primary, #003060)', marginBottom:2 }}>Branding · Schritt 1 von 3</div>
+          <div className="lk-eyebrow" style={{ fontSize:12, fontWeight:700, letterSpacing:'1.6px', textTransform:'uppercase', fontFamily:'Inter, sans-serif', color:'var(--primary, #003060)', marginBottom:2 }}>Branding · Schritt 1 von 3</div>
           <div style={{ fontSize:22, fontWeight:700, letterSpacing:'-.2px', lineHeight:1.2 }}>{editIsCompany ? 'Company Brand bearbeiten' : 'Personal Brand bearbeiten'}</div>
           <div style={{ fontSize:12, color:'var(--text-muted)', marginTop:2 }}>{editIsCompany ? 'Markenstimme des Unternehmens — für Page-Content, Profiltexte und Visuals' : 'Persönlicher Kommunikationsstil für alle LinkedIn-Inhalte'}</div>
         </div>

@@ -233,7 +233,7 @@ export default function Strike2PersonaWizard() {
         <button type="button" onClick={() => { doSave(); navigate('/branding/strike2-personas') }} title="Zurück zur Übersicht"
           style={{ background: 'transparent', border: '1.5px solid var(--border)', borderRadius: 10, width: 36, height: 36, fontSize: 16, cursor: 'pointer', color: 'var(--text-muted)', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>←</button>
         <div style={{ flex: 1, minWidth: 0 }}>
-          <div style={{ fontSize:12, fontWeight:700, letterSpacing:'1.6px', textTransform:'uppercase', fontFamily:'Inter, sans-serif', color:'#F97316', marginBottom:2 }}>Branding · Strike2 Zielgruppe</div>
+          <div className="lk-eyebrow" style={{ fontSize:12, fontWeight:700, letterSpacing:'1.6px', textTransform:'uppercase', fontFamily:'Inter, sans-serif', color:'#F97316', marginBottom:2 }}>Branding · Strike2 Zielgruppe</div>
           <h1 style={{ fontSize: 22, fontWeight: 700, letterSpacing: '-0.2px', lineHeight: 1.2, margin: 0, color: 'var(--text-primary)' }}>{step.title}</h1>
           <p style={{ fontSize: 13, color: 'var(--text-muted)', margin: '2px 0 0' }}>{step.subtitle}</p>
         </div>

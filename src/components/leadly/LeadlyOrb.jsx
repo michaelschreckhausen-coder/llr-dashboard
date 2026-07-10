@@ -78,9 +78,9 @@ export default function LeadlyOrb({ state = 'idle', size = 96 }) {
         <svg viewBox="0 0 512 512" width={s} height={s} style={{ display: 'block' }}>
           <defs>
             <radialGradient id={`lkbh${uid}`} cx="38%" cy="30%" r="85%">
-              <stop offset="0%" stopColor="#5B8CFF" />
-              <stop offset="45%" stopColor="#3563E9" />
-              <stop offset="100%" stopColor="#1B2F7A" />
+              <stop offset="0%" stopColor="#3FC4EC" />
+              <stop offset="45%" stopColor="#0A6FB0" />
+              <stop offset="100%" stopColor="#003060" />
             </radialGradient>
           </defs>
           <circle cx="256" cy="256" r="240" fill={`url(#lkbh${uid})`} />
@@ -123,22 +123,22 @@ export default function LeadlyOrb({ state = 'idle', size = 96 }) {
         style={{ display: 'block', animation: `${happy ? 'lkb-bob 1.1s' : 'lkb-float 4.5s'} ease-in-out infinite` }}>
         <defs>
           <radialGradient id={`lkbh${uid}`} cx="38%" cy="30%" r="85%">
-            <stop offset="0%" stopColor="#5B8CFF" />
-            <stop offset="45%" stopColor="#3563E9" />
-            <stop offset="100%" stopColor="#1B2F7A" />
+            <stop offset="0%" stopColor="#3FC4EC" />
+            <stop offset="45%" stopColor="#0A6FB0" />
+            <stop offset="100%" stopColor="#003060" />
           </radialGradient>
           <linearGradient id={`lkbb${uid}`} x1="0" y1="0" x2="0" y2="1">
-            <stop offset="0%" stopColor="#2E56D4" />
-            <stop offset="100%" stopColor="#1B2F7A" />
+            <stop offset="0%" stopColor="#0A6FB0" />
+            <stop offset="100%" stopColor="#003060" />
           </linearGradient>
           <linearGradient id={`lkbg${uid}`} x1="0" y1="0" x2="0" y2="1">
             <stop offset="0%" stopColor="#FFFFFF" />
-            <stop offset="100%" stopColor="#DFE9FF" />
+            <stop offset="100%" stopColor="#DCEFFB" />
           </linearGradient>
         </defs>
 
         {/* Bodenschatten + Körper mit Kragen */}
-        <ellipse cx="256" cy="478" rx="150" ry="16" fill="#0B1F4E" opacity="0.16" />
+        <ellipse cx="256" cy="478" rx="150" ry="16" fill="#002048" opacity="0.16" />
         <path d="M 128 470 Q 128 392 256 392 Q 384 392 384 470 Z" fill={`url(#lkbb${uid})`} />
         <path d="M 226 392 L 256 424 L 286 392 Q 256 404 226 392 Z" fill="#FFFFFF" opacity="0.9" />
 
@@ -147,12 +147,12 @@ export default function LeadlyOrb({ state = 'idle', size = 96 }) {
         <ellipse cx="192" cy="134" rx="62" ry="36" fill="#FFFFFF" opacity="0.2" transform="rotate(-18 192 134)" />
 
         {/* Headset: Bügel, Ohrpolster, Mikrofonarm */}
-        <path d="M 122 196 A 138 138 0 0 1 390 196" fill="none" stroke="#E9EFFB" strokeWidth="20" strokeLinecap="round" />
-        <rect x="96" y="180" width="34" height="62" rx="16" fill="#E9EFFB" />
-        <rect x="382" y="180" width="34" height="62" rx="16" fill="#E9EFFB" />
-        <path d="M 113 244 Q 118 320 190 330" fill="none" stroke="#E9EFFB" strokeWidth="11" strokeLinecap="round" />
-        <circle cx="196" cy="331" r="15" fill="#E9EFFB" />
-        <circle cx="196" cy="331" r="7" fill="#3563E9" />
+        <path d="M 122 196 A 138 138 0 0 1 390 196" fill="none" stroke="#EAF8FE" strokeWidth="20" strokeLinecap="round" />
+        <rect x="96" y="180" width="34" height="62" rx="16" fill="#EAF8FE" />
+        <rect x="382" y="180" width="34" height="62" rx="16" fill="#EAF8FE" />
+        <path d="M 113 244 Q 118 320 190 330" fill="none" stroke="#EAF8FE" strokeWidth="11" strokeLinecap="round" />
+        <circle cx="196" cy="331" r="15" fill="#EAF8FE" />
+        <circle cx="196" cy="331" r="7" fill="#0A6FB0" />
 
         {/* Augenbrauen */}
         <rect x="170" y="140" width="38" height="10" rx="5" fill="#FFFFFF"
@@ -176,8 +176,8 @@ export default function LeadlyOrb({ state = 'idle', size = 96 }) {
         </g>
 
         {/* Wangen */}
-        <ellipse cx="152" cy="292" rx="21" ry="12" fill="#8FB0FF" opacity={happy ? 0.85 : 0.55} style={{ transition: 'opacity 0.3s' }} />
-        <ellipse cx="360" cy="292" rx="21" ry="12" fill="#8FB0FF" opacity={happy ? 0.85 : 0.55} style={{ transition: 'opacity 0.3s' }} />
+        <ellipse cx="152" cy="292" rx="21" ry="12" fill="#8FDCF2" opacity={happy ? 0.85 : 0.55} style={{ transition: 'opacity 0.3s' }} />
+        <ellipse cx="360" cy="292" rx="21" ry="12" fill="#8FDCF2" opacity={happy ? 0.85 : 0.55} style={{ transition: 'opacity 0.3s' }} />
 
         {/* Mund: Lächeln (idle/denken) · offener Mund (sprechen/freuen) */}
         {speaking ? (

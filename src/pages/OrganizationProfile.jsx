@@ -366,7 +366,7 @@ export default function OrganizationProfile({ session }) {
             ) : '🏢'}
           </div>
           <div style={{ flex: 1, minWidth: 0 }}>
-            <div style={{ fontSize:12, fontWeight:700, letterSpacing:'1.6px', textTransform:'uppercase', fontFamily:'Inter, sans-serif', color:'var(--primary, #003060)', marginBottom:2 }}>CRM · Unternehmen</div>
+            <div className="lk-eyebrow" style={{ fontSize:12, fontWeight:700, letterSpacing:'1.6px', textTransform:'uppercase', fontFamily:'Inter, sans-serif', color:'var(--primary, #003060)', marginBottom:2 }}>CRM · Unternehmen</div>
             <div style={{ display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: 10, marginBottom: 4 }}>
               <h1 style={{ fontSize: 26, fontWeight: 700, letterSpacing: '-0.3px', lineHeight: 1.2, color: 'var(--text-primary, #111827)', margin: 0 }}>{org.name}</h1>
               {sponsoringActive && isSponsor && (

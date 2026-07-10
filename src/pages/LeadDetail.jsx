@@ -566,7 +566,7 @@ export default function LeadDetail({ lead: leadProp }) {
               {/* Read-only Display — Edit erfolgt jetzt über LeadEditModal (Click auf 'Bearbeiten').
                   Status ist ein Dropdown (LeadStatusPill + StatusPicker) direkt neben dem Namen,
                   statt des fruehern Chevron-Pipeline-Steppers. */}
-              <div style={{ fontSize:12, fontWeight:700, letterSpacing:'1.6px', textTransform:'uppercase', fontFamily:'Inter, sans-serif', color:'var(--primary, #003060)', marginBottom:2 }}>CRM · Kontakt</div>
+              <div className="lk-eyebrow" style={{ fontSize:12, fontWeight:700, letterSpacing:'1.6px', textTransform:'uppercase', fontFamily:'Inter, sans-serif', color:'var(--primary, #003060)', marginBottom:2 }}>CRM · Kontakt</div>
               <div style={{ display:'flex', alignItems:'center', gap:10, flexWrap:'wrap' }}>
                 <h1 style={{ fontSize:26, fontWeight:700, letterSpacing:'-0.3px', lineHeight:1.2, margin:0, color: displayName ? COLORS.textPrimary : COLORS.textTertiary }}>
                   {displayName || 'Name fehlt'}
