@@ -838,7 +838,7 @@ async function executeTool(
           .eq('archived', false)
           .order('updated_at', { ascending: false })
           .limit(limit);
-        if (ctx.teamId) q = q.eq('team_id', ctx.teamId); // TEAM-ISOLATION: nur Leads des aktiven Teams
+        q = ctx.teamId ? q.eq('team_id', ctx.teamId) : q.eq('user_id', ctx.userId).is('team_id', null); // TEAM-ISOLATION: nur aktives Team, sonst Solo-Fallback (nie ungefiltert)
         if (input.status)    q = q.eq('status', input.status);
         if (input.owner_id)  q = q.eq('owner_id', input.owner_id);
         if (typeof input.score_min === 'number') q = q.gte('lead_score', input.score_min);
@@ -864,7 +864,7 @@ async function executeTool(
           .select('id, title, due_date, status, priority, lead_id')
           .order('due_date', { ascending: true, nullsFirst: false })
           .limit(limit);
-        if (ctx.teamId) q = q.eq('team_id', ctx.teamId); // TEAM-ISOLATION
+        q = ctx.teamId ? q.eq('team_id', ctx.teamId) : q.eq('created_by', ctx.userId).is('team_id', null); // TEAM-ISOLATION: nie ungefiltert
         if (filter !== 'all') q = q.neq('status', 'done');
         if (filter === 'overdue')    q = q.lt('due_date', today);
         else if (filter === 'today') q = q.eq('due_date', today);
@@ -1159,18 +1159,28 @@ async function executeTool(
 
 // ─── Briefing-Builder ───────────────────────────────────────────────────────
 
-async function buildBriefingContext(supabase: ReturnType<typeof createClient>) {
+async function buildBriefingContext(
+  supabase: ReturnType<typeof createClient>,
+  ctx: { userId: string; teamId: string | null },
+) {
   const today = new Date().toISOString().split('T')[0];
   const tomorrow = new Date(Date.now() + 86400000).toISOString().split('T')[0];
+  // TEAM-ISOLATION (oberstes Gebot): RLS allein zeigt Multi-Team-Usern die
+  // Daten ALLER ihrer Teams. Deshalb immer explizit aufs aktive Team filtern;
+  // ohne Team: Solo-Fallback (eigene Rows ohne team_id) — wie useDashboardData.
+  // deno-lint-ignore no-explicit-any
+  const scope = (q: any, ownerCol = 'user_id') => ctx.teamId
+    ? q.eq('team_id', ctx.teamId)
+    : q.eq(ownerCol, ctx.userId).is('team_id', null);
   const [overdueRes, todayRes, hotRes, dealsRes, postsDueRes, draftsRes] = await Promise.all([
-    supabase.from('lead_tasks').select('id, title, lead_id, due_date').eq('status', 'open').lt('due_date', today).limit(10),
-    supabase.from('lead_tasks').select('id, title, lead_id, due_date').eq('status', 'open').eq('due_date', today).limit(10),
-    supabase.from('leads').select('id, first_name, last_name, company, lead_score').gte('lead_score', 70).eq('archived', false).limit(5),
-    supabase.from('deals').select('id, title, value, stage').not('stage', 'in', '("verloren","gewonnen","kein_deal")').limit(5),
+    scope(supabase.from('lead_tasks').select('id, title, lead_id, due_date').eq('status', 'open').lt('due_date', today).limit(10), 'created_by'),
+    scope(supabase.from('lead_tasks').select('id, title, lead_id, due_date').eq('status', 'open').eq('due_date', today).limit(10), 'created_by'),
+    scope(supabase.from('leads').select('id, first_name, last_name, company, lead_score').gte('lead_score', 70).eq('archived', false).limit(5)),
+    scope(supabase.from('deals').select('id, title, value, stage').not('stage', 'in', '("verloren","gewonnen","kein_deal")').limit(5), 'created_by'),
     // Redaktionsplan: heute fällige ODER überfällige (terminiert, aber nicht veröffentlicht) Beiträge
-    supabase.from('content_posts').select('id, title, status, scheduled_at').neq('status', 'published').not('scheduled_at', 'is', null).lt('scheduled_at', tomorrow).limit(5),
+    scope(supabase.from('content_posts').select('id, title, status, scheduled_at').neq('status', 'published').not('scheduled_at', 'is', null).lt('scheduled_at', tomorrow).limit(5)),
     // Redaktionsplan: unterminierte Entwürfe/Reviews (liegengeblieben)
-    supabase.from('content_posts').select('id, title, status').in('status', ['draft', 'in_review', 'approved']).is('scheduled_at', null).limit(5),
+    scope(supabase.from('content_posts').select('id, title, status').in('status', ['draft', 'in_review', 'approved']).is('scheduled_at', null).limit(5)),
   ]);
   return {
     overdue_count: overdueRes.data?.length || 0,
@@ -1332,12 +1342,15 @@ serve(async (req) => {
     if (mode === 'briefing') {
       const today = new Date().toISOString().split('T')[0];
       // Falls existing briefing für heute → direkt zurück (kein neuer LLM-Call).
-      const { data: existing } = await supabase
+      let lookupQ = supabase
         .from('assistant_briefings')
         .select('briefing_text, context_json, briefing_date, read_at')
         .eq('user_id', userId)
-        .eq('briefing_date', today)
-        .maybeSingle();
+        .eq('briefing_date', today);
+      // TEAM-ISOLATION: Briefing-Cache ist pro Team — nie das Briefing eines
+      // anderen Teams ausliefern.
+      lookupQ = ctx.teamId ? lookupQ.eq('team_id', ctx.teamId) : lookupQ.is('team_id', null);
+      const { data: existing } = await lookupQ.maybeSingle();
       if (existing) {
         return json({
           briefing_text: existing.briefing_text,
@@ -1347,18 +1360,19 @@ serve(async (req) => {
         });
       }
 
-      const context = await buildBriefingContext(supabase);
+      const context = await buildBriefingContext(supabase, ctx);
       const total = context.overdue_count + context.today_count + context.hot_count + context.posts_due_count + context.content_drafts_count;
 
       const admin = createClient(SUPABASE_URL, SUPABASE_SERVICE_KEY);
       const persistBriefing = async (text: string) => {
-        await admin.from('assistant_briefings').upsert({
-          user_id: userId,
-          team_id: teamId,
-          briefing_date: today,
-          briefing_text: text,
-          context_json: context,
-        }, { onConflict: 'user_id,briefing_date' });
+        // Manueller Upsert pro (user, team, datum) — der Unique-Index nutzt
+        // COALESCE(team_id, …) und ist für PostgREST-onConflict nicht adressierbar.
+        let exQ = admin.from('assistant_briefings').select('id').eq('user_id', userId).eq('briefing_date', today);
+        exQ = teamId ? exQ.eq('team_id', teamId) : exQ.is('team_id', null);
+        const { data: exRow } = await exQ.maybeSingle();
+        const row = { user_id: userId, team_id: teamId, briefing_date: today, briefing_text: text, context_json: context };
+        if (exRow?.id) await admin.from('assistant_briefings').update(row).eq('id', exRow.id);
+        else await admin.from('assistant_briefings').insert(row);
       };
 
       if (total === 0) {
