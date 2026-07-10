@@ -5,7 +5,7 @@
 import { useEffect, useState, useCallback } from 'react'
 import { supabase } from '../lib/supabase'
 import { useTeam } from '../context/TeamContext'
-import { Plus, Zap, Play, Pause, Square, RefreshCw, Users, AlertTriangle, Activity } from 'lucide-react'
+import { Plus, Zap, Play, Pause, Square, RefreshCw, Users, AlertTriangle, Activity, Archive, RotateCcw, Trash2, X } from 'lucide-react'
 
 const PRIMARY = 'rgb(49,90,231)'
 const PRIMARY_VAR = `var(--wl-primary, ${PRIMARY})`
@@ -44,6 +44,8 @@ export default function LinkedInAutomationNeu({ session }) {
   const [funnel, setFunnel] = useState(null)
   const [flash, setFlash] = useState(null)
   const [creating, setCreating] = useState(false)
+  const [showArchived, setShowArchived] = useState(false)   // Listen-Tab Aktiv/Archiviert
+  const [deleteModal, setDeleteModal] = useState(null)       // Kampagne im Confirm-Dialog
 
   const show = (msg, err) => { setFlash({ msg, err }); setTimeout(() => setFlash(null), 3500) }
 
@@ -98,6 +100,29 @@ export default function LinkedInAutomationNeu({ session }) {
   }
 
   async function setStatus(status) { await saveCampaign({ status }); show(`Kampagne → ${statusLabel[status]}`) }
+
+  async function setArchived(archived) {
+    if (!sel) return
+    const { error } = await supabase.rpc('la_campaign_set_archived', { p_campaign_id: sel.id, p_archived: archived })
+    if (error) { show(error.message, true); return }
+    show(archived ? 'Kampagne archiviert' : 'Kampagne wiederhergestellt')
+    setSel(archived ? null : { ...sel, archived_at: null })
+    load()
+  }
+
+  async function deleteCampaign() {
+    const c = deleteModal
+    if (!c) return
+    const { data, error } = await supabase.rpc('la_campaign_delete', { p_campaign_id: c.id })
+    setDeleteModal(null)
+    if (error) {
+      show(error.message.includes('active') ? 'Erst stoppen — aktive Kampagne kann nicht gelöscht werden' : error.message, true)
+      return
+    }
+    show(`Gelöscht: ${data?.deleted_enrollments ?? 0} Enrollments, ${data?.deleted_jobs ?? 0} Jobs`)
+    if (sel?.id === c.id) setSel(null)
+    load()
+  }
 
   async function saveStep(idx, patch) {
     const st = steps[idx]
@@ -185,14 +210,29 @@ export default function LinkedInAutomationNeu({ session }) {
       <div style={{ display: 'grid', gridTemplateColumns: '320px 1fr', gap: 16, alignItems: 'start' }}>
         {/* Kampagnen-Liste */}
         <div style={{ ...cardStyle, padding: 8 }}>
-          {campaigns.length === 0 && <div style={{ padding: 16, fontSize: 13, color: 'var(--text-muted)' }}>Noch keine Kampagne. Lege eine an.</div>}
-          {campaigns.map(c => (
-            <div key={c.id} onClick={() => setSel(c)} style={{ padding: '10px 12px', borderRadius: 8, cursor: 'pointer', background: sel?.id === c.id ? PRIMARY_VAR + '12' : 'transparent', border: sel?.id === c.id ? `1.5px solid ${PRIMARY_VAR}55` : '1.5px solid transparent', marginBottom: 4 }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 8 }}>
-                <span style={{ fontWeight: 700, fontSize: 13.5 }}>{c.name}</span><Pill status={c.status} />
-              </div>
-            </div>
-          ))}
+          {/* Tabs Aktiv / Archiviert */}
+          {(() => {
+            const activeC = campaigns.filter(c => !c.archived_at)
+            const archivedC = campaigns.filter(c => c.archived_at)
+            const visible = showArchived ? archivedC : activeC
+            const tabStyle = on => ({ flex: 1, padding: '6px 8px', borderRadius: 7, fontSize: 12, fontWeight: 700, cursor: 'pointer', textAlign: 'center', border: 'none', background: on ? PRIMARY_VAR + '18' : 'transparent', color: on ? PRIMARY_VAR : 'var(--text-muted)' })
+            return (
+              <>
+                <div style={{ display: 'flex', gap: 4, marginBottom: 8 }}>
+                  <button style={tabStyle(!showArchived)} onClick={() => setShowArchived(false)}>Aktiv ({activeC.length})</button>
+                  <button style={tabStyle(showArchived)} onClick={() => setShowArchived(true)}>Archiviert ({archivedC.length})</button>
+                </div>
+                {visible.length === 0 && <div style={{ padding: 16, fontSize: 13, color: 'var(--text-muted)' }}>{showArchived ? 'Keine archivierten Kampagnen.' : 'Noch keine Kampagne. Lege eine an.'}</div>}
+                {visible.map(c => (
+                  <div key={c.id} onClick={() => setSel(c)} style={{ padding: '10px 12px', borderRadius: 8, cursor: 'pointer', background: sel?.id === c.id ? PRIMARY_VAR + '12' : 'transparent', border: sel?.id === c.id ? `1.5px solid ${PRIMARY_VAR}55` : '1.5px solid transparent', marginBottom: 4 }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 8 }}>
+                      <span style={{ fontWeight: 700, fontSize: 13.5, display: 'inline-flex', alignItems: 'center', gap: 6 }}>{c.archived_at && <Archive size={12} color="var(--text-muted)" />}{c.name}</span><Pill status={c.status} />
+                    </div>
+                  </div>
+                ))}
+              </>
+            )
+          })()}
         </div>
 
         {/* Detail: Monitor + Builder */}
@@ -211,10 +251,20 @@ export default function LinkedInAutomationNeu({ session }) {
             <div style={cardStyle}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 14 }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}><b style={{ fontSize: 15 }}>{sel.name}</b><Pill status={sel.status} /></div>
-                <div style={{ display: 'flex', gap: 6 }}>
+                <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
                   {sel.status !== 'active' && <button style={primaryBtn} onClick={() => setStatus('active')}><Play size={14} /> Aktivieren</button>}
                   {sel.status === 'active' && <button style={ghostBtn} onClick={() => setStatus('paused')}><Pause size={13} /> Pausieren</button>}
                   <button style={ghostBtn} onClick={() => setStatus('completed')}><Square size={13} /> Stoppen</button>
+                  {sel.archived_at
+                    ? <button style={ghostBtn} onClick={() => setArchived(false)}><RotateCcw size={13} /> Wiederherstellen</button>
+                    : <button style={ghostBtn} onClick={() => setArchived(true)}><Archive size={13} /> Archivieren</button>}
+                  <button
+                    style={{ ...ghostBtn, color: sel.status === 'active' ? '#9CA3AF' : '#DC2626', borderColor: sel.status === 'active' ? '#E4E7EC' : '#FECACA', cursor: sel.status === 'active' ? 'not-allowed' : 'pointer' }}
+                    disabled={sel.status === 'active'}
+                    title={sel.status === 'active' ? 'Erst stoppen' : 'Kampagne löschen'}
+                    onClick={() => setDeleteModal(sel)}>
+                    <Trash2 size={13} /> Löschen
+                  </button>
                 </div>
               </div>
               <div style={{ display: 'flex', gap: 8 }}>
@@ -305,6 +355,36 @@ export default function LinkedInAutomationNeu({ session }) {
           </div>
         )}
       </div>
+
+      {/* Löschen-Confirm-Dialog (eigenes Modal, kein window.confirm) */}
+      {deleteModal && (() => {
+        const enr = funnel?.enrollment_total || 0
+        const pending = funnel?.jobs?.pending || 0
+        const sent = Object.values(funnel?.done_by_action || {}).reduce((a, b) => a + b, 0)
+        return (
+          <div onClick={() => setDeleteModal(null)} style={{ position: 'fixed', inset: 0, background: 'rgba(17,24,39,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 200 }}>
+            <div onClick={e => e.stopPropagation()} style={{ background: 'var(--surface, #fff)', borderRadius: 14, padding: 24, width: 440, maxWidth: '92vw', boxShadow: '0 20px 60px rgba(0,0,0,0.3)' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 12 }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}><Trash2 size={18} color="#DC2626" /><b style={{ fontSize: 16 }}>Kampagne löschen?</b></div>
+                <button style={{ ...ghostBtn, padding: 6 }} onClick={() => setDeleteModal(null)}><X size={15} /></button>
+              </div>
+              <p style={{ fontSize: 13.5, color: 'var(--text-strong)', margin: '0 0 12px' }}>
+                „<b>{deleteModal.name}</b>" wird endgültig gelöscht — inklusive <b>{enr} Enrollments</b> und <b>{pending} offener Jobs</b>. Das kann nicht rückgängig gemacht werden.
+              </p>
+              {sent > 0 && (
+                <div style={{ display: 'flex', gap: 8, alignItems: 'flex-start', fontSize: 12.5, color: '#B45309', background: '#FFFBEB', border: '1px solid #FDE68A', borderRadius: 8, padding: '10px 12px', marginBottom: 14 }}>
+                  <AlertTriangle size={15} style={{ flexShrink: 0, marginTop: 1 }} />
+                  <span><b>{sent} bereits gesendete Aktionen</b> (Invites/Nachrichten) bleiben bei LinkedIn bestehen — das Löschen entfernt nur die Kampagnen-Daten hier, zieht nichts bei LinkedIn zurück.</span>
+                </div>
+              )}
+              <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
+                <button style={ghostBtn} onClick={() => setDeleteModal(null)}>Abbrechen</button>
+                <button style={{ ...primaryBtn, background: '#DC2626' }} onClick={deleteCampaign}><Trash2 size={14} /> Endgültig löschen</button>
+              </div>
+            </div>
+          </div>
+        )
+      })()}
 
       {flash && <div style={{ position: 'fixed', bottom: 24, left: '50%', transform: 'translateX(-50%)', background: flash.err ? '#DC2626' : '#111827', color: '#fff', padding: '10px 18px', borderRadius: 10, fontSize: 13, fontWeight: 600, zIndex: 100 }}>{flash.msg}</div>}
     </div></div>
