@@ -97,3 +97,51 @@ export async function sendMessage(account_id: string, provider_id: string, text:
   try { data = txt ? (JSON.parse(txt) as ChatStarted) : ({} as ChatStarted); } catch { data = ({} as ChatStarted); }
   return { ok: true, data };
 }
+
+// ── Audiences (P3): Suche + Relations. Rückgabe normalisiert auf Person. ──────
+export interface Person {
+  provider_id: string | null; public_identifier: string | null;
+  name: string | null; headline: string | null; profile_url: string | null; raw: unknown;
+}
+export interface Page { items: Person[]; cursor: string | null; }
+
+const KIND_TO_API: Record<string, string> = {
+  search_classic: "classic", search_salesnav: "sales_navigator", search_recruiter: "recruiter",
+};
+
+function normalizePerson(it: any): Person {
+  const public_identifier = it?.public_identifier ?? it?.public_id ?? null;
+  const profile_url = it?.public_profile_url ?? it?.profile_url
+    ?? (public_identifier ? `https://www.linkedin.com/in/${public_identifier}` : null);
+  const name = it?.name ?? ([it?.first_name, it?.last_name].filter(Boolean).join(" ") || null);
+  return {
+    provider_id: it?.provider_id ?? it?.member_id ?? null,   // relations: member_id; search(classic): provider_id
+    public_identifier, name, headline: it?.headline ?? null, profile_url, raw: it,
+  };
+}
+
+/** POST /linkedin/search — People (classic/sales_navigator/recruiter). Eine Seite (Cursor-Pagination im Caller). */
+export async function search(
+  account_id: string,
+  opts: { kind: string; params?: Record<string, unknown>; search_url?: string; cursor?: string | null; limit?: number },
+): Promise<UnipileResult<Page>> {
+  const api = KIND_TO_API[opts.kind] ?? "classic";
+  const body: Record<string, unknown> = { api, category: "people" }; // P3 = People-Suche (via params überschreibbar)
+  if (opts.search_url) body.url = opts.search_url;
+  if (opts.params) Object.assign(body, opts.params);
+  const limit = opts.limit ?? 50;
+  const path = `/linkedin/search?account_id=${encodeURIComponent(account_id)}&limit=${limit}`
+    + (opts.cursor ? `&cursor=${encodeURIComponent(opts.cursor)}` : "");
+  const r = await call<any>("POST", path, body);
+  if (!r.ok) return r;
+  return { ok: true, data: { items: (r.data?.items ?? []).map(normalizePerson), cursor: r.data?.cursor ?? null } };
+}
+
+/** GET /users/relations — eigene Verbindungen. Eine Seite (Cursor-Pagination im Caller). */
+export async function getRelations(account_id: string, cursor?: string | null, limit = 100): Promise<UnipileResult<Page>> {
+  const path = `/users/relations?account_id=${encodeURIComponent(account_id)}&limit=${limit}`
+    + (cursor ? `&cursor=${encodeURIComponent(cursor)}` : "");
+  const r = await call<any>("GET", path);
+  if (!r.ok) return r;
+  return { ok: true, data: { items: (r.data?.items ?? []).map(normalizePerson), cursor: r.data?.cursor ?? null } };
+}
