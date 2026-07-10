@@ -320,9 +320,22 @@ Deno.serve(async (req) => {
   if (!prompt) return json({ error: "Prompt fehlt" }, 400);
   if (!ASPECT_TO_SIZE[aspectRatio]) return json({ error: "Ungültiges Aspect-Ratio" }, 400);
 
-  // Team-id ermitteln (erstes team_members-Match — Multi-Team-Support kommt später)
-  const { data: tm } = await admin.from("team_members").select("team_id").eq("user_id", user.id).limit(1).single();
-  const teamId = tm?.team_id;
+  // Team-id ermitteln — MANDANTEN-TRENNUNG: bei Multi-Team-Usern nicht
+  // willkürlich das erste Team nehmen, sondern (Priorität) das der gewählten
+  // Brand, sonst body.team_id (wenn Mitglied), sonst erstes Team.
+  let teamId: string | null = null;
+  const bodyTeamId = (body?.team_id as string) || null;
+  if (bodyTeamId && callerTeamIds.includes(bodyTeamId)) {
+    teamId = bodyTeamId;
+  } else {
+    teamId = callerTeamIds[0] || null;
+  }
+  // Wenn eine Brand gewählt ist, gehört das Visual in deren Team (nach
+  // Ownership-Check oben ist die Brand zugreifbar).
+  if (brandVoiceId && brandVoice && (brandVoice as { team_id?: string }).team_id
+      && callerTeamIds.includes((brandVoice as { team_id: string }).team_id)) {
+    teamId = (brandVoice as { team_id: string }).team_id;
+  }
   if (!teamId) return json({ error: "Kein Team gefunden" }, 400);
 
   // Brand Voice + Hero/CI-Images laden (falls gewählt)
@@ -335,7 +348,7 @@ Deno.serve(async (req) => {
   if (brandVoiceId) {
     // MANDANTEN-TRENNUNG: brandVoiceId aus Body via SERVICE_ROLE → Ownership prüfen.
     const bv = await loadBrandVoiceIfAllowed(admin, brandVoiceId, user.id, callerTeamIds,
-      "visual_style_description, visual_color_palette, visual_keywords, visual_negative_prompt, hero_image_paths, ci_image_paths");
+      "visual_style_description, visual_color_palette, visual_keywords, visual_negative_prompt, hero_image_paths, ci_image_paths, team_id");
     if (!bv) return json({ error: "Kein Zugriff auf diese Brand Voice.", code: "brand_forbidden" }, 403);
     brandVoice = bv;
     if (useBVRefs) {

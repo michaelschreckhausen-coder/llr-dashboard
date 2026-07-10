@@ -680,6 +680,24 @@ async function saveMemory(opts: {
 // Bei UPDATE auf Status-Feldern Top-Fallstrick #1 (CLAUDE.md) berücksichtigen:
 // ENUM/CHECK-Felder NICHT mit anderen Feldern bundlen.
 
+// MANDANTEN-TRENNUNG: Bei by-id-Writes sicherstellen, dass die Ziel-Row zum
+// AKTIVEN Team des Aufrufers gehört (RLS erlaubt sonst Writes in ALLEN Teams
+// eines Multi-Team-Users). Gibt Fehlermeldung, wenn die id nicht zum
+// aktiven Team passt.
+async function assertActiveTeam(
+  supabase: ReturnType<typeof createClient>,
+  table: string, id: unknown,
+  ctx: { userId: string; teamId: string | null },
+): Promise<string | null> {
+  if (!id) return 'id fehlt';
+  const { data, error } = await supabase.from(table).select('team_id').eq('id', id).maybeSingle();
+  if (error) return error.message;
+  if (!data) return 'nicht gefunden';
+  const rowTeam = (data as { team_id: string | null }).team_id ?? null;
+  if (rowTeam !== (ctx.teamId ?? null)) return 'gehört nicht zum aktiven Team';
+  return null;
+}
+
 async function executeTool(
   name: string,
   input: Record<string, unknown>,
@@ -741,6 +759,7 @@ async function executeTool(
 
       case "complete_task": {
         if (!input.task_id) return { ok: false, error: 'task_id erforderlich' };
+        { const g = await assertActiveTeam(supabase, 'lead_tasks', input.task_id, ctx); if (g) return { ok: false, error: g }; }
         const { data, error } = await supabase
           .from('lead_tasks').update({ status: 'done' }).eq('id', input.task_id)
           .select('id, title, status').single();
@@ -750,6 +769,7 @@ async function executeTool(
 
       case "update_task": {
         if (!input.task_id) return { ok: false, error: 'task_id erforderlich' };
+        { const g = await assertActiveTeam(supabase, 'lead_tasks', input.task_id, ctx); if (g) return { ok: false, error: g }; }
         // status separat updaten (Top-Fallstrick #1: constrained field nicht bündeln)
         if (input.status !== undefined) {
           const { error: se } = await supabase.from('lead_tasks').update({ status: input.status }).eq('id', input.task_id);
@@ -877,6 +897,7 @@ async function executeTool(
       case "update_lead": {
         const { lead_id, ...rest } = input as Record<string, unknown>;
         if (!lead_id) return { ok: false, error: 'lead_id required' };
+        { const g = await assertActiveTeam(supabase, 'leads', lead_id, ctx); if (g) return { ok: false, error: g }; }
         // Top-Fallstrick #1: status separat updaten
         const { status, ...other } = rest;
         if (Object.keys(other).length > 0) {
@@ -903,6 +924,7 @@ async function executeTool(
       case "update_deal": {
         const { deal_id, ...rest } = input as Record<string, unknown>;
         if (!deal_id) return { ok: false, error: 'deal_id required' };
+        { const g = await assertActiveTeam(supabase, 'deals', deal_id, ctx); if (g) return { ok: false, error: g }; }
         const { stage, ...other } = rest;
         if (Object.keys(other).length > 0) {
           const { error: e1 } = await supabase.from('deals').update(other).eq('id', deal_id);
@@ -924,6 +946,7 @@ async function executeTool(
       case "update_organization": {
         const { organization_id, ...rest } = input as Record<string, unknown>;
         if (!organization_id) return { ok: false, error: 'organization_id required' };
+        { const g = await assertActiveTeam(supabase, 'organizations', organization_id, ctx); if (g) return { ok: false, error: g }; }
         if (Object.keys(rest).length > 0) {
           const { error: e1 } = await supabase.from('organizations').update(rest).eq('id', organization_id);
           if (e1) return { ok: false, error: e1.message };
