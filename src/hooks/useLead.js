@@ -73,6 +73,9 @@ export const LEAD_DETAIL_SELECT = `
   ai_last_analysis_model,
   industry,
   company_size,
+  company_website,
+  enriched_at,
+  enrichment_source,
   created_at,
   updated_at,
   organization:organizations!leads_organization_id_fkey ( id, name )

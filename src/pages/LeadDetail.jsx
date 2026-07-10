@@ -16,7 +16,7 @@ import {
   Plus, Tag, Calendar, Target, Banknote, Workflow, Paperclip, Smile, CalendarCheck,
   TrendingUp, Link as LinkIcon, MessageSquare, FileText, Trash2, ExternalLink, Pencil,
   Building2, Brain, Globe, Link2, Link2Off, Clock, CheckCircle2, Archive, Copy,
-  ChevronDown, Briefcase,
+  ChevronDown, Briefcase, Loader2, AlertCircle,
 } from 'lucide-react';
 import { LeadAvatar } from '../components/leads/LeadAvatar';
 import { LeadStatusPill } from '../components/leads/LeadStatusPill';
@@ -276,6 +276,13 @@ export default function LeadDetail({ lead: leadProp }) {
   const [analyzeLoading, setAnalyzeLoading]   = useState(false);
   const [analysisOverride, setAnalysisOverride] = useState(null);
   const [analysisDismissed, setAnalysisDismissed] = useState(false);
+  // ─── F6 LinkedIn-Anreicherung (unipile-enrich) ────────────────────────
+  // enrichLoading: Button-Spinner. enrichCompany: transiente Firmen-Antwort
+  //   der Edge-Function (persistiert NICHT in leads → nur Session-Anzeige).
+  //   enrichMsg: Flash { type, text, action?:{label,to} }.
+  const [enrichLoading, setEnrichLoading] = useState(false);
+  const [enrichCompany, setEnrichCompany] = useState(null);
+  const [enrichMsg, setEnrichMsg] = useState(null);
   // composerDraft: { channel, subject, body } — wird beim "Im Composer öffnen"-
   // Klick gesetzt + an den Nachrichten-Composer im Aktivitäten-Tab (ActivityTab)
   // via initialDraft-Prop weitergegeben.
@@ -284,7 +291,7 @@ export default function LeadDetail({ lead: leadProp }) {
   const [editModalOpen, setEditModalOpen] = useState(false);
 
   const isMock = params.id === 'mock' || params.id === 'demo';
-  const { lead: fetchedLead, isLoading, error, updateLead } = useLead(leadProp || isMock ? null : params.id);
+  const { lead: fetchedLead, isLoading, error, updateLead, refetch } = useLead(leadProp || isMock ? null : params.id);
   const lead = leadProp || (isMock ? MOCK_LEAD : fetchedLead);
   const { members } = useTeam() || {};
 
@@ -407,6 +414,52 @@ export default function LeadDetail({ lead: leadProp }) {
       setAnalyzeLoading(false);
     }
   }, [lead, isMock]);
+
+  // ─── F6 LinkedIn-Anreicherung ─────────────────────────────────────────
+  // Klick → Edge-Function `unipile-enrich` (Body { lead_id }). Reichert den
+  // Lead per Unipile-Profil an (headline/job_title/company/location/industry/
+  // li_about_summary/company_website/enriched_at) und liefert optional die
+  // Firmen-Antwort transient zurück. Danach refetch() für die persistierten Felder.
+  const runEnrich = useCallback(async () => {
+    if (!lead || isMock) return;
+    if (!lead.linkedin_url) {
+      setEnrichMsg({ type:'error', text:'Für diesen Lead ist keine LinkedIn-URL hinterlegt.' });
+      return;
+    }
+    setEnrichLoading(true);
+    setEnrichMsg(null);
+    try {
+      const { data, error: invokeErr } = await supabase.functions.invoke('unipile-enrich', {
+        body: { lead_id: lead.id },
+      });
+      if (invokeErr) {
+        // functions.invoke legt den non-2xx-Body in error.context ab (Muster wie LinkedInSuche.jsx).
+        let body = null;
+        try { body = await invokeErr.context?.json?.(); } catch { /* Body evtl. schon konsumiert */ }
+        const status = invokeErr.context?.status;
+        if (status === 403 || body?.error === 'no_addon') {
+          setEnrichMsg({ type:'error', text:'Das Automatisierung-Addon ist nicht aktiv.', action:{ label:'Addon aktivieren', to:'/marketplace' } });
+        } else if (status === 409) {
+          setEnrichMsg({ type:'error', text:'Kein aktiver LinkedIn-Account verbunden.', action:{ label:'LinkedIn verbinden', to:'/settings/linkedin' } });
+        } else if (status === 400) {
+          setEnrichMsg({ type:'error', text:'Kein LinkedIn-Identifier aus der URL ableitbar.' });
+        } else if (status === 429 || body?.rate_limited) {
+          setEnrichMsg({ type:'error', text:'Rate-Limit erreicht — bitte später erneut versuchen.' });
+        } else {
+          setEnrichMsg({ type:'error', text: body?.error || ('Anreicherung fehlgeschlagen: ' + invokeErr.message) });
+        }
+        return;
+      }
+      if (data?.error) { setEnrichMsg({ type:'error', text: data.error }); return; }
+      setEnrichCompany(data?.company ?? null);
+      await refetch?.();   // aktualisiert headline/job_title/company/location/industry/li_about_summary/company_website/enriched_at
+      setEnrichMsg({ type:'success', text:'Lead angereichert.' });
+    } catch (e) {
+      setEnrichMsg({ type:'error', text:'Anreicherung fehlgeschlagen: ' + (e?.message || String(e)) });
+    } finally {
+      setEnrichLoading(false);
+    }
+  }, [lead, isMock, refetch]);
 
   const handleAnalyze = useCallback(() => runAnalyze(false), [runAnalyze]);
   const handleReanalyze = useCallback(() => {
@@ -612,6 +665,12 @@ export default function LeadDetail({ lead: leadProp }) {
             onReanalyze={handleReanalyze}
             onUseOutreach={handleUseOutreach}
             onJumpTab={handleTabChange}
+            onEnrich={runEnrich}
+            enrichLoading={enrichLoading}
+            enrichCompany={enrichCompany}
+            enrichMsg={enrichMsg}
+            canEnrich={!!lead.linkedin_url}
+            enrichedAt={lead.enriched_at}
           />
         </aside>
 
@@ -728,7 +787,7 @@ function SummaryRail({ lead, owner, navigate, onOpenOwnerPicker, updateLead }) {
 
 // ─── RelatedRail (rechte Spalte) ────────────────────────────────────────────
 // Verknuepfte Datensaetze: Unternehmen, Deals, Aufgaben, KI-Analyse-Kurzfassung.
-function RelatedRail({ lead, navigate, refreshKey, analysis, analyzeLoading, onAnalyze, onReanalyze, onUseOutreach, onJumpTab }) {
+function RelatedRail({ lead, navigate, refreshKey, analysis, analyzeLoading, onAnalyze, onReanalyze, onUseOutreach, onJumpTab, onEnrich, enrichLoading, enrichCompany, enrichMsg, canEnrich, enrichedAt }) {
   const railAddBtn = { background:'none', border:'none', cursor:'pointer', color: COLORS.textTertiary, padding:0, display:'inline-flex' };
   const miniCardStyle = { padding:'8px 10px', borderRadius: RADIUS.md, border:`0.5px solid ${COLORS.borderSubtle}`, marginTop:8, cursor:'pointer' };
   const [deals, setDeals] = useState([]);
@@ -838,6 +897,71 @@ function RelatedRail({ lead, navigate, refreshKey, analysis, analyzeLoading, onA
             style={{ ...secondaryBtnStyle, width:'100%', justifyContent:'center', opacity: analyzeLoading ? 0.6 : 1 }}>
             <Sparkles size={14} /> {analyzeLoading ? 'Analysiere…' : 'Analysieren'}
           </button>
+        )}
+      </div>
+
+      {/* ─── F6 LinkedIn-Anreicherung ─────────────────────────────────── */}
+      <div style={railCardStyle}>
+        <div style={railHeadStyle}><IcLinkedin size={14} color={COLORS.textTertiary} /><span style={railTitleStyle}>LinkedIn-Anreicherung</span></div>
+
+        {enrichedAt && (
+          <div style={{ fontSize:11, color: COLORS.textTertiary, marginBottom:10 }}>
+            zuletzt angereichert: {new Date(enrichedAt).toLocaleString('de-DE')}
+          </div>
+        )}
+
+        {enrichMsg && (
+          <div style={{
+            display:'flex', alignItems:'center', gap:8, marginBottom:10, padding:'8px 10px', borderRadius: RADIUS.md, fontSize:12, fontWeight:500,
+            background: enrichMsg.type === 'error' ? '#FEF2F2' : '#F0FDF4',
+            color:      enrichMsg.type === 'error' ? '#B91C1C' : '#15803D',
+            border: `0.5px solid ${enrichMsg.type === 'error' ? '#FECACA' : '#BBF7D0'}`,
+          }}>
+            {enrichMsg.type === 'error' ? <AlertCircle size={14} /> : <CheckCircle2 size={14} />}
+            <span style={{ flex:1 }}>{enrichMsg.text}</span>
+            {enrichMsg.action && (
+              <button type="button" onClick={() => navigate(enrichMsg.action.to)}
+                style={{ ...ghostBtnStyle, height:24, padding:'0 8px', fontSize:11 }}>
+                {enrichMsg.action.label}
+              </button>
+            )}
+          </div>
+        )}
+
+        {canEnrich ? (
+          <button type="button" onClick={onEnrich} disabled={enrichLoading}
+            style={{ ...secondaryBtnStyle, width:'100%', justifyContent:'center', opacity: enrichLoading ? 0.6 : 1 }}>
+            {enrichLoading ? <Loader2 size={14} className="lk-spin" /> : <IcLinkedin size={14} />}
+            {enrichLoading ? 'Reichere an…' : 'Mit LinkedIn anreichern'}
+          </button>
+        ) : (
+          <div style={{ fontSize:12, color: COLORS.textTertiary }}>Keine LinkedIn-URL hinterlegt.</div>
+        )}
+
+        {enrichCompany && (
+          <div style={{ marginTop:12, paddingTop:12, borderTop:`0.5px solid ${COLORS.borderSubtle}` }}>
+            <div style={{ fontSize:12, fontWeight:600, color: COLORS.textPrimary, marginBottom:2 }}>
+              {enrichCompany.name || 'Unternehmen'}
+            </div>
+            {enrichCompany.industry && (<><div style={propLabelStyle}>Branche</div><div style={propValueStyle}>{enrichCompany.industry}</div></>)}
+            {enrichCompany.employee_count != null && (<><div style={propLabelStyle}>Mitarbeiter</div><div style={propValueStyle}>{Number(enrichCompany.employee_count).toLocaleString('de-DE')}</div></>)}
+            {(enrichCompany.hq_location || enrichCompany.headquarters) && (<><div style={propLabelStyle}>Hauptsitz</div><div style={propValueStyle}>{enrichCompany.hq_location || enrichCompany.headquarters}</div></>)}
+            {enrichCompany.website && (
+              <>
+                <div style={propLabelStyle}>Website</div>
+                <div style={propValueStyle}>
+                  <a href={enrichCompany.website} target="_blank" rel="noopener noreferrer"
+                    style={{ color:'var(--wl-primary, rgb(49,90,231))', display:'inline-flex', alignItems:'center', gap:4 }}>
+                    {enrichCompany.website} <ExternalLink size={12} />
+                  </a>
+                </div>
+              </>
+            )}
+            {enrichCompany.description && (<><div style={propLabelStyle}>Über</div><div style={propValueStyle}>{enrichCompany.description}</div></>)}
+            <div style={{ fontSize:11, color: COLORS.textTertiary, marginTop:10 }}>
+              Hinweis: Mitarbeiterzahl und Hauptsitz werden nur hier angezeigt und nach einem Reload nicht gespeichert.
+            </div>
+          </div>
         )}
       </div>
     </>

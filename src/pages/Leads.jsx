@@ -28,7 +28,9 @@ import {
   Inbox, Users as UsersIcon, FolderPlus, Folder, Download, Upload,
   CheckSquare, Square, Archive, Trash2, MoreHorizontal,
   Rows3, Rows2, FileUp, Puzzle, Pencil, ChevronUp, ChevronDown,
+  Loader2,
 } from 'lucide-react';
+import { IcLinkedin } from '../components/leads/IcLinkedin';
 import { EXTENSION_WEBSTORE_URL } from '../lib/leadeskExtension';
 import { LeadsList } from '../components/leads/LeadsList';
 import { LeadsBoard } from '../components/leads/LeadsBoard';
@@ -274,6 +276,9 @@ export default function Leads() {
   const [bulkStagePicker, setBulkStagePicker] = useState(null);
   const [bulkListPicker,  setBulkListPicker]  = useState(null);
   const [bulkEditOpen,    setBulkEditOpen]    = useState(false);
+  // F6 Bulk-Anreicherung
+  const [enrichBusy,     setEnrichBusy]     = useState(false);
+  const [enrichProgress, setEnrichProgress] = useState(null); // { done, total }
   // Dashboard-Block (KPIs + Grafiken) ein-/ausblendbar — persistiert in localStorage
   const [showDash, setShowDash] = useState(() => { try { return localStorage.getItem('leadesk_leads_dashboard') !== '0'; } catch { return true; } });
   const toggleDash = () => setShowDash(v => { const n = !v; try { localStorage.setItem('leadesk_leads_dashboard', n ? '1' : '0'); } catch {} return n; });
@@ -626,6 +631,53 @@ export default function Leads() {
     const subset = leads.filter(l => selectedIds.has(l.id));
     downloadFile(`leads-export-${new Date().toISOString().slice(0,10)}.csv`, leadsToCsv(subset));
   };
+
+  // F6 · Bulk-Anreicherung — sequenziell (NICHT parallel) gegen unipile-enrich.
+  // Nur Leads MIT linkedin_url, Dedup gegen bereits angereicherte (enriched_at),
+  // Cap 25/Durchlauf, ~400ms Pause gegen Rate-Limit, Abbruch bei 429.
+  const ENRICH_CAP = 25;
+  const bulkEnrich = useCallback(async () => {
+    if (selectedIds.size === 0 || enrichBusy) return;
+    const selected = leads.filter(l => selectedIds.has(l.id));
+    // Kandidaten: linkedin_url vorhanden UND noch nicht angereichert.
+    let candidates = selected.filter(l => l.linkedin_url && !l.enriched_at);
+    if (candidates.length === 0) {
+      alert('Keine anzureichernden Kontakte in der Auswahl (LinkedIn-URL fehlt oder bereits angereichert).');
+      return;
+    }
+    let capNote = '';
+    if (candidates.length > ENRICH_CAP) {
+      candidates = candidates.slice(0, ENRICH_CAP);
+      capNote = ` Es werden nur die ersten ${ENRICH_CAP} angereichert.`;
+    }
+    if (!confirm(`${candidates.length} Kontakt(e) mit LinkedIn anreichern?${capNote}`)) return;
+
+    setEnrichBusy(true);
+    setEnrichProgress({ done: 0, total: candidates.length });
+    let done = 0, failed = 0, rateLimited = false;
+    for (const l of candidates) {
+      const { data, error } = await supabase.functions.invoke('unipile-enrich', { body: { lead_id: l.id } });
+      if (error) {  // Fallstrick #12: error prüfen
+        const status = error.context?.status;
+        let body = null; try { body = await error.context?.json?.(); } catch { /* egal */ }
+        if (status === 429 || body?.rate_limited) { rateLimited = true; break; }  // Rate-Limit → Rest abbrechen
+        failed++;
+      } else if (data?.error) {
+        failed++;
+      } else {
+        done++;
+      }
+      setEnrichProgress({ done: done + failed, total: candidates.length });
+      await new Promise(r => setTimeout(r, 400));  // kleine Pause gegen Rate-Limit
+    }
+    setEnrichBusy(false);
+    setEnrichProgress(null);
+    await refetch?.();
+    const msg = rateLimited
+      ? `Rate-Limit erreicht — ${done} angereichert, Rest bitte später.`
+      : `${done} angereichert${failed ? `, ${failed} fehlgeschlagen` : ''}.`;
+    alert(msg);
+  }, [selectedIds, leads, enrichBusy, refetch]);
 
   // Sprint C/2 · Generic Bulk-Edit Apply-Handler
   // payload kommt aus BulkEditModal in einer von zwei Formen:
@@ -1211,6 +1263,9 @@ export default function Leads() {
             onArchive={bulkArchive}
             onExport={bulkExportCsv}
             onClear={clearSelection}
+            onEnrich={bulkEnrich}
+            enrichBusy={enrichBusy}
+            enrichProgress={enrichProgress}
           />
         )}
 
@@ -1475,7 +1530,7 @@ function EmptyStateOnboarding({ onImport, onCreate }) {
 }
 
 // ─── BulkBar ─────────────────────────────────────────────────────────────
-function BulkBar({ count, onStage, onOwner, onList, onArchive, onExport, onEdit, onClear }) {
+function BulkBar({ count, onStage, onOwner, onList, onArchive, onExport, onEdit, onClear, onEnrich, enrichBusy, enrichProgress }) {
   const barStyle = {
     padding:'10px 28px', background: COLORS.primarySoft, color: COLORS.primarySoftFg,
     display:'flex', alignItems:'center', gap:12, borderBottom:`0.5px solid ${COLORS.borderSubtle}`,
@@ -1494,6 +1549,12 @@ function BulkBar({ count, onStage, onOwner, onList, onArchive, onExport, onEdit,
       <button type="button" style={actionBtn} onClick={onStage}>Stage ändern</button>
       <button type="button" style={actionBtn} onClick={onOwner}>Owner setzen</button>
       <button type="button" style={actionBtn} onClick={onList}>In Liste</button>
+      <button type="button" style={{ ...actionBtn, opacity: enrichBusy ? 0.6 : 1 }} onClick={onEnrich} disabled={enrichBusy}
+        title="Ausgewählte Kontakte mit LinkedIn-Daten anreichern (max. 25 pro Durchlauf)">
+        {enrichBusy
+          ? <><Loader2 size={14} className="lk-spin" /> Reichere an{enrichProgress ? ` ${enrichProgress.done}/${enrichProgress.total}` : ''}…</>
+          : <><IcLinkedin size={14} /> Anreichern</>}
+      </button>
       <button type="button" style={actionBtn} onClick={onExport}><Download size={14} /> Export</button>
       <button type="button" style={{ ...actionBtn, color:'#B91C1C' }} onClick={onArchive}>
         <Archive size={14} /> Archivieren
