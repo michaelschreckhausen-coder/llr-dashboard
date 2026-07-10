@@ -206,6 +206,23 @@ export async function linkedinSearch(
   });
 }
 
+// Freitext → LinkedIn-Parameter-ID auflösen (LOCATION/INDUSTRY/COMPANY/SCHOOL/…).
+// GET /api/v1/linkedin/search/parameters?account_id=&type=&keywords= → erstes Match.
+// Nötig weil Classic-People location/industry/company als Array<ID-String> erwartet,
+// NIE Freitext (sonst 400 invalid_parameters / anyOf-Bruch). Kein Match → null (Filter weglassen).
+export async function resolveSearchParameter(
+  conn: UnipileConn,
+  type: "LOCATION" | "INDUSTRY" | "COMPANY" | "SCHOOL" | "SERVICE",
+  keywords: string,
+): Promise<string | null> {
+  const res = await call("GET", "/api/v1/linkedin/search/parameters", {
+    dsn: conn.dsn,
+    query: { account_id: conn.accountId, type, keywords },
+  });
+  const items: any[] = res?.items ?? [];
+  return items.length ? String(items[0].id) : null;
+}
+
 // -- Feature 2: Post veröffentlichen ---------------------------------
 // POST /api/v1/posts — multipart/form-data (NICHT JSON!).
 // Erfolg: 201 -> { object: "PostCreated", post_id: "<numerisch>" }.

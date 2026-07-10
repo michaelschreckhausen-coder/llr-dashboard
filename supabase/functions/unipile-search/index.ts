@@ -16,6 +16,7 @@ import {
   hasAddon,
   identifierFromUrl,
   linkedinSearch,
+  resolveSearchParameter,
   serviceClient,
   UnipileError,
   userClientFromReq,
@@ -67,10 +68,37 @@ Deno.serve(async (req) => {
     // target_list_id zeigt jetzt auf inbox_lists (nicht mehr lead_lists) — Prozess-Vereinheitlichung.
     const targetListId = search?.target_list_id ?? input.target_list_id ?? null;
 
-    // Body für Unipile: entweder Parameter- oder URL-basierte Suche.
-    const body: Record<string, unknown> = searchUrl
-      ? { url: searchUrl }
-      : { api, category, ...params };
+    // Body für Unipile: entweder URL- oder Parameter-basierte Suche.
+    // WICHTIG (Classic/People-Schema): required = api+category; keywords = STRING;
+    // location/industry/company = Array<ID-String> (via /linkedin/search/parameters
+    // aufgelöst, NIE Freitext) — leere/unauflösbare Filter WEGLASSEN, sonst 400 anyOf.
+    let body: Record<string, unknown>;
+    if (searchUrl) {
+      body = { url: searchUrl };
+    } else {
+      body = { api, category };
+      const kw = typeof params.keywords === "string" ? params.keywords.trim() : "";
+      if (kw) body.keywords = kw;
+      // Freitext-Filter nur für Personen-Suche auflösen (Company-Kategorie: nur keywords).
+      if (category === "people") {
+        const filters: Array<[string, "LOCATION" | "INDUSTRY" | "COMPANY"]> = [
+          ["location", "LOCATION"], ["industry", "INDUSTRY"], ["company", "COMPANY"],
+        ];
+        for (const [field, ptype] of filters) {
+          const v = (params as Record<string, unknown>)[field];
+          if (Array.isArray(v)) { if (v.length) body[field] = v; continue; } // schon IDs
+          const raw = typeof v === "string" ? v.trim() : "";
+          if (!raw) continue;
+          try {
+            const id = await resolveSearchParameter(conn, ptype, raw);
+            if (id) body[field] = [id];
+            else console.warn(`[unipile-search] '${raw}' (${ptype}) nicht auflösbar — Filter weggelassen`);
+          } catch (e) {
+            console.warn(`[unipile-search] Parameter-Auflösung '${raw}' (${ptype}) fehlgeschlagen: ${e}`);
+          }
+        }
+      }
+    }
 
     if (search) {
       await sb.from("linkedin_searches")
