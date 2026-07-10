@@ -15,10 +15,19 @@ import React, { useState, useEffect, useCallback } from 'react'
 import { useNavigate } from 'react-router-dom'
 import {
   Search, Plus, Play, Trash2, Save, Users, Building2,
-  ExternalLink, AlertCircle, CheckCircle2, Loader2,
+  ExternalLink, AlertCircle, CheckCircle2, Loader2, UserPlus, Check, MapPin,
 } from 'lucide-react'
 import { supabase } from '../lib/supabase'
 import { useTeam } from '../context/TeamContext'
+
+// Avatar mit Initialen-Fallback (Muster wie LinkedInInbox.jsx).
+const initials = n => (n || '?').trim().split(/\s+/).map(w => w[0]).join('').toUpperCase().substring(0, 2)
+function Avatar({ name, avatar_url, size = 40 }) {
+  const colors = ['#3b82f6', '#8b5cf6', '#10b981', '#f59e0b', '#ef4444', '#0891b2']
+  const bg = colors[(name || '').charCodeAt(0) % colors.length]
+  if (avatar_url) return <img src={avatar_url} alt={name} loading="lazy" decoding="async" style={{ width:size, height:size, borderRadius:'50%', objectFit:'cover', flexShrink:0 }} />
+  return <div style={{ width:size, height:size, borderRadius:'50%', background:bg, display:'flex', alignItems:'center', justifyContent:'center', color:'#fff', fontWeight:800, fontSize:size*0.36, flexShrink:0 }}>{initials(name)}</div>
+}
 
 // ─── Tokens (Alignment mit Automatisierung.jsx / Leads.jsx) ────────────────
 const PRIMARY = 'rgb(49,90,231)'
@@ -68,6 +77,9 @@ export default function LinkedInSuche() {
   const [form, setForm]           = useState(EMPTY_FORM)
   const [flash, setFlash]         = useState(null)      // { type:'error'|'success', text, action?:{label,to} }
   const [lastResult, setLastResult] = useState(null)    // { found, imported, cursor }
+  const [results, setResults]     = useState(null)      // { searchId, searchName, items:[], truncated:bool }
+  const [importState, setImportState] = useState({})    // linkedin_url -> { state:'idle'|'importing'|'done'|'exists', leadId? }
+  const [bulkRunning, setBulkRunning] = useState(false)
 
   useEffect(() => { supabase.auth.getUser().then(({ data }) => setUid(data?.user?.id || null)) }, [])
 
@@ -133,6 +145,8 @@ export default function LinkedInSuche() {
   const runSearch = async (search) => {
     setRunningId(search.id)
     setLastResult(null)
+    setResults(null)
+    setImportState({})
     setFlash(null)
     const { data, error } = await supabase.functions.invoke('unipile-search', { body: { search_id: search.id } })
     if (error) {
@@ -153,9 +167,86 @@ export default function LinkedInSuche() {
       return
     }
     setLastResult(data)   // { ok, found, imported, cursor }
+    const items = Array.isArray(data?.items) ? data.items : []
+    setResults({ searchId: search.id, searchName: search.name, items, truncated: !!data?.preview_truncated })
     setFlash({ type:'success', text:`${data?.found ?? 0} Treffer gefunden, ${data?.imported ?? 0} als Leads importiert.` })
     setRunningId(null)
     fetchSearches()       // aktualisierte results_imported / status / last_run_at
+
+    // Batch-Dedupe: bereits im CRM vorhandene Treffer in einer Query markieren
+    // (statt N Einzelqueries). Dedupe-Schlüssel = leads(user_id, linkedin_url).
+    const urls = [...new Set(items.map(it => it.linkedin_url).filter(Boolean))]
+    if (uid && urls.length) {
+      const { data: existing, error: dErr } = await supabase
+        .from('leads').select('id,linkedin_url').eq('user_id', uid).in('linkedin_url', urls)
+      if (dErr) { console.warn('[linkedin-suche] dedupe-batch:', dErr.message); return }
+      if (existing?.length) {
+        setImportState(prev => {
+          const next = { ...prev }
+          for (const row of existing) next[row.linkedin_url] = { state:'exists', leadId: row.id }
+          return next
+        })
+      }
+    }
+  }
+
+  // Einen Treffer selektiv als Lead übernehmen (mit Einzel-Dedupe-Guard vor Insert).
+  // Gibt true zurück, wenn der Treffer danach im CRM ist (neu oder bereits vorhanden).
+  const importLead = async (item) => {
+    const url = item.linkedin_url
+    const cur = url ? importState[url]?.state : null
+    if (cur === 'done' || cur === 'exists' || cur === 'importing') return true
+    if (url) setImportState(prev => ({ ...prev, [url]: { state:'importing' } }))
+
+    // Dedupe-Guard direkt vor dem Insert (Race-Schutz zusätzlich zum Batch-Check).
+    if (uid && url) {
+      const { data: existing, error: dErr } = await supabase
+        .from('leads').select('id').eq('user_id', uid).eq('linkedin_url', url).maybeSingle()
+      if (dErr) { console.warn('[linkedin-suche] dedupe:', dErr.message) }
+      if (existing?.id) { setImportState(prev => ({ ...prev, [url]: { state:'exists', leadId: existing.id } })); return true }
+    }
+
+    const leadRow = {
+      user_id: uid,
+      team_id: activeTeamId,               // Multi-Tenant: team_id bei jedem Insert (CLAUDE.md)
+      name: item.name || 'Unbekannt',
+      first_name: item.first_name ?? null,
+      last_name: item.last_name ?? null,
+      headline: item.headline ?? null,
+      company: item.company ?? null,
+      job_title: item.job_title ?? null,
+      location: item.location ?? null,
+      linkedin_url: url ?? null,
+      profile_url: url ?? null,
+      avatar_url: item.avatar_url ?? null,
+      status: 'Lead',                      // Fallstrick #2: gültiger Lead-Status (Einzel-Insert, kein .in()-Bulk)
+      source: 'linkedin_search',
+      lead_source: 'linkedin',
+    }
+    const { data: inserted, error } = await supabase.from('leads').insert(leadRow).select('id').maybeSingle()
+    if (error) {   // Fallstrick #12
+      console.warn('[linkedin-suche] lead insert:', error.message)
+      if (url) setImportState(prev => ({ ...prev, [url]: { state:'idle' } }))
+      setFlash({ type:'error', text:'Übernehmen fehlgeschlagen: ' + error.message })
+      return false
+    }
+    if (url) setImportState(prev => ({ ...prev, [url]: { state:'done', leadId: inserted?.id } }))
+    return true
+  }
+
+  const importAll = async () => {
+    if (!results?.items?.length) return
+    setBulkRunning(true)
+    let ok = 0
+    for (const item of results.items) {
+      const url = item.linkedin_url
+      const st = url ? importState[url]?.state : null
+      if (st === 'done' || st === 'exists') { ok++; continue }
+      const res = await importLead(item)
+      if (res) ok++
+    }
+    setBulkRunning(false)
+    setFlash({ type:'success', text:`${ok}/${results.items.length} Treffer im CRM.` })
   }
 
   const deleteSearch = async (id) => {
@@ -325,6 +416,73 @@ export default function LinkedInSuche() {
                 </button>
               </div>
             ))}
+          </div>
+        )}
+
+        {/* Ergebnis-Panel (Phase 1.5) — Treffer anzeigen + selektiv übernehmen */}
+        {results && (
+          <div style={{ marginTop:24 }}>
+            <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', gap:12, marginBottom:10, flexWrap:'wrap' }}>
+              <div style={sectionTitle}><Users size={14} /> Ergebnisse für „{results.searchName}"</div>
+              {results.items.length > 0 && (
+                <button style={{ ...primaryBtnStyle, opacity: bulkRunning ? 0.6 : 1 }} disabled={bulkRunning} onClick={importAll}>
+                  {bulkRunning ? <Loader2 size={15} className="lk-spin" /> : <UserPlus size={15} />} Alle übernehmen
+                </button>
+              )}
+            </div>
+
+            {results.truncated && (
+              <div style={{ fontSize:12, color:'#B45309', background:'#FFFBEB', border:'1px solid #FDE68A', borderRadius:8, padding:'8px 12px', marginBottom:10 }}>
+                Nur die ersten 100 Treffer werden angezeigt.
+              </div>
+            )}
+
+            {results.items.length === 0 ? (
+              <div style={{ ...cardStyle, textAlign:'center', color:'var(--text-muted, #6B7280)', fontSize:13 }}>
+                Keine Treffer zum Anzeigen.
+              </div>
+            ) : (
+              <div style={{ display:'flex', flexDirection:'column', gap:8 }}>
+                {results.items.map((it, idx) => {
+                  const st = it.linkedin_url ? importState[it.linkedin_url] : null
+                  const state = st?.state || 'idle'
+                  return (
+                    <div key={(it.linkedin_url || 'x') + idx} style={{ ...cardStyle, padding:'12px 16px', display:'flex', alignItems:'center', gap:14, flexWrap:'wrap' }}>
+                      <Avatar name={it.name} avatar_url={it.avatar_url} />
+                      <div style={{ flex:1, minWidth:200 }}>
+                        <div style={{ fontSize:14, fontWeight:700, color:'var(--text-strong, #111827)' }}>{it.name || 'Unbekannt'}</div>
+                        {(it.headline || it.job_title) && (
+                          <div style={{ fontSize:12, color:'var(--text-muted, #6B7280)', marginTop:2 }}>
+                            {it.headline || it.job_title}{it.company ? ` · ${it.company}` : ''}
+                          </div>
+                        )}
+                        {it.location && (
+                          <div style={{ fontSize:12, color:'var(--text-muted, #6B7280)', marginTop:2, display:'flex', alignItems:'center', gap:4 }}>
+                            <MapPin size={12} /> {it.location}
+                          </div>
+                        )}
+                      </div>
+                      {it.linkedin_url && (
+                        <a href={it.linkedin_url} target="_blank" rel="noopener noreferrer" style={{ ...ghostBtnStyle, textDecoration:'none' }}>
+                          Profil öffnen <ExternalLink size={13} />
+                        </a>
+                      )}
+                      {state === 'exists' ? (
+                        st?.leadId
+                          ? <button style={{ ...ghostBtnStyle, color:'#15803D', borderColor:'#BBF7D0' }} onClick={() => navigate(`/leads/${st.leadId}`)}>bereits im CRM <ExternalLink size={13} /></button>
+                          : <span style={{ ...ghostBtnStyle, color:'#15803D', borderColor:'#BBF7D0', cursor:'default' }}>bereits im CRM</span>
+                      ) : state === 'done' ? (
+                        <span style={{ ...ghostBtnStyle, color:'#15803D', borderColor:'#BBF7D0', cursor:'default' }}><Check size={14} /> übernommen</span>
+                      ) : (
+                        <button style={{ ...primaryBtnStyle, opacity: state === 'importing' ? 0.6 : 1 }} disabled={state === 'importing'} onClick={() => importLead(it)}>
+                          {state === 'importing' ? <Loader2 size={15} className="lk-spin" /> : <UserPlus size={15} />} Als Lead übernehmen
+                        </button>
+                      )}
+                    </div>
+                  )
+                })}
+              </div>
+            )}
           </div>
         )}
       </div>

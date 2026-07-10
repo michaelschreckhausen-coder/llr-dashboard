@@ -17,7 +17,8 @@ import {
   userClientFromReq,
 } from "../_shared/unipile.ts";
 
-const MAX_PAGES = 5; // Schutz gegen Endlos-Pagination pro Aufruf
+const MAX_PAGES = 5;      // Schutz gegen Endlos-Pagination pro Aufruf
+const PREVIEW_CAP = 100;  // max. Treffer, die als Vorschau (items) zurückgegeben werden
 
 Deno.serve(async (req) => {
   const pre = handlePreflight(req);
@@ -75,13 +76,13 @@ Deno.serve(async (req) => {
     let cursor: string | undefined = search?.last_cursor ?? undefined;
     let imported = 0;
     const seen: any[] = [];
+    const results: Array<Record<string, unknown>> = [];  // gemappte Vorschau-Treffer (Phase 1.5)
 
     for (let page = 0; page < MAX_PAGES; page++) {
       const resp = await linkedinSearch(conn, body, cursor);
       const items: any[] = resp?.items ?? resp?.results ?? resp?.data ?? [];
       for (const it of items) {
         seen.push(it);
-        if (!autoImport || category !== "people") continue;
         // Feldnamen gegen import-unipile-relations/-salesnav verifiziert (2026-07):
         // Unipile liefert public_profile_url (=linkedin_url) bzw. public_identifier.
         const linkedinUrl = it.public_profile_url ?? it.profile_url ?? it.url
@@ -89,10 +90,9 @@ Deno.serve(async (req) => {
         const name = it.name
           || [it.first_name, it.last_name].filter(Boolean).join(" ")
           || "Unbekannt";
-        // Dedupe: Upsert über leads.linkedin_url (Partial-Unique-Index existiert).
-        const leadRow: Record<string, unknown> = {
-          user_id: auth.userId,
-          team_id: conn.teamId,          // team_id von Anfang an (späterer Modul-Lockdown ohne Backfill)
+        // Einheitliches Mapping für Vorschau UND Import (immer gemappt, unabhängig
+        // vom Auto-Import), damit das Frontend die Treffer direkt anzeigen kann.
+        const mapped: Record<string, unknown> = {
           name,
           first_name: it.first_name ?? null,
           last_name: it.last_name ?? null,
@@ -101,9 +101,20 @@ Deno.serve(async (req) => {
           job_title: it.position ?? it.title ?? it.current_positions?.[0]?.role ?? null,
           location: it.location ?? null,
           linkedin_url: linkedinUrl,
-          profile_url: linkedinUrl,
           avatar_url: it.profile_picture_url ?? it.avatar_url ?? null,
-          status: "Lead",              // Fallstrick #2: gültiger Lead-Status
+        };
+        // Vorschau-Liste (gedeckelt) für die Anzeige im Frontend.
+        if (results.length < PREVIEW_CAP) results.push(mapped);
+
+        if (!autoImport || category !== "people") continue;
+
+        // Dedupe: Upsert über leads.linkedin_url (Partial-Unique-Index existiert).
+        const leadRow: Record<string, unknown> = {
+          user_id: auth.userId,
+          team_id: conn.teamId,          // team_id von Anfang an (späterer Modul-Lockdown ohne Backfill)
+          ...mapped,
+          profile_url: linkedinUrl,
+          status: "Lead",               // Fallstrick #2: gültiger Lead-Status
           source: "linkedin_search",
           lead_source: "linkedin",
         };
@@ -139,7 +150,14 @@ Deno.serve(async (req) => {
       }).eq("id", search.id);
     }
 
-    return jsonResponse({ ok: true, found: seen.length, imported, cursor: cursor ?? null });
+    return jsonResponse({
+      ok: true,
+      found: seen.length,
+      imported,
+      items: results,                       // Vorschau-Treffer für die Anzeige (Phase 1.5)
+      preview_truncated: seen.length > results.length,
+      cursor: cursor ?? null,
+    });
   } catch (e) {
     const rateLimited = e instanceof UnipileError && e.isRateLimited;
     console.error(`[unipile-search] ${e}`);
