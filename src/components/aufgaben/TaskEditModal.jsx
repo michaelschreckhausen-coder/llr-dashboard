@@ -22,7 +22,7 @@ import { TASK_SOURCES } from '../../lib/taskSources'
 import { getCapabilities } from '../../lib/taskSourceCapabilities'
 import MultiAssigneePicker from '../leads/MultiAssigneePicker'
 
-const PRIMARY = 'rgb(49,90,231)'
+const PRIMARY = '#0A6FB0'
 
 const PRIORITY_OPTIONS = [
   { value: 'low',    label: 'Niedrig' },

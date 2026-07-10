@@ -1,7 +1,7 @@
 import React, { useState, useRef, useEffect } from 'react'
 import { useTeam } from '../context/TeamContext'
 
-const PRIMARY = 'var(--wl-primary, rgb(49,90,231))'
+const PRIMARY = 'var(--wl-primary, #0A6FB0)'
 
 const ROLE_LABEL = {
   owner: 'Owner',
@@ -100,7 +100,7 @@ export default function TeamSwitcher({ isCollapsed = false }) {
           background: 'var(--surface, #fff)',
           cursor: 'pointer',
           transition: 'border-color 0.15s, box-shadow 0.15s',
-          boxShadow: open ? '0 0 0 3px rgba(49,90,231,0.10)' : 'none',
+          boxShadow: open ? '0 0 0 3px rgba(10,111,176,0.10)' : 'none',
           fontFamily: 'inherit',
         }}
       >
@@ -170,7 +170,7 @@ export default function TeamSwitcher({ isCollapsed = false }) {
                   width: '100%', padding: '10px 14px',
                   border: 'none',
                   background: isActive
-                    ? 'rgba(49,90,231,0.08)'
+                    ? 'rgba(10,111,176,0.08)'
                     : isFocus ? 'var(--surface-muted, #F8FAFC)' : 'transparent',
                   cursor: 'pointer',
                   textAlign: 'left',

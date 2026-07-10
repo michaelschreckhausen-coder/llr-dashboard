@@ -11,7 +11,7 @@ import { supabase } from '../../lib/supabase'
 import { useTeam } from '../../context/TeamContext'
 import PageHeader from '../../components/PageHeader'
 
-const PRIMARY = 'var(--wl-primary, rgb(49,90,231))'
+const PRIMARY = 'var(--wl-primary, #0A6FB0)'
 const sp = () => supabase.schema('sponsoring')
 
 const STATUS = ['free', 'reserved', 'offered', 'sold', 'expired']
@@ -19,7 +19,7 @@ const STATUS_LABEL = {
   free: 'Frei', reserved: 'Reserviert', offered: 'Angeboten', sold: 'Verkauft', expired: 'Abgelaufen',
 }
 const STATUS_COLOR = {
-  free: '#059669', reserved: '#D97706', offered: '#2563EB', sold: '#7C3AED', expired: '#6B7280',
+  free: '#059669', reserved: '#D97706', offered: '#2563EB', sold: '#003060', expired: '#6B7280',
 }
 
 const UNITS = ['Stück', 'Meter', 'Minute', 'Pauschal']

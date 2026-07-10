@@ -25,7 +25,7 @@ function Linkedin({ size = 24, color = 'currentColor', ...props }) {
   )
 }
 
-const PRIMARY = 'var(--wl-primary, rgb(49,90,231))'
+const PRIMARY = 'var(--wl-primary, #0A6FB0)'
 const sp = () => supabase.schema('sponsoring')
 
 function parse(text) {

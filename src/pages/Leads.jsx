@@ -51,7 +51,7 @@ import { useTeam } from '../context/TeamContext';
 
 // ─── Styles ──────────────────────────────────────────────────────────────
 // Visual aligned mit Deals/Organisationen (siehe pages/Deals.jsx).
-const PRIMARY = 'rgb(49,90,231)';
+const PRIMARY = '#0A6FB0';
 
 const pageOuterStyle = { background: 'var(--surface-canvas, #F8FAFC)', minHeight:'100vh', padding:'24px 16px 60px' };
 const pageStyle = { width:'100%', maxWidth:1100, margin:'0 auto', display:'flex', flexDirection:'column' };
@@ -93,10 +93,10 @@ function EmptyBars({ text }) {
 }
 
 // Handgezeichneter Hinweis-Pfeil + Schreibschrift-Label (gespiegelt aus ContentStudio.jsx)
-const scriptHintStyle = { fontFamily:"'Segoe Script','Bradley Hand','Brush Script MT','Comic Sans MS',cursive", fontStyle:'italic', fontSize:16, fontWeight:600, color:'var(--wl-primary, rgb(49,90,231))', whiteSpace:'nowrap', lineHeight:1 };
+const scriptHintStyle = { fontFamily:'Inter, sans-serif', fontSize:13, fontWeight:600, color:'var(--wl-primary, #0A6FB0)', whiteSpace:'nowrap', lineHeight:1 };
 function CurvedArrow() {
   return (
-    <svg width="34" height="24" viewBox="0 0 34 24" fill="none" style={{ color:'var(--wl-primary, rgb(49,90,231))', flexShrink:0 }} aria-hidden="true">
+    <svg width="34" height="24" viewBox="0 0 34 24" fill="none" style={{ color:'var(--wl-primary, #0A6FB0)', flexShrink:0 }} aria-hidden="true">
       <path d="M3 5 C 14 3, 25 7, 30 14" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" fill="none"/>
       <path d="M23 14.5 L 31 15 L 27 8" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" fill="none"/>
     </svg>
@@ -777,9 +777,9 @@ export default function Leads() {
     setListFilter(null);
   };
   const kpis = [
-    { label:'Gesamt Kontakte', value: leads.length,        color: PRIMARY,    bg:'rgba(49,90,231,0.06)', qf:'all',            Icon: UsersIcon },
+    { label:'Gesamt Kontakte', value: leads.length,        color: PRIMARY,    bg:'rgba(10,111,176,0.06)', qf:'all',            Icon: UsersIcon },
     { label:'Hot Kontakte',    value: hotCount,            color:'#DC2626',   bg:'#FEF2F2',              qf:'hot',            Icon: Flame },
-    { label:'Follow-up heute', value: followupTodayCount,  color:'#7C3AED',   bg:'#F5F3FF',              qf:'followup_today', Icon: Clock },
+    { label:'Follow-up heute', value: followupTodayCount,  color:'#003060',   bg:'#F5F3FF',              qf:'followup_today', Icon: Clock },
     { label:'Überfällig',      value: overdueCount,        color:'#D97706',   bg:'#FFFBEB',              qf:'overdue',        Icon: AlertTriangle },
   ];
 
@@ -1449,7 +1449,7 @@ function EmptyStateOnboarding({ onImport, onCreate }) {
           onMouseEnter={(e) => { e.currentTarget.style.borderColor = PRIMARY; }}
           onMouseLeave={(e) => { e.currentTarget.style.borderColor = '#E4E7EC'; }}
           onClick={onImport}>
-          <div style={iconWrap('#EEF2FF', PRIMARY)}><FileUp size={20} /></div>
+          <div style={iconWrap('#EAF6FC', PRIMARY)}><FileUp size={20} /></div>
           <h3 style={cardTitle}>CSV importieren</h3>
           <p style={cardDesc}>Excel-Export, LinkedIn-Sales-Navigator-Liste oder anderer CRM — mit Spalten-Mapping in einem Wizard.</p>
         </button>
@@ -2187,7 +2187,7 @@ function NewLeadModal({ onClose, onSaved, activeTeamId, userId, teamMembers = []
 }
 
 // ─── NewListModal ────────────────────────────────────────────────────────
-const LIST_COLORS = ['#185FA5', '#DC2626', '#D97706', '#059669', '#7C3AED', '#0EA5E9'];
+const LIST_COLORS = ['#185FA5', '#DC2626', '#D97706', '#059669', '#003060', '#0EA5E9'];
 function NewListModal({ activeTeamId, onClose, onSaved }) {
   const [name, setName] = useState('');
   const [color, setColor] = useState(LIST_COLORS[0]);

@@ -37,7 +37,7 @@ const DEFAULT_STAGE_CONFIG = {
   verloren:    { label:'Verloren',     color:'#94a3b8', bg:'#F8FAFC', border:'#E2E8F0', prob:0   },
   stage_custom1:  { label:'Neue Stage 1',          color:'#0891b2', bg:'#ECFEFF', border:'#A5F3FC', prob:25  },
   stage_custom2:  { label:'Neue Stage 2',          color:'#ec4899', bg:'#FDF2F8', border:'#F9A8D4', prob:45  },
-  stage_custom3:  { label:'Neue Stage 3',          color:'#6366f1', bg:'#EEF2FF', border:'#C7D2FE', prob:65  },
+  stage_custom3:  { label:'Neue Stage 3',          color:'#6366f1', bg:'#EAF6FC', border:'#C7D2FE', prob:65  },
 }
 
 // Lade/Speichere Stage-Labels in localStorage (user-spezifisch)
@@ -372,7 +372,7 @@ const [stage, setStage] = useState(lead.deal_stage || 'kein_deal')
           {/* AI Insights */}
           {(lead.ai_need_detected || (lead.ai_pain_points && lead.ai_pain_points.length > 0)) && (
             <div style={{ marginBottom:20, background:'linear-gradient(135deg,rgba(139,92,246,0.08),rgba(59,130,246,0.08))', borderRadius:12, padding:'14px 16px', border:'1px solid rgba(139,92,246,0.2)' }}>
-              <div style={{ fontSize:11, fontWeight:700, color:'#7C3AED', marginBottom:8 }}>AI-Erkenntnisse</div>
+              <div style={{ fontSize:11, fontWeight:700, color:'#003060', marginBottom:8 }}>AI-Erkenntnisse</div>
               {lead.ai_need_detected && <div style={{ fontSize:13, color:'var(--text-primary)', marginBottom:6 }}><b>Bedarf:</b> {lead.ai_need_detected}</div>}
               {lead.ai_pain_points && lead.ai_pain_points.length > 0 && (
                 <div style={{ fontSize:13, color:'var(--text-primary)' }}><b>Pain Points:</b> {lead.ai_pain_points.join(', ')}</div>
@@ -852,7 +852,7 @@ export default function Pipeline({ session }) {
                               <div style={{ display:'flex', alignItems:'center', gap:6 }}>
                                 <div style={{ fontWeight:700, fontSize:13, color:'var(--text-strong)' }}>{fullName(lead)}</div>
                                 <button onClick={e => { e.stopPropagation(); navigate(`/leads/${lead.id}`) }}
-                                  style={{ padding:'2px 8px', borderRadius:6, border:'1px solid rgba(var(--wl-primary-rgb, 49,90,231),0.25)', background:'rgba(var(--wl-primary-rgb, 49,90,231),0.07)', color:'var(--wl-primary, rgb(49,90,231))', fontSize:10, fontWeight:700, cursor:'pointer' }}>Profil</button>
+                                  style={{ padding:'2px 8px', borderRadius:6, border:'1px solid rgba(var(--wl-primary-rgb, 10,111,176),0.25)', background:'rgba(var(--wl-primary-rgb, 10,111,176),0.07)', color:'var(--wl-primary, #0A6FB0)', fontSize:10, fontWeight:700, cursor:'pointer' }}>Profil</button>
                               </div>
                               <div style={{ fontSize:11, color:'var(--text-muted)' }}>{lead.job_title || lead.headline}</div>
                             </div>

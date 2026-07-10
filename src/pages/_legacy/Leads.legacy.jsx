@@ -30,7 +30,7 @@ const STATUS_STYLE = {
   MQL:  { bg:'#FFFBEB', color:'#B45309', border:'#FDE68A' },
   SQL:  { bg:'#F0FDF4', color:'#15803D', border:'#BBF7D0' },
 }
-const LIST_COLORS = ['var(--wl-primary, rgb(0,48,96))','#10B981','#F59E0B','#EF4444','#8B5CF6','#0891B2','#EC4899','#374151']
+const LIST_COLORS = ['var(--wl-primary, rgb(0,48,96))','#10B981','#F59E0B','#EF4444','#0A6FB0','#0891B2','#EC4899','#374151']
 
 // STAGE_LABEL auf Modul-Ebene — wird in Bulk-Actions-Bar für option labels genutzt.
 // STAGE_COLOR ist nicht mehr hier nötig (nur noch in LeadRow.jsx verwendet).
@@ -63,7 +63,7 @@ function initials(name) {
 }
 
 function Avatar({ name, avatar_url, size = 40, fontSize = 15 }) {
-  const colors = ['var(--wl-primary, rgb(0,48,96))','#10B981','#F59E0B','#8B5CF6','#EC4899','#0891B2','#EF4444','#374151']
+  const colors = ['var(--wl-primary, rgb(0,48,96))','#10B981','#F59E0B','#0A6FB0','#EC4899','#0891B2','#EF4444','#374151']
   const idx = (name || '').charCodeAt(0) % colors.length
   const bg  = colors[idx]
   if (avatar_url) return (

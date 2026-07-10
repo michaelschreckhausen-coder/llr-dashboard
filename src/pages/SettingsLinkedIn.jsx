@@ -17,7 +17,7 @@ import { supabase } from '../lib/supabase'
 import { authRedirect } from '../lib/authRedirect'
 import SettingsTabs from '../components/SettingsTabs'
 
-const P = 'var(--wl-primary, rgb(49,90,231))'
+const P = 'var(--wl-primary, #0A6FB0)'
 const LI_BLUE = '#0a66c2'
 
 function LinkedInGlyph({ size = 20, color = '#fff' }) {
@@ -236,7 +236,7 @@ export default function SettingsLinkedIn({ session }) {
           {/* ── 2. VERÖFFENTLICHEN ── */}
           <div style={box}>
             <div style={hdr}>
-              <div style={iconWrap('linear-gradient(135deg,#7C3AED,#a855f7)')}>
+              <div style={iconWrap('linear-gradient(135deg,#003060,#a855f7)')}>
                 <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>
               </div>
               <div style={{ flex: 1 }}>

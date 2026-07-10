@@ -9,13 +9,13 @@ import { useTeam } from '../context/TeamContext'
 import { useEntitlements } from '../hooks/useEntitlements'
 import { EMPLOYEE_RANGES, EMPLOYEE_LABEL, REVENUE_RANGES, REVENUE_LABEL } from '../constants/orgLabels'
 
-const PRIMARY = 'var(--wl-primary, rgb(49,90,231))'
+const PRIMARY = 'var(--wl-primary, #0A6FB0)'
 
 const STAGE_COLORS = {
   prospect:    { label: 'Interessent',  color: '#6B7280', bg: '#F3F4F6' },
   opportunity: { label: 'Qualifiziert', color: '#185FA5', bg: '#EFF6FF' },
   angebot:     { label: 'Angebot',      color: '#D97706', bg: '#FFFBEB' },
-  verhandlung: { label: 'Verhandlung',  color: '#7C3AED', bg: '#F5F3FF' },
+  verhandlung: { label: 'Verhandlung',  color: '#003060', bg: '#F5F3FF' },
   gewonnen:    { label: 'Gewonnen',     color: '#059669', bg: '#ECFDF5' },
   verloren:    { label: 'Verloren',     color: '#DC2626', bg: '#FEF2F2' },
   kein_deal:   { label: 'Kein Deal',    color: '#9CA3AF', bg: '#F9FAFB' },
@@ -358,7 +358,7 @@ export default function OrganizationProfile({ session }) {
       {/* Header */}
       <div style={{ background: 'var(--surface)', borderRadius: 14, border: '1px solid #E4E7EC', padding: '22px 24px', marginBottom: 20 }}>
         <div style={{ display: 'flex', alignItems: 'flex-start', gap: 16 }}>
-          <div style={{ width: 60, height: 60, borderRadius: 14, background: org.logo_url ? '#fff' : 'rgba(49,90,231,0.08)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 28, flexShrink: 0, overflow: 'hidden', border: org.logo_url ? '1px solid #E4E7EC' : 'none' }}>
+          <div style={{ width: 60, height: 60, borderRadius: 14, background: org.logo_url ? '#fff' : 'rgba(10,111,176,0.08)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 28, flexShrink: 0, overflow: 'hidden', border: org.logo_url ? '1px solid #E4E7EC' : 'none' }}>
             {org.logo_url ? (
               <img src={org.logo_url} alt={`${org.name} Logo`}
                 onError={(e) => { e.currentTarget.style.display = 'none'; e.currentTarget.parentElement.textContent = '🏢' }}
@@ -366,7 +366,7 @@ export default function OrganizationProfile({ session }) {
             ) : '🏢'}
           </div>
           <div style={{ flex: 1, minWidth: 0 }}>
-            <div style={{ fontSize: 18, color: '#30A0D0', fontFamily: '"Caveat", cursive', fontWeight: 600, marginBottom: 2 }}>CRM · Unternehmen</div>
+            <div style={{ fontSize:12, fontWeight:700, letterSpacing:'1.6px', textTransform:'uppercase', fontFamily:'Inter, sans-serif', color:'var(--primary, #003060)', marginBottom:2 }}>CRM · Unternehmen</div>
             <div style={{ display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: 10, marginBottom: 4 }}>
               <h1 style={{ fontSize: 26, fontWeight: 700, letterSpacing: '-0.3px', lineHeight: 1.2, color: 'var(--text-primary, #111827)', margin: 0 }}>{org.name}</h1>
               {sponsoringActive && isSponsor && (
@@ -831,7 +831,7 @@ function KeyVal({ items }) {
         <div key={i.k} style={{ display: 'flex', justifyContent: 'space-between', gap: 12, fontSize: 13 }}>
           <span style={{ color: '#6B7280', flexShrink: 0 }}>{i.k}</span>
           {i.href
-            ? <a href={i.href} target="_blank" rel="noopener noreferrer" style={{ color: 'var(--wl-primary, rgb(49,90,231))', textDecoration: 'none', textAlign: 'right', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{i.v}</a>
+            ? <a href={i.href} target="_blank" rel="noopener noreferrer" style={{ color: 'var(--wl-primary, #0A6FB0)', textDecoration: 'none', textAlign: 'right', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{i.v}</a>
             : <span style={{ color: 'var(--text-primary, #111827)', fontWeight: 600, textAlign: 'right' }}>{i.v}</span>}
         </div>
       ))}

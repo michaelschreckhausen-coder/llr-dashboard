@@ -3,7 +3,7 @@ import { Briefcase, Calendar, CheckCircle2, FileText, Pencil, Phone } from 'luci
 import { supabase } from '../lib/supabase'
 import MultiAssigneePicker from './leads/MultiAssigneePicker'
 
-const PRIMARY = 'rgb(49,90,231)'
+const PRIMARY = '#0A6FB0'
 
 const PRIORITY_CFG = {
   low:    { label: 'Niedrig',  color: '#6B7280', bg: '#F3F4F6', border: '#E5E7EB' },

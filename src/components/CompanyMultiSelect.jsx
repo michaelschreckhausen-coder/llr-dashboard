@@ -5,7 +5,7 @@
 import React, { useState, useRef, useEffect } from 'react'
 import { Building2, Check, ChevronDown } from 'lucide-react'
 
-const P = 'var(--wl-primary, rgb(49,90,231))'
+const P = 'var(--wl-primary, #0A6FB0)'
 
 export default function CompanyMultiSelect({
   companies = [],            // [{id, name, brand_name}]
@@ -63,7 +63,7 @@ export default function CompanyMultiSelect({
         style={iconOnly ? {
           display:'inline-flex', alignItems:'center', justifyContent:'center', width:34, height:34, borderRadius:9, boxSizing:'border-box',
           border:'1.5px solid ' + (count ? P : 'var(--border)'),
-          background: count ? 'rgba(49,90,231,0.06)' : 'var(--surface, #fff)',
+          background: count ? 'rgba(10,111,176,0.06)' : 'var(--surface, #fff)',
           color: count ? P : 'var(--text-primary)', cursor:'pointer', fontFamily:'inherit', flexShrink:0, position:'relative', ...buttonStyle,
         } : {
           display:'inline-flex', alignItems:'center', gap:8, padding:'9px 12px', borderRadius:10, minHeight:40, boxSizing:'border-box',
@@ -93,7 +93,7 @@ export default function CompanyMultiSelect({
             const checked = sel.has(c.id)
             return (
               <label key={c.id}
-                style={{ display:'flex', alignItems:'center', gap:9, padding:'7px 8px', borderRadius:7, cursor:'pointer', background: checked ? 'rgba(49,90,231,0.06)' : 'transparent' }}
+                style={{ display:'flex', alignItems:'center', gap:9, padding:'7px 8px', borderRadius:7, cursor:'pointer', background: checked ? 'rgba(10,111,176,0.06)' : 'transparent' }}
                 onMouseEnter={e => { if (!checked) e.currentTarget.style.background = '#F8FAFC' }}
                 onMouseLeave={e => { if (!checked) e.currentTarget.style.background = 'transparent' }}>
                 <span style={{

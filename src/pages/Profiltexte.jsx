@@ -13,7 +13,7 @@ import TabBar from '../components/TabBar'
 import PageShell from '../components/PageShell'
 
 // ─── Constants ────────────────────────────────────────────────────────────────
-const P = 'var(--wl-primary, rgb(49,90,231))'
+const P = 'var(--wl-primary, #0A6FB0)'
 
 const AUSRICHTUNGEN = [
   { id: 'professional',   label: 'Professionell',     desc: 'Klar, seriös, vertrauenswürdig' },
@@ -86,7 +86,7 @@ function PillRow({options, value, onChange}) {
             style={{
               padding:'7px 13px',borderRadius:999,fontSize:12.5,fontWeight:on?700:600,
               border:'1.5px solid '+(on?P:'#E2E8F0'),
-              background:on?'rgba(49,90,231,0.08)':'#fff',
+              background:on?'rgba(10,111,176,0.08)':'#fff',
               color:on?P:'#475569',cursor:'pointer',whiteSpace:'nowrap',
               transition:'all 0.15s'
             }}
@@ -127,7 +127,7 @@ function OptButton({active, onClick, main, sub, compact}) {
       padding: compact ? '7px 10px' : '9px 12px',
       borderRadius: 9, cursor: 'pointer', textAlign: 'left', width: '100%', display: 'block',
       border: '1.5px solid ' + (active ? P : '#E5E7EB'),
-      background: active ? 'rgba(49,90,231,0.08)' : 'rgb(238,241,252)',
+      background: active ? 'rgba(10,111,176,0.08)' : 'rgb(238,241,252)',
       transition: 'all 0.15s', marginBottom: 6
     }}>
       <div style={{fontSize:12,fontWeight:700,color:active?P:'rgb(20,20,43)'}}>{main}</div>
@@ -759,7 +759,7 @@ REGELN (hart):
       {/* Journal-Style-Header + prominenter ModelSelector als Chip */}
       <div style={{display:'flex',alignItems:'flex-end',justifyContent:'space-between',gap:20,flexWrap:'wrap',marginBottom:8}}>
         <div style={{flex:'1 1 auto',minWidth:280}}>
-          <div style={{fontSize:20,color:'#30A0D0',fontFamily:'"Caveat", cursive',fontWeight:600,marginBottom:6}}>Branding · LinkedIn-Profil</div>
+          <div style={{ fontSize:12, fontWeight:700, letterSpacing:'1.6px', textTransform:'uppercase', fontFamily:'Inter, sans-serif', color:'var(--primary, #003060)', marginBottom:6 }}>Branding · LinkedIn-Profil</div>
           <h1 style={{fontSize:26,fontWeight:700,color:'var(--text-primary, rgb(20,20,43))',margin:0,letterSpacing:'-0.3px',lineHeight:1.2}}>Deine Profiltexte.</h1>
           <p style={{fontSize:13,color:'var(--text-muted)',margin:'8px 0 0',lineHeight:1.6,maxWidth:560}}>
             {isCompany ? 'Tagline, Über-uns-Sektion und Spezialgebiete deiner Company Page — auf Basis des Company Brands, Zielgruppen und Wissensdatenbank.' : 'Profilslogan, Info-Box und Positionsbeschreibung — auf Basis deiner Brand Voice, Zielgruppen und Wissensdatenbank.'}
@@ -776,7 +776,7 @@ REGELN (hart):
           <div>
             <Label>Brand Voice</Label>
             {activeBrandVoice ? (
-              <div style={{padding:'10px 12px',background:'rgba(49,90,231,0.05)',border:'1px solid rgba(49,90,231,0.18)',borderRadius:8,fontSize:12,color:'var(--text-primary)',lineHeight:1.4}}>
+              <div style={{padding:'10px 12px',background:'rgba(10,111,176,0.05)',border:'1px solid rgba(10,111,176,0.18)',borderRadius:8,fontSize:12,color:'var(--text-primary)',lineHeight:1.4}}>
                 <div style={{fontWeight:700}}>{activeBrandVoice.name || activeBrandVoice.brand_name || 'Aktiv'}</div>
                 <div style={{fontSize:11,color:'var(--text-muted)',marginTop:2}}>Über den Switcher oben rechts wechseln</div>
               </div>
@@ -801,7 +801,7 @@ REGELN (hart):
                 {audiences.map(a => {
                   const on = selectedAudiences.includes(a.id)
                   return (
-                    <label key={a.id} style={{display:'flex',alignItems:'center',gap:8,padding:'5px 6px',cursor:'pointer',fontSize:12,borderRadius:6,background:on?'rgba(49,90,231,0.06)':'transparent'}}>
+                    <label key={a.id} style={{display:'flex',alignItems:'center',gap:8,padding:'5px 6px',cursor:'pointer',fontSize:12,borderRadius:6,background:on?'rgba(10,111,176,0.06)':'transparent'}}>
                       <input type="checkbox" checked={on} onChange={() => {
                         setSelectedAudiences(on ? selectedAudiences.filter(x=>x!==a.id) : [...selectedAudiences, a.id])
                       }} style={{accentColor:P,cursor:'pointer'}}/>
@@ -832,7 +832,7 @@ REGELN (hart):
                 {knowledgeItems.map(k => {
                   const on = selectedKnowledge.includes(k.id)
                   return (
-                    <label key={k.id} style={{display:'flex',alignItems:'center',gap:8,padding:'5px 6px',cursor:'pointer',fontSize:12,borderRadius:6,background:on?'rgba(49,90,231,0.06)':'transparent'}}>
+                    <label key={k.id} style={{display:'flex',alignItems:'center',gap:8,padding:'5px 6px',cursor:'pointer',fontSize:12,borderRadius:6,background:on?'rgba(10,111,176,0.06)':'transparent'}}>
                       <input type="checkbox" checked={on} onChange={() => {
                         setSelectedKnowledge(on ? selectedKnowledge.filter(x=>x!==k.id) : [...selectedKnowledge, k.id])
                       }} style={{accentColor:P,cursor:'pointer'}}/>
@@ -1336,7 +1336,7 @@ REGELN (hart):
               <div key={h.id} style={{padding:'11px 16px',borderBottom:'1px solid #F1F5F9',fontSize:12}}>
                 <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:4}}>
                   <div style={{display:'flex',gap:8,alignItems:'center'}}>
-                    <span style={{padding:'2px 8px',borderRadius:999,background:'rgba(49,90,231,0.1)',color:P,fontSize:10,fontWeight:700}}>{h.template_label}</span>
+                    <span style={{padding:'2px 8px',borderRadius:999,background:'rgba(10,111,176,0.1)',color:P,fontSize:10,fontWeight:700}}>{h.template_label}</span>
                     <span style={{color:'var(--text-muted)',fontSize:11}}>{new Date(h.created_at).toLocaleString('de-DE')}</span>
                   </div>
                   <button onClick={()=>{copy(h.generated_text, ()=>showFlash('Kopiert'))}} style={{padding:'3px 9px',background:'var(--surface)',border:'1px solid var(--border)',borderRadius:6,fontSize:10,fontWeight:600,cursor:'pointer'}}>Kopieren</button>

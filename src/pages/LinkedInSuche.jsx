@@ -32,7 +32,7 @@ function Avatar({ name, avatar_url, size = 40 }) {
 }
 
 // ─── Tokens (Alignment mit Automatisierung.jsx / Leads.jsx) ────────────────
-const PRIMARY = 'rgb(49,90,231)'
+const PRIMARY = '#0A6FB0'
 const PRIMARY_VAR = `var(--wl-primary, ${PRIMARY})`
 
 const pageOuterStyle  = { background:'var(--surface-canvas, #F8FAFC)', minHeight:'100vh', padding:'24px 24px 60px' }

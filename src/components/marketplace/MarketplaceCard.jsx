@@ -54,7 +54,7 @@ const pillActiveStyle = {
 }
 const ctaPrimary = {
   flex: 1, height: 38, padding: '0 16px',
-  background: 'var(--wl-primary, rgb(49,90,231))', color: '#fff',
+  background: 'var(--wl-primary, #0A6FB0)', color: '#fff',
   border: 'none', borderRadius: 10,
   fontSize: 13, fontWeight: 700,
   cursor: 'pointer',
@@ -63,8 +63,8 @@ const ctaPrimary = {
 const ctaWaitlist = {
   ...ctaPrimary,
   background: 'var(--surface, #fff)',
-  color: 'var(--wl-primary, rgb(49,90,231))',
-  border: '1.5px solid var(--wl-primary, rgb(49,90,231))',
+  color: 'var(--wl-primary, #0A6FB0)',
+  border: '1.5px solid var(--wl-primary, #0A6FB0)',
 }
 const ctaWaitlistJoined = {
   ...ctaWaitlist,
@@ -103,7 +103,7 @@ export function MarketplaceCard({ addon, isSubscribed, isWaitlisted, manageViaSt
   const [hover, setHover] = useState(false)
   const [menuOpen, setMenuOpen] = useState(false)
 
-  const color = addon.highlight_color || 'var(--wl-primary, rgb(49,90,231))'
+  const color = addon.highlight_color || 'var(--wl-primary, #0A6FB0)'
   const features = Array.isArray(addon.features) ? addon.features : []
   const hasStripe = !!addon.stripe_price_id
   // Verwalten-vs-Kündigen gatet auf die AKTIVE Row dieses Accounts (manageViaStripe),

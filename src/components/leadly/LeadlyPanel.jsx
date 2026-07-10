@@ -13,7 +13,7 @@ import { renderMarkdown } from '../../lib/renderMarkdown';
 
 const PANEL_WIDTH = 410;
 const PANEL_HEIGHT = 640;
-const PRIMARY = 'var(--wl-primary, rgb(49,90,231))';
+const PRIMARY = 'var(--wl-primary, #0A6FB0)';
 
 const overlayStyle = {
   position: 'fixed',

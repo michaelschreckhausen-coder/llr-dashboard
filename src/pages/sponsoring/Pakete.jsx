@@ -8,7 +8,7 @@ import { supabase } from '../../lib/supabase'
 import { useTeam } from '../../context/TeamContext'
 import PageHeader from '../../components/PageHeader'
 
-const PRIMARY = 'var(--wl-primary, rgb(49,90,231))'
+const PRIMARY = 'var(--wl-primary, #0A6FB0)'
 const sp = () => supabase.schema('sponsoring')
 const TIERS = ['bronze', 'silber', 'gold', 'platin', 'custom']
 const fmt = (n) => `${Number(n || 0).toLocaleString('de-DE')} €`

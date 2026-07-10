@@ -4,14 +4,14 @@ import { useParams, useNavigate, Link } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
 import { useTeam } from '../context/TeamContext'
 
-const PRIMARY = 'var(--wl-primary, rgb(49,90,231))'
+const PRIMARY = 'var(--wl-primary, #0A6FB0)'
 
 // ─── Status-Config ─────────────────────────────────────────────────────────────────
 const STATUS_CFG = {
   planning:  { label: 'In Planung',  color: '#0891B2', bg: '#CFFAFE' },
   active:    { label: 'Aktiv',       color: '#059669', bg: '#D1FAE5' },
   on_hold:   { label: 'Pausiert',    color: '#D97706', bg: '#FEF3C7' },
-  completed: { label: 'Abgeschlossen', color: '#6366F1', bg: '#E0E7FF' },
+  completed: { label: 'Abgeschlossen', color: '#0A6FB0', bg: '#E0E7FF' },
   archived:  { label: 'Archiviert',  color: '#64748B', bg: '#F1F5F9' }
 }
 

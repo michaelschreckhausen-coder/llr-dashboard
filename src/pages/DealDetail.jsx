@@ -18,13 +18,13 @@ import { useLeadActivities } from '../hooks/useLeadActivities'
 import ProjektStartenModal from '../components/ProjektStartenModal'
 import { DealModal } from './Deals'
 
-const PRIMARY = 'var(--wl-primary, rgb(49,90,231))'
+const PRIMARY = 'var(--wl-primary, #0A6FB0)'
 
 const STAGE_MAP = {
   prospect:    { label: 'Interessent',  color: '#6B7280', bg: '#F3F4F6' },
   opportunity: { label: 'Qualifiziert', color: '#185FA5', bg: '#EFF6FF' },
   angebot:     { label: 'Angebot',      color: '#D97706', bg: '#FFFBEB' },
-  verhandlung: { label: 'Verhandlung',  color: '#7C3AED', bg: '#F5F3FF' },
+  verhandlung: { label: 'Verhandlung',  color: '#003060', bg: '#F5F3FF' },
   gewonnen:    { label: 'Gewonnen',     color: '#059669', bg: '#ECFDF5' },
   verloren:    { label: 'Verloren',     color: '#DC2626', bg: '#FEF2F2' },
 }
@@ -274,7 +274,7 @@ export default function DealDetail({ session }) {
       {/* Seitenkopf (Standard-Layout: h1-Titel, Aktionen rechts) */}
       <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 16, margin: '16px 0 20px' }}>
         <div style={{ minWidth: 0 }}>
-          <div style={{ fontSize: 18, color: '#30A0D0', fontFamily: '"Caveat", cursive', fontWeight: 600, marginBottom: 2 }}>CRM · Deal</div>
+          <div style={{ fontSize:12, fontWeight:700, letterSpacing:'1.6px', textTransform:'uppercase', fontFamily:'Inter, sans-serif', color:'var(--primary, #003060)', marginBottom:2 }}>CRM · Deal</div>
           <h1 style={{ fontSize: 26, fontWeight: 700, margin: 0, letterSpacing: '-0.3px', lineHeight: 1.2, color: '#111827' }}>{deal.title || deal.name || '—'}</h1>
           <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginTop: 10 }}>
             <span style={{ fontSize: 11, fontWeight: 700, padding: '3px 10px', borderRadius: 99, background: s.bg, color: s.color }}>{s.label}</span>
@@ -361,7 +361,7 @@ export default function DealDetail({ session }) {
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
           <div style={{ ...labelStyle, marginBottom: 0, display: 'inline-flex', alignItems: 'center', gap: 6 }}><Paperclip size={13} /> Anhänge ({attachments.length})</div>
           <button onClick={() => fileRef.current?.click()} disabled={uploading}
-            style={{ padding: '6px 14px', borderRadius: 8, border: '1.5px dashed ' + PRIMARY, background: 'rgba(49,90,231,0.04)', fontSize: 12, fontWeight: 700, cursor: uploading ? 'default' : 'pointer', color: PRIMARY }}>
+            style={{ padding: '6px 14px', borderRadius: 8, border: '1.5px dashed ' + PRIMARY, background: 'rgba(10,111,176,0.04)', fontSize: 12, fontWeight: 700, cursor: uploading ? 'default' : 'pointer', color: PRIMARY }}>
             {uploading ? 'Hochladen…' : '+ Datei anhängen'}
           </button>
           <input ref={fileRef} type="file" style={{ display: 'none' }} onChange={uploadFile}

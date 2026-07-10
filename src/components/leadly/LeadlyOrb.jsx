@@ -114,7 +114,7 @@ export default function LeadlyOrb({ state = 'idle', size = 96 }) {
       {listening && (
         <div style={{
           position: 'absolute', inset: -4, borderRadius: '50%',
-          border: `2.5px solid var(--wl-primary, var(--primary, rgb(49,90,231)))`,
+          border: `2.5px solid var(--wl-primary, var(--primary, #0A6FB0))`,
           animation: 'lkb-ring 1.3s ease-out infinite',
         }} />
       )}

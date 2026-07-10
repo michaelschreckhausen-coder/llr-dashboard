@@ -18,7 +18,7 @@ import { Globe, Sparkles, Trash2, RefreshCw, Plus, TrendingUp, Target, Award, Za
 import { useAddons } from '../hooks/useAddons'
 import { useAuralis } from '../hooks/useAuralis'
 
-const PRIMARY = 'var(--wl-primary, rgb(49,90,231))'
+const PRIMARY = 'var(--wl-primary, #0A6FB0)'
 
 const SCORE_META = [
   { key: 'aura',               label: 'Aura',               Icon: Sparkles,  hint: 'Gesamt-Sichtbarkeit in der KI' },
@@ -162,7 +162,7 @@ export default function Auralis() {
 
       {/* Header */}
       <div style={{ display: 'flex', alignItems: 'center', gap: 14, marginBottom: 24 }}>
-        <div style={{ width: 48, height: 48, borderRadius: 12, background: 'rgba(99,102,241,0.10)', color: '#6366F1', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+        <div style={{ width: 48, height: 48, borderRadius: 12, background: 'rgba(99,102,241,0.10)', color: '#0A6FB0', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
           <Globe size={26} />
         </div>
         <div>

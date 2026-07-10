@@ -14,7 +14,7 @@ import PageHeader from '../components/PageHeader'
 import TabBar from '../components/TabBar'
 import { EMPLOYEE_RANGES, EMPLOYEE_LABEL, REVENUE_RANGES, REVENUE_LABEL } from '../constants/orgLabels'
 
-const PRIMARY = 'var(--wl-primary, rgb(49,90,231))'
+const PRIMARY = 'var(--wl-primary, #0A6FB0)'
 const P = PRIMARY
 
 /* ── Reports-Stil Diagramm-Komponenten (gespiegelt aus Vernetzungen.jsx) ── */
@@ -67,10 +67,10 @@ function EmptyBars({ text }) {
 }
 
 // Handgezeichneter Hinweis-Pfeil + Schreibschrift-Label (gespiegelt aus ContentStudio.jsx)
-const scriptHintStyle = { fontFamily:"'Segoe Script','Bradley Hand','Brush Script MT','Comic Sans MS',cursive", fontStyle:'italic', fontSize:16, fontWeight:600, color:'var(--wl-primary, rgb(49,90,231))', whiteSpace:'nowrap', lineHeight:1 }
+const scriptHintStyle = { fontFamily:'Inter, sans-serif', fontSize:13, fontWeight:600, color:'var(--wl-primary, #0A6FB0)', whiteSpace:'nowrap', lineHeight:1 }
 function CurvedArrow() {
   return (
-    <svg width="34" height="24" viewBox="0 0 34 24" fill="none" style={{ color:'var(--wl-primary, rgb(49,90,231))', flexShrink:0 }} aria-hidden="true">
+    <svg width="34" height="24" viewBox="0 0 34 24" fill="none" style={{ color:'var(--wl-primary, #0A6FB0)', flexShrink:0 }} aria-hidden="true">
       <path d="M3 5 C 14 3, 25 7, 30 14" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" fill="none"/>
       <path d="M23 14.5 L 31 15 L 27 8" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" fill="none"/>
     </svg>
@@ -576,7 +576,7 @@ export default function Organizations({ session }) {
 
       {/* Sponsor-Bulk-Action-Bar (addon-gegated, bei Auswahl) */}
       {sponsoringActive && selected.size > 0 && filter !== 'sponsoren' && (
-        <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 14, padding: '10px 14px', borderRadius: 12, background: 'rgba(49,90,231,0.06)', border: '1px solid ' + PRIMARY + '33' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 14, padding: '10px 14px', borderRadius: 12, background: 'rgba(10,111,176,0.06)', border: '1px solid ' + PRIMARY + '33' }}>
           <span style={{ fontSize: 13, fontWeight: 700, color: PRIMARY }}>{selected.size} ausgewählt</span>
           <button onClick={() => bulkMarkSponsor(true)} disabled={bulkMarking}
             style={{ padding: '7px 14px', borderRadius: 9, border: 'none', background: PRIMARY, color: '#fff', fontSize: 12, fontWeight: 700, cursor: bulkMarking ? 'wait' : 'pointer', opacity: bulkMarking ? 0.6 : 1 }}>★ Als Sponsor markieren</button>
@@ -614,7 +614,7 @@ export default function Organizations({ session }) {
                     title="Für Sponsor-Markierung auswählen"
                     style={{ width: 17, height: 17, accentColor: PRIMARY, cursor: 'pointer', flexShrink: 0 }} />
                 )}
-                <div style={{ width: 40, height: 40, borderRadius: 10, background: 'rgba(49,90,231,0.08)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 20, flexShrink: 0 }}>
+                <div style={{ width: 40, height: 40, borderRadius: 10, background: 'rgba(10,111,176,0.08)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 20, flexShrink: 0 }}>
                   🏢
                 </div>
                 <div style={{ flex: 1, minWidth: 0 }}>

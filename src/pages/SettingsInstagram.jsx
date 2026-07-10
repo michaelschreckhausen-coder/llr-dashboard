@@ -7,7 +7,7 @@ import {
   createConnectLink, syncConnection, disconnectAccount, getConnectionStatus,
 } from '../lib/instagram'
 
-const PRIMARY = 'var(--wl-primary, rgb(49,90,231))'
+const PRIMARY = 'var(--wl-primary, #0A6FB0)'
 const IG_PINK = '#E1306C'
 const C = { surface: '#fff', border: '#E4E7EC', text1: '#111827', text2: '#374151', text3: '#6B7280' }
 

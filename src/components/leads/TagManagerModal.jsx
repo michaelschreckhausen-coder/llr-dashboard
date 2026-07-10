@@ -7,7 +7,7 @@ import { useState, useMemo } from 'react';
 import { Plus, Trash2, Check } from 'lucide-react';
 import { TAG_PALETTE_KEYS, paletteColor, tagColor } from '../../lib/tagColors';
 
-const PRIMARY = 'var(--wl-primary, rgb(49,90,231))';
+const PRIMARY = 'var(--wl-primary, #0A6FB0)';
 
 function Swatch({ colorKey, active, onClick }) {
   const c = paletteColor(colorKey);

@@ -7,7 +7,7 @@ import { createPortal } from 'react-dom'
 import { User, Building2, Sparkles, X, FileText, Brain, MessageSquare, ImageIcon } from 'lucide-react'
 import { useBrandVoice } from '../context/BrandVoiceContext'
 
-const P = 'var(--wl-primary, rgb(49,90,231))'
+const P = 'var(--wl-primary, #0A6FB0)'
 
 export default function ContentIntroModal({ open, onClose }) {
   const { brandVoices = [], switchBrandVoice } = useBrandVoice()
@@ -94,7 +94,7 @@ function Column({ title, sub, icon, list, empty, ICON, cardRefs, onPick, kind })
   return (
     <div style={{ background:'#fff', padding:'18px 18px 22px', minHeight:200 }}>
       <div style={{ display:'flex', alignItems:'center', gap:8, marginBottom:4 }}>
-        <span style={{ width:28, height:28, borderRadius:8, background: kind==='company' ? 'rgba(16,185,129,0.10)' : 'rgba(49,90,231,0.08)', display:'flex', alignItems:'center', justifyContent:'center', color: kind==='company' ? '#10B981' : P }}>{icon}</span>
+        <span style={{ width:28, height:28, borderRadius:8, background: kind==='company' ? 'rgba(16,185,129,0.10)' : 'rgba(10,111,176,0.08)', display:'flex', alignItems:'center', justifyContent:'center', color: kind==='company' ? '#10B981' : P }}>{icon}</span>
         <div>
           <div style={{ fontSize:13.5, fontWeight:800, color:'var(--text-primary)' }}>{title}</div>
           <div style={{ fontSize:11, color:'var(--text-muted)' }}>{sub}</div>
@@ -105,7 +105,7 @@ function Column({ title, sub, icon, list, empty, ICON, cardRefs, onPick, kind })
         {list.map(bv => (
           <button key={bv.id} ref={el => { if (el) cardRefs.current[bv.id] = el }} onClick={() => onPick(bv)}
             style={{ display:'flex', alignItems:'center', gap:10, padding:'11px 13px', borderRadius:12, border:'1.5px solid var(--border, #E5E7EB)', background:'#fff', cursor:'pointer', textAlign:'left', fontFamily:'inherit', transition:'border-color .12s, background .12s' }}
-            onMouseEnter={e=>{ e.currentTarget.style.borderColor = kind==='company'?'#10B981':P; e.currentTarget.style.background = kind==='company'?'rgba(16,185,129,0.05)':'rgba(49,90,231,0.04)' }}
+            onMouseEnter={e=>{ e.currentTarget.style.borderColor = kind==='company'?'#10B981':P; e.currentTarget.style.background = kind==='company'?'rgba(16,185,129,0.05)':'rgba(10,111,176,0.04)' }}
             onMouseLeave={e=>{ e.currentTarget.style.borderColor='var(--border, #E5E7EB)'; e.currentTarget.style.background='#fff' }}>
             <span style={{ color: kind==='company'?'#10B981':P, flexShrink:0 }}>{ICON[bv.account_type] || ICON.other}</span>
             <span style={{ fontSize:13.5, fontWeight:600, color:'var(--text-primary)', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{bv.name || '(Ohne Namen)'}</span>

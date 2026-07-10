@@ -26,7 +26,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { X, Pencil, Save, Eye, Users } from 'lucide-react';
 
-const PRIMARY = 'rgb(49,90,231)';
+const PRIMARY = '#0A6FB0';
 
 // ─── Styles ──────────────────────────────────────────────────────────────
 const wrapStyle = {

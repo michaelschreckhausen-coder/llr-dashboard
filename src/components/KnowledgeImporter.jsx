@@ -25,7 +25,7 @@ import { supabase } from '../lib/supabase'
 //                         (file_*, source_url, linkedin_template_url)
 //   disabled            — boolean, ganze Komponente deaktivieren
 
-const P = 'var(--wl-primary, rgb(49,90,231))'
+const P = 'var(--wl-primary, #0A6FB0)'
 
 const ACCEPTED_TYPES = {
   'application/pdf': 'pdf',
@@ -126,7 +126,7 @@ function FileTab({ session, storagePrefix, current, onMetaChange, onContentExtra
         style={{ border:dragging?`2px dashed ${P}`:'2px dashed var(--border)', borderRadius:10, padding:'24px 16px', textAlign:'center', cursor:disabled?'not-allowed':'pointer', background:dragging?'var(--primary-soft)':'var(--surface-muted)', transition:'all .2s', opacity:disabled?.5:1 }}>
         <input ref={fileRef} type="file" onChange={e=>{const f=e.target.files[0];if(f)handleFile(f)}} style={{display:'none'}} accept=".pdf,.xlsx,.xls,.csv,.png,.jpg,.jpeg,.webp"/>
         {uploading ? <div style={{color:P,fontWeight:600,display:'inline-flex',alignItems:'center',gap:6}}><Loader2 size={14} className='lk-spin'/>Wird hochgeladen…</div>
-         : extracting ? <div style={{color:'#7C3AED',fontWeight:600,display:'inline-flex',alignItems:'center',gap:6}}><Loader2 size={14} className='lk-spin'/>Text wird extrahiert…</div>
+         : extracting ? <div style={{color:'#003060',fontWeight:600,display:'inline-flex',alignItems:'center',gap:6}}><Loader2 size={14} className='lk-spin'/>Text wird extrahiert…</div>
          : <><div style={{marginBottom:6,display:'inline-flex'}}><Paperclip size={28} strokeWidth={1.5} style={{color:'var(--text-muted)'}}/></div><div style={{fontSize:13,fontWeight:600,color:'var(--text-primary)'}}>Datei hierher ziehen oder klicken</div><div style={{fontSize:11,color:'var(--text-soft)',marginTop:4}}>PDF, Excel, CSV, Bilder (max. 10 MB)</div></>}
       </div>
       {error && <div style={{color:'var(--danger)',fontSize:12,marginTop:6}}>{error}</div>}
@@ -272,7 +272,7 @@ function UrlTab({ current, onMetaChange, onContentExtracted, disabled, linkedInM
       {isLinkedIn && loading && (
         <div style={{ marginTop: 12 }}>
           <GenerationLoading title="LinkedIn-Profil wird gescannt" expectedSeconds={20} />
-          <div style={{ marginTop: 8, padding:'8px 12px', background:'rgba(49,90,231,0.04)', borderRadius:8, fontSize:11.5, color:'var(--text-muted)', lineHeight:1.5 }}>
+          <div style={{ marginTop: 8, padding:'8px 12px', background:'rgba(10,111,176,0.04)', borderRadius:8, fontSize:11.5, color:'var(--text-muted)', lineHeight:1.5 }}>
             Ein Tab mit dem Profil öffnet sich gerade. Bitte nicht wegklicken oder den Tab schließen — wir scrollen automatisch durch das Profil, lesen alle Sektionen (Info, Berufserfahrung, Ausbildung, Kenntnisse, Beiträge) und kommen in ~15 Sekunden zurück.
           </div>
         </div>

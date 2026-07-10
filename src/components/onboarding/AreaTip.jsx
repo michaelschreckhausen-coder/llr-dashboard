@@ -9,7 +9,7 @@ import React from 'react'
 // im Layout, diese Komponente rendert nur.
 // ─────────────────────────────────────────────────────────────────────────────
 
-const PRIMARY = 'var(--wl-primary, rgb(49,90,231))'
+const PRIMARY = 'var(--wl-primary, #0A6FB0)'
 
 export default function AreaTip({ tip, onDismiss }) {
   if (!tip) return null

@@ -12,7 +12,7 @@ import { useTeam } from '../../context/TeamContext'
 import PageHeader from '../../components/PageHeader'
 import GenerationLoading from '../../components/GenerationLoading'
 
-const PRIMARY = 'var(--wl-primary, rgb(49,90,231))'
+const PRIMARY = 'var(--wl-primary, #0A6FB0)'
 const sp = () => supabase.schema('sponsoring')
 
 const EMPTY_IND = { industry: '', is_boom: false, fits_sport: false, open_at_club: false, note: '' }
@@ -674,7 +674,7 @@ const chip = {
   border: '1px solid var(--border)', padding: '4px 12px', borderRadius: 999,
 }
 const badge = {
-  fontSize: 11, fontWeight: 700, color: '#3730A3', background: '#EEF2FF',
+  fontSize: 11, fontWeight: 700, color: '#3730A3', background: '#EAF6FC',
   padding: '2px 8px', borderRadius: 999, whiteSpace: 'nowrap',
 }
 const chipBtn = {

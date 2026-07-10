@@ -12,7 +12,7 @@ import { useEffect, useState } from 'react'
 import { supabase } from '../lib/supabase'
 import SettingsTabs from '../components/SettingsTabs'
 
-const PRIMARY = 'var(--wl-primary, rgb(49,90,231))'
+const PRIMARY = 'var(--wl-primary, #0A6FB0)'
 
 export default function SettingsNotifications({ session }) {
   const userId = session?.user?.id
@@ -240,7 +240,7 @@ function LocaleButton({ active, onClick, disabled, children }) {
       disabled={disabled}
       style={{
         padding: '8px 16px', border: '1.5px solid ' + (active ? PRIMARY : '#e2e8f0'),
-        borderRadius: 8, background: active ? 'rgb(49,90,231)' : '#ffffff',
+        borderRadius: 8, background: active ? '#0A6FB0' : '#ffffff',
         color: active ? '#ffffff' : '#0f172a',
         fontSize: 13, fontWeight: 600, cursor: disabled ? 'wait' : 'pointer',
         fontFamily: 'inherit', opacity: disabled ? 0.6 : 1,

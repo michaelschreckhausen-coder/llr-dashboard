@@ -9,7 +9,7 @@ import { useTeam } from '../context/TeamContext'
 import { useStrike2Personas } from '../hooks/useStrike2Personas'
 import { useAddons } from '../hooks/useAddons'
 
-const PRIMARY = 'var(--wl-primary, rgb(49,90,231))'
+const PRIMARY = 'var(--wl-primary, #0A6FB0)'
 const ADDON_SLUG = 'strike2-zielgruppen-plus'
 
 const STATUS = {
@@ -84,7 +84,7 @@ export default function Strike2Personas() {
   return (
     <div style={{ width: '100%', maxWidth: 1100, margin: '0 auto', padding: '24px 16px 40px' }}>
       <div style={{ marginBottom: 18 }}>
-        <div style={{ fontSize: 20, color: '#F97316', fontFamily: '"Caveat", cursive', fontWeight: 600, marginBottom: 6 }}>Branding · Strike2</div>
+        <div style={{ fontSize:12, fontWeight:700, letterSpacing:'1.6px', textTransform:'uppercase', fontFamily:'Inter, sans-serif', color:'#F97316', marginBottom:6 }}>Branding · Strike2</div>
         <h1 style={{ fontSize: 26, fontWeight: 700, margin: 0, letterSpacing: '-0.3px', lineHeight: 1.2 }}>Strike2 Zielgruppen.</h1>
         <p style={{ fontSize: 13, color: 'var(--text-muted)', margin: '8px 0 0', lineHeight: 1.6 }}>
           Tiefgehende B2B-Zielgruppen nach dem Schuster-Modell® + Empathischer Funnel®. Durch alle 7 Kaufphasen, inklusive 70 KI-Content-Ideen für deinen Redaktionsplan.

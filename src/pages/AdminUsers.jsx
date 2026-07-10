@@ -15,7 +15,7 @@ const PlanIcon  = () => <svg width="13" height="13" viewBox="0 0 24 24" fill="no
 const PLAN_CONFIG = {
   free:       { label: 'LinkedIn Suite Free',  color: '#64748B', bg: '#F1F5F9', border: '#CBD5E1', desc: '50 Leads, 10 Listen' },
   starter:    { label: 'LinkedIn Suite Basic', color: '#0A66C2', bg: '#EFF6FF', border: '#BFDBFE', desc: '200 Leads, Pipeline, Brand Voice' },
-  pro:        { label: 'LinkedIn Suite Pro',   color: '#8B5CF6', bg: '#F5F3FF', border: '#DDD6FE', desc: '1000 Leads, alles inklusive' },
+  pro:        { label: 'LinkedIn Suite Pro',   color: '#0A6FB0', bg: '#F5F3FF', border: '#DDD6FE', desc: '1000 Leads, alles inklusive' },
   enterprise: { label: 'Enterprise',           color: '#F59E0B', bg: '#FFFBEB', border: '#FDE68A', desc: 'Unbegrenzt, alles inklusive' },
 }
 
@@ -319,7 +319,7 @@ export default function AdminUsers({ session }) {
             ) : users.map((user, idx) => {
               const isMe = user.id === session.user.id
               const initials = (user.full_name || user.email || '?').substring(0, 2).toUpperCase()
-              const avatarColors = ['#0A66C2','#10B981','#F59E0B','#8B5CF6','#EC4899','#0891B2']
+              const avatarColors = ['#0A66C2','#10B981','#F59E0B','#0A6FB0','#EC4899','#0891B2']
               const bg = avatarColors[idx % avatarColors.length]
               const planId = user.plan_id || 'free'
               return (
@@ -394,7 +394,7 @@ export default function AdminUsers({ session }) {
                   <div>
                     <div style={{ fontSize:11, fontWeight:700, color:'var(--text-muted)', textTransform:'uppercase', letterSpacing:'0.07em', marginBottom:10 }}>Plan auswählen</div>
                     <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:8 }}>
-                      {[['free','Free','Basis-Zugang','#64748B'],['starter','Starter','200 Leads, Pipeline','#0A66C2'],['pro','Pro','1000 Leads, alles','#8B5CF6'],['enterprise','Enterprise','Unbegrenzt','#F59E0B']].map(([id,label,desc,color]) => (
+                      {[['free','Free','Basis-Zugang','#64748B'],['starter','Starter','200 Leads, Pipeline','#0A66C2'],['pro','Pro','1000 Leads, alles','#0A6FB0'],['enterprise','Enterprise','Unbegrenzt','#F59E0B']].map(([id,label,desc,color]) => (
                         <button key={id} onClick={() => setLicenseForm(f => ({...f, plan_id:id}))}
                           style={{ padding:'12px 14px', borderRadius:10, border:'2px solid '+(licenseForm.plan_id===id?color:'#E2E8F0'), background:licenseForm.plan_id===id?color+'15':'#F8FAFC', textAlign:'left', cursor:'pointer' }}>
                           <div style={{ fontWeight:700, fontSize:13, color:licenseForm.plan_id===id?color:'var(--text-strong)' }}>{label}</div>
@@ -645,7 +645,7 @@ export default function AdminUsers({ session }) {
                   {[
                     { key:'leads',      label:'Leads & Interessenten',  desc:'Alle Lead-Datensätze mit CRM-Feldern, Scores, AI-Daten', icon: <User size={16} strokeWidth={1.75}/>, color:'#EF4444' },
                     { key:'activities', label:'Aktivitäten (Timeline)', desc:'Alle Calls, Meetings, E-Mails, LinkedIn-Aktivitäten',    icon: <ClipboardList size={16} strokeWidth={1.75}/>, color:'#3B82F6' },
-                    { key:'notes',      label:'Notizen',                desc:'Alle Kontakt-Notizen aus dem Notizen-Tab',               icon: <FileText size={16} strokeWidth={1.75}/>, color:'#8B5CF6' },
+                    { key:'notes',      label:'Notizen',                desc:'Alle Kontakt-Notizen aus dem Notizen-Tab',               icon: <FileText size={16} strokeWidth={1.75}/>, color:'#0A6FB0' },
                     { key:'history',    label:'Feld-Verlauf (Audit)',   desc:'Alle CRM-Änderungshistorie (lead_field_history)',        icon: <Search size={16} strokeWidth={1.75}/>, color:'var(--text-muted)' },
                   ].map(({ key, label, desc, icon, color }) => (
                     <label key={key} style={{ display:'flex', alignItems:'flex-start', gap:12, padding:'10px 14px', borderRadius:10, border:'1.5px solid '+(crmDeleteOpts[key]?color+'40':'#E2E8F0'), background:crmDeleteOpts[key]?color+'08':'#FAFAFA', cursor:'pointer' }}>

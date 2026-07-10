@@ -15,7 +15,7 @@ import TabBar from '../components/TabBar'
 import { scrapeLinkedInConnections, normalizeLinkedInUrl } from '../lib/leadeskExtension'
 import { useInboxLists } from '../hooks/useInboxLists'
 
-const P = 'var(--wl-primary, rgb(49,90,231))'
+const P = 'var(--wl-primary, #0A6FB0)'
 const fullName = l => ((l.first_name||'') + ' ' + (l.last_name||'')).trim() || l.name || 'Unbekannt'
 const initials = n => (n||'?').trim().split(/\s+/).map(w=>w[0]).join('').toUpperCase().substring(0,2)
 
@@ -254,7 +254,7 @@ function StatusModal({ lead, onClose, onSaved }) {
         <div style={{ fontSize:11, fontWeight:700, color:'var(--text-muted)', textTransform:'uppercase', letterSpacing:'0.07em', marginBottom:8 }}>Antwortverhalten</div>
         <div style={{ display:'flex', gap:8, flexWrap:'wrap', marginBottom:20 }}>
           {Object.entries(REPLY_CFG).map(([key,cfg]) => (
-            <button key={key} onClick={()=>setReply(key)} style={{ padding:'6px 12px', borderRadius:8, border:`1.5px solid ${reply===key?'#6366f1':'#E5E7EB'}`, background:reply===key?'#EEF2FF':'#fff', color:reply===key?'#4F46E5':cfg.color, fontSize:12, fontWeight:reply===key?700:400, cursor:'pointer' }}>
+            <button key={key} onClick={()=>setReply(key)} style={{ padding:'6px 12px', borderRadius:8, border:`1.5px solid ${reply===key?'#6366f1':'#E5E7EB'}`, background:reply===key?'#EAF6FC':'#fff', color:reply===key?'#0A6FB0':cfg.color, fontSize:12, fontWeight:reply===key?700:400, cursor:'pointer' }}>
               {cfg.label}
             </button>
           ))}
@@ -544,7 +544,7 @@ export default function Vernetzungen({ session }) {
           const alreadySent = ['pending','verbunden'].includes(lead.li_connection_status)
           const isSelected = selected?.id === lead.id
           return (
-            <div key={lead.id} style={{ background:'var(--surface)', border:'1px solid '+(isSelected?P:'#E8EDF2'), borderRadius:12, overflow:'hidden', transition:'all 0.15s', boxShadow:isSelected?'0 0 0 2px rgba(49,90,231,0.15)':'none' }}>
+            <div key={lead.id} style={{ background:'var(--surface)', border:'1px solid '+(isSelected?P:'#E8EDF2'), borderRadius:12, overflow:'hidden', transition:'all 0.15s', boxShadow:isSelected?'0 0 0 2px rgba(10,111,176,0.15)':'none' }}>
               <div onClick={() => handleSelect(lead)} style={{ display:'flex', alignItems:'center', gap:14, padding:'14px 18px', cursor:'pointer' }}>
                 <Avatar name={fullName(lead)} avatar_url={lead.avatar_url}/>
                 <div style={{ flex:1, minWidth:0 }}>
@@ -596,7 +596,7 @@ export default function Vernetzungen({ session }) {
                   )}
                   {lead.li_connection_status === 'verbunden' && (
                     <button onClick={e => { e.stopPropagation(); navigate(`/messages?lead=${lead.id}`) }} title="Nachricht schreiben"
-                      style={{ padding:'6px 12px', borderRadius:8, border:'1px solid #DDD6FE', background:'#F5F3FF', color:'#7C3AED', fontSize:12, fontWeight:700, cursor:'pointer', whiteSpace:'nowrap' }}>
+                      style={{ padding:'6px 12px', borderRadius:8, border:'1px solid #DDD6FE', background:'#F5F3FF', color:'#003060', fontSize:12, fontWeight:700, cursor:'pointer', whiteSpace:'nowrap' }}>
                       <MessageSquare size={11} strokeWidth={1.75}/>
                     </button>
                   )}
@@ -605,7 +605,7 @@ export default function Vernetzungen({ session }) {
                     ↺
                   </button>
                   <button onClick={e => { e.stopPropagation(); navigate(`/leads/${lead.id}`) }} title="Kontakt öffnen"
-                    style={{ padding:'6px 10px', borderRadius:8, border:'1px solid rgba(49,90,231,0.2)', background:'rgba(49,90,231,0.06)', color:P, fontSize:12, fontWeight:600, cursor:'pointer' }}>
+                    style={{ padding:'6px 10px', borderRadius:8, border:'1px solid rgba(10,111,176,0.2)', background:'rgba(10,111,176,0.06)', color:P, fontSize:12, fontWeight:600, cursor:'pointer' }}>
                     ↗
                   </button>
                 </div>

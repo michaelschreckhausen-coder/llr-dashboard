@@ -81,10 +81,9 @@ const btnBase = () => ({
 
 export const btnPrimary = () => ({
   ...btnBase(),
-  background:     `linear-gradient(135deg, ${colors.accentBlue} 0%, ${colors.primaryDark} 110%)`,
+  background:     'var(--grad, linear-gradient(120deg,#16A8DC 0%,#0A6FB0 50%,#003060 100%))',
   color:          colors.inkOnBlue,
-  // Box-Shadow direkt: schmuck im Dark, subtiler im Light
-  boxShadow:      'inset 0 1px 0 rgba(255,255,255,0.25), 0 8px 24px rgba(48,160,208,0.30), 0 2px 6px rgba(0,48,96,0.25)',
+  boxShadow:      'inset 0 1px 0 rgba(255,255,255,0.25), 0 8px 24px rgba(22,168,220,0.30), 0 2px 6px rgba(0,48,96,0.25)',
 })
 
 export const btnGhost = () => ({
@@ -98,7 +97,7 @@ export const btnGhost = () => ({
 
 export const btnDark = () => ({
   ...btnBase(),
-  background:     colors.ink,
+  background:     colors.primary,
   color:          colors.inkOnBlue,
   border:         `1px solid ${colors.border}`,
 })

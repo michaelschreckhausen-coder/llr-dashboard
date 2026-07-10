@@ -5,7 +5,7 @@
 import React, { useState, useRef, useEffect } from 'react'
 import { Target, Check, ChevronDown } from 'lucide-react'
 
-const P = 'var(--wl-primary, rgb(49,90,231))'
+const P = 'var(--wl-primary, #0A6FB0)'
 
 export default function AudienceSelect({ audiences = [], value = '', onChange = () => {}, label = 'Zielgruppe', buttonStyle = {}, iconOnly = false }) {
   const [open, setOpen] = useState(false)
@@ -29,12 +29,12 @@ export default function AudienceSelect({ audiences = [], value = '', onChange = 
         style={iconOnly ? {
           display:'inline-flex', alignItems:'center', justifyContent:'center', width:34, height:34, borderRadius:9, boxSizing:'border-box',
           border:'1.5px solid ' + (active ? P : 'var(--border)'),
-          background: active ? 'rgba(49,90,231,0.06)' : '#fff',
+          background: active ? 'rgba(10,111,176,0.06)' : '#fff',
           color: active ? P : 'var(--text-primary)', cursor:'pointer', fontFamily:'inherit', flexShrink:0, ...buttonStyle,
         } : {
           display:'inline-flex', alignItems:'center', gap:6, height:34, padding:'0 12px', borderRadius:9, boxSizing:'border-box',
           border:'1.5px solid ' + (active ? P : 'var(--border)'),
-          background: active ? 'rgba(49,90,231,0.06)' : '#fff',
+          background: active ? 'rgba(10,111,176,0.06)' : '#fff',
           color: active ? P : 'var(--text-primary)',
           fontSize:12.5, fontWeight:600, cursor:'pointer', whiteSpace:'nowrap', fontFamily:'inherit', maxWidth:190, ...buttonStyle,
         }}>
@@ -76,5 +76,5 @@ export default function AudienceSelect({ audiences = [], value = '', onChange = 
 
 function item(active) {
   return { display:'flex', alignItems:'center', gap:8, width:'100%', textAlign:'left', padding:'7px 9px', borderRadius:7,
-    border:'none', background: active ? 'rgba(49,90,231,0.06)' : 'transparent', cursor:'pointer', fontSize:13, color:'var(--text-primary)', fontFamily:'inherit' }
+    border:'none', background: active ? 'rgba(10,111,176,0.06)' : 'transparent', cursor:'pointer', fontSize:13, color:'var(--text-primary)', fontFamily:'inherit' }
 }

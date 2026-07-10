@@ -1,7 +1,7 @@
 import React from 'react'
 import { NavLink } from 'react-router-dom'
 
-const PRIMARY = 'var(--wl-primary, rgb(49,90,231))'
+const PRIMARY = 'var(--wl-primary, #0A6FB0)'
 
 const TABS = [
   { to: '/settings/profil',        label: 'Profil' },
@@ -20,7 +20,7 @@ export default function SettingsTabs() {
     <>
       {/* CRM-Stil-Kopf (Caveat-Overline + Titel) — einheitlich über alle Settings-Seiten */}
       <div style={{ marginBottom: 18 }}>
-        <div style={{ fontSize: 18, color: '#30A0D0', fontFamily: '"Caveat", cursive', fontWeight: 600, marginBottom: 2 }}>Konto &amp; Präferenzen</div>
+        <div style={{ fontSize:12, fontWeight:700, letterSpacing:'1.6px', textTransform:'uppercase', fontFamily:'Inter, sans-serif', color:'var(--primary, #003060)', marginBottom:2 }}>Konto &amp; Präferenzen</div>
         <h1 style={{ fontSize: 26, fontWeight: 700, letterSpacing: '-0.3px', lineHeight: 1.2, margin: 0, color: 'var(--text-strong, #111827)' }}>Einstellungen</h1>
       </div>
       <div style={{

@@ -58,7 +58,7 @@ export const TASK_SOURCES = {
     key: 'deal_followup',
     label: 'Deal',
     iconName: 'handshake',
-    color: '#7C3AED',
+    color: '#003060',
     bg: '#F5F3FF',
     border: '#DDD6FE',
   },

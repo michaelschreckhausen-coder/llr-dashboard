@@ -27,12 +27,15 @@ export function PageHeader({ eyebrow, title, subtitle, actions }) {
     <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 16, flexWrap: 'wrap', marginBottom: 24 }}>
       <div style={{ minWidth: 0 }}>
         {eyebrow && (
-          <div style={{ fontSize: 20, color: BLUE, fontFamily: '"Caveat", cursive', fontWeight: 600, marginBottom: 2 }}>
-            {eyebrow}
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 8 }}>
+            <span style={{ width: 26, height: 3, borderRadius: 2, background: 'var(--grad, linear-gradient(120deg,#16A8DC,#0A6FB0,#003060))', flexShrink: 0 }} />
+            <span style={{ fontSize: 12, fontWeight: 700, letterSpacing: '1.7px', textTransform: 'uppercase', color: 'var(--primary, #003060)', fontFamily: 'Inter, sans-serif' }}>
+              {eyebrow}
+            </span>
           </div>
         )}
         {title && (
-          <h1 style={{ fontSize: 26, fontWeight: 700, color: 'var(--text-primary, #111827)', margin: 0, letterSpacing: '-0.3px', lineHeight: 1.2 }}>
+          <h1 style={{ fontSize: 28, fontWeight: 800, color: 'var(--text-primary, #0E1633)', margin: 0, letterSpacing: '-0.5px', lineHeight: 1.15, fontFamily: 'Inter, sans-serif' }}>
             {title}
           </h1>
         )}

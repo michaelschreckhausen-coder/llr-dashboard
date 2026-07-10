@@ -24,7 +24,7 @@ const PLATFORMS = {
 const STATUS = {
   idee:      { label: 'Idee',           color: '#64748B', bg: '#F8FAFC', border: '#E2E8F0', bucket: 'ideen' },
   draft:     { label: 'Entwurf',        color: '#D97706', bg: '#FFFBEB', border: '#FDE68A', bucket: 'in_arbeit' },
-  in_review: { label: 'Review',         color: '#7C3AED', bg: '#F5F3FF', border: '#DDD6FE', bucket: 'in_arbeit' },
+  in_review: { label: 'Review',         color: '#003060', bg: '#F5F3FF', border: '#DDD6FE', bucket: 'in_arbeit' },
   approved:  { label: 'Freigegeben',    color: '#0891B2', bg: '#ECFEFF', border: '#A5F3FC', bucket: 'in_arbeit' },
   scheduled: { label: 'Eingeplant',     color: '#2563EB', bg: '#EFF6FF', border: '#BFDBFE', bucket: 'eingeplant' },
   published: { label: 'Veröffentlicht', color: '#059669', bg: '#ECFDF5', border: '#A7F3D0', bucket: 'veroeffentlicht' },
@@ -115,9 +115,9 @@ const STATUS_SIMPLE = {
 }
 
 // Standard-Tag-Farben (Planner-Stil) — beim ersten Öffnen als leere, umbenennbare Kategorien angelegt.
-const DEFAULT_TAG_COLORS = ['#EF4444','#F59E0B','#EAB308','#10B981','#06B6D4','#3B82F6','#8B5CF6','#EC4899']
+const DEFAULT_TAG_COLORS = ['#EF4444','#F59E0B','#EAB308','#10B981','#06B6D4','#3B82F6','#0A6FB0','#EC4899']
 // Erweiterte Palette für „+ Tag hinzufügen" (die ersten 8 sind die Defaults).
-const TAG_PALETTE = ['#EF4444','#F59E0B','#EAB308','#10B981','#06B6D4','#3B82F6','#8B5CF6','#EC4899','#F97316','#84CC16','#14B8A6','#0EA5E9','#6366F1','#A855F7','#D946EF','#F43F5E','#64748B','#78716C','#DC2626','#0891B2']
+const TAG_PALETTE = ['#EF4444','#F59E0B','#EAB308','#10B981','#06B6D4','#3B82F6','#0A6FB0','#EC4899','#F97316','#84CC16','#14B8A6','#0EA5E9','#0A6FB0','#A855F7','#D946EF','#F43F5E','#64748B','#78716C','#DC2626','#0891B2']
 
 // Kompaktes Tag-Dropdown (rechts neben Status). Fixed positioniert (Modal-overflow schneidet sonst ab).
 function TagPicker({ tags = [], selTagIds = [], onToggle, onRename, onPersist, onAddTag }) {
@@ -190,7 +190,7 @@ const _DTP_MONTHS = ['Januar','Februar','März','April','Mai','Juni','Juli','Aug
 const _dtpNav = { width:30, height:30, borderRadius:8, border:'1px solid var(--border)', background:'#fff', cursor:'pointer', display:'inline-flex', alignItems:'center', justifyContent:'center', color:'var(--text-secondary,#475467)' }
 const _dtpLink = { background:'transparent', border:'none', cursor:'pointer', fontFamily:'inherit', fontSize:12.5, fontWeight:600, padding:'4px 6px' }
 function DateTimePicker({ value = '', onChange = () => {} }) {
-  const P = 'var(--wl-primary, rgb(49,90,231))'
+  const P = 'var(--wl-primary, #0A6FB0)'
   const [open, setOpen] = useState(false)
   const [coords, setCoords] = useState(null)
   const ref = useRef(null); const btnRef = useRef(null)
@@ -290,7 +290,7 @@ function PostCard({ post, onClick, compact, showBVBadge, tagMap = {} }) {
         padding: compact ? '8px 12px' : '14px 16px',
         cursor:'pointer', transition:'all 0.15s', marginBottom: compact ? 6 : 10,
       }}
-      onMouseEnter={e => { e.currentTarget.style.boxShadow = '0 4px 12px rgba(15,23,42,0.06)'; e.currentTarget.style.borderColor = 'rgba(49,90,231,0.25)' }}
+      onMouseEnter={e => { e.currentTarget.style.boxShadow = '0 4px 12px rgba(15,23,42,0.06)'; e.currentTarget.style.borderColor = 'rgba(10,111,176,0.25)' }}
       onMouseLeave={e => { e.currentTarget.style.boxShadow = 'none'; e.currentTarget.style.borderColor = 'var(--border,#E5E7EB)' }}>
       {/* Status + Plattform + Tags in einer Reihe */}
       <div style={{ display:'flex', alignItems:'center', flexWrap:'wrap', gap:6, marginBottom: compact ? 4 : 6 }}>
@@ -996,7 +996,7 @@ function PostModal({ post, onClose, onSave, onDelete, session, activeTeamId, mem
                 /* Empty-State: prominenter Button-Overlay UNTERHALB der Tipps */
                 <div style={{ position:'absolute', bottom:30, left:'50%', transform:'translateX(-50%)', pointerEvents:'none', display:'flex', flexDirection:'column', alignItems:'center', gap:8, padding:'12px 16px', background:'rgba(255,255,255,0.95)', borderRadius:14, boxShadow:'0 4px 18px rgba(15,23,42,0.08)', maxWidth:'88%' }}>
                   <button type="button" onClick={() => jumpToTextStudio('auto')}
-                    style={{ pointerEvents:'auto', padding:'10px 18px', borderRadius:9, border:'none', background:'var(--wl-primary, rgb(49,90,231))', color:'#fff', fontSize:13, fontWeight:700, cursor:'pointer', display:'inline-flex', alignItems:'center', gap:6, boxShadow:'0 2px 10px rgba(49,90,231,.25)', whiteSpace:'nowrap' }}>
+                    style={{ pointerEvents:'auto', padding:'10px 18px', borderRadius:9, border:'none', background:'var(--wl-primary, #0A6FB0)', color:'#fff', fontSize:13, fontWeight:700, cursor:'pointer', display:'inline-flex', alignItems:'center', gap:6, boxShadow:'0 2px 10px rgba(10,111,176,.25)', whiteSpace:'nowrap' }}>
                     <span style={{display:'inline-flex',alignItems:'center',gap:6}}><Sparkles size={13}/>In Content-Werkstatt schreiben →</span>
                   </button>
                   <div style={{ fontSize:11, color:'var(--text-muted)', textAlign:'center', lineHeight:1.4 }}>
@@ -1008,7 +1008,7 @@ function PostModal({ post, onClose, onSave, onDelete, session, activeTeamId, mem
                 <div style={{ position:'absolute', top:8, right:10, display:'flex', gap:6, zIndex:2 }}>
                   <button type="button" onClick={() => jumpToTextStudio('improve')}
                     title="Text in der Content-Werkstatt verbessern"
-                    style={{ padding:'5px 10px', borderRadius:7, border:'1.5px solid rgba(49,90,231,0.25)', background:'rgba(49,90,231,0.06)', color:'var(--wl-primary, rgb(49,90,231))', fontSize:11, fontWeight:700, cursor:'pointer', display:'inline-flex', alignItems:'center', gap:4, whiteSpace:'nowrap' }}>
+                    style={{ padding:'5px 10px', borderRadius:7, border:'1.5px solid rgba(10,111,176,0.25)', background:'rgba(10,111,176,0.06)', color:'var(--wl-primary, #0A6FB0)', fontSize:11, fontWeight:700, cursor:'pointer', display:'inline-flex', alignItems:'center', gap:4, whiteSpace:'nowrap' }}>
                     <span style={{display:'inline-flex',alignItems:'center',gap:6}}><Wand2 size={13}/>Text verbessern</span>
                   </button>
                 </div>
@@ -1115,7 +1115,7 @@ function PostModal({ post, onClose, onSave, onDelete, session, activeTeamId, mem
                               ⬇ Download
                             </button>
                             <button onClick={(e) => { e.stopPropagation(); openVisualInEditor(v) }}
-                              style={{ padding:'6px 12px', borderRadius:7, border:'none', background:'var(--wl-primary, rgb(49,90,231))', color:'#fff', fontSize:11, fontWeight:700, cursor:'pointer', display:'inline-flex', alignItems:'center', gap:5, whiteSpace:'nowrap' }}>
+                              style={{ padding:'6px 12px', borderRadius:7, border:'none', background:'var(--wl-primary, #0A6FB0)', color:'#fff', fontSize:11, fontWeight:700, cursor:'pointer', display:'inline-flex', alignItems:'center', gap:5, whiteSpace:'nowrap' }}>
                               <span style={{display:'inline-flex',alignItems:'center',gap:6}}><Pencil size={12}/>Bild bearbeiten</span>
                             </button>
                           </div>
@@ -1272,7 +1272,7 @@ function PostModal({ post, onClose, onSave, onDelete, session, activeTeamId, mem
                   <span style={{ fontSize:11, color:'var(--text-muted)', fontStyle:'italic' }}>Niemand zugeordnet</span>
                 )}
                 {mentions.map(m => (
-                  <span key={m.user_id} style={{ display:'inline-flex', alignItems:'center', gap:5, padding:'4px 8px', borderRadius:99, fontSize:11, fontWeight:600, background:'rgba(49,90,231,0.08)', color:'var(--wl-primary, rgb(49,90,231))', border:'1px solid rgba(49,90,231,0.2)' }}>
+                  <span key={m.user_id} style={{ display:'inline-flex', alignItems:'center', gap:5, padding:'4px 8px', borderRadius:99, fontSize:11, fontWeight:600, background:'rgba(10,111,176,0.08)', color:'var(--wl-primary, #0A6FB0)', border:'1px solid rgba(10,111,176,0.2)' }}>
                     @{m.label}
                     <button type="button" onClick={() => removeMention(m.user_id)}
                       style={{ background:'none', border:'none', cursor:'pointer', color:'inherit', fontSize:11, padding:0, lineHeight:1 }}><X size={14} strokeWidth={1.75}/></button>
@@ -1309,7 +1309,7 @@ function PostModal({ post, onClose, onSave, onDelete, session, activeTeamId, mem
                             {avatar ? (
                               <img src={avatar} alt={memberLabel(m)} style={{ width:22, height:22, borderRadius:'50%', objectFit:'cover', flexShrink:0 }}/>
                             ) : (
-                              <span style={{ width:22, height:22, borderRadius:'50%', background:'linear-gradient(135deg, rgb(49,90,231), #8b5cf6)', color:'#fff', display:'flex', alignItems:'center', justifyContent:'center', fontSize:9, fontWeight:700, flexShrink:0 }}>{memberInitials(m)}</span>
+                              <span style={{ width:22, height:22, borderRadius:'50%', background:'linear-gradient(135deg, #0A6FB0, #8b5cf6)', color:'#fff', display:'flex', alignItems:'center', justifyContent:'center', fontSize:9, fontWeight:700, flexShrink:0 }}>{memberInitials(m)}</span>
                             )}
                             <span style={{ flex:1, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{memberLabel(m)}{m.user_id === session.user.id ? ' (du)' : ''}</span>
                             {already && <span style={{ fontSize:10, color:'#94A3B8' }}>✓</span>}
@@ -1336,7 +1336,7 @@ function PostModal({ post, onClose, onSave, onDelete, session, activeTeamId, mem
                     <span style={{ fontSize:13, transition:'transform .15s', transform: notesAndCommentsOpen ? 'rotate(90deg)' : 'rotate(0)' }}>▸</span>
                     <span style={{display:'inline-flex',alignItems:'center',gap:6}}><FileText size={14} strokeWidth={1.75}/>Notizen &amp; Kommentare</span>
                     {totalBadge > 0 && (
-                      <span style={{ marginLeft:'auto', padding:'1px 7px', borderRadius:99, background:'rgba(49,90,231,0.1)', color:'var(--wl-primary, rgb(49,90,231))', fontSize:10, fontWeight:700 }}>
+                      <span style={{ marginLeft:'auto', padding:'1px 7px', borderRadius:99, background:'rgba(10,111,176,0.1)', color:'var(--wl-primary, #0A6FB0)', fontSize:10, fontWeight:700 }}>
                         {totalBadge}
                       </span>
                     )}
@@ -1368,7 +1368,7 @@ function PostModal({ post, onClose, onSave, onDelete, session, activeTeamId, mem
                     const author = (members || []).find(m => m.user_id === c.user_id)
                     const authorLabel = author ? memberLabel(author) : (c.user_id?.slice(0,8) || '?')
                     return (
-                      <div key={c.id} style={{ padding:'8px 10px', background:'#F8FAFC', borderRadius:7, borderLeft:'3px solid rgba(49,90,231,0.3)' }}>
+                      <div key={c.id} style={{ padding:'8px 10px', background:'#F8FAFC', borderRadius:7, borderLeft:'3px solid rgba(10,111,176,0.3)' }}>
                         <div style={{ fontSize:10, fontWeight:700, color:'var(--text-muted)', marginBottom:3 }}>
                           {authorLabel}
                           {' · '}
@@ -1407,7 +1407,7 @@ function PostModal({ post, onClose, onSave, onDelete, session, activeTeamId, mem
                                   {avatar ? (
                                     <img src={avatar} alt={memberLabel(m)} style={{ width:20, height:20, borderRadius:'50%', objectFit:'cover', flexShrink:0 }}/>
                                   ) : (
-                                    <span style={{ width:20, height:20, borderRadius:'50%', background:'linear-gradient(135deg, rgb(49,90,231), #8b5cf6)', color:'#fff', display:'flex', alignItems:'center', justifyContent:'center', fontSize:9, fontWeight:700, flexShrink:0 }}>{memberInitials(m)}</span>
+                                    <span style={{ width:20, height:20, borderRadius:'50%', background:'linear-gradient(135deg, #0A6FB0, #8b5cf6)', color:'#fff', display:'flex', alignItems:'center', justifyContent:'center', fontSize:9, fontWeight:700, flexShrink:0 }}>{memberInitials(m)}</span>
                                   )}
                                   <span style={{ flex:1, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{memberLabel(m)}{m.user_id === session.user.id ? ' (du)' : ''}</span>
                                 </button>
@@ -1418,7 +1418,7 @@ function PostModal({ post, onClose, onSave, onDelete, session, activeTeamId, mem
                       )}
                     </div>
                     <button onClick={addComment} disabled={!newComment.trim()}
-                      style={{ marginLeft:'auto', padding:'5px 12px', borderRadius:7, border:'none', background: newComment.trim() ? 'var(--wl-primary, rgb(49,90,231))' : '#CBD5E1', color:'#fff', fontSize:11, fontWeight:700, cursor: newComment.trim() ? 'pointer' : 'not-allowed', whiteSpace:'nowrap' }}>
+                      style={{ marginLeft:'auto', padding:'5px 12px', borderRadius:7, border:'none', background: newComment.trim() ? 'var(--wl-primary, #0A6FB0)' : '#CBD5E1', color:'#fff', fontSize:11, fontWeight:700, cursor: newComment.trim() ? 'pointer' : 'not-allowed', whiteSpace:'nowrap' }}>
                       Senden
                     </button>
                   </div>
@@ -1474,7 +1474,7 @@ function PostModal({ post, onClose, onSave, onDelete, session, activeTeamId, mem
                           {avatarUrl ? (
                             <img src={avatarUrl} alt={dispName} style={{ width:44, height:44, borderRadius:'50%', objectFit:'cover', flexShrink:0 }}/>
                           ) : (
-                            <div style={{ width:44, height:44, borderRadius:'50%', background:'linear-gradient(135deg,rgb(49,90,231),#8b5cf6)', display:'flex', alignItems:'center', justifyContent:'center', color:'#fff', fontWeight:800, fontSize:14, flexShrink:0 }}>{initials}</div>
+                            <div style={{ width:44, height:44, borderRadius:'50%', background:'linear-gradient(135deg,#0A6FB0,#8b5cf6)', display:'flex', alignItems:'center', justifyContent:'center', color:'#fff', fontWeight:800, fontSize:14, flexShrink:0 }}>{initials}</div>
                           )}
                           <div style={{ minWidth:0, flex:1 }}>
                             <div style={{ fontSize:13, fontWeight:700, color:'rgb(20,20,43)', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{dispName}</div>
@@ -1646,7 +1646,7 @@ function PostModal({ post, onClose, onSave, onDelete, session, activeTeamId, mem
                     </div>
                     <div style={{ display:'flex', gap:10, justifyContent:'center', flexWrap:'wrap' }}>
                       <button onClick={() => window.open(v.signed_url, '_blank', 'noopener')}
-                        style={{ padding:'10px 18px', borderRadius:9, border:'none', background:'var(--wl-primary, rgb(49,90,231))', color:'#fff', fontSize:13, fontWeight:700, cursor:'pointer', display:'inline-flex', alignItems:'center', gap:6 }}>
+                        style={{ padding:'10px 18px', borderRadius:9, border:'none', background:'var(--wl-primary, #0A6FB0)', color:'#fff', fontSize:13, fontWeight:700, cursor:'pointer', display:'inline-flex', alignItems:'center', gap:6 }}>
                         📄 Im neuen Tab öffnen
                       </button>
                       <button onClick={() => downloadPostVisual(v)}
@@ -1705,11 +1705,11 @@ function PostModal({ post, onClose, onSave, onDelete, session, activeTeamId, mem
                       return (
                         <button key={v.id} onClick={() => addVisualToPost(v)}
                           disabled={isAttached}
-                          style={{ position:'relative', padding:0, borderRadius:8, overflow:'hidden', border: isAttached ? '2px solid var(--wl-primary, rgb(49,90,231))' : '1px solid var(--border)', background:'#F1F5F9', aspectRatio:'1/1', cursor: isAttached ? 'default' : 'pointer' }}>
+                          style={{ position:'relative', padding:0, borderRadius:8, overflow:'hidden', border: isAttached ? '2px solid var(--wl-primary, #0A6FB0)' : '1px solid var(--border)', background:'#F1F5F9', aspectRatio:'1/1', cursor: isAttached ? 'default' : 'pointer' }}>
                           {v.signed_url && <img src={v.signed_url} alt={v.prompt} style={{ width:'100%', height:'100%', objectFit:'cover', display:'block' }}/>}
                           {isAttached && (
-                            <div style={{ position:'absolute', inset:0, background:'rgba(49,90,231,0.35)', display:'flex', alignItems:'center', justifyContent:'center' }}>
-                              <span style={{ background:'#fff', color:'var(--wl-primary, rgb(49,90,231))', padding:'3px 10px', borderRadius:99, fontSize:11, fontWeight:700 }}>Hinzugefügt</span>
+                            <div style={{ position:'absolute', inset:0, background:'rgba(10,111,176,0.35)', display:'flex', alignItems:'center', justifyContent:'center' }}>
+                              <span style={{ background:'#fff', color:'var(--wl-primary, #0A6FB0)', padding:'3px 10px', borderRadius:99, fontSize:11, fontWeight:700 }}>Hinzugefügt</span>
                             </div>
                           )}
                         </button>
@@ -1777,7 +1777,7 @@ function PostModal({ post, onClose, onSave, onDelete, session, activeTeamId, mem
 
           {/* RECHTS: Speichern · Auf LinkedIn posten / planen — gleiche Brand-Primary-Farbe */}
           <button onClick={save} disabled={saving}
-            style={{ padding:'9px 20px', borderRadius:10, border:'none', background:'var(--wl-primary, rgb(49,90,231))', color:'#fff', fontSize:13, fontWeight:700, cursor:'pointer', opacity: saving ? 0.7 : 1, display:'inline-flex', alignItems:'center', gap:5 }}>
+            style={{ padding:'9px 20px', borderRadius:10, border:'none', background:'var(--wl-primary, #0A6FB0)', color:'#fff', fontSize:13, fontWeight:700, cursor:'pointer', opacity: saving ? 0.7 : 1, display:'inline-flex', alignItems:'center', gap:5 }}>
             {saving ? <span style={{display:'inline-flex',alignItems:'center',gap:6}}><Loader2 size={12} className='lk-spin'/>Speichere…</span> : isNew ? <span style={{display:'inline-flex',alignItems:'center',gap:6}}><Plus size={12}/>Erstellen</span> : <span style={{display:'inline-flex',alignItems:'center',gap:6}}><Save size={12}/>Speichern</span>}
           </button>
           {/* Phase 2a: Unipile-Route-Schalter (nur Person-Posts) — schaltet Monitoring frei */}
@@ -1786,7 +1786,7 @@ function PostModal({ post, onClose, onSave, onDelete, session, activeTeamId, mem
               title="Veröffentlicht über die Unipile-Server-Automation statt der nativen LinkedIn-API — ermöglicht Reichweiten-Monitoring (Impressions, Reaktionen, Kommentare). Erfordert einen verbundenen Unipile-LinkedIn-Account."
               style={{ display:'inline-flex', alignItems:'center', gap:6, fontSize:12, fontWeight:600, color:'var(--text-muted, #6B7280)', cursor:'pointer', userSelect:'none' }}>
               <input type="checkbox" checked={viaUnipile} onChange={e => setViaUnipile(e.target.checked)}
-                style={{ accentColor:'var(--wl-primary, rgb(49,90,231))', cursor:'pointer' }} />
+                style={{ accentColor:'var(--wl-primary, #0A6FB0)', cursor:'pointer' }} />
               Über Unipile posten (Monitoring)
             </label>
           )}
@@ -1901,7 +1901,7 @@ function PostModal({ post, onClose, onSave, onDelete, session, activeTeamId, mem
                 } catch (e) {
                   alert('Posten fehlgeschlagen: ' + (e.message || 'Unbekannt'))
                 } finally { setSaving(false) }
-              }} disabled={saving} title={(!liConnected && !viaUnipile) ? ((activeBrandVoice?.noBrand || !form.brand_voice_id) ? 'Nur im Redaktionsplan einer Marke möglich' : 'Kein LinkedIn-Profil mit dieser Brand verknüpft — erst verbinden') : undefined} style={{ padding:'9px 16px', borderRadius:10, border:'none', background: (!liConnected && !viaUnipile) ? '#CBD5E1' : (saving ? '#94A3B8' : 'var(--wl-primary, rgb(49,90,231))'), color:'#fff', fontSize:13, fontWeight:700, cursor: saving ? 'wait' : 'pointer', display:'flex', alignItems:'center', gap:5, opacity: (!liConnected && !viaUnipile) ? 0.9 : 1 }}>
+              }} disabled={saving} title={(!liConnected && !viaUnipile) ? ((activeBrandVoice?.noBrand || !form.brand_voice_id) ? 'Nur im Redaktionsplan einer Marke möglich' : 'Kein LinkedIn-Profil mit dieser Brand verknüpft — erst verbinden') : undefined} style={{ padding:'9px 16px', borderRadius:10, border:'none', background: (!liConnected && !viaUnipile) ? '#CBD5E1' : (saving ? '#94A3B8' : 'var(--wl-primary, #0A6FB0)'), color:'#fff', fontSize:13, fontWeight:700, cursor: saving ? 'wait' : 'pointer', display:'flex', alignItems:'center', gap:5, opacity: (!liConnected && !viaUnipile) ? 0.9 : 1 }}>
                 {future
                   ? <span style={{display:'inline-flex',alignItems:'center',gap:6}}><Calendar size={13}/>{viaUnipile ? 'Über Unipile einplanen' : 'Auto-Publish einplanen'}</span>
                   : <span style={{display:'inline-flex',alignItems:'center',gap:6}}><Rocket size={13}/>{viaUnipile ? 'Jetzt über Unipile posten' : 'Jetzt auf LinkedIn posten'}</span>}
@@ -2307,7 +2307,7 @@ Danke für den Austausch! 🤝`,
               {[['kanban','Board',<LayoutGrid size={12} strokeWidth={1.75}/>],['woche','Woche',<CalendarRange size={12} strokeWidth={1.75}/>],['kalender','Monat',<Calendar size={12} strokeWidth={1.75}/>],['liste','Liste',<List size={12} strokeWidth={1.75}/>]].map(([v,l,ic]) => (
                 <button key={v} onClick={() => setView(v)}
                   style={{ padding:'6px 12px', borderRadius:8, border:'none', fontSize:12, fontWeight:700, cursor:'pointer',
-                    background: view===v ? '#fff' : 'transparent', color: view===v ? 'var(--wl-primary, rgb(49,90,231))' : '#64748B',
+                    background: view===v ? '#fff' : 'transparent', color: view===v ? 'var(--wl-primary, #0A6FB0)' : '#64748B',
                     boxShadow: view===v ? '0 1px 4px rgba(0,0,0,0.08)' : 'none', transition:'all 0.15s' }}>
                   {l}
                 </button>
@@ -2317,16 +2317,16 @@ Danke für den Austausch! 🤝`,
 
           {/* Brainstorm Button (Primary CTA) */}
           <button data-tour-id="rp-brainstorm" onClick={() => setShowBrainstorm(true)}
-            style={{ padding:'8px 14px', borderRadius:10, border:'1.5px solid rgba(49,90,231,0.3)', background:'rgba(49,90,231,0.06)', color:'var(--wl-primary, rgb(49,90,231))',
+            style={{ padding:'8px 14px', borderRadius:10, border:'1.5px solid rgba(10,111,176,0.3)', background:'rgba(10,111,176,0.06)', color:'var(--wl-primary, #0A6FB0)',
               fontSize:13, fontWeight:600, cursor:'pointer', display:'flex', alignItems:'center', gap:5, whiteSpace:'nowrap' }}>
             <span style={{display:'inline-flex',alignItems:'center',gap:6}}><Brain size={13}/>Brainstormen</span>
           </button>
 
           {/* Neu Button */}
           <button data-tour-id="rp-new-post" onClick={() => openNew()}
-            style={{ padding:'8px 18px', borderRadius:10, border:'none', background:'var(--wl-primary, rgb(49,90,231))', color:'#fff',
+            style={{ padding:'8px 18px', borderRadius:10, border:'none', background:'var(--wl-primary, #0A6FB0)', color:'#fff',
               fontSize:13, fontWeight:700, cursor:'pointer', display:'flex', alignItems:'center', gap:6,
-              boxShadow:'0 2px 8px rgba(49,90,231,0.3)', whiteSpace:'nowrap' }}>
+              boxShadow:'0 2px 8px rgba(10,111,176,0.3)', whiteSpace:'nowrap' }}>
             <span style={{display:'inline-flex',alignItems:'center',gap:6}}><PenLine size={13}/>Neuer Beitrag</span>
           </button>
         </div>
@@ -2384,17 +2384,17 @@ Danke für den Austausch! 🤝`,
                 padding: '14px 26px',
                 borderRadius: 12,
                 border: 'none',
-                background: 'linear-gradient(135deg, rgb(49,90,231), #8B5CF6)',
+                background: 'linear-gradient(135deg, #0A6FB0, #0A6FB0)',
                 color: '#fff',
                 fontSize: 15,
                 fontWeight: 700,
                 cursor: 'pointer',
-                boxShadow: '0 4px 14px rgba(49,90,231,0.28)',
+                boxShadow: '0 4px 14px rgba(10,111,176,0.28)',
                 display: 'inline-flex',
                 alignItems: 'center',
                 gap: 8,
               }}>
-              <Brain size={18} strokeWidth={1.75} style={{ color:'var(--wl-primary, rgb(49,90,231))' }}/>
+              <Brain size={18} strokeWidth={1.75} style={{ color:'var(--wl-primary, #0A6FB0)' }}/>
               Mit KI brainstormen
             </button>
             <button onClick={() => openNew()}
@@ -2493,8 +2493,8 @@ Danke für den Austausch! 🤝`,
               return (
                 <div key={i} style={{ flex:1, minWidth:140, display:'flex', flexDirection:'column',
                   background: isToday ? '#EFF6FF' : '#F8FAFC', borderRadius:14,
-                  border: isToday ? '2px solid rgb(49,90,231)' : '1px solid #E5E7EB', overflow:'hidden' }}>
-                  <div style={{ padding:'10px 12px', borderBottom:'1px solid var(--border)', background: isToday ? 'var(--wl-primary, rgb(49,90,231))' : '#fff' }}>
+                  border: isToday ? '2px solid #0A6FB0' : '1px solid #E5E7EB', overflow:'hidden' }}>
+                  <div style={{ padding:'10px 12px', borderBottom:'1px solid var(--border)', background: isToday ? 'var(--wl-primary, #0A6FB0)' : '#fff' }}>
                     <div style={{ fontSize:11, fontWeight:800, color: isToday ? 'rgba(255,255,255,0.7)' : '#94A3B8', textTransform:'uppercase' }}>{DAYS[i]}</div>
                     <div style={{ fontSize:18, fontWeight:800, color: isToday ? '#fff' : 'rgb(20,20,43)' }}>{day.getDate()}</div>
                   </div>
@@ -2541,7 +2541,7 @@ Danke für den Austausch! 🤝`,
                 <div style={{ flex:1, display:'flex', flexDirection:'column', alignItems:'center', justifyContent:'center', gap:12, padding:'40px 16px', color:'var(--text-muted)', textAlign:'center' }}>
                   <div style={{ fontSize:14 }}>Keine Beiträge im {MONTHS[calMonth]} {calYear}.</div>
                   <button onClick={() => openNew()}
-                    style={{ padding:'10px 18px', borderRadius:10, border:'none', background:'var(--wl-primary, rgb(49,90,231))', color:'#fff', fontWeight:700, cursor:'pointer', fontSize:13 }}>
+                    style={{ padding:'10px 18px', borderRadius:10, border:'none', background:'var(--wl-primary, #0A6FB0)', color:'#fff', fontWeight:700, cursor:'pointer', fontSize:13 }}>
                     Beitrag planen
                   </button>
                 </div>
@@ -2561,14 +2561,14 @@ Danke für den Austausch! 🤝`,
                   return (
                     <div key={gi}>
                       <div style={{ display:'flex', alignItems:'baseline', gap:8, marginBottom:8 }}>
-                        <span style={{ fontSize:16, fontWeight:800, color: isToday ? 'var(--wl-primary, rgb(49,90,231))' : 'rgb(20,20,43)' }}>
+                        <span style={{ fontSize:16, fontWeight:800, color: isToday ? 'var(--wl-primary, #0A6FB0)' : 'rgb(20,20,43)' }}>
                           {g.date.getDate()}. {MONTHS[g.date.getMonth()]}
                         </span>
                         <span style={{ fontSize:12, color:'var(--text-muted)', textTransform:'capitalize' }}>
                           {g.date.toLocaleDateString('de-DE', { weekday:'long' })}
                         </span>
                         {isToday && (
-                          <span style={{ fontSize:10, fontWeight:700, color:'#fff', background:'var(--wl-primary, rgb(49,90,231))', padding:'1px 8px', borderRadius:999 }}>Heute</span>
+                          <span style={{ fontSize:10, fontWeight:700, color:'#fff', background:'var(--wl-primary, #0A6FB0)', padding:'1px 8px', borderRadius:999 }}>Heute</span>
                         )}
                       </div>
                       <div style={{ display:'flex', flexDirection:'column', gap:6 }}>
@@ -2615,14 +2615,14 @@ Danke für den Austausch! 🤝`,
               return (
                 <div key={i}
                   style={{ background: !day.current ? '#FAFAFA' : (()=>{ const d=day.date.getDay(); return (d===2||d===3||d===4)?'#FAFFF4':'#fff' })(), borderRadius:10,
-                    border: isToday ? '2px solid rgb(49,90,231)' : (()=>{ const d=day.date.getDay(); return (d===2||d===3||d===4)?'1px solid #A7F3D0':'1px solid #E5E7EB' })(),
+                    border: isToday ? '2px solid #0A6FB0' : (()=>{ const d=day.date.getDay(); return (d===2||d===3||d===4)?'1px solid #A7F3D0':'1px solid #E5E7EB' })(),
                     padding:'6px', overflow:'hidden', cursor:'pointer', minHeight:80,
                     opacity: !day.current ? 0.5 : 1 }}
                   onClick={() => openNew({ scheduled_at: day.date.toISOString().slice(0,16) })}>
                   <div style={{ fontSize:11, fontWeight: isToday ? 800 : 600,
-                    color: isToday ? 'var(--wl-primary, rgb(49,90,231))' : isPast ? '#94A3B8' : 'rgb(20,20,43)',
+                    color: isToday ? 'var(--wl-primary, #0A6FB0)' : isPast ? '#94A3B8' : 'rgb(20,20,43)',
                     marginBottom:4, display:'flex', alignItems:'center', gap:4 }}>
-                    {isToday && <span style={{ width:6, height:6, borderRadius:'50%', background:'var(--wl-primary, rgb(49,90,231))', display:'inline-block' }}/>}
+                    {isToday && <span style={{ width:6, height:6, borderRadius:'50%', background:'var(--wl-primary, #0A6FB0)', display:'inline-block' }}/>}
                     {day.date.getDate()}
                   </div>
                   {dayPosts.slice(0,3).map(p => (
@@ -2651,12 +2651,12 @@ Danke für den Austausch! 🤝`,
           {loading && <div style={{ textAlign:'center', padding:40, color:'var(--text-muted)' }}>Lädt…</div>}
           {!loading && filtered.length === 0 && (
             <div style={{ textAlign:'center', padding:60, color:'#CBD5E1' }}>
-              <div style={{ marginBottom:12, display:'inline-flex', color:'var(--wl-primary, rgb(49,90,231))' }}><PenLine size={40} strokeWidth={1.5}/></div>
+              <div style={{ marginBottom:12, display:'inline-flex', color:'var(--wl-primary, #0A6FB0)' }}><PenLine size={40} strokeWidth={1.5}/></div>
               <div style={{ fontSize:16, fontWeight:700 }}>Noch keine Beiträge</div>
               <div style={{ fontSize:13, marginTop:8 }}>Erstelle deinen ersten Content-Plan</div>
               <button onClick={() => openNew()}
                 style={{ marginTop:16, padding:'10px 20px', borderRadius:10, border:'none',
-                  background:'var(--wl-primary, rgb(49,90,231))', color:'#fff', fontWeight:700, cursor:'pointer' }}>
+                  background:'var(--wl-primary, #0A6FB0)', color:'#fff', fontWeight:700, cursor:'pointer' }}>
                 <span style={{display:'inline-flex',alignItems:'center',gap:6}}><PenLine size={13}/>Ersten Beitrag erstellen</span>
               </button>
             </div>
@@ -2733,8 +2733,8 @@ Danke für den Austausch! 🤝`,
         <div style={{ position:'fixed', inset:0, background:'rgba(0,0,0,0.55)', zIndex:1000, display:'flex', alignItems:'center', justifyContent:'center', padding:20 }}
           onClick={e => e.target === e.currentTarget && setShowBrainstorm(false)}>
           <div style={{ background:'var(--surface)', borderRadius:18, width:'100%', maxWidth:780, maxHeight:'90vh', display:'flex', flexDirection:'column', overflow:'hidden', boxShadow:'0 20px 60px rgba(0,0,0,0.25)' }}>
-            <div style={{ padding:'18px 22px 14px', background:'linear-gradient(135deg, rgba(49,90,231,.08), rgba(124,58,237,.06))' }}>
-              <div style={{ fontSize:11, color:'var(--wl-primary, rgb(49,90,231))', fontWeight:700, textTransform:'uppercase', letterSpacing:'0.08em', marginBottom:6, display:'inline-flex', alignItems:'center', gap:6 }}><Brain size={12} strokeWidth={1.75}/>Brainstorming-Session</div>
+            <div style={{ padding:'18px 22px 14px', background:'linear-gradient(135deg, rgba(10,111,176,.08), rgba(0,48,96,.06))' }}>
+              <div style={{ fontSize:11, color:'var(--wl-primary, #0A6FB0)', fontWeight:700, textTransform:'uppercase', letterSpacing:'0.08em', marginBottom:6, display:'inline-flex', alignItems:'center', gap:6 }}><Brain size={12} strokeWidth={1.75}/>Brainstorming-Session</div>
               <h2 style={{ fontSize:22, fontWeight:700, color:'rgb(20,20,43)', margin:0 }}>Was möchtest du heute posten?</h2>
               <p style={{ fontSize:13, color:'var(--text-muted)', margin:'8px 0 0', lineHeight:1.5 }}>
                 Lass dir Ideen passend zu deiner Brand Voice generieren. Die KI nutzt deinen Markenkontext und deine bisherigen Top-Posts.
@@ -2757,7 +2757,7 @@ Danke für den Austausch! 🤝`,
                   <div style={{ position:'relative' }}>
                     <button type="button" onClick={() => setShowBsKnowledge(v => !v)}
                       title="Optional: Wissensressourcen einbeziehen"
-                      style={{ display:'inline-flex', alignItems:'center', gap:6, width:120, height:38, boxSizing:'border-box', padding:'0 10px', borderRadius:9, border:'1.5px solid '+(brainstormKnowledgeIds.length?'var(--wl-primary, rgb(49,90,231))':'var(--border)'), fontSize:13, fontWeight:600, background:'var(--surface)', color: brainstormKnowledgeIds.length?'var(--wl-primary, rgb(49,90,231))':'var(--text-primary)', cursor:'pointer', fontFamily:'inherit' }}>
+                      style={{ display:'inline-flex', alignItems:'center', gap:6, width:120, height:38, boxSizing:'border-box', padding:'0 10px', borderRadius:9, border:'1.5px solid '+(brainstormKnowledgeIds.length?'var(--wl-primary, #0A6FB0)':'var(--border)'), fontSize:13, fontWeight:600, background:'var(--surface)', color: brainstormKnowledgeIds.length?'var(--wl-primary, #0A6FB0)':'var(--text-primary)', cursor:'pointer', fontFamily:'inherit' }}>
                       <BookOpen size={13} strokeWidth={1.75} style={{ flexShrink:0 }}/>
                       <span style={{ flex:1, minWidth:0, overflow:'hidden', textOverflow:'ellipsis', textAlign:'left' }}>Wissen{brainstormKnowledgeIds.length ? ` (${brainstormKnowledgeIds.length})` : ''}</span>
                       <ChevronDown size={13} strokeWidth={2} style={{ opacity:0.5, flexShrink:0 }}/>
@@ -2778,7 +2778,7 @@ Danke für den Austausch! 🤝`,
                   </div>
                 )}
                 <button onClick={() => generateIdeas(brainstormTopic.trim())} disabled={generating}
-                  style={{ height:38, boxSizing:'border-box', padding:'0 16px', borderRadius:9, border:'none', background:'var(--wl-primary, rgb(49,90,231))', color:'#fff', fontSize:13, fontWeight:700, cursor:generating?'wait':'pointer', whiteSpace:'nowrap', display:'inline-flex', alignItems:'center' }}>
+                  style={{ height:38, boxSizing:'border-box', padding:'0 16px', borderRadius:9, border:'none', background:'var(--wl-primary, #0A6FB0)', color:'#fff', fontSize:13, fontWeight:700, cursor:generating?'wait':'pointer', whiteSpace:'nowrap', display:'inline-flex', alignItems:'center' }}>
                   {generating ? <span style={{display:'inline-flex',alignItems:'center',gap:6}}><Loader2 size={12} className='lk-spin'/>Generiere…</span> : <span style={{display:'inline-flex',alignItems:'center',gap:6}}><Wand2 size={12}/>Generieren</span>}
                 </button>
                 </div>
@@ -2805,10 +2805,10 @@ Danke für den Austausch! 🤝`,
                       })
                     }}
                     style={{ marginBottom:10, padding:'12px 14px', borderRadius:12,
-                      border: '2px solid ' + (selected ? 'var(--wl-primary, rgb(49,90,231))' : 'var(--border)'),
-                      background: selected ? 'rgba(49,90,231,.04)' : 'var(--surface)',
+                      border: '2px solid ' + (selected ? 'var(--wl-primary, #0A6FB0)' : 'var(--border)'),
+                      background: selected ? 'rgba(10,111,176,.04)' : 'var(--surface)',
                       cursor:'pointer', transition:'all .15s', display:'flex', gap:12, alignItems:'flex-start' }}>
-                    <div style={{ width:24, height:24, borderRadius:6, border: '2px solid ' + (selected ? 'var(--wl-primary, rgb(49,90,231))' : 'var(--border)'), background: selected ? 'var(--wl-primary, rgb(49,90,231))' : 'transparent', color:'#fff', display:'flex', alignItems:'center', justifyContent:'center', fontSize:12, flexShrink:0, marginTop:2 }}>
+                    <div style={{ width:24, height:24, borderRadius:6, border: '2px solid ' + (selected ? 'var(--wl-primary, #0A6FB0)' : 'var(--border)'), background: selected ? 'var(--wl-primary, #0A6FB0)' : 'transparent', color:'#fff', display:'flex', alignItems:'center', justifyContent:'center', fontSize:12, flexShrink:0, marginTop:2 }}>
                       {selected ? '✓' : ''}
                     </div>
                     <div style={{ flex:1 }}>
@@ -2830,7 +2830,7 @@ Danke für den Austausch! 🤝`,
                   Abbrechen
                 </button>
                 <button onClick={adoptSelectedIdeas} disabled={brainstormSelected.size === 0}
-                  style={{ padding:'9px 18px', borderRadius:9, border:'none', background: brainstormSelected.size === 0 ? '#CBD5E1' : 'var(--wl-primary, rgb(49,90,231))', color:'#fff', fontSize:13, fontWeight:700, cursor: brainstormSelected.size === 0 ? 'not-allowed' : 'pointer' }}>
+                  style={{ padding:'9px 18px', borderRadius:9, border:'none', background: brainstormSelected.size === 0 ? '#CBD5E1' : 'var(--wl-primary, #0A6FB0)', color:'#fff', fontSize:13, fontWeight:700, cursor: brainstormSelected.size === 0 ? 'not-allowed' : 'pointer' }}>
                   <span style={{display:'inline-flex',alignItems:'center',gap:6}}><Lightbulb size={13}/>{brainstormSelected.size > 0 ? brainstormSelected.size + ' Idee' + (brainstormSelected.size === 1 ? '' : 'n') + ' übernehmen' : 'Auswählen'}</span>
                 </button>
               </div>

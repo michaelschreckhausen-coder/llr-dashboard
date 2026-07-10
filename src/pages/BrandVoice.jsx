@@ -33,7 +33,7 @@ import WizardLayout from '../components/WizardLayout'
 import TabBar from '../components/TabBar'
 import { useModel } from '../context/ModelContext'
 
-const P = 'var(--wl-primary, rgb(49,90,231))'
+const P = 'var(--wl-primary, #0A6FB0)'
 
 // ─── Konstanten ───────────────────────────────────────────────────────────────
 const TONES = ['Professionell','Freundlich','Direkt','Inspirierend','Humorvoll','Empathisch','Analytisch','Motivierend','Authentisch','Kreativ','Sachlich','Leidenschaftlich','Mutig','Klar','Visionär']
@@ -73,10 +73,10 @@ function In({v,fn,ph,style={},type='text',disabled}) {
     onChange={e=>fn(e.target.value)} placeholder={ph}
     onFocus={()=>setFocused(true)} onBlur={()=>setFocused(false)}
     style={{ width:'100%', padding:'11px 14px',
-      border:'1.5px solid '+(focused?'var(--wl-primary, rgb(49,90,231))':'var(--border, #E5E7EB)'),
+      border:'1.5px solid '+(focused?'var(--wl-primary, #0A6FB0)':'var(--border, #E5E7EB)'),
       borderRadius:10, fontSize:13.5, boxSizing:'border-box', outline:'none',
       background:'var(--surface, #fff)', color:'var(--text-primary, rgb(20,20,43))',
-      boxShadow: focused ? '0 0 0 3px rgba(49,90,231,.10)' : 'none',
+      boxShadow: focused ? '0 0 0 3px rgba(10,111,176,.10)' : 'none',
       transition:'border-color .15s, box-shadow .15s',
       fontFamily:'inherit', opacity: disabled?.6:1, ...style }}/>
 }
@@ -88,11 +88,11 @@ function Tx({v,fn,r=3,ph,disabled}) {
     onChange={e=>fn(e.target.value)} rows={r} placeholder={ph}
     onFocus={()=>setFocused(true)} onBlur={()=>setFocused(false)}
     style={{ width:'100%', padding:'11px 14px',
-      border:'1.5px solid '+(focused?'var(--wl-primary, rgb(49,90,231))':'var(--border, #E5E7EB)'),
+      border:'1.5px solid '+(focused?'var(--wl-primary, #0A6FB0)':'var(--border, #E5E7EB)'),
       borderRadius:10, fontSize:13.5, lineHeight:1.55, resize:'vertical',
       boxSizing:'border-box', outline:'none',
       background:'var(--surface, #fff)', color:'var(--text-primary, rgb(20,20,43))',
-      boxShadow: focused ? '0 0 0 3px rgba(49,90,231,.10)' : 'none',
+      boxShadow: focused ? '0 0 0 3px rgba(10,111,176,.10)' : 'none',
       transition:'border-color .15s, box-shadow .15s',
       fontFamily:'inherit', opacity: disabled?.6:1 }}/>
 }
@@ -161,9 +161,9 @@ function VocabularyChips({ items, onChange, max=30 }) {
     <div>
       <div style={{ display:'flex', flexWrap:'wrap', gap:6, marginBottom:8 }}>
         {items.map((w,i) => (
-          <span key={i} style={{ display:'inline-flex', alignItems:'center', gap:4, padding:'4px 10px', background:'rgba(49,90,231,0.08)', borderRadius:20, fontSize:12, color:'#315AE7' }}>
+          <span key={i} style={{ display:'inline-flex', alignItems:'center', gap:4, padding:'4px 10px', background:'rgba(10,111,176,0.08)', borderRadius:20, fontSize:12, color:'#0A6FB0' }}>
             {w}
-            <button onClick={()=>onChange(items.filter((_,j)=>j!==i))} style={{ background:'none', border:'none', cursor:'pointer', color:'#315AE7', fontSize:14, lineHeight:1, padding:0 }}>×</button>
+            <button onClick={()=>onChange(items.filter((_,j)=>j!==i))} style={{ background:'none', border:'none', cursor:'pointer', color:'#0A6FB0', fontSize:14, lineHeight:1, padding:0 }}>×</button>
           </span>
         ))}
       </div>
@@ -587,7 +587,7 @@ function QuickSetup({ session, onDone, onSkip, onBack, brandType = 'personal' })
               <input type="range" min={0} max={100} step={5}
                 value={sl.value}
                 onChange={e => updSlider(i, { value: parseInt(e.target.value, 10) })}
-                style={{ width:'100%', accentColor:'var(--wl-primary, rgb(49,90,231))' }}/>
+                style={{ width:'100%', accentColor:'var(--wl-primary, #0A6FB0)' }}/>
             </div>
           ))}
           <button type="button" onClick={addSlider}
@@ -723,7 +723,7 @@ function BVImagesEditor({ edit, u, session, activeTeamId, field, label, hint, ic
       onDragOver={e => { if (edit?.id && paths.length < max) { e.preventDefault(); setDragOver(true) } }}
       onDragLeave={e => { e.preventDefault(); setDragOver(false) }}
       onDrop={e => { e.preventDefault(); setDragOver(false); if (!edit?.id) return; const imgs = Array.from(e.dataTransfer.files || []).filter(x => x.type.startsWith('image/')); if (imgs.length) uploadImgs(imgs) }}
-      style={{ padding:'12px 14px', background: dragOver ? 'rgba(49,90,231,0.06)' : '#FAFAFA', border:'1.5px solid ' + (dragOver ? 'var(--wl-primary, rgb(49,90,231))' : 'var(--border)'), borderRadius:10, flex:'1 1 320px', minWidth:280, transition:'background .12s, border-color .12s' }}>
+      style={{ padding:'12px 14px', background: dragOver ? 'rgba(10,111,176,0.06)' : '#FAFAFA', border:'1.5px solid ' + (dragOver ? 'var(--wl-primary, #0A6FB0)' : 'var(--border)'), borderRadius:10, flex:'1 1 320px', minWidth:280, transition:'background .12s, border-color .12s' }}>
       <div style={{ fontSize:13, fontWeight:700, color:'var(--text-primary)', marginBottom:4 }}>
         {icon} {label}
       </div>
@@ -781,7 +781,7 @@ function BrandColorsEditor({ edit, u }) {
   const removeExtra = (i) => commit({ ...base(), additional: additional.filter((_, j) => j !== i) })
   function tryAddDraft() {
     const h = (draft || '').trim()
-    if (!/^#?[0-9a-fA-F]{6}$/.test(h)) { alert('Bitte gültigen Hex-Code, z.B. #315AE7'); return }
+    if (!/^#?[0-9a-fA-F]{6}$/.test(h)) { alert('Bitte gültigen Hex-Code, z.B. #0A6FB0'); return }
     addExtra(h.startsWith('#') ? h.toUpperCase() : '#' + h.toUpperCase())
     setDraft('')
   }
@@ -821,7 +821,7 @@ function BrandColorsEditor({ edit, u }) {
           <input value={draft} onChange={e=>setDraft(e.target.value)} placeholder="#RRGGBB"
             onKeyDown={e=>{ if(e.key==='Enter'){ e.preventDefault(); tryAddDraft() } }}
             style={{ width:84, padding:'6px 8px', fontSize:12, border:'1px solid var(--border)', borderRadius:6 }}/>
-          <button type="button" onClick={tryAddDraft} style={{ padding:'6px 10px', borderRadius:6, border:'none', background:'var(--wl-primary, rgb(49,90,231))', color:'#fff', fontSize:12, fontWeight:600, cursor:'pointer' }}>+</button>
+          <button type="button" onClick={tryAddDraft} style={{ padding:'6px 10px', borderRadius:6, border:'none', background:'var(--wl-primary, #0A6FB0)', color:'#fff', fontSize:12, fontWeight:600, cursor:'pointer' }}>+</button>
         </div>
       </div>
     </div>
@@ -897,7 +897,7 @@ function BookletEditor({ edit, u, activeTeamId }) {
       onDragOver={e => { if (edit?.id && paths.length < MAX) { e.preventDefault(); setDragOver(true) } }}
       onDragLeave={e => { e.preventDefault(); setDragOver(false) }}
       onDrop={e => { e.preventDefault(); setDragOver(false); if (edit?.id) uploadPdfs(e.dataTransfer.files) }}
-      style={{ padding:'12px 14px', background: dragOver ? 'rgba(49,90,231,0.06)' : '#FAFAFA', border:'1.5px solid ' + (dragOver ? 'var(--wl-primary, rgb(49,90,231))' : 'var(--border)'), borderRadius:10, flex:'1 1 320px', minWidth:280, transition:'background .12s, border-color .12s' }}>
+      style={{ padding:'12px 14px', background: dragOver ? 'rgba(10,111,176,0.06)' : '#FAFAFA', border:'1.5px solid ' + (dragOver ? 'var(--wl-primary, #0A6FB0)' : 'var(--border)'), borderRadius:10, flex:'1 1 320px', minWidth:280, transition:'background .12s, border-color .12s' }}>
       <div style={{ fontSize:13, fontWeight:700, color:'var(--text-primary)', marginBottom:4 }}><FileText size={14} strokeWidth={1.75} style={{verticalAlign:'-2px'}}/> CI-Booklet / Brand Guide</div>
       <div style={{ fontSize:11, color:'var(--text-muted)', lineHeight:1.5, marginBottom:10 }}>Styleguide als PDF (max {MAX}). Dient als Referenz für das Team — Inhalte kannst du zusätzlich über den Import in die Voice einfließen lassen.</div>
       {paths.map((p, i) => (
@@ -1001,7 +1001,7 @@ function BrandFontUploadEditor({ edit, u, activeTeamId }) {
       onDragOver={e => { if (edit?.id) { e.preventDefault(); setDragOver(true) } }}
       onDragLeave={e => { e.preventDefault(); setDragOver(false) }}
       onDrop={e => { e.preventDefault(); setDragOver(false); if (edit?.id) handleFiles(e.dataTransfer.files) }}
-      style={{ padding:'12px 14px', background: dragOver ? 'rgba(49,90,231,0.06)' : '#FAFAFA', border:'1.5px solid ' + (dragOver ? 'var(--wl-primary, rgb(49,90,231))' : 'var(--border)'), borderRadius:10, flex:'1 1 100%', minWidth:280, transition:'background .12s, border-color .12s' }}>
+      style={{ padding:'12px 14px', background: dragOver ? 'rgba(10,111,176,0.06)' : '#FAFAFA', border:'1.5px solid ' + (dragOver ? 'var(--wl-primary, #0A6FB0)' : 'var(--border)'), borderRadius:10, flex:'1 1 100%', minWidth:280, transition:'background .12s, border-color .12s' }}>
       <div style={{ fontSize:13, fontWeight:700, color:'var(--text-primary)', marginBottom:4 }}>Aa Schriftarten</div>
       <div style={{ fontSize:11, color:'var(--text-muted)', lineHeight:1.5, marginBottom:10 }}>Eigene Schrift-Dateien hochladen. Hochgeladene Schriften stehen anschließend im Content-Werkstatt-Designer zur Verfügung.</div>
 
@@ -1010,7 +1010,7 @@ function BrandFontUploadEditor({ edit, u, activeTeamId }) {
         {uploading
           ? <span style={{ display:'inline-flex', alignItems:'center', gap:6, color:'var(--text-primary)', fontWeight:600 }}><Loader2 size={15} className="lk-spin"/>Lade hoch…</span>
           : <>
-              <Upload size={18} strokeWidth={1.75} style={{ color:'var(--wl-primary, rgb(49,90,231))' }}/>
+              <Upload size={18} strokeWidth={1.75} style={{ color:'var(--wl-primary, #0A6FB0)' }}/>
               <span style={{ fontWeight:600, color:'var(--text-primary)' }}>Schrift hochladen (.woff2, .woff, .ttf, .otf)</span>
               <span style={{ fontSize:11 }}>Mehrere Dateien möglich · oder hierher ziehen</span>
             </>}
@@ -1034,7 +1034,7 @@ function BrandFontUploadEditor({ edit, u, activeTeamId }) {
                     onChange={e => setRenameValue(e.target.value)}
                     onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); commitRename(a.path) } if (e.key === 'Escape') setRenamingPath(null) }}
                     onBlur={() => commitRename(a.path)}
-                    style={{ width:'100%', padding:'5px 8px', fontSize:13, fontWeight:600, border:'1.5px solid var(--wl-primary, rgb(49,90,231))', borderRadius:6, boxSizing:'border-box' }}/>
+                    style={{ width:'100%', padding:'5px 8px', fontSize:13, fontWeight:600, border:'1.5px solid var(--wl-primary, #0A6FB0)', borderRadius:6, boxSizing:'border-box' }}/>
                 ) : (
                   <>
                     <div style={{ fontSize:13, fontWeight:600, color:'var(--text-primary)', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>
@@ -1394,7 +1394,7 @@ export default function BrandVoice({ session, brandType = 'personal' }) {
       <div style={{ width:'100%', maxWidth:1100, margin:'0 auto', padding:'12px 16px' }}>
         {hasWizardDraft && (
           <div data-tick={draftCheckTick} style={{ marginTop:14, marginBottom:0, padding:'12px 16px', background:'rgba(245,158,11,0.08)', border:'1px solid rgba(245,158,11,0.30)', borderRadius:10, display:'flex', alignItems:'center', gap:12, flexWrap:'wrap' }}>
-            <FileText size={18} strokeWidth={1.75} style={{ color:'var(--wl-primary, rgb(49,90,231))' }}/>
+            <FileText size={18} strokeWidth={1.75} style={{ color:'var(--wl-primary, #0A6FB0)' }}/>
             <div style={{ flex:1, minWidth:220 }}>
               <div style={{ fontSize:13, fontWeight:600, color:'#92400E' }}>Du hast einen unfertigen Brand-Entwurf</div>
               <div style={{ fontSize:11, color:'#92400E', opacity:.9 }}>Deine Eingaben sind gespeichert — du kannst dort weitermachen.</div>
@@ -1428,13 +1428,13 @@ export default function BrandVoice({ session, brandType = 'personal' }) {
     <div style={{ width:'100%', maxWidth:1100, margin:'0 auto', padding:'24px 16px 40px' }}>
       {/* Journal-Style-Header */}
       <div style={{ marginBottom:22 }}>
-        <div style={{ fontSize:20, color:'#30A0D0', fontFamily:'"Caveat", cursive', fontWeight:600, marginBottom:6 }}>Branding · Schritt 1 von 3</div>
+        <div style={{ fontSize:12, fontWeight:700, letterSpacing:'1.6px', textTransform:'uppercase', fontFamily:'Inter, sans-serif', color:'var(--primary, #003060)', marginBottom:6 }}>Branding · Schritt 1 von 3</div>
         <h1 style={{ fontSize:26, fontWeight:700, margin:0, letterSpacing:'-0.3px', lineHeight:1.2 }}>{isCompanyPage ? 'Deine Company Brands.' : 'Deine Personal Brands.'}</h1>
         <p style={{ fontSize:13, color:'var(--text-muted)', margin:'8px 0 0', lineHeight:1.6 }}>{isCompanyPage ? 'Die Markenstimme deines Unternehmens — für Page-Content, Profiltexte und CI-konforme Visuals.' : 'Markenstimme, die jeden generierten Text trägt. Eine ist aktiv, weitere als Vorlagen.'}</p>
       </div>
 
       <div style={{ display:'flex', justifyContent:'flex-start', gap:10, marginBottom:18 }}>
-        <button data-tour-id="brand-new-ai" onClick={()=>{ const draftSuffix = isCompanyPage ? '_co' : ''; ['step','name','position','company','offering','motivation','goal','examples','sliders2','importData','importedText'].forEach(f => { try { window.localStorage.removeItem('bv_w_'+f+'_'+uid+draftSuffix) } catch(_) {} }); clearTabPersistedKey('ki_tab_brand'); setView('wizard') }} style={{ padding:'10px 20px', background:P, color:'#fff', border:'none', borderRadius:10, fontSize:13, fontWeight:600, cursor:'pointer', boxShadow:'0 2px 8px rgba(49,90,231,.18)' }}>
+        <button data-tour-id="brand-new-ai" onClick={()=>{ const draftSuffix = isCompanyPage ? '_co' : ''; ['step','name','position','company','offering','motivation','goal','examples','sliders2','importData','importedText'].forEach(f => { try { window.localStorage.removeItem('bv_w_'+f+'_'+uid+draftSuffix) } catch(_) {} }); clearTabPersistedKey('ki_tab_brand'); setView('wizard') }} style={{ padding:'10px 20px', background:P, color:'#fff', border:'none', borderRadius:10, fontSize:13, fontWeight:600, cursor:'pointer', boxShadow:'0 2px 8px rgba(10,111,176,.18)' }}>
           {isCompanyPage ? 'Neue Company Brand mit KI' : 'Neue Personal Brand mit KI'}
         </button>
         <button onClick={()=>{ setEdit({...E0, user_id:session.user.id, account_type:brandType}); setView('editor'); setTab('marke') }}
@@ -1446,7 +1446,7 @@ export default function BrandVoice({ session, brandType = 'personal' }) {
       {/* Wizard-Draft-Recovery-Banner */}
       {hasWizardDraft && (
         <div data-tick={draftCheckTick} style={{ marginBottom:16, padding:'12px 16px', background:'rgba(245,158,11,0.08)', border:'1px solid rgba(245,158,11,0.30)', borderRadius:10, display:'flex', alignItems:'center', gap:12, flexWrap:'wrap' }}>
-          <FileText size={18} strokeWidth={1.75} style={{ color:'var(--wl-primary, rgb(49,90,231))' }}/>
+          <FileText size={18} strokeWidth={1.75} style={{ color:'var(--wl-primary, #0A6FB0)' }}/>
           <div style={{ flex:1, minWidth:220 }}>
             <div style={{ fontSize:13, fontWeight:600, color:'#92400E' }}>Du hast einen unfertigen Brand-Entwurf</div>
             <div style={{ fontSize:11, color:'#92400E', opacity:.9 }}>Deine Eingaben sind gespeichert — du kannst dort weitermachen.</div>
@@ -1475,7 +1475,7 @@ export default function BrandVoice({ session, brandType = 'personal' }) {
                   {v.brand_name && <div style={{ fontSize:12, color:'#888', marginBottom:6, display:'flex', alignItems:'center', gap:6 }}><Briefcase size={12} strokeWidth={1.75}/>{v.brand_name}</div>}
                   <div style={{ display:'flex', flexWrap:'wrap', gap:4, marginBottom:8 }}>
                     {(v.tone_attributes||[]).slice(0,5).map((t,i) => (
-                      <span key={i} style={{ padding:'2px 8px', borderRadius:7, fontSize:11, background:'rgba(49,90,231,0.07)', color:P, fontWeight:500 }}>{t}</span>
+                      <span key={i} style={{ padding:'2px 8px', borderRadius:7, fontSize:11, background:'rgba(10,111,176,0.07)', color:P, fontWeight:500 }}>{t}</span>
                     ))}
                   </div>
                   {(v.brand_background || v.personality) && <div style={{ fontSize:12, color:'#666', lineHeight:1.4 }}>{(v.brand_background || v.personality).slice(0,180)}{(v.brand_background || v.personality).length>180?'…':''}</div>}
@@ -1564,7 +1564,7 @@ export default function BrandVoice({ session, brandType = 'personal' }) {
       <div style={{ display:'flex', alignItems:'flex-start', gap:14, marginBottom:18 }}>
         <button onClick={()=>{ setView('list'); setEdit(null) }} style={{ background:'transparent', border:'1.5px solid var(--border)', borderRadius:10, width:36, height:36, fontSize:16, cursor:'pointer', color:'var(--text-muted)', display:'inline-flex', alignItems:'center', justifyContent:'center', flexShrink:0 }}>←</button>
         <div style={{ flex:1, minWidth:0 }}>
-          <div style={{ fontSize:20, color:'#30A0D0', fontFamily:'"Caveat", cursive', fontWeight:600, marginBottom:2 }}>Branding · Schritt 1 von 3</div>
+          <div style={{ fontSize:12, fontWeight:700, letterSpacing:'1.6px', textTransform:'uppercase', fontFamily:'Inter, sans-serif', color:'var(--primary, #003060)', marginBottom:2 }}>Branding · Schritt 1 von 3</div>
           <div style={{ fontSize:22, fontWeight:700, letterSpacing:'-.2px', lineHeight:1.2 }}>{editIsCompany ? 'Company Brand bearbeiten' : 'Personal Brand bearbeiten'}</div>
           <div style={{ fontSize:12, color:'var(--text-muted)', marginTop:2 }}>{editIsCompany ? 'Markenstimme des Unternehmens — für Page-Content, Profiltexte und Visuals' : 'Persönlicher Kommunikationsstil für alle LinkedIn-Inhalte'}</div>
         </div>
@@ -1579,7 +1579,7 @@ export default function BrandVoice({ session, brandType = 'personal' }) {
               <LinkedinIcon size={15}/><span>{edit.linkedin_member_id ? 'LinkedIn verbunden' : 'LinkedIn verbinden'}</span>
             </button>
           )}
-          <button onClick={saveVoice} style={{ padding:'11px 22px', background:P, color:'#fff', border:'none', borderRadius:10, fontSize:13.5, fontWeight:600, cursor:'pointer', boxShadow:'0 2px 10px rgba(49,90,231,.25)', display:'inline-flex', alignItems:'center', gap:8, fontFamily:'inherit', flexShrink:0 }}>
+          <button onClick={saveVoice} style={{ padding:'11px 22px', background:P, color:'#fff', border:'none', borderRadius:10, fontSize:13.5, fontWeight:600, cursor:'pointer', boxShadow:'0 2px 10px rgba(10,111,176,.25)', display:'inline-flex', alignItems:'center', gap:8, fontFamily:'inherit', flexShrink:0 }}>
             <span style={{display:'inline-flex'}}><Save size={14}/></span><span>{editIsCompany ? 'Company Brand speichern' : 'Personal Brand speichern'}</span>
           </button>
         </div>
@@ -1591,7 +1591,7 @@ export default function BrandVoice({ session, brandType = 'personal' }) {
       </div>
 
         {!editIsCompany && edit.id && !edit.linkedin_member_id && (
-          <div style={{ marginBottom:16, padding:'14px 18px', background:'linear-gradient(90deg, rgba(49,90,231,0.10) 0%, rgba(48,160,208,0.08) 100%)', border:'1.5px solid rgba(49,90,231,0.25)', borderRadius:12, display:'flex', alignItems:'center', gap:14, flexWrap:'wrap' }}>
+          <div style={{ marginBottom:16, padding:'14px 18px', background:'linear-gradient(90deg, rgba(10,111,176,0.10) 0%, rgba(48,160,208,0.08) 100%)', border:'1.5px solid rgba(10,111,176,0.25)', borderRadius:12, display:'flex', alignItems:'center', gap:14, flexWrap:'wrap' }}>
             <PartyPopper size={22} strokeWidth={1.75} style={{ color:'#16A34A' }}/>
             <div style={{ flex:1, minWidth:240 }}>
               <div style={{ fontSize:14, fontWeight:700, color:'var(--text-primary)', marginBottom:2 }}>Brand Voice erstellt — jetzt LinkedIn verbinden</div>
@@ -1678,7 +1678,7 @@ export default function BrandVoice({ session, brandType = 'personal' }) {
           <div style={{ display:'flex', gap:8 }}>
             {FORM.map(f => (
               <button key={f.v} onClick={()=>u('formality',f.v)}
-                style={{ flex:1, padding:'10px 12px', borderRadius:8, border: edit.formality===f.v ? `2px solid ${P}` : '1.5px solid #dde3ea', background: edit.formality===f.v ? 'rgba(49,90,231,0.06)':'#fff', cursor:'pointer', textAlign:'left' }}>
+                style={{ flex:1, padding:'10px 12px', borderRadius:8, border: edit.formality===f.v ? `2px solid ${P}` : '1.5px solid #dde3ea', background: edit.formality===f.v ? 'rgba(10,111,176,0.06)':'#fff', cursor:'pointer', textAlign:'left' }}>
                 <div style={{ fontWeight:600, fontSize:13 }}>{f.l}</div>
                 <div style={{ fontSize:11, color:'#888' }}>{f.d}</div>
               </button>
@@ -1737,7 +1737,7 @@ export default function BrandVoice({ session, brandType = 'personal' }) {
             const i = TABS.findIndex(t => t.v === tab)
             if (i < TABS.length-1) setTab(TABS[i+1].v)
           }}
-            style={{ padding:'12px 28px', background:P, color:'#fff', border:'none', borderRadius:10, fontSize:14, fontWeight:600, cursor:'pointer', boxShadow:'0 2px 10px rgba(49,90,231,.25)', display:'inline-flex', alignItems:'center', gap:8, fontFamily:'inherit' }}>
+            style={{ padding:'12px 28px', background:P, color:'#fff', border:'none', borderRadius:10, fontSize:14, fontWeight:600, cursor:'pointer', boxShadow:'0 2px 10px rgba(10,111,176,.25)', display:'inline-flex', alignItems:'center', gap:8, fontFamily:'inherit' }}>
             <span>Weiter</span><span>→</span>
           </button>
         )}

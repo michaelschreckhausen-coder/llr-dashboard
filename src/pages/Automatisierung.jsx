@@ -26,7 +26,7 @@ import WizardLayout from '../components/WizardLayout'
 import { EXTENSION_WEBSTORE_URL } from '../lib/leadeskExtension'
 
 // ─── Tokens (Leads.jsx-Alignment) ─────────────────────────────────────────
-const PRIMARY = 'rgb(49,90,231)'
+const PRIMARY = '#0A6FB0'
 const PRIMARY_VAR = `var(--wl-primary, ${PRIMARY})`
 
 const pageOuterStyle    = { background:'var(--surface-canvas, #F8FAFC)', minHeight:'100vh', padding:'24px 24px 60px' }
@@ -481,7 +481,7 @@ export default function Automatisierung({ session }) {
         {/* Journal-Header (analog /messages) */}
         <div style={{ display:'flex', alignItems:'flex-end', justifyContent:'space-between', gap:20, flexWrap:'wrap', marginBottom:22 }}>
           <div style={{ flex:'1 1 auto', minWidth:280 }}>
-            <div style={{ fontSize:20, color:'#30A0D0', fontFamily:'"Caveat", cursive', fontWeight:600, marginBottom:6 }}>LinkedIn · Automatisierung</div>
+            <div style={{ fontSize:12, fontWeight:700, letterSpacing:'1.6px', textTransform:'uppercase', fontFamily:'Inter, sans-serif', color:'var(--primary, #003060)', marginBottom:6 }}>LinkedIn · Automatisierung</div>
             <h1 style={{ fontSize:26, fontWeight:700, margin:0, letterSpacing:'-0.3px', lineHeight:1.2, color:'var(--text-primary, rgb(20,20,43))' }}>Deine Kampagnen, auf Autopilot.</h1>
             <p style={{ fontSize:13, color:'var(--text-muted)', margin:'8px 0 0', lineHeight:1.6, maxWidth:600 }}>
               LinkedIn-Sequenzen aus deinen Import-Kontakten — Vernetzen, Nachrichten und Follow-ups, automatisch &amp; serverseitig über Unipile.
@@ -705,7 +705,7 @@ function ExtensionBanner({ connected = false, runningCount = 0, waitingCount = 0
         {connected ? 'Verbunden' : 'Nicht verbunden'}
       </span>
       <button onClick={onManage}
-        style={{ ...ghostBtnStyle, cursor:'pointer', color:PRIMARY_VAR, borderColor:'rgba(49,90,231,0.35)', background:'rgba(49,90,231,0.06)' }}>
+        style={{ ...ghostBtnStyle, cursor:'pointer', color:PRIMARY_VAR, borderColor:'rgba(10,111,176,0.35)', background:'rgba(10,111,176,0.06)' }}>
         <ExternalLink size={13} /> Verbindung verwalten
       </button>
     </div>
@@ -1107,7 +1107,7 @@ function NewCampaignWizard({
           <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fill, minmax(280px, 1fr))', gap:12 }}>
             {quickTemplates.map(t => (
               <button key={t.id} onClick={() => pickTemplate(t)}
-                onMouseEnter={e => { e.currentTarget.style.borderColor = PRIMARY_VAR; e.currentTarget.style.transform = 'translateY(-1px)'; e.currentTarget.style.boxShadow = '0 4px 16px rgba(49,90,231,0.10)' }}
+                onMouseEnter={e => { e.currentTarget.style.borderColor = PRIMARY_VAR; e.currentTarget.style.transform = 'translateY(-1px)'; e.currentTarget.style.boxShadow = '0 4px 16px rgba(10,111,176,0.10)' }}
                 onMouseLeave={e => { e.currentTarget.style.borderColor = 'var(--border, #E5E7EB)'; e.currentTarget.style.transform = 'translateY(0)'; e.currentTarget.style.boxShadow = '0 1px 2px rgba(15,23,42,.04)' }}
                 style={{
                   textAlign:'left', cursor:'pointer', padding:'16px 18px',
@@ -1117,7 +1117,7 @@ function NewCampaignWizard({
                   transition:'all .15s ease',
                 }}>
                 <div style={{ display:'flex', alignItems:'center', gap:10 }}>
-                  <span style={{ width:36, height:36, borderRadius:10, background:'rgba(49,90,231,0.10)', display:'inline-flex', alignItems:'center', justifyContent:'center', color:PRIMARY_VAR }}>
+                  <span style={{ width:36, height:36, borderRadius:10, background:'rgba(10,111,176,0.10)', display:'inline-flex', alignItems:'center', justifyContent:'center', color:PRIMARY_VAR }}>
                     <t.Icon size={17} />
                   </span>
                   <div>
@@ -1246,8 +1246,8 @@ function NewCampaignWizard({
                 }}
                 onMouseEnter={e => { e.currentTarget.style.borderColor = PRIMARY_VAR; e.currentTarget.style.transform = 'translateY(-1px)' }}
                 onMouseLeave={e => { e.currentTarget.style.borderColor = active ? PRIMARY_VAR : 'var(--border, #E5E7EB)'; e.currentTarget.style.transform = 'translateY(0)' }}
-                style={{ textAlign:'left', cursor:'pointer', padding:'16px 18px', borderRadius:12, border:`1.5px solid ${active ? PRIMARY_VAR : 'var(--border, #E5E7EB)'}`, background: active ? 'rgba(49,90,231,0.06)' : 'var(--surface, #fff)', display:'flex', flexDirection:'column', gap:10, boxShadow:'0 1px 2px rgba(15,23,42,.04)', transition:'all .15s ease' }}>
-                <span style={{ width:36, height:36, borderRadius:10, background:'rgba(49,90,231,0.10)', display:'inline-flex', alignItems:'center', justifyContent:'center', color:PRIMARY_VAR }}>
+                style={{ textAlign:'left', cursor:'pointer', padding:'16px 18px', borderRadius:12, border:`1.5px solid ${active ? PRIMARY_VAR : 'var(--border, #E5E7EB)'}`, background: active ? 'rgba(10,111,176,0.06)' : 'var(--surface, #fff)', display:'flex', flexDirection:'column', gap:10, boxShadow:'0 1px 2px rgba(15,23,42,.04)', transition:'all .15s ease' }}>
+                <span style={{ width:36, height:36, borderRadius:10, background:'rgba(10,111,176,0.10)', display:'inline-flex', alignItems:'center', justifyContent:'center', color:PRIMARY_VAR }}>
                   <opt.Icon size={17} />
                 </span>
                 <div style={{ fontSize:14, fontWeight:700, color:'var(--text-strong)' }}>{opt.label}</div>

@@ -342,9 +342,9 @@ export default function LeadDrawer({ lead, session, onClose, onUpdate, onDelete 
 
             {/* KI-Erkenntnisse */}
             {(lead.ai_buying_intent || lead.ai_pain_points?.length || lead.ai_use_cases?.length) && (
-              <div style={{ background:'#FAFAFF', borderRadius:10, padding:'12px 14px', border:'1px solid #E0E7FF', borderLeft:'3px solid #7c3aed' }}>
+              <div style={{ background:'#FAFAFF', borderRadius:10, padding:'12px 14px', border:'1px solid #E6E8EF', borderLeft:'3px solid #0A6FB0' }}>
                 <div style={{ display:'flex', alignItems:'center', gap:8, marginBottom:8 }}>
-                  <span style={{ fontSize:11, fontWeight:700, color:'#7c3aed' }}>KI-Einschätzung</span>
+                  <span style={{ fontSize:11, fontWeight:700, color:'#0A6FB0' }}>KI-Einschätzung</span>
                   {lead.ai_buying_intent && <span style={{ fontSize:10, fontWeight:700, padding:'2px 8px', borderRadius:99, background:lead.ai_buying_intent==='hoch'?'#FEF2F2':lead.ai_buying_intent==='mittel'?'#FFFBEB':'#F8FAFC', color:lead.ai_buying_intent==='hoch'?'#dc2626':lead.ai_buying_intent==='mittel'?'#d97706':'#64748b' }}>
                     {lead.ai_buying_intent==='hoch'?'Hoch':lead.ai_buying_intent==='mittel'?'Mittel':'○ Niedrig'}
                   </span>}

@@ -3,7 +3,7 @@ import { BarChart3, Handshake, MessageSquare, User } from 'lucide-react'
 import SettingsTabs from '../components/SettingsTabs'
 import { detectLeadeskExtension, EXTENSION_WEBSTORE_URL } from '../lib/leadeskExtension'
 
-const PRIMARY = 'var(--wl-primary, rgb(49,90,231))'
+const PRIMARY = 'var(--wl-primary, #0A6FB0)'
 
 const FEATURES = [
   { icon: <User size={16} strokeWidth={1.75}/>, title: 'Profile mit einem Klick als Lead', text: 'Auf jedem LinkedIn-Profil erscheint ein „In Leadesk speichern"-Button. Name, Firma, Position, Standort werden automatisch ins CRM übernommen.' },
@@ -47,7 +47,7 @@ export default function SettingsExtension() {
           <div style={{
             width:56, height:56, borderRadius:14, flexShrink:0,
             display:'flex', alignItems:'center', justifyContent:'center',
-            background: status.installed ? 'rgba(34,197,94,0.18)' : 'rgba(49,90,231,0.10)',
+            background: status.installed ? 'rgba(34,197,94,0.18)' : 'rgba(10,111,176,0.10)',
             color: status.installed ? 'rgb(22,163,74)' : PRIMARY,
             fontSize:26,
           }}>🔌</div>

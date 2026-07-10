@@ -32,7 +32,7 @@ export default function InboxLink({ style }) {
     >
       <Inbox size={15} /> LinkedIn Kontakte
       {count > 0 && (
-        <span style={{ background:'var(--wl-primary, rgb(49,90,231))', color:'#fff', borderRadius:99, padding:'1px 7px', fontSize:11, fontWeight:700 }}>{count}</span>
+        <span style={{ background:'var(--wl-primary, #0A6FB0)', color:'#fff', borderRadius:99, padding:'1px 7px', fontSize:11, fontWeight:700 }}>{count}</span>
       )}
     </button>
   )

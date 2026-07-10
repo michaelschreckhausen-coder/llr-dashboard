@@ -10,7 +10,7 @@ import { useImportJobs } from '../hooks/useImportJobs'
 import { useAddons } from '../hooks/useAddons'
 import { addonFreeUntilLabel } from '../lib/addonPricing'
 
-const PRIMARY = 'var(--wl-primary, rgb(49,90,231))'
+const PRIMARY = 'var(--wl-primary, #0A6FB0)'
 const ADDON_SLUG = 'sales-nav-sync'
 
 const JOB_STATUS = {

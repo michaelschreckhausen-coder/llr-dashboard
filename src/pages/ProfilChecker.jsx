@@ -5,7 +5,7 @@ import { supabase } from '../lib/supabase'
 import { useTeam } from '../context/TeamContext'
 import { checkOwnLinkedInProfile } from '../lib/leadeskExtension'
 
-const P = 'var(--wl-primary, rgb(49,90,231))'
+const P = 'var(--wl-primary, #0A6FB0)'
 const has = v => !!(v && String(v).trim())
 
 // Check-Definitionen: Label, Hinweis und Prüf-Funktion auf den gescrapten Profildaten.
@@ -204,7 +204,7 @@ export default function ProfilChecker({ session }) {
           <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
             {history.map(row => (
               <button key={row.id} onClick={() => viewHistory(row)}
-                style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '9px 12px', borderRadius: 10, border: '1px solid ' + (viewingId === row.id ? P : 'var(--border-soft, #F1F5F9)'), background: viewingId === row.id ? 'rgba(49,90,231,0.05)' : 'var(--surface)', cursor: 'pointer', textAlign: 'left', width: '100%', font: 'inherit' }}>
+                style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '9px 12px', borderRadius: 10, border: '1px solid ' + (viewingId === row.id ? P : 'var(--border-soft, #F1F5F9)'), background: viewingId === row.id ? 'rgba(10,111,176,0.05)' : 'var(--surface)', cursor: 'pointer', textAlign: 'left', width: '100%', font: 'inherit' }}>
                 <span style={{ fontSize: 13, fontWeight: 800, color: scoreColor(row.score), minWidth: 44 }}>{row.score}%</span>
                 <span style={{ flex: 1, fontSize: 13, color: 'var(--text-strong)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{row.profile_name || 'Profil'}</span>
                 <span style={{ fontSize: 11, color: 'var(--text-muted)', whiteSpace: 'nowrap' }}>{row.passed}/{row.total}</span>

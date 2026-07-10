@@ -16,7 +16,7 @@ import { useEffect, useState } from 'react'
 import { supabase } from '../../lib/supabase'
 import { useTeam } from '../../context/TeamContext'
 
-const PRIMARY = 'var(--wl-primary, rgb(49,90,231))'
+const PRIMARY = 'var(--wl-primary, #0A6FB0)'
 
 export default function AsanaSettingsPanel({ onFlash }) {
   const { team, activeTeamId } = useTeam()

@@ -14,7 +14,7 @@ import { TOUR_STEPS } from '../../lib/onboardingSteps'
 // zurück statt die Tour zu blockieren.
 // ─────────────────────────────────────────────────────────────────────────────
 
-const PRIMARY = 'var(--wl-primary, rgb(49,90,231))'
+const PRIMARY = 'var(--wl-primary, #0A6FB0)'
 const POPOVER_W = 320
 
 export default function TourGuide({ onFinish }) {

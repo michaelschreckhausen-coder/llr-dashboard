@@ -4,7 +4,7 @@ import { supabase } from '../lib/supabase'
 import { useTeam } from '../context/TeamContext'
 import { useAddons } from '../hooks/useAddons'
 
-const PRIMARY = 'rgb(49,90,231)'
+const PRIMARY = '#0A6FB0'
 const SUPABASE_URL = 'https://jdhajqpgfrsuoluaesjn.supabase.co'
 
 export default function IntegrationSettings({ session }) {

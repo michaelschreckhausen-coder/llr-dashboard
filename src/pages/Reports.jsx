@@ -27,7 +27,7 @@ import {
   Mail, MessageSquare, FileText, Phone,
 } from 'lucide-react';
 
-const PRIMARY = 'rgb(49,90,231)';
+const PRIMARY = '#0A6FB0';
 const COLORS = {
   surface: '#ffffff',
   canvas: '#F8FAFC',
@@ -46,7 +46,7 @@ const DEAL_STAGES = [
   { key: 'interessent',  label: 'Interessent',      prob:  10, color: '#64748B' },
   { key: 'prospect',     label: 'Prospect',         prob:  15, color: '#3B82F6' },
   { key: 'qualifiziert', label: 'Qualifiziert',     prob:  25, color: '#0EA5E9' },
-  { key: 'opportunity',  label: 'Gespräch',         prob:  30, color: '#8B5CF6' },
+  { key: 'opportunity',  label: 'Gespräch',         prob:  30, color: '#0A6FB0' },
   { key: 'angebot',      label: 'Angebot',          prob:  50, color: '#F59E0B' },
   { key: 'verhandlung',  label: 'Verhandlung',      prob:  70, color: '#F97316' },
   { key: 'gewonnen',     label: 'Gewonnen',         prob: 100, color: '#22C55E' },
@@ -449,7 +449,7 @@ function PipelineSection({ data }) {
             <div style={{ fontSize: 12, color: COLORS.text3, textAlign: 'center', lineHeight: 1.6 }}>
               {won?.count || 0} gewonnen · {lost?.count || 0} verloren<br />
               Pipeline-Wert: <strong style={{ color: COLORS.text1 }}>{fmtEUR.format(pipelineValue)}</strong><br />
-              Gewichtet: <strong style={{ color: '#7C3AED' }}>{fmtEUR.format(weightedPipeline)}</strong><br />
+              Gewichtet: <strong style={{ color: '#003060' }}>{fmtEUR.format(weightedPipeline)}</strong><br />
               Gewonnen-Wert: <strong style={{ color: '#22C55E' }}>{fmtEUR.format(wonValue)}</strong>
             </div>
           </div>
@@ -670,7 +670,7 @@ function ActivitiesTasksSection({ data, members }) {
             exportCsv(rows, `performers-${new Date().toISOString().slice(0, 10)}.csv`);
           }}><Download size={12} /> CSV</button>}>
           {performers.map(p => (
-            <BarRow key={p.uid} label={p.name} count={p.count} total={openTasks.length || 1} color="#7C3AED" />
+            <BarRow key={p.uid} label={p.name} count={p.count} total={openTasks.length || 1} color="#003060" />
           ))}
         </SectionCard>
       )}
@@ -729,7 +729,7 @@ function CrmStatusSection({ data }) {
           {sourceRows.length === 0 ? (
             <div style={emptyHintStyle}>Keine Source-Daten</div>
           ) : sourceRows.map(([s, c]) => (
-            <BarRow key={s} label={s} count={c} total={leads.length || 1} color="#7C3AED" />
+            <BarRow key={s} label={s} count={c} total={leads.length || 1} color="#003060" />
           ))}
         </SectionCard>
 
@@ -1030,7 +1030,7 @@ export default function Reports({ session }) {
           <KpiCard label="Hot Kontakte"  value={fmt.format(hotLeads)}     sub="Score ≥ 70"       color="#DC2626"    Icon={Flame}       onClick={() => setTab('ai')}        active={tab === 'ai'} />
           <KpiCard label="Pipeline-Wert" value={fmtEUR.format(pipelineValue)} sub="aktiv"        color="#22C55E"    Icon={Target}      onClick={() => setTab('pipeline')}  active={tab === 'pipeline'} />
           <KpiCard label="Win-Rate"      value={`${winRate}%`}            sub={`${won} won · ${lost} lost`} color="#0C447C" Icon={TrendingUp} onClick={() => setTab('pipeline')}  active={tab === 'pipeline'} />
-          <KpiCard label="Offene Tasks"  value={fmt.format(openTasksCount)} sub={overdueCount > 0 ? `${overdueCount} überfällig` : 'alles im Plan'} color="#7C3AED" Icon={CheckCircle2} onClick={() => setTab('activities')} active={tab === 'activities'} />
+          <KpiCard label="Offene Tasks"  value={fmt.format(openTasksCount)} sub={overdueCount > 0 ? `${overdueCount} überfällig` : 'alles im Plan'} color="#003060" Icon={CheckCircle2} onClick={() => setTab('activities')} active={tab === 'activities'} />
         </div>
 
         {/* Tab-Bar */}

@@ -13,7 +13,7 @@ import { listTeamVisuals, signedVisualUrl, signedThumbUrl, listChatsForVisual, l
 import Documents from './Documents'
 import Visuals from './Visuals'
 
-const P = 'var(--wl-primary, rgb(49,90,231))'
+const P = 'var(--wl-primary, #0A6FB0)'
 
 const TABS = [
   { id: 'dokumente', label: 'Dokumente', Icon: FileText },
@@ -30,14 +30,14 @@ export default function Bibliothek({ session }) {
     <div style={{ width: '100%', maxWidth: 1200, margin: '0 auto', padding: '24px 16px 40px' }}>
       <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 16, marginBottom: 18 }}>
         <div>
-          <div style={{ fontSize: 20, color: '#30A0D0', fontFamily: '"Caveat", cursive', fontWeight: 600, marginBottom: 6 }}>Content · Bibliothek</div>
+          <div style={{ fontSize:12, fontWeight:700, letterSpacing:'1.6px', textTransform:'uppercase', fontFamily:'Inter, sans-serif', color:'var(--primary, #003060)', marginBottom:6 }}>Content · Bibliothek</div>
           <h1 style={{ fontSize: 26, fontWeight: 700, margin: 0, letterSpacing: '-0.3px', lineHeight: 1.2 }}>Deine Bibliothek.</h1>
           <p style={{ fontSize: 13, color: 'var(--text-muted)', margin: '8px 0 0', lineHeight: 1.6 }}>Dokumente, Designs und Medien an einem Ort.</p>
         </div>
         {tab !== 'medien' && (
           <button onClick={() => setNewKind(tab === 'designs' ? 'design' : 'doc')}
             style={{ flexShrink: 0, display: 'inline-flex', alignItems: 'center', gap: 7, padding: '10px 16px', borderRadius: 10, border: 'none',
-              background: P, color: '#fff', fontSize: 13.5, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit', boxShadow: '0 2px 8px rgba(49,90,231,0.22)' }}>
+              background: P, color: '#fff', fontSize: 13.5, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit', boxShadow: '0 2px 8px rgba(10,111,176,0.22)' }}>
             <Plus size={16} strokeWidth={2.4} />{tab === 'designs' ? 'Neues Design' : 'Neues Dokument'}
           </button>
         )}
@@ -136,7 +136,7 @@ function NewArtifactDialog({ kind, onClose, onCreatedDesign }) {
             <button key={c.id} onClick={() => go(c.id)} disabled={busy}
               style={{ width: '100%', textAlign: 'left', display: 'flex', alignItems: 'center', gap: 10, padding: '9px 10px', borderRadius: 9, border: 'none', background: 'transparent', cursor: busy ? 'default' : 'pointer', fontFamily: 'inherit' }}
               onMouseEnter={e => e.currentTarget.style.background = '#F4F6FA'} onMouseLeave={e => e.currentTarget.style.background = 'transparent'}>
-              <span style={{ width: 30, height: 30, borderRadius: 8, flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'rgba(49,90,231,0.07)', color: P }}><MessageSquare size={15} strokeWidth={1.9} /></span>
+              <span style={{ width: 30, height: 30, borderRadius: 8, flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'rgba(10,111,176,0.07)', color: P }}><MessageSquare size={15} strokeWidth={1.9} /></span>
               <span style={{ minWidth: 0, flex: 1, fontSize: 13, fontWeight: 600, color: 'var(--text-primary)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{c.title || 'Unbenannter Chat'}</span>
             </button>
           ))}
@@ -241,7 +241,7 @@ function DesignsTab({ reloadKey = 0 } = {}) {
                         <button key={c.id} onClick={() => openWith(c.id)}
                           style={{ width: '100%', textAlign: 'left', display: 'flex', alignItems: 'center', gap: 10, padding: '9px 10px', borderRadius: 9, border: 'none', background: 'transparent', cursor: 'pointer', fontFamily: 'inherit' }}
                           onMouseEnter={e => e.currentTarget.style.background = '#F4F6FA'} onMouseLeave={e => e.currentTarget.style.background = 'transparent'}>
-                          <span style={{ width: 30, height: 30, borderRadius: 8, flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'rgba(49,90,231,0.07)', color: P }}><MessageSquare size={15} strokeWidth={1.9} /></span>
+                          <span style={{ width: 30, height: 30, borderRadius: 8, flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'rgba(10,111,176,0.07)', color: P }}><MessageSquare size={15} strokeWidth={1.9} /></span>
                           <span style={{ minWidth: 0, flex: 1, fontSize: 13, fontWeight: 600, color: 'var(--text-primary)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{c.title || 'Unbenannter Chat'}</span>
                         </button>
                       ))}
@@ -259,7 +259,7 @@ function DesignsTab({ reloadKey = 0 } = {}) {
                         <button key={c.id} onClick={() => openWith(c.id)}
                           style={{ width: '100%', textAlign: 'left', display: 'flex', alignItems: 'center', gap: 10, padding: '9px 10px', borderRadius: 9, border: 'none', background: 'transparent', cursor: 'pointer', fontFamily: 'inherit' }}
                           onMouseEnter={e => e.currentTarget.style.background = '#F4F6FA'} onMouseLeave={e => e.currentTarget.style.background = 'transparent'}>
-                          <span style={{ width: 30, height: 30, borderRadius: 8, flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'rgba(49,90,231,0.07)', color: P }}><MessageSquare size={15} strokeWidth={1.9} /></span>
+                          <span style={{ width: 30, height: 30, borderRadius: 8, flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'rgba(10,111,176,0.07)', color: P }}><MessageSquare size={15} strokeWidth={1.9} /></span>
                           <span style={{ minWidth: 0, flex: 1, fontSize: 13, fontWeight: 600, color: 'var(--text-primary)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{c.title || 'Unbenannter Chat'}</span>
                         </button>
                       ))}
@@ -271,7 +271,7 @@ function DesignsTab({ reloadKey = 0 } = {}) {
                     {!showOther && (
                       <button onClick={loadBrandChats}
                         style={{ width: '100%', textAlign: 'left', padding: '9px 10px', borderRadius: 9, border: 'none', background: 'transparent', cursor: 'pointer', fontSize: 13, fontWeight: 600, color: P, fontFamily: 'inherit' }}
-                        onMouseEnter={e => e.currentTarget.style.background = 'rgba(49,90,231,0.07)'} onMouseLeave={e => e.currentTarget.style.background = 'transparent'}>
+                        onMouseEnter={e => e.currentTarget.style.background = 'rgba(10,111,176,0.07)'} onMouseLeave={e => e.currentTarget.style.background = 'transparent'}>
                         + Anderen Chat wählen…
                       </button>
                     )}

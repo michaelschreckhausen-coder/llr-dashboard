@@ -6,7 +6,7 @@ import { Bot, Send, Loader2, User } from 'lucide-react'
 import { supabase } from '../../lib/supabase'
 import PageHeader from '../../components/PageHeader'
 
-const PRIMARY = 'var(--wl-primary, rgb(49,90,231))'
+const PRIMARY = 'var(--wl-primary, #0A6FB0)'
 
 const SUGGESTIONS = [
   'Welche Sponsoren haben den höchsten Fit-Score?',

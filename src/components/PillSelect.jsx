@@ -4,7 +4,7 @@
 import React, { useState, useRef, useEffect } from 'react'
 import { ChevronDown, Check } from 'lucide-react'
 
-const P = 'var(--wl-primary, rgb(49,90,231))'
+const P = 'var(--wl-primary, #0A6FB0)'
 
 export default function PillSelect({ icon: Icon, value, options = [], onChange = () => {}, placeholder = '', neutral = false, title = '', buttonStyle = {} }) {
   const [open, setOpen] = useState(false)
@@ -25,7 +25,7 @@ export default function PillSelect({ icon: Icon, value, options = [], onChange =
         style={{
           display:'inline-flex', alignItems:'center', gap:6, padding:'9px 10px', borderRadius:9, boxSizing:'border-box',
           border:'1.5px solid ' + (active ? P : 'var(--border)'),
-          background: active ? 'rgba(49,90,231,0.06)' : 'var(--surface, #fff)',
+          background: active ? 'rgba(10,111,176,0.06)' : 'var(--surface, #fff)',
           color: active ? P : 'var(--text-primary)',
           fontSize:13, fontWeight:600, cursor:'pointer', whiteSpace:'nowrap', fontFamily:'inherit', ...buttonStyle,
         }}>
@@ -39,7 +39,7 @@ export default function PillSelect({ icon: Icon, value, options = [], onChange =
           {options.map(o => (
             <button key={String(o.value)} onClick={() => { onChange(o.value); setOpen(false) }}
               style={{ display:'flex', alignItems:'center', gap:8, width:'100%', textAlign:'left', padding:'7px 9px', borderRadius:7,
-                border:'none', background: o.value === value ? 'rgba(49,90,231,0.06)' : 'transparent', cursor:'pointer', fontSize:13, color:'var(--text-primary)', fontFamily:'inherit' }}>
+                border:'none', background: o.value === value ? 'rgba(10,111,176,0.06)' : 'transparent', cursor:'pointer', fontSize:13, color:'var(--text-primary)', fontFamily:'inherit' }}>
               <span style={{ flex:1, overflow:'hidden', textOverflow:'ellipsis' }}>{o.label}</span>
               {o.value === value && <Check size={13} strokeWidth={3} color={P}/>}
             </button>

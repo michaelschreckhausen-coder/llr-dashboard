@@ -9,13 +9,13 @@ import OrganizationPicker from '../components/OrganizationPicker'
 import PageHeader from '../components/PageHeader'
 import { ChevronUp, ChevronDown } from 'lucide-react'
 
-const PRIMARY = 'rgb(49,90,231)'
+const PRIMARY = '#0A6FB0'
 
 const STAGES = [
   { id: 'prospect',     label: 'Interessent',  color: '#6B7280', bg: '#F3F4F6', prob: 15  },
   { id: 'opportunity',  label: 'Qualifiziert', color: '#185FA5', bg: '#EFF6FF', prob: 30  },
   { id: 'angebot',      label: 'Angebot',      color: '#D97706', bg: '#FFFBEB', prob: 50  },
-  { id: 'verhandlung',  label: 'Verhandlung',  color: '#7C3AED', bg: '#F5F3FF', prob: 70  },
+  { id: 'verhandlung',  label: 'Verhandlung',  color: '#003060', bg: '#F5F3FF', prob: 70  },
   { id: 'gewonnen',     label: 'Gewonnen',     color: '#059669', bg: '#ECFDF5', prob: 100 },
   { id: 'verloren',     label: 'Verloren',     color: '#DC2626', bg: '#FEF2F2', prob: 0   },
 ]
@@ -33,7 +33,7 @@ function fmtDate(d) {
 
 /* ── Reports-Stil Design-Komponenten (gespiegelt aus Organizations/Vernetzungen) ── */
 const RC = { surface:'var(--surface, #fff)', border:'#E4E7EC', text1:'var(--text-strong, #111827)', text2:'#374151', text3:'#6B7280' }
-const PV = 'var(--wl-primary, rgb(49,90,231))'
+const PV = 'var(--wl-primary, #0A6FB0)'
 
 function KpiCard({ label, value, sub, color }) {
   return (
@@ -69,10 +69,10 @@ function BarRow({ label, count, total, value, color=PV }) {
   )
 }
 
-const scriptHintStyle = { fontFamily:"'Segoe Script','Bradley Hand','Brush Script MT','Comic Sans MS',cursive", fontStyle:'italic', fontSize:16, fontWeight:600, color:'var(--wl-primary, rgb(49,90,231))', whiteSpace:'nowrap', lineHeight:1 }
+const scriptHintStyle = { fontFamily:'Inter, sans-serif', fontSize:13, fontWeight:600, color:'var(--wl-primary, #0A6FB0)', whiteSpace:'nowrap', lineHeight:1 }
 function CurvedArrow() {
   return (
-    <svg width="34" height="24" viewBox="0 0 34 24" fill="none" style={{ color:'var(--wl-primary, rgb(49,90,231))', flexShrink:0 }} aria-hidden="true">
+    <svg width="34" height="24" viewBox="0 0 34 24" fill="none" style={{ color:'var(--wl-primary, #0A6FB0)', flexShrink:0 }} aria-hidden="true">
       <path d="M3 5 C 14 3, 25 7, 30 14" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" fill="none"/>
       <path d="M23 14.5 L 31 15 L 27 8" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" fill="none"/>
     </svg>
@@ -417,7 +417,7 @@ export default function Deals({ session }) {
           {/* KPI-Karten (Reports-Stil) */}
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))', gap: 12, marginBottom: 16 }}>
             <KpiCard label="Pipeline Gesamt" value={fmtEur(total)}    color={PRIMARY}  sub={`${open.length} offen`}/>
-            <KpiCard label="Gewichtet"       value={fmtEur(weighted)} color="#7C3AED"/>
+            <KpiCard label="Gewichtet"       value={fmtEur(weighted)} color="#003060"/>
             <KpiCard label="Gewonnen"        value={fmtEur(wonValue)} color="#059669"  sub={`${won.length} Deals`}/>
             <KpiCard label="Ø Deal-Wert"     value={open.length ? fmtEur(total / open.length) : '—'} color="#D97706"/>
           </div>

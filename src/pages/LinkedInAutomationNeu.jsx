@@ -7,7 +7,7 @@ import { supabase } from '../lib/supabase'
 import { useTeam } from '../context/TeamContext'
 import { Plus, Zap, Play, Pause, Square, RefreshCw, Users, AlertTriangle, Activity, Archive, RotateCcw, Trash2, X } from 'lucide-react'
 
-const PRIMARY = 'rgb(49,90,231)'
+const PRIMARY = '#0A6FB0'
 const PRIMARY_VAR = `var(--wl-primary, ${PRIMARY})`
 const pageOuterStyle = { background: 'var(--surface-canvas, #F8FAFC)', minHeight: '100vh', padding: '24px 24px 60px' }
 const pageStyle = { width: '100%', maxWidth: 1180, margin: '0 auto' }

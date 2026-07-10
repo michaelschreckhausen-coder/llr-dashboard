@@ -30,7 +30,7 @@ import { useState, useMemo, useEffect, useRef } from 'react';
 import { X, Save, AlertTriangle } from 'lucide-react';
 import { STATUS_ORDER, STATUS_CONFIG, COLORS } from '../../lib/leadStyleTokens';
 
-const PRIMARY = 'rgb(49,90,231)';
+const PRIMARY = '#0A6FB0';
 
 const FIELDS = [
   { key: 'status',         label: 'Status setzen',         type: 'enum'   },

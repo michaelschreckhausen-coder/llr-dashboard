@@ -8,7 +8,7 @@ import EmptyHero from '../components/EmptyHero'
 import SectionCard from '../components/SectionCard'
 import SharingPicker from '../components/SharingPicker'
 
-const P = 'var(--wl-primary, rgb(49,90,231))'
+const P = 'var(--wl-primary, #0A6FB0)'
 
 const selStyle = {
   width:'100%', padding:'11px 14px',
@@ -49,10 +49,10 @@ function In({v,fn,ph,style={},type='text',disabled}) {
     onChange={e=>fn(e.target.value)} placeholder={ph}
     onFocus={()=>setFocused(true)} onBlur={()=>setFocused(false)}
     style={{ width:'100%', padding:'11px 14px',
-      border:'1.5px solid '+(focused?'var(--wl-primary, rgb(49,90,231))':'var(--border, #E5E7EB)'),
+      border:'1.5px solid '+(focused?'var(--wl-primary, #0A6FB0)':'var(--border, #E5E7EB)'),
       borderRadius:10, fontSize:13.5, boxSizing:'border-box', outline:'none',
       background:'var(--surface, #fff)', color:'var(--text-primary, rgb(20,20,43))',
-      boxShadow: focused ? '0 0 0 3px rgba(49,90,231,.10)' : 'none',
+      boxShadow: focused ? '0 0 0 3px rgba(10,111,176,.10)' : 'none',
       transition:'border-color .15s, box-shadow .15s',
       fontFamily:'inherit', opacity: disabled?.6:1, ...style }}/>
 }
@@ -64,11 +64,11 @@ function Tx({v,fn,r=3,ph,disabled}) {
     onChange={e=>fn(e.target.value)} rows={r} placeholder={ph}
     onFocus={()=>setFocused(true)} onBlur={()=>setFocused(false)}
     style={{ width:'100%', padding:'11px 14px',
-      border:'1.5px solid '+(focused?'var(--wl-primary, rgb(49,90,231))':'var(--border, #E5E7EB)'),
+      border:'1.5px solid '+(focused?'var(--wl-primary, #0A6FB0)':'var(--border, #E5E7EB)'),
       borderRadius:10, fontSize:13.5, lineHeight:1.55, resize:'vertical',
       boxSizing:'border-box', outline:'none',
       background:'var(--surface, #fff)', color:'var(--text-primary, rgb(20,20,43))',
-      boxShadow: focused ? '0 0 0 3px rgba(49,90,231,.10)' : 'none',
+      boxShadow: focused ? '0 0 0 3px rgba(10,111,176,.10)' : 'none',
       transition:'border-color .15s, box-shadow .15s',
       fontFamily:'inherit', opacity: disabled?.6:1 }}/>
 }
@@ -174,10 +174,10 @@ function FileUpload({ session, edit, onUpdate, onExtractedText }) {
       ) : (
         <div onDragOver={e=>{e.preventDefault();setDragging(true)}} onDragLeave={()=>setDragging(false)} onDrop={e=>{e.preventDefault();setDragging(false);const f=e.dataTransfer.files[0];if(f)handleFile(f)}}
           onClick={()=>fileRef.current?.click()}
-          style={{ border:dragging?`2px dashed ${P}`:'2px dashed #dde3ea', borderRadius:10, padding:'24px 16px', textAlign:'center', cursor:'pointer', background:dragging?'rgba(49,90,231,0.04)':'#fafbfc', transition:'all .2s' }}>
+          style={{ border:dragging?`2px dashed ${P}`:'2px dashed #dde3ea', borderRadius:10, padding:'24px 16px', textAlign:'center', cursor:'pointer', background:dragging?'rgba(10,111,176,0.04)':'#fafbfc', transition:'all .2s' }}>
           <input ref={fileRef} type="file" onChange={e=>{const f=e.target.files[0];if(f)handleFile(f)}} style={{display:'none'}} accept=".pdf,.xlsx,.xls,.csv,.png,.jpg,.jpeg,.webp"/>
           {uploading ? <div style={{color:P,fontWeight:600,display:'inline-flex',alignItems:'center',gap:6}}><Loader2 size={14} className='lk-spin'/>Wird hochgeladen…</div>
-           : extracting ? <div style={{color:'#7C3AED',fontWeight:600,display:'inline-flex',alignItems:'center',gap:6}}><Loader2 size={14} className='lk-spin'/>Text wird extrahiert…</div>
+           : extracting ? <div style={{color:'#003060',fontWeight:600,display:'inline-flex',alignItems:'center',gap:6}}><Loader2 size={14} className='lk-spin'/>Text wird extrahiert…</div>
            : <><div style={{marginBottom:6,display:'flex',justifyContent:'center'}}><Paperclip size={26} strokeWidth={1.5} style={{color:'#94A3B8'}}/></div><div style={{fontSize:13,fontWeight:600,color:'#555'}}>Datei hierher ziehen oder klicken</div><div style={{fontSize:11,color:'#aaa',marginTop:4}}>PDF, Excel, CSV, Bilder (max. 10 MB)</div></>}
         </div>
       )}
@@ -438,12 +438,12 @@ export default function Wissensdatenbank({ session }) {
     return (
     <div style={{ width:'100%', maxWidth:1100, margin:'0 auto', padding:'24px 16px 40px' }}>
       <div style={{ marginBottom:22 }}>
-        <div style={{ fontSize:20, color:'#30A0D0', fontFamily:'"Caveat", cursive', fontWeight:600, marginBottom:6 }}>Branding · Schritt 3 von 3</div>
+        <div style={{ fontSize:12, fontWeight:700, letterSpacing:'1.6px', textTransform:'uppercase', fontFamily:'Inter, sans-serif', color:'var(--primary, #003060)', marginBottom:6 }}>Branding · Schritt 3 von 3</div>
         <h1 style={{ fontSize:26, fontWeight:700, margin:0, letterSpacing:'-0.3px', lineHeight:1.2 }}>Deine Wissensbasis.</h1>
         <p style={{ fontSize:13, color:'var(--text-muted)', margin:'8px 0 0', lineHeight:1.6 }}>Faktenmaterial für die KI — Dokumente, URLs, LinkedIn-Profile. Fließt automatisch in alle generierten Inhalte ein.</p>
       </div>
       <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:16, gap:12, flexWrap:'wrap' }}>
-        <button data-tour-id="kb-add" onClick={()=>{setEdit({...E0,user_id:session.user.id});setView('editor')}} style={{padding:'10px 20px',background:P,color:'#fff',border:'none',borderRadius:10,fontSize:13,fontWeight:600,cursor:'pointer',boxShadow:'0 2px 8px rgba(49,90,231,.18)'}}>+ Wissen hinzufügen</button>
+        <button data-tour-id="kb-add" onClick={()=>{setEdit({...E0,user_id:session.user.id});setView('editor')}} style={{padding:'10px 20px',background:P,color:'#fff',border:'none',borderRadius:10,fontSize:13,fontWeight:600,cursor:'pointer',boxShadow:'0 2px 8px rgba(10,111,176,.18)'}}>+ Wissen hinzufügen</button>
         <input value={search} onChange={e=>setSearch(e.target.value)} placeholder="Suchen…" style={{padding:'8px 14px',border:'1.5px solid var(--border)',borderRadius:10,fontSize:13,width:220}}/>
       </div>
       <div style={{ display:'flex', flexWrap:'wrap', gap:6, marginBottom:16 }}>
@@ -536,7 +536,7 @@ export default function Wissensdatenbank({ session }) {
       <div style={{display:'flex',alignItems:'center',gap:14,marginBottom:18}}>
         <button onClick={()=>{setView('list');setEdit(null)}} style={{background:'transparent', border:'1.5px solid var(--border)', borderRadius:10, width:36, height:36, fontSize:16, cursor:'pointer', color:'var(--text-muted)', display:'inline-flex', alignItems:'center', justifyContent:'center'}}>←</button>
         <div style={{flex:1}}>
-          <div style={{ fontSize:20, color:'#30A0D0', fontFamily:'"Caveat", cursive', fontWeight:600, marginBottom:2 }}>Branding · Schritt 3 von 3</div>
+          <div style={{ fontSize:12, fontWeight:700, letterSpacing:'1.6px', textTransform:'uppercase', fontFamily:'Inter, sans-serif', color:'var(--primary, #003060)', marginBottom:2 }}>Branding · Schritt 3 von 3</div>
           <div style={{ fontSize:22, fontWeight:700, letterSpacing:'-.2px', lineHeight:1.2 }}>{edit.id?'Wissen bearbeiten':'Neues Wissen hinzufügen'}</div>
           <div style={{ fontSize:12, color:'var(--text-muted)', marginTop:2 }}>Faktenmaterial für die KI — Dokument, URL oder LinkedIn-Profil</div>
         </div>
@@ -544,7 +544,7 @@ export default function Wissensdatenbank({ session }) {
       <SectionCard icon={<Tag size={18} strokeWidth={1.75}/>} color="purple" title="Kategorie" subtitle="In welche Wissens-Kategorie gehört dieser Eintrag">
         <Lb l="Art des Wissens"/>
         <div style={{display:'grid',gridTemplateColumns:'repeat(2, 1fr)',gap:8}}>
-          {CATEGORIES.map(c => <button key={c.v} onClick={()=>u('category',c.v)} style={{padding:'10px 12px',borderRadius:8,border:edit.category===c.v?`2px solid ${P}`:'1.5px solid #dde3ea',background:edit.category===c.v?'rgba(49,90,231,0.06)':'#fff',cursor:'pointer',textAlign:'left',display:'flex',alignItems:'center',gap:8}}>
+          {CATEGORIES.map(c => <button key={c.v} onClick={()=>u('category',c.v)} style={{padding:'10px 12px',borderRadius:8,border:edit.category===c.v?`2px solid ${P}`:'1.5px solid #dde3ea',background:edit.category===c.v?'rgba(10,111,176,0.06)':'#fff',cursor:'pointer',textAlign:'left',display:'flex',alignItems:'center',gap:8}}>
             <span style={{fontSize:18}}>{c.icon}</span><div><div style={{fontWeight:600,fontSize:12}}>{c.l}</div><div style={{fontSize:10,color:'#888'}}>{c.d}</div></div>
           </button>)}
         </div>
@@ -614,7 +614,7 @@ export default function Wissensdatenbank({ session }) {
             style={{ padding:'11px 16px', background:'var(--surface, #fff)', color:'var(--text-primary)', border:'1.5px solid var(--border)', borderRadius:10, fontSize:13, fontWeight:600, cursor:'pointer', display:'inline-flex', alignItems:'center', gap:7, fontFamily:'inherit' }}>
             <Eye size={15} strokeWidth={1.75}/><span>{edit.is_shared ? 'Geteilt' : 'Sichtbarkeit'}</span>
           </button>
-          <button onClick={save} disabled={!edit.name?.trim()} style={{ padding:'12px 26px', background:edit.name?.trim()?P:'#94A3B8', color:'#fff', border:'none', borderRadius:10, fontSize:14, fontWeight:600, cursor:edit.name?.trim()?'pointer':'not-allowed', boxShadow:edit.name?.trim()?'0 2px 10px rgba(49,90,231,.25)':'none', display:'inline-flex', alignItems:'center', gap:8, fontFamily:'inherit', opacity:edit.name?.trim()?1:.8 }}>
+          <button onClick={save} disabled={!edit.name?.trim()} style={{ padding:'12px 26px', background:edit.name?.trim()?P:'#94A3B8', color:'#fff', border:'none', borderRadius:10, fontSize:14, fontWeight:600, cursor:edit.name?.trim()?'pointer':'not-allowed', boxShadow:edit.name?.trim()?'0 2px 10px rgba(10,111,176,.25)':'none', display:'inline-flex', alignItems:'center', gap:8, fontFamily:'inherit', opacity:edit.name?.trim()?1:.8 }}>
             <span style={{display:'inline-flex'}}><Save size={14}/></span><span>Speichern</span>
           </button>
         </div>

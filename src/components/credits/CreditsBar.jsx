@@ -39,7 +39,7 @@ export default function CreditsBar({ collapsed = false }) {
   const topup = Number(budget.topup_remaining || 0)
   const totalRem = Number(budget.total_remaining || 0)
 
-  const barColor = isExhausted ? 'rgb(220,38,38)' : isWarning ? 'rgb(234,88,12)' : 'var(--wl-primary, rgb(49,90,231))'
+  const barColor = isExhausted ? 'rgb(220,38,38)' : isWarning ? 'rgb(234,88,12)' : 'var(--wl-primary, #0A6FB0)'
   const barBg = 'var(--border, rgba(148,163,184,0.25))'
   const pct = pctUsed === undefined ? 0 : pctUsed
 

@@ -137,7 +137,7 @@ const RELEASES = [
     version: 'v0.8',
     date: '12. April 2026',
     label: 'LeadDrawer Redesign & UX',
-    color: 'rgb(49,90,231)',
+    color: '#0A6FB0',
     badge: null,
     entries: [
       {
@@ -242,15 +242,15 @@ const RELEASES = [
 ]
 
 const CAT_COLORS = {
-  'Neu':         { bg: '#EEF2FF', color: 'rgb(49,90,231)', border: '#C7D2FE' },
+  'Neu':         { bg: '#EAF6FC', color: '#0A6FB0', border: '#C7D2FE' },
   'Whitelabel':  { bg: '#F5F3FF', color: '#7c3aed',        border: '#DDD6FE' },
   'Fixes':       { bg: '#FFF7ED', color: '#EA580C',        border: '#FED7AA' },
-  'LeadDrawer':  { bg: '#EFF6FF', color: 'rgb(49,90,231)', border: '#BFDBFE' },
+  'LeadDrawer':  { bg: '#EFF6FF', color: '#0A6FB0', border: '#BFDBFE' },
   'Leads':       { bg: '#F0FDF4', color: '#059669',        border: '#A7F3D0' },
   'Umbenennung': { bg: '#F8FAFC', color: '#64748B',        border: '#E2E8F0' },
   'Team-Features':{ bg: '#F0FDF4', color: '#059669',       border: '#A7F3D0' },
   'Mobile':      { bg: '#FFF7ED', color: '#EA580C',        border: '#FED7AA' },
-  'Pipeline':    { bg: '#EEF2FF', color: 'rgb(49,90,231)', border: '#C7D2FE' },
+  'Pipeline':    { bg: '#EAF6FC', color: '#0A6FB0', border: '#C7D2FE' },
   'Features':    { bg: '#F8FAFC', color: '#475569',        border: '#E2E8F0' },
 }
 

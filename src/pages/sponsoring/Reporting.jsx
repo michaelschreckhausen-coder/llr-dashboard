@@ -10,7 +10,7 @@ import PageHeader from '../../components/PageHeader'
 
 const sp = () => supabase.schema('sponsoring')
 
-const PRIMARY = 'var(--wl-primary, rgb(49,90,231))'
+const PRIMARY = 'var(--wl-primary, #0A6FB0)'
 const eur = (n) => `${Number(n || 0).toLocaleString('de-DE', { maximumFractionDigits: 0 })} €`
 
 export default function Reporting() {

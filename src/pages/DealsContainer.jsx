@@ -52,8 +52,8 @@ export default function DealsContainer({ session }) {
               style={{
                 padding:'7px 14px',
                 borderRadius:8,
-                border:`1.5px solid ${active ? 'var(--wl-primary, rgb(49,90,231))' : '#E5E7EB'}`,
-                background: active ? 'var(--wl-primary, rgb(49,90,231))' : '#fff',
+                border:`1.5px solid ${active ? 'var(--wl-primary, #0A6FB0)' : '#E5E7EB'}`,
+                background: active ? 'var(--wl-primary, #0A6FB0)' : '#fff',
                 color: active ? '#fff' : '#475569',
                 fontSize:13,
                 fontWeight:600,

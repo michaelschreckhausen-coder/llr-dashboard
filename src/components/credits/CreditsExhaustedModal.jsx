@@ -89,7 +89,7 @@ export default function CreditsExhaustedModal() {
           <button
             onClick={() => { setOpen(false); navigate('/billing') }}
             style={{
-              background: 'var(--wl-primary, rgb(49,90,231))', color: 'white',
+              background: 'var(--wl-primary, #0A6FB0)', color: 'white',
               border: 0, padding: '12px 16px', borderRadius: 8,
               fontSize: 14, fontWeight: 700, cursor: 'pointer',
             }}

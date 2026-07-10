@@ -8,7 +8,7 @@ import { supabase } from '../../lib/supabase'
 import { useTeam } from '../../context/TeamContext'
 import PageHeader from '../../components/PageHeader'
 
-const PRIMARY = 'var(--wl-primary, rgb(49,90,231))'
+const PRIMARY = 'var(--wl-primary, #0A6FB0)'
 const sp = () => supabase.schema('sponsoring')
 const fmt = (n) => `${Number(n || 0).toLocaleString('de-DE', { maximumFractionDigits: 2 })} €`
 const dateStr = (d) => (d ? new Date(d).toLocaleDateString('de-DE') : '—')
@@ -559,7 +559,7 @@ const primaryBtn = { display: 'inline-flex', alignItems: 'center', gap: 6, paddi
 const iconBtn = { display: 'inline-flex', alignItems: 'center', justifyContent: 'center', width: 30, height: 30, borderRadius: 8, border: '1px solid var(--border)', background: 'var(--surface)', color: 'var(--text-muted)', cursor: 'pointer' }
 const ghostBtn = { display: 'inline-flex', alignItems: 'center', justifyContent: 'center', width: 30, height: 30, borderRadius: 8, border: '1px solid var(--border)', background: 'var(--surface)', color: 'var(--text-muted)', cursor: 'pointer' }
 const templateBtn = { display: 'inline-flex', alignItems: 'center', gap: 8, padding: '10px 14px', borderRadius: 10, border: '1px solid var(--border)', background: 'var(--surface)', color: 'var(--text-strong)', fontSize: 13.5, cursor: 'pointer', textAlign: 'left' }
-const defaultBadge = { marginLeft: 'auto', fontSize: 11, fontWeight: 700, color: PRIMARY, background: 'rgba(49,90,231,0.1)', padding: '2px 8px', borderRadius: 999 }
+const defaultBadge = { marginLeft: 'auto', fontSize: 11, fontWeight: 700, color: PRIMARY, background: 'rgba(10,111,176,0.1)', padding: '2px 8px', borderRadius: 999 }
 const h2 = { fontSize: 16, fontWeight: 700, color: 'var(--text-strong)', margin: '0 0 12px' }
 const muted = { display: 'flex', alignItems: 'center', gap: 8, color: 'var(--text-muted)', fontSize: 14 }
 const tableWrap = { border: '1px solid var(--border)', borderRadius: 14, overflow: 'hidden' }

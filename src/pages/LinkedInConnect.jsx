@@ -2,8 +2,8 @@ import React, { useState, useEffect, useCallback, useRef } from 'react'
 import { supabase } from '../lib/supabase'
 import { EXTENSION_WEBSTORE_URL } from '../lib/leadeskExtension'
 
-const P  = 'var(--wl-primary, rgb(49,90,231))'
-const PL = 'rgba(49,90,231,0.09)'
+const P  = 'var(--wl-primary, #0A6FB0)'
+const PL = 'rgba(10,111,176,0.09)'
 const BG = 'rgb(238,241,252)'
 
 export default function LinkedInConnect({ session }) {
@@ -98,7 +98,7 @@ export default function LinkedInConnect({ session }) {
       <div style={{ background:'var(--surface)', borderRadius:16, border:'1px solid var(--border)', marginBottom:16, overflow:'hidden' }}>
         {/* Header */}
         <div style={{ display:'flex', alignItems:'center', gap:14, padding:'18px 22px', borderBottom:'1px solid #F3F4F6' }}>
-          <div style={{ width:44, height:44, borderRadius:12, background:'linear-gradient(135deg,rgb(49,90,231),rgb(100,140,240))', display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0 }}>
+          <div style={{ width:44, height:44, borderRadius:12, background:'linear-gradient(135deg,#0A6FB0,#16A8DC)', display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0 }}>
             <svg width="22" height="22" viewBox="0 0 24 24" fill="white"><path d="M16 8a6 6 0 0 1 6 6v7h-4v-7a2 2 0 0 0-2-2 2 2 0 0 0-2 2v7h-4v-7a6 6 0 0 1 6-6z"/><rect x="2" y="9" width="4" height="12"/><circle cx="4" cy="4" r="2"/></svg>
           </div>
           <div>
@@ -114,7 +114,7 @@ export default function LinkedInConnect({ session }) {
             conn.profile_image ? (
               <img src={conn.profile_image} alt="" style={{ width:52, height:52, borderRadius:'50%', objectFit:'cover', border:'2px solid #E5E7EB', flexShrink:0 }}/>
             ) : (
-              <div style={{ width:52, height:52, borderRadius:'50%', background:'linear-gradient(135deg,rgb(49,90,231),rgb(100,140,240))', display:'flex', alignItems:'center', justifyContent:'center', fontSize:20, fontWeight:900, color:'white', flexShrink:0 }}>
+              <div style={{ width:52, height:52, borderRadius:'50%', background:'linear-gradient(135deg,#0A6FB0,#16A8DC)', display:'flex', alignItems:'center', justifyContent:'center', fontSize:20, fontWeight:900, color:'white', flexShrink:0 }}>
                 {(conn.profile_name||'?').charAt(0).toUpperCase()}
               </div>
             )
@@ -199,17 +199,17 @@ export default function LinkedInConnect({ session }) {
                   { n:'3', title:'Profilbild erscheint sofort', desc:'Nach dem Login verbindet sich die Extension automatisch mit LinkedIn. Dein Profilbild erscheint sofort im Popup — ohne weiteren Klick.', icon:<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke={P} strokeWidth="2" strokeLinecap="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg> },
                   { n:'4', title:'Dashboard zeigt "Connected"', desc:'Diese Seite aktualisiert sich automatisch in Echtzeit. Du siehst deinen Namen, dein Profilbild und den grünen "Connected" Badge.', icon:<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke={P} strokeWidth="2" strokeLinecap="round"><polyline points="20 6 9 17 4 12"/></svg> },
                 ].map(step => (
-                  <div key={step.n} style={{ background:BG, borderRadius:14, padding:'16px 18px', border:'1px solid rgba(49,90,231,0.1)' }}>
+                  <div key={step.n} style={{ background:BG, borderRadius:14, padding:'16px 18px', border:'1px solid rgba(10,111,176,0.1)' }}>
                     <div style={{ display:'flex', alignItems:'center', gap:10, marginBottom:10 }}>
                       <div style={{ width:28, height:28, borderRadius:'50%', background:P, color:'white', fontSize:13, fontWeight:900, display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0 }}>{step.n}</div>
-                      <div style={{ width:32, height:32, borderRadius:8, background:'var(--surface)', border:'1px solid rgba(49,90,231,0.15)', display:'flex', alignItems:'center', justifyContent:'center' }}>{step.icon}</div>
+                      <div style={{ width:32, height:32, borderRadius:8, background:'var(--surface)', border:'1px solid rgba(10,111,176,0.15)', display:'flex', alignItems:'center', justifyContent:'center' }}>{step.icon}</div>
                       <div style={{ fontSize:13, fontWeight:800, color:'rgb(20,20,43)' }}>{step.title}</div>
                     </div>
                     <div style={{ fontSize:12, color:'var(--text-muted)', lineHeight:1.6, paddingLeft:38 }}>{step.desc}</div>
                   </div>
                 ))}
               </div>
-              <div style={{ background:'rgba(49,90,231,0.05)', border:'1px solid rgba(49,90,231,0.12)', borderRadius:12, padding:'12px 16px', fontSize:12, color:'var(--wl-primary, rgb(49,90,231))', lineHeight:1.7 }}>
+              <div style={{ background:'rgba(10,111,176,0.05)', border:'1px solid rgba(10,111,176,0.12)', borderRadius:12, padding:'12px 16px', fontSize:12, color:'var(--wl-primary, #0A6FB0)', lineHeight:1.7 }}>
                 <strong>Warte auf Verbindung...</strong> Diese Seite prueft alle 2 Sekunden automatisch ob du verbunden bist. Du musst nicht manuell aktualisieren.
               </div>
             </div>
@@ -221,7 +221,7 @@ export default function LinkedInConnect({ session }) {
               <div style={{ display:'grid', gridTemplateColumns:'repeat(3,1fr)', gap:12 }}>
                 {[
                   { label:'Verbindungen importieren', desc:'Alle bestehenden LinkedIn-Kontakte holen', type:'connections', url:'https://www.linkedin.com/mynetwork/invite-connect/connections/', color:'#10B981' },
-                  { label:'Nachrichten synchronisieren', desc:'Alle Konversationen archivieren', type:'profile', url:'https://www.linkedin.com/messaging/', color:'#8B5CF6' },
+                  { label:'Nachrichten synchronisieren', desc:'Alle Konversationen archivieren', type:'profile', url:'https://www.linkedin.com/messaging/', color:'#0A6FB0' },
                   { label:'Angenommene Anfragen', desc:'Wer hat deine Anfragen angenommen', type:'connections', url:'https://www.linkedin.com/mynetwork/invitation-manager/sent/', color:'#F59E0B' },
                 ].map((item,i) => (
                   <button key={i} onClick={()=>addSyncJob(item.type,item.url)} disabled={syncing}

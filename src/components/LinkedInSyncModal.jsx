@@ -98,7 +98,7 @@ const footerStyle = {
 };
 
 const btnPrimary = {
-  background: 'var(--wl-primary, rgb(49,90,231))',
+  background: 'var(--wl-primary, #0A6FB0)',
   color: '#ffffff',
   padding: '9px 16px',
   border: 'none',
@@ -240,7 +240,7 @@ export default function LinkedInSyncModal({
                   checked={selected.has(f.field)}
                   onChange={() => toggle(f.field)}
                   disabled={applying}
-                  style={{ width: 18, height: 18, cursor: 'pointer', accentColor: 'var(--wl-primary, rgb(49,90,231))' }}
+                  style={{ width: 18, height: 18, cursor: 'pointer', accentColor: 'var(--wl-primary, #0A6FB0)' }}
                 />
               </label>
               <div style={{ flex: 1 }}>

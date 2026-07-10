@@ -148,7 +148,7 @@ export default function Zeiterfassung() {
           <button
             onClick={() => setQuickAddOpen(true)}
             style={{
-              padding: '8px 14px', backgroundColor: 'var(--wl-primary, rgb(49,90,231))', color: 'white',
+              padding: '8px 14px', backgroundColor: 'var(--wl-primary, #0A6FB0)', color: 'white',
               border: 'none', borderRadius: 6, fontWeight: 600, cursor: 'pointer', marginLeft: 8,
             }}
           >

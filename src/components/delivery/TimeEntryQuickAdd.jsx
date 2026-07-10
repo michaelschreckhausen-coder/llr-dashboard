@@ -288,7 +288,7 @@ export default function TimeEntryQuickAdd({
             onClick={handleSubmit}
             disabled={submitting}
             style={{
-              padding: '8px 16px', backgroundColor: 'var(--wl-primary, rgb(49,90,231))', color: 'white',
+              padding: '8px 16px', backgroundColor: 'var(--wl-primary, #0A6FB0)', color: 'white',
               border: 'none', borderRadius: 6, fontWeight: 600,
               cursor: submitting ? 'not-allowed' : 'pointer', opacity: submitting ? 0.6 : 1,
             }}

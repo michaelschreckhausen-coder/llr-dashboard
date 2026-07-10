@@ -17,7 +17,7 @@
 
 import React from 'react'
 
-const P = 'var(--wl-primary, rgb(49,90,231))'
+const P = 'var(--wl-primary, #0A6FB0)'
 
 // ─── Card-Wrapper (Section) ────────────────────────────────────────
 export function Section({ title, subtitle, children, style={}, padded=true }) {
@@ -101,7 +101,7 @@ export function Input({ value, onChange, placeholder, type='text', disabled, sty
       style={{
         ...inputBase,
         borderColor: focused ? P : 'var(--border, #E5E7EB)',
-        boxShadow: focused ? `0 0 0 3px rgba(49,90,231,.10)` : 'none',
+        boxShadow: focused ? `0 0 0 3px rgba(10,111,176,.10)` : 'none',
         opacity: disabled ? .6 : 1,
         ...style,
       }}
@@ -127,7 +127,7 @@ export function Textarea({ value, onChange, placeholder, rows=4, disabled, style
         resize: 'vertical',
         lineHeight: 1.55,
         borderColor: focused ? P : 'var(--border, #E5E7EB)',
-        boxShadow: focused ? `0 0 0 3px rgba(49,90,231,.10)` : 'none',
+        boxShadow: focused ? `0 0 0 3px rgba(10,111,176,.10)` : 'none',
         opacity: disabled ? .6 : 1,
         ...style,
       }}
@@ -156,7 +156,7 @@ export function Select({ value, onChange, children, disabled, style={} }) {
         backgroundPosition: 'right 14px center',
         paddingRight: 36,
         borderColor: focused ? P : 'var(--border, #E5E7EB)',
-        boxShadow: focused ? `0 0 0 3px rgba(49,90,231,.10)` : 'none',
+        boxShadow: focused ? `0 0 0 3px rgba(10,111,176,.10)` : 'none',
         opacity: disabled ? .6 : 1,
         ...style,
       }}
@@ -182,7 +182,7 @@ export function PrimaryButton({ children, onClick, disabled, loading, icon, styl
         fontSize: 13.5,
         fontWeight: 600,
         cursor: disabled || loading ? 'not-allowed' : 'pointer',
-        boxShadow: '0 2px 8px rgba(49,90,231,.18)',
+        boxShadow: '0 2px 8px rgba(10,111,176,.18)',
         display: 'inline-flex',
         alignItems: 'center',
         gap: 8,
@@ -261,13 +261,7 @@ export function PageHeader({ eyebrow, title, subtitle, action, style={} }) {
     <div style={{ marginBottom: 22, display: 'flex', alignItems: 'flex-end', justifyContent: 'space-between', gap: 16, flexWrap: 'wrap', ...style }}>
       <div style={{ flex: '1 1 auto', minWidth: 240 }}>
         {eyebrow && (
-          <div style={{
-            fontSize: 20,
-            color: '#30A0D0',
-            fontFamily: '"Caveat", cursive',
-            fontWeight: 600,
-            marginBottom: 6,
-          }}>{eyebrow}</div>
+          <div style={{ fontSize:12, fontWeight:700, letterSpacing:'1.6px', textTransform:'uppercase', fontFamily:'Inter, sans-serif', color:'var(--primary, #003060)', marginBottom:6 }}>{eyebrow}</div>
         )}
         {title && (
           <h1 style={{

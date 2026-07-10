@@ -15,7 +15,7 @@ const fullName = l => ((l?.first_name||'') + ' ' + (l?.last_name||'')).trim() ||
 const STAGE_CFG = {
   kein_deal:   { label:'Kein Deal',       color:'var(--text-muted)', bg:'#F8FAFC', border:'#E2E8F0' },
   prospect:    { label:'Kontaktiert',     color:'#3B82F6', bg:'#EFF6FF', border:'#BFDBFE' },
-  opportunity: { label:'Gespräch',        color:'#8B5CF6', bg:'#F5F3FF', border:'#DDD6FE' },
+  opportunity: { label:'Gespräch',        color:'#0A6FB0', bg:'#F5F3FF', border:'#DDD6FE' },
   angebot:     { label:'Qualifiziert',    color:'#F59E0B', bg:'#FFFBEB', border:'#FDE68A' },
   verhandlung: { label:'Angebot',         color:'#F97316', bg:'#FFF7ED', border:'#FDBA74' },
   gewonnen:    { label:'Gewonnen ✓',      color:'#22C55E', bg:'#F0FDF4', border:'#86EFAC' },
@@ -31,13 +31,13 @@ const CONN_CFG = {
 }
 
 const ACT_ICONS = { call:'📞', email:'📧', linkedin_message:'💬', meeting:'🤝', note:'📝', linkedin_connection:'🔗', task:'✅', other:'📌' }
-const ACT_COLORS = { call:'#3B82F6', email:'#8B5CF6', linkedin_message:'#0A66C2', meeting:'#10B981', note:'#F59E0B', other:'#94A3B8' }
+const ACT_COLORS = { call:'#3B82F6', email:'#0A6FB0', linkedin_message:'#0A66C2', meeting:'#10B981', note:'#F59E0B', other:'#94A3B8' }
 
 const LIFECYCLE_LABELS = { lead:'Lead', marketing_qualified:'MQL', sales_qualified:'SQL', opportunity:'Opportunity', customer:'Kunde', evangelist:'Evangelist' }
 const LIFECYCLE_ORDER  = ['lead','marketing_qualified','sales_qualified','opportunity','customer']
 
 function Avatar({ name, avatar_url, size = 80 }) {
-  const colors = ['#3B82F6','#8B5CF6','#10B981','#F59E0B','#EF4444','#0891B2','#EC4899']
+  const colors = ['#3B82F6','#0A6FB0','#10B981','#F59E0B','#EF4444','#0891B2','#EC4899']
   const bg = colors[(name||'?').charCodeAt(0) % colors.length]
   if (avatar_url) return <img src={avatar_url} alt={name} style={{ width:size, height:size, borderRadius:'50%', objectFit:'cover', flexShrink:0, border:'3px solid #fff', boxShadow:'0 2px 12px rgba(0,0,0,0.12)' }}/>
   return (
@@ -456,7 +456,7 @@ export default function LeadProfile({ session }) {
               setPitchText(fnData?.text || fnData?.result || 'Fehler')
             } catch(e) { setPitchText('Fehler') }
             setPitchLoading(false)
-          }} style={{ height:28, padding:'0 10px', borderRadius:6, border:'1px solid #E4E7EC', background:'var(--surface-muted)', fontSize:12, fontWeight:500, color:'#7C3AED', cursor:'pointer' }}>
+          }} style={{ height:28, padding:'0 10px', borderRadius:6, border:'1px solid #E4E7EC', background:'var(--surface-muted)', fontSize:12, fontWeight:500, color:'#003060', cursor:'pointer' }}>
             🤖 Pitch
           </button>
         </div>
@@ -855,7 +855,7 @@ export default function LeadProfile({ session }) {
                         if (fnErr) throw fnErr
                         setMsgText(fnData?.text || fnData?.result || '')
                       } catch(e) { showToast('KI-Fehler') }
-                    }} style={{ padding:'4px 10px', borderRadius:5, border:'1px solid #E4E7EC', background:'var(--surface-muted)', fontSize:11, cursor:'pointer', color:'#7C3AED' }}>KI</button>
+                    }} style={{ padding:'4px 10px', borderRadius:5, border:'1px solid #E4E7EC', background:'var(--surface-muted)', fontSize:11, cursor:'pointer', color:'#003060' }}>KI</button>
                   </div>
                   <textarea value={msgText} onChange={e => setMsgText(e.target.value)} rows={5}
                     placeholder="Nachrichtentext…" className="lp-inp" style={{ resize:'vertical', lineHeight:1.6 }}/>
@@ -883,7 +883,7 @@ export default function LeadProfile({ session }) {
         onClick={e => e.target===e.currentTarget && setPitchModal(false)}>
         <div style={{ background:'var(--surface)', borderRadius:20, padding:28, width:500, maxWidth:'95vw', boxShadow:'0 24px 48px rgba(0,0,0,0.2)' }}>
           <div style={{ display:'flex', alignItems:'center', gap:12, marginBottom:20 }}>
-            <div style={{ width:44, height:44, borderRadius:'50%', background:'linear-gradient(135deg,rgb(49,90,231),#818CF8)', display:'flex', alignItems:'center', justifyContent:'center', fontSize:20 }}>🤖</div>
+            <div style={{ width:44, height:44, borderRadius:'50%', background:'linear-gradient(135deg,#0A6FB0,#16A8DC)', display:'flex', alignItems:'center', justifyContent:'center', fontSize:20 }}>🤖</div>
             <div>
               <div style={{ fontSize:15, fontWeight:800, color:'rgb(20,20,43)' }}>KI-Elevator Pitch</div>
               <div style={{ fontSize:12, color:'var(--text-muted)' }}>Personalisiert für {name}</div>
@@ -906,7 +906,7 @@ export default function LeadProfile({ session }) {
                   📋 Kopieren
                 </button>
                 <button onClick={() => setPitchModal(false)}
-                  style={{ flex:1, padding:'9px', borderRadius:9, border:'none', background:'var(--wl-primary, rgb(49,90,231))', color:'white', fontSize:12, fontWeight:700, cursor:'pointer' }}>
+                  style={{ flex:1, padding:'9px', borderRadius:9, border:'none', background:'var(--wl-primary, #0A6FB0)', color:'white', fontSize:12, fontWeight:700, cursor:'pointer' }}>
                   ✓ Fertig
                 </button>
               </div>

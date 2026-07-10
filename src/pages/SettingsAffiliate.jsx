@@ -5,7 +5,7 @@ import { useEffect, useRef, useState } from 'react'
 import { supabase } from '../lib/supabase'
 import SettingsTabs from '../components/SettingsTabs'
 
-const PRIMARY = 'var(--wl-primary, rgb(49,90,231))'
+const PRIMARY = 'var(--wl-primary, #0A6FB0)'
 const AFFILIATE_APP = 'https://affiliate.leadesk.de'
 const wrap = { width: '100%', maxWidth: 1100, margin: '0 auto', padding: '0 4px' }
 const card = { background: 'var(--surface,#fff)', border: '1px solid var(--border,#E5E7EB)', borderRadius: 14, padding: 24 }

@@ -19,7 +19,7 @@ import EmojiPicker from './EmojiPicker'
 import { useModel } from '../context/ModelContext'
 
 const SAVE_DEBOUNCE = 900
-const P = 'var(--wl-primary, rgb(49,90,231))'
+const P = 'var(--wl-primary, #0A6FB0)'
 
 // ── KI-Editor: gemeinsamer Rahmen für alle Inline-Aktionen ──────────────────
 // Bewusst OHNE den schweren Post-Generierungs-Prompt (HUMAN_STYLE_GUIDE + Brand
@@ -130,7 +130,7 @@ if (typeof document !== 'undefined' && !document.getElementById('leadesk-docpane
     .lk-docpane .ProseMirror ul, .lk-docpane .ProseMirror ol { padding-left:24px; margin:0 0 14px; }
     .lk-docpane .ProseMirror li { margin:4px 0; }
     .lk-docpane .ProseMirror blockquote { border-left:3px solid var(--border,#E6E9EF); margin:0 0 14px; padding:2px 0 2px 16px; color:var(--text-muted,#667085); }
-    .lk-docpane .ProseMirror a { color:var(--wl-primary, rgb(49,90,231)); text-decoration:underline; text-underline-offset:2px; cursor:pointer; }
+    .lk-docpane .ProseMirror a { color:var(--wl-primary, #0A6FB0); text-decoration:underline; text-underline-offset:2px; cursor:pointer; }
     .lk-docpane .ProseMirror mark { padding:0 2px; border-radius:3px; box-decoration-break:clone; -webkit-box-decoration-break:clone; }
     .lk-docpane .ProseMirror u { text-decoration-thickness:1px; text-underline-offset:2px; }
     .lk-docpane .ProseMirror:focus { outline:none; }
@@ -701,8 +701,8 @@ const InputStyle = { width:'100%', boxSizing:'border-box', border:'1px solid var
 
 function Chip({ children, onClick, active, accent }) {
   const base = {
-    background: active ? 'rgba(49,90,231,0.10)' : (accent ? 'rgba(49,90,231,0.06)' : '#F1F3F7'),
-    border: '1px solid ' + (active||accent ? 'rgba(49,90,231,0.30)' : 'transparent'),
+    background: active ? 'rgba(10,111,176,0.10)' : (accent ? 'rgba(10,111,176,0.06)' : '#F1F3F7'),
+    border: '1px solid ' + (active||accent ? 'rgba(10,111,176,0.30)' : 'transparent'),
     color: active||accent ? P : 'var(--text-primary,#344054)',
     fontSize:12, fontWeight:600, padding:'6px 10px', borderRadius:8, cursor:'pointer', whiteSpace:'nowrap', fontFamily:'inherit', lineHeight:1.2,
   }

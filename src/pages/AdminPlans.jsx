@@ -213,7 +213,7 @@ function PlanEditor({ plan, onClose, onSaved }) {
             type="checkbox"
             checked={form.is_trial}
             onChange={e => setField('is_trial', e.target.checked)}
-            style={{ accentColor: 'var(--wl-primary, rgb(49,90,231))', cursor:'pointer' }}
+            style={{ accentColor: 'var(--wl-primary, #0A6FB0)', cursor:'pointer' }}
           />
           <span style={{ fontSize:13, fontWeight:700, color:'var(--text-strong)' }}>Trial-Plan</span>
         </label>
@@ -235,7 +235,7 @@ function PlanEditor({ plan, onClose, onSaved }) {
                   type="checkbox"
                   checked={form.is_default_trial}
                   onChange={e => setField('is_default_trial', e.target.checked)}
-                  style={{ accentColor: 'var(--wl-primary, rgb(49,90,231))', cursor:'pointer' }}
+                  style={{ accentColor: 'var(--wl-primary, #0A6FB0)', cursor:'pointer' }}
                 />
                 <span style={{ fontSize:12, color:'var(--text-muted)' }}>
                   {form.is_default_trial ? 'Ja — neue Konten starten auf diesem Plan' : 'Nein'}
@@ -308,7 +308,7 @@ function PlanEditor({ plan, onClose, onSaved }) {
               type="checkbox"
               checked={form.is_active}
               onChange={e => setField('is_active', e.target.checked)}
-              style={{ accentColor: 'var(--wl-primary, rgb(49,90,231))', cursor:'pointer' }}
+              style={{ accentColor: 'var(--wl-primary, #0A6FB0)', cursor:'pointer' }}
             />
             <span style={{ fontSize:12, color:'var(--text-muted)' }}>
               {form.is_active ? 'Plan ist sichtbar und auswählbar' : 'Plan ist deaktiviert'}
@@ -358,13 +358,13 @@ const inputStyle = {
 const btnPrimary = {
   padding: '10px 20px',
   borderRadius: 999,
-  background: 'var(--wl-primary, rgb(49,90,231))',
+  background: 'var(--wl-primary, #0A6FB0)',
   color: '#fff',
   border: 'none',
   fontSize: 13,
   fontWeight: 700,
   cursor: 'pointer',
-  boxShadow: '0 4px 12px rgba(49,90,231,0.25)',
+  boxShadow: '0 4px 12px rgba(10,111,176,0.25)',
 }
 
 const btnGhost = {

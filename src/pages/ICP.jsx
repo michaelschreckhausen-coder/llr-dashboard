@@ -130,7 +130,7 @@ export default function ICP({ session }) {
           </button>
           <div style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
             {saved && <span style={{ color: '#057642', fontSize: 13, fontWeight: 600 }}>Gespeichert!</span>}
-            <button onClick={save} disabled={saving || !form.name?.trim()} style={{ padding: '9px 24px', borderRadius: 18, background: 'linear-gradient(135deg,#0A66C2,#8B5CF6)', color: '#fff', border: 'none', fontSize: 13, fontWeight: 700, cursor: 'pointer' }}>
+            <button onClick={save} disabled={saving || !form.name?.trim()} style={{ padding: '9px 24px', borderRadius: 18, background: 'linear-gradient(135deg,#0A66C2,#0A6FB0)', color: '#fff', border: 'none', fontSize: 13, fontWeight: 700, cursor: 'pointer' }}>
               {saving ? '...' : 'Speichern'}
             </button>
           </div>
@@ -148,7 +148,7 @@ export default function ICP({ session }) {
         </div>
         <button
           onClick={() => { setForm(EMPTY); setEditing('new') }}
-          style={{ padding: '9px 18px', borderRadius: 9, background: 'linear-gradient(135deg,#0A66C2,#8B5CF6)', color: '#fff', border: 'none', fontSize: 13, fontWeight: 700, cursor: 'pointer' }}
+          style={{ padding: '9px 18px', borderRadius: 9, background: 'linear-gradient(135deg,#0A66C2,#0A6FB0)', color: '#fff', border: 'none', fontSize: 13, fontWeight: 700, cursor: 'pointer' }}
         >
           + Neues ICP
         </button>
@@ -161,7 +161,7 @@ export default function ICP({ session }) {
           <p style={{ color: '#888', fontSize: 13, marginBottom: 20 }}>Erstelle ein ICP um Lead Scoring zu aktivieren.</p>
           <button
             onClick={() => { setForm(EMPTY); setEditing('new') }}
-            style={{ padding: '10px 24px', borderRadius: 18, background: 'linear-gradient(135deg,#0A66C2,#8B5CF6)', color: '#fff', border: 'none', fontSize: 13, fontWeight: 700, cursor: 'pointer' }}
+            style={{ padding: '10px 24px', borderRadius: 18, background: 'linear-gradient(135deg,#0A66C2,#0A6FB0)', color: '#fff', border: 'none', fontSize: 13, fontWeight: 700, cursor: 'pointer' }}
           >
             ICP erstellen
           </button>

@@ -5,7 +5,7 @@ import {
   fontsInCategory, loadFontPreview,
 } from '../../lib/googleFonts'
 
-const PRIMARY = 'var(--wl-primary, rgb(49,90,231))'
+const PRIMARY = 'var(--wl-primary, #0A6FB0)'
 const ROW = 38
 const LIST_H = 344
 
@@ -32,7 +32,7 @@ function FontRow({ family, top, active, onPick }) {
         position: 'absolute', top, left: 6, right: 6, height: ROW - 4,
         display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8,
         padding: '0 12px', border: 'none', borderRadius: 8, cursor: 'pointer', textAlign: 'left',
-        background: active ? 'rgba(49,90,231,0.09)' : 'transparent',
+        background: active ? 'rgba(10,111,176,0.09)' : 'transparent',
       }}
       onMouseEnter={e => { if (!active) e.currentTarget.style.background = 'var(--surface-hover,#F4F6FA)' }}
       onMouseLeave={e => { if (!active) e.currentTarget.style.background = 'transparent' }}>

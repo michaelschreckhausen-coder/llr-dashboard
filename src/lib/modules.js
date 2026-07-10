@@ -13,7 +13,7 @@ export const MODULES = {
     label: 'Branding',
     description: 'Brand Voice, Zielgruppen, Wissensdatenbank',
     routes: ['/brand-voice', '/zielgruppen', '/wissensdatenbank', '/icp', '/ki-sichtbarkeit'],
-    color: '#8B5CF6',
+    color: '#0A6FB0',
   },
   crm: {
     key:   'crm',

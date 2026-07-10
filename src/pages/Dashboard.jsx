@@ -68,7 +68,7 @@ const card = {
 const AREA_META = {
   'follow-up': { key: 'follow-up', label: 'Follow-up', color: '#0369A1', bg: '#F0F9FF' },
   'kontakt':   { key: 'kontakt',   label: 'Kontakt',   color: '#047857', bg: '#ECFDF5' },
-  'deal':      { key: 'deal',      label: 'Deal',      color: '#7C3AED', bg: '#F5F3FF' },
+  'deal':      { key: 'deal',      label: 'Deal',      color: '#003060', bg: '#F5F3FF' },
   'aufgabe':   { key: 'aufgabe',   label: 'Aufgabe',   color: '#B45309', bg: '#FFFBEB' },
   'content':   { key: 'content',   label: 'Content',   color: '#0F766E', bg: '#F0FDFA' },
 };

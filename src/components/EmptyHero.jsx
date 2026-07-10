@@ -15,7 +15,7 @@
 
 import React from 'react'
 
-const P = 'var(--wl-primary, rgb(49,90,231))'
+const P = 'var(--wl-primary, #0A6FB0)'
 
 function AnimatedLogo({ size = 130 }) {
   return (
@@ -53,14 +53,7 @@ export default function EmptyHero({
       </div>
 
       {eyebrow && (
-        <div style={{
-          marginTop: 28,
-          fontSize: 20,
-          color: '#30A0D0',
-          fontFamily: '"Caveat", cursive',
-          fontWeight: 600,
-          letterSpacing: '.2px',
-        }}>
+        <div style={{ fontSize:12, fontWeight:700, letterSpacing:'1.6px', textTransform:'uppercase', fontFamily:'Inter, sans-serif', color:'var(--primary, #003060)', marginTop:28, marginBottom:8 }}>
           {eyebrow}
         </div>
       )}
@@ -98,7 +91,7 @@ export default function EmptyHero({
             fontSize: 14.5,
             fontWeight: 600,
             cursor: 'pointer',
-            boxShadow: '0 4px 16px rgba(49,90,231,.28), 0 1px 2px rgba(49,90,231,.18)',
+            boxShadow: '0 4px 16px rgba(10,111,176,.28), 0 1px 2px rgba(10,111,176,.18)',
             display: 'inline-flex',
             alignItems: 'center',
             gap: 8,
@@ -107,11 +100,11 @@ export default function EmptyHero({
           }}
           onMouseEnter={e => {
             e.currentTarget.style.transform = 'translateY(-1px)'
-            e.currentTarget.style.boxShadow = '0 8px 22px rgba(49,90,231,.36), 0 2px 4px rgba(49,90,231,.22)'
+            e.currentTarget.style.boxShadow = '0 8px 22px rgba(10,111,176,.36), 0 2px 4px rgba(10,111,176,.22)'
           }}
           onMouseLeave={e => {
             e.currentTarget.style.transform = 'translateY(0)'
-            e.currentTarget.style.boxShadow = '0 4px 16px rgba(49,90,231,.28), 0 1px 2px rgba(49,90,231,.18)'
+            e.currentTarget.style.boxShadow = '0 4px 16px rgba(10,111,176,.28), 0 1px 2px rgba(10,111,176,.18)'
           }}
         >
           {primaryLabel}

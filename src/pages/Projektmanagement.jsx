@@ -53,7 +53,7 @@ function LabelChip({label,small=false}){
 // ─── Avatar
 function Avatar({user,size=26}){
   const init=(user?.full_name||user?.email||'?')[0].toUpperCase()
-  const colors=['#0A66C2','#8B5CF6','#059669','#DC2626','#D97706','#0891B2']
+  const colors=['#0A66C2','#0A6FB0','#059669','#DC2626','#D97706','#0891B2']
   const color=colors[(user?.email||'').charCodeAt(0)%colors.length]||'#0A66C2'
   return(
     <div title={user?.full_name||user?.email} style={{width:size,height:size,borderRadius:'50%',background:color,color:'#fff',fontSize:size*0.42,fontWeight:700,display:'flex',alignItems:'center',justifyContent:'center',flexShrink:0,border:'2px solid #fff'}}>
@@ -883,7 +883,7 @@ export default function Projektmanagement({session}){
             <div><label style={{fontSize:11,fontWeight:700,color:'var(--text-muted)',display:'block',marginBottom:5}}>BESCHREIBUNG</label><textarea value={projForm.description} onChange={e=>setProjForm(p=>({...p,description:e.target.value}))} rows={2} placeholder="Projektbeschreibung (optional)" style={{...inp,resize:'vertical'}}/></div>
             <div>
               <label style={{fontSize:11,fontWeight:700,color:'var(--text-muted)',display:'block',marginBottom:8}}>FARBE</label>
-              <div style={{display:'flex',gap:8}}>{['#0A66C2','#8B5CF6','#059669','#DC2626','#D97706','#0891B2','#374151','#ec4899'].map(c=><button key={c} onClick={()=>setProjForm(p=>({...p,color:c}))} style={{width:28,height:28,borderRadius:8,background:c,border:projForm.color===c?'3px solid #0F172A':'2px solid transparent',cursor:'pointer'}}/>)}</div>
+              <div style={{display:'flex',gap:8}}>{['#0A66C2','#0A6FB0','#059669','#DC2626','#D97706','#0891B2','#374151','#ec4899'].map(c=><button key={c} onClick={()=>setProjForm(p=>({...p,color:c}))} style={{width:28,height:28,borderRadius:8,background:c,border:projForm.color===c?'3px solid #0F172A':'2px solid transparent',cursor:'pointer'}}/>)}</div>
             </div>
             <div style={{display:'flex',justifyContent:'space-between',paddingTop:8}}>
               {projModal!=='new'&&(

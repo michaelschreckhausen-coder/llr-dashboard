@@ -215,7 +215,7 @@ function CompanyInfoBlock({ industry, companySize, companyWebsite, companyAddres
           <div style={{ fontSize:13, display:'flex', alignItems:'center', gap:5 }}>
             <Globe size={13} color={COLORS.textTertiary} />
             <a href={normalizedSite} target="_blank" rel="noopener noreferrer"
-              style={{ color: 'var(--wl-primary, rgb(49,90,231))', textDecoration:'none' }}>
+              style={{ color: 'var(--wl-primary, #0A6FB0)', textDecoration:'none' }}>
               {companyWebsite}
             </a>
           </div>
@@ -513,7 +513,7 @@ export default function LeadDetail({ lead: leadProp }) {
               {/* Read-only Display — Edit erfolgt jetzt über LeadEditModal (Click auf 'Bearbeiten').
                   Status ist ein Dropdown (LeadStatusPill + StatusPicker) direkt neben dem Namen,
                   statt des fruehern Chevron-Pipeline-Steppers. */}
-              <div style={{ fontSize:18, color:'#30A0D0', fontFamily:'"Caveat", cursive', fontWeight:600, marginBottom:2 }}>CRM · Kontakt</div>
+              <div style={{ fontSize:12, fontWeight:700, letterSpacing:'1.6px', textTransform:'uppercase', fontFamily:'Inter, sans-serif', color:'var(--primary, #003060)', marginBottom:2 }}>CRM · Kontakt</div>
               <div style={{ display:'flex', alignItems:'center', gap:10, flexWrap:'wrap' }}>
                 <h1 style={{ fontSize:26, fontWeight:700, letterSpacing:'-0.3px', lineHeight:1.2, margin:0, color: displayName ? COLORS.textPrimary : COLORS.textTertiary }}>
                   {displayName || 'Name fehlt'}
@@ -550,7 +550,7 @@ export default function LeadDetail({ lead: leadProp }) {
                   <span
                     onClick={() => navigate(`/organizations/${lead.organization.id}`)}
                     title="Zum Unternehmen"
-                    style={{ color: 'var(--wl-primary, rgb(49,90,231))', cursor: 'pointer' }}>
+                    style={{ color: 'var(--wl-primary, #0A6FB0)', cursor: 'pointer' }}>
                     {lead.organization.name}
                   </span>
                 ) : (
@@ -760,7 +760,7 @@ function RelatedRail({ lead, navigate, refreshKey, analysis, analyzeLoading, onA
       <div style={railCardStyle}>
         <div style={railHeadStyle}><Building2 size={14} color={COLORS.textTertiary} /><span style={railTitleStyle}>Unternehmen</span></div>
         {lead.organization?.id ? (
-          <div style={{ fontSize:13, color:'var(--wl-primary, rgb(49,90,231))', cursor:'pointer' }}
+          <div style={{ fontSize:13, color:'var(--wl-primary, #0A6FB0)', cursor:'pointer' }}
             onClick={() => navigate(`/organizations/${lead.organization.id}`)}>{lead.organization.name}</div>
         ) : lead.company ? (
           <div style={{ fontSize:13, color: COLORS.textPrimary }}>{lead.company}</div>
@@ -961,7 +961,7 @@ function ActivityTab({ leadId, leadTeamId, lead, initialDraft, onDraftConsumed }
       {/* Nachricht verfassen (zusammengeführt aus dem früheren Nachrichten-Tab) */}
       <div style={{ marginBottom: 22, padding:'16px', background: COLORS.surface, border:`1px solid ${COLORS.borderSubtle}`, borderRadius: RADIUS.lg, boxShadow:'0 1px 2px rgba(16,24,40,0.04)' }}>
         <div style={{ display:'flex', gap:10, marginBottom:12, alignItems:'center', flexWrap:'wrap' }}>
-          <span style={{ width:28, height:28, borderRadius:8, background:'rgba(49,90,231,0.10)', color: COLORS.primary, display:'grid', placeItems:'center', flexShrink:0 }}>
+          <span style={{ width:28, height:28, borderRadius:8, background:'rgba(10,111,176,0.10)', color: COLORS.primary, display:'grid', placeItems:'center', flexShrink:0 }}>
             <Send size={15} />
           </span>
           <span style={{ fontSize:11, fontWeight:700, color: COLORS.textTertiary, textTransform:'uppercase', letterSpacing:'0.06em', whiteSpace:'nowrap' }}>Nachricht verfassen</span>
@@ -1522,7 +1522,7 @@ const DEAL_STAGE_LABELS = {
 };
 const DEAL_STAGE_COLORS = {
   prospect: '#64748B', opportunity: '#185FA5', angebot: '#D97706',
-  verhandlung: '#7C3AED', gewonnen: '#059669', verloren: '#B91C1C', kein_deal: '#94A3B8',
+  verhandlung: '#003060', gewonnen: '#059669', verloren: '#B91C1C', kein_deal: '#94A3B8',
 };
 
 function DealsTab({ lead, leadId, navigate, onMutated }) {

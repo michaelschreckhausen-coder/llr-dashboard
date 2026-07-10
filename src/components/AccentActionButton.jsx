@@ -7,7 +7,7 @@
 
 import React from 'react'
 
-const P = 'var(--wl-primary, rgb(49,90,231))'
+const P = 'var(--wl-primary, #0A6FB0)'
 
 export default function AccentActionButton({
   icon = '✎',
@@ -29,15 +29,15 @@ export default function AccentActionButton({
         width: '100%',
         padding: '13px 16px',
         background: active
-          ? `linear-gradient(135deg, ${P} 0%, #7C3AED 100%)`
+          ? `linear-gradient(135deg, ${P} 0%, #003060 100%)`
           : isDashed
-            ? 'linear-gradient(135deg, rgba(49,90,231,.06) 0%, rgba(124,58,237,.04) 100%)'
-            : 'linear-gradient(135deg, rgba(49,90,231,.10) 0%, rgba(124,58,237,.08) 100%)',
+            ? 'linear-gradient(135deg, rgba(10,111,176,.06) 0%, rgba(0,48,96,.04) 100%)'
+            : 'linear-gradient(135deg, rgba(10,111,176,.10) 0%, rgba(0,48,96,.08) 100%)',
         border: active
           ? '1.5px solid transparent'
           : isDashed
-            ? '1.5px dashed rgba(49,90,231,.40)'
-            : '1.5px solid rgba(49,90,231,.30)',
+            ? '1.5px dashed rgba(10,111,176,.40)'
+            : '1.5px solid rgba(10,111,176,.30)',
         borderRadius: 12,
         color: active ? '#fff' : P,
         fontWeight: 700,
@@ -50,20 +50,20 @@ export default function AccentActionButton({
         fontFamily: 'inherit',
         transition: 'all .15s',
         opacity: disabled ? .5 : 1,
-        boxShadow: active ? '0 4px 14px rgba(49,90,231,.25)' : 'none',
+        boxShadow: active ? '0 4px 14px rgba(10,111,176,.25)' : 'none',
         ...style,
       }}
       onMouseEnter={e => {
         if (disabled || loading || active) return
-        e.currentTarget.style.background = 'linear-gradient(135deg, rgba(49,90,231,.12) 0%, rgba(124,58,237,.10) 100%)'
-        e.currentTarget.style.borderColor = 'rgba(49,90,231,.55)'
+        e.currentTarget.style.background = 'linear-gradient(135deg, rgba(10,111,176,.12) 0%, rgba(0,48,96,.10) 100%)'
+        e.currentTarget.style.borderColor = 'rgba(10,111,176,.55)'
       }}
       onMouseLeave={e => {
         if (disabled || loading || active) return
         e.currentTarget.style.background = isDashed
-          ? 'linear-gradient(135deg, rgba(49,90,231,.06) 0%, rgba(124,58,237,.04) 100%)'
-          : 'linear-gradient(135deg, rgba(49,90,231,.10) 0%, rgba(124,58,237,.08) 100%)'
-        e.currentTarget.style.borderColor = isDashed ? 'rgba(49,90,231,.40)' : 'rgba(49,90,231,.30)'
+          ? 'linear-gradient(135deg, rgba(10,111,176,.06) 0%, rgba(0,48,96,.04) 100%)'
+          : 'linear-gradient(135deg, rgba(10,111,176,.10) 0%, rgba(0,48,96,.08) 100%)'
+        e.currentTarget.style.borderColor = isDashed ? 'rgba(10,111,176,.40)' : 'rgba(10,111,176,.30)'
       }}
     >
       <div style={{

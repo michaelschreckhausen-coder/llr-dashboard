@@ -22,7 +22,7 @@ const COLOR_THEMES = {
   amber:  { bg: 'linear-gradient(135deg, #FEF3C7 0%, #FDE68A 100%)', text: '#92400E', shadow: 'rgba(146, 64, 14, .10)' },
   teal:   { bg: 'linear-gradient(135deg, #CCFBF1 0%, #99F6E4 100%)', text: '#115E59', shadow: 'rgba(17, 94, 89, .10)' },
   coral:  { bg: 'linear-gradient(135deg, #FFE4E6 0%, #FECDD3 100%)', text: '#9F1239', shadow: 'rgba(159, 18, 57, .10)' },
-  brand:  { bg: 'linear-gradient(135deg, rgba(49,90,231,.18) 0%, rgba(124,58,237,.14) 100%)', text: 'rgb(49,90,231)', shadow: 'rgba(49,90,231,.16)' },
+  brand:  { bg: 'linear-gradient(135deg, rgba(10,111,176,.18) 0%, rgba(0,48,96,.14) 100%)', text: '#0A6FB0', shadow: 'rgba(10,111,176,.16)' },
 }
 
 export default function SectionCard({ icon, color = 'blue', title, subtitle, children, padding = '22px 24px', style = {} }) {

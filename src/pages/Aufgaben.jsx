@@ -23,7 +23,7 @@ import NewTaskModal from '../components/NewTaskModal'
 import TaskEditModal from '../components/aufgaben/TaskEditModal'
 import { supabase } from '../lib/supabase'
 
-const PRIMARY = 'rgb(49,90,231)'
+const PRIMARY = '#0A6FB0'
 
 const PRIORITY_CFG = {
   low:    { label: 'Niedrig', color: '#6B7280', bg: '#F3F4F6', border: '#E5E7EB' },

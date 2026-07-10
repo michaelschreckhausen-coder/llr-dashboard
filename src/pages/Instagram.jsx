@@ -21,7 +21,7 @@ function IcInstagram({ size = 22, strokeWidth = 2 }) {
   )
 }
 
-const PRIMARY = 'var(--wl-primary, rgb(49,90,231))'
+const PRIMARY = 'var(--wl-primary, #0A6FB0)'
 const IG_PINK = '#E1306C'
 const C = {
   surface: '#ffffff', border: '#E4E7EC', text1: '#111827',

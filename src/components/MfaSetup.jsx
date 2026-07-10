@@ -10,7 +10,7 @@ import React, { useEffect, useState } from 'react'
 import { supabase } from '../lib/supabase'
 import { ShieldCheck, ShieldOff, Loader2 } from 'lucide-react'
 
-const PRIMARY = 'var(--wl-primary, rgb(49,90,231))'
+const PRIMARY = 'var(--wl-primary, #0A6FB0)'
 
 const card = { background: 'var(--surface)', borderRadius: 14, border: '1px solid #E4E7EC', marginBottom: 16 }
 const hdr  = { padding: '14px 20px', borderBottom: '1px solid #EEF1F5', fontWeight: 700, fontSize: 14, display: 'flex', alignItems: 'center', gap: 8 }

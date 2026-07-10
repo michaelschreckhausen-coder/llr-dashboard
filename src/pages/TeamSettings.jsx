@@ -4,7 +4,7 @@ import { supabase } from '../lib/supabase'
 import { useTeam } from '../context/TeamContext'
 import SettingsTabs from '../components/SettingsTabs'
 
-const IND = 'var(--wl-primary, rgb(49,90,231))'
+const IND = 'var(--wl-primary, #0A6FB0)'
 
 const TrashIcon = () => <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/></svg>
 
@@ -271,7 +271,7 @@ export default function TeamSettings({ session }) {
     if (!error) { flash_('Lizenz entzogen'); load() } else flash_(error.message, 'err')
   }
 
-  const rC = { admin:'#7C3AED', team_member:'#2563EB', user:'#6B7280' }
+  const rC = { admin:'#003060', team_member:'#2563EB', user:'#6B7280' }
   const rB = { admin:'#EDE9FE', team_member:'#DBEAFE', user:'#F3F4F6' }
 
   async function handleCreateTeam() {
@@ -307,7 +307,7 @@ export default function TeamSettings({ session }) {
       </p>
       {!creatingTeam ? (
         <button onClick={() => setCreatingTeam(true)}
-          style={{ padding:'12px 28px', borderRadius:10, border:'none', background:'var(--wl-primary, rgb(49,90,231))', color:'#fff', fontSize:14, fontWeight:700, cursor:'pointer' }}>
+          style={{ padding:'12px 28px', borderRadius:10, border:'none', background:'var(--wl-primary, #0A6FB0)', color:'#fff', fontSize:14, fontWeight:700, cursor:'pointer' }}>
           + Neues Team erstellen
         </button>
       ) : (
@@ -323,7 +323,7 @@ export default function TeamSettings({ session }) {
           />
           <div style={{ display:'flex', gap:10 }}>
             <button onClick={handleCreateTeam} disabled={!newTeamName.trim() || teamCreating}
-              style={{ flex:1, padding:'10px', borderRadius:8, border:'none', background:newTeamName.trim()?'var(--wl-primary, rgb(49,90,231))':' #E4E7EC', color:newTeamName.trim()?'#fff':'#9CA3AF', fontSize:13, fontWeight:700, cursor:newTeamName.trim()?'pointer':'default' }}>
+              style={{ flex:1, padding:'10px', borderRadius:8, border:'none', background:newTeamName.trim()?'var(--wl-primary, #0A6FB0)':' #E4E7EC', color:newTeamName.trim()?'#fff':'#9CA3AF', fontSize:13, fontWeight:700, cursor:newTeamName.trim()?'pointer':'default' }}>
               {teamCreating ? 'Erstelle…' : 'Team erstellen'}
             </button>
             <button onClick={() => setCreatingTeam(false)}
@@ -341,18 +341,18 @@ export default function TeamSettings({ session }) {
       <SettingsTabs />
       <style>{`
         .ts-tab{padding:8px 18px;border-radius:9px;border:none;cursor:pointer;font-size:13px;font-weight:700}
-        .ts-tab.on{background:rgb(49,90,231);color:white}
+        .ts-tab.on{background:#0A6FB0;color:white}
         .ts-tab:not(.on){background:white;color:#6B7280;border:1px solid #E5E7EB}
-        .ts-tab:not(.on):hover{border-color:rgb(49,90,231);color:rgb(49,90,231)}
+        .ts-tab:not(.on):hover{border-color:#0A6FB0;color:#0A6FB0}
         .ts-tbl{width:100%;border-collapse:collapse;font-size:13px}
         .ts-tbl th{padding:9px 14px;text-align:left;font-size:10px;font-weight:700;color:#9CA3AF;text-transform:uppercase;letter-spacing:.07em;background:#F9FAFB;border-bottom:1px solid #E5E7EB}
         .ts-tbl td{padding:10px 14px;border-bottom:1px solid #F9FAFB;color:rgb(20,20,43)}
         .ts-tbl tr:hover td{background:#F9FAFB}
         .ts-bg{display:inline-block;padding:3px 9px;border-radius:6px;font-size:11px;font-weight:700}
         .ts-bx{padding:5px 11px;border-radius:8px;border:1px solid #E5E7EB;background:white;font-size:11px;font-weight:700;cursor:pointer;color:#374151}
-        .ts-bx:hover{border-color:rgb(49,90,231);color:rgb(49,90,231)}
+        .ts-bx:hover{border-color:#0A6FB0;color:#0A6FB0}
         .ts-bxr{padding:5px 11px;border-radius:8px;border:1px solid #FCA5A5;background:white;font-size:11px;font-weight:700;cursor:pointer;color:#DC2626}
-        .ts-bp{background:rgb(49,90,231);color:white;border:none;padding:9px 18px;border-radius:10px;font-size:13px;font-weight:700;cursor:pointer}
+        .ts-bp{background:#0A6FB0;color:white;border:none;padding:9px 18px;border-radius:10px;font-size:13px;font-weight:700;cursor:pointer}
         .ts-ip{padding:9px 12px;border:1px solid #E5E7EB;border-radius:9px;font-size:13px;outline:none}
         .ts-crm-btn{padding:5px 10px;border-radius:8px;border:1px solid #FCA5A5;background:white;font-size:11px;font-weight:700;cursor:pointer;color:#DC2626;display:inline-flex;align-items:center;gap:5px}
         .ts-crm-btn:hover{background:#FEF2F2}
@@ -369,7 +369,7 @@ export default function TeamSettings({ session }) {
         <div style={{ flex:1 }}>
           <div style={{ fontSize:11, fontWeight:600, color:'#9CA3AF', textTransform:'uppercase', letterSpacing:'0.06em', marginBottom:4 }}>Aktives Team</div>
           <div style={{ display:'flex', alignItems:'center', gap:10 }}>
-            <div style={{ width:32, height:32, borderRadius:8, background:'var(--wl-primary, rgb(49,90,231))', display:'flex', alignItems:'center', justifyContent:'center', color:'#fff', fontWeight:700, fontSize:14, flexShrink:0 }}>
+            <div style={{ width:32, height:32, borderRadius:8, background:'var(--wl-primary, #0A6FB0)', display:'flex', alignItems:'center', justifyContent:'center', color:'#fff', fontWeight:700, fontSize:14, flexShrink:0 }}>
               {team?.name?.[0]?.toUpperCase() || '?'}
             </div>
             <div>
@@ -413,11 +413,11 @@ export default function TeamSettings({ session }) {
               onChange={e => setNewTeamName(e.target.value)}
               placeholder="Team-Name…"
               onKeyDown={e => e.key === 'Enter' && handleCreateTeam()}
-              style={{ padding:'7px 12px', border:'1.5px solid var(--wl-primary, rgb(49,90,231))', borderRadius:8, fontSize:13, outline:'none', width:180 }}
+              style={{ padding:'7px 12px', border:'1.5px solid var(--wl-primary, #0A6FB0)', borderRadius:8, fontSize:13, outline:'none', width:180 }}
               autoFocus
             />
             <button onClick={handleCreateTeam} disabled={!newTeamName.trim() || teamCreating}
-              style={{ padding:'7px 14px', borderRadius:8, border:'none', background:'var(--wl-primary, rgb(49,90,231))', color:'#fff', fontSize:12, fontWeight:700, cursor:'pointer' }}>
+              style={{ padding:'7px 14px', borderRadius:8, border:'none', background:'var(--wl-primary, #0A6FB0)', color:'#fff', fontSize:12, fontWeight:700, cursor:'pointer' }}>
               {teamCreating ? '⏳' : 'Erstellen'}
             </button>
             <button onClick={() => { setCreatingTeam(false); setNewTeamName('') }}
@@ -431,7 +431,7 @@ export default function TeamSettings({ session }) {
       {/* Stats */}
       <div className="col-3" style={{ gap:12, marginBottom:24 }}>
         {[
-          { l:'Mitglieder',          v:members.length,                                                   c:'var(--wl-primary, rgb(49,90,231))' },
+          { l:'Mitglieder',          v:members.length,                                                   c:'var(--wl-primary, #0A6FB0)' },
           { l:'Geteilte Leads',      v:(sharedLeads||[]).length,                                               c:'#10b981' },
           { l:'Offene Einladungen',  v:invites.length,                                                   c:'#F59E0B' },
         ].map(s => (
@@ -556,7 +556,7 @@ export default function TeamSettings({ session }) {
                   return (
                     <div key={u.id} style={{ display:'flex', alignItems:'center', gap:12, padding:'10px 12px', borderRadius:10, marginBottom:6,
                       background: isMember ? '#F0FDF4' : '#F8FAFC', border:'1px solid '+(isMember?'#A7F3D0':'#E5E7EB') }}>
-                      <div style={{ width:38, height:38, borderRadius:'50%', background:'linear-gradient(135deg,#0A66C2,#8B5CF6)', color:'#fff', fontSize:13, fontWeight:700, display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0 }}>
+                      <div style={{ width:38, height:38, borderRadius:'50%', background:'linear-gradient(135deg,#0A66C2,#0A6FB0)', color:'#fff', fontSize:13, fontWeight:700, display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0 }}>
                         {(u.full_name||u.email||'?')[0].toUpperCase()}
                       </div>
                       <div style={{ flex:1, minWidth:0 }}>
@@ -638,7 +638,7 @@ export default function TeamSettings({ session }) {
                   </div>
                 </div>
                 <div style={{ width:100, height:8, background:'var(--surface-muted)', borderRadius:4, overflow:'hidden' }}>
-                  <div style={{ width:(lic.total_seats>0?lic.used_seats/lic.total_seats*100:0)+'%', height:'100%', background:lic.used_seats/lic.total_seats>.8?'#EF4444':'var(--wl-primary, rgb(49,90,231))', borderRadius:4 }}/>
+                  <div style={{ width:(lic.total_seats>0?lic.used_seats/lic.total_seats*100:0)+'%', height:'100%', background:lic.used_seats/lic.total_seats>.8?'#EF4444':'var(--wl-primary, #0A6FB0)', borderRadius:4 }}/>
                 </div>
               </div>
               <div style={{ padding:'12px 18px', borderBottom:'1px solid #F3F4F6', fontSize:12, fontWeight:700, color:'#9CA3AF', background:'#FAFAFA' }}>MITGLIED ZUWEISEN</div>
@@ -677,7 +677,7 @@ export default function TeamSettings({ session }) {
                 <div style={{ fontSize:14, fontWeight:700, color:'rgb(20,20,43)' }}>Geteilte Leads</div>
                 <div style={{ fontSize:12, color:'var(--text-muted)', marginTop:2 }}>Leads die alle Teammitglieder sehen und bearbeiten können</div>
               </div>
-              <span style={{ fontSize:13, fontWeight:700, color:'var(--wl-primary, rgb(49,90,231))', background:'#EFF6FF', padding:'4px 12px', borderRadius:99 }}>{(sharedLeads||[]).length}</span>
+              <span style={{ fontSize:13, fontWeight:700, color:'var(--wl-primary, #0A6FB0)', background:'#EFF6FF', padding:'4px 12px', borderRadius:99 }}>{(sharedLeads||[]).length}</span>
             </div>
             {(sharedLeads||[]).length === 0 ? (
               <div style={{ padding:32, textAlign:'center', color:'var(--text-muted)', fontSize:13 }}>
@@ -723,7 +723,7 @@ export default function TeamSettings({ session }) {
                 <div style={{ fontSize:14, fontWeight:700, color:'rgb(20,20,43)' }}>Geteilte Lead-Listen</div>
                 <div style={{ fontSize:12, color:'var(--text-muted)', marginTop:2 }}>Listen die das gesamte Team einsehen kann</div>
               </div>
-              <span style={{ fontSize:13, fontWeight:700, color:'var(--wl-primary, rgb(49,90,231))', background:'#EFF6FF', padding:'4px 12px', borderRadius:99 }}>{(sharedLists||[]).length}</span>
+              <span style={{ fontSize:13, fontWeight:700, color:'var(--wl-primary, #0A6FB0)', background:'#EFF6FF', padding:'4px 12px', borderRadius:99 }}>{(sharedLists||[]).length}</span>
             </div>
             {(sharedLists||[]).length === 0 ? (
               <div style={{ padding:24, textAlign:'center', color:'var(--text-muted)', fontSize:13 }}>Noch keine geteilten Listen</div>
@@ -751,7 +751,7 @@ export default function TeamSettings({ session }) {
                 <div style={{ fontSize:14, fontWeight:700, color:'rgb(20,20,43)' }}>Geteilte Brand Voices</div>
                 <div style={{ fontSize:12, color:'var(--text-muted)', marginTop:2 }}>Gemeinsamer Markenstil für Content-Erstellung</div>
               </div>
-              <span style={{ fontSize:13, fontWeight:700, color:'var(--wl-primary, rgb(49,90,231))', background:'#EFF6FF', padding:'4px 12px', borderRadius:99 }}>{sharedBVs.length}</span>
+              <span style={{ fontSize:13, fontWeight:700, color:'var(--wl-primary, #0A6FB0)', background:'#EFF6FF', padding:'4px 12px', borderRadius:99 }}>{sharedBVs.length}</span>
             </div>
             {sharedBVs.length === 0 ? (
               <div style={{ padding:24, textAlign:'center', color:'var(--text-muted)', fontSize:13 }}>Noch keine geteilten Brand Voices.<br/><span style={{ fontSize:12 }}>In den Brand Voice Einstellungen teilen.</span></div>

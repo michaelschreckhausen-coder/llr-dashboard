@@ -10,7 +10,7 @@ import { useEffect, useMemo, useState } from 'react'
 import { Building2, Save, User } from 'lucide-react'
 import { supabase } from '../../lib/supabase'
 
-const PRIMARY = 'var(--wl-primary, rgb(49,90,231))'
+const PRIMARY = 'var(--wl-primary, #0A6FB0)'
 
 const TYPE_LABELS = {
   credits:        { label: 'Credits',           icon: '⚡', desc: 'Einmalig kaufen, verfallen nicht solange Abo aktiv' },

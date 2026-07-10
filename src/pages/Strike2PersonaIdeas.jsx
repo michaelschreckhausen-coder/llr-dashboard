@@ -9,7 +9,7 @@ import { useAddons } from '../hooks/useAddons'
 import { useBrandVoice } from '../context/BrandVoiceContext'
 import { STRIKE2_STEPS } from '../lib/strike2QuestionsCatalog'
 
-const PRIMARY = 'var(--wl-primary, rgb(49,90,231))'
+const PRIMARY = 'var(--wl-primary, #0A6FB0)'
 const S2 = '#F97316'
 const ADDON_SLUG = 'strike2-zielgruppen-plus'
 const PHASE_ORDER = ['PER', 'INF', 'BEF', 'EVA', 'BEW', 'KEN-ABS', 'IMP-RUC']

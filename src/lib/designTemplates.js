@@ -11,7 +11,7 @@
 // Portiert/abgeleitet aus den früheren Prompt-„TEMPLATES" in Visuals.jsx
 // (Statement/Zitat, Statistik, Before/After, Carousel-Slide, Event).
 
-const PRIMARY = 'rgb(49,90,231)'
+const PRIMARY = '#0A6FB0'
 
 // Helfer: Standard-Bühne 1080×1080 (LinkedIn-Quadrat).
 const SQ = 1080

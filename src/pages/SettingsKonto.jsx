@@ -5,7 +5,7 @@ import { useEntitlements } from '../hooks/useEntitlements'
 import SettingsTabs from '../components/SettingsTabs'
 import RealtimeStatusBadge from '../components/RealtimeStatusBadge'
 
-const PRIMARY = 'var(--wl-primary, rgb(49,90,231))'
+const PRIMARY = 'var(--wl-primary, #0A6FB0)'
 const CONTACT_EMAIL = 'info@leadesk.de'
 
 const STATUS_LABELS = {
@@ -486,7 +486,7 @@ export default function SettingsKonto() {
                   color: highlighted ? '#fff' : 'var(--text-strong)',
                   border: highlighted ? 'none' : '1.5px solid var(--border)',
                   borderRadius: 14, padding: '20px 18px', position: 'relative',
-                  boxShadow: highlighted ? '0 12px 28px rgba(49,90,231,0.18)' : 'none',
+                  boxShadow: highlighted ? '0 12px 28px rgba(10,111,176,0.18)' : 'none',
                   display: 'flex', flexDirection: 'column',
                 }}>
                   {highlighted && (

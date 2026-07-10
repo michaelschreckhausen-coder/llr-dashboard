@@ -24,7 +24,7 @@ export default function TimerBar() {
     <div style={{
       position: 'fixed', bottom: 0, left: 0, right: 0,
       backgroundColor: 'rgb(17, 24, 39)', color: 'white',
-      borderTop: '3px solid var(--wl-primary, rgb(49,90,231))',
+      borderTop: '3px solid var(--wl-primary, #0A6FB0)',
       padding: '10px 16px',
       display: 'flex', alignItems: 'center', gap: 12,
       zIndex: 1000, boxShadow: '0 -4px 12px rgba(0,0,0,0.15)',

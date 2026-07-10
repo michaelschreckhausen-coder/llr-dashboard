@@ -22,7 +22,7 @@ import { supabase } from '../lib/supabase';
 import LeadPicker from './LeadPicker';
 import MultiAssigneePicker from './leads/MultiAssigneePicker';
 
-const PRIMARY = 'rgb(49,90,231)';
+const PRIMARY = '#0A6FB0';
 
 const PRIORITIES = [
   { value: 'low',    label: 'Niedrig' },

@@ -20,7 +20,7 @@ import { useNavigate } from 'react-router-dom'
 // pro Render NICHT den Step-Effekt neu feuert (sonst Navigations-Schleife).
 // ─────────────────────────────────────────────────────────────────────────────
 
-const PRIMARY = 'var(--wl-primary, rgb(49,90,231))'
+const PRIMARY = 'var(--wl-primary, #0A6FB0)'
 const POPOVER_W = 340
 
 export default function AreaTourGuide({ tour, onFinish, onClose, onEnterStep }) {

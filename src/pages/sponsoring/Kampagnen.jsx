@@ -12,7 +12,7 @@ import { supabase } from '../../lib/supabase'
 import { useTeam } from '../../context/TeamContext'
 import PageHeader from '../../components/PageHeader'
 
-const PRIMARY = 'var(--wl-primary, rgb(49,90,231))'
+const PRIMARY = 'var(--wl-primary, #0A6FB0)'
 const sp = () => supabase.schema('sponsoring')
 
 // status muss zur DB-CHECK-Constraint campaigns_status_check passen: {draft,active,paused,done}
@@ -749,4 +749,4 @@ const overlay = { position: 'fixed', inset: 0, background: 'rgba(15,23,42,0.45)'
 const drawer = { width: 'min(520px, 100%)', height: '100%', overflowY: 'auto', background: 'var(--surface)', borderLeft: '1px solid var(--border)', padding: 24, boxShadow: '-12px 0 40px rgba(0,0,0,0.18)' }
 const sectionH = { fontSize: 14, fontWeight: 800, color: 'var(--text-strong)', margin: 0 }
 const leadRow = { display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8, padding: '8px 12px', border: '1px solid var(--border)', borderRadius: 10, background: 'var(--surface)' }
-const tag = { fontSize: 10, fontWeight: 700, color: PRIMARY, background: 'var(--surface-muted, #EEF2FF)', border: '1px solid var(--border)', padding: '1px 6px', borderRadius: 999 }
+const tag = { fontSize: 10, fontWeight: 700, color: PRIMARY, background: 'var(--surface-muted, #EAF6FC)', border: '1px solid var(--border)', padding: '1px 6px', borderRadius: 999 }
