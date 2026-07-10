@@ -267,8 +267,13 @@ export default function LinkedInAutomationNeu({ session }) {
                     <span style={{ width: 22, height: 22, borderRadius: 6, background: PRIMARY_VAR + '18', color: PRIMARY_VAR, fontSize: 11, fontWeight: 800, display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }}>{i + 1}</span>
                     <select style={{ ...inputStyle, width: 130 }} value={st.action} onChange={e => saveStep(i, { action: e.target.value })}>{ACTIONS.map(a => <option key={a} value={a}>{a}</option>)}</select>
                     <select style={{ ...inputStyle, width: 170 }} value={st.condition} onChange={e => saveStep(i, { condition: e.target.value })}>{CONDITIONS.map(([c, l]) => <option key={c} value={c}>{l}</option>)}</select>
-                    {(st.action === 'message' || st.action === 'follow_up' || st.action === 'inmail') && (
-                      <input style={{ ...inputStyle, flex: 1, minWidth: 180 }} defaultValue={st.template?.text || ''} placeholder="Nachrichtentext…" onBlur={e => saveStep(i, { template: { ...(st.template || {}), text: e.target.value } })} />
+                    {(st.action === 'message' || st.action === 'follow_up' || st.action === 'inmail' || st.action === 'comment') && (
+                      <input style={{ ...inputStyle, flex: 1, minWidth: 180 }} defaultValue={st.template?.text || ''} placeholder={st.action === 'comment' ? 'Kommentartext (öffentlich!)…' : 'Nachrichtentext…'} onBlur={e => saveStep(i, { template: { ...(st.template || {}), text: e.target.value } })} />
+                    )}
+                    {st.action === 'react' && (
+                      <select style={{ ...inputStyle, width: 130 }} value={st.template?.reaction_type || 'like'} onChange={e => saveStep(i, { template: { ...(st.template || {}), reaction_type: e.target.value } })}>
+                        {['like', 'celebrate', 'support', 'love', 'insightful', 'funny'].map(t => <option key={t} value={t}>{t}</option>)}
+                      </select>
                     )}
                     <button style={{ ...ghostBtn, padding: '6px 8px' }} onClick={() => delStep(i)}>✕</button>
                   </div>

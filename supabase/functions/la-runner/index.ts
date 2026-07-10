@@ -3,7 +3,10 @@
 // claimed→running→done|failed. failed: attempts++; retryable & attempts<max → pending+Backoff; sonst dead.
 // done: nächsten Step (position+1, condition='always') materialisieren (la_materialize_next). Heartbeat je Lauf.
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
-import { getProfile, sendInvitation, sendMessage } from "../_shared/unipile-client.ts";
+import {
+  getProfile, sendInvitation, sendMessage,
+  cancelInvitationSent, sendPostReaction, sendPostComment, getAllPosts, followProfile, sendInMail,
+} from "../_shared/unipile-client.ts";
 
 const SB_URL = Deno.env.get("SUPABASE_URL")!;
 const SB_SERVICE = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
@@ -104,6 +107,44 @@ Deno.serve(async () => {
         const r = await fail(job, msg.retryable, `message ${msg.status}: ${msg.detail}`, msg);
         out.push({ id: job.id, [r]: `message_${msg.status}` });
       }
+    } else if (job.action === "visit") {
+      const p = await getProfile(accountId, providerId);
+      if (p.ok) { await patch(job.id, { state: "done", provider_ref: p.data.provider_id ?? providerId, response: { visited: true }, error: null }); const { data: mat } = await db.rpc("la_materialize_next", { p_enrollment_id: enr.id }); out.push({ id: job.id, done: "visit", next: mat }); }
+      else { const r = await fail(job, p.retryable, `visit ${p.status}: ${p.detail}`, p); out.push({ id: job.id, [r]: "visit" }); }
+
+    } else if (job.action === "withdraw") {
+      // invitation_id = provider_ref des done-invite-Jobs dieses Enrollments
+      const { data: inv } = await db.from("la_jobs").select("provider_ref").eq("enrollment_id", enr.id).eq("action", "invite").eq("state", "done").order("updated_at", { ascending: false }).limit(1).maybeSingle();
+      if (!inv?.provider_ref) { await patch(job.id, { state: "skipped", error: "no_invitation_to_withdraw" }); out.push({ id: job.id, skipped: "no_invite" }); continue; }
+      const w = await cancelInvitationSent(accountId, inv.provider_ref);
+      if (w.ok) { await patch(job.id, { state: "done", provider_ref: inv.provider_ref, response: { withdrawn: true }, error: null }); const { data: mat } = await db.rpc("la_materialize_next", { p_enrollment_id: enr.id }); out.push({ id: job.id, done: "withdraw", next: mat }); }
+      else { const r = await fail(job, w.retryable, `withdraw ${w.status}: ${w.detail}`, w); out.push({ id: job.id, [r]: "withdraw" }); }
+
+    } else if (job.action === "react" || job.action === "comment") {
+      const { data: step } = await db.from("la_steps").select("template").eq("id", job.step_id).maybeSingle();
+      let postId: string | null = (step?.template as any)?.post_id ?? null;
+      if (!postId) { const posts = await getAllPosts(accountId, providerId, 1); postId = posts.ok ? (posts.data.items?.[0]?.social_id ?? posts.data.items?.[0]?.id ?? null) : null; }
+      if (!postId) { await patch(job.id, { state: "skipped", error: "no_target_post" }); out.push({ id: job.id, skipped: "no_post" }); continue; }
+      const res = job.action === "react"
+        ? await sendPostReaction(accountId, postId, (step?.template as any)?.reaction_type ?? "like")
+        : await sendPostComment(accountId, postId, (step?.template as any)?.text ?? "");
+      if (res.ok) { await patch(job.id, { state: "done", provider_ref: postId, response: res.data, error: null }); const { data: mat } = await db.rpc("la_materialize_next", { p_enrollment_id: enr.id }); out.push({ id: job.id, done: job.action, next: mat }); }
+      else { const r = await fail(job, res.retryable, `${job.action} ${res.status}: ${res.detail}`, res); out.push({ id: job.id, [r]: job.action }); }
+
+    } else if (job.action === "follow") {
+      const fol = await followProfile(accountId, providerId);
+      if (fol.ok) { await patch(job.id, { state: "done", provider_ref: providerId, response: fol.data, error: null }); const { data: mat } = await db.rpc("la_materialize_next", { p_enrollment_id: enr.id }); out.push({ id: job.id, done: "follow", next: mat }); }
+      else { const r = await fail(job, fol.retryable, `follow ${fol.status}: ${fol.detail}`, fol); out.push({ id: job.id, [r]: "follow" }); }
+
+    } else if (job.action === "inmail") {
+      const { data: step } = await db.from("la_steps").select("template").eq("id", job.step_id).maybeSingle();
+      const text = (step?.template as any)?.text ?? "";
+      if (!text) { await patch(job.id, { state: "skipped", error: "no_inmail_text" }); out.push({ id: job.id, skipped: "no_text" }); continue; }
+      const im = await sendInMail(accountId, providerId, text);
+      if (im.ok) { await patch(job.id, { state: "done", provider_ref: im.data.chat_id ?? im.data.message_id ?? null, response: im.data, error: null }); const { data: mat } = await db.rpc("la_materialize_next", { p_enrollment_id: enr.id }); out.push({ id: job.id, done: "inmail", next: mat }); }
+      else if (!im.retryable) { await patch(job.id, { state: "skipped", error: `inmail_unavailable: ${im.detail}` }); out.push({ id: job.id, skipped: "inmail_no_feature" }); } // ohne sales_nav → skip statt fail
+      else { const r = await fail(job, true, `inmail ${im.status}: ${im.detail}`, im); out.push({ id: job.id, [r]: "inmail" }); }
+
     } else {
       const r = await fail(job, false, `action_not_implemented: ${job.action}`);
       out.push({ id: job.id, [r]: `action_${job.action}` });

@@ -145,3 +145,52 @@ export async function getRelations(account_id: string, cursor?: string | null, l
   if (!r.ok) return r;
   return { ok: true, data: { items: (r.data?.items ?? []).map(normalizePerson), cursor: r.data?.cursor ?? null } };
 }
+
+// ── P4: restliche Actions (Endpunkte gegen developer.unipile.com verifiziert) ──
+export interface PostList { items: any[]; cursor: string | null; }
+
+/** DELETE /users/invite/sent/{invitation_id} — withdraw (invitation_id = provider_ref des invite-Jobs). */
+export function cancelInvitationSent(account_id: string, invitation_id: string): Promise<UnipileResult<any>> {
+  return call<any>("DELETE", `/users/invite/sent/${encodeURIComponent(invitation_id)}?account_id=${encodeURIComponent(account_id)}`);
+}
+
+/** POST /posts/reaction — react (type z.B. 'like'). */
+export function sendPostReaction(account_id: string, post_id: string, type = "like"): Promise<UnipileResult<any>> {
+  return call<any>("POST", "/posts/reaction", { account_id, post_id, reaction_type: type });
+}
+
+/** POST /posts/{post_id}/comments — comment (ÖFFENTLICH!). */
+export function sendPostComment(account_id: string, post_id: string, text: string): Promise<UnipileResult<any>> {
+  return call<any>("POST", `/posts/${encodeURIComponent(post_id)}/comments`, { account_id, text });
+}
+
+/** GET /users/{provider_id}/posts — Posts der Person (Ziel-Auflösung für react/comment). identifier = provider_id. */
+export async function getAllPosts(account_id: string, provider_id: string, limit = 5): Promise<UnipileResult<PostList>> {
+  const r = await call<any>("GET", `/users/${encodeURIComponent(provider_id)}/posts?account_id=${encodeURIComponent(account_id)}&limit=${limit}`);
+  if (!r.ok) return r;
+  return { ok: true, data: { items: r.data?.items ?? [], cursor: r.data?.cursor ?? null } };
+}
+
+/** follow — Raw-Voyager-Passthrough (kein dedizierter Unipile-Endpoint; fragil, wie im Alt-Runner dokumentiert). */
+export function followProfile(account_id: string, provider_id: string): Promise<UnipileResult<any>> {
+  return call<any>("POST", "/linkedin", {
+    account_id, method: "POST", encoding: false,
+    body: { patch: { $set: { following: true } } },
+    request_url: `https://www.linkedin.com/voyager/api/feed/dash/followingStates/urn:li:fsd_followingState:urn:li:fsd_profile:${provider_id}`,
+  });
+}
+
+/** inmail — Sales-Nav-Message an Nicht-Verbundene (multipart, inmail-Flag). Ohne sales_nav-Feature → Unipile-Fehler (Runner: skipped). */
+export async function sendInMail(account_id: string, provider_id: string, text: string): Promise<UnipileResult<ChatStarted>> {
+  if (!UNIPILE_DSN || !UNIPILE_API_KEY) return { ok: false, retryable: false, status: null, type: "config", detail: "UNIPILE_DSN/UNIPILE_API_KEY fehlen im Env" };
+  const form = new FormData();
+  form.append("account_id", account_id); form.append("text", text); form.append("attendees_ids", provider_id);
+  form.append("linkedin[api]", "classic"); form.append("linkedin[inmail]", "true");
+  let r: Response;
+  try { r = await fetch(`${BASE}/chats`, { method: "POST", headers: { "X-API-KEY": UNIPILE_API_KEY, "accept": "application/json" }, body: form }); }
+  catch (e) { return { ok: false, retryable: true, status: null, type: "network", detail: String((e as Error)?.message ?? e) }; }
+  const txt = await r.text();
+  if (!r.ok) { let type: string | null = null; try { type = JSON.parse(txt)?.type ?? null; } catch { /* */ } return { ok: false, retryable: isRetryable(r.status), status: r.status, type, detail: txt.slice(0, 300) }; }
+  let data: ChatStarted; try { data = txt ? (JSON.parse(txt) as ChatStarted) : ({} as ChatStarted); } catch { data = ({} as ChatStarted); }
+  return { ok: true, data };
+}
