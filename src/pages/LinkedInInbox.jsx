@@ -55,6 +55,7 @@ export default function LinkedInInbox() {
   // Inbox-Listen (reine Auswahl-Sammlungen — die einzige Gruppierung auf dieser Seite)
   const { lists, membersByList, createList, addToList, renameList, deleteList } = useInboxLists({ activeTeamId })
   const [listOpen, setListOpen]     = useState(false)
+  const [deleteBulkModal, setDeleteBulkModal] = useState(null) // { ids, count, refs:{count,campaigns}, checking }
   const [listFilter, setListFilter] = useState('all')        // 'all' | list_id
   const [showNewList, setShowNewList] = useState(false)      // Inline-Create in der „Nach Liste"-Zeile
   const [newListName, setNewListName] = useState('')
@@ -203,7 +204,11 @@ export default function LinkedInInbox() {
   }
 
   const promoteSelected = async () => {
-    const ids = [...selected]; if (!ids.length) return
+    // crm_lead-Rows sind bereits CRM → aus dem Bulk-Übernehmen ausklammern (no-op).
+    const ids = [...selected].filter(id => (rows.find(r => r.id === id)?.source) !== 'crm_lead')
+    if (!ids.length) {
+      setMsg({ text: 'Ausgewählte Kontakte stammen bereits aus dem CRM.' }); return
+    }
     setBusy(true); setMsg(null)
     const { data, error } = await supabase.rpc('promote_inbox_contacts', { p_inbox_ids: ids })
     setBusy(false)
@@ -220,6 +225,31 @@ export default function LinkedInInbox() {
     setBusy(false)
     if (error) { setMsg({ text: 'Verwerfen fehlgeschlagen: ' + error.message }); return }
     removeRows([row.id])
+  }
+
+  // Bulk-Löschen = HARD DELETE aus linkedin_inbox (irreversibel). Guard: prüfen, ob
+  // Kontakte in Listen aktiver la_-Kampagnen hängen (informativ; kein FK-Bruch, da
+  // la_enrollments/la_jobs keinen FK auf linkedin_inbox haben; inbox_list_members cascadet).
+  const openBulkDelete = async () => {
+    const ids = [...selected]; if (!ids.length) return
+    setDeleteBulkModal({ ids, count: ids.length, refs: { count: 0, campaigns: [] }, checking: true })
+    let refs = { count: 0, campaigns: [] }
+    try {
+      const { data } = await supabase.rpc('inbox_active_campaign_refs', { p_inbox_ids: ids })
+      if (data) refs = { count: data.count || 0, campaigns: Array.isArray(data.campaigns) ? data.campaigns : [] }
+    } catch { /* la_* evtl. nicht sichtbar → keine Refs annehmen */ }
+    setDeleteBulkModal(m => (m ? { ...m, refs, checking: false } : m))
+  }
+  const confirmBulkDelete = async () => {
+    const ids = deleteBulkModal?.ids || []
+    if (!ids.length) { setDeleteBulkModal(null); return }
+    setBusy(true); setMsg(null)
+    // HARD DELETE — inbox_list_members cascadet via FK (ON DELETE CASCADE).
+    const { error } = await supabase.from('linkedin_inbox').delete().in('id', ids)
+    setBusy(false); setDeleteBulkModal(null)
+    if (error) { setMsg({ text: 'Löschen fehlgeschlagen: ' + error.message }); return }
+    removeRows(ids)
+    setMsg({ text: `${ids.length} Kontakt(e) endgültig gelöscht.` })
   }
 
   // Liste anlegen ODER gleichnamige Team-Liste wiederverwenden (Dedup, case-insensitiv).
@@ -451,6 +481,10 @@ export default function LinkedInInbox() {
               style={{ display: 'inline-flex', alignItems: 'center', gap: 8 }}>
               {busy ? <Loader2 size={15} className="spin" /> : <UserPlus size={15} />} In CRM übernehmen{selected.size ? ` (${selected.size})` : ''}
             </button>
+            <button onClick={openBulkDelete} disabled={busy || selected.size === 0}
+              style={{ display: 'inline-flex', alignItems: 'center', gap: 8, background: card, color: selected.size ? '#DC2626' : muted, border: `1.5px solid ${selected.size ? '#FECACA' : border}`, borderRadius: 9, padding: '9px 16px', fontWeight: 700, fontSize: 14, cursor: selected.size ? 'pointer' : 'default' }}>
+              <Trash2 size={15} /> Löschen{selected.size ? ` (${selected.size})` : ''}
+            </button>
           </div>
         </div>
       )}
@@ -468,6 +502,7 @@ export default function LinkedInInbox() {
           {visible.map(row => {
             const sel = selected.has(row.id)
             const inCrm = existing.has(row.id)
+            const isFromCrm = row.source === 'crm_lead'   // stammt aus CRM-Lead → schon CRM
             return (
               <div key={row.id} style={{ display: 'flex', alignItems: 'center', gap: 14, background: card, border: `1px solid ${sel ? primary : border}`, borderRadius: 12, padding: '12px 16px' }}>
                 <input type="checkbox" checked={sel} onChange={() => toggle(row.id)} style={{ flexShrink: 0 }} />
@@ -481,10 +516,16 @@ export default function LinkedInInbox() {
                     {row.headline || row.job_title || '—'}{row.company ? <> · <Building2 size={11} style={{ display: 'inline', verticalAlign: -1 }} /> {row.company}</> : null}
                   </div>
                 </div>
-                <button className="lk-btn lk-btn-primary" onClick={() => promoteOne(row)} disabled={busy} title={inCrm ? 'Mit bestehendem CRM-Kontakt zusammenführen' : 'Als CRM-Kontakt übernehmen'}
-                  style={{ display: 'inline-flex', alignItems: 'center', gap: 6, flexShrink: 0 }}>
-                  <Check size={14} /> {inCrm ? 'Zusammenführen' : 'In CRM übernehmen'}
-                </button>
+                {isFromCrm ? (
+                  <span title="Stammt aus einem CRM-Kontakt" style={{ display: 'inline-flex', alignItems: 'center', gap: 6, color: muted, fontSize: 12, fontWeight: 600, flexShrink: 0, padding: '8px 6px' }}>
+                    <Check size={14} /> aus CRM
+                  </span>
+                ) : (
+                  <button className="lk-btn lk-btn-primary" onClick={() => promoteOne(row)} disabled={busy} title={inCrm ? 'Mit bestehendem CRM-Kontakt zusammenführen' : 'Als CRM-Kontakt übernehmen'}
+                    style={{ display: 'inline-flex', alignItems: 'center', gap: 6, flexShrink: 0 }}>
+                    <Check size={14} /> {inCrm ? 'Zusammenführen' : 'In CRM übernehmen'}
+                  </button>
+                )}
                 <button onClick={() => dismiss(row)} disabled={busy} title="Verwerfen"
                   style={{ display: 'inline-flex', alignItems: 'center', background: 'none', color: muted, border: `1px solid ${border}`, borderRadius: 8, padding: 8, cursor: 'pointer', flexShrink: 0 }}>
                   <X size={14} />
@@ -519,6 +560,40 @@ export default function LinkedInInbox() {
           onClose={() => setListOpen(false)}
           onConfirm={assignToList}
         />
+      )}
+
+      {deleteBulkModal && (
+        <div onClick={() => !busy && setDeleteBulkModal(null)} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.45)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000, padding: 16 }}>
+          <div onClick={e => e.stopPropagation()} style={{ background: 'var(--surface)', borderRadius: 16, padding: 24, width: 480, maxWidth: '92vw', boxShadow: '0 20px 60px rgba(0,0,0,.18)' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 6 }}>
+              <Trash2 size={18} style={{ color: '#DC2626' }} />
+              <div style={{ fontWeight: 800, fontSize: 17, color: text }}>{deleteBulkModal.count} Kontakt(e) löschen?</div>
+            </div>
+            <p style={{ fontSize: 13.5, color: text, margin: '0 0 12px', lineHeight: 1.5 }}>
+              Die Kontakte werden <b>endgültig aus „LinkedIn Kontakte" gelöscht</b> — inklusive ihrer Listen-Zuordnungen. Das kann <b>nicht rückgängig</b> gemacht werden.
+            </p>
+            {deleteBulkModal.count >= 100 && (
+              <div style={{ display: 'flex', gap: 8, alignItems: 'flex-start', fontSize: 12.5, color: '#B45309', background: '#FFFBEB', border: '1px solid #FDE68A', borderRadius: 8, padding: '10px 12px', marginBottom: 10 }}>
+                <AlertTriangle size={15} style={{ flexShrink: 0, marginTop: 1 }} />
+                <span>Das sind <b>{deleteBulkModal.count} Kontakte</b> auf einmal — bitte sicherstellen, dass die Auswahl stimmt.</span>
+              </div>
+            )}
+            {deleteBulkModal.checking ? (
+              <div style={{ fontSize: 12.5, color: muted, marginBottom: 12 }}>Prüfe Verwendung in Kampagnen…</div>
+            ) : deleteBulkModal.refs.count > 0 && (
+              <div style={{ display: 'flex', gap: 8, alignItems: 'flex-start', fontSize: 12.5, color: '#B45309', background: '#FFFBEB', border: '1px solid #FDE68A', borderRadius: 8, padding: '10px 12px', marginBottom: 12 }}>
+                <AlertTriangle size={15} style={{ flexShrink: 0, marginTop: 1 }} />
+                <span><b>{deleteBulkModal.refs.count} Kontakt(e) sind in aktiven Kampagnen</b>{deleteBulkModal.refs.campaigns.length ? ` (${deleteBulkModal.refs.campaigns.map(n => `„${n}"`).join(', ')})` : ''}. Bereits gestartete Kampagnen laufen weiter (sie haben die Kontakte schon übernommen) — hier verschwinden sie nur aus „LinkedIn Kontakte" und den Listen.</span>
+              </div>
+            )}
+            <div style={{ display: 'flex', gap: 10, justifyContent: 'flex-end', marginTop: 6 }}>
+              <button onClick={() => setDeleteBulkModal(null)} disabled={busy} style={{ border: `1px solid ${border}`, background: 'var(--surface)', color: muted, borderRadius: 10, padding: '9px 16px', fontSize: 13, fontWeight: 600, cursor: 'pointer' }}>Abbrechen</button>
+              <button onClick={confirmBulkDelete} disabled={busy || deleteBulkModal.checking} style={{ border: 'none', background: '#DC2626', color: '#fff', borderRadius: 10, padding: '9px 18px', fontSize: 13, fontWeight: 700, cursor: (busy || deleteBulkModal.checking) ? 'not-allowed' : 'pointer', opacity: (busy || deleteBulkModal.checking) ? 0.6 : 1, display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+                {busy ? <Loader2 size={14} className="spin" /> : <Trash2 size={14} />} Endgültig löschen
+              </button>
+            </div>
+          </div>
+        </div>
       )}
 
       {deleteListModal && (
