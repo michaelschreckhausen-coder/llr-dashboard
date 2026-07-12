@@ -16,7 +16,7 @@ import {
   Plus, Tag, Calendar, Target, Banknote, Workflow, Paperclip, Smile, CalendarCheck,
   TrendingUp, Link as LinkIcon, MessageSquare, FileText, Trash2, ExternalLink, Pencil,
   Building2, Brain, Globe, Link2, Link2Off, Clock, CheckCircle2, Archive, Copy,
-  ChevronDown, Briefcase,
+  ChevronDown, Briefcase, Loader2, AlertCircle, Inbox as InboxIcon,
 } from 'lucide-react';
 import { LeadAvatar } from '../components/leads/LeadAvatar';
 import { LeadStatusPill } from '../components/leads/LeadStatusPill';
@@ -276,6 +276,9 @@ export default function LeadDetail({ lead: leadProp }) {
   const [analyzeLoading, setAnalyzeLoading]   = useState(false);
   const [analysisOverride, setAnalysisOverride] = useState(null);
   const [analysisDismissed, setAnalysisDismissed] = useState(false);
+  // In "LinkedIn Kontakte" aufnehmen (add_lead_to_inbox-RPC, dedup über linkedin_url).
+  const [addingInbox, setAddingInbox] = useState(false);
+  const [inboxMsg, setInboxMsg] = useState(null); // { type:'success'|'error', text }
   // composerDraft: { channel, subject, body } — wird beim "Im Composer öffnen"-
   // Klick gesetzt + an den Nachrichten-Composer im Aktivitäten-Tab (ActivityTab)
   // via initialDraft-Prop weitergegeben.
@@ -313,6 +316,22 @@ export default function LeadDetail({ lead: leadProp }) {
       : `https://${lead.linkedin_url}`;
     window.open(url, '_blank', 'noopener,noreferrer');
   }, [lead?.linkedin_url]);
+
+  const addToInbox = useCallback(async () => {
+    if (!lead?.id) return;
+    setAddingInbox(true);
+    const { data, error } = await supabase.rpc('add_lead_to_inbox', { p_lead_id: lead.id });
+    setAddingInbox(false);
+    if (error) {
+      const t = /no_linkedin_url/.test(error.message) ? 'Dieser Kontakt hat keine LinkedIn-URL.'
+        : /forbidden|no_team/.test(error.message) ? 'Keine Berechtigung.'
+        : 'Fehlgeschlagen: ' + error.message;
+      setInboxMsg({ type: 'error', text: t });
+    } else {
+      setInboxMsg({ type: 'success', text: data?.created ? 'In „LinkedIn Kontakte" aufgenommen.' : 'Ist bereits in „LinkedIn Kontakte".' });
+    }
+    setTimeout(() => setInboxMsg(null), 4000);
+  }, [lead?.id]);
 
   const pickStatus = useCallback(async (next) => {
     setStatusOpen(false);
@@ -569,6 +588,12 @@ export default function LeadDetail({ lead: leadProp }) {
                 <IcLinkedin size={16} /> Profil
               </button>
             )}
+            {lead.linkedin_url && (
+              <button type="button" style={secondaryBtnStyle} onClick={addToInbox} disabled={addingInbox}
+                title="Diesen Kontakt in LinkedIn Kontakte aufnehmen (für Listen und Automatisierung)">
+                {addingInbox ? <Loader2 size={16} className="lk-spin" /> : <InboxIcon size={16} />} In LinkedIn Kontakte
+              </button>
+            )}
             <button type="button" style={secondaryBtnStyle} onClick={() => setEditModalOpen(true)}
               title="Lead bearbeiten">
               <Pencil size={16} /> Bearbeiten
@@ -589,6 +614,11 @@ export default function LeadDetail({ lead: leadProp }) {
             )}
           </div>
         </div>
+        {inboxMsg && (
+          <div style={{ position:'fixed', bottom:24, left:'50%', transform:'translateX(-50%)', background: inboxMsg.type==='error' ? '#DC2626' : '#111827', color:'#fff', padding:'10px 18px', borderRadius:10, fontSize:13, fontWeight:600, zIndex:2000, display:'inline-flex', alignItems:'center', gap:8 }}>
+            {inboxMsg.type==='error' ? <AlertCircle size={15} /> : <CheckCircle2 size={15} />} {inboxMsg.text}
+          </div>
+        )}
       </div>
 
       {/* 3-Spalten-Layout: links Summary, Mitte Tabs/Timeline, rechts verknuepfte Datensaetze.
