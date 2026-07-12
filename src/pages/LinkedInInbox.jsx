@@ -131,7 +131,7 @@ export default function LinkedInInbox() {
     setLoading(true)
     const { data, error } = await supabase
       .from('linkedin_inbox')
-      .select('id, source, sales_nav_id, linkedin_url, name, first_name, last_name, headline, job_title, company, location, avatar_url, imported_at')
+      .select('id, source, sales_nav_id, linkedin_url, name, first_name, last_name, headline, job_title, company, location, avatar_url, imported_at, promoted_lead_id')
       .eq('team_id', activeTeamId)
       .eq('review_status', 'new')
       .order('imported_at', { ascending: false })
@@ -204,8 +204,11 @@ export default function LinkedInInbox() {
   }
 
   const promoteSelected = async () => {
-    // crm_lead-Rows sind bereits CRM → aus dem Bulk-Übernehmen ausklammern (no-op).
-    const ids = [...selected].filter(id => (rows.find(r => r.id === id)?.source) !== 'crm_lead')
+    // Schon-CRM-Rows (source='crm_lead' ODER promoted_lead_id) aus dem Bulk-Übernehmen ausklammern (no-op).
+    const ids = [...selected].filter(id => {
+      const r = rows.find(x => x.id === id)
+      return r && r.source !== 'crm_lead' && !r.promoted_lead_id
+    })
     if (!ids.length) {
       setMsg({ text: 'Ausgewählte Kontakte stammen bereits aus dem CRM.' }); return
     }
@@ -502,7 +505,8 @@ export default function LinkedInInbox() {
           {visible.map(row => {
             const sel = selected.has(row.id)
             const inCrm = existing.has(row.id)
-            const isFromCrm = row.source === 'crm_lead'   // stammt aus CRM-Lead → schon CRM
+            // schon CRM: entweder aus CRM-Lead importiert (source) ODER bereits promoted (promoted_lead_id)
+            const isFromCrm = row.source === 'crm_lead' || !!row.promoted_lead_id
             return (
               <div key={row.id} style={{ display: 'flex', alignItems: 'center', gap: 14, background: card, border: `1px solid ${sel ? primary : border}`, borderRadius: 12, padding: '12px 16px' }}>
                 <input type="checkbox" checked={sel} onChange={() => toggle(row.id)} style={{ flexShrink: 0 }} />
