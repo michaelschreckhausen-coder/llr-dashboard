@@ -335,7 +335,7 @@ export default function LeadDetail({ lead: leadProp }) {
         : 'Fehlgeschlagen: ' + error.message;
       setInboxMsg({ type: 'error', text: t });
     } else {
-      setInboxMsg({ type: 'success', text: data?.created ? 'In „LinkedIn Kontakte" aufgenommen.' : 'Ist bereits in „LinkedIn Kontakte".' });
+      setInboxMsg({ type: 'success', text: data?.created ? 'In „LinkedIn Kontakte" aufgenommen.' : (data?.resurfaced ? 'Ist wieder in „LinkedIn Kontakte" sichtbar.' : 'Ist bereits in „LinkedIn Kontakte".') });
     }
     setTimeout(() => setInboxMsg(null), 4000);
   }, [lead?.id]);
