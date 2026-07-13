@@ -46,6 +46,7 @@ export default function LinkedInAutomationNeu({ session }) {
   const [creating, setCreating] = useState(false)
   const [showArchived, setShowArchived] = useState(false)   // Listen-Tab Aktiv/Archiviert
   const [deleteModal, setDeleteModal] = useState(null)       // Kampagne im Confirm-Dialog
+  const [activateModal, setActivateModal] = useState(false)  // Aktivieren-Confirm-Gate (draft/paused → active)
   const [stepsDirty, setStepsDirty] = useState(false)        // ungespeicherte Sequenz-Änderungen
   const stepsDirtyRef = useRef(false)                        // Poll darf lokale Edits nicht überschreiben
   const markStepsDirty = () => { stepsDirtyRef.current = true; setStepsDirty(true) }
@@ -105,6 +106,12 @@ export default function LinkedInAutomationNeu({ session }) {
   }
 
   async function setStatus(status) { await saveCampaign({ status }); show(`Kampagne → ${statusLabel[status]}`) }
+
+  // Aktivieren-Confirm-Gate: erst nach expliziter Bestätigung aktivieren (draft/paused → active).
+  async function confirmActivate() {
+    setActivateModal(false)
+    await setStatus('active')
+  }
 
   async function setArchived(archived) {
     if (!sel) return
@@ -267,7 +274,7 @@ export default function LinkedInAutomationNeu({ session }) {
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 14 }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}><b style={{ fontSize: 15 }}>{sel.name}</b><Pill status={sel.status} /></div>
                 <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
-                  {sel.status !== 'active' && <button style={primaryBtn} onClick={() => setStatus('active')}><Play size={14} /> Aktivieren</button>}
+                  {sel.status !== 'active' && <button style={primaryBtn} onClick={() => { loadDetail(sel.id); setActivateModal(true) }}><Play size={14} /> Aktivieren</button>}
                   {sel.status === 'active' && <button style={ghostBtn} onClick={() => setStatus('paused')}><Pause size={13} /> Pausieren</button>}
                   <button style={ghostBtn} onClick={() => setStatus('completed')}><Square size={13} /> Stoppen</button>
                   {sel.archived_at
@@ -388,6 +395,40 @@ export default function LinkedInAutomationNeu({ session }) {
           </div>
         )}
       </div>
+
+      {/* Aktivieren-Confirm-Gate (eigenes Modal, kein window.confirm) — zeigt die reale Sofort-Send-Zahl */}
+      {activateModal && sel && (() => {
+        const acct = accounts.find(a => a.id === sel.account_id)
+        const acctLabel = acct?.public_identifier || acct?.unipile_account_id || 'unbekannt'
+        const firstAction = steps[0]?.action || 'invite'
+        const cap = sel.caps?.[firstAction]?.per_day ?? sel.caps?.invite?.per_day ?? '—'
+        const dueNow = funnel?.due_now || 0
+        const pendingTotal = funnel?.jobs?.pending || 0
+        const actionWord = firstAction === 'invite' ? 'LinkedIn-Invites' : 'LinkedIn-Aktionen'
+        return (
+          <div onClick={() => setActivateModal(false)} style={{ position: 'fixed', inset: 0, background: 'rgba(17,24,39,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 200 }}>
+            <div onClick={e => e.stopPropagation()} style={{ background: 'var(--surface, #fff)', borderRadius: 14, padding: 24, width: 460, maxWidth: '92vw', boxShadow: '0 20px 60px rgba(0,0,0,0.3)' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 12 }}>
+                <Play size={18} color={PRIMARY_VAR} /><b style={{ fontSize: 16 }}>Kampagne aktivieren?</b>
+              </div>
+              <div style={{ fontSize: 13, color: 'var(--text-muted)', display: 'grid', gridTemplateColumns: 'auto 1fr', gap: '4px 12px', marginBottom: 14 }}>
+                <span>Kampagne:</span><b style={{ color: 'var(--text-strong)' }}>{sel.name}</b>
+                <span>Account:</span><b style={{ color: 'var(--text-strong)' }}>{acctLabel}</b>
+                <span>Erste Aktion:</span><b style={{ color: 'var(--text-strong)' }}>{firstAction}</b>
+                <span>Cap/Tag:</span><b style={{ color: 'var(--text-strong)' }}>{cap}</b>
+              </div>
+              <div style={{ display: 'flex', gap: 8, alignItems: 'flex-start', fontSize: 13, color: '#B45309', background: '#FFFBEB', border: '1px solid #FDE68A', borderRadius: 8, padding: '10px 12px', marginBottom: 16 }}>
+                <AlertTriangle size={16} style={{ flexShrink: 0, marginTop: 1 }} />
+                <span>Beim Aktivieren gehen <b>{dueNow} reale {actionWord}</b> von <b>{acctLabel}</b> sofort raus{pendingTotal > dueNow ? ` (${pendingTotal} insgesamt geplant, gestaffelt)` : ''}. Das sind echte Anfragen an echte Personen. Fortfahren?</span>
+              </div>
+              <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
+                <button style={ghostBtn} onClick={() => setActivateModal(false)}>Abbrechen</button>
+                <button style={primaryBtn} onClick={confirmActivate}><Play size={14} /> Ja, aktivieren &amp; senden</button>
+              </div>
+            </div>
+          </div>
+        )
+      })()}
 
       {/* Löschen-Confirm-Dialog (eigenes Modal, kein window.confirm) */}
       {deleteModal && (() => {
