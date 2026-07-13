@@ -2,6 +2,7 @@
 // Detailseite einer Organisation — /organizations/:id
 // Tabs: Übersicht · Kontakte · Deals
 
+import PillSelect from '../components/PillSelect'
 import React, { useState, useEffect } from 'react'
 import { supabase } from '../lib/supabase'
 import { useNavigate, useParams, useLocation, Link } from 'react-router-dom'
@@ -446,15 +447,10 @@ export default function OrganizationProfile({ session }) {
             {editing ? (
               <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
                 <Field label="Owner">
-                  <select value={editForm.owner_id || ''} onChange={e => setEditForm(f => ({...f, owner_id: e.target.value || null}))} style={inputS}>
-                    <option value="">— Kein Owner —</option>
-                    {teamMembers.map(m => (
-                      <option key={m.id} value={m.id}>
-                        {m.full_name || `${m.first_name} ${m.last_name}`.trim() || m.id.slice(0,8)}
-                        {m.id === uid ? ' (du)' : ''}
-                      </option>
-                    ))}
-                  </select>
+                  <PillSelect value={editForm.owner_id || ''} onChange={v => setEditForm(f => ({...f, owner_id: v || null}))} neutral options={[{ value: '', label: `— Kein Owner —` }, ...teamMembers.map((m) => ({ value: m.id, label: `
+                        ${m.full_name || `${m.first_name} ${m.last_name}`.trim() || m.id.slice(0,8)}
+                        ${m.id === uid ? ' (du)' : ''}
+                      ` }))]} buttonStyle={{ minWidth: 140 }} />
                 </Field>
                 <Field label="Website"><input value={editForm.website||''} onChange={e => setEditForm(f => ({...f, website: e.target.value}))} style={inputS}/></Field>
                 <Field label="LinkedIn"><input value={editForm.linkedin_company_url||''} onChange={e => setEditForm(f => ({...f, linkedin_company_url: e.target.value}))} style={inputS}/></Field>
@@ -530,22 +526,13 @@ export default function OrganizationProfile({ session }) {
             {editing ? (
               <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
                 <Field label="Mitarbeiteranzahl">
-                  <select value={editForm.employee_range||''} onChange={e => setEditForm(f => ({...f, employee_range: e.target.value}))} style={inputS}>
-                    <option value="">— keine Angabe —</option>
-                    {EMPLOYEE_RANGES.map(r => <option key={r.id} value={r.id}>{r.label}</option>)}
-                  </select>
+                  <PillSelect value={editForm.employee_range||''} onChange={v => setEditForm(f => ({...f, employee_range: v}))} neutral options={[{ value: '', label: `— keine Angabe —` }, ...EMPLOYEE_RANGES.map((r) => ({ value: r.id, label: r.label }))]} buttonStyle={{ minWidth: 140 }} />
                 </Field>
                 <Field label="Umsatz">
-                  <select value={editForm.revenue_range||''} onChange={e => setEditForm(f => ({...f, revenue_range: e.target.value}))} style={inputS}>
-                    <option value="">— keine Angabe —</option>
-                    {REVENUE_RANGES.map(r => <option key={r.id} value={r.id}>{r.label}</option>)}
-                  </select>
+                  <PillSelect value={editForm.revenue_range||''} onChange={v => setEditForm(f => ({...f, revenue_range: v}))} neutral options={[{ value: '', label: `— keine Angabe —` }, ...REVENUE_RANGES.map((r) => ({ value: r.id, label: r.label }))]} buttonStyle={{ minWidth: 140 }} />
                 </Field>
                 <Field label="Branche">
-                  <select value={editForm.industry_slug||''} onChange={e => setEditForm(f => ({...f, industry_slug: e.target.value}))} style={inputS}>
-                    <option value="">— keine Angabe —</option>
-                    {industries.map(i => <option key={i.slug} value={i.slug}>{i.label_de}</option>)}
-                  </select>
+                  <PillSelect value={editForm.industry_slug||''} onChange={v => setEditForm(f => ({...f, industry_slug: v}))} neutral options={[{ value: '', label: `— keine Angabe —` }, ...industries.map((i) => ({ value: i.slug, label: i.label_de }))]} buttonStyle={{ minWidth: 140 }} />
                 </Field>
               </div>
             ) : (

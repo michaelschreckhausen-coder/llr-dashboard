@@ -2,6 +2,7 @@
 // Listen-Ansicht aller Organisationen/Firmen + Modal "Neue Organisation"
 // Orientiert sich am Deals.jsx-Pattern (KPIs, Filter, Suche, Liste, Modal)
 
+import PillSelect from '../components/PillSelect'
 import React, { useState, useEffect } from 'react'
 import { Building2, Users, BarChart3, Layers, Download, ChevronUp, ChevronDown } from 'lucide-react'
 import { supabase } from '../lib/supabase'
@@ -208,14 +209,9 @@ function OrganizationModal({ org, industries, teamId, uid, onSave, onClose }) {
           </div>
           <div>
             <div style={labelS}>Owner</div>
-            <select value={form.owner_id || ''} onChange={e => upd({ owner_id: e.target.value || null })} style={inputS}>
-              <option value="">— Kein Owner —</option>
-              {teamMembers.map(m => (
-                <option key={m.id} value={m.id}>
-                  {(m.full_name || m.id.slice(0, 8))}{m.id === uid ? ' (du)' : ''}
-                </option>
-              ))}
-            </select>
+            <PillSelect value={form.owner_id || ''} onChange={v => upd({ owner_id: v || null })} neutral options={[{ value: '', label: `— Kein Owner —` }, ...teamMembers.map((m) => ({ value: m.id, label: `
+                  ${m.full_name || m.id.slice(0, 8)}${m.id === uid ? ' (du)' : ''}
+                ` }))]} buttonStyle={{ minWidth: 140 }} />
           </div>
           <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr', gap: 10 }}>
             <div>
@@ -304,25 +300,16 @@ function OrganizationModal({ org, industries, teamId, uid, onSave, onClose }) {
           <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr', gap: 10 }}>
             <div>
               <div style={labelS}>Mitarbeiteranzahl</div>
-              <select value={form.employee_range} onChange={e => upd({ employee_range: e.target.value })} style={inputS}>
-                <option value="">— keine Angabe —</option>
-                {EMPLOYEE_RANGES.map(r => <option key={r.id} value={r.id}>{r.label}</option>)}
-              </select>
+              <PillSelect value={form.employee_range} onChange={v => upd({ employee_range: v })} neutral options={[{ value: '', label: `— keine Angabe —` }, ...EMPLOYEE_RANGES.map((r) => ({ value: r.id, label: r.label }))]} buttonStyle={{ minWidth: 140 }} />
             </div>
             <div>
               <div style={labelS}>Umsatz</div>
-              <select value={form.revenue_range} onChange={e => upd({ revenue_range: e.target.value })} style={inputS}>
-                <option value="">— keine Angabe —</option>
-                {REVENUE_RANGES.map(r => <option key={r.id} value={r.id}>{r.label}</option>)}
-              </select>
+              <PillSelect value={form.revenue_range} onChange={v => upd({ revenue_range: v })} neutral options={[{ value: '', label: `— keine Angabe —` }, ...REVENUE_RANGES.map((r) => ({ value: r.id, label: r.label }))]} buttonStyle={{ minWidth: 140 }} />
             </div>
           </div>
           <div>
             <div style={labelS}>Branche</div>
-            <select value={form.industry_slug} onChange={e => upd({ industry_slug: e.target.value })} style={inputS}>
-              <option value="">— keine Angabe —</option>
-              {industries.map(i => <option key={i.slug} value={i.slug}>{i.label_de}</option>)}
-            </select>
+            <PillSelect value={form.industry_slug} onChange={v => upd({ industry_slug: v })} neutral options={[{ value: '', label: `— keine Angabe —` }, ...industries.map((i) => ({ value: i.slug, label: i.label_de }))]} buttonStyle={{ minWidth: 140 }} />
           </div>
 
           {/* Notizen */}
@@ -555,16 +542,10 @@ export default function Organizations({ session }) {
       {/* Toolbar: Owner-Filter + Suche + CSV */}
       <div style={{ display: 'flex', gap: 8, marginBottom: 16, flexWrap: 'wrap', alignItems: 'center' }}>
         {teamMembers.length > 0 && (
-          <select value={ownerFilter || ''} onChange={e => setOwnerFilter(e.target.value || null)}
-            style={{ padding: '9px 12px', border: '1.5px solid ' + (ownerFilter ? PRIMARY : '#E2E8F0'), borderRadius: 10, fontSize: 13, outline: 'none', background: 'var(--surface)', color: 'var(--text-primary, #111827)', cursor: 'pointer' }}>
-            <option value="">Alle Owner</option>
-            {teamMembers.map(m => (
-              <option key={m.id} value={m.id}>
-                {m.full_name || m.first_name || m.id.slice(0,8)}
-                {m.id === uid ? ' (du)' : ''}
-              </option>
-            ))}
-          </select>
+          <PillSelect value={ownerFilter || ''} onChange={v => setOwnerFilter(v || null)} neutral options={[{ value: '', label: `Alle Owner` }, ...teamMembers.map((m) => ({ value: m.id, label: `
+                ${m.full_name || m.first_name || m.id.slice(0,8)}
+                ${m.id === uid ? ' (du)' : ''}
+              ` }))]} buttonStyle={{ minWidth: 140 }} />
         )}
         <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Firma, Ort oder Branche suchen…"
           style={{ flex: 1, minWidth: 180, padding: '9px 14px', borderRadius: 10, border: '1.5px solid #E2E8F0', fontSize: 13, outline: 'none', background: 'var(--surface)', color: 'var(--text-primary, #111827)' }}/>
