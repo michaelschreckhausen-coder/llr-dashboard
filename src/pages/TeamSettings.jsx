@@ -384,20 +384,13 @@ export default function TeamSettings({ session }) {
         {allTeams?.length > 1 && (
           <div>
             <div style={{ fontSize:11, fontWeight:600, color:'#9CA3AF', textTransform:'uppercase', letterSpacing:'0.06em', marginBottom:4 }}>Team wechseln</div>
-            <select
-              value={team?.id || ''}
-              onChange={async e => {
-                localStorage.setItem('leadesk_active_team_id', e.target.value)
-                await switchTeam(e.target.value)
-                await load(e.target.value)
+            <PillSelect value={team?.id || ''} onChange={async v => {
+                localStorage.setItem('leadesk_active_team_id', v)
+                await switchTeam(v)
+                await load(v)
                 // Kurz warten dann Leads-Seite neu laden mit neuem Team-Kontext
                 setTimeout(() => window.location.href = '/leads', 300)
-              }}
-              style={{ padding:'7px 12px', border:'1px solid var(--border)', borderRadius:8, fontSize:13, color:'var(--text-primary)', background:'var(--surface)', cursor:'pointer', outline:'none' }}>
-              {(allTeams||[]).map(t => (
-                <option key={t.id} value={t.id}>{t.name}</option>
-              ))}
-            </select>
+              }} neutral options={[...allTeams||[].map((t) => ({ value: t.id, label: t.name }))]} buttonStyle={{ minWidth: 140 }} />
           </div>
         )}
 

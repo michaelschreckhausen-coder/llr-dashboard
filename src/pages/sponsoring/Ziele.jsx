@@ -158,20 +158,13 @@ export default function Ziele() {
                  placeholder="z.B. 2026/27" style={input} />
         </Field>
         <Field label="Kategorie">
-          <select value={form.category} onChange={(e) => setForm({ ...form, category: e.target.value })} style={input}>
-            {CATEGORY.map((c) => <option key={c} value={c}>{CATEGORY_LABEL[c]}</option>)}
-          </select>
+          <PillSelect value={form.category} onChange={v => setForm({ ...form, category: v })} neutral options={[...CATEGORY.map((c) => ({ value: c, label: CATEGORY_LABEL[c] }))]} buttonStyle={{ minWidth: 140 }} />
         </Field>
         <Field label="Abwicklung">
-          <select value={form.settlement} onChange={(e) => setForm({ ...form, settlement: e.target.value })} style={input}>
-            {SETTLEMENT.map((s) => <option key={s} value={s}>{SETTLEMENT_LABEL[s]}</option>)}
-          </select>
+          <PillSelect value={form.settlement} onChange={v => setForm({ ...form, settlement: v })} neutral options={[...SETTLEMENT.map((s) => ({ value: s, label: SETTLEMENT_LABEL[s] }))]} buttonStyle={{ minWidth: 140 }} />
         </Field>
         <Field label="Liga">
-          <select value={form.league_id} onChange={(e) => setForm({ ...form, league_id: e.target.value })} style={input}>
-            <option value="">— Alle / keine —</option>
-            {leagues.map((l) => <option key={l.id} value={l.id}>{l.name}</option>)}
-          </select>
+          <PillSelect value={form.league_id} onChange={v => setForm({ ...form, league_id: v })} neutral options={[{ value: '', label: `— Alle / keine —` }, ...leagues.map((l) => ({ value: l.id, label: l.name }))]} buttonStyle={{ minWidth: 140 }} />
         </Field>
         <Field label="SOLL-Betrag (€)">
           <input type="number" min="0" step="0.01" value={form.target_amount}

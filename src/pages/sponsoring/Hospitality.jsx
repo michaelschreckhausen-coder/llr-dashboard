@@ -2,6 +2,7 @@
 // Assets (Logen/Business-Seats/VIP/Events) + Gästeverwaltung mit Check-in/No-Show.
 // Auslastung & No-Show-Rate aus v_hospitality_load. Schema 'sponsoring'.
 
+import PillSelect from '../../components/PillSelect'
 import { useEffect, useState, useCallback } from 'react'
 import { Ticket, Plus, Loader2, UserPlus, Check, UserX, Image as ImageIcon } from 'lucide-react'
 import { supabase } from '../../lib/supabase'
@@ -146,9 +147,7 @@ export default function Hospitality() {
       <form onSubmit={createAsset} style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 10, alignItems: 'end', ...card, marginBottom: 22 }}>
         <Field label="Name"><input value={aForm.name} onChange={(e) => setAForm({ ...aForm, name: e.target.value })} placeholder="z.B. Loge Nord" style={input} /></Field>
         <Field label="Typ">
-          <select value={aForm.type} onChange={(e) => setAForm({ ...aForm, type: e.target.value })} style={input}>
-            {TYPES.map((t) => <option key={t} value={t}>{TYPE_LABEL[t]}</option>)}
-          </select>
+          <PillSelect value={aForm.type} onChange={v => setAForm({ ...aForm, type: v })} neutral options={[...TYPES.map((t) => ({ value: t, label: TYPE_LABEL[t] }))]} buttonStyle={{ minWidth: 140 }} />
         </Field>
         <Field label="Saison-Kapazität"><input type="number" min="0" value={aForm.capacity} onChange={(e) => setAForm({ ...aForm, capacity: e.target.value })} style={input} /></Field>
         <Field label="Event-Datum"><input type="date" value={aForm.event_date} onChange={(e) => setAForm({ ...aForm, event_date: e.target.value })} style={input} /></Field>

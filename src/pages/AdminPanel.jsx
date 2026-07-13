@@ -261,9 +261,9 @@ export default function AdminPanel({ session }) {
           <div style={{background:'var(--surface)',borderRadius:14,border:'1px solid var(--border)',padding:'18px 20px'}}>
             <div style={{fontSize:13,fontWeight:800,marginBottom:12}}>Neue Lizenz erstellen</div>
             <div style={{display:'grid',gridTemplateColumns:'2fr 1fr 1fr auto',gap:10}}>
-              <select className='ip' value={newLic.teamId} onChange={e=>setNewLic(p=>({...p,teamId:e.target.value}))}><option value=''>Team waehlen...</option>{teams.map(t=><option key={t.id} value={t.id}>{t.name}</option>)}</select>
+              <PillSelect value={newLic.teamId} onChange={v => setNewLic(p=>({...p,teamId:v}))} neutral options={[{ value: '', label: `Team waehlen...` }, ...teams.map((t) => ({ value: t.id, label: t.name }))]} buttonStyle={{ minWidth: 140 }} />
               <input className='ip' type='number' value={newLic.seats} onChange={e=>setNewLic(p=>({...p,seats:e.target.value}))} min='1' placeholder='Seats'/>
-              <select className='ip' value={newLic.feature} onChange={e=>setNewLic(p=>({...p,feature:e.target.value}))}><option value='linkedin_suite_free'>LinkedIn Suite Free</option><option value='linkedin_suite_basic'>LinkedIn Suite Basic</option><option value='linkedin_suite_pro'>LinkedIn Suite Pro</option><option value='enterprise'>Enterprise</option></select>
+              <PillSelect value={newLic.feature} onChange={v => setNewLic(p=>({...p,feature:v}))} neutral options={[{ value: 'linkedin_suite_free', label: `LinkedIn Suite Free` }, { value: 'linkedin_suite_basic', label: `LinkedIn Suite Basic` }, { value: 'linkedin_suite_pro', label: `LinkedIn Suite Pro` }, { value: 'enterprise', label: `Enterprise` }]} buttonStyle={{ minWidth: 140 }} />
               <button className='bp' onClick={createLic}>Erstellen</button>
             </div>
           </div>
@@ -279,33 +279,20 @@ export default function AdminPanel({ session }) {
             <div className='mr'><div className='ml'>Name</div><input className='ip' value={editUser.full_name||''} onChange={e=>setEditUser(p=>({...p,full_name:e.target.value}))} placeholder='Vollstandiger Name'/></div>
             <div className='mr'><div className='ml'>E-Mail</div><input className='ip' value={editUser.email||''} onChange={e=>setEditUser(p=>({...p,email:e.target.value}))} placeholder='E-Mail Adresse'/></div>
             <div className='mr'><div className='ml'>Plattform-Rolle</div>
-              <select className='ip' value={editUser.global_role||'user'} onChange={e=>setEditUser(p=>({...p,global_role:e.target.value}))}>
-                <option value='user'>User - Standard-Zugang</option>
-                <option value='team_member'>Team Admin - Team verwalten</option>
-                <option value='admin'>Admin - Voller Plattform-Zugang</option>
-              </select>
+              <PillSelect value={editUser.global_role||'user'} onChange={v => setEditUser(p=>({...p,global_role:v}))} neutral options={[{ value: 'user', label: `User - Standard-Zugang` }, { value: 'team_member', label: `Team Admin - Team verwalten` }, { value: 'admin', label: `Admin - Voller Plattform-Zugang` }]} buttonStyle={{ minWidth: 140 }} />
             </div>
             <div style={{height:1,background:'var(--surface-muted)',margin:'20px 0'}}/>
             <div className='mr'><div className='ml'>Team zuweisen</div>
-              <select className='ip' value={editUser.team_id||''} onChange={e=>setEditUser(p=>({...p,team_id:e.target.value}))}>
-                <option value=''>Kein Team</option>
-                {teams.map(t=><option key={t.id} value={t.id}>{t.name}</option>)}
-              </select>
+              <PillSelect value={editUser.team_id||''} onChange={v => setEditUser(p=>({...p,team_id:v}))} neutral options={[{ value: '', label: `Kein Team` }, ...teams.map((t) => ({ value: t.id, label: t.name }))]} buttonStyle={{ minWidth: 140 }} />
             </div>
             {editUser.team_id&&(
               <div className='mr'><div className='ml'>Rolle im Team</div>
-                <select className='ip' value={editUser.team_role||'user'} onChange={e=>setEditUser(p=>({...p,team_role:e.target.value}))}>
-                  <option value='user'>User</option>
-                  <option value='team_member'>Team Admin</option>
-                </select>
+                <PillSelect value={editUser.team_role||'user'} onChange={v => setEditUser(p=>({...p,team_role:v}))} neutral options={[{ value: 'user', label: `User` }, { value: 'team_member', label: `Team Admin` }]} buttonStyle={{ minWidth: 140 }} />
               </div>
             )}
             <div style={{height:1,background:'var(--surface-muted)',margin:'20px 0'}}/>
             <div className='mr'><div className='ml'>Lizenz zuweisen</div>
-              <select className='ip' value={editUser.license_id||''} onChange={e=>setEditUser(p=>({...p,license_id:e.target.value}))}>
-                <option value=''>Keine Lizenz</option>
-                {licenses.filter(l=>l.status==='active').map(l=>(<option key={l.id} value={l.id} disabled={l.used_seats>=l.total_seats&&editUser.license_id!==l.id}>{l.teams?.name} - {l.feature_key} ({l.used_seats}/{l.total_seats} Seats{l.used_seats>=l.total_seats?' - voll':''})</option>))}
-              </select>
+              <PillSelect value={editUser.license_id||''} onChange={v => setEditUser(p=>({...p,license_id:v}))} neutral options={[{ value: '', label: `Keine Lizenz` }, ...licenses.filter(l=>l.status==='active').map((l) => ({ value: l.id, label: `${l.teams?.name} - ${l.feature_key} (${l.used_seats}/${l.total_seats} Seats${l.used_seats>=l.total_seats?' - voll':''})` }))]} buttonStyle={{ minWidth: 140 }} />
             </div>
             <div style={{display:'flex',gap:10,justifyContent:'flex-end',marginTop:24}}>
               <button className="lk-btn lk-btn-ghost" onClick={()=>setEditUser(null)} >Abbrechen</button>
@@ -322,22 +309,13 @@ export default function AdminPanel({ session }) {
               <button onClick={()=>setEditLic(null)} style={{background:'none',border:'none',cursor:'pointer',fontSize:22,color:'#9CA3AF',lineHeight:1}}>&#x2715;</button>
             </div>
             <div className='mr'><div className='ml'>Plan / Feature</div>
-              <select className='ip' value={editLic.feature_key||'linkedin_suite_free'} onChange={e=>setEditLic(p=>({...p,feature_key:e.target.value}))}>
-                <option value='linkedin_suite_free'>LinkedIn Suite Free</option>
-                <option value='linkedin_suite_basic'>LinkedIn Suite Basic</option>
-                <option value='linkedin_suite_pro'>LinkedIn Suite Pro</option>
-                <option value='enterprise'>Enterprise</option>
-              </select>
+              <PillSelect value={editLic.feature_key||'linkedin_suite_free'} onChange={v => setEditLic(p=>({...p,feature_key:v}))} neutral options={[{ value: 'linkedin_suite_free', label: `LinkedIn Suite Free` }, { value: 'linkedin_suite_basic', label: `LinkedIn Suite Basic` }, { value: 'linkedin_suite_pro', label: `LinkedIn Suite Pro` }, { value: 'enterprise', label: `Enterprise` }]} buttonStyle={{ minWidth: 140 }} />
             </div>
             <div className='mr'><div className='ml'>Anzahl Seats</div>
               <input className='ip' type='number' min='1' value={editLic.total_seats||1} onChange={e=>setEditLic(p=>({...p,total_seats:e.target.value}))}/>
             </div>
             <div className='mr'><div className='ml'>Status</div>
-              <select className='ip' value={editLic.status||'active'} onChange={e=>setEditLic(p=>({...p,status:e.target.value}))}>
-                <option value='active'>Aktiv</option>
-                <option value='expired'>Abgelaufen</option>
-                <option value='revoked'>Widerrufen</option>
-              </select>
+              <PillSelect value={editLic.status||'active'} onChange={v => setEditLic(p=>({...p,status:v}))} neutral options={[{ value: 'active', label: `Aktiv` }, { value: 'expired', label: `Abgelaufen` }, { value: 'revoked', label: `Widerrufen` }]} buttonStyle={{ minWidth: 140 }} />
             </div>
             <div style={{display:'flex',gap:10,justifyContent:'flex-end',marginTop:24}}>
               <button className="lk-btn lk-btn-ghost" onClick={()=>setEditLic(null)} >Abbrechen</button>

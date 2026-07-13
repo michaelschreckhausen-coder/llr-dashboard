@@ -248,10 +248,7 @@ export default function Angebote() {
         <form onSubmit={createSponsor} style={card}>
           <div style={cardTitle}><UserPlus size={16} color={PRIMARY} /> Sponsor anlegen</div>
           <Field label="Bestehendes Unternehmen (keine Duplikate)">
-            <select value={sponsorForm.organization_id} onChange={(e) => setSponsorForm({ ...sponsorForm, organization_id: e.target.value })} style={input}>
-              <option value="">— Neues Unternehmen anlegen —</option>
-              {orgs.map((o) => <option key={o.id} value={o.id}>{o.name}</option>)}
-            </select>
+            <PillSelect value={sponsorForm.organization_id} onChange={v => setSponsorForm({ ...sponsorForm, organization_id: v })} neutral options={[{ value: '', label: `— Neues Unternehmen anlegen —` }, ...orgs.map((o) => ({ value: o.id, label: o.name }))]} buttonStyle={{ minWidth: 140 }} />
           </Field>
           {!sponsorForm.organization_id && (
             <Field label="Name (neues Unternehmen)"><input value={sponsorForm.name} onChange={(e) => setSponsorForm({ ...sponsorForm, name: e.target.value })} placeholder="Firma GmbH" style={input} /></Field>
@@ -274,16 +271,10 @@ export default function Angebote() {
           <div style={cardTitle}><FileText size={16} color={PRIMARY} /> Angebot erstellen</div>
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
             <Field label="Sponsor">
-              <select value={offerForm.sponsor_profile_id} onChange={(e) => setOfferForm({ ...offerForm, sponsor_profile_id: e.target.value })} style={input}>
-                <option value="">— wählen —</option>
-                {sponsors.map((s) => <option key={s.id} value={s.id}>{sponsorName[s.id] || '—'}</option>)}
-              </select>
+              <PillSelect value={offerForm.sponsor_profile_id} onChange={v => setOfferForm({ ...offerForm, sponsor_profile_id: v })} neutral options={[{ value: '', label: `— wählen —` }, ...sponsors.map((s) => ({ value: s.id, label: sponsorName[s.id] || '—' }))]} buttonStyle={{ minWidth: 140 }} />
             </Field>
             <Field label="Paket">
-              <select value={offerForm.package_id} onChange={(e) => setOfferForm({ ...offerForm, package_id: e.target.value })} style={input}>
-                <option value="">— wählen —</option>
-                {packages.map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}
-              </select>
+              <PillSelect value={offerForm.package_id} onChange={v => setOfferForm({ ...offerForm, package_id: v })} neutral options={[{ value: '', label: `— wählen —` }, ...packages.map((p) => ({ value: p.id, label: p.name }))]} buttonStyle={{ minWidth: 140 }} />
             </Field>
             <Field label="Rabatt (%)">
               <input type="number" min="0" max="100" step="1" value={offerForm.discount_pct}
@@ -383,13 +374,7 @@ export default function Angebote() {
                     <div style={{ display: 'flex', alignItems: 'flex-end', gap: 8, flexWrap: 'wrap' }}>
                       <div style={{ flex: '2 1 200px' }}>
                         <div style={miniLabel}>Recht</div>
-                        <select value={draft.right_id} onChange={(e) => pickRight(o.id, e.target.value)} style={{ ...input, padding: '6px 8px' }}>
-                          <option value="">— wählen —</option>
-                          {rights.map((r) => {
-                            const invLbl = inventoryLabel(inventory[r.id])
-                            return <option key={r.id} value={r.id}>{r.name}{invLbl ? ` (${invLbl})` : ''}</option>
-                          })}
-                        </select>
+                        <PillSelect value={draft.right_id} onChange={v => pickRight(o.id, v)} neutral options={[{ value: '', label: `— wählen —` }, ...rights.map((r) => { const invLbl = inventoryLabel(inventory[r.id]); return ({ value: r.id, label: `${r.name}${invLbl ? ` (${invLbl})` : ''}` }); })]} buttonStyle={{ minWidth: 140 }} />
                       </div>
                       <div style={{ flex: '0 0 80px' }}>
                         <div style={miniLabel}>Menge</div>

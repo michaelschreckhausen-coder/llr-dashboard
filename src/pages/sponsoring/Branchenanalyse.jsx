@@ -557,9 +557,7 @@ export default function Branchenanalyse() {
           </datalist>
         </Field>
         <Field label="Region">
-          <select value={tgt.region} onChange={(e) => setTgt({ ...tgt, region: e.target.value })} style={input}>
-            {REGIONS.map((rg) => <option key={rg} value={rg}>{REGION_LABEL[rg]}</option>)}
-          </select>
+          <PillSelect value={tgt.region} onChange={v => setTgt({ ...tgt, region: v })} neutral options={[...REGIONS.map((rg) => ({ value: rg, label: REGION_LABEL[rg] }))]} buttonStyle={{ minWidth: 140 }} />
         </Field>
         <button type="submit" disabled={tgtBusy || !tgt.industry.trim()} style={{ ...primaryBtn, opacity: tgtBusy || !tgt.industry.trim() ? 0.6 : 1 }}>
           {tgtBusy ? <Loader2 size={14} className="spin" /> : <Building2 size={14} />} Vorschläge holen

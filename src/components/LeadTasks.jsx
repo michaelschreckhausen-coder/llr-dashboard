@@ -1,3 +1,4 @@
+import PillSelect from './PillSelect'
 import React, { useState, useEffect } from 'react'
 import { Briefcase, Calendar, CheckCircle2, FileText, Pencil, Phone } from 'lucide-react'
 import { supabase } from '../lib/supabase'
@@ -214,11 +215,7 @@ export default function LeadTasks({ leadId, teamId, session, members = [] }) {
           {/* Aufgaben-Typ */}
           <div style={{ marginBottom: 10 }}>
             <div style={{ fontSize: 10, fontWeight: 700, color: '#6B7280', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 4 }}>Art der Aufgabe</div>
-            <select value={form.task_type} onChange={e => setForm(f => ({ ...f, task_type: e.target.value }))} style={inp}>
-              {TASK_TYPES.map(t => (
-                <option key={t.value} value={t.value}>{t.icon} {t.label}</option>
-              ))}
-            </select>
+            <PillSelect value={form.task_type} onChange={v => setForm(f => ({ ...f, task_type: v }))} neutral options={[...TASK_TYPES.map((t) => ({ value: t.value, label: `${t.icon} ${t.label}` }))]} buttonStyle={{ minWidth: 140 }} />
           </div>
 
           {/* Datum + Priorität + Zuweisung */}
@@ -230,11 +227,7 @@ export default function LeadTasks({ leadId, teamId, session, members = [] }) {
             </div>
             <div>
               <div style={{ fontSize: 10, fontWeight: 700, color: '#6B7280', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 4 }}>Priorität</div>
-              <select value={form.priority} onChange={e => setForm(f => ({ ...f, priority: e.target.value }))} style={inp}>
-                <option value="low">Niedrig</option>
-                <option value="normal">Normal</option>
-                <option value="high">Hoch</option>
-              </select>
+              <PillSelect value={form.priority} onChange={v => setForm(f => ({ ...f, priority: v }))} neutral options={[{ value: 'low', label: `Niedrig` }, { value: 'normal', label: `Normal` }, { value: 'high', label: `Hoch` }]} buttonStyle={{ minWidth: 140 }} />
             </div>
           </div>
 

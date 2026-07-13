@@ -375,20 +375,14 @@ export default function Vertraege() {
                 </div>
                 <div style={{ flex: 1 }}>
                   <Field label="Intervall">
-                    <select value={ef.renewal_interval} onChange={(e) => setEf({ ...ef, renewal_interval: e.target.value })} style={input}>
-                      <option value="once">Einmalig</option>
-                      <option value="yearly">Jährlich</option>
-                    </select>
+                    <PillSelect value={ef.renewal_interval} onChange={v => setEf({ ...ef, renewal_interval: v })} neutral options={[{ value: 'once', label: `Einmalig` }, { value: 'yearly', label: `Jährlich` }]} buttonStyle={{ minWidth: 140 }} />
                   </Field>
                 </div>
               </div>
             )}
 
             <Field label="Liga">
-              <select value={ef.league_id} onChange={(e) => setEf({ ...ef, league_id: e.target.value })} style={input}>
-                <option value="">— keine —</option>
-                {leagues.map((l) => <option key={l.id} value={l.id}>{l.name}</option>)}
-              </select>
+              <PillSelect value={ef.league_id} onChange={v => setEf({ ...ef, league_id: v })} neutral options={[{ value: '', label: `— keine —` }, ...leagues.map((l) => ({ value: l.id, label: l.name }))]} buttonStyle={{ minWidth: 140 }} />
             </Field>
             {/* V1: %-Auf-/Abschlag der gewählten Spielklasse — Vorschlag + auf Volumen anwenden */}
             {(() => {
@@ -436,11 +430,7 @@ export default function Vertraege() {
               </div>
               <div style={{ flex: 1.4 }}>
                 <Field label="Rabatt gilt für">
-                  <select value={ef.discount_scope} onChange={(e) => setEf({ ...ef, discount_scope: e.target.value })} style={input}>
-                    <option value="all">Gesamtsumme</option>
-                    <option value="hospitality">Nur Hospitality</option>
-                    <option value="advertising">Nur Werbeleistungen</option>
-                  </select>
+                  <PillSelect value={ef.discount_scope} onChange={v => setEf({ ...ef, discount_scope: v })} neutral options={[{ value: 'all', label: `Gesamtsumme` }, { value: 'hospitality', label: `Nur Hospitality` }, { value: 'advertising', label: `Nur Werbeleistungen` }]} buttonStyle={{ minWidth: 140 }} />
                 </Field>
               </div>
             </div>

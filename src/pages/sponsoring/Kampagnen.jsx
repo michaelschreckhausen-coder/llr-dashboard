@@ -390,26 +390,17 @@ export default function Kampagnen() {
 
         <div style={{ gridColumn: '1 / -1', display: 'grid', gridTemplateColumns: '1fr 1fr 1fr 1fr', gap: 10 }}>
           <Field label="Verantwortlich">
-            <select value={form.responsible} onChange={(e) => setForm({ ...form, responsible: e.target.value })} style={input}>
-              <option value="">— niemand —</option>
-              {(members || []).map((m) => <option key={m.user_id} value={m.user_id}>{memberLabel(m)}</option>)}
-            </select>
+            <PillSelect value={form.responsible} onChange={v => setForm({ ...form, responsible: v })} neutral options={[{ value: '', label: `— niemand —` }, ...members || [].map((m) => ({ value: m.user_id, label: memberLabel(m) }))]} buttonStyle={{ minWidth: 140 }} />
           </Field>
           <Field label="Geo-Scope">
             <input value={form.geo_scope} onChange={(e) => setForm({ ...form, geo_scope: e.target.value })}
                    placeholder="z.B. Region Stuttgart" style={input} />
           </Field>
           <Field label="Brand Voice">
-            <select value={form.brand_voice_id} onChange={(e) => setForm({ ...form, brand_voice_id: e.target.value })} style={input}>
-              <option value="">— keine —</option>
-              {brandVoices.map((b) => <option key={b.id} value={b.id}>{b.name}</option>)}
-            </select>
+            <PillSelect value={form.brand_voice_id} onChange={v => setForm({ ...form, brand_voice_id: v })} neutral options={[{ value: '', label: `— keine —` }, ...brandVoices.map((b) => ({ value: b.id, label: b.name }))]} buttonStyle={{ minWidth: 140 }} />
           </Field>
           <Field label="Zielgruppe">
-            <select value={form.target_audience_id} onChange={(e) => setForm({ ...form, target_audience_id: e.target.value })} style={input}>
-              <option value="">— keine —</option>
-              {audiences.map((a) => <option key={a.id} value={a.id}>{a.name}</option>)}
-            </select>
+            <PillSelect value={form.target_audience_id} onChange={v => setForm({ ...form, target_audience_id: v })} neutral options={[{ value: '', label: `— keine —` }, ...audiences.map((a) => ({ value: a.id, label: a.name }))]} buttonStyle={{ minWidth: 140 }} />
           </Field>
         </div>
       </form>
@@ -509,22 +500,13 @@ export default function Kampagnen() {
                       <input value={draft.geo_scope || ''} onChange={(e) => setDraft({ ...draft, geo_scope: e.target.value })} style={input} />
                     </Field>
                     <Field label="Verantwortlich">
-                      <select value={draft.responsible || ''} onChange={(e) => setDraft({ ...draft, responsible: e.target.value })} style={input}>
-                        <option value="">— niemand —</option>
-                        {(members || []).map((m) => <option key={m.user_id} value={m.user_id}>{memberLabel(m)}</option>)}
-                      </select>
+                      <PillSelect value={draft.responsible || ''} onChange={v => setDraft({ ...draft, responsible: v })} neutral options={[{ value: '', label: `— niemand —` }, ...members || [].map((m) => ({ value: m.user_id, label: memberLabel(m) }))]} buttonStyle={{ minWidth: 140 }} />
                     </Field>
                     <Field label="Brand Voice">
-                      <select value={draft.brand_voice_id || ''} onChange={(e) => setDraft({ ...draft, brand_voice_id: e.target.value })} style={input}>
-                        <option value="">— keine —</option>
-                        {brandVoices.map((b) => <option key={b.id} value={b.id}>{b.name}</option>)}
-                      </select>
+                      <PillSelect value={draft.brand_voice_id || ''} onChange={v => setDraft({ ...draft, brand_voice_id: v })} neutral options={[{ value: '', label: `— keine —` }, ...brandVoices.map((b) => ({ value: b.id, label: b.name }))]} buttonStyle={{ minWidth: 140 }} />
                     </Field>
                     <Field label="Zielgruppe">
-                      <select value={draft.target_audience_id || ''} onChange={(e) => setDraft({ ...draft, target_audience_id: e.target.value })} style={input}>
-                        <option value="">— keine —</option>
-                        {audiences.map((a) => <option key={a.id} value={a.id}>{a.name}</option>)}
-                      </select>
+                      <PillSelect value={draft.target_audience_id || ''} onChange={v => setDraft({ ...draft, target_audience_id: v })} neutral options={[{ value: '', label: `— keine —` }, ...audiences.map((a) => ({ value: a.id, label: a.name }))]} buttonStyle={{ minWidth: 140 }} />
                     </Field>
                   </div>
                   <div style={{ display: 'flex', gap: 8, marginTop: 12 }}>

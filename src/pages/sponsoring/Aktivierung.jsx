@@ -231,22 +231,14 @@ export default function Aktivierung() {
       <form onSubmit={create} style={{ display: 'grid', gridTemplateColumns: '2fr 1fr 1.4fr 1fr 1.4fr 1.4fr', gap: 10, alignItems: 'end', ...card, marginBottom: 22 }}>
         <Field label="Maßnahme"><input value={form.title} onChange={(e) => setForm({ ...form, title: e.target.value })} placeholder="z.B. LinkedIn-Post zum Saisonstart" style={input} /></Field>
         <Field label="Typ">
-          <select value={form.type} onChange={(e) => setForm({ ...form, type: e.target.value })} style={input}>
-            {TYPES.map((t) => <option key={t} value={t}>{TYPE_LABEL[t]}</option>)}
-          </select>
+          <PillSelect value={form.type} onChange={v => setForm({ ...form, type: v })} neutral options={[...TYPES.map((t) => ({ value: t, label: TYPE_LABEL[t] }))]} buttonStyle={{ minWidth: 140 }} />
         </Field>
         <Field label="Vertrag">
-          <select value={form.contract_id} onChange={(e) => setForm({ ...form, contract_id: e.target.value, contact_id: '' })} style={input}>
-            <option value="">— keiner —</option>
-            {contracts.map((c) => <option key={c.id} value={c.id}>{contractLabel[c.id]}</option>)}
-          </select>
+          <PillSelect value={form.contract_id} onChange={v => setForm({ ...form, contract_id: v, contact_id: '' })} neutral options={[{ value: '', label: `— keiner —` }, ...contracts.map((c) => ({ value: c.id, label: contractLabel[c.id] }))]} buttonStyle={{ minWidth: 140 }} />
         </Field>
         <Field label="Termin"><input type="date" value={form.scheduled_for} onChange={(e) => setForm({ ...form, scheduled_for: e.target.value })} style={input} /></Field>
         <Field label="Verantwortlich">
-          <select value={form.responsible} onChange={(e) => setForm({ ...form, responsible: e.target.value })} style={input}>
-            <option value="">— niemand —</option>
-            {members.map((m) => <option key={m.user_id} value={m.user_id}>{memberName[m.user_id]}</option>)}
-          </select>
+          <PillSelect value={form.responsible} onChange={v => setForm({ ...form, responsible: v })} neutral options={[{ value: '', label: `— niemand —` }, ...members.map((m) => ({ value: m.user_id, label: memberName[m.user_id] }))]} buttonStyle={{ minWidth: 140 }} />
         </Field>
         <Field label="Ansprechpartner">
           <select value={form.contact_id} onChange={(e) => setForm({ ...form, contact_id: e.target.value })} style={input} disabled={!formContractOrgId}>
@@ -262,10 +254,7 @@ export default function Aktivierung() {
       {/* Standardaufgaben aus Vorlagen für einen Vertrag materialisieren */}
       <div style={{ ...card, marginBottom: 22, display: 'flex', alignItems: 'end', gap: 10, flexWrap: 'wrap' }}>
         <Field label="Vertrag (Standardaufgaben)">
-          <select value={applyContractId} onChange={(e) => { setApplyContractId(e.target.value); setApplyMsg(null) }} style={{ ...input, minWidth: 220 }}>
-            <option value="">— Vertrag wählen —</option>
-            {contracts.map((c) => <option key={c.id} value={c.id}>{contractLabel[c.id]}</option>)}
-          </select>
+          <PillSelect value={applyContractId} onChange={v => { setApplyContractId(v); setApplyMsg(null) }} neutral options={[{ value: '', label: `— Vertrag wählen —` }, ...contracts.map((c) => ({ value: c.id, label: contractLabel[c.id] }))]} buttonStyle={{ minWidth: 140 }} />
         </Field>
         <button type="button" onClick={applyTemplates} disabled={applyBusy || !applyContractId}
                 style={{ ...primaryBtn, opacity: applyBusy || !applyContractId ? 0.6 : 1 }}>
@@ -357,16 +346,10 @@ export default function Aktivierung() {
       <form onSubmit={createTemplate} style={{ display: 'grid', gridTemplateColumns: '2fr 1.3fr 1.3fr 0.8fr auto', gap: 10, alignItems: 'end', ...card, marginBottom: 16 }}>
         <Field label="Aufgabe"><input value={tplForm.title} onChange={(e) => setTplForm({ ...tplForm, title: e.target.value })} placeholder="z.B. Logo mit Sponsor abstimmen" style={input} /></Field>
         <Field label="Kategorie">
-          <select value={tplForm.category_id} onChange={(e) => setTplForm({ ...tplForm, category_id: e.target.value, right_id: '' })} style={input}>
-            <option value="">— alle —</option>
-            {categories.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
-          </select>
+          <PillSelect value={tplForm.category_id} onChange={v => setTplForm({ ...tplForm, category_id: v, right_id: '' })} neutral options={[{ value: '', label: `— alle —` }, ...categories.map((c) => ({ value: c.id, label: c.name }))]} buttonStyle={{ minWidth: 140 }} />
         </Field>
         <Field label="Recht (optional)">
-          <select value={tplForm.right_id} onChange={(e) => setTplForm({ ...tplForm, right_id: e.target.value })} style={input}>
-            <option value="">— keins —</option>
-            {tplRightOptions.map((r) => <option key={r.id} value={r.id}>{r.name}</option>)}
-          </select>
+          <PillSelect value={tplForm.right_id} onChange={v => setTplForm({ ...tplForm, right_id: v })} neutral options={[{ value: '', label: `— keins —` }, ...tplRightOptions.map((r) => ({ value: r.id, label: r.name }))]} buttonStyle={{ minWidth: 140 }} />
         </Field>
         <Field label="Reihenfolge"><input type="number" value={tplForm.sort_order} onChange={(e) => setTplForm({ ...tplForm, sort_order: e.target.value })} style={input} /></Field>
         <button type="submit" disabled={tplBusy || !tplForm.title.trim()} style={{ ...primaryBtn, opacity: tplBusy || !tplForm.title.trim() ? 0.6 : 1 }}>

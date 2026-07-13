@@ -1167,11 +1167,7 @@ function NewCampaignWizard({
             {sponsoringCampaigns.length > 0 && (
               <div style={{ marginTop:14 }}>
                 <WLb label="Sponsoring-Kampagne (optional)" hint="Ordne diesen Outreach einer Sponsoring-Kampagne zu — er läuft dann unter dieser Kampagne." />
-                <select value={newCamp.sponsoring_campaign_id || ''} onChange={e => setNewCamp(p => ({ ...p, sponsoring_campaign_id:e.target.value }))}
-                  style={{ width:'100%', padding:'10px 12px', borderRadius:10, border:'1px solid var(--border)', background:'var(--surface)', color:'var(--text-primary, #111827)', fontSize:14, outline:'none' }}>
-                  <option value="">— keine —</option>
-                  {sponsoringCampaigns.map(c => <option key={c.id} value={c.id}>{c.title}</option>)}
-                </select>
+                <PillSelect value={newCamp.sponsoring_campaign_id || ''} onChange={v => setNewCamp(p => ({ ...p, sponsoring_campaign_id:v }))} neutral options={[{ value: '', label: `— keine —` }, ...sponsoringCampaigns.map((c) => ({ value: c.id, label: c.title }))]} buttonStyle={{ minWidth: 140 }} />
               </div>
             )}
           </WSc>
@@ -1269,14 +1265,7 @@ function NewCampaignWizard({
           ) : (
             <>
               <WLb label="Inbox-Liste" hint="Zahl in Klammern = Anzahl Kontakte in der Liste." />
-              <select value={sourceListId} onChange={e => setSourceListId(e.target.value)}
-                style={{ width:'100%', padding:'10px 12px', borderRadius:10, border:'1px solid var(--border)', background:'var(--surface)', color:'var(--text-primary, #111827)', fontSize:14, outline:'none' }}>
-                <option value="">— Liste wählen —</option>
-                {inboxLists.map(l => {
-                  const cnt = (membersByList.get(l.id) || new Set()).size
-                  return <option key={l.id} value={l.id}>{l.name} ({cnt})</option>
-                })}
-              </select>
+              <PillSelect value={sourceListId} onChange={v => setSourceListId(v)} neutral options={[{ value: '', label: `— Liste wählen —` }, ...inboxLists.map((l) => { const cnt = (membersByList.get(l.id) || new Set()).size; return ({ value: l.id, label: `${l.name} (${cnt})` }); })]} buttonStyle={{ minWidth: 140 }} />
               {sourceListId && (
                 <div style={{ marginTop:4 }}>{renderEligibility()}</div>
               )}

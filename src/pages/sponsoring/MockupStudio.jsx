@@ -9,6 +9,7 @@
 // team_id), sonst greift die RLS nicht. Buckets sind PRIVATE → Anzeige via
 // createSignedUrl(path, 3600).
 
+import PillSelect from '../../components/PillSelect'
 import { useEffect, useState, useCallback } from 'react'
 import { ImagePlus, Plus, Loader2, RefreshCw, Upload, Wand2, Building2, Trash2 } from 'lucide-react'
 import { supabase } from '../../lib/supabase'
@@ -185,10 +186,7 @@ export default function MockupStudio() {
                  placeholder="z.B. Heimstadion Nordtribüne, Heimtrikot 2027 …" style={input} />
         </Field>
         <Field label="Art der Fläche">
-          <select value={tplForm.placement} onChange={(e) => setTplForm({ ...tplForm, placement: e.target.value })} style={input}>
-            <option value="">— wählen —</option>
-            {SURFACE_TYPES.map((s) => <option key={s} value={s}>{s}</option>)}
-          </select>
+          <PillSelect value={tplForm.placement} onChange={v => setTplForm({ ...tplForm, placement: v })} neutral options={[{ value: '', label: `— wählen —` }, ...SURFACE_TYPES.map((s) => ({ value: s, label: s }))]} buttonStyle={{ minWidth: 140 }} />
         </Field>
         <Field label="Bild der Fläche">
           <label style={fileBtn}>
@@ -236,18 +234,10 @@ export default function MockupStudio() {
 
       <form onSubmit={createMockup} style={formCard}>
         <Field label="Werbefläche">
-          <select value={mockForm.stadium_template_id}
-                  onChange={(e) => setMockForm({ ...mockForm, stadium_template_id: e.target.value })} style={input}>
-            <option value="">— wählen —</option>
-            {templates.map((t) => <option key={t.id} value={t.id}>{t.name}{t.placement ? ` · ${t.placement}` : ''}</option>)}
-          </select>
+          <PillSelect value={mockForm.stadium_template_id} onChange={v => setMockForm({ ...mockForm, stadium_template_id: v })} neutral options={[{ value: '', label: `— wählen —` }, ...templates.map((t) => ({ value: t.id, label: `${t.name}${t.placement ? ` · ${t.placement}` : ''}` }))]} buttonStyle={{ minWidth: 140 }} />
         </Field>
         <Field label="Sponsor (optional)">
-          <select value={mockForm.sponsor_profile_id}
-                  onChange={(e) => setMockForm({ ...mockForm, sponsor_profile_id: e.target.value })} style={input}>
-            <option value="">— keiner —</option>
-            {sortedSponsors.map((s) => <option key={s.id} value={s.id}>{orgNameOf(s.organization_id) || '—'}</option>)}
-          </select>
+          <PillSelect value={mockForm.sponsor_profile_id} onChange={v => setMockForm({ ...mockForm, sponsor_profile_id: v })} neutral options={[{ value: '', label: `— keiner —` }, ...sortedSponsors.map((s) => ({ value: s.id, label: orgNameOf(s.organization_id) || '—' }))]} buttonStyle={{ minWidth: 140 }} />
         </Field>
         <Field label="Sponsor-Logo">
           <label style={fileBtn}>

@@ -15,6 +15,7 @@
 //   onSaved     — () → void  (refetch trigger)
 //   onDeleted   — () → void  (refetch trigger; nur lead_task)
 
+import PillSelect from '../PillSelect'
 import React, { useEffect, useMemo, useState } from 'react'
 import TaskSourceIcon from '../TaskSourceIcon'
 import { useNavigate } from 'react-router-dom'
@@ -217,14 +218,7 @@ export default function TaskEditModal({ task, members = [], uid, onClose, onSave
                   uid={uid}
                 />
               ) : (
-                <select value={assignedTo || ''} onChange={e => setAssignedTo(e.target.value)}
-                  style={inputStyle}>
-                  <option value="">— Niemand zugewiesen —</option>
-                  {(members || []).map(m => {
-                    const mid = m.user_id || m.id
-                    return <option key={mid} value={mid}>{memberLabel(m)}{mid === uid ? ' (Ich)' : ''}</option>
-                  })}
-                </select>
+                <PillSelect value={assignedTo || ''} onChange={v => setAssignedTo(v)} neutral options={[{ value: '', label: `— Niemand zugewiesen —` }, ...members || [].map((m) => { const mid = m.user_id || m.id; return ({ value: mid, label: `${memberLabel(m)}${mid === uid ? ' (Ich)' : ''}` }); })]} buttonStyle={{ minWidth: 140 }} />
               )}
             </Field>
           ) : caps?.assignedToHint ? (
@@ -247,10 +241,7 @@ export default function TaskEditModal({ task, members = [], uid, onClose, onSave
               )}
               {editable.priority && (
                 <Field label="Priorität">
-                  <select value={priority} onChange={e => setPriority(e.target.value)}
-                    style={inputStyle}>
-                    {PRIORITY_OPTIONS.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
-                  </select>
+                  <PillSelect value={priority} onChange={v => setPriority(v)} neutral options={[...PRIORITY_OPTIONS.map((o) => ({ value: o.value, label: o.label }))]} buttonStyle={{ minWidth: 140 }} />
                 </Field>
               )}
             </div>

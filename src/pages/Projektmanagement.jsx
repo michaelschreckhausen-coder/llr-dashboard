@@ -318,9 +318,7 @@ function TaskDetailModal({task,columns,onClose,onSaved,onDeleted,session,allUser
               <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:12}}>
                 <div>
                   <label style={{fontSize:11,fontWeight:700,color:'var(--text-muted)',display:'block',marginBottom:5}}>PRIORITÄT</label>
-                  <select value={form.priority||'medium'} onChange={e=>setForm(p=>({...p,priority:e.target.value}))} style={inp}>
-                    <option value="low">↓ Niedrig</option><option value="medium">→ Mittel</option><option value="high">↑ Hoch</option><option value="urgent">Dringend</option>
-                  </select>
+                  <PillSelect value={form.priority||'medium'} onChange={v => setForm(p=>({...p,priority:v}))} neutral options={[{ value: 'low', label: `↓ Niedrig` }, { value: 'medium', label: `→ Mittel` }, { value: 'high', label: `↑ Hoch` }, { value: 'urgent', label: `Dringend` }]} buttonStyle={{ minWidth: 140 }} />
                 </div>
                 <div>
                   <label style={{fontSize:11,fontWeight:700,color:'var(--text-muted)',display:'block',marginBottom:5}}>FÄLLIGKEITSDATUM</label>
@@ -332,9 +330,7 @@ function TaskDetailModal({task,columns,onClose,onSaved,onDeleted,session,allUser
                 </div>
                 <div>
                   <label style={{fontSize:11,fontWeight:700,color:'var(--text-muted)',display:'block',marginBottom:5}}>SPALTE VERSCHIEBEN</label>
-                  <select value={form.column_id} onChange={e=>setForm(p=>({...p,column_id:e.target.value}))} style={inp}>
-                    {columns.map(c=><option key={c.id} value={c.id}>{c.name}</option>)}
-                  </select>
+                  <PillSelect value={form.column_id} onChange={v => setForm(p=>({...p,column_id:v}))} neutral options={[...columns.map((c) => ({ value: c.id, label: c.name }))]} buttonStyle={{ minWidth: 140 }} />
                 </div>
               </div>
               <div>

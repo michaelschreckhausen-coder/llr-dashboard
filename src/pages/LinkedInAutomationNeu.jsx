@@ -2,6 +2,7 @@
 // Berührt NICHT das Altsystem (/automatisierung, automation_*). Liest RLS-scoped (Team-Policies P1) +
 // funnel-RPC (la_campaign_funnel) + health-View (la_runner_health). 0 reale Sends aus dem UI (Runner sendet
 // nur bei aktiver Kampagne + fälligem Job; die "ehrliche UI" zeigt genau das an).
+import PillSelect from '../components/PillSelect'
 import { useEffect, useState, useCallback, useRef } from 'react'
 import { supabase } from '../lib/supabase'
 import { useTeam } from '../context/TeamContext'
@@ -311,9 +312,7 @@ export default function LinkedInAutomationNeu({ session }) {
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginTop: 12 }}>
                 <div><label style={labelStyle}>Name</label><input style={inputStyle} defaultValue={sel.name} onBlur={e => e.target.value !== sel.name && saveCampaign({ name: e.target.value })} /></div>
                 <div><label style={labelStyle}>Account</label>
-                  <select style={inputStyle} value={sel.account_id} onChange={e => saveCampaign({ account_id: e.target.value })}>
-                    {accounts.map(a => <option key={a.id} value={a.id}>{a.public_identifier || a.unipile_account_id} ({a.status})</option>)}
-                  </select>
+                  <PillSelect value={sel.account_id} onChange={v => saveCampaign({ account_id: v })} neutral options={[...accounts.map((a) => ({ value: a.id, label: `${a.public_identifier || a.unipile_account_id} (${a.status})` }))]} buttonStyle={{ minWidth: 140 }} />
                 </div>
               </div>
 
@@ -333,10 +332,7 @@ export default function LinkedInAutomationNeu({ session }) {
                     )}
                     {selAudience.kind === 'list' && (
                       <div style={{ flex: 1, minWidth: 220 }}><label style={labelStyle}>Liste</label>
-                        <select style={inputStyle} value={selAudience.query?.list_id || ''} onChange={e => saveAudience({ query: { ...(selAudience.query || {}), list_id: e.target.value || null } })}>
-                          <option value="">— Liste wählen —</option>
-                          {inboxLists.map(l => <option key={l.id} value={l.id}>{l.name}</option>)}
-                        </select>
+                        <PillSelect value={selAudience.query?.list_id || ''} onChange={v => saveAudience({ query: { ...(selAudience.query || {}), list_id: v || null } })} neutral options={[{ value: '', label: `— Liste wählen —` }, ...inboxLists.map((l) => ({ value: l.id, label: l.name }))]} buttonStyle={{ minWidth: 140 }} />
                         {inboxLists.length === 0 && <div style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 4 }}>Noch keine Listen — unter „LinkedIn Kontakte" anlegen.</div>}
                       </div>
                     )}

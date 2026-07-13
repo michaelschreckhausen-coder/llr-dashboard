@@ -1,4 +1,5 @@
 // CRM Unified: first_name, last_name, job_title, status Lead/LQL/MQN/MQL/SQL
+import PillSelect from '../../components/PillSelect'
 import React, { useEffect, useState, useRef, useCallback } from 'react'
 import { useResponsive } from '../../hooks/useResponsive'
 import { useTeam } from '../../context/TeamContext'
@@ -986,9 +987,7 @@ export default function Leads({ session }) {
                 <div key={k}><label style={lbl}>{l}</label><input value={form[k]||''} onChange={e=>setForm(f=>({...f,[k]:e.target.value}))} style={inp}/></div>
               ))}
               <div><label style={lbl}>Status</label>
-                <select value={form.status||'Lead'} onChange={e=>setForm(f=>({...f,status:e.target.value}))} style={inp}>
-                  {STATUS_OPTIONS.map(s=><option key={s} value={s}>{s}</option>)}
-                </select>
+                <PillSelect value={form.status||'Lead'} onChange={v => setForm(f=>({...f,status:v}))} neutral options={[...STATUS_OPTIONS.map((s) => ({ value: s, label: s }))]} buttonStyle={{ minWidth: 140 }} />
               </div>
             </div>
             <div style={{ padding:'12px 24px 20px', display:'flex', justifyContent:'flex-end', gap:10, borderTop:'1px solid #EEEFF4' }}>

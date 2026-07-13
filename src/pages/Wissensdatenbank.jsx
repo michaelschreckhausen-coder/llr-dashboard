@@ -1,3 +1,4 @@
+import PillSelect from '../components/PillSelect'
 import React, { useEffect, useState, useRef } from 'react'
 import { AlertTriangle, BarChart3, BookOpen, Briefcase, Building2, Download, Eye, FileText, GraduationCap, Image as ImageIcon, Library, Lightbulb, Link2, Loader2, Package, Paperclip, Save, Search, Star, Swords, Tag, Trash2, Users, X } from 'lucide-react'
 import { useTeam } from '../context/TeamContext'
@@ -554,19 +555,11 @@ export default function Wissensdatenbank({ session }) {
             <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:12 }}>
               <div>
                 <Lb l="Physisch oder Digital"/>
-                <select value={edit.product_form||''} onChange={e=>u('product_form', e.target.value||null)} style={selStyle}>
-                  <option value="">— bitte wählen —</option>
-                  <option value="physisch">Physisch</option>
-                  <option value="digital">Digital</option>
-                </select>
+                <PillSelect value={edit.product_form||''} onChange={v => u('product_form', v||null)} neutral options={[{ value: '', label: `— bitte wählen —` }, { value: 'physisch', label: `Physisch` }, { value: 'digital', label: `Digital` }]} buttonStyle={{ minWidth: 140 }} />
               </div>
               <div>
                 <Lb l="Produkt oder Dienstleistung"/>
-                <select value={edit.product_kind||''} onChange={e=>u('product_kind', e.target.value||null)} style={selStyle}>
-                  <option value="">— bitte wählen —</option>
-                  <option value="produkt">Produkt</option>
-                  <option value="dienstleistung">Dienstleistung</option>
-                </select>
+                <PillSelect value={edit.product_kind||''} onChange={v => u('product_kind', v||null)} neutral options={[{ value: '', label: `— bitte wählen —` }, { value: 'produkt', label: `Produkt` }, { value: 'dienstleistung', label: `Dienstleistung` }]} buttonStyle={{ minWidth: 140 }} />
               </div>
             </div>
             <Lb l="Preis"/>

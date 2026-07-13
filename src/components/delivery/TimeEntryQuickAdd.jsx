@@ -1,4 +1,5 @@
 // src/components/delivery/TimeEntryQuickAdd.jsx
+import PillSelect from '../PillSelect'
 import { useEffect, useMemo, useState } from 'react'
 import { supabase } from '../../lib/supabase'
 import { useTeam } from '../../context/TeamContext'
@@ -234,10 +235,7 @@ export default function TimeEntryQuickAdd({
         )}
 
         <Field label="Projekt">
-          <select value={projectId} onChange={(e) => { setProjectId(e.target.value); setTaskId('') }} style={inputStyle}>
-            <option value="">— wählen —</option>
-            {projects.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
-          </select>
+          <PillSelect value={projectId} onChange={v => { setProjectId(v); setTaskId('') }} neutral options={[{ value: '', label: `— wählen —` }, ...projects.map((p) => ({ value: p.id, label: p.name }))]} buttonStyle={{ minWidth: 140 }} />
         </Field>
 
         <Field label="Task (optional)">
@@ -248,10 +246,7 @@ export default function TimeEntryQuickAdd({
         </Field>
 
         <Field label="Tätigkeit (optional)">
-          <select value={activityTypeId} onChange={(e) => setActivityTypeId(e.target.value)} style={inputStyle}>
-            <option value="">— keine —</option>
-            {activityTypes.map(a => <option key={a.id} value={a.id}>{a.name}</option>)}
-          </select>
+          <PillSelect value={activityTypeId} onChange={v => setActivityTypeId(v)} neutral options={[{ value: '', label: `— keine —` }, ...activityTypes.map((a) => ({ value: a.id, label: a.name }))]} buttonStyle={{ minWidth: 140 }} />
         </Field>
 
         <Field label="Beschreibung (optional)">

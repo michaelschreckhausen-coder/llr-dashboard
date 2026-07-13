@@ -2314,17 +2314,10 @@ function NewLeadModal({ onClose, onSaved, activeTeamId, userId, teamMembers = []
           <PillSelect value={form.status} onChange={v => set('status', v)} neutral options={[...STATUS_ORDER.map((s) => ({ value: s, label: `${s} · ${STATUS_CONFIG[s]?.sublabel || ''}` }))]} buttonStyle={{ minWidth: 140 }} />
         </Field>
         <Field label="Owner">
-          <select style={inputBaseStyle}
-            value={form.owner_id === undefined ? (userId || '') : (form.owner_id || '')}
-            onChange={e => set('owner_id', e.target.value || null)}>
-            <option value="">— Kein Owner —</option>
-            {teamMembers.map(m => (
-              <option key={m.id} value={m.id}>
-                {`${m.first_name || ''} ${m.last_name || ''}`.trim() || (m.id ? m.id.slice(0, 8) : '—')}
-                {m.id === userId ? ' (du)' : ''}
-              </option>
-            ))}
-          </select>
+          <PillSelect value={form.owner_id === undefined ? (userId || '') : (form.owner_id || '')} onChange={v => set('owner_id', v || null)} neutral options={[{ value: '', label: `— Kein Owner —` }, ...teamMembers.map((m) => ({ value: m.id, label: `
+                ${`${m.first_name || ''} ${m.last_name || ''}`.trim() || (m.id ? m.id.slice(0, 8) : '—')}
+                ${m.id === userId ? ' (du)' : ''}
+              ` }))]} buttonStyle={{ minWidth: 140 }} />
         </Field>
       </Row2>
       {err && <div style={{ color:'#B91C1C', fontSize:12 }}>{err}</div>}
@@ -2487,13 +2480,7 @@ function ImportCsvModal({ activeTeamId, onClose, onImported }) {
             {preview.headers.map(h => (
               <div key={h} style={{ display:'flex', flexDirection:'column', gap:4 }}>
                 <span style={{ fontSize:11, color: COLORS.textTertiary }}>{h}</span>
-                <select
-                  style={inputBaseStyle}
-                  value={preview.mapping[h] || ''}
-                  onChange={e => setPreview(p => ({ ...p, mapping: { ...p.mapping, [h]: e.target.value } }))}
-                >
-                  {FIELDS.map(f => <option key={f.id} value={f.id}>{f.label}</option>)}
-                </select>
+                <PillSelect value={preview.mapping[h] || ''} onChange={v => setPreview(p => ({ ...p, mapping: { ...p.mapping, [h]: v } }))} neutral options={[...FIELDS.map((f) => ({ value: f.id, label: f.label }))]} buttonStyle={{ minWidth: 140 }} />
               </div>
             ))}
           </div>

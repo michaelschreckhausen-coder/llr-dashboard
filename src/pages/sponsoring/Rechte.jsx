@@ -153,10 +153,7 @@ export default function Rechte() {
                  placeholder="z.B. LED Bande" style={input} />
         </Field>
         <Field label="Kategorie">
-          <select value={form.category_id} onChange={(e) => setForm({ ...form, category_id: e.target.value })} style={input}>
-            <option value="">— keine —</option>
-            {categories.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
-          </select>
+          <PillSelect value={form.category_id} onChange={v => setForm({ ...form, category_id: v })} neutral options={[{ value: '', label: `— keine —` }, ...categories.map((c) => ({ value: c.id, label: c.name }))]} buttonStyle={{ minWidth: 140 }} />
         </Field>
         <Field label="Listenpreis (€)">
           <input type="number" min="0" step="0.01" value={form.list_price}
@@ -172,20 +169,14 @@ export default function Rechte() {
 
         <div style={{ gridColumn: '1 / -1', display: 'grid', gridTemplateColumns: '1fr 1fr 1.3fr', gap: 10 }}>
           <Field label="Einheit">
-            <select value={form.unit} onChange={(e) => setForm({ ...form, unit: e.target.value })} style={input}>
-              <option value="">— keine —</option>
-              {UNITS.map((u) => <option key={u} value={u}>{u}</option>)}
-            </select>
+            <PillSelect value={form.unit} onChange={v => setForm({ ...form, unit: v })} neutral options={[{ value: '', label: `— keine —` }, ...UNITS.map((u) => ({ value: u, label: u }))]} buttonStyle={{ minWidth: 140 }} />
           </Field>
           <Field label="Preis je Einheit (€)">
             <input type="number" min="0" step="0.01" value={form.unit_price}
                    onChange={(e) => setForm({ ...form, unit_price: e.target.value })} placeholder="0" style={input} />
           </Field>
           <Field label="Liga">
-            <select value={form.league_id} onChange={(e) => setForm({ ...form, league_id: e.target.value })} style={input}>
-              <option value="">— keine —</option>
-              {leagues.map((l) => <option key={l.id} value={l.id}>{l.name}</option>)}
-            </select>
+            <PillSelect value={form.league_id} onChange={v => setForm({ ...form, league_id: v })} neutral options={[{ value: '', label: `— keine —` }, ...leagues.map((l) => ({ value: l.id, label: l.name }))]} buttonStyle={{ minWidth: 140 }} />
           </Field>
         </div>
       </form>

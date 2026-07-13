@@ -213,17 +213,9 @@ export function DealModal({ deal, leads, teamMembers = [], teamId, uid, onSave, 
           {/* Produkt aus Wissensdatenbank */}
           <div>
             <label style={lbl}>Produkt (optional)</label>
-            <select value={form.product_id} onChange={e => set('product_id', e.target.value)} style={inp}>
-              <option value="">— Kein Produkt</option>
-              {products.map(p => {
-                const meta = [p.product_kind, p.product_form, p.price].filter(Boolean).join(' · ')
-                return (
-                  <option key={p.id} value={p.id}>
-                    {p.name}{meta ? ` (${meta})` : ''}
-                  </option>
-                )
-              })}
-            </select>
+            <PillSelect value={form.product_id} onChange={v => set('product_id', v)} neutral options={[{ value: '', label: `— Kein Produkt` }, ...products.map((p) => { const meta = [p.product_kind, p.product_form, p.price].filter(Boolean).join(' · '); return ({ value: p.id, label: `
+                    ${p.name}${meta ? ` (${meta})` : ''}
+                  ` }); })]} buttonStyle={{ minWidth: 140 }} />
             {products.length === 0 && (
               <div style={{ fontSize: 11, color: '#9CA3AF', marginTop: 4 }}>
                 Noch keine Produkte — in der Wissensdatenbank unter Kategorie „Produkt / Service" anlegen.
@@ -239,9 +231,7 @@ export function DealModal({ deal, leads, teamMembers = [], teamId, uid, onSave, 
             </div>
             <div>
               <label style={lbl}>Stage</label>
-              <select value={form.stage} onChange={e => { set('stage', e.target.value); set('probability', STAGE_MAP[e.target.value]?.prob ?? 10) }} style={inp}>
-                {STAGES.map(s => <option key={s.id} value={s.id}>{s.label}</option>)}
-              </select>
+              <PillSelect value={form.stage} onChange={v => { set('stage', v); set('probability', STAGE_MAP[v]?.prob ?? 10) }} neutral options={[...STAGES.map((s) => ({ value: s.id, label: s.label }))]} buttonStyle={{ minWidth: 140 }} />
             </div>
           </div>
 
@@ -440,16 +430,10 @@ export default function Deals({ session }) {
         </div>
         <div style={{ marginLeft: 'auto', display: 'flex', gap: 8, alignItems: 'center' }}>
           {teamMembers.length > 0 && (
-            <select value={ownerFilter || ''} onChange={e => setOwnerFilter(e.target.value || null)}
-              style={{ padding: '7px 12px', border: '1.5px solid ' + (ownerFilter ? PRIMARY : '#E4E7EC'), borderRadius: 10, fontSize: 13, outline: 'none', background: 'var(--surface)', color: 'var(--text-primary, #111827)', cursor: 'pointer' }}>
-              <option value="">Alle Owner</option>
-              {teamMembers.map(m => (
-                <option key={m.id} value={m.id}>
-                  {m.full_name || `${m.first_name||''} ${m.last_name||''}`.trim() || m.id.slice(0,8)}
-                  {m.id === uid ? ' (du)' : ''}
-                </option>
-              ))}
-            </select>
+            <PillSelect value={ownerFilter || ''} onChange={v => setOwnerFilter(v || null)} neutral options={[{ value: '', label: `Alle Owner` }, ...teamMembers.map((m) => ({ value: m.id, label: `
+                  ${m.full_name || `${m.first_name||''} ${m.last_name||''}`.trim() || m.id.slice(0,8)}
+                  ${m.id === uid ? ' (du)' : ''}
+                ` }))]} buttonStyle={{ minWidth: 140 }} />
           )}
           <div style={{ position: 'relative' }}>
             <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Deal suchen…"

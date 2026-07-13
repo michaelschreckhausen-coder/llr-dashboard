@@ -1,3 +1,4 @@
+import PillSelect from '../components/PillSelect'
 import { useResponsive } from '../hooks/useResponsive'
 import { useTeam } from '../context/TeamContext'
 import LeadTasks from '../components/LeadTasks'
@@ -566,10 +567,7 @@ export default function LeadProfile({ session }) {
             {activeTab === 'timeline' && (
               <div>
                 <div style={{ display:'flex', gap:8, marginBottom:16 }}>
-                  <select value={newAct.type} onChange={e => setNewAct(a => ({...a,type:e.target.value}))}
-                    style={{ height:34, padding:'0 10px', border:'1px solid #E4E7EC', borderRadius:6, fontSize:12, color:'var(--text-primary)', background:'var(--surface)', fontFamily:'inherit', outline:'none' }}>
-                    {[['call','Anruf'],['email','Email'],['meeting','Meeting'],['linkedin_message','LinkedIn'],['note','Notiz']].map(([v,l]) => <option key={v} value={v}>{l}</option>)}
-                  </select>
+                  <PillSelect value={newAct.type} onChange={v => setNewAct(a => ({...a,type:v}))} neutral options={[...[['call','Anruf'],['email','Email'],['meeting','Meeting'],['linkedin_message','LinkedIn'],['note','Notiz']].map(([v,l]) => ({ value: v, label: l }))]} buttonStyle={{ minWidth: 140 }} />
                   <input value={newAct.subject} onChange={e => setNewAct(a => ({...a,subject:e.target.value}))}
                     placeholder="Betreff / Notiz…" className="lp-inp"
                     style={{ flex:1, height:34, padding:'0 10px', fontSize:12 }}
@@ -771,14 +769,7 @@ export default function LeadProfile({ session }) {
                   {/* Mitarbeiter-Größe als ENUM-Dropdown */}
                   <div>
                     <label style={{ fontSize:11, fontWeight:600, color:'var(--text-muted)', display:'block', marginBottom:4 }}>Mitarbeiter</label>
-                    <select className="lp-inp"
-                      value={editVals.company_size !== undefined ? editVals.company_size : (lead.company_size||'')}
-                      onChange={e => setEditVals(v => ({...v, company_size: e.target.value}))}>
-                      <option value="">— bitte wählen —</option>
-                      {['1','2-10','11-50','51-200','201-500','501-1000','1001-5000','5001-10000','10001+'].map(v => (
-                        <option key={v} value={v}>{v} Mitarbeiter</option>
-                      ))}
-                    </select>
+                    <PillSelect value={editVals.company_size !== undefined ? editVals.company_size : (lead.company_size||'')} onChange={v => setEditVals(v => ({...v, company_size: v}))} neutral options={[{ value: '', label: `— bitte wählen —` }, ...['1','2-10','11-50','51-200','201-500','501-1000','1001-5000','5001-10000','10001+'].map((v) => ({ value: v, label: `${v} Mitarbeiter` }))]} buttonStyle={{ minWidth: 140 }} />
                   </div>
                 </div>
 
