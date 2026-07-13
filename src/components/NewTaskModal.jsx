@@ -17,6 +17,7 @@
 //   onClose       — Modal schließen
 //   onSaved(task) — nach erfolgreichem Insert, mit der neuen Row
 
+import PillSelect from './PillSelect'
 import { useState, useEffect } from 'react';
 import { supabase } from '../lib/supabase';
 import LeadPicker from './LeadPicker';
@@ -208,14 +209,7 @@ export default function NewTaskModal({ activeTeamId, uid, members, onClose, onSa
               </div>
               <div>
                 <label style={labelStyle} htmlFor="task-prio">Priorität</label>
-                <select id="task-prio"
-                  value={form.priority}
-                  onChange={(e) => set('priority', e.target.value)}
-                  style={selectStyle} disabled={busy}>
-                  {PRIORITIES.map(p => (
-                    <option key={p.value} value={p.value}>{p.label}</option>
-                  ))}
-                </select>
+                <PillSelect value={form.priority} onChange={__lkv => set('priority', __lkv)} neutral disabled={busy} options={[...PRIORITIES.map((p) => ({ value: p.value, label: p.label }))]} buttonStyle={{ minWidth: 140 }} />
               </div>
             </div>
 

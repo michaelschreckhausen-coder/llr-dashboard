@@ -734,23 +734,11 @@ export default function OrganizationProfile({ session }) {
               <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
                 <Field label="Status">
                   {/* CHECK-Feld → einzeln speichern */}
-                  <select value={extForm.status || ''} disabled={extSaving}
-                    onChange={e => { const v = e.target.value || null; setExtForm(f => ({...f, status: v})); saveSponsorField('status', v) }}
-                    style={inputS}>
-                    <option value="">— keine Angabe —</option>
-                    {SPONSOR_STATUS_OPTIONS.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
-                  </select>
+                  <PillSelect value={extForm.status || ''} onChange={__lkv => { const v = __lkv || null; setExtForm(f => ({...f, status: v})); saveSponsorField('status', v) }} neutral disabled={extSaving} options={[{ value: '', label: `— keine Angabe —` }, ...SPONSOR_STATUS_OPTIONS.map((o) => ({ value: o.value, label: o.label }))]} buttonStyle={{ minWidth: 140 }} />
                 </Field>
                 <Field label="Sales-Cycle-Phase">
                   {/* CHECK-Feld → einzeln speichern */}
-                  <select value={extForm.cycle_stage ?? ''} disabled={extSaving}
-                    onChange={e => { const v = e.target.value === '' ? null : Number(e.target.value); setExtForm(f => ({...f, cycle_stage: v})); saveSponsorField('cycle_stage', v) }}
-                    style={inputS}>
-                    <option value="">— keine Angabe —</option>
-                    {cycleStages.map(s => (
-                      <option key={s.stage} value={s.stage}>{s.name || s.label || `Phase ${s.stage}`}</option>
-                    ))}
-                  </select>
+                  <PillSelect value={extForm.cycle_stage ?? ''} onChange={__lkv => { const v = __lkv === '' ? null : Number(__lkv); setExtForm(f => ({...f, cycle_stage: v})); saveSponsorField('cycle_stage', v) }} neutral disabled={extSaving} options={[{ value: '', label: `— keine Angabe —` }, ...cycleStages.map((s) => ({ value: s.stage, label: s.name || s.label || `Phase ${s.stage}` }))]} buttonStyle={{ minWidth: 140 }} />
                   {cycleStages.length === 0 && (
                     <button className="lk-btn lk-btn-ghost" type="button" onClick={seedCycle} disabled={seedingCycle}
                       style={{ marginTop: 6, opacity: seedingCycle ? 0.6 : 1 }}>

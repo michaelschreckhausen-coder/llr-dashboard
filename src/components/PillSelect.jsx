@@ -6,7 +6,7 @@ import { ChevronDown, Check } from 'lucide-react'
 
 const P = 'var(--wl-primary, #0A6FB0)'
 
-export default function PillSelect({ icon: Icon, value, options = [], onChange = () => {}, placeholder = '', neutral = false, title = '', buttonStyle = {} }) {
+export default function PillSelect({ icon: Icon, value, options = [], onChange = () => {}, placeholder = '', neutral = false, title = '', buttonStyle = {}, disabled = false }) {
   const [open, setOpen] = useState(false)
   const ref = useRef(null)
   useEffect(() => {
@@ -21,13 +21,13 @@ export default function PillSelect({ icon: Icon, value, options = [], onChange =
 
   return (
     <div ref={ref} style={{ position:'relative', display:'inline-block' }}>
-      <button type="button" className="lk-dd-trigger" onClick={() => setOpen(o => !o)} title={title}
+      <button type="button" className="lk-dd-trigger" disabled={disabled} onClick={() => !disabled && setOpen(o => !o)} title={title}
         style={{
           display:'inline-flex', alignItems:'center', gap:6, padding:'9px 10px', borderRadius:9, boxSizing:'border-box',
           border:'1.5px solid ' + (active ? P : 'var(--border)'),
           background: active ? 'rgba(10,111,176,0.06)' : 'var(--surface, #fff)',
           color: active ? P : 'var(--text-primary)',
-          fontSize:13, fontWeight:600, cursor:'pointer', whiteSpace:'nowrap', fontFamily:'inherit', ...buttonStyle,
+          fontSize:13, fontWeight:600, cursor: disabled ? 'not-allowed' : 'pointer', opacity: disabled ? 0.55 : 1, whiteSpace:'nowrap', fontFamily:'inherit', ...buttonStyle,
         }}>
         {Icon && <Icon size={13} strokeWidth={1.75} style={{ flexShrink:0 }}/>}
         <span style={{ flex:1, minWidth:0, overflow:'hidden', textOverflow:'ellipsis', textAlign:'left' }}>{label}</span>

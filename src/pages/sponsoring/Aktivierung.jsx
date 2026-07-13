@@ -241,10 +241,7 @@ export default function Aktivierung() {
           <PillSelect value={form.responsible} onChange={v => setForm({ ...form, responsible: v })} neutral options={[{ value: '', label: `— niemand —` }, ...members.map((m) => ({ value: m.user_id, label: memberName[m.user_id] }))]} buttonStyle={{ minWidth: 140 }} />
         </Field>
         <Field label="Ansprechpartner">
-          <select value={form.contact_id} onChange={(e) => setForm({ ...form, contact_id: e.target.value })} style={input} disabled={!formContractOrgId}>
-            <option value="">{formContractOrgId ? '— keiner —' : '— erst Vertrag wählen —'}</option>
-            {contactOptions.map((l) => <option key={l.id} value={l.id}>{leadName[l.id]}</option>)}
-          </select>
+          <PillSelect value={form.contact_id} onChange={__lkv => setForm({ ...form, contact_id: __lkv })} neutral disabled={!formContractOrgId} options={[{ value: '', label: formContractOrgId ? '— keiner —' : '— erst Vertrag wählen —' }, ...contactOptions.map((l) => ({ value: l.id, label: leadName[l.id] }))]} buttonStyle={{ minWidth: 140 }} />
         </Field>
         <button type="submit" disabled={busy || !form.title.trim()} style={{ ...primaryBtn, gridColumn: '1 / -1', justifySelf: 'end', opacity: busy || !form.title.trim() ? 0.6 : 1 }}>
           {busy ? <Loader2 size={14} className="spin" /> : <Plus size={14} />} Anlegen

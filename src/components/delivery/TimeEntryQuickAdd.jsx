@@ -239,10 +239,7 @@ export default function TimeEntryQuickAdd({
         </Field>
 
         <Field label="Task (optional)">
-          <select value={taskId} onChange={(e) => setTaskId(e.target.value)} style={inputStyle} disabled={!projectId}>
-            <option value="">— ohne Task —</option>
-            {tasks.map(t => <option key={t.id} value={t.id}>{t.title}</option>)}
-          </select>
+          <PillSelect value={taskId} onChange={__lkv => setTaskId(__lkv)} neutral disabled={!projectId} options={[{ value: '', label: `— ohne Task —` }, ...tasks.map((t) => ({ value: t.id, label: t.title }))]} buttonStyle={{ minWidth: 140 }} />
         </Field>
 
         <Field label="Tätigkeit (optional)">

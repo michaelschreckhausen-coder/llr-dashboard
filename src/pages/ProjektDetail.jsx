@@ -1,3 +1,4 @@
+import PillSelect from '../components/PillSelect'
 import React, { useEffect, useState, useCallback } from 'react'
 import { BarChart3, BookOpen, ClipboardList, FileText, Paperclip } from 'lucide-react'
 import { useParams, useNavigate, Link } from 'react-router-dom'
@@ -154,21 +155,7 @@ export default function ProjektDetail({ session }) {
         {/* Status-Dropdown */}
         <div style={{display:'flex', flexDirection:'column', gap:6, alignItems:'flex-end'}}>
           <label style={{fontSize:10, fontWeight:700, color:'var(--text-muted)', textTransform:'uppercase', letterSpacing:0.5}}>Status</label>
-          <select
-            disabled={statusSaving}
-            value={project.status}
-            onChange={e => updateStatus(e.target.value)}
-            style={{
-              padding:'8px 14px', borderRadius:8, fontSize:13, fontWeight:700,
-              border:`1.5px solid ${statusCfg.color}44`,
-              background:statusCfg.bg, color:statusCfg.color,
-              cursor: statusSaving ? 'wait' : 'pointer'
-            }}
-          >
-            {Object.entries(STATUS_CFG).map(([key, cfg]) => (
-              <option key={key} value={key}>{cfg.label}</option>
-            ))}
-          </select>
+          <PillSelect value={project.status} onChange={__lkv => updateStatus(__lkv)} neutral disabled={statusSaving} options={[...Object.entries(STATUS_CFG).map(([key, cfg]) => ({ value: key, label: cfg.label }))]} buttonStyle={{ minWidth: 140 }} />
         </div>
       </div>
 
