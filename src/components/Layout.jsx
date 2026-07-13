@@ -118,9 +118,10 @@ function getNav(t) {
   { to: '/linkedin-suche',  icon: IcSearch,   label: 'Suche' },
   { to: '/linkedin-inbox',  icon: IcInbox,    label: 'LinkedIn Kontakte' },
   { to: '/vernetzungen',    icon: IcHeart,    label: 'Vernetzung' },
-  // Ein Eintrag „Automatisierung"; Ziel flag-bedingt: V2 (la_*) auf Staging/Flag-an,
-  // sonst Alt-Seite (Prod bis P6-Cutover). Alt-Route /automatisierung + automation_* bleiben.
-  { to: (isFlagEnabled('linkedinAutomationV2') || import.meta.env.VITE_APP_ENV === 'staging') ? '/automatisierung-neu' : '/automatisierung', icon: IcZap, label: 'Automatisierung' },
+  // Ein Eintrag „Automatisierung": V2 (la_*) ist Default für alle (3c-Flip).
+  // Not-Aus per User: localStorage lk_features.linkedinAutomationV2Disabled=true → Alt-Seite.
+  // Alt-Route /automatisierung + automation_* bleiben per Deep-Link erreichbar.
+  { to: (!isFlagEnabled('linkedinAutomationV2Disabled')) ? '/automatisierung-neu' : '/automatisierung', icon: IcZap, label: 'Automatisierung' },
   { to: '/messages',        icon: IcMail,     label: 'Nachrichten' },
   { to: '/ssi',             icon: IcTarget,   label: t('nav.ssiTracker') },
   { to: '/profil-checker',  icon: IcLinkedIn, label: 'Profil-Checker' },
