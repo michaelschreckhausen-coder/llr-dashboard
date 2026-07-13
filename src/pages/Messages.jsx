@@ -516,7 +516,7 @@ export default function Messages({ session }) {
       </div>
 
       {/* Generator-Card */}
-      <section style={{ background:'var(--surface)', border:'1px solid var(--border)', borderRadius:14, padding:'20px 22px', marginBottom:18 }}>
+      <section style={{ background:'var(--surface)', border:'1px solid var(--border)', borderRadius:16, boxShadow:'var(--shadow-card)', padding:'20px 22px', marginBottom:18 }}>
         <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:16, flexWrap:'wrap', gap:10 }}>
           <h3 style={{ fontSize:15, fontWeight:700, margin:0, display:'flex', alignItems:'center', gap:8 }}>
             <TaskSourceIcon name={cfg.iconName} size={18} /> {cfg.label}

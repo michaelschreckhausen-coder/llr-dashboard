@@ -133,7 +133,7 @@ export default function ProfilChecker({ session }) {
       />
 
       {loading && (
-        <div style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 14, padding: '28px', textAlign: 'center', color: 'var(--text-muted)', fontSize: 14, marginBottom: 16 }}>
+        <div style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 16, boxShadow: 'var(--shadow-card)', padding: '28px', textAlign: 'center', color: 'var(--text-muted)', fontSize: 14, marginBottom: 16 }}>
           <Loader2 size={22} className="lk-spin" style={{ color: P }} />
           <div style={{ marginTop: 10 }}>Dein Profil wird geprüft — es öffnet sich kurz ein LinkedIn-Tab und schließt sich wieder.</div>
         </div>
@@ -146,7 +146,7 @@ export default function ProfilChecker({ session }) {
       )}
 
       {!loading && !error && !result && (
-        <div style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 14, padding: '36px 28px', textAlign: 'center', marginBottom: 16 }}>
+        <div style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 16, boxShadow: 'var(--shadow-card)', padding: '36px 28px', textAlign: 'center', marginBottom: 16 }}>
           <div style={{ fontSize: 15, fontWeight: 700, color: 'var(--text-strong)', marginBottom: 6 }}>Bereit, dein Profil zu prüfen?</div>
           <div style={{ fontSize: 13, color: 'var(--text-muted)', maxWidth: '52ch', margin: '0 auto 18px', lineHeight: 1.6 }}>
             Klick auf „Profil prüfen". Die Leadesk-Extension öffnet kurz dein eigenes LinkedIn-Profil, liest die wichtigsten Bereiche aus und bewertet die Vollständigkeit.

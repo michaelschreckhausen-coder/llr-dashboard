@@ -153,11 +153,11 @@ function KpiCard({ label, value, sub, color = PRIMARY, Icon, onClick, active }) 
       style={{
         background: COLORS.surface,
         border: `1px solid ${active ? color : COLORS.border}`,
-        borderRadius: 14,
+        borderRadius: 16,
         padding: '14px 16px',
         textAlign: 'left',
         cursor: onClick ? 'pointer' : 'default',
-        boxShadow: active ? `0 0 0 3px ${color}1a` : 'none',
+        boxShadow: active ? `0 0 0 3px ${color}1a` : 'var(--shadow-card)',
         font: 'inherit',
         display: 'flex',
         flexDirection: 'column',

@@ -365,7 +365,7 @@ export default function TeamSettings({ session }) {
       )}
 
       {/* Team-Switcher Header */}
-      <div style={{ display:'flex', alignItems:'center', gap:12, marginBottom:20, padding:'14px 18px', background:'var(--surface)', border:'1px solid var(--border)', borderRadius:14 }}>
+      <div style={{ display:'flex', alignItems:'center', gap:12, marginBottom:20, padding:'14px 18px', background:'var(--surface)', border:'1px solid var(--border)', borderRadius:16, boxShadow:'var(--shadow-card)' }}>
         <div style={{ flex:1 }}>
           <div style={{ fontSize:11, fontWeight:600, color:'#9CA3AF', textTransform:'uppercase', letterSpacing:'0.06em', marginBottom:4 }}>Aktives Team</div>
           <div style={{ display:'flex', alignItems:'center', gap:10 }}>

@@ -915,9 +915,9 @@ export default function Leads() {
               <button key={k.label} type="button"
                 onClick={() => setQuickFilterAndResetStage(k.qf)}
                 style={{
-                  background: RC.surface, borderRadius:14, padding:'14px 16px',
+                  background: RC.surface, borderRadius:16, padding:'14px 16px',
                   border: `1px solid ${highlight ? k.color : RC.border}`,
-                  boxShadow: highlight ? `0 0 0 3px ${k.color}1a` : 'none',
+                  boxShadow: highlight ? `0 0 0 3px ${k.color}1a` : 'var(--shadow-card)',
                   textAlign:'left', cursor:'pointer', transition:'box-shadow 0.15s, border-color 0.15s',
                   font:'inherit', display:'flex', flexDirection:'column', gap:4,
                 }}

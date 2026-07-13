@@ -77,7 +77,7 @@ function SsiTrend({ entries }) {
   const areaPath = `M${x(0).toFixed(1)},${(H - padB).toFixed(1)} L${pts.join(' L')} L${x(data.length - 1).toFixed(1)},${(H - padB).toFixed(1)} Z`
   const grid = [hi, Math.round((hi + lo) / 2), lo]
   return (
-    <div style={{ background:'var(--surface)', border:'1px solid var(--border)', borderRadius:14, padding:18, marginBottom:16 }}>
+    <div style={{ background:'var(--surface)', border:'1px solid var(--border)', borderRadius:16, boxShadow:'var(--shadow-card)', padding:18, marginBottom:16 }}>
       <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:14 }}>
         <h3 style={{ fontSize:14, fontWeight:700, color:'rgb(20,20,43)', margin:0 }}>SSI-Verlauf</h3>
         <span style={{ fontSize:11, color:'#9CA3AF' }}>letzte {data.length} Messungen · Gesamt-Score</span>
@@ -262,7 +262,7 @@ export default function SSI({ session }) {
           <div className="col-2" style={{ gap:16, marginBottom:16 }}>
 
             {/* Aktueller SSI — cleaner Donut + Score + Trend + Ranking */}
-            <div style={{ background:'var(--surface)', border:'1px solid var(--border)', borderRadius:14, padding:18 }}>
+            <div style={{ background:'var(--surface)', border:'1px solid var(--border)', borderRadius:16, boxShadow:'var(--shadow-card)', padding:18 }}>
               <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:14 }}>
                 <h3 style={{ fontSize:14, fontWeight:700, color:'rgb(20,20,43)', margin:0 }}>Aktueller SSI</h3>
                 <span style={{ fontSize:11, color:'#9CA3AF' }}>{new Date(latest.recorded_at).toLocaleDateString('de-DE',{day:'2-digit',month:'short',year:'numeric'})}</span>
@@ -294,7 +294,7 @@ export default function SSI({ session }) {
             </div>
 
             {/* Teilscores — Reports-BarRows */}
-            <div style={{ background:'var(--surface)', border:'1px solid var(--border)', borderRadius:14, padding:18 }}>
+            <div style={{ background:'var(--surface)', border:'1px solid var(--border)', borderRadius:16, boxShadow:'var(--shadow-card)', padding:18 }}>
               <h3 style={{ fontSize:14, fontWeight:700, color:'rgb(20,20,43)', margin:'0 0 14px' }}>Teilscores</h3>
               {SUBSCORES.map(s => {
                 const v = Number(latest[s.key] || 0)
