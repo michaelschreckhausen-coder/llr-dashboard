@@ -21,7 +21,7 @@ export default function PillSelect({ icon: Icon, value, options = [], onChange =
 
   return (
     <div ref={ref} style={{ position:'relative', display:'inline-block' }}>
-      <button type="button" onClick={() => setOpen(o => !o)} title={title}
+      <button type="button" className="lk-dd-trigger" onClick={() => setOpen(o => !o)} title={title}
         style={{
           display:'inline-flex', alignItems:'center', gap:6, padding:'9px 10px', borderRadius:9, boxSizing:'border-box',
           border:'1.5px solid ' + (active ? P : 'var(--border)'),
@@ -37,7 +37,7 @@ export default function PillSelect({ icon: Icon, value, options = [], onChange =
         <div style={{ position:'absolute', zIndex:60, top:'calc(100% + 4px)', left:0, minWidth:200, maxHeight:280, overflowY:'auto',
           background:'#fff', border:'1px solid var(--border)', borderRadius:10, boxShadow:'0 12px 32px rgba(15,23,42,0.16)', padding:6 }}>
           {options.map(o => (
-            <button key={String(o.value)} onClick={() => { onChange(o.value); setOpen(false) }}
+            <button key={String(o.value)} className="lk-dd-opt" onClick={() => { onChange(o.value); setOpen(false) }}
               style={{ display:'flex', alignItems:'center', gap:8, width:'100%', textAlign:'left', padding:'7px 9px', borderRadius:7,
                 border:'none', background: o.value === value ? 'rgba(10,111,176,0.06)' : 'transparent', cursor:'pointer', fontSize:13, color:'var(--text-primary)', fontFamily:'inherit' }}>
               <span style={{ flex:1, overflow:'hidden', textOverflow:'ellipsis' }}>{o.label}</span>
