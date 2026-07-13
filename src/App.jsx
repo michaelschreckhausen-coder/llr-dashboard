@@ -333,7 +333,8 @@ export default function App() {
             <Route path="/linkedin-inbox" element={<ModuleGuard module="linkedin"><LinkedInInbox session={session} /></ModuleGuard>} />
             <Route path="/linkedin-suche" element={<ModuleGuard module="linkedin"><LinkedInSuche session={session} /></ModuleGuard>} />
             <Route path="/linkedin-analytics" element={<ModuleGuard module="linkedin"><LinkedInAnalytics session={session} /></ModuleGuard>} />
-            {(isFlagEnabled('linkedinAutomationV2') || import.meta.env.VITE_APP_ENV === 'staging') && (
+            {/* 3c-Flip: V2 (la_*) ist Default für alle. Not-Aus per User: localStorage lk_features.linkedinAutomationV2Disabled=true */}
+            {(!isFlagEnabled('linkedinAutomationV2Disabled')) && (
               <Route path="/automatisierung-neu" element={<ModuleGuard module="linkedin"><LinkedInAutomationNeu session={session} /></ModuleGuard>} />
             )}
             <Route path="/pipeline" element={<Navigate to="/deals?view=pipeline" replace />} />

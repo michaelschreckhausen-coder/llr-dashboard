@@ -83,6 +83,23 @@ Deno.serve(async () => {
 
     // 3d) Dispatch nach action — P1: invite; P2: message/follow_up (visit/react/comment/follow/inmail → P4)
     if (job.action === "invite") {
+      // RELATION-GATE: Ziel bereits 1st-degree ODER offener Invite → NICHT senden.
+      // Unipile liefert für already-connected sonst ein "UserInvitationSent" OHNE echten Invite
+      // (No-op) → würde fälschlich als done/Invited zählen. Live-Check gegen die echte Relation.
+      const rel = await getProfile(accountId, providerId);
+      if (rel.ok) {
+        const nd = (rel.data as any)?.network_distance;
+        const isRel = (rel.data as any)?.is_relationship === true;
+        const pend = (rel.data as any)?.pending_invitation ?? (rel.data as any)?.invitation ?? null;
+        if (nd === "FIRST_DEGREE" || isRel || pend) {
+          const why = nd === "FIRST_DEGREE" || isRel ? "already_connected" : "invite_pending";
+          await patch(job.id, { state: "skipped", error: why, response: { network_distance: nd ?? null } });
+          const { data: mat } = await db.rpc("la_materialize_next", { p_enrollment_id: enr.id });
+          out.push({ id: job.id, skipped: why, next: mat });
+          continue;
+        }
+      }
+      // rel !ok → Relation unklar: wir senden trotzdem, sendInvitation liefert dann den echten Fehler.
       const note = (job.request as any)?.note ?? undefined;
       const inv = await sendInvitation(accountId, providerId, note);
       if (inv.ok) {

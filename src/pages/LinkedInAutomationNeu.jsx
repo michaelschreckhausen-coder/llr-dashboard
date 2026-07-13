@@ -419,7 +419,7 @@ export default function LinkedInAutomationNeu({ session }) {
               </div>
               <div style={{ display: 'flex', gap: 8, alignItems: 'flex-start', fontSize: 13, color: '#B45309', background: '#FFFBEB', border: '1px solid #FDE68A', borderRadius: 8, padding: '10px 12px', marginBottom: 16 }}>
                 <AlertTriangle size={16} style={{ flexShrink: 0, marginTop: 1 }} />
-                <span>Beim Aktivieren gehen <b>{dueNow} reale {actionWord}</b> von <b>{acctLabel}</b> sofort raus{pendingTotal > dueNow ? ` (${pendingTotal} insgesamt geplant, gestaffelt)` : ''}. Das sind echte Anfragen an echte Personen. Fortfahren?</span>
+                <span>Beim Aktivieren gehen <b>bis zu {dueNow} reale {actionWord}</b> von <b>{acctLabel}</b> sofort raus{pendingTotal > dueNow ? ` (${pendingTotal} insgesamt geplant, gestaffelt)` : ''}. Bereits vernetzte Kontakte werden übersprungen. Das sind echte Anfragen an echte Personen. Fortfahren?</span>
               </div>
               <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
                 <button style={ghostBtn} onClick={() => setActivateModal(false)}>Abbrechen</button>
