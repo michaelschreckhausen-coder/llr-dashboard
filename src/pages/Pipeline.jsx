@@ -1,3 +1,4 @@
+import PillSelect from '../components/PillSelect'
 import { useResponsive } from '../hooks/useResponsive'
 import { useTeam } from '../context/TeamContext'
 import React, { useState, useEffect, useCallback } from 'react'
@@ -912,20 +913,19 @@ export default function Pipeline({ session }) {
             <div style={{ padding:'16px 24px', display:'flex', flexDirection:'column', gap:10 }}>
               <div>
                 <label style={{ fontSize:11, fontWeight:700, color:'var(--text-muted)', textTransform:'uppercase', letterSpacing:'0.06em', display:'block', marginBottom:4 }}>Existierenden Lead suchen</label>
-                <select onChange={async e => {
-                  if (!e.target.value) return
-                  const leadId = e.target.value
-                  await supabase.from('leads').update({ deal_stage: quickAddStage }).eq('id', leadId)
-                  setLeads(prev => prev.map(l => l.id === leadId ? {...l, deal_stage: quickAddStage} : l))
-                  setQuickAddStage(null)
-                }} style={{ width:'100%', padding:'9px 12px', borderRadius:10, border:'1.5px solid #E2E8F0', fontSize:13, fontFamily:'inherit', outline:'none' }}>
-                  <option value=''>Lead auswählen…</option>
-                  {leads.filter(l => !l.deal_stage || l.deal_stage === 'kein_deal' || l.deal_stage !== quickAddStage).map(l => (
-                    <option key={l.id} value={l.id}>
-                      {((l.first_name||'')+' '+(l.last_name||'')).trim() || l.name || 'Unbekannt'}{l.company ? ' · '+l.company : ''}
-                    </option>
-                  ))}
-                </select>
+                <PillSelect value="" neutral placeholder="Lead auswählen…"
+                  onChange={async __lkv => {
+                    if (!__lkv) return
+                    const leadId = __lkv
+                    await supabase.from('leads').update({ deal_stage: quickAddStage }).eq('id', leadId)
+                    setLeads(prev => prev.map(l => l.id === leadId ? {...l, deal_stage: quickAddStage} : l))
+                    setQuickAddStage(null)
+                  }}
+                  options={[
+                    { value:'', label:'Lead auswählen…' },
+                    ...leads.filter(l => !l.deal_stage || l.deal_stage === 'kein_deal' || l.deal_stage !== quickAddStage).map(l => ({ value:l.id, label:`${((l.first_name||'')+' '+(l.last_name||'')).trim() || l.name || 'Unbekannt'}${l.company ? ' · '+l.company : ''}` })),
+                  ]}
+                  buttonStyle={{ width:'100%' }} />
               </div>
               <div style={{ textAlign:'center', color:'var(--text-muted)', fontSize:12 }}>oder</div>
               <button className="lk-btn lk-btn-ghost" onClick={() => { setQuickAddStage(null); navigate('/leads') }}

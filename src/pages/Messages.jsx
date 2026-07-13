@@ -20,6 +20,7 @@
 //   #3  team_members-Subquery in RLS braucht GRANT (in Phase-0-Migration enthalten)
 //   #14 useLeads/Lead-Autocomplete mit explizitem team_id-Filter (siehe fetchLeads)
 
+import PillSelect from '../components/PillSelect'
 import React, { useState, useEffect, useCallback, useRef } from 'react'
 import { buildAudiencePrompt, buildStrike2AudiencePrompt } from '../lib/audiencePrompt'
 import TaskSourceIcon from '../components/TaskSourceIcon'
@@ -580,19 +581,13 @@ export default function Messages({ session }) {
           : audiences.length === 0 ? <>Keine Zielgruppen für diese BV. Anlegen in <a href="/zielgruppen" style={{ color:P }}>Zielgruppen</a>.</>
           : 'Reichert den Prompt mit Pain-Points / Ansprache der Zielgruppe an.'
         }>
-          <select value={selectedAudienceId} onChange={e => setSelectedAudienceId(e.target.value)} style={{ ...inp, cursor:'pointer' }} disabled={!audiences.length}>
-            <option value="">Keine spezifische Zielgruppe</option>
-            {audiences.filter(a => a.kind !== 'strike2').map(a => (
-              <option key={a.id} value={a.id}>{a.name}{a.is_default ? ' (Default)' : ''}</option>
-            ))}
-            {audiences.some(a => a.kind === 'strike2') && (
-              <optgroup label="Strike2 Zielgruppen">
-                {audiences.filter(a => a.kind === 'strike2').map(a => (
-                  <option key={a.id} value={a.id}>{a.name}</option>
-                ))}
-              </optgroup>
-            )}
-          </select>
+          <PillSelect value={selectedAudienceId} onChange={setSelectedAudienceId} neutral disabled={!audiences.length}
+            options={[
+              { value:'', label:'Keine spezifische Zielgruppe' },
+              ...audiences.filter(a => a.kind !== 'strike2').map(a => ({ value:a.id, label:`${a.name}${a.is_default ? ' (Default)' : ''}` })),
+              ...audiences.filter(a => a.kind === 'strike2').map(a => ({ value:a.id, label:`Strike2 · ${a.name}` })),
+            ]}
+            buttonStyle={{ minWidth:220, cursor:'pointer' }} />
         </Field>
 
         {/* Kontext */}

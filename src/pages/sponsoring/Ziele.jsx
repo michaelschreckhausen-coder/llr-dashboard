@@ -210,14 +210,13 @@ export default function Ziele() {
                       <PillSelect value={t.settlement} onChange={v => updateField(t.id, 'settlement', v)} neutral options={[...SETTLEMENT.map((s) => ({ value: s, label: SETTLEMENT_LABEL[s] }))]} buttonStyle={{ minWidth: 140 }} />
                     </td>
                     <td style={td}>
-                      <select value={t.league_id || ''} onChange={(e) => updateField(t.id, 'league_id', e.target.value || null)}
-                              style={{ ...input, padding: '4px 8px' }}>
-                        <option value="">— Alle / keine —</option>
-                        {leagues.map((l) => <option key={l.id} value={l.id}>{l.name}</option>)}
-                        {t.league_id && !leagueName[t.league_id] && (
-                          <option value={t.league_id}>{t.league_id}</option>
-                        )}
-                      </select>
+                      <PillSelect value={t.league_id || ''} onChange={__lkv => updateField(t.id, 'league_id', __lkv || null)} neutral
+                        options={[
+                          { value:'', label:'— Alle / keine —' },
+                          ...leagues.map((l) => ({ value:l.id, label:l.name })),
+                          ...(t.league_id && !leagueName[t.league_id] ? [{ value:t.league_id, label:t.league_id }] : []),
+                        ]}
+                        buttonStyle={{ minWidth:140, padding:'4px 8px' }} />
                     </td>
                     <td style={{ ...td, textAlign: 'right' }}>
                       {isEdit ? (
