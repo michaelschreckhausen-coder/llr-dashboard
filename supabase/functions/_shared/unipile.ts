@@ -370,6 +370,45 @@ export function identifierFromUrl(url: string | null | undefined): string | null
 }
 
 // ---------------------------------------------------------------------
+// Utility: Post-URL / URN / nackte id -> LinkedIn-Post-URN.
+// Erkennt ugcPost / activity / share (native ugcPosts vs. Unipile-activity).
+// ---------------------------------------------------------------------
+export function postUrnFromUrl(input: string | null | undefined): string | null {
+  if (!input) return null;
+  const s = String(input).trim();
+  const urn = s.match(/urn:li:(activity|ugcPost|share):(\d+)/i);
+  if (urn) return `urn:li:${urn[1]}:${urn[2]}`;
+  const slug = s.match(/(ugcPost|activity|share)[-:](\d{6,})/i); // …ugcPost-<id>…
+  if (slug) return `urn:li:${slug[1]}:${slug[2]}`;
+  const num = s.match(/(\d{15,})/); // nackte numerische id (Default activity)
+  if (num) return `urn:li:activity:${num[1]}`;
+  return null;
+}
+
+// Robust: baut die URN aus der URL und prüft via getPost gegen; bei 404 die
+// jeweils andere Form (activity <-> ugcPost). Gibt die real auflösende social_id
+// zurück oder null (dann Job-Error "kein Post-Identifier ableitbar").
+export async function resolvePostSocialId(
+  conn: UnipileConn,
+  input: string | null | undefined,
+): Promise<string | null> {
+  const primary = postUrnFromUrl(input);
+  if (!primary) return null;
+  const candidates = [primary];
+  const m = primary.match(/urn:li:(activity|ugcPost):(\d+)/);
+  if (m) candidates.push(`urn:li:${m[1] === "activity" ? "ugcPost" : "activity"}:${m[2]}`);
+  for (const c of candidates) {
+    try {
+      await getPost(conn, c);
+      return c;
+    } catch (e) {
+      if (!(e instanceof UnipileError) || e.status !== 404) throw e;
+    }
+  }
+  return null;
+}
+
+// ---------------------------------------------------------------------
 // Utility: einfacher Tages-Rate-Guard je Aktionstyp und User.
 // Zählt erledigte Jobs "heute" in der übergebenen Tabelle/Spalte.
 // ---------------------------------------------------------------------

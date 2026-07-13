@@ -11,6 +11,7 @@ import {
   addReaction,
   getAuthenticatedUser,
   getUnipileConnection,
+  resolvePostSocialId,
   sendComment,
   serviceClient,
   UnipileError,
@@ -23,19 +24,6 @@ const MAX_COMMENTS_PER_DAY = 40;
 const MAX_REACTIONS_PER_DAY = 80;
 
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
-
-// post_url -> activity-URN (best effort). Akzeptiert bereits-URNs unverändert.
-function toActivityUrn(socialId: string | null, postUrl: string | null): string | null {
-  const raw = (socialId && socialId.trim()) || null;
-  if (raw) return raw.startsWith("urn:") ? raw : `urn:li:activity:${raw}`;
-  if (postUrl) {
-    const m = postUrl.match(/urn:li:(?:activity|ugcPost|share):\d+/);
-    if (m) return m[0];
-    const d = postUrl.match(/(?:activity[:-]|update\/)(\d{6,})/);
-    if (d) return `urn:li:activity:${d[1]}`;
-  }
-  return null;
-}
 
 // Tagesverbrauch PRO kind (comment|reaction) für einen User.
 async function dailyKindCount(sb: any, userId: string, kind: string): Promise<number> {
@@ -110,11 +98,20 @@ Deno.serve(async (req) => {
         continue;
       }
 
-      // URN auflösen (post_social_id bevorzugt, sonst best-effort aus post_url).
-      const socialId = toActivityUrn(job.post_social_id ?? null, job.post_url ?? null);
+      // Post-Identifier robust auflösen: URN aus post_social_id/post_url ableiten und
+      // via getPost gegenprüfen (activity <-> ugcPost). Liefert die real auflösende social_id.
+      const input = job.post_social_id ?? job.post_url ?? null;
+      let socialId: string | null = null;
+      try {
+        socialId = await resolvePostSocialId(conn, input);
+      } catch (e) {
+        // Netzwerk/Nicht-404-Fehler beim Gegencheck -> als Job-Fehler (retry-fähig durch cron).
+        console.warn(`[unipile-engagement] resolvePostSocialId: ${e}`);
+        socialId = null;
+      }
       if (!socialId) {
         await sb.from("linkedin_engagement_jobs")
-          .update({ status: "error", error: "Kein Post-Identifier ableitbar (post_social_id oder gültige post_url nötig)" })
+          .update({ status: "error", error: "kein Post-Identifier ableitbar" })
           .eq("id", job.id);
         failed++;
         continue;

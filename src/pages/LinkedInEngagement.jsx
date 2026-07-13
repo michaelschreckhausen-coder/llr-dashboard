@@ -60,6 +60,7 @@ export default function LinkedInEngagement() {
   const [uid, setUid]                 = useState(null)
   const [jobs, setJobs]               = useState([])
   const [savedComments, setSaved]     = useState([])
+  const [ownPosts, setOwnPosts]       = useState([])
   const [loading, setLoading]         = useState(true)
   const [running, setRunning]         = useState(false)
   const [showDialog, setShowDialog]   = useState(false)
@@ -95,8 +96,23 @@ export default function LinkedInEngagement() {
     setSaved(data || [])
   }, [uid])
 
+  // Eigene veröffentlichte Posts (mit social_id) — team-scoped (Fallstrick #14).
+  const loadOwnPosts = useCallback(async () => {
+    if (!activeTeamId) { setOwnPosts([]); return }
+    const { data, error } = await supabase
+      .from('content_posts')
+      .select('id, title, content, linkedin_social_id, published_at')
+      .eq('team_id', activeTeamId)
+      .not('linkedin_social_id', 'is', null)
+      .order('published_at', { ascending:false })
+      .limit(50)
+    if (error) { console.warn('[engagement] own posts:', error.message); setOwnPosts([]); return }
+    setOwnPosts(data || [])
+  }, [activeTeamId])
+
   useEffect(() => { load() }, [load])
   useEffect(() => { loadSaved() }, [loadSaved])
+  useEffect(() => { loadOwnPosts() }, [loadOwnPosts])
 
   const setField = (k, v) => setForm(f => ({ ...f, [k]: v }))
 
@@ -274,6 +290,19 @@ export default function LinkedInEngagement() {
               <div>
                 <label style={labelStyle}>Post (URL oder urn:li:activity:…)</label>
                 <input style={inputStyle} value={form.post} onChange={e => setField('post', e.target.value)} placeholder="https://www.linkedin.com/feed/update/urn:li:activity:…" />
+                {ownPosts.length > 0 && (
+                  <div style={{ marginTop:8 }}>
+                    <label style={{ ...labelStyle, marginBottom:4 }}>… oder eigenen veröffentlichten Post wählen</label>
+                    <select style={inputStyle} value="" onChange={e => { if (e.target.value) setField('post', e.target.value) }}>
+                      <option value="">— eigener Post —</option>
+                      {ownPosts.map(p => (
+                        <option key={p.id} value={p.linkedin_social_id}>
+                          {(p.title?.trim() || (p.content || '').slice(0, 60) || 'Beitrag')}{p.published_at ? ` · ${new Date(p.published_at).toLocaleDateString('de-DE')}` : ''}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                )}
               </div>
 
               {form.kind === 'comment' ? (
