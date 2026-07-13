@@ -1757,9 +1757,6 @@ export default function BrandVoice({ session, brandType = 'personal' }) {
               <button onClick={()=>setShowLiModal(false)} style={{ background:'none', border:'none', cursor:'pointer', color:'var(--text-muted)', padding:0, lineHeight:1 }}><X size={20} strokeWidth={1.75}/></button>
             </div>
 
-            <Lb l="LinkedIn-Profil-URL (optional)" h="Die URL deines persönlichen Profils. Hilft später beim Auto-Publishing."/>
-            <In v={edit.linkedin_url || ''} fn={v=>u('linkedin_url', v)} ph="https://www.linkedin.com/in/dein-profil" />
-
             <div style={{ marginTop:14, padding:'12px 14px', background: edit.linkedin_member_id ? '#F0FDF4' : '#F8FAFC', border:'1.5px solid '+(edit.linkedin_member_id?'#BBF7D0':'var(--border)'), borderRadius:10 }}>
               {edit.linkedin_member_id ? (
                 <div style={{ display:'flex', alignItems:'center', gap:12, justifyContent:'space-between', flexWrap:'wrap' }}>
