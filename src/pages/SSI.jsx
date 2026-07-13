@@ -58,7 +58,7 @@ function SubScoreCard({ label, value, max=25, color, icon }) {
 
 // ─── Reports-Stil Verlaufschart (Linien-Graph, cleane Karte) ─────────────────
 function SsiTrend({ entries }) {
-  const primary = 'var(--wl-primary, rgb(49,90,231))'
+  const primary = 'var(--wl-primary, #0A6FB0)'
   // entries: neuste zuerst → chronologisch, letzte 24
   const data = entries.slice(0, 24).reverse().map(e => ({
     score: Math.round(e.total_score),
@@ -77,7 +77,7 @@ function SsiTrend({ entries }) {
   const areaPath = `M${x(0).toFixed(1)},${(H - padB).toFixed(1)} L${pts.join(' L')} L${x(data.length - 1).toFixed(1)},${(H - padB).toFixed(1)} Z`
   const grid = [hi, Math.round((hi + lo) / 2), lo]
   return (
-    <div style={{ background:'var(--surface)', border:'1px solid var(--border)', borderRadius:14, padding:18, marginBottom:16 }}>
+    <div style={{ background:'var(--surface)', border:'1px solid var(--border)', borderRadius:16, boxShadow:'var(--shadow-card)', padding:18, marginBottom:16 }}>
       <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:14 }}>
         <h3 style={{ fontSize:14, fontWeight:700, color:'rgb(20,20,43)', margin:0 }}>SSI-Verlauf</h3>
         <span style={{ fontSize:11, color:'#9CA3AF' }}>letzte {data.length} Messungen · Gesamt-Score</span>
@@ -108,10 +108,10 @@ function SsiTrend({ entries }) {
 }
 
 const SUBSCORES = [
-  { key:'build_brand',         label:'Professionelle Marke', color:'#315AE7', icon:'B' },
+  { key:'build_brand',         label:'Professionelle Marke', color:'#0A6FB0', icon:'B' },
   { key:'find_people',         label:'Personen finden',      color:'#10B981', icon:'P' },
   { key:'engage_insights',     label:'Durch Insights',       color:'#F59E0B', icon:'I' },
-  { key:'build_relationships', label:'Beziehungen aufbauen', color:'#8B5CF6', icon:'R' },
+  { key:'build_relationships', label:'Beziehungen aufbauen', color:'#0A6FB0', icon:'R' },
 ]
 
 export default function SSI({ session }) {
@@ -184,7 +184,7 @@ export default function SSI({ session }) {
       <div style={{ marginBottom:22, display:'flex', alignItems:'flex-end', justifyContent:'space-between', gap:20, flexWrap:'wrap' }}>
 
         <div style={{ flex:'1 1 auto', minWidth:280 }}>
-          <div style={{ fontSize:20, color:'#30A0D0', fontFamily:'"Caveat", cursive', fontWeight:600, marginBottom:6 }}>LinkedIn · SSI</div>
+          <div className="lk-eyebrow" style={{ fontSize:12, fontWeight:700, letterSpacing:'1.6px', textTransform:'uppercase', fontFamily:'Inter, sans-serif', color:'var(--primary, #003060)', marginBottom:6 }}>LinkedIn · SSI</div>
           <h1 style={{ fontSize:26, fontWeight:700, margin:0, letterSpacing:'-0.3px', lineHeight:1.2, color:'var(--text-primary, rgb(20,20,43))' }}>Dein Social Selling Index.</h1>
           <p style={{ fontSize:13, color:'var(--text-muted)', margin:'8px 0 0', lineHeight:1.6, maxWidth:600 }}>
             Dein LinkedIn-SSI im Blick — automatisch über die Extension ausgelesen oder manuell erfasst.
@@ -194,11 +194,11 @@ export default function SSI({ session }) {
         <div style={{ display:'flex', gap:10, alignItems:'center', flexWrap:'wrap' }}>
           <a href={EXTENSION_WEBSTORE_URL} target="_blank" rel="noopener noreferrer"
             title="Der SSI wird automatisch über die Leadesk Chrome-Extension ausgelesen"
-            style={{ display:'flex', alignItems:'center', gap:7, padding:'10px 18px', borderRadius:12, border:'1.5px solid rgb(49,90,231)', background:'var(--surface)', color:'var(--wl-primary, rgb(49,90,231))', fontSize:13, fontWeight:700, cursor:'pointer', textDecoration:'none' }}>
+            style={{ display:'flex', alignItems:'center', gap:7, padding:'10px 18px', borderRadius:12, border:'1.5px solid #0A6FB0', background:'var(--surface)', color:'var(--wl-primary, #0A6FB0)', fontSize:13, fontWeight:700, cursor:'pointer', textDecoration:'none' }}>
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><path d="M12 8v8M8 12h8"/></svg>
             SSI per Extension auslesen
           </a>
-          <button onClick={() => setShowForm(f=>!f)} style={{ padding:'10px 20px', borderRadius:12, border:'none', background:'linear-gradient(135deg, rgb(49,90,231), rgb(100,140,240))', color:'white', fontSize:13, fontWeight:700, cursor:'pointer', boxShadow:'0 4px 14px rgba(49,90,231,0.3)' }}>
+          <button className="lk-btn lk-btn-primary" onClick={() => setShowForm(f=>!f)} >
             {showForm ? 'Abbrechen' : '+ Eintragen'}
           </button>
         </div>
@@ -220,8 +220,8 @@ export default function SSI({ session }) {
                 <input type="datetime-local" value={form.recorded_at} onChange={e=>setForm(f=>({...f,recorded_at:e.target.value}))} style={inp}/>
               </div>
               <div>
-                <label style={{ display:'block', fontSize:11, fontWeight:700, color:'var(--wl-primary, rgb(49,90,231))', textTransform:'uppercase', letterSpacing:'0.07em', marginBottom:5 }}>Gesamt-Score *</label>
-                <input type="number" value={form.total_score} onChange={e=>setForm(f=>({...f,total_score:e.target.value}))} style={{...inp, fontWeight:800, fontSize:20, color:'var(--wl-primary, rgb(49,90,231))'}} placeholder="z.B. 72" min="0" max="100" required/>
+                <label style={{ display:'block', fontSize:11, fontWeight:700, color:'var(--wl-primary, #0A6FB0)', textTransform:'uppercase', letterSpacing:'0.07em', marginBottom:5 }}>Gesamt-Score *</label>
+                <input type="number" value={form.total_score} onChange={e=>setForm(f=>({...f,total_score:e.target.value}))} style={{...inp, fontWeight:800, fontSize:20, color:'var(--wl-primary, #0A6FB0)'}} placeholder="z.B. 72" min="0" max="100" required/>
               </div>
             </div>
             <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:12, marginBottom:14 }}>
@@ -241,8 +241,8 @@ export default function SSI({ session }) {
               <textarea value={form.notes} onChange={e=>setForm(f=>({...f,notes:e.target.value}))} style={{...inp,minHeight:60,resize:'vertical'}} placeholder="Was hast du diese Woche gemacht?"/>
             </div>
             <div style={{ display:'flex', gap:10 }}>
-              <button type="submit" disabled={saving} style={{ padding:'10px 24px', borderRadius:12, border:'none', background:'linear-gradient(135deg,rgb(49,90,231),rgb(100,140,240))', color:'white', fontSize:13, fontWeight:700, cursor:'pointer' }}>{saving?'Speichert...':'Speichern'}</button>
-              <button type="button" onClick={()=>setShowForm(false)} style={{ padding:'10px 18px', borderRadius:12, border:'1px solid var(--border)', background:'var(--surface)', color:'var(--text-muted)', fontSize:13, fontWeight:600, cursor:'pointer' }}>Abbrechen</button>
+              <button className="lk-btn lk-btn-cta" type="submit" disabled={saving} >{saving?'Speichert...':'Speichern'}</button>
+              <button className="lk-btn lk-btn-ghost" type="button" onClick={()=>setShowForm(false)} >Abbrechen</button>
             </div>
           </form>
         </div>
@@ -262,14 +262,14 @@ export default function SSI({ session }) {
           <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:16, marginBottom:16 }}>
 
             {/* Aktueller SSI — cleaner Donut + Score + Trend + Ranking */}
-            <div style={{ background:'var(--surface)', border:'1px solid var(--border)', borderRadius:14, padding:18 }}>
+            <div style={{ background:'var(--surface)', border:'1px solid var(--border)', borderRadius:16, boxShadow:'var(--shadow-card)', padding:18 }}>
               <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:14 }}>
                 <h3 style={{ fontSize:14, fontWeight:700, color:'rgb(20,20,43)', margin:0 }}>Aktueller SSI</h3>
                 <span style={{ fontSize:11, color:'#9CA3AF' }}>{new Date(latest.recorded_at).toLocaleDateString('de-DE',{day:'2-digit',month:'short',year:'numeric'})}</span>
               </div>
               <div style={{ display:'flex', alignItems:'center', gap:22 }}>
                 <div style={{ position:'relative', flexShrink:0, width:120, height:120 }}>
-                  <DonutChart value={score} max={100} size={120} stroke={12} color="var(--wl-primary, rgb(49,90,231))" bg="#F3F4F6"/>
+                  <DonutChart value={score} max={100} size={120} stroke={12} color="var(--wl-primary, #0A6FB0)" bg="#F3F4F6"/>
                   <div style={{ position:'absolute', inset:0, display:'flex', alignItems:'center', justifyContent:'center', flexDirection:'column' }}>
                     <span style={{ fontSize:28, fontWeight:800, color:'rgb(20,20,43)', lineHeight:1 }}>{score}</span>
                     <span style={{ fontSize:10, color:'#9CA3AF' }}>/ 100</span>
@@ -294,7 +294,7 @@ export default function SSI({ session }) {
             </div>
 
             {/* Teilscores — Reports-BarRows */}
-            <div style={{ background:'var(--surface)', border:'1px solid var(--border)', borderRadius:14, padding:18 }}>
+            <div style={{ background:'var(--surface)', border:'1px solid var(--border)', borderRadius:16, boxShadow:'var(--shadow-card)', padding:18 }}>
               <h3 style={{ fontSize:14, fontWeight:700, color:'rgb(20,20,43)', margin:'0 0 14px' }}>Teilscores</h3>
               {SUBSCORES.map(s => {
                 const v = Number(latest[s.key] || 0)
@@ -335,7 +335,7 @@ export default function SSI({ session }) {
                     {entries.map((e,idx)=>(
                       <tr key={e.id} style={{ borderBottom:'1px solid #F9FAFB', background:idx===0?'#F5F7FF':'white' }}>
                         <td style={{ padding:'12px 14px', fontSize:12, color:'var(--text-primary)', fontWeight:600 }}>{new Date(e.recorded_at).toLocaleDateString('de-DE',{day:'2-digit',month:'short',year:'numeric'})}</td>
-                        <td style={{ textAlign:'center', padding:'12px 8px' }}><span style={{ fontSize:16, fontWeight:900, color:'var(--wl-primary, rgb(49,90,231))' }}>{Math.round(e.total_score)}</span></td>
+                        <td style={{ textAlign:'center', padding:'12px 8px' }}><span style={{ fontSize:16, fontWeight:900, color:'var(--wl-primary, #0A6FB0)' }}>{Math.round(e.total_score)}</span></td>
                         {['build_brand','find_people','engage_insights','build_relationships'].map((k,i)=>(
                           <td key={k} style={{ textAlign:'center', padding:'12px 8px', fontSize:13, color:SUBSCORES[i].color, fontWeight:700 }}>{e[k]||'-'}</td>
                         ))}

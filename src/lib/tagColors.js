@@ -11,7 +11,7 @@
 
 // Benannte Palette — Schlüssel werden in der DB gespeichert (lead_tag_registry.color).
 export const TAG_PALETTE = {
-  indigo:  { bg: '#EEF2FF', fg: '#3730A3', border: '#C7D2FE' },
+  indigo:  { bg: '#EAF6FC', fg: '#3730A3', border: '#C7D2FE' },
   emerald: { bg: '#ECFDF5', fg: '#065F46', border: '#A7F3D0' },
   amber:   { bg: '#FEF3C7', fg: '#92400E', border: '#FDE68A' },
   pink:    { bg: '#FCE7F3', fg: '#9D174D', border: '#FBCFE8' },

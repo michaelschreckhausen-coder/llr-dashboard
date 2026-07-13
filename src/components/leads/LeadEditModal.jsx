@@ -16,6 +16,7 @@
 // - Star/Favorit (Quick-Action im Hero)
 // - KI-Insights (werden via Sparkles-Analyse automatisch befüllt)
 
+import PillSelect from '../PillSelect'
 import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { X, User, Building2, TrendingUp, Link2, Info, Check, Keyboard } from 'lucide-react';
 import OrganizationPicker from '../OrganizationPicker';
@@ -27,9 +28,9 @@ const COLORS = {
   text:           '#111827',
   textSecondary:  '#6B7280',
   textTertiary:   '#9CA3AF',
-  primaryBg:      '#315AE7',
+  primaryBg:      '#0A6FB0',
   primaryFg:      '#fff',
-  infoBg:         '#EEF2FF',
+  infoBg:         '#EAF6FC',
   infoBorder:     '#C7D2FE',
   infoText:       '#3730A3',
   bgMuted:        '#F9FAFB',
@@ -478,11 +479,7 @@ export default function LeadEditModal({ lead, isOpen, onClose, onSave }) {
                 value={form.industry || ''} onChange={setField('industry')} placeholder="z.B. SaaS" />
             </Field>
             <Field label="Unternehmensgröße">
-              <select style={selectStyle} value={form.company_size || ''} onChange={setField('company_size')}>
-                {COMPANY_SIZE_OPTIONS.map(opt => (
-                  <option key={opt.value} value={opt.value}>{opt.label}</option>
-                ))}
-              </select>
+              <PillSelect value={form.company_size || ''} onChange={__lkv => (setField('company_size'))({ target: { value: __lkv } })} neutral options={[...COMPANY_SIZE_OPTIONS.map((opt) => ({ value: opt.value, label: opt.label }))]} buttonStyle={{ minWidth: 140 }} />
             </Field>
           </div>
 
@@ -490,9 +487,7 @@ export default function LeadEditModal({ lead, isOpen, onClose, onSave }) {
           <SectionHeader icon={TrendingUp} label="Sales · CRM" />
           <div style={gridStyle}>
             <Field label="Status">
-              <select style={selectStyle} value={form.status || 'Lead'} onChange={setField('status')}>
-                {STATUS_OPTIONS.map(s => <option key={s} value={s}>{s}</option>)}
-              </select>
+              <PillSelect value={form.status || 'Lead'} onChange={__lkv => (setField('status'))({ target: { value: __lkv } })} neutral options={[...STATUS_OPTIONS.map((s) => ({ value: s, label: s }))]} buttonStyle={{ minWidth: 140 }} />
             </Field>
             {/* Score read-only — wird per KI-Analyse (analyze-lead) ermittelt,
                 nicht manuell. Anzeige zur Info, kein Input. */}
@@ -527,11 +522,7 @@ export default function LeadEditModal({ lead, isOpen, onClose, onSave }) {
           <SectionHeader icon={Link2} label="LinkedIn-Status" />
           <div style={gridStyle}>
             <Field label="Vernetzungs-Status">
-              <select style={selectStyle} value={form.li_connection_status || ''} onChange={setField('li_connection_status')}>
-                {CONNECTION_OPTIONS.map(opt => (
-                  <option key={opt.value} value={opt.value}>{opt.label}</option>
-                ))}
-              </select>
+              <PillSelect value={form.li_connection_status || ''} onChange={__lkv => (setField('li_connection_status'))({ target: { value: __lkv } })} neutral options={[...CONNECTION_OPTIONS.map((opt) => ({ value: opt.value, label: opt.label }))]} buttonStyle={{ minWidth: 140 }} />
             </Field>
             <Field label="Favorit">
               <label style={checkboxRowStyle}>
@@ -566,7 +557,7 @@ export default function LeadEditModal({ lead, isOpen, onClose, onSave }) {
             <Keyboard size={13} /> ⌘ + S speichern · Esc abbrechen
           </div>
           <div style={footerBtnsStyle}>
-            <button type="button" style={secondaryBtnStyle} onClick={handleClose}>Abbrechen</button>
+            <button type="button" className="lk-btn lk-btn-ghost" onClick={handleClose}>Abbrechen</button>
             <button type="button"
               style={isDirty && !saving ? primaryBtnStyle : primaryBtnDisabledStyle}
               onClick={handleSave} disabled={!isDirty || saving}>

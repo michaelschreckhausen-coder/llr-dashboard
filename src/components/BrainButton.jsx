@@ -9,7 +9,7 @@ import { useDefaultModel } from './ModelSelector'
 
 export { useDefaultModel }
 
-const P = 'var(--wl-primary, rgb(49,90,231))'
+const P = 'var(--wl-primary, #0A6FB0)'
 
 const MODELS = [
   { group: 'Anthropic', icon: <Bot size={16} strokeWidth={1.75}/>, color: '#D97757', models: [
@@ -100,8 +100,8 @@ export default function BrainButton({ model, onChange, eyebrow = 'Schreibt mit',
           padding: size === 'small' ? '0 12px 0 8px' : '10px 16px 10px 12px',
           height: size === 'small' ? 38 : undefined,
           boxSizing: 'border-box',
-          background: open ? 'rgba(49,90,231,0.06)' : 'var(--surface,#fff)',
-          border: '1px solid ' + (open ? 'rgba(49,90,231,.45)' : 'var(--border,#E5E7EB)'),
+          background: open ? 'rgba(10,111,176,0.06)' : 'var(--surface,#fff)',
+          border: '1px solid ' + (open ? 'rgba(10,111,176,.45)' : 'var(--border,#E5E7EB)'),
           borderRadius: size === 'small' ? 11 : 14,
           cursor: disabled ? 'not-allowed' : 'pointer',
           boxShadow: 'none',
@@ -114,7 +114,7 @@ export default function BrainButton({ model, onChange, eyebrow = 'Schreibt mit',
       >
         <div style={{
           width: size === 'small' ? 24 : 36, height: size === 'small' ? 24 : 36, borderRadius: size === 'small' ? 7 : 11,
-          background: 'rgba(49,90,231,0.10)',
+          background: 'rgba(10,111,176,0.10)',
           display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
           color: P,
           boxShadow: 'none',
@@ -177,7 +177,7 @@ export default function BrainButton({ model, onChange, eyebrow = 'Schreibt mit',
                       alignItems: 'center',
                       gap: 10,
                       padding: '9px 12px',
-                      background: isActive ? 'rgba(49,90,231,.08)' : 'transparent',
+                      background: isActive ? 'rgba(10,111,176,.08)' : 'transparent',
                       border: 'none',
                       borderRadius: 9,
                       cursor: 'pointer',
@@ -190,7 +190,7 @@ export default function BrainButton({ model, onChange, eyebrow = 'Schreibt mit',
                   >
                     <span style={{
                       width: 6, height: 6, borderRadius: '50%',
-                      background: isActive ? P : '#E5E7EB',
+                      background: isActive ? 'var(--primary)' : '#E5E7EB',
                       flexShrink: 0,
                     }}/>
                     <span style={{

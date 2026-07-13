@@ -25,7 +25,7 @@ function Linkedin({ size = 24, color = 'currentColor', ...props }) {
   )
 }
 
-const PRIMARY = 'var(--wl-primary, rgb(49,90,231))'
+const PRIMARY = 'var(--wl-primary, #0A6FB0)'
 const sp = () => supabase.schema('sponsoring')
 
 function parse(text) {
@@ -79,7 +79,7 @@ export default function LinkedInImport() {
 
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginTop: 12 }}>
         <span style={{ fontSize: 13, color: 'var(--text-muted)' }}>{rows.length} erkannte Zeile(n)</span>
-        <button onClick={importRows} disabled={busy || rows.length === 0} style={{ ...primaryBtn, opacity: busy || rows.length === 0 ? 0.6 : 1 }}>
+        <button onClick={importRows} disabled={busy || rows.length === 0} className="lk-btn lk-btn-navy" style={{ opacity: busy || rows.length === 0 ? 0.6 : 1 }}>
           {busy ? <Loader2 size={14} className="spin" /> : <Upload size={14} />} {rows.length} importieren
         </button>
       </div>
@@ -109,7 +109,7 @@ export default function LinkedInImport() {
 }
 
 const input = { padding: '10px 12px', borderRadius: 10, border: '1px solid var(--border)', background: 'var(--surface)', color: 'var(--text-strong)', width: '100%', boxSizing: 'border-box' }
-const primaryBtn = { display: 'inline-flex', alignItems: 'center', gap: 6, padding: '9px 16px', borderRadius: 999, border: 'none', background: PRIMARY, color: '#fff', fontSize: 13, fontWeight: 700, cursor: 'pointer' }
+const primaryBtn = { display: 'inline-flex', alignItems: 'center', gap: 6, padding: '9px 16px', borderRadius: 999, border: 'none', background: 'var(--primary)', color: '#fff', fontSize: 13, fontWeight: 700, cursor: 'pointer' }
 const th = { padding: '9px 14px', fontWeight: 600, fontSize: 12 }
 const td = { padding: '9px 14px', color: 'var(--text-strong)' }
 const errBox = { padding: '10px 14px', borderRadius: 10, background: '#FEE2E2', color: '#991B1B', fontSize: 13, marginBottom: 16 }

@@ -21,7 +21,7 @@ export default function PageShell({ children, maxWidth = 1100, hero = false, sty
           position: 'absolute',
           inset: 0,
           height: 260,
-          background: 'linear-gradient(180deg, rgba(49,90,231,.05) 0%, rgba(124,58,237,.02) 50%, transparent 100%)',
+          background: 'linear-gradient(180deg, rgba(10,111,176,.05) 0%, rgba(0,48,96,.02) 50%, transparent 100%)',
           borderRadius: 24,
           zIndex: 0,
           pointerEvents: 'none',

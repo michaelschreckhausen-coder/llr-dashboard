@@ -1,7 +1,7 @@
 import React, { useState, useMemo, useRef, useEffect, useLayoutEffect } from 'react'
 import { Search } from 'lucide-react'
 
-const P = 'var(--wl-primary, rgb(49,90,231))'
+const P = 'var(--wl-primary, #0A6FB0)'
 
 // Kuratiertes, breites Emoji-Set mit deutschen + englischen Such-Keywords.
 // Browsing über Kategorien, Volltext-Suche über alle Einträge.
@@ -349,7 +349,7 @@ export default function EmojiPicker({ onPick, onClose }) {
             {CATS.map(cat => (
               <button key={cat.id} title={cat.label} onClick={() => setActiveCat(cat.id)}
                 style={{ flex:1, height:30, border:'none', borderRadius:7, cursor:'pointer', fontSize:16, lineHeight:1,
-                         background: activeCat === cat.id ? 'rgba(49,90,231,0.10)' : 'transparent' }}
+                         background: activeCat === cat.id ? 'rgba(10,111,176,0.10)' : 'transparent' }}
                 onMouseEnter={e => { if (activeCat !== cat.id) e.currentTarget.style.background = '#F4F6FA' }}
                 onMouseLeave={e => { if (activeCat !== cat.id) e.currentTarget.style.background = 'transparent' }}>
                 {cat.icon}

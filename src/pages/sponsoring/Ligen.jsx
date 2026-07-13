@@ -11,7 +11,7 @@ import { supabase } from '../../lib/supabase'
 import { useTeam } from '../../context/TeamContext'
 import PageHeader from '../../components/PageHeader'
 
-const PRIMARY = 'var(--wl-primary, rgb(49,90,231))'
+const PRIMARY = 'var(--wl-primary, #0A6FB0)'
 const sp = () => supabase.schema('sponsoring')
 
 const EMPTY_FORM = { name: '', short_code: '', sort_order: 0, adjust_pct: '' }
@@ -107,7 +107,7 @@ export default function Ligen() {
     <div style={{ width: '100%', maxWidth: 1100, margin: '0 auto', padding: '24px 16px 40px' }}>
       <PageHeader overline="Sponsoring" title="Ligen" subtitle="Ligen werden in Rechten, Verträgen und Reporting als Filter genutzt." action={
         <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-          <button onClick={seedLeagues} disabled={busy} style={secondaryBtn}>
+          <button onClick={seedLeagues} disabled={busy} className="lk-btn lk-btn-ghost">
             {busy ? <Loader2 size={14} className="spin" /> : <Plus size={14} />} Standard-Ligen anlegen
           </button>
           <button onClick={fetchAll} title="Aktualisieren" style={iconBtn}>
@@ -143,7 +143,7 @@ export default function Ligen() {
           <input type="number" step="0.01" value={form.adjust_pct}
                  onChange={(e) => setForm({ ...form, adjust_pct: e.target.value })} placeholder="z.B. 15 / -20" style={input} />
         </Field>
-        <button type="submit" disabled={busy || !form.name.trim()} style={{ ...primaryBtn, opacity: busy || !form.name.trim() ? 0.6 : 1 }}>
+        <button type="submit" disabled={busy || !form.name.trim()} className="lk-btn lk-btn-navy" style={{ opacity: busy || !form.name.trim() ? 0.6 : 1 }}>
           {busy ? <Loader2 size={14} className="spin" /> : <Plus size={14} />} Anlegen
         </button>
       </form>
@@ -240,7 +240,7 @@ const input = {
 }
 const primaryBtn = {
   display: 'inline-flex', alignItems: 'center', gap: 6, padding: '9px 16px', borderRadius: 999,
-  border: 'none', background: PRIMARY, color: '#fff', fontSize: 13, fontWeight: 700, cursor: 'pointer', whiteSpace: 'nowrap',
+  border: 'none', background: 'var(--primary)', color: '#fff', fontSize: 13, fontWeight: 700, cursor: 'pointer', whiteSpace: 'nowrap',
 }
 const secondaryBtn = {
   display: 'inline-flex', alignItems: 'center', gap: 6, padding: '7px 14px', borderRadius: 999,

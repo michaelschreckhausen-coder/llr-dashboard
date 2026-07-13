@@ -2,13 +2,14 @@
 // Offene Angebote -> Vertrag (RPC accept_offer, bucht Inventar). Vertragsliste
 // mit Laufzeit/Status. Schema 'sponsoring', team_id aus useTeam().
 
+import PillSelect from '../../components/PillSelect'
 import { useEffect, useMemo, useState, useCallback } from 'react'
 import { ScrollText, Loader2, ArrowRight, X, Pencil, FileDown, Trash2 } from 'lucide-react'
 import { supabase } from '../../lib/supabase'
 import { useTeam } from '../../context/TeamContext'
 import PageHeader from '../../components/PageHeader'
 
-const PRIMARY = 'var(--wl-primary, rgb(49,90,231))'
+const PRIMARY = 'var(--wl-primary, #0A6FB0)'
 const sp = () => supabase.schema('sponsoring')
 const fmt = (n) => `${Number(n || 0).toLocaleString('de-DE', { maximumFractionDigits: 2 })} €`
 const dateStr = (d) => (d ? new Date(d).toLocaleDateString('de-DE') : '—')
@@ -232,7 +233,7 @@ export default function Vertraege() {
                   <td style={td}>{packageName[o.package_id] || '—'}</td>
                   <td style={{ ...td, fontWeight: 700 }}>{fmt(o.total_price)}</td>
                   <td style={{ ...td, textAlign: 'right' }}>
-                    <button onClick={() => setConvert(o)} style={primaryBtn}>
+                    <button onClick={() => setConvert(o)} className="lk-btn lk-btn-navy">
                       In Vertrag wandeln <ArrowRight size={14} />
                     </button>
                   </td>
@@ -249,11 +250,7 @@ export default function Vertraege() {
         {leagues.length > 0 && (
           <label style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 12, color: 'var(--text-muted)', marginBottom: 12 }}>
             Liga
-            <select value={leagueFilter} onChange={(e) => setLeagueFilter(e.target.value)}
-                    style={{ ...input, width: 'auto', padding: '6px 8px' }}>
-              <option value="">Alle Ligen</option>
-              {leagues.map((l) => <option key={l.id} value={l.id}>{l.name}</option>)}
-            </select>
+            <PillSelect value={leagueFilter} onChange={setLeagueFilter} neutral options={[{ value: '', label: `Alle Ligen` }, ...leagues.map((l) => ({ value: l.id, label: l.name }))]} buttonStyle={{ minWidth: 140 }} />
           </label>
         )}
       </div>
@@ -279,10 +276,7 @@ export default function Vertraege() {
                   <td style={td}>{dateStr(c.starts_on)} – {dateStr(c.ends_on)}</td>
                   <td style={td}>{c.notice_period_days ? `${c.notice_period_days} Tage` : '—'}</td>
                   <td style={td}>
-                    <select value={c.status} onChange={(e) => updateStatus(c.id, e.target.value)}
-                            style={{ ...input, padding: '4px 8px', color: CTR_COLOR[c.status], fontWeight: 600 }}>
-                      {CTR_STATUS.map((s) => <option key={s} value={s}>{CTR_LABEL[s]}</option>)}
-                    </select>
+                    <PillSelect value={c.status} onChange={v => updateStatus(c.id, v)} neutral options={[...CTR_STATUS.map((s) => ({ value: s, label: CTR_LABEL[s] }))]} buttonStyle={{ minWidth: 140 }} />
                   </td>
                   <td style={{ ...td, textAlign: 'right', whiteSpace: 'nowrap' }}>
                     <button onClick={() => openEdit(c)} style={ghostBtn} title="Bearbeiten"><Pencil size={14} /></button>
@@ -309,7 +303,7 @@ export default function Vertraege() {
             <Field label="Beginn"><input type="date" value={cf.starts_on} onChange={(e) => setCf({ ...cf, starts_on: e.target.value })} style={input} /></Field>
             <Field label="Ende"><input type="date" value={cf.ends_on} onChange={(e) => setCf({ ...cf, ends_on: e.target.value })} style={input} /></Field>
             <Field label="Kündigungsfrist (Tage)"><input type="number" min="0" value={cf.notice_period_days} onChange={(e) => setCf({ ...cf, notice_period_days: e.target.value })} style={input} /></Field>
-            <button type="submit" disabled={busy} style={{ ...primaryBtn, marginTop: 12, justifyContent: 'center', opacity: busy ? 0.6 : 1 }}>
+            <button type="submit" disabled={busy} className="lk-btn lk-btn-navy" style={{ marginTop: 12, justifyContent: 'center', opacity: busy ? 0.6 : 1 }}>
               {busy ? <Loader2 size={14} className="spin" /> : null} Vertrag anlegen &amp; Inventar buchen
             </button>
           </form>
@@ -381,20 +375,14 @@ export default function Vertraege() {
                 </div>
                 <div style={{ flex: 1 }}>
                   <Field label="Intervall">
-                    <select value={ef.renewal_interval} onChange={(e) => setEf({ ...ef, renewal_interval: e.target.value })} style={input}>
-                      <option value="once">Einmalig</option>
-                      <option value="yearly">Jährlich</option>
-                    </select>
+                    <PillSelect value={ef.renewal_interval} onChange={v => setEf({ ...ef, renewal_interval: v })} neutral options={[{ value: 'once', label: `Einmalig` }, { value: 'yearly', label: `Jährlich` }]} buttonStyle={{ minWidth: 140 }} />
                   </Field>
                 </div>
               </div>
             )}
 
             <Field label="Liga">
-              <select value={ef.league_id} onChange={(e) => setEf({ ...ef, league_id: e.target.value })} style={input}>
-                <option value="">— keine —</option>
-                {leagues.map((l) => <option key={l.id} value={l.id}>{l.name}</option>)}
-              </select>
+              <PillSelect value={ef.league_id} onChange={v => setEf({ ...ef, league_id: v })} neutral options={[{ value: '', label: `— keine —` }, ...leagues.map((l) => ({ value: l.id, label: l.name }))]} buttonStyle={{ minWidth: 140 }} />
             </Field>
             {/* V1: %-Auf-/Abschlag der gewählten Spielklasse — Vorschlag + auf Volumen anwenden */}
             {(() => {
@@ -442,11 +430,7 @@ export default function Vertraege() {
               </div>
               <div style={{ flex: 1.4 }}>
                 <Field label="Rabatt gilt für">
-                  <select value={ef.discount_scope} onChange={(e) => setEf({ ...ef, discount_scope: e.target.value })} style={input}>
-                    <option value="all">Gesamtsumme</option>
-                    <option value="hospitality">Nur Hospitality</option>
-                    <option value="advertising">Nur Werbeleistungen</option>
-                  </select>
+                  <PillSelect value={ef.discount_scope} onChange={v => setEf({ ...ef, discount_scope: v })} neutral options={[{ value: 'all', label: `Gesamtsumme` }, { value: 'hospitality', label: `Nur Hospitality` }, { value: 'advertising', label: `Nur Werbeleistungen` }]} buttonStyle={{ minWidth: 140 }} />
                 </Field>
               </div>
             </div>
@@ -472,7 +456,7 @@ export default function Vertraege() {
                 placeholder="Interne Notizen zum Vertrag…" />
             </Field>
 
-            <button type="submit" disabled={busy} style={{ ...primaryBtn, marginTop: 14, justifyContent: 'center', opacity: busy ? 0.6 : 1 }}>
+            <button type="submit" disabled={busy} className="lk-btn lk-btn-navy" style={{ marginTop: 14, justifyContent: 'center', opacity: busy ? 0.6 : 1 }}>
               {busy ? <Loader2 size={14} className="spin" /> : null} Speichern
             </button>
           </form>
@@ -555,11 +539,11 @@ function Field({ label, children }) {
 }
 
 const input = { padding: '8px 10px', borderRadius: 8, border: '1px solid var(--border)', background: 'var(--surface)', color: 'var(--text-strong)', fontSize: 13.5, width: '100%', boxSizing: 'border-box' }
-const primaryBtn = { display: 'inline-flex', alignItems: 'center', gap: 6, padding: '8px 14px', borderRadius: 999, border: 'none', background: PRIMARY, color: '#fff', fontSize: 13, fontWeight: 700, cursor: 'pointer', whiteSpace: 'nowrap' }
+const primaryBtn = { display: 'inline-flex', alignItems: 'center', gap: 6, padding: '8px 14px', borderRadius: 999, border: 'none', background: 'var(--primary)', color: '#fff', fontSize: 13, fontWeight: 700, cursor: 'pointer', whiteSpace: 'nowrap' }
 const iconBtn = { display: 'inline-flex', alignItems: 'center', justifyContent: 'center', width: 30, height: 30, borderRadius: 8, border: '1px solid var(--border)', background: 'var(--surface)', color: 'var(--text-muted)', cursor: 'pointer' }
 const ghostBtn = { display: 'inline-flex', alignItems: 'center', justifyContent: 'center', width: 30, height: 30, borderRadius: 8, border: '1px solid var(--border)', background: 'var(--surface)', color: 'var(--text-muted)', cursor: 'pointer' }
 const templateBtn = { display: 'inline-flex', alignItems: 'center', gap: 8, padding: '10px 14px', borderRadius: 10, border: '1px solid var(--border)', background: 'var(--surface)', color: 'var(--text-strong)', fontSize: 13.5, cursor: 'pointer', textAlign: 'left' }
-const defaultBadge = { marginLeft: 'auto', fontSize: 11, fontWeight: 700, color: PRIMARY, background: 'rgba(49,90,231,0.1)', padding: '2px 8px', borderRadius: 999 }
+const defaultBadge = { marginLeft: 'auto', fontSize: 11, fontWeight: 700, color: PRIMARY, background: 'rgba(10,111,176,0.1)', padding: '2px 8px', borderRadius: 999 }
 const h2 = { fontSize: 16, fontWeight: 700, color: 'var(--text-strong)', margin: '0 0 12px' }
 const muted = { display: 'flex', alignItems: 'center', gap: 8, color: 'var(--text-muted)', fontSize: 14 }
 const tableWrap = { border: '1px solid var(--border)', borderRadius: 14, overflow: 'hidden' }

@@ -1,9 +1,10 @@
+import PillSelect from './PillSelect'
 import React, { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
 import { useTeam } from '../context/TeamContext'
 
-const PRIMARY = 'var(--wl-primary, rgb(49,90,231))'
+const PRIMARY = 'var(--wl-primary, #0A6FB0)'
 
 /**
  * ProjektStartenModal
@@ -257,14 +258,7 @@ export default function ProjektStartenModal({ deal, lead, session, onClose, onCr
                       onChange={e => setForm({...form, budget_amount: e.target.value})}
                       placeholder="0" min={0} step={100}
                       style={{...inpStyle, flex:1}} />
-                    <select value={form.currency}
-                      onChange={e => setForm({...form, currency: e.target.value})}
-                      style={{...inpStyle, width:70}}>
-                      <option value="EUR">EUR</option>
-                      <option value="USD">USD</option>
-                      <option value="CHF">CHF</option>
-                      <option value="GBP">GBP</option>
-                    </select>
+                    <PillSelect value={form.currency} onChange={v => setForm({...form, currency: v})} neutral options={[{ value: 'EUR', label: `EUR` }, { value: 'USD', label: `USD` }, { value: 'CHF', label: `CHF` }, { value: 'GBP', label: `GBP` }]} buttonStyle={{ minWidth: 140 }} />
                   </div>
                 </Field>
                 <Field label="Zeitbudget (h)" flex>
@@ -329,7 +323,7 @@ const inpStyle = {
 
 const btnPrimaryStyle = {
   padding:'9px 18px', borderRadius:8, border:'none',
-  background:PRIMARY, color:'#fff',
+  background:'var(--primary)', color:'#fff',
   fontSize:13, fontWeight:700, cursor:'pointer'
 }
 

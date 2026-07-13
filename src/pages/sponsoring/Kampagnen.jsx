@@ -6,13 +6,14 @@
 // team_id kommt aus useTeam().activeTeamId. brand_voices/target_audiences im public-Schema.
 // Status-Updates bewusst per-Row .eq() (kein .in()-Bulk → CHECK-Status-silent-fail vermeiden).
 
+import PillSelect from '../../components/PillSelect'
 import { useEffect, useState, useCallback } from 'react'
 import { Megaphone, Plus, Loader2, Sparkles, X, RefreshCw, Trash2, UserPlus } from 'lucide-react'
 import { supabase } from '../../lib/supabase'
 import { useTeam } from '../../context/TeamContext'
 import PageHeader from '../../components/PageHeader'
 
-const PRIMARY = 'var(--wl-primary, rgb(49,90,231))'
+const PRIMARY = 'var(--wl-primary, #0A6FB0)'
 const sp = () => supabase.schema('sponsoring')
 
 // status muss zur DB-CHECK-Constraint campaigns_status_check passen: {draft,active,paused,done}
@@ -383,32 +384,23 @@ export default function Kampagnen() {
           <input type="number" min="0" step="0.01" value={form.expected_value}
                  onChange={(e) => setForm({ ...form, expected_value: e.target.value })} placeholder="0" style={input} />
         </Field>
-        <button type="submit" disabled={busy || !form.title.trim()} style={{ ...primaryBtn, opacity: busy || !form.title.trim() ? 0.6 : 1 }}>
+        <button type="submit" disabled={busy || !form.title.trim()} className="lk-btn lk-btn-navy" style={{ opacity: busy || !form.title.trim() ? 0.6 : 1 }}>
           {busy ? <Loader2 size={14} className="spin" /> : <Plus size={14} />} Anlegen
         </button>
 
         <div style={{ gridColumn: '1 / -1', display: 'grid', gridTemplateColumns: '1fr 1fr 1fr 1fr', gap: 10 }}>
           <Field label="Verantwortlich">
-            <select value={form.responsible} onChange={(e) => setForm({ ...form, responsible: e.target.value })} style={input}>
-              <option value="">— niemand —</option>
-              {(members || []).map((m) => <option key={m.user_id} value={m.user_id}>{memberLabel(m)}</option>)}
-            </select>
+            <PillSelect value={form.responsible} onChange={v => setForm({ ...form, responsible: v })} neutral options={[{ value: '', label: `— niemand —` }, ...members || [].map((m) => ({ value: m.user_id, label: memberLabel(m) }))]} buttonStyle={{ minWidth: 140 }} />
           </Field>
           <Field label="Geo-Scope">
             <input value={form.geo_scope} onChange={(e) => setForm({ ...form, geo_scope: e.target.value })}
                    placeholder="z.B. Region Stuttgart" style={input} />
           </Field>
           <Field label="Brand Voice">
-            <select value={form.brand_voice_id} onChange={(e) => setForm({ ...form, brand_voice_id: e.target.value })} style={input}>
-              <option value="">— keine —</option>
-              {brandVoices.map((b) => <option key={b.id} value={b.id}>{b.name}</option>)}
-            </select>
+            <PillSelect value={form.brand_voice_id} onChange={v => setForm({ ...form, brand_voice_id: v })} neutral options={[{ value: '', label: `— keine —` }, ...brandVoices.map((b) => ({ value: b.id, label: b.name }))]} buttonStyle={{ minWidth: 140 }} />
           </Field>
           <Field label="Zielgruppe">
-            <select value={form.target_audience_id} onChange={(e) => setForm({ ...form, target_audience_id: e.target.value })} style={input}>
-              <option value="">— keine —</option>
-              {audiences.map((a) => <option key={a.id} value={a.id}>{a.name}</option>)}
-            </select>
+            <PillSelect value={form.target_audience_id} onChange={v => setForm({ ...form, target_audience_id: v })} neutral options={[{ value: '', label: `— keine —` }, ...audiences.map((a) => ({ value: a.id, label: a.name }))]} buttonStyle={{ minWidth: 140 }} />
           </Field>
         </div>
       </form>
@@ -451,10 +443,7 @@ export default function Kampagnen() {
                   </td>
                   <td style={td}>{c.expected_value != null ? `${Number(c.expected_value).toLocaleString('de-DE')} €` : '—'}</td>
                   <td style={td} onClick={(e) => e.stopPropagation()}>
-                    <select value={c.status || 'draft'} onChange={(e) => updateStatus(c.id, e.target.value)}
-                            style={{ ...input, padding: '4px 8px', color: STATUS_COLOR[c.status] || 'var(--text-strong)', fontWeight: 600 }}>
-                      {STATUS.map((s) => <option key={s} value={s}>{STATUS_LABEL[s]}</option>)}
-                    </select>
+                    <PillSelect value={c.status || 'draft'} onChange={v => updateStatus(c.id, v)} neutral options={[...STATUS.map((s) => ({ value: s, label: STATUS_LABEL[s] }))]} buttonStyle={{ minWidth: 140 }} />
                   </td>
                 </tr>
               ))}
@@ -489,7 +478,7 @@ export default function Kampagnen() {
                     <Meta label="Zielgruppe" value={taName(sel.target_audience_id)} />
                     <Meta label="Status" value={STATUS_LABEL[sel.status] || sel.status} />
                   </div>
-                  <button onClick={() => { setDraft(sel); setEditing(true) }} style={{ ...secondaryBtn, marginTop: 12 }}>Bearbeiten</button>
+                  <button onClick={() => { setDraft(sel); setEditing(true) }} className="lk-btn lk-btn-ghost" style={{ marginTop: 12 }}>Bearbeiten</button>
                 </>
               ) : (
                 <>
@@ -511,29 +500,20 @@ export default function Kampagnen() {
                       <input value={draft.geo_scope || ''} onChange={(e) => setDraft({ ...draft, geo_scope: e.target.value })} style={input} />
                     </Field>
                     <Field label="Verantwortlich">
-                      <select value={draft.responsible || ''} onChange={(e) => setDraft({ ...draft, responsible: e.target.value })} style={input}>
-                        <option value="">— niemand —</option>
-                        {(members || []).map((m) => <option key={m.user_id} value={m.user_id}>{memberLabel(m)}</option>)}
-                      </select>
+                      <PillSelect value={draft.responsible || ''} onChange={v => setDraft({ ...draft, responsible: v })} neutral options={[{ value: '', label: `— niemand —` }, ...members || [].map((m) => ({ value: m.user_id, label: memberLabel(m) }))]} buttonStyle={{ minWidth: 140 }} />
                     </Field>
                     <Field label="Brand Voice">
-                      <select value={draft.brand_voice_id || ''} onChange={(e) => setDraft({ ...draft, brand_voice_id: e.target.value })} style={input}>
-                        <option value="">— keine —</option>
-                        {brandVoices.map((b) => <option key={b.id} value={b.id}>{b.name}</option>)}
-                      </select>
+                      <PillSelect value={draft.brand_voice_id || ''} onChange={v => setDraft({ ...draft, brand_voice_id: v })} neutral options={[{ value: '', label: `— keine —` }, ...brandVoices.map((b) => ({ value: b.id, label: b.name }))]} buttonStyle={{ minWidth: 140 }} />
                     </Field>
                     <Field label="Zielgruppe">
-                      <select value={draft.target_audience_id || ''} onChange={(e) => setDraft({ ...draft, target_audience_id: e.target.value })} style={input}>
-                        <option value="">— keine —</option>
-                        {audiences.map((a) => <option key={a.id} value={a.id}>{a.name}</option>)}
-                      </select>
+                      <PillSelect value={draft.target_audience_id || ''} onChange={v => setDraft({ ...draft, target_audience_id: v })} neutral options={[{ value: '', label: `— keine —` }, ...audiences.map((a) => ({ value: a.id, label: a.name }))]} buttonStyle={{ minWidth: 140 }} />
                     </Field>
                   </div>
                   <div style={{ display: 'flex', gap: 8, marginTop: 12 }}>
-                    <button onClick={saveDraft} disabled={busy} style={{ ...primaryBtn, opacity: busy ? 0.6 : 1 }}>
+                    <button onClick={saveDraft} disabled={busy} className="lk-btn lk-btn-navy" style={{ opacity: busy ? 0.6 : 1 }}>
                       {busy ? <Loader2 size={14} className="spin" /> : null} Speichern
                     </button>
-                    <button onClick={() => setEditing(false)} disabled={busy} style={secondaryBtn}>Abbrechen</button>
+                    <button onClick={() => setEditing(false)} disabled={busy} className="lk-btn lk-btn-ghost">Abbrechen</button>
                   </div>
                 </>
               )}
@@ -543,7 +523,7 @@ export default function Kampagnen() {
             <div style={{ marginBottom: 16 }}>
               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 }}>
                 <h3 style={sectionH}>KI-Konzept</h3>
-                <button onClick={generateConcept} disabled={generating} style={{ ...primaryBtn, opacity: generating ? 0.6 : 1 }}>
+                <button onClick={generateConcept} disabled={generating} className="lk-btn lk-btn-navy" style={{ opacity: generating ? 0.6 : 1 }}>
                   {generating ? <Loader2 size={14} className="spin" /> : <Sparkles size={14} />}
                   {generating ? 'Generiere…' : 'KI-Konzept generieren'}
                 </button>
@@ -573,7 +553,7 @@ export default function Kampagnen() {
                           return (
                             <div key={i} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}>
                               <span style={{ fontSize: 13, color: 'var(--text-strong)' }}>{name}</span>
-                              <button onClick={() => adoptSuggestion(s)} style={secondaryBtn}>
+                              <button onClick={() => adoptSuggestion(s)} className="lk-btn lk-btn-ghost">
                                 <UserPlus size={13} /> Uebernehmen
                               </button>
                             </div>
@@ -593,13 +573,10 @@ export default function Kampagnen() {
               <div style={{ display: 'flex', gap: 8, margin: '10px 0 6px', alignItems: 'flex-end' }}>
                 <div style={{ flex: 1 }}>
                   <Field label="Bestehenden Kontakt zuordnen">
-                    <select value={pickLead} onChange={(e) => setPickLead(e.target.value)} style={input}>
-                      <option value="">— Kontakt wählen —</option>
-                      {allLeads.map((l) => <option key={l.id} value={l.id}>{leadLabel(l.id)}{l.company ? ' · ' + l.company : ''}</option>)}
-                    </select>
+                    <PillSelect value={pickLead} onChange={setPickLead} neutral options={[{ value: '', label: `— Kontakt wählen —` }, ...allLeads.map((l) => ({ value: l.id, label: `${leadLabel(l.id)}${l.company ? ' · ' + l.company : ''}` }))]} buttonStyle={{ minWidth: 140 }} />
                   </Field>
                 </div>
-                <button onClick={addExistingLead} disabled={!pickLead} style={{ ...primaryBtn, opacity: !pickLead ? 0.6 : 1 }}><Plus size={14} /></button>
+                <button onClick={addExistingLead} disabled={!pickLead} className="lk-btn lk-btn-navy" style={{ opacity: !pickLead ? 0.6 : 1 }}><Plus size={14} /></button>
               </div>
               <div style={{ fontSize: 11, color: 'var(--text-muted)', margin: '0 0 10px' }}>oder externen Namen erfassen (außerhalb CRM):</div>
               <div style={{ display: 'flex', gap: 8, margin: '0 0 12px', alignItems: 'flex-end' }}>
@@ -610,14 +587,11 @@ export default function Kampagnen() {
                 </div>
                 <div style={{ flex: 1 }}>
                   <Field label="Sponsor (optional)">
-                    <select value={leadSponsorId} onChange={(e) => setLeadSponsorId(e.target.value)} style={input}>
-                      <option value="">— keiner —</option>
-                      {sponsors.map((p) => <option key={p.id} value={p.id}>{sponsorName(p, orgName) || p.id}</option>)}
-                    </select>
+                    <PillSelect value={leadSponsorId} onChange={setLeadSponsorId} neutral options={[{ value: '', label: `— keiner —` }, ...sponsors.map((p) => ({ value: p.id, label: sponsorName(p, orgName) || p.id }))]} buttonStyle={{ minWidth: 140 }} />
                   </Field>
                 </div>
                 <button onClick={addManualLead} disabled={savingLead || !leadName.trim()}
-                        style={{ ...primaryBtn, opacity: savingLead || !leadName.trim() ? 0.6 : 1 }}>
+                        className="lk-btn lk-btn-navy" style={{ opacity: savingLead || !leadName.trim() ? 0.6 : 1 }}>
                   {savingLead ? <Loader2 size={14} className="spin" /> : <Plus size={14} />}
                 </button>
               </div>
@@ -649,13 +623,10 @@ export default function Kampagnen() {
               <div style={{ display: 'flex', gap: 8, margin: '10px 0 12px', alignItems: 'flex-end' }}>
                 <div style={{ flex: 1 }}>
                   <Field label="Bestehendes Unternehmen zuordnen">
-                    <select value={pickOrg} onChange={(e) => setPickOrg(e.target.value)} style={input}>
-                      <option value="">— Unternehmen wählen —</option>
-                      {allOrgs.map((o) => <option key={o.id} value={o.id}>{o.name}</option>)}
-                    </select>
+                    <PillSelect value={pickOrg} onChange={setPickOrg} neutral options={[{ value: '', label: `— Unternehmen wählen —` }, ...allOrgs.map((o) => ({ value: o.id, label: o.name }))]} buttonStyle={{ minWidth: 140 }} />
                   </Field>
                 </div>
-                <button onClick={addOrg} disabled={!pickOrg} style={{ ...primaryBtn, opacity: !pickOrg ? 0.6 : 1 }}><Plus size={14} /></button>
+                <button onClick={addOrg} disabled={!pickOrg} className="lk-btn lk-btn-navy" style={{ opacity: !pickOrg ? 0.6 : 1 }}><Plus size={14} /></button>
               </div>
               {linkedOrgs.length === 0 ? (
                 <div style={{ fontSize: 13, color: 'var(--text-muted)' }}>Noch keine Unternehmen verknüpft.</div>
@@ -677,13 +648,10 @@ export default function Kampagnen() {
               <div style={{ display: 'flex', gap: 8, margin: '10px 0 12px', alignItems: 'flex-end' }}>
                 <div style={{ flex: 1 }}>
                   <Field label="Bestehenden Deal zuordnen">
-                    <select value={pickDeal} onChange={(e) => setPickDeal(e.target.value)} style={input}>
-                      <option value="">— Deal wählen —</option>
-                      {allDeals.map((d) => <option key={d.id} value={d.id}>{(d.title || d.name || 'Deal')}{d.value ? ' · ' + Number(d.value).toLocaleString('de-DE') + ' €' : ''}</option>)}
-                    </select>
+                    <PillSelect value={pickDeal} onChange={setPickDeal} neutral options={[{ value: '', label: `— Deal wählen —` }, ...allDeals.map((d) => ({ value: d.id, label: `${d.title || d.name || 'Deal'}${d.value ? ' · ' + Number(d.value).toLocaleString('de-DE') + ' €' : ''}` }))]} buttonStyle={{ minWidth: 140 }} />
                   </Field>
                 </div>
-                <button onClick={addDeal} disabled={!pickDeal} style={{ ...primaryBtn, opacity: !pickDeal ? 0.6 : 1 }}><Plus size={14} /></button>
+                <button onClick={addDeal} disabled={!pickDeal} className="lk-btn lk-btn-navy" style={{ opacity: !pickDeal ? 0.6 : 1 }}><Plus size={14} /></button>
               </div>
               {linkedDeals.length === 0 ? (
                 <div style={{ fontSize: 13, color: 'var(--text-muted)' }}>Noch keine Deals verknüpft.</div>
@@ -733,7 +701,7 @@ function ConceptBlock({ title, body }) {
 }
 
 const input = { padding: '8px 10px', borderRadius: 8, border: '1px solid var(--border)', background: 'var(--surface)', color: 'var(--text-strong)', fontSize: 13.5, width: '100%', boxSizing: 'border-box' }
-const primaryBtn = { display: 'inline-flex', alignItems: 'center', gap: 6, padding: '9px 16px', borderRadius: 999, border: 'none', background: PRIMARY, color: '#fff', fontSize: 13, fontWeight: 700, cursor: 'pointer', whiteSpace: 'nowrap' }
+const primaryBtn = { display: 'inline-flex', alignItems: 'center', gap: 6, padding: '9px 16px', borderRadius: 999, border: 'none', background: 'var(--primary)', color: '#fff', fontSize: 13, fontWeight: 700, cursor: 'pointer', whiteSpace: 'nowrap' }
 const secondaryBtn = { display: 'inline-flex', alignItems: 'center', gap: 6, padding: '7px 14px', borderRadius: 999, border: '1px solid var(--border)', background: 'var(--surface)', color: 'var(--text-strong)', fontSize: 13, fontWeight: 600, cursor: 'pointer', whiteSpace: 'nowrap' }
 const iconBtn = { display: 'inline-flex', alignItems: 'center', justifyContent: 'center', width: 34, height: 34, borderRadius: 8, border: '1px solid var(--border)', background: 'var(--surface)', color: 'var(--text-muted)', cursor: 'pointer' }
 const iconBtnSm = { display: 'inline-flex', alignItems: 'center', justifyContent: 'center', width: 28, height: 28, borderRadius: 8, border: '1px solid var(--border)', background: 'var(--surface)', color: 'var(--text-muted)', cursor: 'pointer' }
@@ -749,4 +717,4 @@ const overlay = { position: 'fixed', inset: 0, background: 'rgba(15,23,42,0.45)'
 const drawer = { width: 'min(520px, 100%)', height: '100%', overflowY: 'auto', background: 'var(--surface)', borderLeft: '1px solid var(--border)', padding: 24, boxShadow: '-12px 0 40px rgba(0,0,0,0.18)' }
 const sectionH = { fontSize: 14, fontWeight: 800, color: 'var(--text-strong)', margin: 0 }
 const leadRow = { display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8, padding: '8px 12px', border: '1px solid var(--border)', borderRadius: 10, background: 'var(--surface)' }
-const tag = { fontSize: 10, fontWeight: 700, color: PRIMARY, background: 'var(--surface-muted, #EEF2FF)', border: '1px solid var(--border)', padding: '1px 6px', borderRadius: 999 }
+const tag = { fontSize: 10, fontWeight: 700, color: PRIMARY, background: 'var(--surface-muted, #EAF6FC)', border: '1px solid var(--border)', padding: '1px 6px', borderRadius: 999 }

@@ -26,7 +26,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { X, Pencil, Save, Eye, Users } from 'lucide-react';
 
-const PRIMARY = 'rgb(49,90,231)';
+const PRIMARY = '#0A6FB0';
 
 // ─── Styles ──────────────────────────────────────────────────────────────
 const wrapStyle = {
@@ -368,7 +368,7 @@ const modalBtnGhostStyle = {
 };
 const modalBtnPrimaryStyle = {
   padding: '8px 16px', fontSize: 13, fontWeight: 600,
-  background: PRIMARY, color: '#fff', border: 'none', borderRadius: 8,
+  background: 'var(--primary)', color: '#fff', border: 'none', borderRadius: 8,
   cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: 5,
   font: 'inherit',
 };

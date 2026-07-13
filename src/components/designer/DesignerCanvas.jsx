@@ -60,14 +60,14 @@ import {
   Palette, Sparkles, Plus as PlusIcon, Image as ImagePlus,
 } from 'lucide-react'
 
-const P = 'var(--wl-primary, rgb(49,90,231))'
-const PRGB = 'rgb(49,90,231)'
+const P = 'var(--wl-primary, #0A6FB0)'
+const PRGB = '#0A6FB0'
 
 // Schrift-Kombinationen: Font-Paar + abgestimmte, coole Farbpalette (hell/dunkel).
 const TEXT_COMBOS = [
   { id: 'modern', label: 'Modern', kicker: 'INSIGHT', head: 'Modern & Klar', sub: 'Reduziert, präzise, zeitgemäß.',
     headFont: 'Montserrat', subFont: 'Inter', kickerFont: 'Inter', headStyle: 'bold',
-    light: { head: '#0F172A', sub: '#64748B', kicker: '#4F46E5' }, dark: { head: '#F1F5F9', sub: '#CBD5E1', kicker: '#818CF8' } },
+    light: { head: '#0F172A', sub: '#64748B', kicker: '#0A6FB0' }, dark: { head: '#F1F5F9', sub: '#CBD5E1', kicker: '#16A8DC' } },
   { id: 'editorial', label: 'Editorial', kicker: 'MAGAZIN', head: 'Editorial Stil', sub: 'Serifen-Headline trifft klare Subline.',
     headFont: 'Playfair Display', subFont: 'Inter', kickerFont: 'Inter', headStyle: 'bold',
     light: { head: '#1A1A1A', sub: '#57534E', kicker: '#9F1239' }, dark: { head: '#FAFAF9', sub: '#D6D3D1', kicker: '#FB7185' } },
@@ -219,7 +219,7 @@ const TEXT_EFFECTS = [
   { id: 'splice',     label: 'Kontur+Schatten', css: { WebkitTextStroke: '1px #111827', textShadow: '3px 3px 0 rgba(0,0,0,0.45)' } },
   { id: 'outline',    label: 'Umriss',          css: { WebkitTextStroke: '1px #111827' } },
   { id: 'echo',       label: 'Echo',            css: { textShadow: '4px 4px 0 rgba(17,24,39,0.32), 8px 8px 0 rgba(17,24,39,0.16)' } },
-  { id: 'glow',       label: 'Glühen',          css: { textShadow: '0 0 9px rgba(49,90,231,0.9)' } },
+  { id: 'glow',       label: 'Glühen',          css: { textShadow: '0 0 9px rgba(10,111,176,0.9)' } },
   { id: 'neon',       label: 'Neon',            css: { color: '#39FF14', textShadow: '0 0 8px #39FF14, 0 0 14px #39FF14' } },
   { id: 'background', label: 'Hintergrund',     css: { background: '#111827', color: '#fff', padding: '3px 7px', borderRadius: 5 } },
 ]
@@ -2034,7 +2034,7 @@ export default function DesignerCanvas({ visual, teamId, onSaved, onReplaceVisua
   }
   function addRect() {
     const c = center()
-    addObject({ type: 'rect', x: c.x - 80, y: c.y - 50, width: 160, height: 100, fill: 'rgba(49,90,231,0.85)', stroke: '#ffffff', strokeWidth: 0, rotation: 0 })
+    addObject({ type: 'rect', x: c.x - 80, y: c.y - 50, width: 160, height: 100, fill: 'rgba(10,111,176,0.85)', stroke: '#ffffff', strokeWidth: 0, rotation: 0 })
   }
   function addEllipse() {
     const c = center()
@@ -2272,8 +2272,8 @@ Nutze nur die für den Befehl nötigen Operationen.`
         for (const op of opsList) {
           const t = op && op.op
           if (t === 'add_text' && op.text) { const bx = clamp(op.x, cw); arr.push(fitText({ id: nextId(), type:'text', text:String(op.text), x: bx, y: clamp(op.y, ch), fontSize: Math.max(8, Math.round(Number(op.fontSize)) || 48), fontFamily: op.fontFamily || 'Inter', fill: op.fill || '#111111', fontStyle: op.fontStyle || 'normal', align: op.align || 'left', width: Math.round(Number(op.width)) || (cw - bx - margin), rotation:0, opacity:1 })) }
-          else if (t === 'add_rect') { arr.push({ id: nextId(), type:'rect', x: clamp(op.x, cw), y: clamp(op.y, ch), width: Math.min(Math.round(Number(op.width)) || 200, cw), height: Math.min(Math.round(Number(op.height)) || 120, ch), fill: op.fill || '#315AE7', stroke: op.stroke || null, strokeWidth: Math.round(Number(op.strokeWidth)) || 0, cornerRadius: Math.round(Number(op.cornerRadius)) || 0, rotation:0, opacity:1 }) }
-          else if (t === 'add_ellipse') { arr.push({ id: nextId(), type:'ellipse', x: clamp(op.x, cw), y: clamp(op.y, ch), radiusX: Math.round(Number(op.radiusX)) || 80, radiusY: Math.round(Number(op.radiusY)) || 80, fill: op.fill || '#315AE7', stroke: op.stroke || null, strokeWidth: Math.round(Number(op.strokeWidth)) || 0, rotation:0, opacity:1 }) }
+          else if (t === 'add_rect') { arr.push({ id: nextId(), type:'rect', x: clamp(op.x, cw), y: clamp(op.y, ch), width: Math.min(Math.round(Number(op.width)) || 200, cw), height: Math.min(Math.round(Number(op.height)) || 120, ch), fill: op.fill || '#0A6FB0', stroke: op.stroke || null, strokeWidth: Math.round(Number(op.strokeWidth)) || 0, cornerRadius: Math.round(Number(op.cornerRadius)) || 0, rotation:0, opacity:1 }) }
+          else if (t === 'add_ellipse') { arr.push({ id: nextId(), type:'ellipse', x: clamp(op.x, cw), y: clamp(op.y, ch), radiusX: Math.round(Number(op.radiusX)) || 80, radiusY: Math.round(Number(op.radiusY)) || 80, fill: op.fill || '#0A6FB0', stroke: op.stroke || null, strokeWidth: Math.round(Number(op.strokeWidth)) || 0, rotation:0, opacity:1 }) }
           else if (t === 'update' && op.id && op.props && typeof op.props === 'object') { const allow = ['text','fontSize','fontFamily','fill','fontStyle','align','width','x','y','rotation','opacity','height','stroke','strokeWidth','cornerRadius','radiusX','radiusY']; const patch = {}; allow.forEach(k => { if (op.props[k] !== undefined && op.props[k] !== null) patch[k] = op.props[k] }); if (Object.keys(patch).length) arr = arr.map(o => o.id === op.id ? { ...o, ...patch } : o) }
           else if (t === 'delete' && op.id) { arr = arr.filter(o => o.id !== op.id) }
           else if (t === 'set_background' && op.color) { bg = op.color }
@@ -3107,7 +3107,7 @@ Antworte AUSSCHLIESSLICH mit JSON: {"ok":<bool>,"issues":["..."],"operations":[.
     ctx.save()
     ctx.strokeStyle = PRGB; ctx.lineWidth = 2; ctx.setLineDash([6, 4])
     ctx.strokeRect((x - offX) * effScale, (y - offY) * effScale, w * effScale, h * effScale)
-    ctx.fillStyle = 'rgba(49,90,231,0.25)'
+    ctx.fillStyle = 'rgba(10,111,176,0.25)'
     ctx.fillRect((x - offX) * effScale, (y - offY) * effScale, w * effScale, h * effScale)
     ctx.restore()
   }
@@ -5404,8 +5404,8 @@ Ignoriere reine Deko/Muster ohne Text. Antworte AUSSCHLIESSLICH mit JSON, ohne E
                   <Rect width={o.width} height={o.height} fill="#EEF2F7" />
                   <KText text="Bild einsetzen" width={o.width} y={o.height / 2 - 9} align="center" fontSize={Math.max(11, Math.min(16, o.width * 0.06))} fill="#93A2B5" listening={false} />
                 </>)}
-            {editing && <Rect width={o.width} height={o.height} stroke="#315AE7" strokeWidth={2} dash={[6, 4]} listening={false} />}
-            {o.id === frameDropTarget && <Rect width={o.width} height={o.height} fill="rgba(49,90,231,0.32)" listening={false} />}
+            {editing && <Rect width={o.width} height={o.height} stroke="#0A6FB0" strokeWidth={2} dash={[6, 4]} listening={false} />}
+            {o.id === frameDropTarget && <Rect width={o.width} height={o.height} fill="rgba(10,111,176,0.32)" listening={false} />}
           </Group>
         )
       }
@@ -5430,20 +5430,20 @@ Ignoriere reine Deko/Muster ohne Text. Antworte AUSSCHLIESSLICH mit JSON, ohne E
                 ? <KImage image={wc} x={0} y={0} width={o.width} height={o.height} listening={false} />
                 : (<>
                     {!isPhoto && <Line points={pts} closed fill="#EEF2F7" stroke="#C7D0DB" strokeWidth={1} />}
-                    {isPhoto && bg && !editing && <Line points={pts} closed fill="rgba(49,90,231,0.10)" stroke="#315AE7" strokeWidth={1.5} dash={[5, 4]} listening={false} />}
+                    {isPhoto && bg && !editing && <Line points={pts} closed fill="rgba(10,111,176,0.10)" stroke="#0A6FB0" strokeWidth={1.5} dash={[5, 4]} listening={false} />}
                     {(!isPhoto || !bg) && <KText text={isPhoto ? 'Foto lädt…' : 'Bild einsetzen'} x={qx} y={qy + qh / 2 - 8} width={qw} align="center" fontSize={Math.max(10, Math.min(15, qw * 0.06))} fill="#93A2B5" listening={false} />}
                   </>)}
               {!isPhoto && dev.front ? dev.front(o.width, o.height) : null}
               {editing && (<>
-                <Line points={pts} closed stroke="#315AE7" strokeWidth={2} dash={[6, 4]} listening={false} />
+                <Line points={pts} closed stroke="#0A6FB0" strokeWidth={2} dash={[6, 4]} listening={false} />
                 {mquad.map((p, idx) => (
-                  <Circle key={'qh' + idx} x={p.x} y={p.y} radius={8} fill="#ffffff" stroke="#315AE7" strokeWidth={2}
+                  <Circle key={'qh' + idx} x={p.x} y={p.y} radius={8} fill="#ffffff" stroke="#0A6FB0" strokeWidth={2}
                     draggable
                     onDragMove={(e) => { const n = e.target; const u = Math.max(0, Math.min(1, n.x() / o.width)), v = Math.max(0, Math.min(1, n.y() / o.height)); setQuadCorner(o.id, idx, u, v) }}
                     onDragEnd={() => pushHistory()} />
                 ))}
               </>)}
-              {o.id === frameDropTarget && <Line points={pts} closed fill="rgba(49,90,231,0.32)" listening={false} />}
+              {o.id === frameDropTarget && <Line points={pts} closed fill="rgba(10,111,176,0.32)" listening={false} />}
             </Group>
           )
         }
@@ -5464,10 +5464,10 @@ Ignoriere reine Deko/Muster ohne Text. Antworte AUSSCHLIESSLICH mit JSON, ohne E
                     <Rect width={scr.w} height={scr.h} fill="#EEF2F7" />
                     <KText text="Bild einsetzen" width={scr.w} y={scr.h / 2 - 8} align="center" fontSize={Math.max(10, Math.min(15, scr.w * 0.06))} fill="#93A2B5" listening={false} />
                   </>)}
-              {mockEditing && <Rect width={scr.w} height={scr.h} stroke="#315AE7" strokeWidth={2} dash={[6, 4]} listening={false} />}
+              {mockEditing && <Rect width={scr.w} height={scr.h} stroke="#0A6FB0" strokeWidth={2} dash={[6, 4]} listening={false} />}
             </Group>
             {dev.front ? dev.front(o.width, o.height) : null}
-            {o.id === frameDropTarget && <Rect x={scr.x} y={scr.y} width={scr.w} height={scr.h} fill="rgba(49,90,231,0.32)" listening={false} />}
+            {o.id === frameDropTarget && <Rect x={scr.x} y={scr.y} width={scr.w} height={scr.h} fill="rgba(10,111,176,0.32)" listening={false} />}
           </Group>
         )
       }
@@ -5539,7 +5539,7 @@ Ignoriere reine Deko/Muster ohne Text. Antworte AUSSCHLIESSLICH mit JSON, ohne E
           <Download size={15} strokeWidth={1.9} />
         </button>
         <button onClick={() => openPagesAction('media')} title="Bilder in Medien speichern — einzelne oder mehrere Seiten auswählen"
-          style={{ flexShrink: 0, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', width: 34, height: 32, borderRadius: 9, border: 'none', background: P, color: '#fff', cursor: 'pointer', fontFamily: 'inherit', boxShadow: '0 1px 2px rgba(16,24,40,0.10)' }}>
+          style={{ flexShrink: 0, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', width: 34, height: 32, borderRadius: 9, border: 'none', background: 'var(--primary)', color: '#fff', cursor: 'pointer', fontFamily: 'inherit', boxShadow: '0 1px 2px rgba(16,24,40,0.10)' }}>
           <Save size={15} strokeWidth={2} />
         </button>
       </div>
@@ -5562,8 +5562,8 @@ Ignoriere reine Deko/Muster ohne Text. Antworte AUSSCHLIESSLICH mit JSON, ohne E
                 Alle Seiten
               </label>
               <span style={{ width: 1, height: 18, background: 'var(--border,#E9ECF2)' }} />
-              <button onClick={selectCurrentPageOnly}
-                style={{ border: '1px solid var(--border,#E9ECF2)', background: '#fff', borderRadius: 8, padding: '4px 10px', fontSize: 12, fontWeight: 700, color: 'var(--text-primary)', cursor: 'pointer' }}>
+              <button className="lk-btn lk-btn-ghost" onClick={selectCurrentPageOnly}
+                >
                 Nur aktuelle Seite
               </button>
               <span style={{ marginLeft: 'auto', fontSize: 12, color: 'var(--text-muted)', fontWeight: 600 }}>{selCount} ausgewählt</span>
@@ -5573,7 +5573,7 @@ Ignoriere reine Deko/Muster ohne Text. Antworte AUSSCHLIESSLICH mit JSON, ohne E
                 const on = !!pageSel[i]
                 return (
                   <label key={p.id || i}
-                    style={{ display: 'flex', alignItems: 'center', gap: 10, padding: 6, borderRadius: 10, cursor: 'pointer', border: '1.5px solid ' + (on ? P : 'var(--border,#E9ECF2)'), background: on ? 'rgba(49,90,231,0.05)' : '#fff' }}>
+                    style={{ display: 'flex', alignItems: 'center', gap: 10, padding: 6, borderRadius: 10, cursor: 'pointer', border: '1.5px solid ' + (on ? P : 'var(--border,#E9ECF2)'), background: on ? 'rgba(10,111,176,0.05)' : '#fff' }}>
                     <input type="checkbox" checked={on} onChange={() => togglePageSel(i)} style={{ width: 16, height: 16, accentColor: P, cursor: 'pointer' }} />
                     <PageThumb page={p} active={on} />
                     <span style={{ fontSize: 13, fontWeight: 700, color: on ? P : 'var(--text-primary)' }}>Seite {i + 1}</span>
@@ -5600,9 +5600,9 @@ Ignoriere reine Deko/Muster ohne Text. Antworte AUSSCHLIESSLICH mit JSON, ohne E
                   <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginBottom: 16 }}>
                     {[['pdf', 'PDF', 'Alle Seiten in einer Datei'], ['png', 'PNG', 'Verlustfrei · mehrere Seiten als ZIP'], ['jpg', 'JPG', 'Kleiner · mehrere Seiten als ZIP']].map(([val, lbl, desc]) => (
                       <button key={val} onClick={() => setDlFormat(val)}
-                        style={{ display: 'flex', alignItems: 'center', gap: 12, textAlign: 'left', padding: '10px 12px', borderRadius: 10, cursor: 'pointer', border: '1.5px solid ' + (dlFormat === val ? P : 'var(--border,#E9ECF2)'), background: dlFormat === val ? 'rgba(49,90,231,0.05)' : '#fff' }}>
+                        style={{ display: 'flex', alignItems: 'center', gap: 12, textAlign: 'left', padding: '10px 12px', borderRadius: 10, cursor: 'pointer', border: '1.5px solid ' + (dlFormat === val ? P : 'var(--border,#E9ECF2)'), background: dlFormat === val ? 'rgba(10,111,176,0.05)' : '#fff' }}>
                         <span style={{ width: 18, height: 18, borderRadius: '50%', border: '2px solid ' + (dlFormat === val ? P : 'var(--border,#C9CFDB)'), display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                          {dlFormat === val && <span style={{ width: 9, height: 9, borderRadius: '50%', background: P }} />}
+                          {dlFormat === val && <span style={{ width: 9, height: 9, borderRadius: '50%', background: 'var(--primary)' }} />}
                         </span>
                         <span style={{ display: 'flex', flexDirection: 'column' }}>
                           <span style={{ fontSize: 14, fontWeight: 800, color: 'var(--text-primary)' }}>{lbl}</span>
@@ -5642,7 +5642,7 @@ Ignoriere reine Deko/Muster ohne Text. Antworte AUSSCHLIESSLICH mit JSON, ohne E
                 <>
                   <div style={{ fontSize: 12, color: 'var(--text-muted)', marginBottom: 10 }}>{selCount} Seite(n) zu welchem Beitrag hinzufügen?</div>
                   <button onClick={() => executePost('new')} disabled={pagesBusy}
-                    style={{ display: 'flex', alignItems: 'center', gap: 10, width: '100%', padding: '11px 12px', borderRadius: 10, cursor: pagesBusy ? 'default' : 'pointer', border: '1.5px solid ' + P, background: 'rgba(49,90,231,0.05)', marginBottom: 12 }}>
+                    style={{ display: 'flex', alignItems: 'center', gap: 10, width: '100%', padding: '11px 12px', borderRadius: 10, cursor: pagesBusy ? 'default' : 'pointer', border: '1.5px solid ' + P, background: 'rgba(10,111,176,0.05)', marginBottom: 12 }}>
                     <PlusIcon size={18} color={P} />
                     <span style={{ display: 'flex', flexDirection: 'column', textAlign: 'left' }}>
                       <span style={{ fontSize: 14, fontWeight: 800, color: P }}>Neuen Beitrag erstellen</span>
@@ -5659,8 +5659,8 @@ Ignoriere reine Deko/Muster ohne Text. Antworte AUSSCHLIESSLICH mit JSON, ohne E
                     {!postLoading && postList.filter(p => !postSearch || (p.title || '').toLowerCase().includes(postSearch.toLowerCase())).length === 0 &&
                       <div style={{ fontSize: 12, color: 'var(--text-muted)', padding: 8 }}>Keine Beiträge gefunden.</div>}
                     {!postLoading && postList.filter(p => !postSearch || (p.title || '').toLowerCase().includes(postSearch.toLowerCase())).map(p => (
-                      <button key={p.id} onClick={() => executePost(p.id)} disabled={pagesBusy}
-                        style={{ display: 'flex', alignItems: 'center', gap: 10, textAlign: 'left', padding: '9px 10px', borderRadius: 9, cursor: pagesBusy ? 'default' : 'pointer', border: '1px solid var(--border,#E9ECF2)', background: '#fff' }}>
+                      <button className="lk-btn lk-btn-ghost" key={p.id} onClick={() => executePost(p.id)} disabled={pagesBusy}
+                        style={{ display: 'flex', alignItems: 'center', gap: 10, textAlign: 'left' }}>
                         <FileText size={15} color="var(--text-muted)" />
                         <span style={{ fontSize: 13, fontWeight: 600, color: 'var(--text-primary)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{p.title || 'Ohne Titel'}</span>
                       </button>
@@ -5868,18 +5868,18 @@ Ignoriere reine Deko/Muster ohne Text. Antworte AUSSCHLIESSLICH mit JSON, ohne E
                 {/* Crop-Overlay */}
                 {cropMode && cropRect && (
                   <Rect x={cropRect.x - off.x} y={cropRect.y - off.y} width={cropRect.w} height={cropRect.h}
-                    stroke={PRGB} strokeWidth={2 / effScale} dash={[8 / effScale, 6 / effScale]} fill="rgba(49,90,231,0.12)" listening={false} />
+                    stroke={PRGB} strokeWidth={2 / effScale} dash={[8 / effScale, 6 / effScale]} fill="rgba(10,111,176,0.12)" listening={false} />
                 )}
                 {/* Marquee (Rubberband) */}
                 {marquee && (marquee.w > 1 || marquee.h > 1) && (
                   <Rect x={marquee.x - off.x} y={marquee.y - off.y} width={marquee.w} height={marquee.h}
-                    stroke={PRGB} strokeWidth={1 / effScale} dash={[6 / effScale, 4 / effScale]} fill="rgba(49,90,231,0.10)" listening={false} />
+                    stroke={PRGB} strokeWidth={1 / effScale} dash={[6 / effScale, 4 / effScale]} fill="rgba(10,111,176,0.10)" listening={false} />
                 )}
                 {/* Live-Rahmen: Elemente, die das Kästchen gerade berührt */}
                 {marquee && marqueeHits.length > 0 && objects.filter(o => marqueeHits.includes(o.id)).map(o => {
                   const hb = objBounds(o)
                   return <Rect key={'mh-' + o.id} x={hb.x - off.x} y={hb.y - off.y} width={hb.w} height={hb.h}
-                    stroke={PRGB} strokeWidth={1.5 / effScale} cornerRadius={3 / effScale} fill="rgba(49,90,231,0.06)" listening={false} />
+                    stroke={PRGB} strokeWidth={1.5 / effScale} cornerRadius={3 / effScale} fill="rgba(10,111,176,0.06)" listening={false} />
                 })}
                 {drawPreview && drawPreview.length >= 2 && (
                   <Line points={drawPreview.flatMap(p => [p.x - off.x, p.y - off.y])} stroke={penColor} strokeWidth={penWidth} lineCap={brushById(activeBrush).cap} lineJoin="round" tension={brushById(activeBrush).tension} opacity={brushById(activeBrush).opacity} globalCompositeOperation={brushById(activeBrush).gco} listening={false} />
@@ -6000,12 +6000,12 @@ Ignoriere reine Deko/Muster ohne Text. Antworte AUSSCHLIESSLICH mit JSON, ohne E
           }}>
             <span style={{ fontSize: 12.5, fontWeight: 800, color: P }}>KI-Vorschau</span>
             <span style={{ fontSize: 12, color: 'var(--text-muted)' }}>Gefällt's dir?</span>
-            <button onClick={discardPreview}
-              style={{ height: 32, padding: '0 14px', borderRadius: 9, border: '1px solid var(--border,#E9ECF2)', background: 'var(--surface,#fff)', color: 'var(--text-primary)', fontSize: 12.5, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit' }}>
+            <button className="lk-btn lk-btn-ghost" onClick={discardPreview}
+              style={{ height: 32, fontFamily: 'inherit' }}>
               Verwerfen
             </button>
-            <button onClick={applyPreview}
-              style={{ height: 32, padding: '0 16px', borderRadius: 9, border: 'none', background: P, color: '#fff', fontSize: 12.5, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit' }}>
+            <button className="lk-btn lk-btn-primary" onClick={applyPreview}
+              style={{ height: 32, fontFamily: 'inherit' }}>
               Übernehmen
             </button>
           </div>
@@ -6056,7 +6056,7 @@ function PageThumb({ page, active }) {
   const off = page.baseCrop || { x: 0, y: 0 }
   return (
     <div style={{ position: 'relative', width: W, height: H, background: page.bgColor || '#fff', borderRadius: 6, overflow: 'hidden',
-      border: '2px solid ' + (active ? P : 'var(--border,#E9ECF2)'), boxShadow: active ? '0 0 0 2px color-mix(in srgb, var(--wl-primary, rgb(49,90,231)) 25%, transparent)' : 'none' }}>
+      border: '2px solid ' + (active ? P : 'var(--border,#E9ECF2)'), boxShadow: active ? '0 0 0 2px color-mix(in srgb, var(--wl-primary, #0A6FB0) 25%, transparent)' : 'none' }}>
       {(page.objects || []).map((o, i) => {
         if (o.hidden) return null
         const x = ((o.x || 0) - (off.x || 0)) * sc, y = ((o.y || 0) - (off.y || 0)) * sc
@@ -6139,7 +6139,7 @@ function ToolBtn({ children, onClick, title, active }) {
       style={{ width: 32, height: 32, flexShrink: 0, display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
         borderRadius: 8, cursor: 'pointer', fontFamily: 'inherit',
         border: '1px solid ' + (active ? P : 'var(--border,#E9ECF2)'),
-        background: active ? 'rgba(49,90,231,0.08)' : 'var(--surface,#fff)',
+        background: active ? 'rgba(10,111,176,0.08)' : 'var(--surface,#fff)',
         color: active ? P : 'var(--text-muted,#475467)' }}>
       {children}
     </button>
@@ -6148,9 +6148,12 @@ function ToolBtn({ children, onClick, title, active }) {
 
 function SmallBtn({ children, onClick, primary, disabled }) {
   return (
-    <button onClick={onClick} disabled={disabled}
-      style={{ height: 30, padding: '0 12px', borderRadius: 8, cursor: disabled ? 'wait' : 'pointer', fontSize: 12, fontWeight: 700, fontFamily: 'inherit',
-        border: primary ? 'none' : '1px solid var(--border)', background: primary ? P : '#fff', color: primary ? '#fff' : 'var(--text-primary)' }}>
+    <button onClick={onClick} title={title}
+      style={{ width: 32, height: 32, flexShrink: 0, display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+        borderRadius: 8, cursor: 'pointer', fontFamily: 'inherit',
+        border: '1px solid ' + (active ? P : 'var(--border,#E9ECF2)'),
+        background: active ? 'rgba(10,111,176,0.08)' : 'var(--surface,#fff)',
+        color: active ? P : 'var(--text-muted,#475467)' }}>
       {children}
     </button>
   )
@@ -6160,7 +6163,7 @@ function MenuItem({ children, onClick }) {
   return (
     <button onClick={onClick}
       style={{ display: 'block', width: '100%', textAlign: 'left', padding: '9px 10px', borderRadius: 7, border: 'none', background: 'transparent', cursor: 'pointer', fontSize: 12.5, fontWeight: 600, color: 'var(--text-primary)', fontFamily: 'inherit' }}
-      onMouseEnter={e => e.currentTarget.style.background = 'rgba(49,90,231,0.06)'}
+      onMouseEnter={e => e.currentTarget.style.background = 'rgba(10,111,176,0.06)'}
       onMouseLeave={e => e.currentTarget.style.background = 'transparent'}>
       {children}
     </button>
@@ -6178,7 +6181,7 @@ function ContextMenuItem({ children, onClick, danger }) {
         padding: '7px 12px', border: 'none', background: 'transparent', cursor: 'pointer',
         fontSize: 12.5, fontWeight: 600, fontFamily: 'inherit',
         color: danger ? '#b91c1c' : 'var(--text-primary)', borderRadius: 7 }}
-      onMouseEnter={e => e.currentTarget.style.background = danger ? 'rgba(185,28,28,0.08)' : 'rgba(49,90,231,0.07)'}
+      onMouseEnter={e => e.currentTarget.style.background = danger ? 'rgba(185,28,28,0.08)' : 'rgba(10,111,176,0.07)'}
       onMouseLeave={e => e.currentTarget.style.background = 'transparent'}>
       {children}
     </button>
@@ -6240,7 +6243,7 @@ function ExportModal({ onExport, exporting, onClose }) {
   const chip = (active) => ({
     height: 32, padding: '0 14px', borderRadius: 8, cursor: 'pointer', fontSize: 12.5, fontWeight: 700, fontFamily: 'inherit',
     border: '1px solid ' + (active ? P : 'var(--border,#E9ECF2)'),
-    background: active ? 'rgba(49,90,231,0.08)' : '#fff',
+    background: active ? 'rgba(10,111,176,0.08)' : '#fff',
     color: active ? P : 'var(--text-muted,#475467)',
   })
   return (
@@ -6311,7 +6314,7 @@ function BarMenu({ title, trigger, width = 180, children, closeOnClick = true })
     <div ref={ref} style={{ position: 'relative', display: 'inline-flex', flexShrink: 0 }}>
       <button type="button" onClick={() => setOpen(o => !o)} title={title}
         style={{ height: 32, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: 3, padding: '0 7px',
-          borderRadius: 8, border: '1px solid ' + (open ? P : 'var(--border,#E9ECF2)'), background: open ? 'rgba(49,90,231,0.08)' : 'var(--surface,#fff)',
+          borderRadius: 8, border: '1px solid ' + (open ? P : 'var(--border,#E9ECF2)'), background: open ? 'rgba(10,111,176,0.08)' : 'var(--surface,#fff)',
           color: open ? P : 'var(--text-muted,#475467)', cursor: 'pointer', fontFamily: 'inherit' }}>
         {trigger}
         <ChevronDown size={12} strokeWidth={2} style={{ opacity: 0.5 }} />
@@ -6329,9 +6332,9 @@ function BarMenuItem({ icon, label, active, onClick }) {
   return (
     <button type="button" onClick={onClick}
       onMouseEnter={e => { e.currentTarget.style.background = '#F4F6FA' }}
-      onMouseLeave={e => { e.currentTarget.style.background = active ? 'rgba(49,90,231,0.08)' : 'transparent' }}
+      onMouseLeave={e => { e.currentTarget.style.background = active ? 'rgba(10,111,176,0.08)' : 'transparent' }}
       style={{ display: 'flex', alignItems: 'center', gap: 9, width: '100%', textAlign: 'left', padding: '8px 10px', borderRadius: 7,
-        border: 'none', background: active ? 'rgba(49,90,231,0.08)' : 'transparent', cursor: 'pointer', fontSize: 13,
+        border: 'none', background: active ? 'rgba(10,111,176,0.08)' : 'transparent', cursor: 'pointer', fontSize: 13,
         color: active ? P : 'var(--text-primary)', fontFamily: 'inherit' }}>
       {icon}{label}
     </button>
@@ -6437,7 +6440,7 @@ function ContextBar({
                     <span style={{ width: '100%', height: 44, borderRadius: 9, display: 'flex', alignItems: 'center', justifyContent: 'center',
                       background: ef.id === 'neon' ? '#15171c' : '#F4F6FA',
                       border: '1.5px solid ' + (on ? P : 'var(--border,#E9ECF2)'),
-                      boxShadow: on ? '0 0 0 2px rgba(49,90,231,0.18)' : 'none' }}>
+                      boxShadow: on ? '0 0 0 2px rgba(10,111,176,0.18)' : 'none' }}>
                       <span style={{ fontSize: 20, fontWeight: 800, color: ef.id === 'neon' ? '#39FF14' : '#111827', lineHeight: 1, ...ef.css }}>Ag</span>
                     </span>
                     <span style={{ fontSize: 10.5, fontWeight: on ? 700 : 600, color: on ? P : 'var(--text-muted,#667085)' }}>{ef.label}</span>
@@ -6494,7 +6497,7 @@ function ContextBar({
             {hasStroke && numField('Randstärke', o.strokeWidth || 0, v => setOnce({ strokeWidth: Math.max(0, v || 0) }), { min: 0, w: 70 })}
             {isRect && numField('Ecken', o.cornerRadius || 0, v => setOnce({ cornerRadius: Math.max(0, v || 0) }), { min: 0, w: 70 })}
             <button type="button" onClick={() => setOnce(o.shadowBlur ? { shadowBlur: 0 } : { shadowBlur: 12, shadowColor: 'rgba(0,0,0,0.35)', shadowOffsetX: 0, shadowOffsetY: 4 })}
-              style={{ display: 'flex', alignItems: 'center', gap: 9, width: '100%', textAlign: 'left', padding: '8px 6px', borderRadius: 7, border: 'none', background: o.shadowBlur ? 'rgba(49,90,231,0.08)' : 'transparent', cursor: 'pointer', fontSize: 13, color: o.shadowBlur ? P : 'var(--text-primary)', fontFamily: 'inherit' }}>
+              style={{ display: 'flex', alignItems: 'center', gap: 9, width: '100%', textAlign: 'left', padding: '8px 6px', borderRadius: 7, border: 'none', background: o.shadowBlur ? 'rgba(10,111,176,0.08)' : 'transparent', cursor: 'pointer', fontSize: 13, color: o.shadowBlur ? P : 'var(--text-primary)', fontFamily: 'inherit' }}>
               <Sliders size={15} strokeWidth={1.9} />Schatten {o.shadowBlur ? 'an' : 'aus'}
             </button>
           </div>
@@ -6511,19 +6514,19 @@ function ContextBar({
       {isImage && !o.isIcon && onEditImage && (
         <button type="button" onClick={onEditImage} title="Bild bearbeiten (Anpassen, Filter, KI)"
           style={{ display: 'inline-flex', alignItems: 'center', gap: 6, height: 34, padding: '0 12px', borderRadius: 9, border: 'none',
-            background: 'rgba(49,90,231,0.08)', color: P, fontSize: 12.5, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit' }}>
+            background: 'rgba(10,111,176,0.08)', color: P, fontSize: 12.5, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit' }}>
           <Wand2 size={14} strokeWidth={2} />Bearbeiten
         </button>
       )}
       {isImage && onCrop && (
-        <button type="button" onClick={onCrop} title="Zuschneiden"
-          style={{ display: 'inline-flex', alignItems: 'center', gap: 6, height: 34, padding: '0 12px', borderRadius: 9, border: '1px solid var(--border,#E9ECF2)', background: 'var(--surface,#fff)', color: 'var(--text-primary)', fontSize: 12.5, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit' }}>
+        <button className="lk-btn lk-btn-ghost" type="button" onClick={onCrop} title="Zuschneiden"
+          style={{ display: 'inline-flex', alignItems: 'center', gap: 6, height: 34, fontFamily: 'inherit' }}>
           <Crop size={14} strokeWidth={1.9} />Zuschneiden
         </button>
       )}
       {(o.type === 'frame' || o.type === 'mockup') && o.src && (
-        <button type="button" onClick={() => setOnce({ src: null })} title="Bild aus dem Rahmen entfernen"
-          style={{ display: 'inline-flex', alignItems: 'center', gap: 6, height: 34, padding: '0 12px', borderRadius: 9, border: '1px solid var(--border,#E9ECF2)', background: 'var(--surface,#fff)', color: 'var(--text-primary)', fontSize: 12.5, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit' }}>
+        <button className="lk-btn lk-btn-ghost" type="button" onClick={() => setOnce({ src: null })} title="Bild aus dem Rahmen entfernen"
+          style={{ display: 'inline-flex', alignItems: 'center', gap: 6, height: 34, fontFamily: 'inherit' }}>
           <X size={14} strokeWidth={2} />Bild entfernen
         </button>
       )}
@@ -6658,7 +6661,7 @@ function Slider({ label, min, max, step, value, onChange, onStart, onEnd }) {
           <span style={{ position: 'absolute', left: zeroPct + '%', top: 3, width: 2, height: 10, background: 'var(--border,#D0D5DD)', transform: 'translateX(-50%)', pointerEvents: 'none', borderRadius: 1 }} />
         )}
         {dragging && (
-          <span style={{ position: 'absolute', left: frac * 100 + '%', top: -25, transform: 'translateX(-50%)', background: P, color: '#fff', fontSize: 10.5, fontWeight: 700, fontVariantNumeric: 'tabular-nums', padding: '2px 7px', borderRadius: 6, whiteSpace: 'nowrap', pointerEvents: 'none', boxShadow: '0 2px 8px rgba(16,24,40,0.22)' }}>{sign}{disp}</span>
+          <span style={{ position: 'absolute', left: frac * 100 + '%', top: -25, transform: 'translateX(-50%)', background: 'var(--primary)', color: '#fff', fontSize: 10.5, fontWeight: 700, fontVariantNumeric: 'tabular-nums', padding: '2px 7px', borderRadius: 6, whiteSpace: 'nowrap', pointerEvents: 'none', boxShadow: '0 2px 8px rgba(16,24,40,0.22)' }}>{sign}{disp}</span>
         )}
         <input type="range" min={min} max={max} step={step} value={v}
           onMouseDown={() => { setDragging(true); onStart && onStart() }}
@@ -6731,11 +6734,11 @@ function ToolRail({ active, onSelect }) {
           <button key={t.id} onClick={() => onSelect(t.id)} title={t.label}
             style={{ position: 'relative', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4, padding: '9px 2px',
               borderRadius: 11, border: 'none', cursor: 'pointer', fontFamily: 'inherit', transition: 'background .12s',
-              background: on ? 'color-mix(in srgb, var(--wl-primary, rgb(49,90,231)) 13%, transparent)' : 'transparent',
+              background: on ? 'color-mix(in srgb, var(--wl-primary, #0A6FB0) 13%, transparent)' : 'transparent',
               color: on ? P : 'var(--text-muted,#475467)' }}
             onMouseEnter={e => { if (!on) e.currentTarget.style.background = 'rgba(16,24,40,0.04)' }}
             onMouseLeave={e => { if (!on) e.currentTarget.style.background = 'transparent' }}>
-            {on && <span style={{ position: 'absolute', left: 0, top: 8, bottom: 8, width: 3, borderRadius: 3, background: P }} />}
+            {on && <span style={{ position: 'absolute', left: 0, top: 8, bottom: 8, width: 3, borderRadius: 3, background: 'var(--primary)' }} />}
             <t.Icon size={20} strokeWidth={on ? 2.1 : 1.9} />
             <span style={{ fontSize: 10, fontWeight: on ? 700 : 600, letterSpacing: '0.01em' }}>{t.label}</span>
           </button>
@@ -6812,9 +6815,9 @@ function IconsTab({ onInsert }) {
         ids.length === 0 ? <MediaEmpty label="Keine Treffer." /> : (
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(44px, 1fr))', gap: 8 }}>
             {ids.map(id => (
-              <button key={id} onClick={() => handlePick(id)} title={id} disabled={inserting === id}
+              <button className="lk-btn lk-btn-ghost" key={id} onClick={() => handlePick(id)} title={id} disabled={inserting === id}
                 draggable onDragStart={() => { _designerDrag = { k: 'dataurl', dataUrl: iconSvgUrl(id, color), meta: { iconId: id, iconColor: color, isIcon: true } } }} onDragEnd={() => { _designerDrag = null }}
-                style={{ height: 44, borderRadius: 9, border: '1px solid var(--border)', background: '#fff', cursor: 'grab', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', position: 'relative' }}>
+                style={{ height: 44, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', position: 'relative' }}>
                 {inserting === id
                   ? <Loader2 size={16} className="lk-spin" style={{ color: 'var(--text-muted)' }} />
                   : <img src={iconSvgUrl(id, color)} alt={id} loading="lazy" draggable={false} width={28} height={28} style={{ display: 'block', objectFit: 'contain' }} />}
@@ -6861,9 +6864,9 @@ function GraphicsTab({ onInsert }) {
         ids.length === 0 ? <MediaEmpty label="Keine Treffer." /> : (
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(44px, 1fr))', gap: 8 }}>
             {ids.map(id => (
-              <button key={id} onClick={() => handlePick(id)} title={id} disabled={inserting === id}
+              <button className="lk-btn lk-btn-ghost" key={id} onClick={() => handlePick(id)} title={id} disabled={inserting === id}
                 draggable onDragStart={() => { _designerDrag = { k: 'dataurl', dataUrl: iconSvgUrl(id), meta: { isGraphic: true } } }} onDragEnd={() => { _designerDrag = null }}
-                style={{ height: 44, borderRadius: 9, border: '1px solid var(--border)', background: '#fff', cursor: 'grab', display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }}>
+                style={{ height: 44, display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }}>
                 {inserting === id
                   ? <Loader2 size={16} className="lk-spin" style={{ color: 'var(--text-muted)' }} />
                   : <img src={iconSvgUrl(id)} alt={id} loading="lazy" draggable={false} width={30} height={30} style={{ display: 'block', objectFit: 'contain' }} />}
@@ -6925,7 +6928,7 @@ function ImagesTab({ onInsert }) {
           <button key={o.id} onClick={() => setOrientation(o.id)}
             style={{ height: 26, padding: '0 10px', borderRadius: 999, cursor: 'pointer', fontSize: 11, fontWeight: 700, fontFamily: 'inherit',
               border: '1px solid ' + (orientation === o.id ? P : 'var(--border)'),
-              background: orientation === o.id ? 'rgba(49,90,231,0.08)' : '#fff',
+              background: orientation === o.id ? 'rgba(10,111,176,0.08)' : '#fff',
               color: orientation === o.id ? P : 'var(--text-muted)' }}>{o.label}</button>
         ))}
       </div>
@@ -7026,7 +7029,7 @@ function PanelBtn({ children, onClick, primary, full, disabled }) {
     <button onClick={onClick} disabled={disabled}
       style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: 6, height: 36, padding: '0 12px',
         width: full ? '100%' : 'auto', borderRadius: 9, cursor: disabled ? 'wait' : 'pointer', fontSize: 12.5, fontWeight: 700, fontFamily: 'inherit',
-        border: primary ? 'none' : '1px solid var(--border)', background: primary ? P : '#fff', color: primary ? '#fff' : 'var(--text-primary)', opacity: disabled ? 0.6 : 1 }}>
+        border: primary ? 'none' : '1px solid var(--border)', background: primary ? 'var(--primary)' : '#fff', color: primary ? '#fff' : 'var(--text-primary)', opacity: disabled ? 0.6 : 1 }}>
       {children}
     </button>
   )
@@ -7044,8 +7047,8 @@ function TemplatesPanelBody({ onApplyTemplate, onClose }) {
       </div>
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: 10 }}>
         {DESIGN_TEMPLATES.map(t => (
-          <button key={t.id} onClick={() => { onApplyTemplate(t); onClose && onClose() }} title={t.desc}
-            style={{ display: 'flex', flexDirection: 'column', gap: 5, padding: 6, borderRadius: 10, border: '1px solid var(--border)', background: '#fff', cursor: 'pointer', fontFamily: 'inherit', textAlign: 'left' }}>
+          <button className="lk-btn lk-btn-ghost" key={t.id} onClick={() => { onApplyTemplate(t); onClose && onClose() }} title={t.desc}
+            style={{ display: 'flex', flexDirection: 'column', gap: 5, fontFamily: 'inherit', textAlign: 'left' }}>
             <TemplateThumb tpl={t} />
             <span style={{ fontSize: 11.5, fontWeight: 700, color: 'var(--text-primary)' }}>{t.label}</span>
           </button>
@@ -7076,7 +7079,7 @@ function ElementsPanelBody({ elementTab, setElementTab, onAddRect, onAddEllipse,
           <button key={t.id} onClick={() => setElementTab(t.id)}
             style={{ height: 28, padding: '0 10px', borderRadius: 999, cursor: 'pointer', fontSize: 11.5, fontWeight: 700, fontFamily: 'inherit',
               border: '1px solid ' + (elementTab === t.id ? P : 'var(--border)'),
-              background: elementTab === t.id ? 'rgba(49,90,231,0.08)' : '#fff',
+              background: elementTab === t.id ? 'rgba(10,111,176,0.08)' : '#fff',
               color: elementTab === t.id ? P : 'var(--text-muted)' }}>{t.label}</button>
         ))}
       </div>
@@ -7094,8 +7097,8 @@ function ElementsPanelBody({ elementTab, setElementTab, onAddRect, onAddEllipse,
             style={{ width: '100%', height: 32, padding: '0 12px', borderRadius: 8, border: '1px solid var(--border)', fontSize: 12.5, fontFamily: 'inherit', outline: 'none', marginBottom: 8, boxSizing: 'border-box' }} />
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(46px, 1fr))', gap: 8 }}>
             {assetList.map(a => (
-              <button key={a.id} onClick={() => onAddAsset(a)} title={a.label}
-                style={{ height: 46, borderRadius: 9, border: '1px solid var(--border)', background: '#fff', cursor: 'pointer', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', color: P }}>
+              <button className="lk-btn lk-btn-ghost" key={a.id} onClick={() => onAddAsset(a)} title={a.label}
+                style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }}>
                 <svg width="26" height="26" viewBox="0 0 100 100"><path d={a.d} fill="currentColor" /></svg>
               </button>
             ))}
@@ -7109,8 +7112,8 @@ function ElementsPanelBody({ elementTab, setElementTab, onAddRect, onAddEllipse,
           <div style={{ fontSize: 11.5, color: 'var(--text-muted)', margin: '0 0 8px', lineHeight: 1.4 }}>Rahmen einfügen, dann auswählen und ein Bild einsetzen (Upload/Medien) — es füllt die Form (cover).</div>
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(52px, 1fr))', gap: 8 }}>
             {FRAME_SHAPES.map(s => (
-              <button key={s.id} onClick={() => onAddFrame(s.id)} title={s.label}
-                style={{ height: 52, borderRadius: 9, border: '1px solid var(--border)', background: '#fff', cursor: 'pointer', display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }}>
+              <button className="lk-btn lk-btn-ghost" key={s.id} onClick={() => onAddFrame(s.id)} title={s.label}
+                style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }}>
                 <svg width="30" height="30" viewBox="0 0 100 100"><path d={s.svg} fill="#CBD5E1" stroke="#94A3B8" strokeWidth="3" strokeLinejoin="round" /></svg>
               </button>
             ))}
@@ -7123,8 +7126,8 @@ function ElementsPanelBody({ elementTab, setElementTab, onAddRect, onAddEllipse,
           <div style={{ fontSize: 11.5, color: 'var(--text-muted)', margin: '0 0 8px', lineHeight: 1.4 }}>Layout einfügen — es platziert mehrere Rahmen. Jede Zelle auswählen und ein Bild einsetzen.</div>
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(58px, 1fr))', gap: 8 }}>
             {COLLAGE_LAYOUTS.map(l => (
-              <button key={l.id} onClick={() => onAddCollage(l.id)} title={l.label}
-                style={{ height: 58, borderRadius: 9, border: '1px solid var(--border)', background: '#fff', cursor: 'pointer', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', padding: 6 }}>
+              <button className="lk-btn lk-btn-ghost" key={l.id} onClick={() => onAddCollage(l.id)} title={l.label}
+                style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }}>
                 <svg width="42" height="42" viewBox="0 0 100 100">
                   {l.cells.map((ce, i) => (<rect key={i} x={ce[0] * 100 + 2} y={ce[1] * 100 + 2} width={Math.max(0, ce[2] * 100 - 4)} height={Math.max(0, ce[3] * 100 - 4)} rx="3" fill="#CBD5E1" stroke="#94A3B8" strokeWidth="2" />))}
                 </svg>
@@ -7139,8 +7142,8 @@ function ElementsPanelBody({ elementTab, setElementTab, onAddRect, onAddEllipse,
           <div style={{ fontSize: 11.5, color: 'var(--text-muted)', margin: '0 0 8px', lineHeight: 1.4 }}>Geräte-Mockup einfügen, dann auswählen und ein Bild einsetzen — es füllt den Screen.</div>
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(58px, 1fr))', gap: 8 }}>
             {DEVICE_MOCKUPS.map(d => (
-              <button key={d.id} onClick={() => onAddMockup(d.id)} title={d.label}
-                style={{ height: 58, borderRadius: 9, border: '1px solid var(--border)', background: '#fff', cursor: 'pointer', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 3 }}>
+              <button className="lk-btn lk-btn-ghost" key={d.id} onClick={() => onAddMockup(d.id)} title={d.label}
+                style={{ height: 58, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 3 }}>
                 {mockupPreview(d.id)}
                 <span style={{ fontSize: 9.5, color: 'var(--text-muted)', fontWeight: 600 }}>{d.label}</span>
               </button>
@@ -7161,7 +7164,7 @@ function TextPanelBody({ onAddText, onAddTextPreset, onAddTextCombo, brandData, 
   useEffect(() => { TEXT_COMBOS.forEach(c => { loadGoogleFont(c.headFont); loadGoogleFont(c.subFont) }) }, [])
   const presetCard = (sub, sample, size, weight) => (
     <button onClick={() => onAddTextPreset(sub)} style={presetBtn} title={`${sample} hinzufügen`}
-      onMouseEnter={e => { e.currentTarget.style.borderColor = P; e.currentTarget.style.background = 'rgba(49,90,231,0.04)' }}
+      onMouseEnter={e => { e.currentTarget.style.borderColor = P; e.currentTarget.style.background = 'rgba(10,111,176,0.04)' }}
       onMouseLeave={e => { e.currentTarget.style.borderColor = 'var(--border,#E9ECF2)'; e.currentTarget.style.background = 'var(--surface,#fff)' }}>
       <span style={{ fontSize: size, fontWeight: weight, color: 'var(--text-primary)', lineHeight: 1.1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{sample}</span>
       <PlusIcon size={15} strokeWidth={2} style={{ color: 'var(--text-soft,#98a2b3)', flexShrink: 0 }} />
@@ -7186,9 +7189,9 @@ function TextPanelBody({ onAddText, onAddTextPreset, onAddTextCombo, brandData, 
       <PanelLabel>Schrift-Kombinationen</PanelLabel>
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: 8 }}>
         {TEXT_COMBOS.map(cfg => (
-          <button key={cfg.id} onClick={() => onAddTextCombo && onAddTextCombo(cfg.id)} title={`Kombination „${cfg.label}" einfügen`}
-            style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start', gap: 3, padding: '10px 11px', borderRadius: 10, border: '1px solid var(--border,#E9ECF2)', background: 'var(--surface,#fff)', cursor: 'pointer', fontFamily: 'inherit', textAlign: 'left', overflow: 'hidden' }}
-            onMouseEnter={e => { e.currentTarget.style.borderColor = P }} onMouseLeave={e => { e.currentTarget.style.borderColor = 'var(--border,#E9ECF2)' }}>
+          <button className="lk-btn lk-btn-ghost" key={cfg.id} onClick={() => onAddTextCombo && onAddTextCombo(cfg.id)} title={`Kombination „${cfg.label}" einfügen`}
+            style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start', gap: 3, fontFamily: 'inherit', textAlign: 'left', overflow: 'hidden' }}
+             >
             <span style={{ fontFamily: `"${cfg.headFont}", sans-serif`, fontSize: 16, fontWeight: 700, color: cfg.light.head, lineHeight: 1.05, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', maxWidth: '100%' }}>{cfg.label}</span>
             <span style={{ fontFamily: `"${cfg.subFont}", sans-serif`, fontSize: 11, color: cfg.light.sub, lineHeight: 1.05 }}>Subline &amp; Text</span>
             <div style={{ display: 'flex', gap: 3, marginTop: 3 }}>
@@ -7207,7 +7210,7 @@ function TextPanelBody({ onAddText, onAddTextPreset, onAddTextCombo, brandData, 
             {brandFonts.map((fam, i) => (
               <button key={i} onClick={() => onApplyBrandFont(fam)} title={`Text in „${fam}" hinzufügen`}
                 style={{ ...presetBtn, fontFamily: fam }}
-                onMouseEnter={e => { e.currentTarget.style.borderColor = P; e.currentTarget.style.background = 'rgba(49,90,231,0.04)' }}
+                onMouseEnter={e => { e.currentTarget.style.borderColor = P; e.currentTarget.style.background = 'rgba(10,111,176,0.04)' }}
                 onMouseLeave={e => { e.currentTarget.style.borderColor = 'var(--border,#E9ECF2)'; e.currentTarget.style.background = 'var(--surface,#fff)' }}>
                 <span style={{ fontSize: 16, color: 'var(--text-primary)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{fam}</span>
                 <PlusIcon size={15} strokeWidth={2} style={{ color: 'var(--text-soft,#98a2b3)', flexShrink: 0 }} />
@@ -7352,12 +7355,12 @@ function AiPanelBody({
 
       {/* Rückgängig / Wiederholen — auch KI-Änderungen sind jetzt Undo-fähig */}
       <div style={{ display: 'flex', gap: 6 }}>
-        <button type="button" onClick={onUndo} title="Letzte Änderung rückgängig (auch KI)"
-          style={{ flex: 1, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: 6, height: 30, borderRadius: 8, cursor: 'pointer', fontFamily: 'inherit', fontSize: 12, fontWeight: 600, border: '1px solid var(--border)', background: '#fff', color: 'var(--text-secondary,#475467)' }}>
+        <button className="lk-btn lk-btn-ghost" type="button" onClick={onUndo} title="Letzte Änderung rückgängig (auch KI)"
+          style={{ flex: 1, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: 6, height: 30, fontFamily: 'inherit' }}>
           <Undo2 size={13} strokeWidth={2} />Rückgängig
         </button>
-        <button type="button" onClick={onRedo} title="Wiederholen"
-          style={{ flex: 1, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: 6, height: 30, borderRadius: 8, cursor: 'pointer', fontFamily: 'inherit', fontSize: 12, fontWeight: 600, border: '1px solid var(--border)', background: '#fff', color: 'var(--text-secondary,#475467)' }}>
+        <button className="lk-btn lk-btn-ghost" type="button" onClick={onRedo} title="Wiederholen"
+          style={{ flex: 1, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: 6, height: 30, fontFamily: 'inherit' }}>
           <Redo2 size={13} strokeWidth={2} />Wiederholen
         </button>
       </div>
@@ -7386,12 +7389,12 @@ function AiPanelBody({
           <ChoiceBtn active={aiMode === 'heal'} onClick={() => startMask(aiMode === 'heal' ? null : 'heal')} icon={<Eraser size={17} strokeWidth={1.9} />}>Objekt entfernen</ChoiceBtn>
         </div>
         {aiMode && (
-          <div style={{ background: 'rgba(49,90,231,0.05)', borderRadius: 10, padding: 10, marginTop: 10 }}>
+          <div style={{ background: 'rgba(10,111,176,0.05)', borderRadius: 10, padding: 10, marginTop: 10 }}>
             <div style={{ fontSize: 11, color: 'var(--text-muted)', marginBottom: 8 }}>Auswahl-Werkzeug wählen und den Bereich im Bild markieren:</div>
             <div style={{ display: 'flex', gap: 6, marginBottom: 8, alignItems: 'center' }}>
               <button type="button" onClick={() => setMaskTool('magic')} title="Objekt per Klick automatisch erkennen"
                 style={{ flex: 1, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: 6, height: 32, borderRadius: 8, cursor: 'pointer', fontFamily: 'inherit', fontSize: 12, fontWeight: 700,
-                  border: '1px solid ' + (maskTool === 'magic' ? P : 'var(--border,#E9ECF2)'), background: maskTool === 'magic' ? 'rgba(49,90,231,0.08)' : '#fff', color: maskTool === 'magic' ? P : 'var(--text-secondary,#475467)' }}>
+                  border: '1px solid ' + (maskTool === 'magic' ? P : 'var(--border,#E9ECF2)'), background: maskTool === 'magic' ? 'rgba(10,111,176,0.08)' : '#fff', color: maskTool === 'magic' ? P : 'var(--text-secondary,#475467)' }}>
                 <MousePointerClick size={14} strokeWidth={1.9} />Magisch
               </button>
               <ToolBtn onClick={() => setMaskTool('brush')} active={maskTool === 'brush'} title="Pinsel"><Brush size={14} strokeWidth={1.9} /></ToolBtn>
@@ -7463,7 +7466,7 @@ function DrawPanelBody({ penColor, setPenColor, penWidth, setPenWidth, onDoneDra
           return (
             <button key={b.id} type="button" onClick={() => onPickBrush && onPickBrush(b.id)} title={b.label}
               style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 5, padding: '9px 4px', borderRadius: 10, cursor: 'pointer', fontFamily: 'inherit',
-                border: '1.5px solid ' + (on ? P : 'var(--border,#E9ECF2)'), background: on ? 'rgba(49,90,231,0.06)' : 'var(--surface,#fff)', color: on ? P : 'var(--text-secondary,#475467)' }}>
+                border: '1.5px solid ' + (on ? P : 'var(--border,#E9ECF2)'), background: on ? 'rgba(10,111,176,0.06)' : 'var(--surface,#fff)', color: on ? P : 'var(--text-secondary,#475467)' }}>
               <b.Icon size={18} strokeWidth={1.9} />
               <span style={{ fontSize: 11, fontWeight: on ? 700 : 600 }}>{b.label}</span>
             </button>
@@ -7526,7 +7529,7 @@ function ChoiceBtn({ active, onClick, icon, children }) {
       style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 6, padding: '12px 6px', borderRadius: 10,
         cursor: 'pointer', fontFamily: 'inherit', fontSize: 12, fontWeight: 700,
         border: '1.5px solid ' + (active ? P : 'var(--border,#E9ECF2)'),
-        background: active ? 'rgba(49,90,231,0.06)' : 'var(--surface,#fff)', color: active ? P : 'var(--text-secondary,#475467)' }}>
+        background: active ? 'rgba(10,111,176,0.06)' : 'var(--surface,#fff)', color: active ? P : 'var(--text-secondary,#475467)' }}>
       {icon}{children}
     </button>
   )
@@ -7554,7 +7557,7 @@ function FilterPanelBody({ filters, setFilters, commitHistoryOnce, endInteractio
     <button onClick={() => toggle(k)}
       style={{ flex: 1, height: 32, borderRadius: 8, cursor: 'pointer', fontFamily: 'inherit', fontSize: 12, fontWeight: 600,
         border: '1px solid ' + (filters[k] ? P : 'var(--border,#E9ECF2)'),
-        background: filters[k] ? 'rgba(49,90,231,0.08)' : 'var(--surface,#fff)',
+        background: filters[k] ? 'rgba(10,111,176,0.08)' : 'var(--surface,#fff)',
         color: filters[k] ? P : 'var(--text-muted,#475467)' }}>{label}</button>
   )
   return (
@@ -7635,7 +7638,7 @@ function LayersPanelBody({
               onDrop={(e) => { e.preventDefault(); const d = layerDragRef && layerDragRef.current; if (d && d !== layer.id) reorderObjects(d, layer.id, false); setLayerDragOverId && setLayerDragOverId(null); if (layerDragRef) layerDragRef.current = null }}
               onClick={() => setSelectedIds([layer.id])}
               style={{ display: 'flex', alignItems: 'center', gap: 7, padding: '7px 8px', borderRadius: 9, cursor: 'pointer',
-                background: isSel ? 'color-mix(in srgb, var(--wl-primary, rgb(49,90,231)) 12%, transparent)' : '#fff',
+                background: isSel ? 'color-mix(in srgb, var(--wl-primary, #0A6FB0) 12%, transparent)' : '#fff',
                 border: dragOver ? `1px dashed ${P}` : '1px solid var(--border)', opacity: layer.hidden ? 0.5 : 1 }}>
               <GripVertical size={14} color="var(--text-muted)" style={{ cursor: 'grab', flexShrink: 0 }} />
               <Icon size={14} color={isSel ? P : 'var(--text-muted)'} style={{ flexShrink: 0 }} />

@@ -1,4 +1,5 @@
 // Deals v2 — PDF Blob-Download, expected_close_date, Slide-in Panel
+import PillSelect from '../components/PillSelect'
 import { useTranslation } from 'react-i18next'
 import React, { useState, useEffect } from 'react'
 import { supabase } from '../lib/supabase'
@@ -8,13 +9,13 @@ import OrganizationPicker from '../components/OrganizationPicker'
 import PageHeader from '../components/PageHeader'
 import { ChevronUp, ChevronDown } from 'lucide-react'
 
-const PRIMARY = 'rgb(49,90,231)'
+const PRIMARY = '#0A6FB0'
 
 const STAGES = [
   { id: 'prospect',     label: 'Interessent',  color: '#6B7280', bg: '#F3F4F6', prob: 15  },
   { id: 'opportunity',  label: 'Qualifiziert', color: '#185FA5', bg: '#EFF6FF', prob: 30  },
   { id: 'angebot',      label: 'Angebot',      color: '#D97706', bg: '#FFFBEB', prob: 50  },
-  { id: 'verhandlung',  label: 'Verhandlung',  color: '#7C3AED', bg: '#F5F3FF', prob: 70  },
+  { id: 'verhandlung',  label: 'Verhandlung',  color: '#003060', bg: '#F5F3FF', prob: 70  },
   { id: 'gewonnen',     label: 'Gewonnen',     color: '#059669', bg: '#ECFDF5', prob: 100 },
   { id: 'verloren',     label: 'Verloren',     color: '#DC2626', bg: '#FEF2F2', prob: 0   },
 ]
@@ -32,11 +33,11 @@ function fmtDate(d) {
 
 /* ── Reports-Stil Design-Komponenten (gespiegelt aus Organizations/Vernetzungen) ── */
 const RC = { surface:'var(--surface, #fff)', border:'#E4E7EC', text1:'var(--text-strong, #111827)', text2:'#374151', text3:'#6B7280' }
-const PV = 'var(--wl-primary, rgb(49,90,231))'
+const PV = 'var(--wl-primary, #0A6FB0)'
 
 function KpiCard({ label, value, sub, color }) {
   return (
-    <div style={{ background:RC.surface, border:`1px solid ${RC.border}`, borderRadius:14, padding:'14px 16px', display:'flex', flexDirection:'column', gap:4 }}>
+    <div style={{ background:RC.surface, border:`1px solid ${RC.border}`, borderRadius:16, padding:'14px 16px', display:'flex', flexDirection:'column', gap:4, boxShadow:'var(--shadow-card)' }}>
       <span style={{ fontSize:10, fontWeight:700, color, textTransform:'uppercase', letterSpacing:'0.06em' }}>{label}</span>
       <div style={{ fontSize:22, fontWeight:800, color:RC.text1, fontVariantNumeric:'tabular-nums' }}>{value}</div>
       {sub && <div style={{ fontSize:11, color:RC.text3 }}>{sub}</div>}
@@ -46,7 +47,7 @@ function KpiCard({ label, value, sub, color }) {
 
 function Panel({ title, children }) {
   return (
-    <div style={{ background:RC.surface, border:`1px solid ${RC.border}`, borderRadius:14, padding:18, marginBottom:16 }}>
+    <div style={{ background:RC.surface, border:`1px solid ${RC.border}`, borderRadius:16, padding:'18px 20px', marginBottom:16, boxShadow:'var(--shadow-card)' }}>
       {title && <div style={{ fontSize:14, fontWeight:700, color:RC.text1, margin:'0 0 14px' }}>{title}</div>}
       {children}
     </div>
@@ -68,10 +69,10 @@ function BarRow({ label, count, total, value, color=PV }) {
   )
 }
 
-const scriptHintStyle = { fontFamily:"'Segoe Script','Bradley Hand','Brush Script MT','Comic Sans MS',cursive", fontStyle:'italic', fontSize:16, fontWeight:600, color:'var(--wl-primary, rgb(49,90,231))', whiteSpace:'nowrap', lineHeight:1 }
+const scriptHintStyle = { fontFamily:'Inter, sans-serif', fontSize:13, fontWeight:600, color:'var(--wl-primary, #0A6FB0)', whiteSpace:'nowrap', lineHeight:1 }
 function CurvedArrow() {
   return (
-    <svg width="34" height="24" viewBox="0 0 34 24" fill="none" style={{ color:'var(--wl-primary, rgb(49,90,231))', flexShrink:0 }} aria-hidden="true">
+    <svg width="34" height="24" viewBox="0 0 34 24" fill="none" style={{ color:'var(--wl-primary, #0A6FB0)', flexShrink:0 }} aria-hidden="true">
       <path d="M3 5 C 14 3, 25 7, 30 14" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" fill="none"/>
       <path d="M23 14.5 L 31 15 L 27 8" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" fill="none"/>
     </svg>
@@ -181,15 +182,10 @@ export function DealModal({ deal, leads, teamMembers = [], teamId, uid, onSave, 
           {/* Lead verknüpfen */}
           <div>
             <label style={lbl}>Lead verknüpfen (optional)</label>
-            <select value={form.lead_id} onChange={e => set('lead_id', e.target.value)} style={inp}>
-              <option value="">— Kein Lead</option>
-              {leads.map(l => (
-                <option key={l.id} value={l.id}>
-                  {[l.first_name, l.last_name].filter(Boolean).join(' ') || l.name || l.company || l.id.slice(0,8)}
-                  {l.company ? ` · ${l.company}` : ''}
-                </option>
-              ))}
-            </select>
+            <PillSelect value={form.lead_id} onChange={v => set('lead_id', v)} neutral options={[{ value: '', label: `— Kein Lead` }, ...leads.map(l => ({ value: l.id, label: `
+                  ${[l.first_name, l.last_name].filter(Boolean).join(' ') || l.name || l.company || l.id.slice(0,8)}
+                  ${l.company ? ` · ${l.company}` : ''}
+                ` }))]} buttonStyle={{ minWidth: 140 }} />
           </div>
 
           {/* Organisation verknüpfen */}
@@ -206,31 +202,18 @@ export function DealModal({ deal, leads, teamMembers = [], teamId, uid, onSave, 
           {/* Owner */}
           <div>
             <label style={lbl}>Owner (optional)</label>
-            <select value={form.owner_id} onChange={e => set('owner_id', e.target.value)} style={inp}>
-              <option value="">— Kein Owner —</option>
-              {teamMembers.map(m => (
-                <option key={m.id} value={m.id}>
-                  {m.full_name || `${m.first_name||''} ${m.last_name||''}`.trim() || m.id.slice(0,8)}
-                  {m.id === uid ? ' (du)' : ''}
-                </option>
-              ))}
-            </select>
+            <PillSelect value={form.owner_id} onChange={v => set('owner_id', v)} neutral options={[{ value: '', label: `— Kein Owner —` }, ...teamMembers.map(m => ({ value: m.id, label: `
+                  ${m.full_name || `${m.first_name||''} ${m.last_name||''}`.trim() || m.id.slice(0,8)}
+                  ${m.id === uid ? ' (du)' : ''}
+                ` }))]} buttonStyle={{ minWidth: 140 }} />
           </div>
 
           {/* Produkt aus Wissensdatenbank */}
           <div>
             <label style={lbl}>Produkt (optional)</label>
-            <select value={form.product_id} onChange={e => set('product_id', e.target.value)} style={inp}>
-              <option value="">— Kein Produkt</option>
-              {products.map(p => {
-                const meta = [p.product_kind, p.product_form, p.price].filter(Boolean).join(' · ')
-                return (
-                  <option key={p.id} value={p.id}>
-                    {p.name}{meta ? ` (${meta})` : ''}
-                  </option>
-                )
-              })}
-            </select>
+            <PillSelect value={form.product_id} onChange={v => set('product_id', v)} neutral options={[{ value: '', label: `— Kein Produkt` }, ...products.map((p) => { const meta = [p.product_kind, p.product_form, p.price].filter(Boolean).join(' · '); return ({ value: p.id, label: `
+                    ${p.name}${meta ? ` (${meta})` : ''}
+                  ` }); })]} buttonStyle={{ minWidth: 140 }} />
             {products.length === 0 && (
               <div style={{ fontSize: 11, color: '#9CA3AF', marginTop: 4 }}>
                 Noch keine Produkte — in der Wissensdatenbank unter Kategorie „Produkt / Service" anlegen.
@@ -246,9 +229,7 @@ export function DealModal({ deal, leads, teamMembers = [], teamId, uid, onSave, 
             </div>
             <div>
               <label style={lbl}>Stage</label>
-              <select value={form.stage} onChange={e => { set('stage', e.target.value); set('probability', STAGE_MAP[e.target.value]?.prob ?? 10) }} style={inp}>
-                {STAGES.map(s => <option key={s.id} value={s.id}>{s.label}</option>)}
-              </select>
+              <PillSelect value={form.stage} onChange={v => { set('stage', v); set('probability', STAGE_MAP[v]?.prob ?? 10) }} neutral options={[...STAGES.map((s) => ({ value: s.id, label: s.label }))]} buttonStyle={{ minWidth: 140 }} />
             </div>
           </div>
 
@@ -274,9 +255,9 @@ export function DealModal({ deal, leads, teamMembers = [], teamId, uid, onSave, 
 
           {/* Buttons */}
           <div style={{ display: 'flex', gap: 10, justifyContent: 'flex-end', marginTop: 4 }}>
-            <button onClick={onClose} style={{ padding: '9px 18px', borderRadius: 9, border: '1px solid #E4E7EC', background: 'var(--surface)', fontSize: 13, cursor: 'pointer', color: '#374151' }}>{t('common.cancel')}</button>
-            <button onClick={save} disabled={saving}
-              style={{ padding: '9px 20px', borderRadius: 9, border: 'none', background: saving ? '#E4E7EC' : PRIMARY, color: saving ? '#9CA3AF' : '#fff', fontSize: 13, fontWeight: 700, cursor: saving ? 'default' : 'pointer' }}>
+            <button className="lk-btn lk-btn-ghost" onClick={onClose} >{t('common.cancel')}</button>
+            <button className="lk-btn lk-btn-cta" onClick={save} disabled={saving}
+              >
               {saving ? '…' : deal?.id ? 'Speichern' : '+ Deal erstellen'}
             </button>
           </div>
@@ -398,12 +379,12 @@ export default function Deals({ session }) {
               <span style={scriptHintStyle}>Auf und zuklappen</span>
               <CurvedArrow/>
             </div>
-            <button onClick={toggleDash} title={showDash ? 'Dashboard ausblenden' : 'Dashboard einblenden'}
-              style={{ padding:'9px 14px', borderRadius:10, border:'1.5px solid #E2E8F0', background:'var(--surface-muted)', color:'#475569', fontSize:13, fontWeight:600, cursor:'pointer', display:'inline-flex', alignItems:'center', gap:6, whiteSpace:'nowrap' }}>
+            <button className="lk-btn lk-btn-ghost" onClick={toggleDash} title={showDash ? 'Dashboard ausblenden' : 'Dashboard einblenden'}
+              style={{ display:'inline-flex', alignItems:'center', gap:6, whiteSpace:'nowrap' }}>
               {showDash ? <ChevronUp size={15}/> : <ChevronDown size={15}/>}Dashboard
             </button>
-            <button onClick={() => setModal('new')}
-              style={{ padding:'9px 18px', borderRadius:10, border:'none', background:PRIMARY, color:'#fff', fontSize:13, fontWeight:700, cursor:'pointer', whiteSpace:'nowrap' }}>
+            <button className="lk-btn lk-btn-cta" onClick={() => setModal('new')}
+              style={{ whiteSpace:'nowrap' }}>
               + Neuer Deal
             </button>
           </div>
@@ -415,7 +396,7 @@ export default function Deals({ session }) {
           {/* KPI-Karten (Reports-Stil) */}
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))', gap: 12, marginBottom: 16 }}>
             <KpiCard label="Pipeline Gesamt" value={fmtEur(total)}    color={PRIMARY}  sub={`${open.length} offen`}/>
-            <KpiCard label="Gewichtet"       value={fmtEur(weighted)} color="#7C3AED"/>
+            <KpiCard label="Gewichtet"       value={fmtEur(weighted)} color="#003060"/>
             <KpiCard label="Gewonnen"        value={fmtEur(wonValue)} color="#059669"  sub={`${won.length} Deals`}/>
             <KpiCard label="Ø Deal-Wert"     value={open.length ? fmtEur(total / open.length) : '—'} color="#D97706"/>
           </div>
@@ -439,7 +420,7 @@ export default function Deals({ session }) {
         <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
           {FILTERS.map(f => (
             <button key={f.id} onClick={() => setFilter(f.id)}
-              style={{ padding: '6px 12px', borderRadius: 20, border: '1.5px solid', borderColor: filter === f.id ? PRIMARY : '#E5E7EB', background: filter === f.id ? PRIMARY : '#fff', color: filter === f.id ? '#fff' : '#374151', fontSize: 12, fontWeight: 600, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 5 }}>
+              style={{ padding: '6px 12px', borderRadius: 20, border: '1.5px solid', borderColor: filter === f.id ? PRIMARY : '#E5E7EB', background: filter === f.id ? 'var(--primary)' : '#fff', color: filter === f.id ? '#fff' : '#374151', fontSize: 12, fontWeight: 600, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 5 }}>
               {f.label}
               {f.count > 0 && <span style={{ background: filter===f.id?'rgba(255,255,255,0.3)':'#F3F4F6', color: filter===f.id?'#fff':'#6B7280', borderRadius: 99, padding: '0 6px', fontSize: 11, fontWeight: 700 }}>{f.count}</span>}
             </button>
@@ -447,16 +428,10 @@ export default function Deals({ session }) {
         </div>
         <div style={{ marginLeft: 'auto', display: 'flex', gap: 8, alignItems: 'center' }}>
           {teamMembers.length > 0 && (
-            <select value={ownerFilter || ''} onChange={e => setOwnerFilter(e.target.value || null)}
-              style={{ padding: '7px 12px', border: '1.5px solid ' + (ownerFilter ? PRIMARY : '#E4E7EC'), borderRadius: 10, fontSize: 13, outline: 'none', background: 'var(--surface)', color: 'var(--text-primary, #111827)', cursor: 'pointer' }}>
-              <option value="">Alle Owner</option>
-              {teamMembers.map(m => (
-                <option key={m.id} value={m.id}>
-                  {m.full_name || `${m.first_name||''} ${m.last_name||''}`.trim() || m.id.slice(0,8)}
-                  {m.id === uid ? ' (du)' : ''}
-                </option>
-              ))}
-            </select>
+            <PillSelect value={ownerFilter || ''} onChange={v => setOwnerFilter(v || null)} neutral options={[{ value: '', label: `Alle Owner` }, ...teamMembers.map((m) => ({ value: m.id, label: `
+                  ${m.full_name || `${m.first_name||''} ${m.last_name||''}`.trim() || m.id.slice(0,8)}
+                  ${m.id === uid ? ' (du)' : ''}
+                ` }))]} buttonStyle={{ minWidth: 140 }} />
           )}
           <div style={{ position: 'relative' }}>
             <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Deal suchen…"

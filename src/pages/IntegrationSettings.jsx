@@ -4,7 +4,7 @@ import { supabase } from '../lib/supabase'
 import { useTeam } from '../context/TeamContext'
 import { useAddons } from '../hooks/useAddons'
 
-const PRIMARY = 'rgb(49,90,231)'
+const PRIMARY = '#0A6FB0'
 const SUPABASE_URL = 'https://jdhajqpgfrsuoluaesjn.supabase.co'
 
 export default function IntegrationSettings({ session }) {
@@ -179,19 +179,10 @@ export default function IntegrationSettings({ session }) {
               für 9,99&nbsp;€/Monat. Bestehende Verbindungen aus der Beta-Phase
               bleiben kostenfrei verfügbar.
             </div>
-            <button
+            <button className="lk-btn lk-btn-primary"
               type="button"
               onClick={() => navigate('/marketplace?addon_focus=sevdesk-integration')}
-              style={{
-                padding: '8px 18px',
-                background: PRIMARY,
-                color: '#fff',
-                border: 'none',
-                borderRadius: 8,
-                fontSize: 13,
-                fontWeight: 700,
-                cursor: 'pointer',
-              }}
+              
             >
               Zum Marketplace →
             </button>
@@ -216,8 +207,8 @@ export default function IntegrationSettings({ session }) {
               <span style={{ fontSize:12, fontWeight:600, color:integ.is_active?'#065F46':'#6B7280' }}>
                 {integ.is_active ? 'Aktiv' : 'Inaktiv'}
               </span>
-              <button onClick={toggleActive}
-                style={{ padding:'4px 10px', borderRadius:8, border:'1px solid var(--border)', background:'var(--surface)', fontSize:11, fontWeight:600, cursor:'pointer', color:'var(--text-primary)' }}>
+              <button className="lk-btn lk-btn-ghost" onClick={toggleActive}
+                >
                 {integ.is_active ? 'Deaktivieren' : 'Aktivieren'}
               </button>
             </div>
@@ -306,8 +297,8 @@ export default function IntegrationSettings({ session }) {
 
         {/* Buttons */}
         <div style={{ display:'flex', gap:10 }}>
-          <button onClick={save} disabled={saving}
-            style={{ padding:'10px 20px', borderRadius:10, border:'none', background:saving?'#E4E7EC':PRIMARY, color:saving?'#9CA3AF':'#fff', fontSize:13, fontWeight:700, cursor:saving?'default':'pointer' }}>
+          <button className="lk-btn lk-btn-cta" onClick={save} disabled={saving}
+            >
             {saving ? 'Speichern…' : 'Speichern'}
           </button>
           {integ && (

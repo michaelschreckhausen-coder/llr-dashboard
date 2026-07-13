@@ -28,7 +28,7 @@ const PLANS = [
   },
   {
     id:'pro', name:'LinkedIn Suite Pro', price:'79€', period:'/Monat',
-    color:'#8B5CF6', bg:'#F5F3FF', border:'#DDD6FE',
+    color:'#0A6FB0', bg:'#F5F3FF', border:'#DDD6FE',
     wixUrl:'https://app.leadesk.de/pricing',
     features:[
       { label:'Bis zu 1000 Leads', ok:true },

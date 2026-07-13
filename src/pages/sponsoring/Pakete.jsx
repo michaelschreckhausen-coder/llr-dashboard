@@ -8,7 +8,7 @@ import { supabase } from '../../lib/supabase'
 import { useTeam } from '../../context/TeamContext'
 import PageHeader from '../../components/PageHeader'
 
-const PRIMARY = 'var(--wl-primary, rgb(49,90,231))'
+const PRIMARY = 'var(--wl-primary, #0A6FB0)'
 const sp = () => supabase.schema('sponsoring')
 const TIERS = ['bronze', 'silber', 'gold', 'platin', 'custom']
 const fmt = (n) => `${Number(n || 0).toLocaleString('de-DE')} €`
@@ -95,7 +95,7 @@ export default function Pakete() {
       <form onSubmit={createPackage} style={{ display: 'grid', gridTemplateColumns: '2fr 1fr auto', gap: 10, alignItems: 'end', ...card, marginBottom: 22 }}>
         <Field label="Name der Ebene"><input value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} placeholder="z.B. Gold" style={input} /></Field>
         <Field label="Ebene ab Euro (€, optional)"><input type="number" min="0" step="0.01" value={form.price} onChange={(e) => setForm({ ...form, price: e.target.value })} placeholder="leer = Listenwert" style={input} /></Field>
-        <button type="submit" disabled={busy || !form.name.trim()} style={{ ...primaryBtn, opacity: busy || !form.name.trim() ? 0.6 : 1 }}>
+        <button type="submit" disabled={busy || !form.name.trim()} className="lk-btn lk-btn-navy" style={{ opacity: busy || !form.name.trim() ? 0.6 : 1 }}>
           {busy ? <Loader2 size={14} className="spin" /> : <Plus size={14} />} Anlegen
         </button>
       </form>
@@ -137,13 +137,8 @@ export default function Pakete() {
                         {rights.map((r) => {
                           const on = selected.has(r.id)
                           return (
-                            <button key={r.id} onClick={() => toggleRight(p.id, r.id)}
-                              style={{
-                                display: 'inline-flex', alignItems: 'center', gap: 6, padding: '6px 12px', borderRadius: 999,
-                                border: '1px solid ' + (on ? PRIMARY : 'var(--border)'),
-                                background: on ? PRIMARY : 'var(--surface)', color: on ? '#fff' : 'var(--text-strong)',
-                                fontSize: 12.5, fontWeight: 600, cursor: 'pointer',
-                              }}>
+                            <button className="lk-btn lk-btn-primary" key={r.id} onClick={() => toggleRight(p.id, r.id)}
+                              style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
                               {on ? <X size={12} /> : <Plus size={12} />}
                               {r.name}{r.list_price != null ? ` · ${fmt(r.list_price)}` : ''}
                             </button>
@@ -173,6 +168,6 @@ function Field({ label, children }) {
 
 const card = { border: '1px solid var(--border)', borderRadius: 14, background: 'var(--surface)', padding: 16 }
 const input = { padding: '8px 10px', borderRadius: 8, border: '1px solid var(--border)', background: 'var(--surface)', color: 'var(--text-strong)', fontSize: 13.5, width: '100%', boxSizing: 'border-box' }
-const primaryBtn = { display: 'inline-flex', alignItems: 'center', gap: 6, padding: '9px 16px', borderRadius: 999, border: 'none', background: PRIMARY, color: '#fff', fontSize: 13, fontWeight: 700, cursor: 'pointer', whiteSpace: 'nowrap' }
+const primaryBtn = { display: 'inline-flex', alignItems: 'center', gap: 6, padding: '9px 16px', borderRadius: 999, border: 'none', background: 'var(--primary)', color: '#fff', fontSize: 13, fontWeight: 700, cursor: 'pointer', whiteSpace: 'nowrap' }
 const chip = { fontSize: 11.5, fontWeight: 700, color: 'var(--text-muted)', background: 'var(--surface-muted, #F1F5F9)', border: '1px solid var(--border)', padding: '2px 9px', borderRadius: 999 }
 const errBox = { padding: '10px 14px', borderRadius: 10, background: '#FEE2E2', color: '#991B1B', fontSize: 13, marginBottom: 16 }

@@ -8,7 +8,7 @@
 import React, { useEffect, useRef, useState } from 'react'
 import { supabase } from '../lib/supabase'
 
-const PRIMARY = 'var(--wl-primary, rgb(49,90,231))'
+const PRIMARY = 'var(--wl-primary, #0A6FB0)'
 
 export default function MfaChallenge({ onVerified }) {
   const [code, setCode] = useState('')
@@ -45,7 +45,7 @@ export default function MfaChallenge({ onVerified }) {
     <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'var(--surface, #fff)', padding: 24 }}>
       <div style={{ width: '100%', maxWidth: 380, textAlign: 'center' }}>
         <img src="/Leadesk_Logo.png" alt="Leadesk" style={{ height: 34, marginBottom: 28 }} />
-        <div style={{ width: 56, height: 56, borderRadius: 16, background: 'var(--primary-soft, #EEF2FF)', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 18px' }}>
+        <div style={{ width: 56, height: 56, borderRadius: 16, background: 'var(--primary-soft, #EAF6FC)', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 18px' }}>
           <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke={PRIMARY} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
         </div>
         <h1 style={{ fontSize: 22, fontWeight: 800, margin: '0 0 6px', color: 'var(--text-primary)' }}>Zwei-Faktor-Bestätigung</h1>
@@ -71,8 +71,8 @@ export default function MfaChallenge({ onVerified }) {
           style={{ width: '100%', padding: '14px', borderRadius: 10, border: '1.5px solid var(--border)', fontSize: 26, letterSpacing: '0.4em', textAlign: 'center', fontFamily: 'monospace', boxSizing: 'border-box', marginBottom: 16 }}
         />
 
-        <button onClick={verify} disabled={busy}
-          style={{ width: '100%', padding: '13px', borderRadius: 10, border: 'none', background: PRIMARY, color: '#fff', fontSize: 15, fontWeight: 700, cursor: busy ? 'default' : 'pointer', opacity: busy ? 0.7 : 1 }}>
+        <button className="lk-btn lk-btn-primary" onClick={verify} disabled={busy}
+          style={{ width: '100%', opacity: busy ? 0.7 : 1 }}>
           {busy ? 'Prüfe…' : 'Bestätigen'}
         </button>
 

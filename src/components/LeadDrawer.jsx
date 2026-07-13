@@ -1,3 +1,4 @@
+import PillSelect from './PillSelect'
 import { useTeam } from '../context/TeamContext'
 import LeadTasks from './LeadTasks'
 import React, { useState, useEffect } from 'react'
@@ -235,8 +236,8 @@ export default function LeadDrawer({ lead, session, onClose, onUpdate, onDelete 
             ['✏','Notiz', ()=>{ setActiveTab('aktivitaet'); setQuickLog(null) }],
             ['↗','Profil', ()=>navigate(`/leads/${lead.id}`)],
           ].map(([icon,label,fn]) => (
-            <button key={label} className="ld-qa" onClick={fn}
-              style={{ padding:'7px 2px', borderRadius:8, border:'1px solid #E5E7EB', background:'#fff', fontSize:11, fontWeight:600, color:'#475569', cursor:'pointer', transition:'all 0.15s' }}>
+            <button key={label} className="ld-qa lk-btn lk-btn-ghost" onClick={fn}
+              >
               {icon} {label}
             </button>
           ))}
@@ -253,8 +254,8 @@ export default function LeadDrawer({ lead, session, onClose, onUpdate, onDelete 
                 return <button key={d} onClick={async()=>{ await supabase.from('leads').update({next_followup:iso}).eq('id',lead.id); onUpdate({...lead,next_followup:iso}); setQuickLog(null) }}
                   style={{ padding:'3px 9px', borderRadius:6, border:'1px solid #BFDBFE', background:'#EFF6FF', fontSize:11, fontWeight:600, color:'#1d4ed8', cursor:'pointer' }}>{l}</button>
               })}
-              {lead.next_followup && <button onClick={async()=>{ await supabase.from('leads').update({next_followup:null}).eq('id',lead.id); onUpdate({...lead,next_followup:null}); setQuickLog(null) }}
-                style={{ padding:'3px 9px', borderRadius:6, border:'1px solid #FECACA', background:'#FEF2F2', fontSize:11, fontWeight:600, color:'#dc2626', cursor:'pointer' }}>Löschen</button>}
+              {lead.next_followup && <button className="lk-btn lk-btn-danger" onClick={async()=>{ await supabase.from('leads').update({next_followup:null}).eq('id',lead.id); onUpdate({...lead,next_followup:null}); setQuickLog(null) }}
+                >Löschen</button>}
             </div>
           </div>
         )}
@@ -287,25 +288,16 @@ export default function LeadDrawer({ lead, session, onClose, onUpdate, onDelete 
 
             <div>
               <div style={{ fontSize:10, fontWeight:700, color:'#94A3B8', textTransform:'uppercase', letterSpacing:'0.07em', marginBottom:6 }}>Pipeline Stage</div>
-              <select value={lead.deal_stage||'kein_deal'} onChange={e=>changeDealStage(e.target.value)}
-                style={{ width:'100%', padding:'8px 10px', border:'1.5px solid #E5E7EB', borderRadius:8, fontSize:13, fontWeight:600, color:'#0F172A', background:'#FAFAFA', cursor:'pointer', outline:'none' }}>
-                {STAGE_ORDER.map(s => <option key={s} value={s}>{STAGE_CFG[s].label}</option>)}
-              </select>
+              <PillSelect value={lead.deal_stage||'kein_deal'} onChange={changeDealStage} neutral options={[...STAGE_ORDER.map((s) => ({ value: s, label: STAGE_CFG[s].label }))]} buttonStyle={{ minWidth: 140 }} />
             </div>
 
             <div>
               <div style={{ fontSize:10, fontWeight:700, color:'#94A3B8', textTransform:'uppercase', letterSpacing:'0.07em', marginBottom:6 }}>Verbindung</div>
-              <select value={lead.li_connection_status||'nicht_verbunden'} onChange={e=>changeConn(e.target.value)}
-                style={{ width:'100%', padding:'8px 10px', border:'1.5px solid #E5E7EB', borderRadius:8, fontSize:13, fontWeight:600, color:'#0F172A', background:'#FAFAFA', cursor:'pointer', outline:'none' }}>
-                {Object.entries(CONN_CFG).map(([k,v]) => <option key={k} value={k}>{v.label}</option>)}
-              </select>
+              <PillSelect value={lead.li_connection_status||'nicht_verbunden'} onChange={changeConn} neutral options={[...Object.entries(CONN_CFG).map(([k,v]) => ({ value: k, label: v.label }))]} buttonStyle={{ minWidth: 140 }} />
             </div>
             <div>
               <div style={{ fontSize:10, fontWeight:700, color:'#94A3B8', textTransform:'uppercase', letterSpacing:'0.07em', marginBottom:6 }}>Lifecycle</div>
-              <select value={lead.lifecycle_stage||'lead'} onChange={e=>changeLifecycle(e.target.value)}
-                style={{ width:'100%', padding:'8px 10px', border:'1.5px solid #E5E7EB', borderRadius:8, fontSize:13, fontWeight:600, color:'#0F172A', background:'#FAFAFA', cursor:'pointer', outline:'none' }}>
-                {[['lead','Lead'],['marketing_qualified','MQL'],['sales_qualified','SQL'],['opportunity','Opportunity'],['customer','Kunde']].map(([k,l]) => <option key={k} value={k}>{l}</option>)}
-              </select>
+              <PillSelect value={lead.lifecycle_stage||'lead'} onChange={changeLifecycle} neutral options={[...[['lead','Lead'],['marketing_qualified','MQL'],['sales_qualified','SQL'],['opportunity','Opportunity'],['customer','Kunde']].map(([k,l]) => ({ value: k, label: l }))]} buttonStyle={{ minWidth: 140 }} />
             </div>
 
             {/* Deals für diesen Lead */}
@@ -342,9 +334,9 @@ export default function LeadDrawer({ lead, session, onClose, onUpdate, onDelete 
 
             {/* KI-Erkenntnisse */}
             {(lead.ai_buying_intent || lead.ai_pain_points?.length || lead.ai_use_cases?.length) && (
-              <div style={{ background:'#FAFAFF', borderRadius:10, padding:'12px 14px', border:'1px solid #E0E7FF', borderLeft:'3px solid #7c3aed' }}>
+              <div style={{ background:'#FAFAFF', borderRadius:10, padding:'12px 14px', border:'1px solid #E6E8EF', borderLeft:'3px solid #0A6FB0' }}>
                 <div style={{ display:'flex', alignItems:'center', gap:8, marginBottom:8 }}>
-                  <span style={{ fontSize:11, fontWeight:700, color:'#7c3aed' }}>KI-Einschätzung</span>
+                  <span style={{ fontSize:11, fontWeight:700, color:'#0A6FB0' }}>KI-Einschätzung</span>
                   {lead.ai_buying_intent && <span style={{ fontSize:10, fontWeight:700, padding:'2px 8px', borderRadius:99, background:lead.ai_buying_intent==='hoch'?'#FEF2F2':lead.ai_buying_intent==='mittel'?'#FFFBEB':'#F8FAFC', color:lead.ai_buying_intent==='hoch'?'#dc2626':lead.ai_buying_intent==='mittel'?'#d97706':'#64748b' }}>
                     {lead.ai_buying_intent==='hoch'?'Hoch':lead.ai_buying_intent==='mittel'?'Mittel':'○ Niedrig'}
                   </span>}
@@ -558,8 +550,8 @@ export default function LeadDrawer({ lead, session, onClose, onUpdate, onDelete 
               </div>
 
               {/* Speichern */}
-              <button onClick={saveEdit} disabled={editSaving || !editDirty}
-                style={{ padding:'10px', borderRadius:8, border:'none', background:editDirty?'var(--wl-primary, #2563eb)':'#E5E7EB', color:editDirty?'#fff':'#9CA3AF', fontSize:13, fontWeight:700, cursor:editDirty?'pointer':'default', transition:'all 0.15s' }}>
+              <button className="lk-btn lk-btn-cta" onClick={saveEdit} disabled={editSaving || !editDirty}
+                >
                 {editSaving ? 'Speichere…' : editDirty ? 'Änderungen speichern' : 'Keine Änderungen'}
               </button>
 
@@ -583,8 +575,8 @@ export default function LeadDrawer({ lead, session, onClose, onUpdate, onDelete 
             style={{ flex:1, padding:'8px', borderRadius:8, border:'none', background:saving?'#94A3B8':'#2563eb', color:'#fff', fontSize:13, fontWeight:700, cursor:'pointer' }}>
             {saving?'Speichere…':'Speichern'}
           </button>
-          <button onClick={()=>{ setForm(f=>({...f,deal_value:lead.deal_value||'',deal_expected_close:lead.deal_expected_close||'',deal_probability:lead.deal_probability||0,notes:lead.notes||'',ai_need_detected:lead.ai_need_detected||''})); setFormDirty(false) }}
-            style={{ padding:'8px 14px', borderRadius:8, border:'1px solid #E5E7EB', background:'#fff', color:'#64748B', fontSize:13, cursor:'pointer' }}>
+          <button className="lk-btn lk-btn-ghost" onClick={()=>{ setForm(f=>({...f,deal_value:lead.deal_value||'',deal_expected_close:lead.deal_expected_close||'',deal_probability:lead.deal_probability||0,notes:lead.notes||'',ai_need_detected:lead.ai_need_detected||''})); setFormDirty(false) }}
+            >
             Verwerfen
           </button>
         </div>

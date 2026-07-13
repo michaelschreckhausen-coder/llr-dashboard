@@ -9,13 +9,14 @@
 // team_id), sonst greift die RLS nicht. Buckets sind PRIVATE → Anzeige via
 // createSignedUrl(path, 3600).
 
+import PillSelect from '../../components/PillSelect'
 import { useEffect, useState, useCallback } from 'react'
 import { ImagePlus, Plus, Loader2, RefreshCw, Upload, Wand2, Building2, Trash2 } from 'lucide-react'
 import { supabase } from '../../lib/supabase'
 import { useTeam } from '../../context/TeamContext'
 import PageHeader from '../../components/PageHeader'
 
-const PRIMARY = 'var(--wl-primary, rgb(49,90,231))'
+const PRIMARY = 'var(--wl-primary, #0A6FB0)'
 const sp = () => supabase.schema('sponsoring')
 
 const BUCKET_STADIUM = 'sponsoring-stadium'
@@ -238,11 +239,7 @@ export default function MockupStudio() {
           </select>
         </Field>
         <Field label="Sponsor (optional)">
-          <select value={mockForm.sponsor_profile_id}
-                  onChange={(e) => setMockForm({ ...mockForm, sponsor_profile_id: e.target.value })} style={input}>
-            <option value="">— keiner —</option>
-            {sortedSponsors.map((s) => <option key={s.id} value={s.id}>{orgNameOf(s.organization_id) || '—'}</option>)}
-          </select>
+          <PillSelect value={mockForm.sponsor_profile_id} onChange={v => setMockForm({ ...mockForm, sponsor_profile_id: v })} neutral options={[{ value: '', label: `— keiner —` }, ...sortedSponsors.map((s) => ({ value: s.id, label: orgNameOf(s.organization_id) || '—' }))]} buttonStyle={{ minWidth: 140 }} />
         </Field>
         <Field label="Sponsor-Logo">
           <label style={fileBtn}>
@@ -252,7 +249,7 @@ export default function MockupStudio() {
           </label>
         </Field>
         <button type="submit" disabled={mockBusy || !mockForm.stadium_template_id || !logoFile}
-                style={{ ...primaryBtn, opacity: mockBusy || !mockForm.stadium_template_id || !logoFile ? 0.6 : 1 }}>
+                className="lk-btn lk-btn-navy" style={{ opacity: mockBusy || !mockForm.stadium_template_id || !logoFile ? 0.6 : 1 }}>
           {mockBusy ? <Loader2 size={14} className="spin" /> : <Wand2 size={14} />}
           {mockBusy ? 'Generiere…' : 'Mockup generieren'}
         </button>
@@ -266,7 +263,7 @@ export default function MockupStudio() {
       {/* ─── Block 3: Ergebnisse ───────────────────────────────────────────── */}
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginTop: 8 }}>
         <h2 style={{ ...sectionTitle, marginBottom: 0 }}>Ergebnisse</h2>
-        <button onClick={fetchAll} style={secondaryBtn}>
+        <button onClick={fetchAll} className="lk-btn lk-btn-ghost">
           <RefreshCw size={14} /> Neu laden
         </button>
       </div>
@@ -338,7 +335,7 @@ const input = {
 }
 const primaryBtn = {
   display: 'inline-flex', alignItems: 'center', gap: 6, padding: '9px 16px', borderRadius: 999,
-  border: 'none', background: PRIMARY, color: '#fff', fontSize: 13, fontWeight: 700, cursor: 'pointer', whiteSpace: 'nowrap',
+  border: 'none', background: 'var(--primary)', color: '#fff', fontSize: 13, fontWeight: 700, cursor: 'pointer', whiteSpace: 'nowrap',
 }
 const secondaryBtn = {
   display: 'inline-flex', alignItems: 'center', gap: 6, padding: '7px 14px', borderRadius: 999,

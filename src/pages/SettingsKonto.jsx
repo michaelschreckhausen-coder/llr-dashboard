@@ -5,7 +5,7 @@ import { useEntitlements } from '../hooks/useEntitlements'
 import SettingsTabs from '../components/SettingsTabs'
 import RealtimeStatusBadge from '../components/RealtimeStatusBadge'
 
-const PRIMARY = 'var(--wl-primary, rgb(49,90,231))'
+const PRIMARY = 'var(--wl-primary, #0A6FB0)'
 const CONTACT_EMAIL = 'info@leadesk.de'
 
 const STATUS_LABELS = {
@@ -380,15 +380,10 @@ export default function SettingsKonto() {
             </div>
           </div>
           {isActive && entitlements.plan_managed_by === 'stripe' && (
-            <button
+            <button className="lk-btn lk-btn-ghost"
               onClick={handlePortal}
               disabled={portalLoading}
-              style={{
-                padding: '10px 18px', borderRadius: 10, fontSize: 13, fontWeight: 700,
-                background: '#fff', color: PRIMARY, border: `1.5px solid ${PRIMARY}`,
-                cursor: portalLoading ? 'default' : 'pointer', letterSpacing: '-0.01em',
-                opacity: portalLoading ? 0.6 : 1, whiteSpace: 'nowrap',
-              }}
+              style={{ letterSpacing: '-0.01em', opacity: portalLoading ? 0.6 : 1, whiteSpace: 'nowrap' }}
             >
               {portalLoading ? 'Wird geöffnet…' : 'Abo verwalten →'}
             </button>
@@ -425,7 +420,7 @@ export default function SettingsKonto() {
             {['monthly', 'yearly'].map(p => (
               <button key={p} onClick={() => setBilling(p)} disabled={!!pendingPlan} style={{
                 padding: '6px 14px', border: 'none', borderRadius: 99, fontSize: 12, fontWeight: 700,
-                background: billing === p ? PRIMARY : 'transparent',
+                background: billing === p ? 'var(--primary)' : 'transparent',
                 color: billing === p ? '#fff' : 'var(--text-primary)',
                 cursor: pendingPlan ? 'default' : 'pointer', transition: 'all 0.2s', letterSpacing: '-0.01em',
                 opacity: pendingPlan ? 0.5 : 1,
@@ -482,11 +477,11 @@ export default function SettingsKonto() {
 
               return (
                 <div key={plan.id} style={{
-                  background: highlighted ? PRIMARY : 'var(--surface)',
+                  background: highlighted ? 'var(--primary)' : 'var(--surface)',
                   color: highlighted ? '#fff' : 'var(--text-strong)',
                   border: highlighted ? 'none' : '1.5px solid var(--border)',
                   borderRadius: 14, padding: '20px 18px', position: 'relative',
-                  boxShadow: highlighted ? '0 12px 28px rgba(49,90,231,0.18)' : 'none',
+                  boxShadow: highlighted ? '0 12px 28px rgba(10,111,176,0.18)' : 'none',
                   display: 'flex', flexDirection: 'column',
                 }}>
                   {highlighted && (
@@ -533,17 +528,10 @@ export default function SettingsKonto() {
                       ✓ Aktueller Plan
                     </div>
                   ) : hasStripeCheckout ? (
-                    <button
+                    <button className="lk-btn lk-btn-primary"
                       onClick={() => handleCheckout(plan.slug)}
                       disabled={!!pendingPlan}
-                      style={{
-                        padding: '10px 14px', borderRadius: 10, textAlign: 'center', fontSize: 13, fontWeight: 700,
-                        background: highlighted ? '#fff' : PRIMARY,
-                        color: highlighted ? PRIMARY : '#fff',
-                        border: 'none', letterSpacing: '-0.01em',
-                        cursor: pendingPlan ? 'default' : 'pointer',
-                        opacity: pendingPlan && !isPending ? 0.5 : 1,
-                      }}
+                      style={{ textAlign: 'center', letterSpacing: '-0.01em', opacity: pendingPlan && !isPending ? 0.5 : 1 }}
                     >
                       {isPending ? 'Wird geladen…' : 'Plan aktivieren →'}
                     </button>
@@ -552,7 +540,7 @@ export default function SettingsKonto() {
                       href={`mailto:${CONTACT_EMAIL}?subject=${encodeURIComponent(`Plan-Anfrage: ${plan.name}`)}`}
                       style={{
                         padding: '10px 14px', borderRadius: 10, textAlign: 'center', fontSize: 13, fontWeight: 700,
-                        background: highlighted ? '#fff' : PRIMARY,
+                        background: highlighted ? '#fff' : 'var(--primary)',
                         color: highlighted ? PRIMARY : '#fff',
                         border: 'none', letterSpacing: '-0.01em',
                         textDecoration: 'none', display: 'block',

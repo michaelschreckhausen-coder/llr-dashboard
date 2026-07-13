@@ -28,7 +28,7 @@ import { useState } from 'react';
 import { Check, X } from 'lucide-react';
 import { STATUS_ORDER, STATUS_CONFIG, COLORS } from '../../lib/leadStyleTokens';
 
-const PRIMARY = 'rgb(49,90,231)';
+const PRIMARY = '#0A6FB0';
 
 // ─── Chevron-Geometrie via clip-path ─────────────────────────────────────
 // Steps 2..5 haben den Einschnitt links (Pfeil zeigt rein), Step 1 ist
@@ -91,7 +91,7 @@ const confirmBtnStyle = {
   padding: '6px 12px',
   fontSize: 12,
   fontWeight: 600,
-  background: PRIMARY,
+  background: 'var(--primary)',
   color: '#fff',
   border: 'none',
   borderRadius: 6,

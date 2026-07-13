@@ -5,13 +5,14 @@
 // Liest/schreibt im Schema 'sponsoring' via supabase.schema('sponsoring').
 // Ligen-Select aus sponsoring.leagues. team_id kommt aus useTeam().activeTeamId.
 
+import PillSelect from '../../components/PillSelect'
 import { useEffect, useMemo, useState, useCallback } from 'react'
 import { Target, Plus, Loader2, RefreshCw, Pencil, Trash2, X, Check } from 'lucide-react'
 import { supabase } from '../../lib/supabase'
 import { useTeam } from '../../context/TeamContext'
 import PageHeader from '../../components/PageHeader'
 
-const PRIMARY = 'var(--wl-primary, rgb(49,90,231))'
+const PRIMARY = 'var(--wl-primary, #0A6FB0)'
 const sp = () => supabase.schema('sponsoring')
 
 const CATEGORY = ['werbeleistung', 'hospitality']
@@ -133,10 +134,7 @@ export default function Ziele() {
       <PageHeader overline="Sponsoring" title="SOLL-Ziele" subtitle="SOLL-Vorgaben pro Saison, Kategorie, Abwicklung und Liga. Diese Ziele dienen als Vergleichsbasis im Reporting." action={
         <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
           {seasons.length > 0 && (
-            <select value={seasonFilter} onChange={(e) => setSeasonFilter(e.target.value)} style={{ ...input, width: 'auto' }}>
-              <option value="">Alle Saisons</option>
-              {seasons.map((s) => <option key={s} value={s}>{s}</option>)}
-            </select>
+            <PillSelect value={seasonFilter} onChange={setSeasonFilter} neutral options={[{ value: '', label: `Alle Saisons` }, ...seasons.map((s) => ({ value: s, label: s }))]} buttonStyle={{ minWidth: 140 }} />
           )}
           <button onClick={fetchAll} title="Aktualisieren" style={iconBtn}>
             <RefreshCw size={16} />
@@ -160,26 +158,19 @@ export default function Ziele() {
                  placeholder="z.B. 2026/27" style={input} />
         </Field>
         <Field label="Kategorie">
-          <select value={form.category} onChange={(e) => setForm({ ...form, category: e.target.value })} style={input}>
-            {CATEGORY.map((c) => <option key={c} value={c}>{CATEGORY_LABEL[c]}</option>)}
-          </select>
+          <PillSelect value={form.category} onChange={v => setForm({ ...form, category: v })} neutral options={[...CATEGORY.map((c) => ({ value: c, label: CATEGORY_LABEL[c] }))]} buttonStyle={{ minWidth: 140 }} />
         </Field>
         <Field label="Abwicklung">
-          <select value={form.settlement} onChange={(e) => setForm({ ...form, settlement: e.target.value })} style={input}>
-            {SETTLEMENT.map((s) => <option key={s} value={s}>{SETTLEMENT_LABEL[s]}</option>)}
-          </select>
+          <PillSelect value={form.settlement} onChange={v => setForm({ ...form, settlement: v })} neutral options={[...SETTLEMENT.map((s) => ({ value: s, label: SETTLEMENT_LABEL[s] }))]} buttonStyle={{ minWidth: 140 }} />
         </Field>
         <Field label="Liga">
-          <select value={form.league_id} onChange={(e) => setForm({ ...form, league_id: e.target.value })} style={input}>
-            <option value="">— Alle / keine —</option>
-            {leagues.map((l) => <option key={l.id} value={l.id}>{l.name}</option>)}
-          </select>
+          <PillSelect value={form.league_id} onChange={v => setForm({ ...form, league_id: v })} neutral options={[{ value: '', label: `— Alle / keine —` }, ...leagues.map((l) => ({ value: l.id, label: l.name }))]} buttonStyle={{ minWidth: 140 }} />
         </Field>
         <Field label="SOLL-Betrag (€)">
           <input type="number" min="0" step="0.01" value={form.target_amount}
                  onChange={(e) => setForm({ ...form, target_amount: e.target.value })} placeholder="0" style={input} />
         </Field>
-        <button type="submit" disabled={busy || !form.season.trim()} style={{ ...primaryBtn, opacity: busy || !form.season.trim() ? 0.6 : 1 }}>
+        <button type="submit" disabled={busy || !form.season.trim()} className="lk-btn lk-btn-navy" style={{ opacity: busy || !form.season.trim() ? 0.6 : 1 }}>
           {busy ? <Loader2 size={14} className="spin" /> : <Plus size={14} />} Anlegen
         </button>
       </form>
@@ -213,26 +204,19 @@ export default function Ziele() {
                   <tr key={t.id} style={{ borderTop: '1px solid var(--border)' }}>
                     <td style={{ ...td, fontWeight: 600, color: 'var(--text-strong)' }}>{t.season}</td>
                     <td style={td}>
-                      <select value={t.category} onChange={(e) => updateField(t.id, 'category', e.target.value)}
-                              style={{ ...input, padding: '4px 8px' }}>
-                        {CATEGORY.map((c) => <option key={c} value={c}>{CATEGORY_LABEL[c]}</option>)}
-                      </select>
+                      <PillSelect value={t.category} onChange={v => updateField(t.id, 'category', v)} neutral options={[...CATEGORY.map((c) => ({ value: c, label: CATEGORY_LABEL[c] }))]} buttonStyle={{ minWidth: 140 }} />
                     </td>
                     <td style={td}>
-                      <select value={t.settlement} onChange={(e) => updateField(t.id, 'settlement', e.target.value)}
-                              style={{ ...input, padding: '4px 8px' }}>
-                        {SETTLEMENT.map((s) => <option key={s} value={s}>{SETTLEMENT_LABEL[s]}</option>)}
-                      </select>
+                      <PillSelect value={t.settlement} onChange={v => updateField(t.id, 'settlement', v)} neutral options={[...SETTLEMENT.map((s) => ({ value: s, label: SETTLEMENT_LABEL[s] }))]} buttonStyle={{ minWidth: 140 }} />
                     </td>
                     <td style={td}>
-                      <select value={t.league_id || ''} onChange={(e) => updateField(t.id, 'league_id', e.target.value || null)}
-                              style={{ ...input, padding: '4px 8px' }}>
-                        <option value="">— Alle / keine —</option>
-                        {leagues.map((l) => <option key={l.id} value={l.id}>{l.name}</option>)}
-                        {t.league_id && !leagueName[t.league_id] && (
-                          <option value={t.league_id}>{t.league_id}</option>
-                        )}
-                      </select>
+                      <PillSelect value={t.league_id || ''} onChange={__lkv => updateField(t.id, 'league_id', __lkv || null)} neutral
+                        options={[
+                          { value:'', label:'— Alle / keine —' },
+                          ...leagues.map((l) => ({ value:l.id, label:l.name })),
+                          ...(t.league_id && !leagueName[t.league_id] ? [{ value:t.league_id, label:t.league_id }] : []),
+                        ]}
+                        buttonStyle={{ minWidth:140, padding:'4px 8px' }} />
                     </td>
                     <td style={{ ...td, textAlign: 'right' }}>
                       {isEdit ? (
@@ -294,7 +278,7 @@ const input = {
 }
 const primaryBtn = {
   display: 'inline-flex', alignItems: 'center', gap: 6, padding: '9px 16px', borderRadius: 999,
-  border: 'none', background: PRIMARY, color: '#fff', fontSize: 13, fontWeight: 700, cursor: 'pointer', whiteSpace: 'nowrap',
+  border: 'none', background: 'var(--primary)', color: '#fff', fontSize: 13, fontWeight: 700, cursor: 'pointer', whiteSpace: 'nowrap',
 }
 const iconBtn = {
   display: 'inline-flex', alignItems: 'center', justifyContent: 'center', width: 34, height: 34, borderRadius: 8,

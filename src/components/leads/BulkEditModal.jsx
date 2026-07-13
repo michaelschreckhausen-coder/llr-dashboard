@@ -26,11 +26,12 @@
 //                       { field: 'tags', mode: 'add'|'remove', tag: string }
 //   onClose
 
+import PillSelect from '../PillSelect'
 import { useState, useMemo, useEffect, useRef } from 'react';
 import { X, Save, AlertTriangle } from 'lucide-react';
 import { STATUS_ORDER, STATUS_CONFIG, COLORS } from '../../lib/leadStyleTokens';
 
-const PRIMARY = 'rgb(49,90,231)';
+const PRIMARY = '#0A6FB0';
 
 const FIELDS = [
   { key: 'status',         label: 'Status setzen',         type: 'enum'   },
@@ -77,7 +78,7 @@ const btnGhost = {
 };
 const btnPrimary = {
   padding: '8px 16px', fontSize: 13, fontWeight: 600,
-  background: PRIMARY, color: '#fff', border: 'none', borderRadius: 8,
+  background: 'var(--primary)', color: '#fff', border: 'none', borderRadius: 8,
   cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: 5,
   font: 'inherit',
 };
@@ -206,25 +207,12 @@ export function BulkEditModal({ leadIds, leads, onApply, onClose }) {
 
         <form onSubmit={handleSubmit}>
           <label style={labelStyle} htmlFor="bulk-field">Feld</label>
-          <select ref={firstFocusRef} id="bulk-field" style={selectStyle}
-            value={fieldKey} onChange={handleFieldChange} disabled={busy}>
-            {FIELDS.map(f => (
-              <option key={f.key} value={f.key}>{f.label}</option>
-            ))}
-          </select>
+          <PillSelect value={fieldKey} onChange={__lkv => (handleFieldChange)({ target: { value: __lkv } })} neutral disabled={busy} options={[...FIELDS.map((f) => ({ value: f.key, label: f.label }))]} buttonStyle={{ minWidth: 140 }} />
 
           {fieldDef.type === 'enum' && (
             <>
               <label style={labelStyle} htmlFor="bulk-status">Neuer Status</label>
-              <select id="bulk-status" style={selectStyle}
-                value={scalarValue} onChange={(e) => setScalarValue(e.target.value)}
-                disabled={busy}>
-                <option value="">— wählen —</option>
-                {STATUS_ORDER.map(s => {
-                  const cfg = STATUS_CONFIG[s];
-                  return <option key={s} value={s}>{s} · {cfg?.sublabel || ''}</option>;
-                })}
-              </select>
+              <PillSelect value={scalarValue} onChange={__lkv => setScalarValue(__lkv)} neutral disabled={busy} options={[{ value: '', label: `— wählen —` }, ...STATUS_ORDER.map((s) => { const cfg = STATUS_CONFIG[s]; return ({ value: s, label: `${s} · ${cfg?.sublabel || ''}` }); })]} buttonStyle={{ minWidth: 140 }} />
             </>
           )}
 

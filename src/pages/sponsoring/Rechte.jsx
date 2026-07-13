@@ -5,13 +5,14 @@
 // Liest/schreibt im Schema 'sponsoring' via supabase.schema('sponsoring').
 // team_id kommt aus useTeam().activeTeamId.
 
+import PillSelect from '../../components/PillSelect'
 import { useEffect, useMemo, useState, useCallback } from 'react'
 import { Layers, Plus, Loader2, RefreshCw } from 'lucide-react'
 import { supabase } from '../../lib/supabase'
 import { useTeam } from '../../context/TeamContext'
 import PageHeader from '../../components/PageHeader'
 
-const PRIMARY = 'var(--wl-primary, rgb(49,90,231))'
+const PRIMARY = 'var(--wl-primary, #0A6FB0)'
 const sp = () => supabase.schema('sponsoring')
 
 const STATUS = ['free', 'reserved', 'offered', 'sold', 'expired']
@@ -19,7 +20,7 @@ const STATUS_LABEL = {
   free: 'Frei', reserved: 'Reserviert', offered: 'Angeboten', sold: 'Verkauft', expired: 'Abgelaufen',
 }
 const STATUS_COLOR = {
-  free: '#059669', reserved: '#D97706', offered: '#2563EB', sold: '#7C3AED', expired: '#6B7280',
+  free: '#059669', reserved: '#D97706', offered: '#2563EB', sold: '#003060', expired: '#6B7280',
 }
 
 const UNITS = ['Stück', 'Meter', 'Minute', 'Pauschal']
@@ -135,7 +136,7 @@ export default function Rechte() {
             <span key={c.id} style={chip}>{c.name}</span>
           ))}
           {categories.length === 0 && (
-            <button onClick={seedCategories} disabled={busy} style={secondaryBtn}>
+            <button onClick={seedCategories} disabled={busy} className="lk-btn lk-btn-ghost">
               {busy ? <Loader2 size={14} className="spin" /> : <Plus size={14} />} Standard-Kategorien anlegen
             </button>
           )}
@@ -152,10 +153,7 @@ export default function Rechte() {
                  placeholder="z.B. LED Bande" style={input} />
         </Field>
         <Field label="Kategorie">
-          <select value={form.category_id} onChange={(e) => setForm({ ...form, category_id: e.target.value })} style={input}>
-            <option value="">— keine —</option>
-            {categories.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
-          </select>
+          <PillSelect value={form.category_id} onChange={v => setForm({ ...form, category_id: v })} neutral options={[{ value: '', label: `— keine —` }, ...categories.map((c) => ({ value: c.id, label: c.name }))]} buttonStyle={{ minWidth: 140 }} />
         </Field>
         <Field label="Listenpreis (€)">
           <input type="number" min="0" step="0.01" value={form.list_price}
@@ -165,26 +163,20 @@ export default function Rechte() {
           <input type="number" min="0" value={form.total_slots}
                  onChange={(e) => setForm({ ...form, total_slots: e.target.value })} style={input} />
         </Field>
-        <button type="submit" disabled={busy || !form.name.trim()} style={{ ...primaryBtn, opacity: busy || !form.name.trim() ? 0.6 : 1 }}>
+        <button type="submit" disabled={busy || !form.name.trim()} className="lk-btn lk-btn-navy" style={{ opacity: busy || !form.name.trim() ? 0.6 : 1 }}>
           {busy ? <Loader2 size={14} className="spin" /> : <Plus size={14} />} Anlegen
         </button>
 
         <div style={{ gridColumn: '1 / -1', display: 'grid', gridTemplateColumns: '1fr 1fr 1.3fr', gap: 10 }}>
           <Field label="Einheit">
-            <select value={form.unit} onChange={(e) => setForm({ ...form, unit: e.target.value })} style={input}>
-              <option value="">— keine —</option>
-              {UNITS.map((u) => <option key={u} value={u}>{u}</option>)}
-            </select>
+            <PillSelect value={form.unit} onChange={v => setForm({ ...form, unit: v })} neutral options={[{ value: '', label: `— keine —` }, ...UNITS.map((u) => ({ value: u, label: u }))]} buttonStyle={{ minWidth: 140 }} />
           </Field>
           <Field label="Preis je Einheit (€)">
             <input type="number" min="0" step="0.01" value={form.unit_price}
                    onChange={(e) => setForm({ ...form, unit_price: e.target.value })} placeholder="0" style={input} />
           </Field>
           <Field label="Liga">
-            <select value={form.league_id} onChange={(e) => setForm({ ...form, league_id: e.target.value })} style={input}>
-              <option value="">— keine —</option>
-              {leagues.map((l) => <option key={l.id} value={l.id}>{l.name}</option>)}
-            </select>
+            <PillSelect value={form.league_id} onChange={v => setForm({ ...form, league_id: v })} neutral options={[{ value: '', label: `— keine —` }, ...leagues.map((l) => ({ value: l.id, label: l.name }))]} buttonStyle={{ minWidth: 140 }} />
           </Field>
         </div>
       </form>
@@ -193,12 +185,7 @@ export default function Rechte() {
       {leagues.length > 0 && (
         <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 14 }}>
           <span style={{ fontSize: 12, fontWeight: 600, color: 'var(--text-muted)' }}>Liga:</span>
-          <select value={leagueFilter} onChange={(e) => setLeagueFilter(e.target.value)}
-                  style={{ ...input, width: 'auto', minWidth: 180 }}>
-            <option value="">Alle</option>
-            <option value="none">Ohne Liga</option>
-            {leagues.map((l) => <option key={l.id} value={l.id}>{l.name}</option>)}
-          </select>
+          <PillSelect value={leagueFilter} onChange={setLeagueFilter} neutral options={[{ value: '', label: `Alle` }, { value: 'none', label: `Ohne Liga` }, ...leagues.map((l) => ({ value: l.id, label: l.name }))]} buttonStyle={{ minWidth: 140 }} />
         </div>
       )}
 
@@ -242,7 +229,7 @@ export default function Rechte() {
                     <td style={td}>
                       <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                         <div style={{ width: 90, height: 6, borderRadius: 999, background: 'var(--border)', overflow: 'hidden' }}>
-                          <div style={{ width: `${l?.utilization_pct || 0}%`, height: '100%', background: PRIMARY }} />
+                          <div style={{ width: `${l?.utilization_pct || 0}%`, height: '100%', background: 'var(--primary)' }} />
                         </div>
                         <span style={{ color: 'var(--text-muted)', fontSize: 12 }}>
                           {l ? `${l.sold_slots}/${l.total_slots}` : `0/${r.total_slots}`}
@@ -250,10 +237,7 @@ export default function Rechte() {
                       </div>
                     </td>
                     <td style={td}>
-                      <select value={r.status} onChange={(e) => updateStatus(r.id, e.target.value)}
-                              style={{ ...input, padding: '4px 8px', color: STATUS_COLOR[r.status], fontWeight: 600 }}>
-                        {STATUS.map((s) => <option key={s} value={s}>{STATUS_LABEL[s]}</option>)}
-                      </select>
+                      <PillSelect value={r.status} onChange={v => updateStatus(r.id, v)} neutral options={[...STATUS.map((s) => ({ value: s, label: STATUS_LABEL[s] }))]} buttonStyle={{ minWidth: 140 }} />
                     </td>
                   </tr>
                 )
@@ -281,7 +265,7 @@ const input = {
 }
 const primaryBtn = {
   display: 'inline-flex', alignItems: 'center', gap: 6, padding: '9px 16px', borderRadius: 999,
-  border: 'none', background: PRIMARY, color: '#fff', fontSize: 13, fontWeight: 700, cursor: 'pointer', whiteSpace: 'nowrap',
+  border: 'none', background: 'var(--primary)', color: '#fff', fontSize: 13, fontWeight: 700, cursor: 'pointer', whiteSpace: 'nowrap',
 }
 const secondaryBtn = {
   display: 'inline-flex', alignItems: 'center', gap: 6, padding: '7px 14px', borderRadius: 999,

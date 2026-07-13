@@ -15,17 +15,17 @@
 import React from 'react'
 import { BarChart3, Building2 } from 'lucide-react'
 
-const P = 'var(--wl-primary, rgb(49,90,231))'
+const P = 'var(--wl-primary, #0A6FB0)'
 
 const COLOR_BG = {
-  blue: 'rgba(49,90,231,.10)',
+  blue: 'rgba(10,111,176,.10)',
   pink: 'rgba(236,72,153,.12)',
-  purple: 'rgba(124,58,237,.10)',
+  purple: 'rgba(0,48,96,.10)',
   green: 'rgba(34,197,94,.12)',
   amber: 'rgba(245,158,11,.12)',
   teal: 'rgba(20,184,166,.12)',
   coral: 'rgba(244,114,114,.12)',
-  brand: 'rgba(49,90,231,.10)',
+  brand: 'rgba(10,111,176,.10)',
 }
 const COLOR_TEXT = {
   blue: '#1E40AF',
@@ -35,7 +35,7 @@ const COLOR_TEXT = {
   amber: '#92400E',
   teal: '#115E59',
   coral: '#9F1239',
-  brand: 'rgb(49,90,231)',
+  brand: '#0A6FB0',
 }
 
 export default function TabBar({ tabs, active, onChange, style = {} }) {

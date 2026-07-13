@@ -2,13 +2,14 @@
 // Aktivierungsmassnahmen je Vertrag, Status-Board (geplant→Umsetzung→abgeschlossen→reportet).
 // Schema 'sponsoring', team_id aus useTeam().
 
+import PillSelect from '../../components/PillSelect'
 import { useEffect, useMemo, useState, useCallback } from 'react'
 import { Megaphone, Plus, Loader2, ListChecks, Image as ImageIcon, Trash2, Upload, Wand2 } from 'lucide-react'
 import { supabase } from '../../lib/supabase'
 import { useTeam } from '../../context/TeamContext'
 import PageHeader from '../../components/PageHeader'
 
-const PRIMARY = 'var(--wl-primary, rgb(49,90,231))'
+const PRIMARY = 'var(--wl-primary, #0A6FB0)'
 const sp = () => supabase.schema('sponsoring')
 const ACTIVATION_BUCKET = 'sponsoring-activation'
 
@@ -206,9 +207,7 @@ export default function Aktivierung() {
       <form onSubmit={create} style={{ display: 'grid', gridTemplateColumns: '2fr 1fr 1.4fr 1fr auto', gap: 10, alignItems: 'end', ...card, marginBottom: 22 }}>
         <Field label="Maßnahme"><input value={form.title} onChange={(e) => setForm({ ...form, title: e.target.value })} placeholder="z.B. LinkedIn-Post zum Saisonstart" style={input} /></Field>
         <Field label="Typ">
-          <select value={form.type} onChange={(e) => setForm({ ...form, type: e.target.value })} style={input}>
-            {TYPES.map((t) => <option key={t} value={t}>{TYPE_LABEL[t]}</option>)}
-          </select>
+          <PillSelect value={form.type} onChange={v => setForm({ ...form, type: v })} neutral options={[...TYPES.map((t) => ({ value: t, label: TYPE_LABEL[t] }))]} buttonStyle={{ minWidth: 140 }} />
         </Field>
         <Field label="Vertrag">
           <select value={form.contract_id} onChange={(e) => setForm({ ...form, contract_id: e.target.value })} style={input}>
@@ -225,13 +224,10 @@ export default function Aktivierung() {
       {/* Standardaufgaben aus Vorlagen für einen Vertrag materialisieren */}
       <div style={{ ...card, marginBottom: 22, display: 'flex', alignItems: 'end', gap: 10, flexWrap: 'wrap' }}>
         <Field label="Vertrag (Standardaufgaben)">
-          <select value={applyContractId} onChange={(e) => { setApplyContractId(e.target.value); setApplyMsg(null) }} style={{ ...input, minWidth: 220 }}>
-            <option value="">— Vertrag wählen —</option>
-            {contracts.map((c) => <option key={c.id} value={c.id}>{contractLabel[c.id]}</option>)}
-          </select>
+          <PillSelect value={applyContractId} onChange={v => { setApplyContractId(v); setApplyMsg(null) }} neutral options={[{ value: '', label: `— Vertrag wählen —` }, ...contracts.map((c) => ({ value: c.id, label: contractLabel[c.id] }))]} buttonStyle={{ minWidth: 140 }} />
         </Field>
         <button type="button" onClick={applyTemplates} disabled={applyBusy || !applyContractId}
-                style={{ ...primaryBtn, opacity: applyBusy || !applyContractId ? 0.6 : 1 }}>
+                className="lk-btn lk-btn-navy" style={{ opacity: applyBusy || !applyContractId ? 0.6 : 1 }}>
           {applyBusy ? <Loader2 size={14} className="spin" /> : <Wand2 size={14} />} Standardaufgaben anlegen
         </button>
         {applyMsg && <span style={{ fontSize: 13, color: '#059669', fontWeight: 600 }}>{applyMsg}</span>}
@@ -313,19 +309,13 @@ export default function Aktivierung() {
       <form onSubmit={createTemplate} style={{ display: 'grid', gridTemplateColumns: '2fr 1.3fr 1.3fr 0.8fr auto', gap: 10, alignItems: 'end', ...card, marginBottom: 16 }}>
         <Field label="Aufgabe"><input value={tplForm.title} onChange={(e) => setTplForm({ ...tplForm, title: e.target.value })} placeholder="z.B. Logo mit Sponsor abstimmen" style={input} /></Field>
         <Field label="Kategorie">
-          <select value={tplForm.category_id} onChange={(e) => setTplForm({ ...tplForm, category_id: e.target.value, right_id: '' })} style={input}>
-            <option value="">— alle —</option>
-            {categories.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
-          </select>
+          <PillSelect value={tplForm.category_id} onChange={v => setTplForm({ ...tplForm, category_id: v, right_id: '' })} neutral options={[{ value: '', label: `— alle —` }, ...categories.map((c) => ({ value: c.id, label: c.name }))]} buttonStyle={{ minWidth: 140 }} />
         </Field>
         <Field label="Recht (optional)">
-          <select value={tplForm.right_id} onChange={(e) => setTplForm({ ...tplForm, right_id: e.target.value })} style={input}>
-            <option value="">— keins —</option>
-            {tplRightOptions.map((r) => <option key={r.id} value={r.id}>{r.name}</option>)}
-          </select>
+          <PillSelect value={tplForm.right_id} onChange={v => setTplForm({ ...tplForm, right_id: v })} neutral options={[{ value: '', label: `— keins —` }, ...tplRightOptions.map((r) => ({ value: r.id, label: r.name }))]} buttonStyle={{ minWidth: 140 }} />
         </Field>
         <Field label="Reihenfolge"><input type="number" value={tplForm.sort_order} onChange={(e) => setTplForm({ ...tplForm, sort_order: e.target.value })} style={input} /></Field>
-        <button type="submit" disabled={tplBusy || !tplForm.title.trim()} style={{ ...primaryBtn, opacity: tplBusy || !tplForm.title.trim() ? 0.6 : 1 }}>
+        <button type="submit" disabled={tplBusy || !tplForm.title.trim()} className="lk-btn lk-btn-navy" style={{ opacity: tplBusy || !tplForm.title.trim() ? 0.6 : 1 }}>
           {tplBusy ? <Loader2 size={14} className="spin" /> : <Plus size={14} />} Anlegen
         </button>
       </form>
@@ -363,7 +353,7 @@ function Field({ label, children }) {
 
 const card = { border: '1px solid var(--border)', borderRadius: 14, background: 'var(--surface)', padding: 16 }
 const input = { padding: '8px 10px', borderRadius: 8, border: '1px solid var(--border)', background: 'var(--surface)', color: 'var(--text-strong)', fontSize: 13.5, width: '100%', boxSizing: 'border-box' }
-const primaryBtn = { display: 'inline-flex', alignItems: 'center', gap: 6, padding: '9px 16px', borderRadius: 999, border: 'none', background: PRIMARY, color: '#fff', fontSize: 13, fontWeight: 700, cursor: 'pointer', whiteSpace: 'nowrap' }
+const primaryBtn = { display: 'inline-flex', alignItems: 'center', gap: 6, padding: '9px 16px', borderRadius: 999, border: 'none', background: 'var(--primary)', color: '#fff', fontSize: 13, fontWeight: 700, cursor: 'pointer', whiteSpace: 'nowrap' }
 const muted = { display: 'flex', alignItems: 'center', gap: 8, color: 'var(--text-muted)', fontSize: 14 }
 const errBox = { padding: '10px 14px', borderRadius: 10, background: '#FEE2E2', color: '#991B1B', fontSize: 13, marginBottom: 16 }
 const subtleBtn = { display: 'inline-flex', alignItems: 'center', gap: 5, padding: '5px 10px', borderRadius: 8, border: '1px solid var(--border)', background: 'var(--surface)', color: 'var(--text-muted)', fontSize: 12, fontWeight: 600 }

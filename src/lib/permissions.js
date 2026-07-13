@@ -17,7 +17,7 @@ export const PERMISSIONS_REGISTRY = {
   branding: {
     label: 'Branding',
     description: 'Brand Voice, Zielgruppen, Wissensbasis, ICP',
-    color: '#8B5CF6',
+    color: '#0A6FB0',
     permissions: {
       voice:     { label: 'Brand Voice',  description: 'KI-Content in der Markenstimme' },
       audiences: { label: 'Zielgruppen',  description: 'Target-Audience-Profile' },

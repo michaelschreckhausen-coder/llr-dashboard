@@ -24,7 +24,7 @@ import SharingPicker from '../components/SharingPicker'
 import WizardLayout from '../components/WizardLayout'
 import { useModel } from '../context/ModelContext'
 
-const P = 'var(--wl-primary, rgb(49,90,231))'
+const P = 'var(--wl-primary, #0A6FB0)'
 
 const DECISION_LEVELS = ['C-Level / Geschäftsführung','VP / Director','Head of / Abteilungsleitung','Mid-Management / Teamlead','Fachkraft / Spezialist','Freelancer / Selbstständig']
 const COMPANY_SIZES = ['1-10 (Startup)','11-50 (Klein)','51-200 (Mittel)','201-1000 (Groß)','1000+ (Enterprise)','Egal']
@@ -39,10 +39,10 @@ function In({v,fn,ph,style={},type='text',disabled}) {
     onChange={e=>fn(e.target.value)} placeholder={ph}
     onFocus={()=>setFocused(true)} onBlur={()=>setFocused(false)}
     style={{ width:'100%', padding:'11px 14px',
-      border:'1.5px solid '+(focused?'var(--wl-primary, rgb(49,90,231))':'var(--border, #E5E7EB)'),
+      border:'1.5px solid '+(focused?'var(--wl-primary, #0A6FB0)':'var(--border, #E5E7EB)'),
       borderRadius:10, fontSize:13.5, boxSizing:'border-box', outline:'none',
       background:'var(--surface, #fff)', color:'var(--text-primary, rgb(20,20,43))',
-      boxShadow: focused ? '0 0 0 3px rgba(49,90,231,.10)' : 'none',
+      boxShadow: focused ? '0 0 0 3px rgba(10,111,176,.10)' : 'none',
       transition:'border-color .15s, box-shadow .15s',
       fontFamily:'inherit', opacity: disabled?.6:1, ...style }}/>
 }
@@ -54,11 +54,11 @@ function Tx({v,fn,r=3,ph,disabled}) {
     onChange={e=>fn(e.target.value)} rows={r} placeholder={ph}
     onFocus={()=>setFocused(true)} onBlur={()=>setFocused(false)}
     style={{ width:'100%', padding:'11px 14px',
-      border:'1.5px solid '+(focused?'var(--wl-primary, rgb(49,90,231))':'var(--border, #E5E7EB)'),
+      border:'1.5px solid '+(focused?'var(--wl-primary, #0A6FB0)':'var(--border, #E5E7EB)'),
       borderRadius:10, fontSize:13.5, lineHeight:1.55, resize:'vertical',
       boxSizing:'border-box', outline:'none',
       background:'var(--surface, #fff)', color:'var(--text-primary, rgb(20,20,43))',
-      boxShadow: focused ? '0 0 0 3px rgba(49,90,231,.10)' : 'none',
+      boxShadow: focused ? '0 0 0 3px rgba(10,111,176,.10)' : 'none',
       transition:'border-color .15s, box-shadow .15s',
       fontFamily:'inherit', opacity: disabled?.6:1 }}/>
 }
@@ -246,12 +246,12 @@ function QuickSetup({ session, onDone, onSkip, onBack }) {
           )}
           {prefillError && <div style={{ color:'var(--danger)', fontSize:12, marginTop:8 }}>{prefillError}</div>}
           <div style={{ display:'flex', gap:10, flexWrap:'wrap', marginTop:16 }}>
-            <button onClick={async () => { await prefillFromContext(); setStep(1) }} disabled={prefilling || (!importedText && !importData.linkedin_template_url)}
-              style={{ padding:'11px 20px', background:P, color:'#fff', border:'none', borderRadius:10, fontSize:13.5, fontWeight:600, cursor:(prefilling||(!importedText && !importData.linkedin_template_url))?'not-allowed':'pointer', opacity:(prefilling||(!importedText && !importData.linkedin_template_url))?.5:1, display:'inline-flex', alignItems:'center', gap:8, fontFamily:'inherit' }}>
+            <button className="lk-btn lk-btn-primary" onClick={async () => { await prefillFromContext(); setStep(1) }} disabled={prefilling || (!importedText && !importData.linkedin_template_url)}
+              style={{ opacity:(prefilling||(!importedText && !importData.linkedin_template_url))?.5:1, display:'inline-flex', alignItems:'center', gap:8, fontFamily:'inherit' }}>
               {prefilling ? <span style={{display:'inline-flex',alignItems:'center',gap:6}}><Loader2 size={14} className="lk-spin"/>Analysiere…</span> : <span style={{display:'inline-flex',alignItems:'center',gap:6}}><Sparkles size={14}/>Automatisch befüllen</span>}
             </button>
-            <button onClick={() => setStep(1)} disabled={prefilling}
-              style={{ padding:'11px 20px', background:'var(--surface)', border:'1.5px solid var(--border)', borderRadius:10, fontSize:13.5, fontWeight:500, cursor:prefilling?'not-allowed':'pointer', color:'var(--text-primary)', fontFamily:'inherit', display:'inline-flex', alignItems:'center', gap:6 }}>
+            <button className="lk-btn lk-btn-ghost" onClick={() => setStep(1)} disabled={prefilling}
+              style={{ fontFamily:'inherit', display:'inline-flex', alignItems:'center', gap:6 }}>
               <span>Manuell ausfüllen</span><span>→</span>
             </button>
           </div>
@@ -279,7 +279,7 @@ function QuickSetup({ session, onDone, onSkip, onBack }) {
             <span>←</span><span>Zurück</span>
           </button>
           <button onClick={generate} disabled={generating}
-            style={{ padding:'13px 28px', background:generating?'#94A3B8':P, color:'#fff', border:'none', borderRadius:10, fontSize:14, fontWeight:600, cursor:generating?'not-allowed':'pointer', opacity:generating?.7:1, boxShadow:generating?'none':'0 2px 10px rgba(49,90,231,.25)', display:'inline-flex', alignItems:'center', gap:8, fontFamily:'inherit' }}>
+            style={{ padding:'13px 28px', background:generating?'#94A3B8':'var(--primary)', color:'#fff', border:'none', borderRadius:10, fontSize:14, fontWeight:600, cursor:generating?'not-allowed':'pointer', opacity:generating?.7:1, boxShadow:generating?'none':'0 2px 10px rgba(10,111,176,.25)', display:'inline-flex', alignItems:'center', gap:8, fontFamily:'inherit' }}>
             <span style={{display:'inline-flex'}}>{generating ? <Loader2 size={14} className="lk-spin"/> : <Target size={14}/>}</span>
             <span>{generating ? 'KI generiert…' : 'Zielgruppe generieren'}</span>
           </button>
@@ -399,12 +399,12 @@ export default function Zielgruppen({ session }) {
       <div style={{ width:'100%', maxWidth:1100, margin:'0 auto', padding:'12px 16px' }}>
         {hasWizardDraft && (
           <div data-tick={draftCheckTick} style={{ marginTop:14, padding:'12px 16px', background:'rgba(245,158,11,0.08)', border:'1px solid rgba(245,158,11,0.30)', borderRadius:10, display:'flex', alignItems:'center', gap:12, flexWrap:'wrap' }}>
-            <FileText size={18} strokeWidth={1.75} style={{ color:'var(--wl-primary, rgb(49,90,231))' }}/>
+            <FileText size={18} strokeWidth={1.75} style={{ color:'var(--wl-primary, #0A6FB0)' }}/>
             <div style={{ flex:1, minWidth:220 }}>
               <div style={{ fontSize:13, fontWeight:600, color:'#92400E' }}>Du hast einen unfertigen Zielgruppen-Entwurf</div>
               <div style={{ fontSize:11, color:'#92400E', opacity:.9 }}>Deine Eingaben sind gespeichert — du kannst dort weitermachen.</div>
             </div>
-            <button onClick={()=>setView('wizard')} style={{ padding:'7px 14px', background:P, color:'#fff', border:'none', borderRadius:7, fontSize:12, fontWeight:600, cursor:'pointer' }}><span style={{display:"inline-flex",alignItems:"center",gap:6}}><Target size={12}/>Fortsetzen</span></button>
+            <button onClick={()=>setView('wizard')} className="lk-btn lk-btn-navy lk-btn-sm"><span style={{display:"inline-flex",alignItems:"center",gap:6}}><Target size={12}/>Fortsetzen</span></button>
             <button onClick={()=>{ clearDraftsByPrefix('aud_w_'); setDraftCheckTick(t=>t+1) }} style={{ padding:'7px 14px', background:'transparent', color:'#92400E', border:'1px solid rgba(146,64,14,0.30)', borderRadius:7, fontSize:12, fontWeight:600, cursor:'pointer' }}>Verwerfen</button>
           </div>
         )}
@@ -426,25 +426,25 @@ export default function Zielgruppen({ session }) {
     return (
     <div style={{ width:'100%', maxWidth:1100, margin:'0 auto', padding:'24px 16px 40px' }}>
       <div style={{ marginBottom:22 }}>
-        <div style={{ fontSize:20, color:'#30A0D0', fontFamily:'"Caveat", cursive', fontWeight:600, marginBottom:6 }}>Branding · Schritt 2 von 3</div>
+        <div className="lk-eyebrow" style={{ fontSize:12, fontWeight:700, letterSpacing:'1.6px', textTransform:'uppercase', fontFamily:'Inter, sans-serif', color:'var(--primary, #003060)', marginBottom:6 }}>Branding · Schritt 2 von 3</div>
         <h1 style={{ fontSize:26, fontWeight:700, margin:0, letterSpacing:'-0.3px', lineHeight:1.2 }}>Deine Zielgruppen.</h1>
         <p style={{ fontSize:13, color:'var(--text-muted)', margin:'8px 0 0', lineHeight:1.6 }}>Wer hört zu, wenn du etwas postest. Aktive Zielgruppen fließen in jeden generierten Text ein.</p>
       </div>
 
       <div style={{ display:'flex', gap:10, marginBottom:18 }}>
-        <button data-tour-id="aud-new-ai" onClick={()=>{ clearDraftsByPrefix('aud_w_'); clearTabPersistedKey('ki_tab_audience'); setView('wizard') }} style={{ padding:'10px 20px', background:P, color:'#fff', border:'none', borderRadius:10, fontSize:13, fontWeight:600, cursor:'pointer', boxShadow:'0 2px 8px rgba(49,90,231,.18)' }}><span style={{display:"inline-flex",alignItems:"center",gap:6}}><Target size={14}/>Neue Zielgruppe mit KI</span></button>
-        <button onClick={()=>{ setEdit({...E0, user_id:session.user.id}); setView('editor'); setTab('grundlagen') }}
-          style={{ padding:'10px 20px', background:'var(--surface)', border:'1.5px solid var(--border)', borderRadius:10, fontSize:13, cursor:'pointer', color:'var(--text-primary)', fontWeight:500 }}>+ Manuell erstellen</button>
+        <button data-tour-id="aud-new-ai" className="lk-btn lk-btn-cta" onClick={()=>{ clearDraftsByPrefix('aud_w_'); clearTabPersistedKey('ki_tab_audience'); setView('wizard') }}><span style={{display:"inline-flex",alignItems:"center",gap:6}}><Target size={14}/>Neue Zielgruppe mit KI</span></button>
+        <button className="lk-btn lk-btn-ghost" onClick={()=>{ setEdit({...E0, user_id:session.user.id}); setView('editor'); setTab('grundlagen') }}
+          >+ Manuell erstellen</button>
       </div>
 
       {hasWizardDraft && (
         <div data-tick={draftCheckTick} style={{ marginBottom:16, padding:'12px 16px', background:'rgba(245,158,11,0.08)', border:'1px solid rgba(245,158,11,0.30)', borderRadius:10, display:'flex', alignItems:'center', gap:12, flexWrap:'wrap' }}>
-          <FileText size={18} strokeWidth={1.75} style={{ color:'var(--wl-primary, rgb(49,90,231))' }}/>
+          <FileText size={18} strokeWidth={1.75} style={{ color:'var(--wl-primary, #0A6FB0)' }}/>
           <div style={{ flex:1, minWidth:220 }}>
             <div style={{ fontSize:13, fontWeight:600, color:'#92400E' }}>Du hast einen unfertigen Zielgruppen-Entwurf</div>
             <div style={{ fontSize:11, color:'#92400E', opacity:.9 }}>Deine Eingaben sind gespeichert — du kannst dort weitermachen.</div>
           </div>
-          <button onClick={()=>setView('wizard')} style={{ padding:'7px 14px', background:P, color:'#fff', border:'none', borderRadius:7, fontSize:12, fontWeight:600, cursor:'pointer' }}><span style={{display:"inline-flex",alignItems:"center",gap:6}}><Target size={12}/>Fortsetzen</span></button>
+          <button onClick={()=>setView('wizard')} className="lk-btn lk-btn-navy lk-btn-sm"><span style={{display:"inline-flex",alignItems:"center",gap:6}}><Target size={12}/>Fortsetzen</span></button>
           <button onClick={()=>{ clearDraftsByPrefix('aud_w_'); setDraftCheckTick(t=>t+1) }} style={{ padding:'7px 14px', background:'transparent', color:'#92400E', border:'1px solid rgba(146,64,14,0.30)', borderRadius:7, fontSize:12, fontWeight:600, cursor:'pointer' }}>Verwerfen</button>
         </div>
       )}
@@ -453,7 +453,7 @@ export default function Zielgruppen({ session }) {
         const myItems     = items.filter(v => v.user_id === session.user.id)
         const sharedItems = items.filter(v => v.user_id !== session.user.id)
         const renderCard = (v) => (
-            <div key={v.id} style={{ background:'var(--surface)', borderRadius:12, border: '1.5px solid var(--border)', padding:16 }}>
+            <div key={v.id} style={{ background:'var(--surface)', borderRadius:16, border: '1px solid var(--border)', padding:18, boxShadow:'var(--shadow-card)' }}>
               <div style={{ display:'flex', justifyContent:'space-between', alignItems:'flex-start' }}>
                 <div style={{ flex:1 }}>
                   <div style={{ display:'flex', alignItems:'center', gap:8, marginBottom:4, flexWrap:'wrap' }}>
@@ -471,12 +471,12 @@ export default function Zielgruppen({ session }) {
                   {v.pain_points && <div style={{ fontSize:12, color:'var(--text-muted)', lineHeight:1.4 }}>{v.pain_points.slice(0,150)}{v.pain_points.length>150?'…':''}</div>}
                 </div>
                 <div style={{ display:'flex', flexDirection:'column', gap:6, marginLeft:12 }}>
-                  <button onClick={()=>{ setEdit(v); setView('editor'); setTab('grundlagen') }} style={{ padding:'6px 14px', borderRadius:8, border:'1.5px solid var(--border)', background:'var(--surface)', fontSize:12, cursor:'pointer', color:'var(--text-primary)' }}>Bearbeiten</button>
-                  {team && v.user_id === session.user.id && <button onClick={() => setSharingModalFor(v)}
-                    style={{ padding:'6px 14px', borderRadius:8, border:'1.5px solid var(--border)', background: v.is_shared ? 'rgba(16,185,129,0.08)' : 'var(--surface)', fontSize:12, cursor:'pointer', color:'var(--text-primary)' }}>
+                  <button className="lk-btn lk-btn-ghost" onClick={()=>{ setEdit(v); setView('editor'); setTab('grundlagen') }} >Bearbeiten</button>
+                  {team && v.user_id === session.user.id && <button className="lk-btn lk-btn-ghost" onClick={() => setSharingModalFor(v)}
+                    >
                     {v.is_shared ? `${team.name || 'Team'}` : 'Sichtbarkeit'}
                   </button>}
-                  {v.user_id === session.user.id && <button onClick={()=>remove(v.id)} style={{ padding:'6px 10px', borderRadius:8, border:'1.5px solid #FCA5A5', background:'var(--danger-soft)', color:'var(--danger-text)', fontSize:12, cursor:'pointer' }}><Trash2 size={14} strokeWidth={1.75}/></button>}
+                  {v.user_id === session.user.id && <button className="lk-btn lk-btn-danger-ghost" onClick={()=>remove(v.id)}><Trash2 size={14} strokeWidth={1.75}/></button>}
                 </div>
               </div>
             </div>
@@ -547,16 +547,16 @@ export default function Zielgruppen({ session }) {
       <div style={{ display:'flex', alignItems:'flex-start', gap:14, marginBottom:18 }}>
         <button onClick={()=>{ setView('list'); setEdit(null) }} style={{ background:'transparent', border:'1.5px solid var(--border)', borderRadius:10, width:36, height:36, fontSize:16, cursor:'pointer', color:'var(--text-muted)', display:'inline-flex', alignItems:'center', justifyContent:'center', flexShrink:0 }}>←</button>
         <div style={{ flex:1, minWidth:0 }}>
-          <div style={{ fontSize:20, color:'#30A0D0', fontFamily:'"Caveat", cursive', fontWeight:600, marginBottom:2 }}>Branding · Schritt 2 von 3</div>
+          <div className="lk-eyebrow" style={{ fontSize:12, fontWeight:700, letterSpacing:'1.6px', textTransform:'uppercase', fontFamily:'Inter, sans-serif', color:'var(--primary, #003060)', marginBottom:2 }}>Branding · Schritt 2 von 3</div>
           <div style={{ fontSize:22, fontWeight:700, letterSpacing:'-.2px', lineHeight:1.2, color:'var(--text-primary)' }}>Zielgruppe bearbeiten</div>
           <div style={{ fontSize:12, color:'var(--text-muted)', marginTop:2 }}>Definiere dein LinkedIn-Zielpublikum</div>
         </div>
         <div style={{ display:'flex', alignItems:'center', gap:8, flexShrink:0 }}>
-          <button type="button" onClick={()=>setShowVisibilityModal(true)} title="Sichtbarkeit anpassen"
-            style={{ padding:'10px 16px', background:'var(--surface, #fff)', color:'var(--text-primary)', border:'1.5px solid var(--border)', borderRadius:10, fontSize:13, fontWeight:600, cursor:'pointer', display:'inline-flex', alignItems:'center', gap:7, fontFamily:'inherit' }}>
+          <button className="lk-btn lk-btn-ghost" type="button" onClick={()=>setShowVisibilityModal(true)} title="Sichtbarkeit anpassen"
+            style={{ display:'inline-flex', alignItems:'center', gap:7, fontFamily:'inherit' }}>
             <Eye size={15} strokeWidth={1.75}/><span>{edit.is_shared ? 'Geteilt' : 'Sichtbarkeit'}</span>
           </button>
-          <button onClick={save} style={{ padding:'11px 22px', background:P, color:'#fff', border:'none', borderRadius:10, fontSize:13.5, fontWeight:600, cursor:'pointer', boxShadow:'0 2px 10px rgba(49,90,231,.25)', display:'inline-flex', alignItems:'center', gap:8, fontFamily:'inherit' }}>
+          <button onClick={save} style={{ padding:'11px 22px', background:'var(--primary)', color:'#fff', border:'none', borderRadius:10, fontSize:13.5, fontWeight:600, cursor:'pointer', boxShadow:'0 2px 10px rgba(10,111,176,.25)', display:'inline-flex', alignItems:'center', gap:8, fontFamily:'inherit' }}>
             <span style={{display:'inline-flex'}}><Save size={14}/></span><span>Zielgruppe speichern</span>
           </button>
         </div>
@@ -637,7 +637,7 @@ export default function Zielgruppen({ session }) {
             const i = TABS.findIndex(t => t.v === tab)
             if (i < TABS.length-1) setTab(TABS[i+1].v)
           }}
-            style={{ padding:'12px 28px', background:P, color:'#fff', border:'none', borderRadius:10, fontSize:14, fontWeight:600, cursor:'pointer', boxShadow:'0 2px 10px rgba(49,90,231,.25)', display:'inline-flex', alignItems:'center', gap:8, fontFamily:'inherit' }}>
+            style={{ padding:'12px 28px', background:'var(--primary)', color:'#fff', border:'none', borderRadius:10, fontSize:14, fontWeight:600, cursor:'pointer', boxShadow:'0 2px 10px rgba(10,111,176,.25)', display:'inline-flex', alignItems:'center', gap:8, fontFamily:'inherit' }}>
             <span>Weiter</span><span>→</span>
           </button>
         )}

@@ -1,3 +1,10 @@
+/* ═══ Inter — self-hosted (DSGVO/ISO-konform, kein Google-Fonts-Call) ═══ */
+@font-face{font-family:'Inter';font-style:normal;font-weight:400;font-display:swap;src:url('/fonts/inter-400.woff2') format('woff2');}
+@font-face{font-family:'Inter';font-style:normal;font-weight:500;font-display:swap;src:url('/fonts/inter-500.woff2') format('woff2');}
+@font-face{font-family:'Inter';font-style:normal;font-weight:600;font-display:swap;src:url('/fonts/inter-600.woff2') format('woff2');}
+@font-face{font-family:'Inter';font-style:normal;font-weight:700;font-display:swap;src:url('/fonts/inter-700.woff2') format('woff2');}
+@font-face{font-family:'Inter';font-style:normal;font-weight:800;font-display:swap;src:url('/fonts/inter-800.woff2') format('woff2');}
+
 /* ═══════════════════════════════════════════════════════════════
    LEADESK THEME TOKENS — Phase Theme-1
    ═══════════════════════════════════════════════════════════════
@@ -22,16 +29,37 @@
   --primary-softer:      rgba(0,48,96,0.04);
   --primary-glow:        rgba(0,48,96,0.22);
 
-  --accent:              rgb(48,160,208);
-  --accent-soft:         rgb(120,195,225);
-  --accent-glow:         rgba(48,160,208,0.30);
+  --accent:              #16A8DC;                 /* CI Cyan */
+  --accent-mid:          #0A6FB0;                 /* CI Blau */
+  --accent-soft:         #9FDcF2;
+  --accent-glow:         rgba(22,168,220,0.30);
+  /* Marken-Verlauf 120° (CI) */
+  --grad:                linear-gradient(120deg, #16A8DC 0%, #0A6FB0 48%, #003060 100%);
+  /* ── Live-CI: Tints / Radii / Shadows / Kategoriefarben (1:1 leadesk.de) ── */
+  --tint-blue:  #EEF4FE;
+  --tint-cyan:  #EAF8FE;
+  --tint-lav:   #F2F1FE;
+  --tint-green: #EBFAF3;
+  --tint-navy:  #EDF2F8;
+  --tint-peach: #FFF7F2;
+  --radius-btn:  8px;
+  --radius-card: 16px;
+  --radius-sm:   10px;
+  --shadow-card:  0 10px 30px rgba(14,22,51,.06);
+  --shadow-hover: 0 18px 46px rgba(14,22,51,.12);
+  --ci-orange:  #E07B39;
+  --ci-purple:  #7A5AF8;
+  --ci-li:      #2E6BE6;
+  --ci-content: #12B886;
+  --ci-success: #039855;
+  --ci-pink:    #DD2A7B;
 
   /* ── Surfaces ────────────────────────────────────────────── */
-  --bg-body:             #F8F9FB;          /* Page-Background */
+  --bg-body:             #F6F7FB;          /* CI Soft-BG */
   --bg-body-gradient:    none;             /* Light: kein Gradient */
   --bg-grain-opacity:    0;                /* Light: kein Grain */
   --surface:             #FFFFFF;          /* Card-Background */
-  --surface-muted:       #F8F9FB;          /* Secondary surface */
+  --surface-muted:       #F6F7FB;          /* CI Soft-BG */
   --surface-tint:        #EFF4F9;          /* Tinted surface */
   --surface-tint-2:      #E3ECF5;
   --surface-hover:       rgba(0,0,0,0.03); /* Hover-Overlay */
@@ -52,9 +80,9 @@
   --text-on-brand-soft:  rgba(255,255,255,0.78);
 
   /* ── Borders ─────────────────────────────────────────────── */
-  --border:              #E4E5EB;
-  --border-soft:         #EEEFF4;
-  --border-strong:       #D2D4DE;
+  --border:              #E6E8EF;          /* CI Border */
+  --border-soft:         #EEF1F6;
+  --border-strong:       #D6DAE4;
 
   /* ── Status ──────────────────────────────────────────────── */
   --warm:                #F59E0B;
@@ -100,9 +128,11 @@
   --primary-softer:      rgba(48,160,208,0.08);
   --primary-glow:        rgba(48,160,208,0.45);
 
-  --accent:              rgb(48,160,208);
-  --accent-soft:         rgb(120,195,225);
-  --accent-glow:         rgba(48,160,208,0.35);
+  --accent:              #16A8DC;
+  --accent-mid:          #0A6FB0;
+  --accent-soft:         #9FDcF2;
+  --accent-glow:         rgba(22,168,220,0.35);
+  --grad:                linear-gradient(120deg, #16A8DC 0%, #0A6FB0 48%, #003060 100%);
 
   /* ── Surfaces ────────────────────────────────────────────── */
   --bg-body:             #0B1020;
@@ -341,3 +371,93 @@ main { padding: 24px !important; }
 /* Globale Spin-Animation fuer Lucide-Loader-Icons */
 @keyframes lk-spin { to { transform: rotate(360deg); } }
 .lk-spin { animation: lk-spin 0.9s linear infinite; }
+
+/* ═══════════════════════════════════════════════════════════════
+   WEBSITE-GETREUE CI-KOMPONENTEN (1:1 leadesk.de)
+   Buttons mit Hover, Eyebrow mit Strich, Cards, Pulsing-Rings-Orb.
+   Inline-Styles können kein :hover — daher diese globalen Klassen.
+   ═══════════════════════════════════════════════════════════════ */
+
+.lk-btn{
+  display:inline-flex;align-items:center;justify-content:center;gap:6px;
+  font-family:'Inter',-apple-system,sans-serif;font-size:13px;font-weight:500;
+  letter-spacing:-0.005em;line-height:1.1;padding:8px 15px;border-radius:var(--radius-btn);
+  border:none;cursor:pointer;white-space:nowrap;text-decoration:none;
+  transition:transform .16s ease,box-shadow .16s ease,background .16s ease,border-color .16s ease,color .16s ease,filter .16s ease;
+}
+.lk-btn-lg{padding:11px 22px;font-size:14.5px;}
+.lk-btn-sm{padding:6px 12px;font-size:12px;}
+.lk-btn-block{width:100%;}
+.lk-btn-primary,.lk-btn-navy{background:var(--primary);color:#fff;box-shadow:0 6px 18px rgba(0,48,96,.12);}
+.lk-btn-primary:hover,.lk-btn-navy:hover{background:var(--primary-hover);}
+/* CTA = Marken-Verlauf, nur für den einen Haupt-CTA je Ansicht */
+.lk-btn-cta{background:var(--grad);color:#fff;box-shadow:0 8px 22px rgba(0,48,96,.22);}
+.lk-btn-cta:hover{transform:translateY(-2px);box-shadow:0 12px 30px rgba(10,111,176,.40);filter:saturate(1.1);}
+.lk-btn-ghost{background:var(--surface);color:var(--text-primary);border:1px solid var(--border);}
+.lk-btn-ghost:hover{border-color:var(--accent);color:var(--accent-mid);background:var(--tint-cyan);}
+.lk-btn-danger{background:linear-gradient(135deg,#EF4444,#DC2626);color:#fff;box-shadow:0 8px 20px rgba(239,68,68,.28);}
+.lk-btn-danger:hover{filter:brightness(.95);}
+.lk-btn-danger-ghost{background:var(--danger-soft,#FEF2F2);color:var(--danger-text,#991B1B);border:1.5px solid #FCA5A5;box-shadow:none;}
+.lk-btn-danger-ghost:hover{background:#FEE2E2;border-color:#EF4444;color:#B91C1C;}
+/* Strike2-Orange: gleiche Button-Formate wie CI, nur in Strike-Orange (Julian: Strike soll ins gleiche Format) */
+.lk-btn-strike{background:#F97316;color:#fff;box-shadow:0 6px 18px rgba(249,115,22,.20);}
+.lk-btn-strike:hover{background:#EA580C;}
+.lk-btn-strike-ghost{background:var(--surface);color:#C2410C;border:1px solid #FDBA74;}
+.lk-btn-strike-ghost:hover{border-color:#F97316;color:#9A3412;background:#FFF7ED;}
+.lk-eyebrow.lk-eyebrow-strike::before{background:#F97316 !important;}
+
+/* Baseline-Hover-Garantie: JEDER klickbare Button ohne eigene lk-btn/Dropdown-Hover bekommt subtiles Feedback (Julian: absolut alle Buttons brauchen Hover) */
+button:not(.lk-btn):not(.lk-dd-trigger):not(.lk-dd-opt):not(:disabled){transition:filter .12s ease, opacity .12s ease, background .12s ease;}
+button:not(.lk-btn):not(.lk-dd-trigger):not(.lk-dd-opt):not([aria-pressed]):not(:disabled):hover{filter:brightness(0.94);}
+.lk-btn:disabled,.lk-btn[disabled]{opacity:.55;cursor:not-allowed;transform:none;filter:none;box-shadow:none;}
+
+/* Eyebrow — Inter 700, 12px, Versalien, LS 1.68, Navy + Verlaufs-Strich */
+.lk-eyebrow{display:inline-flex;align-items:center;gap:10px;font-family:'Inter',sans-serif;
+  font-size:12px;font-weight:700;letter-spacing:1.68px;text-transform:uppercase;color:var(--primary);margin-bottom:10px;}
+.lk-eyebrow::before{content:'';width:26px;height:3px;border-radius:2px;background:var(--grad);flex-shrink:0;}
+
+/* Card — Radius 16, Website-Shadow, optional Hover-Lift */
+.lk-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-card);box-shadow:var(--shadow-card);}
+.lk-card-hover{transition:transform .2s ease,box-shadow .2s ease;}
+.lk-card-hover:hover{transform:translateY(-3px);box-shadow:var(--shadow-hover);}
+
+/* Pulsing-Rings-Orb — für leere Screens (Website-Animation, favicon-Mark) */
+@keyframes lk-ripple{0%{transform:scale(.82);opacity:.5;}70%{opacity:0;}100%{transform:scale(1.75);opacity:0;}}
+@keyframes lk-bob{0%,100%{transform:translateY(0);}50%{transform:translateY(-6px);}}
+.lk-orb{position:relative;width:150px;height:150px;display:flex;align-items:center;justify-content:center;margin:0 auto;}
+.lk-orb__mark{width:82px;height:auto;position:relative;z-index:2;animation:lk-bob 4.5s ease-in-out infinite;filter:drop-shadow(0 10px 22px rgba(0,48,96,.18));}
+.lk-orb__ring{position:absolute;top:50%;left:50%;width:104px;height:76px;margin:-38px 0 0 -52px;border-radius:38px;border:2px solid var(--accent);opacity:0;animation:lk-ripple 3.2s ease-out infinite;}
+.lk-orb__ring:nth-of-type(2){animation-delay:1.06s;border-color:var(--accent-mid);}
+.lk-orb__ring:nth-of-type(3){animation-delay:2.12s;border-color:var(--primary);}
+@media (prefers-reduced-motion: reduce){
+  .lk-orb__mark,.lk-orb__ring{animation:none;}
+  .lk-orb__ring:nth-of-type(1){opacity:.35;}
+}
+
+/* Dark-Theme: Tints/Shadows angepasst */
+[data-theme="dark"]{
+  --tint-blue:  rgba(46,107,230,.12);
+  --tint-cyan:  rgba(22,168,220,.14);
+  --tint-lav:   rgba(122,90,248,.14);
+  --tint-green: rgba(18,184,134,.14);
+  --tint-navy:  rgba(255,255,255,.06);
+  --tint-peach: rgba(224,123,57,.14);
+  --shadow-card:  0 10px 30px rgba(0,0,0,.35);
+  --shadow-hover: 0 18px 46px rgba(0,0,0,.5);
+}
+[data-theme="dark"] .lk-btn-ghost{background:var(--surface);color:var(--text-primary);}
+[data-theme="dark"] .lk-btn-ghost:hover{background:var(--tint-cyan);color:var(--accent);}
+
+/* ═══ CI-Typo-Skala (App-Maßstab) — für einheitliche Schriftgrößen ═══ */
+.lk-h1{font-family:'Inter',sans-serif;font-weight:800;font-size:28px;letter-spacing:-0.5px;line-height:1.15;color:var(--text-primary);margin:0;}
+.lk-h2{font-family:'Inter',sans-serif;font-weight:800;font-size:20px;letter-spacing:-0.3px;line-height:1.2;color:var(--text-primary);margin:0;}
+.lk-title{font-family:'Inter',sans-serif;font-weight:700;font-size:15px;letter-spacing:-0.1px;line-height:1.3;color:var(--text-primary);margin:0;}
+.lk-body{font-family:'Inter',sans-serif;font-weight:400;font-size:13px;line-height:1.6;color:var(--text-muted);}
+.lk-caption{font-family:'Inter',sans-serif;font-weight:400;font-size:12px;line-height:1.5;color:var(--text-muted);}
+.lk-label{font-family:'Inter',sans-serif;font-weight:700;font-size:11px;letter-spacing:0.4px;text-transform:uppercase;color:var(--text-muted);}
+
+/* ═══ Leadesk-Dropdown: Hover für Trigger + Optionen ═══ */
+.lk-dd-trigger{transition:border-color .15s ease, background .15s ease, box-shadow .15s ease; font-weight:500; font-size:13px; display:inline-flex; align-items:center; gap:6px; padding:9px 11px; min-height:40px; box-sizing:border-box; border:1.5px solid var(--border); border-radius:9px; background:var(--surface,#fff); color:var(--text-primary); cursor:pointer; font-family:inherit;}
+.lk-dd-trigger:hover{border-color:var(--accent) !important;}
+.lk-dd-opt{transition:background .12s ease;}
+.lk-dd-opt:hover{background:var(--tint-cyan, #EAF8FE) !important;}

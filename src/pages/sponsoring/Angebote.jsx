@@ -8,13 +8,14 @@
 //  - Sponsor optional mit Leadesk-deal_id/lead_id verknuepfen (lose Refs).
 //  - "Als PDF an Lead senden": STUB — echte PDF via Delivery-Unterbau folgt (P5).
 
+import PillSelect from '../../components/PillSelect'
 import { Fragment, useEffect, useMemo, useState, useCallback } from 'react'
 import { FileText, Plus, Loader2, UserPlus, ListPlus, Trash2, Send } from 'lucide-react'
 import { supabase } from '../../lib/supabase'
 import { useTeam } from '../../context/TeamContext'
 import PageHeader from '../../components/PageHeader'
 
-const PRIMARY = 'var(--wl-primary, rgb(49,90,231))'
+const PRIMARY = 'var(--wl-primary, #0A6FB0)'
 const sp = () => supabase.schema('sponsoring')
 const fmt = (n) => `${Number(n || 0).toLocaleString('de-DE', { maximumFractionDigits: 2 })} €`
 
@@ -247,10 +248,7 @@ export default function Angebote() {
         <form onSubmit={createSponsor} style={card}>
           <div style={cardTitle}><UserPlus size={16} color={PRIMARY} /> Sponsor anlegen</div>
           <Field label="Bestehendes Unternehmen (keine Duplikate)">
-            <select value={sponsorForm.organization_id} onChange={(e) => setSponsorForm({ ...sponsorForm, organization_id: e.target.value })} style={input}>
-              <option value="">— Neues Unternehmen anlegen —</option>
-              {orgs.map((o) => <option key={o.id} value={o.id}>{o.name}</option>)}
-            </select>
+            <PillSelect value={sponsorForm.organization_id} onChange={v => setSponsorForm({ ...sponsorForm, organization_id: v })} neutral options={[{ value: '', label: `— Neues Unternehmen anlegen —` }, ...orgs.map((o) => ({ value: o.id, label: o.name }))]} buttonStyle={{ minWidth: 140 }} />
           </Field>
           {!sponsorForm.organization_id && (
             <Field label="Name (neues Unternehmen)"><input value={sponsorForm.name} onChange={(e) => setSponsorForm({ ...sponsorForm, name: e.target.value })} placeholder="Firma GmbH" style={input} /></Field>
@@ -261,7 +259,7 @@ export default function Angebote() {
           {(() => {
             const canSubmit = !busy && (sponsorForm.organization_id || sponsorForm.name.trim())
             return (
-              <button type="submit" disabled={!canSubmit} style={{ ...primaryBtn, marginTop: 10, opacity: canSubmit ? 1 : 0.6 }}>
+              <button type="submit" disabled={!canSubmit} className="lk-btn lk-btn-navy" style={{ marginTop: 10, opacity: canSubmit ? 1 : 0.6 }}>
                 {busy ? <Loader2 size={14} className="spin" /> : <Plus size={14} />} Sponsor anlegen
               </button>
             )
@@ -273,16 +271,10 @@ export default function Angebote() {
           <div style={cardTitle}><FileText size={16} color={PRIMARY} /> Angebot erstellen</div>
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
             <Field label="Sponsor">
-              <select value={offerForm.sponsor_profile_id} onChange={(e) => setOfferForm({ ...offerForm, sponsor_profile_id: e.target.value })} style={input}>
-                <option value="">— wählen —</option>
-                {sponsors.map((s) => <option key={s.id} value={s.id}>{sponsorName[s.id] || '—'}</option>)}
-              </select>
+              <PillSelect value={offerForm.sponsor_profile_id} onChange={v => setOfferForm({ ...offerForm, sponsor_profile_id: v })} neutral options={[{ value: '', label: `— wählen —` }, ...sponsors.map((s) => ({ value: s.id, label: sponsorName[s.id] || '—' }))]} buttonStyle={{ minWidth: 140 }} />
             </Field>
             <Field label="Paket">
-              <select value={offerForm.package_id} onChange={(e) => setOfferForm({ ...offerForm, package_id: e.target.value })} style={input}>
-                <option value="">— wählen —</option>
-                {packages.map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}
-              </select>
+              <PillSelect value={offerForm.package_id} onChange={v => setOfferForm({ ...offerForm, package_id: v })} neutral options={[{ value: '', label: `— wählen —` }, ...packages.map((p) => ({ value: p.id, label: p.name }))]} buttonStyle={{ minWidth: 140 }} />
             </Field>
             <Field label="Rabatt (%)">
               <input type="number" min="0" max="100" step="1" value={offerForm.discount_pct}
@@ -308,7 +300,7 @@ export default function Angebote() {
             </Field>
           </div>
           <button type="submit" disabled={busy || !offerForm.sponsor_profile_id || !offerForm.package_id}
-                  style={{ ...primaryBtn, marginTop: 12, opacity: busy || !offerForm.sponsor_profile_id || !offerForm.package_id ? 0.6 : 1 }}>
+                  className="lk-btn lk-btn-navy" style={{ marginTop: 12, opacity: busy || !offerForm.sponsor_profile_id || !offerForm.package_id ? 0.6 : 1 }}>
             {busy ? <Loader2 size={14} className="spin" /> : <Plus size={14} />} Angebot erstellen
           </button>
         </form>
@@ -345,10 +337,7 @@ export default function Angebote() {
                     </div>
                   </td>
                   <td style={td}>
-                    <select value={o.status} onChange={(e) => updateOfferStatus(o.id, e.target.value)}
-                            style={{ ...input, padding: '4px 8px', color: OFFER_COLOR[o.status], fontWeight: 600 }}>
-                      {OFFER_STATUS.map((s) => <option key={s} value={s}>{OFFER_LABEL[s]}</option>)}
-                    </select>
+                    <PillSelect value={o.status} onChange={v => updateOfferStatus(o.id, v)} neutral options={[...OFFER_STATUS.map((s) => ({ value: s, label: OFFER_LABEL[s] }))]} buttonStyle={{ minWidth: 140 }} />
                   </td>
                   <td style={td}>
                     <button type="button" onClick={() => sendPdfToLead(o)} style={ghostBtn} title="PDF an Lead senden (Delivery-Unterbau folgt)">
@@ -385,13 +374,7 @@ export default function Angebote() {
                     <div style={{ display: 'flex', alignItems: 'flex-end', gap: 8, flexWrap: 'wrap' }}>
                       <div style={{ flex: '2 1 200px' }}>
                         <div style={miniLabel}>Recht</div>
-                        <select value={draft.right_id} onChange={(e) => pickRight(o.id, e.target.value)} style={{ ...input, padding: '6px 8px' }}>
-                          <option value="">— wählen —</option>
-                          {rights.map((r) => {
-                            const invLbl = inventoryLabel(inventory[r.id])
-                            return <option key={r.id} value={r.id}>{r.name}{invLbl ? ` (${invLbl})` : ''}</option>
-                          })}
-                        </select>
+                        <PillSelect value={draft.right_id} onChange={v => pickRight(o.id, v)} neutral options={[{ value: '', label: `— wählen —` }, ...rights.map((r) => { const invLbl = inventoryLabel(inventory[r.id]); return ({ value: r.id, label: `${r.name}${invLbl ? ` (${invLbl})` : ''}` }); })]} buttonStyle={{ minWidth: 140 }} />
                       </div>
                       <div style={{ flex: '0 0 80px' }}>
                         <div style={miniLabel}>Menge</div>
@@ -406,7 +389,7 @@ export default function Angebote() {
                                style={{ ...input, padding: '6px 8px' }} />
                       </div>
                       <button type="button" disabled={busy || !draft.right_id} onClick={() => addOfferRight(o.id)}
-                              style={{ ...primaryBtn, padding: '7px 12px', opacity: busy || !draft.right_id ? 0.6 : 1 }}>
+                              className="lk-btn lk-btn-navy" style={{ padding: '7px 12px', opacity: busy || !draft.right_id ? 0.6 : 1 }}>
                         <Plus size={13} /> Hinzufügen
                       </button>
                     </div>
@@ -435,7 +418,7 @@ function Field({ label, children }) {
 const card = { border: '1px solid var(--border)', borderRadius: 14, background: 'var(--surface)', padding: 18, display: 'flex', flexDirection: 'column', gap: 10 }
 const cardTitle = { display: 'flex', alignItems: 'center', gap: 8, fontSize: 14, fontWeight: 700, color: 'var(--text-strong)', marginBottom: 4 }
 const input = { padding: '8px 10px', borderRadius: 8, border: '1px solid var(--border)', background: 'var(--surface)', color: 'var(--text-strong)', fontSize: 13.5, width: '100%', boxSizing: 'border-box' }
-const primaryBtn = { display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: 6, padding: '9px 16px', borderRadius: 999, border: 'none', background: PRIMARY, color: '#fff', fontSize: 13, fontWeight: 700, cursor: 'pointer' }
+const primaryBtn = { display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: 6, padding: '9px 16px', borderRadius: 999, border: 'none', background: 'var(--primary)', color: '#fff', fontSize: 13, fontWeight: 700, cursor: 'pointer' }
 const th = { padding: '10px 14px', fontWeight: 600, fontSize: 12 }
 const td = { padding: '10px 14px', color: 'var(--text-strong)' }
 const errBox = { padding: '10px 14px', borderRadius: 10, background: '#FEE2E2', color: '#991B1B', fontSize: 13, marginBottom: 16 }

@@ -7,7 +7,7 @@ import React, { useState, useEffect, useRef } from 'react'
 import { supabase } from '../lib/supabase'
 import { useTeam } from '../context/TeamContext'
 
-const PRIMARY = 'var(--wl-primary, rgb(49,90,231))'
+const PRIMARY = 'var(--wl-primary, #0A6FB0)'
 
 export default function OrganizationPicker({ value, valueName, onChange, placeholder, disabled }) {
   // value     = organization_id (uuid oder null)
@@ -118,8 +118,8 @@ export default function OrganizationPicker({ value, valueName, onChange, placeho
           }}
         />
         {display && !disabled && (
-          <button type="button" onClick={clearOrg}
-            style={{ padding: '6px 10px', border: '1px solid #E4E7EC', background: 'var(--surface)', borderRadius: 8, fontSize: 12, color: '#6B7280', cursor: 'pointer' }}>
+          <button className="lk-btn lk-btn-ghost" type="button" onClick={clearOrg}
+            >
             ×
           </button>
         )}
@@ -151,7 +151,7 @@ export default function OrganizationPicker({ value, valueName, onChange, placeho
               disabled={creating}
               style={{ display: 'block', width: '100%', textAlign: 'left',
                 padding: '10px 12px', border: 'none', borderTop: options.length > 0 ? '1px solid #F3F4F6' : 'none',
-                background: 'rgba(49,90,231,0.04)', cursor: 'pointer', fontSize: 13,
+                background: 'rgba(10,111,176,0.04)', cursor: 'pointer', fontSize: 13,
                 color: PRIMARY, fontWeight: 700 }}>
               {creating ? 'Wird angelegt…' : `+ "${query.trim()}" als neue Organisation anlegen`}
             </button>

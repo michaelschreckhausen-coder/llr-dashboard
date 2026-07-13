@@ -8,7 +8,7 @@ import { useParams, useSearchParams, Link, useNavigate } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
 import { STRIKE2_STEPS, STRIKE2_TOTAL_STEPS, strike2Step } from '../lib/strike2QuestionsCatalog'
 
-const PRIMARY = 'var(--wl-primary, rgb(49,90,231))'
+const PRIMARY = 'var(--wl-primary, #0A6FB0)'
 const S2 = '#F97316'
 
 // ── Input-Renderer ────────────────────────────────────────────────
@@ -233,7 +233,7 @@ export default function Strike2PersonaWizard() {
         <button type="button" onClick={() => { doSave(); navigate('/branding/strike2-personas') }} title="Zurück zur Übersicht"
           style={{ background: 'transparent', border: '1.5px solid var(--border)', borderRadius: 10, width: 36, height: 36, fontSize: 16, cursor: 'pointer', color: 'var(--text-muted)', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>←</button>
         <div style={{ flex: 1, minWidth: 0 }}>
-          <div style={{ fontSize: 20, color: '#F97316', fontFamily: '"Caveat", cursive', fontWeight: 600, marginBottom: 2 }}>Branding · Strike2 Zielgruppe</div>
+          <div className="lk-eyebrow" style={{ fontSize:12, fontWeight:700, letterSpacing:'1.6px', textTransform:'uppercase', fontFamily:'Inter, sans-serif', color:'#F97316', marginBottom:2 }}>Branding · Strike2 Zielgruppe</div>
           <h1 style={{ fontSize: 22, fontWeight: 700, letterSpacing: '-0.2px', lineHeight: 1.2, margin: 0, color: 'var(--text-primary)' }}>{step.title}</h1>
           <p style={{ fontSize: 13, color: 'var(--text-muted)', margin: '2px 0 0' }}>{step.subtitle}</p>
         </div>
@@ -285,7 +285,7 @@ export default function Strike2PersonaWizard() {
         <div style={{ marginTop: 18, padding: '14px', borderRadius: 10, fontSize: 13, lineHeight: 1.6, background: '#FFF7ED', border: '1px solid #FED7AA', color: '#9A3412' }}>
           Erzeugt <strong>70 Content-Ideen</strong> über alle 7 Funnel-Phasen (~50 Sek.). Bitte diesen Tab offen lassen.
           <div style={{ display: 'flex', gap: 10, marginTop: 12 }}>
-            <button type="button" onClick={() => setGenConfirm(false)} style={{ border: '0.5px solid #CBD5E1', background: '#fff', borderRadius: 8, padding: '8px 16px', fontSize: 13, fontWeight: 500, cursor: 'pointer', color: '#475569' }}>Abbrechen</button>
+            <button className="lk-btn lk-btn-ghost" type="button" onClick={() => setGenConfirm(false)} >Abbrechen</button>
             <button type="button" onClick={runGeneration} style={{ border: 'none', background: S2, color: '#fff', borderRadius: 8, padding: '8px 16px', fontSize: 13, fontWeight: 600, cursor: 'pointer' }}>Jetzt generieren</button>
           </div>
         </div>
@@ -299,14 +299,14 @@ export default function Strike2PersonaWizard() {
           color: gen.error ? '#7F1D1D' : gen.done ? '#065F46' : '#9A3412' }}>
           {gen.running && <><strong>⚡ Generierung läuft… Phase {gen.phase + 1}/7</strong> ({(STRIKE2_STEPS.find(s => s.tag === PHASE_TAGS[gen.phase]) || {}).title}) — bitte Tab offen lassen (~50 Sek.).</>}
           {gen.done && <><strong>✓ 70 Content-Ideen erzeugt.</strong> Zielgruppe auf „Fertig" gesetzt. <Link to={`/branding/strike2-personas/${id}/ideen`} style={{ color: '#065F46', fontWeight: 600 }}>→ Ideen ansehen & übernehmen</Link></>}
-          {gen.error && <><strong>⚠ Generierung fehlgeschlagen:</strong> {gen.error}<br /><button type="button" onClick={runGeneration} style={{ marginTop: 8, border: 'none', background: '#DC2626', color: '#fff', borderRadius: 8, padding: '6px 14px', fontSize: 12.5, fontWeight: 600, cursor: 'pointer' }}>Erneut versuchen</button></>}
+          {gen.error && <><strong>⚠ Generierung fehlgeschlagen:</strong> {gen.error}<br /><button className="lk-btn lk-btn-danger" type="button" onClick={runGeneration} style={{ marginTop: 8 }}>Erneut versuchen</button></>}
         </div>
       )}
 
       {/* Footer-Nav */}
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, marginTop: 28, paddingTop: 18, borderTop: '1px solid #F1F5F9' }}>
-        <button type="button" onClick={() => gotoStep(stepIdx - 1)} disabled={stepIdx === 0}
-          style={{ border: '0.5px solid #CBD5E1', background: '#fff', borderRadius: 10, padding: '10px 18px', fontSize: 13.5, fontWeight: 500, cursor: stepIdx === 0 ? 'default' : 'pointer', color: '#475569', opacity: stepIdx === 0 ? 0.5 : 1 }}>
+        <button className="lk-btn lk-btn-ghost" type="button" onClick={() => gotoStep(stepIdx - 1)} disabled={stepIdx === 0}
+          style={{ opacity: stepIdx === 0 ? 0.5 : 1 }}>
           Zurück
         </button>
         <button type="button" onClick={() => { doSave(); navigate('/branding/strike2-personas') }}
@@ -319,8 +319,8 @@ export default function Strike2PersonaWizard() {
             {gen.running ? `Phase ${gen.phase + 1}/7…` : gen.done ? '✓ Erneut generieren' : '⚡ 70 Ideen generieren'}
           </button>
         ) : (
-          <button type="button" onClick={() => gotoStep(stepIdx + 1)} disabled={missingRequired} title={missingRequired ? 'Pflichtfeld ausfüllen' : ''}
-            style={{ border: 'none', background: missingRequired ? '#CBD5E1' : PRIMARY, color: '#fff', borderRadius: 10, padding: '10px 20px', fontSize: 13.5, fontWeight: 600, cursor: missingRequired ? 'not-allowed' : 'pointer' }}>
+          <button className="lk-btn lk-btn-primary" type="button" onClick={() => gotoStep(stepIdx + 1)} disabled={missingRequired} title={missingRequired ? 'Pflichtfeld ausfüllen' : ''}
+            >
             Weiter
           </button>
         )}

@@ -2,6 +2,7 @@
 // Medien-Bibliothek: alle eigenen Uploads (Bilder, Videos, PDFs) zentral.
 // Unterscheidet sich von /visuals (das nur AI-generierte Bilder zeigt).
 
+import PillSelect from '../components/PillSelect'
 import React, { useState, useEffect, useRef } from 'react'
 import { User, X } from 'lucide-react'
 import { useNavigate } from 'react-router-dom'
@@ -11,7 +12,7 @@ import { resizeImageBeforeUpload } from '../lib/imageResize'
 import { useTeam } from '../context/TeamContext'
 import { useBrandVoice } from '../context/BrandVoiceContext'
 
-const P = 'var(--wl-primary, rgb(49,90,231))'
+const P = 'var(--wl-primary, #0A6FB0)'
 
 export default function Media({ session }) {
   const navigate = useNavigate()
@@ -243,7 +244,7 @@ export default function Media({ session }) {
     <div style={{ width:'100%', maxWidth:1200, margin:'0 auto', padding:'24px 16px 40px' }}>
       {/* Header */}
       <div style={{ marginBottom:22 }}>
-        <div style={{ fontSize:20, color:'#30A0D0', fontFamily:'"Caveat", cursive', fontWeight:600, marginBottom:6 }}>Content · Medien</div>
+        <div className="lk-eyebrow" style={{ fontSize:12, fontWeight:700, letterSpacing:'1.6px', textTransform:'uppercase', fontFamily:'Inter, sans-serif', color:'var(--primary, #003060)', marginBottom:6 }}>Content · Medien</div>
         <h1 style={{ fontSize:26, fontWeight:700, margin:0, letterSpacing:'-0.3px', lineHeight:1.2 }}>Deine Medien.</h1>
         <p style={{ fontSize:13, color:'var(--text-muted)', margin:'8px 0 0', lineHeight:1.6 }}>
           Alle Medien dieser Brand an einem Ort — Uploads (Bilder, Videos, PDFs) und KI-generierte Visuals.
@@ -255,20 +256,12 @@ export default function Media({ session }) {
         <input type="text" value={search} onChange={e => setSearch(e.target.value)}
           placeholder="Suche nach Dateiname…"
           style={{ flex:'1 1 240px', minWidth:200, padding:'8px 12px', borderRadius:8, border:'1.5px solid var(--border)', fontSize:13, fontFamily:'inherit', outline:'none' }}/>
-        <select value={typeFilter} onChange={e => setTypeFilter(e.target.value)}
-          style={{ padding:'8px 10px', borderRadius:8, border:'1.5px solid var(--border)', fontSize:13, fontFamily:'inherit', background:'#fff', cursor:'pointer' }}>
-          <option value="all">Alle Medien</option>
-          <option value="identity">Visuelle Identität</option>
-          <option value="generated">Generiert</option>
-          <option value="upload">Uploads</option>
-          <option value="video">Videos</option>
-          <option value="document">PDFs</option>
-        </select>
+        <PillSelect value={typeFilter} onChange={setTypeFilter} neutral options={[{ value: 'all', label: 'Alle Medien' }, { value: 'identity', label: 'Visuelle Identität' }, { value: 'generated', label: 'Generiert' }, { value: 'upload', label: 'Uploads' }, { value: 'video', label: 'Videos' }, { value: 'document', label: 'PDFs' }]} buttonStyle={{ minWidth: 140 }} />
 
         <div style={{ flex:1 }}/>
-        <button type="button" onClick={() => fileInputRef.current?.click()}
+        <button className="lk-btn lk-btn-primary" type="button" onClick={() => fileInputRef.current?.click()}
           disabled={uploading}
-          style={{ padding:'9px 16px', borderRadius:9, border:'none', background: uploading ? '#94A3B8' : P, color:'#fff', fontSize:13, fontWeight:700, cursor: uploading ? 'wait' : 'pointer', display:'inline-flex', alignItems:'center', gap:5, boxShadow: uploading ? 'none' : '0 2px 10px rgba(49,90,231,.18)' }}>
+          style={{ display:'inline-flex', alignItems:'center', gap:5 }}>
           {uploading ? 'Lade hoch…' : 'Datei hochladen'}
         </button>
         <input ref={fileInputRef} type="file" multiple
@@ -324,7 +317,7 @@ export default function Media({ session }) {
                   Identität
                 </div>
               ) : v.model !== 'upload' ? (
-                <div style={{ position:'absolute', top:6, right:6, padding:'2px 7px', background:'rgba(49,90,231,0.92)', color:'#fff', fontSize:9, fontWeight:700, borderRadius:5, textTransform:'uppercase' }}>
+                <div style={{ position:'absolute', top:6, right:6, padding:'2px 7px', background:'rgba(10,111,176,0.92)', color:'#fff', fontSize:9, fontWeight:700, borderRadius:5, textTransform:'uppercase' }}>
                   Generiert
                 </div>
               ) : null}
@@ -349,17 +342,17 @@ export default function Media({ session }) {
                 </div>
               </div>
               {!lightbox.identity && (
-                <button onClick={() => openAttachModal(lightbox)}
-                  style={{ padding:'7px 14px', borderRadius:8, border:'none', background: P, color:'#fff', cursor:'pointer', fontSize:12, fontWeight:700, display:'inline-flex', alignItems:'center', gap:6, boxShadow:'0 2px 6px rgba(49,90,231,.25)' }}>
+                <button className="lk-btn lk-btn-cta" onClick={() => openAttachModal(lightbox)}
+                  style={{ display:'inline-flex', alignItems:'center', gap:6 }}>
                   📅 Zu Beitrag hinzufügen
                 </button>
               )}
-              <button onClick={() => downloadItem(lightbox)} style={{ padding:'6px 12px', borderRadius:7, border:'1px solid var(--border)', background:'#fff', cursor:'pointer', fontSize:12, fontWeight:600 }}>⬇ Download</button>
+              <button className="lk-btn lk-btn-ghost" onClick={() => downloadItem(lightbox)} >⬇ Download</button>
               {lightbox.media_type === 'document' && (
-                <button onClick={() => window.open(lightbox.signed_url, '_blank', 'noopener')} style={{ padding:'6px 12px', borderRadius:7, border:'1px solid var(--border)', background:'#fff', cursor:'pointer', fontSize:12, fontWeight:600 }}>Öffnen</button>
+                <button className="lk-btn lk-btn-ghost" onClick={() => window.open(lightbox.signed_url, '_blank', 'noopener')} >Öffnen</button>
               )}
               {!lightbox.identity && (
-                <button onClick={() => archiveItem(lightbox.id)} style={{ padding:'6px 12px', borderRadius:7, border:'1px solid #FCA5A5', background:'#FEF2F2', color:'#b91c1c', cursor:'pointer', fontSize:12, fontWeight:600 }}>Entfernen</button>
+                <button className="lk-btn lk-btn-danger" onClick={() => archiveItem(lightbox.id)} >Entfernen</button>
               )}
               <button onClick={() => setLightbox(null)} style={{ background:'none', border:'none', fontSize:18, cursor:'pointer', color:'var(--text-muted)' }}><X size={14} strokeWidth={1.75}/></button>
             </div>
@@ -418,7 +411,7 @@ export default function Media({ session }) {
 
             {/* Neuer Beitrag mit Medium */}
             <button onClick={() => createPostWithMedia(attachModal)}
-              style={{ width:'100%', padding:'12px 14px', marginBottom:10, borderRadius:10, border:'1.5px dashed ' + P, background:'rgba(49,90,231,0.04)', color: P, fontSize:13, fontWeight:700, cursor:'pointer', display:'flex', alignItems:'center', gap:8, justifyContent:'center', flexShrink:0 }}>
+              style={{ width:'100%', padding:'12px 14px', marginBottom:10, borderRadius:10, border:'1.5px dashed ' + P, background:'rgba(10,111,176,0.04)', color: P, fontSize:13, fontWeight:700, cursor:'pointer', display:'flex', alignItems:'center', gap:8, justifyContent:'center', flexShrink:0 }}>
               ✨ Neuen Beitrag mit diesem {labelType(attachModal)} anlegen
             </button>
 
@@ -476,8 +469,8 @@ export default function Media({ session }) {
             </div>
 
             <div style={{ display:'flex', justifyContent:'flex-end', marginTop:10, paddingTop:10, borderTop:'1px solid var(--border)', flexShrink:0 }}>
-              <button onClick={() => setAttachModal(null)}
-                style={{ padding:'8px 16px', borderRadius:8, border:'1px solid var(--border)', background:'#fff', cursor:'pointer', fontSize:13, fontWeight:600 }}>
+              <button className="lk-btn lk-btn-ghost" onClick={() => setAttachModal(null)}
+                >
                 Schließen
               </button>
             </div>

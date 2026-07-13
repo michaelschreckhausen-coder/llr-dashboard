@@ -145,12 +145,9 @@ export default function Zeiterfassung() {
             Heute
           </button>
           <button onClick={() => setWeekAnchor(addDays(weekStart, 7))} style={navBtn}>Nächste ›</button>
-          <button
+          <button className="lk-btn lk-btn-primary"
             onClick={() => setQuickAddOpen(true)}
-            style={{
-              padding: '8px 14px', backgroundColor: 'var(--wl-primary, rgb(49,90,231))', color: 'white',
-              border: 'none', borderRadius: 6, fontWeight: 600, cursor: 'pointer', marginLeft: 8,
-            }}
+            style={{ marginLeft: 8 }}
           >
             + Zeit nachtragen
           </button>

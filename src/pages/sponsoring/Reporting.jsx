@@ -1,6 +1,7 @@
 // Sponsoring OS — Reporting-Dashboard (Phase 2, Modul 8)
 // KPI-Cards + recharts. Daten aus RPC get_sponsoring_dashboard (aktives Team).
 
+import PillSelect from '../../components/PillSelect'
 import { useEffect, useState, useCallback } from 'react'
 import { BarChart3, Loader2, RefreshCw, TrendingUp, Trophy, Activity, Percent, Target, GitBranch, Layers } from 'lucide-react'
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell } from 'recharts'
@@ -10,7 +11,7 @@ import PageHeader from '../../components/PageHeader'
 
 const sp = () => supabase.schema('sponsoring')
 
-const PRIMARY = 'var(--wl-primary, rgb(49,90,231))'
+const PRIMARY = 'var(--wl-primary, #0A6FB0)'
 const eur = (n) => `${Number(n || 0).toLocaleString('de-DE', { maximumFractionDigits: 0 })} €`
 
 export default function Reporting() {
@@ -145,10 +146,7 @@ export default function Reporting() {
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 14, gap: 12, flexWrap: 'wrap' }}>
               <div style={cardTitle}><Target size={16} color={PRIMARY} /> SOLL/IST-GAP</div>
               {seasons.length > 0 && (
-                <select value={season} onChange={(e) => setSeason(e.target.value)} style={selectStyle}>
-                  <option value="">Alle Saisons</option>
-                  {seasons.map((s) => <option key={s} value={s}>{s}</option>)}
-                </select>
+                <PillSelect value={season} onChange={setSeason} neutral options={[{ value: '', label: `Alle Saisons` }, ...seasons.map((s) => ({ value: s, label: s }))]} buttonStyle={{ minWidth: 140 }} />
               )}
             </div>
             {gapRows.length === 0 ? (

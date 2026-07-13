@@ -9,7 +9,7 @@ import { Link } from 'react-router-dom'
 import { Trophy, Layers, FileText, Activity, Sparkles } from 'lucide-react'
 import PageHeader from '../../components/PageHeader'
 
-const PRIMARY = 'var(--wl-primary, rgb(49,90,231))'
+const PRIMARY = 'var(--wl-primary, #0A6FB0)'
 
 const NEXT = [
   { icon: Layers,   title: 'Rechte & Inventar', desc: 'Stadion, Trikot, Hospitality, Digital — Slots & Auslastung.' },
@@ -30,8 +30,8 @@ export default function SponsoringHome() {
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(260px, 1fr))', gap: 16 }}>
         {NEXT.map(({ icon: Icon, title, desc }) => (
           <div key={title} style={{
-            border: '1px solid var(--border)', borderRadius: 14, background: 'var(--surface)',
-            padding: 20, display: 'flex', flexDirection: 'column', gap: 8,
+            border: '1px solid var(--border)', borderRadius: 16, background: 'var(--surface)',
+            padding: 20, display: 'flex', flexDirection: 'column', gap: 8, boxShadow: 'var(--shadow-card)',
           }}>
             <Icon size={22} color={PRIMARY} />
             <div style={{ fontSize: 15, fontWeight: 700, color: 'var(--text-strong)' }}>{title}</div>

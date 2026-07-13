@@ -1,9 +1,10 @@
+import PillSelect from './PillSelect'
 import React, { useState, useEffect } from 'react'
 import { Briefcase, Calendar, CheckCircle2, FileText, Pencil, Phone } from 'lucide-react'
 import { supabase } from '../lib/supabase'
 import MultiAssigneePicker from './leads/MultiAssigneePicker'
 
-const PRIMARY = 'rgb(49,90,231)'
+const PRIMARY = '#0A6FB0'
 
 const PRIORITY_CFG = {
   low:    { label: 'Niedrig',  color: '#6B7280', bg: '#F3F4F6', border: '#E5E7EB' },
@@ -180,11 +181,11 @@ export default function LeadTasks({ leadId, teamId, session, members = [] }) {
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 14 }}>
         <div style={{ fontSize: 13, fontWeight: 700, color: '#374151' }}>
           Aufgaben
-          {open.length > 0 && <span style={{ marginLeft: 6, fontSize: 11, background: PRIMARY, color: '#fff', borderRadius: 99, padding: '1px 7px', fontWeight: 700 }}>{open.length}</span>}
+          {open.length > 0 && <span style={{ marginLeft: 6, fontSize: 11, background: 'var(--primary)', color: '#fff', borderRadius: 99, padding: '1px 7px', fontWeight: 700 }}>{open.length}</span>}
         </div>
         {!showForm && (
-          <button onClick={() => setShowForm(true)}
-            style={{ padding: '5px 12px', borderRadius: 8, border: 'none', background: PRIMARY, color: '#fff', fontSize: 12, fontWeight: 700, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 4 }}>
+          <button className="lk-btn lk-btn-cta" onClick={() => setShowForm(true)}
+            style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
             + Neue Aufgabe
           </button>
         )}
@@ -214,11 +215,7 @@ export default function LeadTasks({ leadId, teamId, session, members = [] }) {
           {/* Aufgaben-Typ */}
           <div style={{ marginBottom: 10 }}>
             <div style={{ fontSize: 10, fontWeight: 700, color: '#6B7280', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 4 }}>Art der Aufgabe</div>
-            <select value={form.task_type} onChange={e => setForm(f => ({ ...f, task_type: e.target.value }))} style={inp}>
-              {TASK_TYPES.map(t => (
-                <option key={t.value} value={t.value}>{t.icon} {t.label}</option>
-              ))}
-            </select>
+            <PillSelect value={form.task_type} onChange={v => setForm(f => ({ ...f, task_type: v }))} neutral options={[...TASK_TYPES.map((t) => ({ value: t.value, label: `${t.icon} ${t.label}` }))]} buttonStyle={{ minWidth: 140 }} />
           </div>
 
           {/* Datum + Priorität + Zuweisung */}
@@ -230,11 +227,7 @@ export default function LeadTasks({ leadId, teamId, session, members = [] }) {
             </div>
             <div>
               <div style={{ fontSize: 10, fontWeight: 700, color: '#6B7280', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 4 }}>Priorität</div>
-              <select value={form.priority} onChange={e => setForm(f => ({ ...f, priority: e.target.value }))} style={inp}>
-                <option value="low">Niedrig</option>
-                <option value="normal">Normal</option>
-                <option value="high">Hoch</option>
-              </select>
+              <PillSelect value={form.priority} onChange={v => setForm(f => ({ ...f, priority: v }))} neutral options={[{ value: 'low', label: `Niedrig` }, { value: 'normal', label: `Normal` }, { value: 'high', label: `Hoch` }]} buttonStyle={{ minWidth: 140 }} />
             </div>
           </div>
 
@@ -254,12 +247,12 @@ export default function LeadTasks({ leadId, teamId, session, members = [] }) {
 
           {/* Buttons */}
           <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
-            <button onClick={resetForm}
-              style={{ padding: '7px 14px', borderRadius: 8, border: '1px solid #E5E7EB', background: '#fff', fontSize: 12, fontWeight: 600, cursor: 'pointer', color: '#374151' }}>
+            <button className="lk-btn lk-btn-ghost" onClick={resetForm}
+              >
               Abbrechen
             </button>
-            <button onClick={save} disabled={saving}
-              style={{ padding: '7px 16px', borderRadius: 8, border: 'none', background: saving ? '#E5E7EB' : PRIMARY, color: saving ? '#9CA3AF' : '#fff', fontSize: 12, fontWeight: 700, cursor: saving ? 'default' : 'pointer' }}>
+            <button className="lk-btn lk-btn-cta" onClick={save} disabled={saving}
+              >
               {saving ? '…' : editId ? 'Speichern' : '+ Erstellen'}
             </button>
           </div>

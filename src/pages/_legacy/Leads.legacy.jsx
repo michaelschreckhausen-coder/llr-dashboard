@@ -1,4 +1,5 @@
 // CRM Unified: first_name, last_name, job_title, status Lead/LQL/MQN/MQL/SQL
+import PillSelect from '../../components/PillSelect'
 import React, { useEffect, useState, useRef, useCallback } from 'react'
 import { useResponsive } from '../../hooks/useResponsive'
 import { useTeam } from '../../context/TeamContext'
@@ -30,7 +31,7 @@ const STATUS_STYLE = {
   MQL:  { bg:'#FFFBEB', color:'#B45309', border:'#FDE68A' },
   SQL:  { bg:'#F0FDF4', color:'#15803D', border:'#BBF7D0' },
 }
-const LIST_COLORS = ['var(--wl-primary, rgb(0,48,96))','#10B981','#F59E0B','#EF4444','#8B5CF6','#0891B2','#EC4899','#374151']
+const LIST_COLORS = ['var(--wl-primary, rgb(0,48,96))','#10B981','#F59E0B','#EF4444','#0A6FB0','#0891B2','#EC4899','#374151']
 
 // STAGE_LABEL auf Modul-Ebene — wird in Bulk-Actions-Bar für option labels genutzt.
 // STAGE_COLOR ist nicht mehr hier nötig (nur noch in LeadRow.jsx verwendet).
@@ -63,7 +64,7 @@ function initials(name) {
 }
 
 function Avatar({ name, avatar_url, size = 40, fontSize = 15 }) {
-  const colors = ['var(--wl-primary, rgb(0,48,96))','#10B981','#F59E0B','#8B5CF6','#EC4899','#0891B2','#EF4444','#374151']
+  const colors = ['var(--wl-primary, rgb(0,48,96))','#10B981','#F59E0B','#0A6FB0','#EC4899','#0891B2','#EF4444','#374151']
   const idx = (name || '').charCodeAt(0) % colors.length
   const bg  = colors[idx]
   if (avatar_url) return (
@@ -547,55 +548,28 @@ export default function Leads({ session }) {
 
           {/* CSV + Import */}
           {!isNotebook && (
-            <button onClick={exportCSV}
-              style={{
-                padding:'8px 16px', borderRadius: 999,
-                border:'1px solid #E4E5EB', background:'var(--surface)',
-                color:'var(--text-muted)', fontWeight:500, fontSize:13,
-                cursor:'pointer', whiteSpace:'nowrap',
-                letterSpacing:'-0.005em',
-                transition:'all 0.15s',
-                fontFamily: 'inherit',
-              }}
-              onMouseEnter={e => { e.currentTarget.style.borderColor = '#D2D4DE'; e.currentTarget.style.color = '#0E1633' }}
-              onMouseLeave={e => { e.currentTarget.style.borderColor = '#E4E5EB'; e.currentTarget.style.color = 'var(--text-muted)' }}>
+            <button className="lk-btn lk-btn-ghost" onClick={exportCSV}
+              style={{ whiteSpace:'nowrap', letterSpacing:'-0.005em', fontFamily: 'inherit' }}
+              
+              >
               CSV
             </button>
           )}
           {!isNotebook && (
-            <button onClick={() => setImportModal(true)}
-              style={{
-                padding:'8px 16px', borderRadius: 999,
-                border:'1px solid #E4E5EB', background:'var(--surface)',
-                color:'var(--text-muted)', fontWeight:500, fontSize:13,
-                cursor:'pointer', whiteSpace:'nowrap',
-                letterSpacing:'-0.005em',
-                transition:'all 0.15s',
-                fontFamily: 'inherit',
-              }}
-              onMouseEnter={e => { e.currentTarget.style.borderColor = '#D2D4DE'; e.currentTarget.style.color = '#0E1633' }}
-              onMouseLeave={e => { e.currentTarget.style.borderColor = '#E4E5EB'; e.currentTarget.style.color = 'var(--text-muted)' }}>
+            <button className="lk-btn lk-btn-ghost" onClick={() => setImportModal(true)}
+              style={{ whiteSpace:'nowrap', letterSpacing:'-0.005em', fontFamily: 'inherit' }}
+              
+              >
               Import
             </button>
           )}
 
 
           {/* Neuer Lead */}
-          <button onClick={() => { setModal('add'); setForm({ status:'Lead' }) }}
-            style={{
-              display:'flex', alignItems:'center', gap:8,
-              padding:'9px 20px', borderRadius: 999,
-              background:'var(--wl-primary, rgb(0,48,96))',
-              color:'#fff', border:'none',
-              fontSize:13, fontWeight:500,
-              cursor:'pointer', whiteSpace:'nowrap',
-              letterSpacing:'-0.005em',
-              boxShadow:'0 6px 18px rgba(0,48,96,0.18)',
-              transition:'all 0.2s',
-              fontFamily: 'inherit',
-            }}
-            onMouseEnter={e => { e.currentTarget.style.transform='translateY(-1px)'; e.currentTarget.style.boxShadow='0 10px 24px rgba(0,48,96,0.25)' }}
-            onMouseLeave={e => { e.currentTarget.style.transform='translateY(0)'; e.currentTarget.style.boxShadow='0 6px 18px rgba(0,48,96,0.18)' }}>
+          <button className="lk-btn lk-btn-primary" onClick={() => { setModal('add'); setForm({ status:'Lead' }) }}
+            style={{ display:'flex', alignItems:'center', gap:8, whiteSpace:'nowrap', letterSpacing:'-0.005em', fontFamily: 'inherit' }}
+            
+            >
             <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3"><path d="M12 5v14M5 12h14"/></svg>
             {isMobile ? t('common.new') : t('leads.addLead')}
           </button>
@@ -755,18 +729,12 @@ export default function Leads({ session }) {
 
           {/* Team teilen */}
           {team && (
-            <button onClick={async () => {
+            <button className="lk-btn lk-btn-ghost" onClick={async () => {
               await Promise.all([...selectedIds].map(id => supabase.from('leads').update({ team_id: team.id, is_shared: true }).eq('id', id)))
               setLeads(prev => prev.map(l => selectedIds.has(l.id) ? {...l, is_shared:true, team_id:team.id} : l))
               setSelectedIds(new Set())
               showFlash(`👥 ${selectedIds.size} Leads mit "${team.name}" geteilt`, 'success')
-            }} style={{
-              padding:'5px 12px', borderRadius:8,
-              border:'1px solid #E4E5EB', background:'var(--surface)',
-              color:'var(--text-primary)', fontSize:12, fontWeight:500,
-              cursor:'pointer', fontFamily:'inherit',
-              letterSpacing:'-0.005em',
-            }}>
+            }} style={{ fontFamily:'inherit', letterSpacing:'-0.005em' }}>
               👥 Teilen
             </button>
           )}
@@ -1019,14 +987,12 @@ export default function Leads({ session }) {
                 <div key={k}><label style={lbl}>{l}</label><input value={form[k]||''} onChange={e=>setForm(f=>({...f,[k]:e.target.value}))} style={inp}/></div>
               ))}
               <div><label style={lbl}>Status</label>
-                <select value={form.status||'Lead'} onChange={e=>setForm(f=>({...f,status:e.target.value}))} style={inp}>
-                  {STATUS_OPTIONS.map(s=><option key={s} value={s}>{s}</option>)}
-                </select>
+                <PillSelect value={form.status||'Lead'} onChange={v => setForm(f=>({...f,status:v}))} neutral options={[...STATUS_OPTIONS.map((s) => ({ value: s, label: s }))]} buttonStyle={{ minWidth: 140 }} />
               </div>
             </div>
             <div style={{ padding:'12px 24px 20px', display:'flex', justifyContent:'flex-end', gap:10, borderTop:'1px solid #EEEFF4' }}>
               <button type="button" onClick={()=>setModal(null)} style={{ padding:'8px 18px', borderRadius:999, border:'1px solid var(--border)', background:'transparent', color:'var(--text-muted)', fontSize:13, fontWeight:600, cursor:'pointer' }}>Abbrechen</button>
-              <button type="submit" disabled={saving} style={{ padding:'8px 22px', borderRadius:999, border:'none', background:'var(--wl-primary, rgb(0,48,96))', color:'#fff', fontSize:13, fontWeight:700, cursor:'pointer' }}>
+              <button className="lk-btn lk-btn-cta" type="submit" disabled={saving} >
                 {saving ? 'Speichere…' : 'Erstellen'}
               </button>
             </div>
@@ -1055,7 +1021,7 @@ export default function Leads({ session }) {
             </div>
             <div style={{ padding:'12px 24px 20px', display:'flex', justifyContent:'flex-end', gap:10, borderTop:'1px solid #EEEFF4' }}>
               <button type="button" onClick={()=>setModal(null)} style={{ padding:'8px 18px', borderRadius:999, border:'1px solid var(--border)', background:'transparent', color:'var(--text-muted)', fontSize:13, fontWeight:600, cursor:'pointer' }}>Abbrechen</button>
-              <button type="submit" style={{ padding:'8px 22px', borderRadius:999, border:'none', background:'var(--wl-primary, rgb(0,48,96))', color:'#fff', fontSize:13, fontWeight:700, cursor:'pointer' }}>Erstellen</button>
+              <button className="lk-btn lk-btn-cta" type="submit" >Erstellen</button>
             </div>
           </form>
         </Modal>
@@ -1114,7 +1080,7 @@ export default function Leads({ session }) {
                 ) : (
                   <><div style={{ fontSize:32, marginBottom:8 }}>✅</div><div style={{ fontWeight:700, color:'#065F46' }}>{importResult.count} Leads importiert</div></>
                 )}
-                <button onClick={() => { setImportModal(false); setImportResult(null) }} style={{ marginTop:16, padding:'8px 20px', borderRadius:999, border:'none', background:'var(--wl-primary, rgb(0,48,96))', color:'#fff', fontWeight:700, cursor:'pointer' }}>Fertig</button>
+                <button className="lk-btn lk-btn-primary" onClick={() => { setImportModal(false); setImportResult(null) }} style={{ marginTop:16 }}>Fertig</button>
               </div>
             )}
           </div>

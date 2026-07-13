@@ -9,6 +9,7 @@
 //   contact_notes (id, lead_id, user_id, body, created_at)
 //   deals         (id, title, value, currency, stage, lead_id, created_at, ...)
 
+import PillSelect from '../components/PillSelect'
 import { useState, useCallback, useMemo, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import {
@@ -67,12 +68,12 @@ const contentStyle = { flex:1, padding:'24px 28px', overflow:'auto' };
 const threeColStyle = { display:'grid', gridTemplateColumns:'290px minmax(0,1fr)', gap:16, padding:'20px 28px 48px', alignItems:'start', flex:1 };
 const railColStyle = { display:'flex', flexDirection:'column', gap:14, minWidth:0 };
 const centerColStyle = { display:'flex', flexDirection:'column', minWidth:0 };
-const railCardStyle = { background: COLORS.surface, borderRadius: RADIUS.lg, border:`0.5px solid ${COLORS.borderSubtle}`, padding:'14px 16px' };
+const railCardStyle = { background: COLORS.surface, borderRadius: 16, border:'1px solid var(--border)', padding:'16px 18px', boxShadow:'var(--shadow-card)' };
 const railHeadStyle = { display:'flex', alignItems:'center', gap:6, marginBottom:10 };
 const railTitleStyle = { fontSize:13, fontWeight:500, color: COLORS.textPrimary, flex:1 };
 const propLabelStyle = { fontSize:11, color: COLORS.textTertiary, marginTop:12 };
 const propValueStyle = { fontSize:13, color: COLORS.textPrimary, wordBreak:'break-word', marginTop:1 };
-const cardStyle = { background: COLORS.surface, borderRadius: RADIUS.lg, border:`0.5px solid ${COLORS.borderSubtle}`, padding:'22px 24px', marginBottom:20 };
+const cardStyle = { background: COLORS.surface, borderRadius: 16, border:'1px solid var(--border)', padding:'22px 24px', marginBottom:20, boxShadow:'var(--shadow-card)' };
 const sectionLabelStyle = { fontSize:11, color: COLORS.textTertiary, textTransform:'uppercase', letterSpacing:'0.04em', marginBottom:6 };
 const tagStyle = { background: COLORS.surfaceMuted, color: COLORS.textSecondary, fontSize:11, padding:'3px 10px', borderRadius:999, display:'inline-flex', alignItems:'center', gap:4 };
 const metricsGridStyle = { display:'grid', gridTemplateColumns:'repeat(4, 1fr)', gap:12, padding:'16px 0', borderTop:`0.5px solid ${COLORS.borderSubtle}`, borderBottom:`0.5px solid ${COLORS.borderSubtle}`, marginBottom:18 };
@@ -215,7 +216,7 @@ function CompanyInfoBlock({ industry, companySize, companyWebsite, companyAddres
           <div style={{ fontSize:13, display:'flex', alignItems:'center', gap:5 }}>
             <Globe size={13} color={COLORS.textTertiary} />
             <a href={normalizedSite} target="_blank" rel="noopener noreferrer"
-              style={{ color: 'var(--wl-primary, rgb(49,90,231))', textDecoration:'none' }}>
+              style={{ color: 'var(--wl-primary, #0A6FB0)', textDecoration:'none' }}>
               {companyWebsite}
             </a>
           </div>
@@ -532,7 +533,7 @@ export default function LeadDetail({ lead: leadProp }) {
               {/* Read-only Display — Edit erfolgt jetzt über LeadEditModal (Click auf 'Bearbeiten').
                   Status ist ein Dropdown (LeadStatusPill + StatusPicker) direkt neben dem Namen,
                   statt des fruehern Chevron-Pipeline-Steppers. */}
-              <div style={{ fontSize:18, color:'#30A0D0', fontFamily:'"Caveat", cursive', fontWeight:600, marginBottom:2 }}>CRM · Kontakt</div>
+              <div className="lk-eyebrow" style={{ fontSize:12, fontWeight:700, letterSpacing:'1.6px', textTransform:'uppercase', fontFamily:'Inter, sans-serif', color:'var(--primary, #003060)', marginBottom:2 }}>CRM · Kontakt</div>
               <div style={{ display:'flex', alignItems:'center', gap:10, flexWrap:'wrap' }}>
                 <h1 style={{ fontSize:26, fontWeight:700, letterSpacing:'-0.3px', lineHeight:1.2, margin:0, color: displayName ? COLORS.textPrimary : COLORS.textTertiary }}>
                   {displayName || 'Name fehlt'}
@@ -569,7 +570,7 @@ export default function LeadDetail({ lead: leadProp }) {
                   <span
                     onClick={() => navigate(`/organizations/${lead.organization.id}`)}
                     title="Zum Unternehmen"
-                    style={{ color: 'var(--wl-primary, rgb(49,90,231))', cursor: 'pointer' }}>
+                    style={{ color: 'var(--wl-primary, #0A6FB0)', cursor: 'pointer' }}>
                     {lead.organization.name}
                   </span>
                 ) : (
@@ -583,31 +584,31 @@ export default function LeadDetail({ lead: leadProp }) {
           </div>
           <div style={{ display:'flex', gap:8, flexShrink:0 }}>
             {lead.linkedin_url && (
-              <button type="button" style={secondaryBtnStyle} onClick={openLinkedIn}
+              <button type="button" className="lk-btn lk-btn-ghost" onClick={openLinkedIn}
                 title="LinkedIn-Profil in neuem Tab öffnen">
                 <IcLinkedin size={16} /> Profil
               </button>
             )}
             {lead.linkedin_url && (
-              <button type="button" style={secondaryBtnStyle} onClick={addToInbox} disabled={addingInbox}
+              <button type="button" className="lk-btn lk-btn-ghost" onClick={addToInbox} disabled={addingInbox}
                 title="Diesen Kontakt in LinkedIn Kontakte aufnehmen (für Listen und Automatisierung)">
                 {addingInbox ? <Loader2 size={16} className="lk-spin" /> : <InboxIcon size={16} />} In LinkedIn Kontakte
               </button>
             )}
-            <button type="button" style={secondaryBtnStyle} onClick={() => setEditModalOpen(true)}
+            <button type="button" className="lk-btn lk-btn-ghost" onClick={() => setEditModalOpen(true)}
               title="Lead bearbeiten">
               <Pencil size={16} /> Bearbeiten
             </button>
-            <button type="button" style={primaryBtnStyle} onClick={() => setActiveTab('activity')}>
+            <button type="button" className="lk-btn lk-btn-navy" onClick={() => setActiveTab('activity')}>
               <Send size={16} /> Nachricht senden
             </button>
             {lead.archived ? (
-              <button type="button" style={secondaryBtnStyle} onClick={handleRestore}
+              <button type="button" className="lk-btn lk-btn-ghost" onClick={handleRestore}
                 title="Kontakt wiederherstellen">
                 <Archive size={16} /> Wiederherstellen
               </button>
             ) : (
-              <button type="button" style={{ ...secondaryBtnStyle, color:'#B91C1C', borderColor:'#FECACA' }} onClick={handleArchive}
+              <button type="button" className="lk-btn lk-btn-ghost" style={{ color:'#B91C1C', borderColor:'#FECACA' }} onClick={handleArchive}
                 title="Kontakt archivieren">
                 <Archive size={16} /> Archivieren
               </button>
@@ -758,7 +759,7 @@ function SummaryRail({ lead, owner, navigate, onOpenOwnerPicker, updateLead }) {
 // Verknuepfte Datensaetze: Unternehmen, Deals, Aufgaben, KI-Analyse-Kurzfassung.
 function RelatedRail({ lead, navigate, refreshKey, analysis, analyzeLoading, onAnalyze, onReanalyze, onUseOutreach, onJumpTab }) {
   const railAddBtn = { background:'none', border:'none', cursor:'pointer', color: COLORS.textTertiary, padding:0, display:'inline-flex' };
-  const miniCardStyle = { padding:'8px 10px', borderRadius: RADIUS.md, border:`0.5px solid ${COLORS.borderSubtle}`, marginTop:8, cursor:'pointer' };
+  const miniCardStyle = { padding:'10px 12px', borderRadius: 10, border:'1px solid var(--border)', marginTop:8, cursor:'pointer', background:'var(--surface)' };
   const [deals, setDeals] = useState([]);
   const [openTasks, setOpenTasks] = useState([]);
 
@@ -788,7 +789,7 @@ function RelatedRail({ lead, navigate, refreshKey, analysis, analyzeLoading, onA
       <div style={railCardStyle}>
         <div style={railHeadStyle}><Building2 size={14} color={COLORS.textTertiary} /><span style={railTitleStyle}>Unternehmen</span></div>
         {lead.organization?.id ? (
-          <div style={{ fontSize:13, color:'var(--wl-primary, rgb(49,90,231))', cursor:'pointer' }}
+          <div style={{ fontSize:13, color:'var(--wl-primary, #0A6FB0)', cursor:'pointer' }}
             onClick={() => navigate(`/organizations/${lead.organization.id}`)}>{lead.organization.name}</div>
         ) : lead.company ? (
           <div style={{ fontSize:13, color: COLORS.textPrimary }}>{lead.company}</div>
@@ -850,12 +851,12 @@ function RelatedRail({ lead, navigate, refreshKey, analysis, analyzeLoading, onA
             {nextAction && (<><div style={propLabelStyle}>Nächste Aktion</div><div style={propValueStyle}>{nextAction}</div></>)}
             <div style={{ display:'flex', gap:6, marginTop:12 }}>
               <button type="button" onClick={onReanalyze} disabled={analyzeLoading}
-                style={{ ...ghostBtnStyle, flex:1, justifyContent:'center', opacity: analyzeLoading ? 0.6 : 1 }}>
+                className="lk-btn lk-btn-ghost" style={{ flex:1, justifyContent:'center', opacity: analyzeLoading ? 0.6 : 1 }}>
                 <Sparkles size={13} /> {analyzeLoading ? '…' : 'Neu'}
               </button>
               {hasOutreach && onUseOutreach && (
                 <button type="button" onClick={onUseOutreach}
-                  style={{ ...ghostBtnStyle, flex:1, justifyContent:'center' }}>
+                  className="lk-btn lk-btn-ghost" style={{ flex:1, justifyContent:'center' }}>
                   <Send size={13} /> Entwurf
                 </button>
               )}
@@ -863,7 +864,7 @@ function RelatedRail({ lead, navigate, refreshKey, analysis, analyzeLoading, onA
           </>
         ) : (
           <button type="button" onClick={onAnalyze} disabled={analyzeLoading}
-            style={{ ...secondaryBtnStyle, width:'100%', justifyContent:'center', opacity: analyzeLoading ? 0.6 : 1 }}>
+            className="lk-btn lk-btn-ghost" style={{ width:'100%', justifyContent:'center', opacity: analyzeLoading ? 0.6 : 1 }}>
             <Sparkles size={14} /> {analyzeLoading ? 'Analysiere…' : 'Analysieren'}
           </button>
         )}
@@ -967,21 +968,12 @@ function ActivityTab({ leadId, leadTeamId, lead, initialDraft, onDraftConsumed }
 
       {/* Quick-Add — schreibt in activities-Tabelle */}
       <div style={{ display:'flex', gap:8, marginBottom:18 }}>
-        <select value={newType} onChange={e => setNewType(e.target.value)}
-          style={{ ...inputStyle, width: 150, flex: 'none' }}>
-          <option value="note">Notiz</option>
-          <option value="call">Anruf</option>
-          <option value="meeting">Meeting</option>
-          <option value="email">E-Mail</option>
-          <option value="task">Aufgabe</option>
-          <option value="linkedin_message">LinkedIn-Nachricht</option>
-          <option value="linkedin_connection">LinkedIn-Verbindung</option>
-        </select>
+        <PillSelect value={newType} onChange={setNewType} neutral options={[{ value: 'note', label: 'Notiz' }, { value: 'call', label: 'Anruf' }, { value: 'meeting', label: 'Meeting' }, { value: 'email', label: 'E-Mail' }, { value: 'task', label: 'Aufgabe' }, { value: 'linkedin_message', label: 'LinkedIn-Nachricht' }, { value: 'linkedin_connection', label: 'LinkedIn-Verbindung' }]} buttonStyle={{ minWidth: 140 }} />
         <input style={{ ...inputStyle, flex:1 }}
           placeholder="Was ist passiert? Kurzbeschreibung…"
           value={newSubject} onChange={e => setNewSubject(e.target.value)}
           onKeyDown={e => { if (e.key === 'Enter') submit(); }} />
-        <button type="button" style={primaryBtnStyle} onClick={submit} disabled={adding || !newSubject.trim()}>
+        <button type="button" className="lk-btn lk-btn-navy" onClick={submit} disabled={adding || !newSubject.trim()}>
           {adding ? 'Speichere…' : 'Hinzufügen'}
         </button>
       </div>
@@ -989,16 +981,11 @@ function ActivityTab({ leadId, leadTeamId, lead, initialDraft, onDraftConsumed }
       {/* Nachricht verfassen (zusammengeführt aus dem früheren Nachrichten-Tab) */}
       <div style={{ marginBottom: 22, padding:'16px', background: COLORS.surface, border:`1px solid ${COLORS.borderSubtle}`, borderRadius: RADIUS.lg, boxShadow:'0 1px 2px rgba(16,24,40,0.04)' }}>
         <div style={{ display:'flex', gap:10, marginBottom:12, alignItems:'center', flexWrap:'wrap' }}>
-          <span style={{ width:28, height:28, borderRadius:8, background:'rgba(49,90,231,0.10)', color: COLORS.primary, display:'grid', placeItems:'center', flexShrink:0 }}>
+          <span style={{ width:28, height:28, borderRadius:8, background:'rgba(10,111,176,0.10)', color: COLORS.primary, display:'grid', placeItems:'center', flexShrink:0 }}>
             <Send size={15} />
           </span>
           <span style={{ fontSize:11, fontWeight:700, color: COLORS.textTertiary, textTransform:'uppercase', letterSpacing:'0.06em', whiteSpace:'nowrap' }}>Nachricht verfassen</span>
-          <select value={msgType} onChange={e => setMsgType(e.target.value)}
-            style={{ ...inputStyle, width: 180, flex: 'none', marginLeft:'auto', height:32 }}>
-            <option value="linkedin_message">LinkedIn-Nachricht</option>
-            <option value="email">E-Mail</option>
-            <option value="message">Sonstige Nachricht</option>
-          </select>
+          <PillSelect value={msgType} onChange={setMsgType} neutral options={[{ value: 'linkedin_message', label: 'LinkedIn-Nachricht' }, { value: 'email', label: 'E-Mail' }, { value: 'message', label: 'Sonstige Nachricht' }]} buttonStyle={{ minWidth: 140 }} />
         </div>
         <textarea style={textareaStyle}
           placeholder={lead && (lead.first_name || lead.last_name) ? `Nachricht an ${[lead.first_name, lead.last_name].filter(Boolean).join(' ')}…` : 'Nachricht eingeben…'}
@@ -1007,7 +994,7 @@ function ActivityTab({ leadId, leadTeamId, lead, initialDraft, onDraftConsumed }
           <span style={{ fontSize:11, color: COLORS.textTertiary }}>
             Wird im Activity-Log protokolliert. Versand separat über LinkedIn / E-Mail-Client.
           </span>
-          <button type="button" style={primaryBtnStyle} onClick={sendMessage} disabled={composing || !msgBody.trim()}>
+          <button type="button" className="lk-btn lk-btn-navy" onClick={sendMessage} disabled={composing || !msgBody.trim()}>
             <Send size={14} /> {composing ? 'Senden…' : 'Protokollieren'}
           </button>
         </div>
@@ -1182,7 +1169,7 @@ function NotesTab({ leadId, leadTeamId }) {
             <input type="checkbox" checked={isPrivate} onChange={e => setIsPrivate(e.target.checked)} />
             Privat (nur ich sehe sie)
           </label>
-          <button type="button" style={primaryBtnStyle} onClick={submit} disabled={adding || !body.trim()}>
+          <button type="button" className="lk-btn lk-btn-navy" onClick={submit} disabled={adding || !body.trim()}>
             <Plus size={14} /> {adding ? 'Speichere…' : 'Notiz hinzufügen'}
           </button>
         </div>
@@ -1207,8 +1194,8 @@ function NotesTab({ leadId, leadTeamId }) {
               <>
                 <textarea style={textareaStyle} value={editBody} onChange={e => setEditBody(e.target.value)} rows={3} />
                 <div style={{ display:'flex', gap:8, justifyContent:'flex-end', marginTop:8 }}>
-                  <button type="button" style={ghostBtnStyle} onClick={() => { setEditId(null); setEditBody(''); }}>Abbrechen</button>
-                  <button type="button" style={primaryBtnStyle} onClick={() => saveEdit(n.id)} disabled={!editBody.trim()}>Speichern</button>
+                  <button type="button" className="lk-btn lk-btn-ghost lk-btn-sm" onClick={() => { setEditId(null); setEditBody(''); }}>Abbrechen</button>
+                  <button type="button" className="lk-btn lk-btn-navy" onClick={() => saveEdit(n.id)} disabled={!editBody.trim()}>Speichern</button>
                 </div>
               </>
             ) : (
@@ -1436,27 +1423,17 @@ function TasksTab({ leadId, leadTeamId, onMutated }) {
           </label>
           {/* Typ */}
           <div style={selectChipWrapStyle} title="Art der Aufgabe">
-            <select style={{ ...selectChipStyle, minWidth: 150 }}
-              value={taskType} onChange={e => setTaskType(e.target.value)}>
-              {TASK_TYPES.map(t => (
-                <option key={t.value} value={t.value}>{t.icon} {t.label}</option>
-              ))}
-            </select>
+            <PillSelect value={taskType} onChange={setTaskType} neutral options={[...TASK_TYPES.map((t) => ({ value: t.value, label: `${t.icon} ${t.label}` }))]} buttonStyle={{ minWidth: 140 }} />
             <ChevronDown size={14} style={chevronStyle} />
           </div>
           {/* Priorität */}
           <div style={selectChipWrapStyle} title="Priorität">
-            <select style={{ ...selectChipStyle, minWidth: 120 }}
-              value={priority} onChange={e => setPriority(e.target.value)}>
-              <option value="low">Niedrig</option>
-              <option value="normal">Normal</option>
-              <option value="high">Hoch</option>
-            </select>
+            <PillSelect value={priority} onChange={setPriority} neutral options={[{ value: 'low', label: 'Niedrig' }, { value: 'normal', label: 'Normal' }, { value: 'high', label: 'Hoch' }]} buttonStyle={{ minWidth: 140 }} />
             <ChevronDown size={14} style={chevronStyle} />
           </div>
           <div style={{ flex: 1, minWidth: 12 }} />
           <button type="button"
-            style={{ ...primaryBtnStyle, opacity: (adding || !title.trim()) ? 0.5 : 1, cursor: (adding || !title.trim()) ? 'not-allowed' : 'pointer' }}
+            className="lk-btn lk-btn-navy" style={{ opacity: (adding || !title.trim()) ? 0.5 : 1, cursor: (adding || !title.trim()) ? 'not-allowed' : 'pointer' }}
             onClick={submit} disabled={adding || !title.trim()}>
             <Plus size={15} /> {adding ? 'Speichere…' : 'Aufgabe anlegen'}
           </button>
@@ -1550,7 +1527,7 @@ const DEAL_STAGE_LABELS = {
 };
 const DEAL_STAGE_COLORS = {
   prospect: '#64748B', opportunity: '#185FA5', angebot: '#D97706',
-  verhandlung: '#7C3AED', gewonnen: '#059669', verloren: '#B91C1C', kein_deal: '#94A3B8',
+  verhandlung: '#003060', gewonnen: '#059669', verloren: '#B91C1C', kein_deal: '#94A3B8',
 };
 
 function DealsTab({ lead, leadId, navigate, onMutated }) {
@@ -1606,7 +1583,7 @@ function DealsTab({ lead, leadId, navigate, onMutated }) {
           <span style={{ fontSize:12, color: COLORS.textTertiary }}>
             {loading ? 'Lade…' : `${items.length} Deals`}
           </span>
-          <button type="button" style={primaryBtnStyle} onClick={() => setOpen(true)}>
+          <button type="button" className="lk-btn lk-btn-navy" onClick={() => setOpen(true)}>
             <Plus size={14} /> Neuer Deal
           </button>
         </div>
@@ -1747,7 +1724,7 @@ function DetailNotFound({ error, onBack }) {
       }}>
         <div style={{ fontSize:18, fontWeight:500, color: COLORS.textPrimary }}>Lead nicht gefunden</div>
         {error && <div style={{ fontSize:13, color: COLORS.textTertiary, maxWidth:480 }}>{error.message}</div>}
-        <button type="button" onClick={onBack} style={primaryBtnStyle}>← Zurück zu Leads</button>
+        <button type="button" onClick={onBack} className="lk-btn lk-btn-navy">← Zurück zu Leads</button>
       </div>
     </div>
   );

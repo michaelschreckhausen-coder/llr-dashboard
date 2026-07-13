@@ -2,6 +2,7 @@
 // Listen-Ansicht aller Organisationen/Firmen + Modal "Neue Organisation"
 // Orientiert sich am Deals.jsx-Pattern (KPIs, Filter, Suche, Liste, Modal)
 
+import PillSelect from '../components/PillSelect'
 import React, { useState, useEffect } from 'react'
 import { Building2, Users, BarChart3, Layers, Download, ChevronUp, ChevronDown } from 'lucide-react'
 import { supabase } from '../lib/supabase'
@@ -13,7 +14,7 @@ import PageHeader from '../components/PageHeader'
 import TabBar from '../components/TabBar'
 import { EMPLOYEE_RANGES, EMPLOYEE_LABEL, REVENUE_RANGES, REVENUE_LABEL } from '../constants/orgLabels'
 
-const PRIMARY = 'var(--wl-primary, rgb(49,90,231))'
+const PRIMARY = 'var(--wl-primary, #0A6FB0)'
 const P = PRIMARY
 
 /* ── Reports-Stil Diagramm-Komponenten (gespiegelt aus Vernetzungen.jsx) ── */
@@ -66,10 +67,10 @@ function EmptyBars({ text }) {
 }
 
 // Handgezeichneter Hinweis-Pfeil + Schreibschrift-Label (gespiegelt aus ContentStudio.jsx)
-const scriptHintStyle = { fontFamily:"'Segoe Script','Bradley Hand','Brush Script MT','Comic Sans MS',cursive", fontStyle:'italic', fontSize:16, fontWeight:600, color:'var(--wl-primary, rgb(49,90,231))', whiteSpace:'nowrap', lineHeight:1 }
+const scriptHintStyle = { fontFamily:'Inter, sans-serif', fontSize:13, fontWeight:600, color:'var(--wl-primary, #0A6FB0)', whiteSpace:'nowrap', lineHeight:1 }
 function CurvedArrow() {
   return (
-    <svg width="34" height="24" viewBox="0 0 34 24" fill="none" style={{ color:'var(--wl-primary, rgb(49,90,231))', flexShrink:0 }} aria-hidden="true">
+    <svg width="34" height="24" viewBox="0 0 34 24" fill="none" style={{ color:'var(--wl-primary, #0A6FB0)', flexShrink:0 }} aria-hidden="true">
       <path d="M3 5 C 14 3, 25 7, 30 14" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" fill="none"/>
       <path d="M23 14.5 L 31 15 L 27 8" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" fill="none"/>
     </svg>
@@ -206,14 +207,9 @@ function OrganizationModal({ org, industries, teamId, uid, onSave, onClose }) {
           </div>
           <div>
             <div style={labelS}>Owner</div>
-            <select value={form.owner_id || ''} onChange={e => upd({ owner_id: e.target.value || null })} style={inputS}>
-              <option value="">— Kein Owner —</option>
-              {teamMembers.map(m => (
-                <option key={m.id} value={m.id}>
-                  {(m.full_name || m.id.slice(0, 8))}{m.id === uid ? ' (du)' : ''}
-                </option>
-              ))}
-            </select>
+            <PillSelect value={form.owner_id || ''} onChange={v => upd({ owner_id: v || null })} neutral options={[{ value: '', label: `— Kein Owner —` }, ...teamMembers.map((m) => ({ value: m.id, label: `
+                  ${m.full_name || m.id.slice(0, 8)}${m.id === uid ? ' (du)' : ''}
+                ` }))]} buttonStyle={{ minWidth: 140 }} />
           </div>
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
             <div>
@@ -302,25 +298,16 @@ function OrganizationModal({ org, industries, teamId, uid, onSave, onClose }) {
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
             <div>
               <div style={labelS}>Mitarbeiteranzahl</div>
-              <select value={form.employee_range} onChange={e => upd({ employee_range: e.target.value })} style={inputS}>
-                <option value="">— keine Angabe —</option>
-                {EMPLOYEE_RANGES.map(r => <option key={r.id} value={r.id}>{r.label}</option>)}
-              </select>
+              <PillSelect value={form.employee_range} onChange={v => upd({ employee_range: v })} neutral options={[{ value: '', label: `— keine Angabe —` }, ...EMPLOYEE_RANGES.map((r) => ({ value: r.id, label: r.label }))]} buttonStyle={{ minWidth: 140 }} />
             </div>
             <div>
               <div style={labelS}>Umsatz</div>
-              <select value={form.revenue_range} onChange={e => upd({ revenue_range: e.target.value })} style={inputS}>
-                <option value="">— keine Angabe —</option>
-                {REVENUE_RANGES.map(r => <option key={r.id} value={r.id}>{r.label}</option>)}
-              </select>
+              <PillSelect value={form.revenue_range} onChange={v => upd({ revenue_range: v })} neutral options={[{ value: '', label: `— keine Angabe —` }, ...REVENUE_RANGES.map((r) => ({ value: r.id, label: r.label }))]} buttonStyle={{ minWidth: 140 }} />
             </div>
           </div>
           <div>
             <div style={labelS}>Branche</div>
-            <select value={form.industry_slug} onChange={e => upd({ industry_slug: e.target.value })} style={inputS}>
-              <option value="">— keine Angabe —</option>
-              {industries.map(i => <option key={i.slug} value={i.slug}>{i.label_de}</option>)}
-            </select>
+            <PillSelect value={form.industry_slug} onChange={v => upd({ industry_slug: v })} neutral options={[{ value: '', label: `— keine Angabe —` }, ...industries.map((i) => ({ value: i.slug, label: i.label_de }))]} buttonStyle={{ minWidth: 140 }} />
           </div>
 
           {/* Notizen */}
@@ -333,9 +320,9 @@ function OrganizationModal({ org, industries, teamId, uid, onSave, onClose }) {
         </div>
 
         <div style={{ padding: '14px 22px', borderTop: '1px solid #F1F5F9', display: 'flex', gap: 10, justifyContent: 'flex-end' }}>
-          <button onClick={onClose} style={{ padding: '9px 16px', borderRadius: 10, border: '1px solid #E4E7EC', background: 'var(--surface)', fontSize: 13, fontWeight: 600, cursor: 'pointer', color: '#374151' }}>Abbrechen</button>
-          <button onClick={save} disabled={saving}
-            style={{ padding: '9px 20px', borderRadius: 10, border: 'none', background: PRIMARY, color: '#fff', fontSize: 13, fontWeight: 700, cursor: 'pointer', opacity: saving ? 0.6 : 1 }}>
+          <button className="lk-btn lk-btn-ghost" onClick={onClose} >Abbrechen</button>
+          <button className="lk-btn lk-btn-cta" onClick={save} disabled={saving}
+            style={{ opacity: saving ? 0.6 : 1 }}>
             {saving ? 'Speichern…' : 'Speichern'}
           </button>
         </div>
@@ -495,12 +482,12 @@ export default function Organizations({ session }) {
         <span style={scriptHintStyle}>Auf und zuklappen</span>
         <CurvedArrow/>
       </div>
-      <button onClick={toggleDash} title={showDash ? 'Dashboard ausblenden' : 'Dashboard einblenden'}
-        style={{ padding: '9px 14px', borderRadius: 10, border: '1.5px solid #E2E8F0', background: 'var(--surface-muted)', color: '#475569', fontSize: 13, fontWeight: 600, cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: 6, whiteSpace: 'nowrap' }}>
+      <button className="lk-btn lk-btn-ghost" onClick={toggleDash} title={showDash ? 'Dashboard ausblenden' : 'Dashboard einblenden'}
+        style={{ display: 'inline-flex', alignItems: 'center', gap: 6, whiteSpace: 'nowrap' }}>
         {showDash ? <ChevronUp size={15}/> : <ChevronDown size={15}/>}Dashboard
       </button>
-      <button onClick={() => setModal('new')}
-        style={{ padding: '9px 18px', borderRadius: 10, border: 'none', background: PRIMARY, color: '#fff', fontSize: 13, fontWeight: 700, cursor: 'pointer', whiteSpace: 'nowrap' }}>
+      <button className="lk-btn lk-btn-cta" onClick={() => setModal('new')}
+        style={{ whiteSpace: 'nowrap' }}>
         + Neues Unternehmen
       </button>
     </div>
@@ -552,33 +539,27 @@ export default function Organizations({ session }) {
       {/* Toolbar: Owner-Filter + Suche + CSV */}
       <div style={{ display: 'flex', gap: 8, marginBottom: 16, flexWrap: 'wrap', alignItems: 'center' }}>
         {teamMembers.length > 0 && (
-          <select value={ownerFilter || ''} onChange={e => setOwnerFilter(e.target.value || null)}
-            style={{ padding: '9px 12px', border: '1.5px solid ' + (ownerFilter ? PRIMARY : '#E2E8F0'), borderRadius: 10, fontSize: 13, outline: 'none', background: 'var(--surface)', color: 'var(--text-primary, #111827)', cursor: 'pointer' }}>
-            <option value="">Alle Owner</option>
-            {teamMembers.map(m => (
-              <option key={m.id} value={m.id}>
-                {m.full_name || m.first_name || m.id.slice(0,8)}
-                {m.id === uid ? ' (du)' : ''}
-              </option>
-            ))}
-          </select>
+          <PillSelect value={ownerFilter || ''} onChange={v => setOwnerFilter(v || null)} neutral options={[{ value: '', label: `Alle Owner` }, ...teamMembers.map((m) => ({ value: m.id, label: `
+                ${m.full_name || m.first_name || m.id.slice(0,8)}
+                ${m.id === uid ? ' (du)' : ''}
+              ` }))]} buttonStyle={{ minWidth: 140 }} />
         )}
         <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Firma, Ort oder Branche suchen…"
           style={{ flex: 1, minWidth: 180, padding: '9px 14px', borderRadius: 10, border: '1.5px solid #E2E8F0', fontSize: 13, outline: 'none', background: 'var(--surface)', color: 'var(--text-primary, #111827)' }}/>
-        <button onClick={exportCsv}
-          style={{ padding: '8px 14px', borderRadius: 10, border: '1.5px solid #E2E8F0', background: 'var(--surface-muted)', fontSize: 12, fontWeight: 600, color: 'var(--text-muted)', cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+        <button className="lk-btn lk-btn-ghost" onClick={exportCsv}
+          style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
           <Download size={13} strokeWidth={1.75}/>CSV
         </button>
       </div>
 
       {/* Sponsor-Bulk-Action-Bar (addon-gegated, bei Auswahl) */}
       {sponsoringActive && selected.size > 0 && filter !== 'sponsoren' && (
-        <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 14, padding: '10px 14px', borderRadius: 12, background: 'rgba(49,90,231,0.06)', border: '1px solid ' + PRIMARY + '33' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 14, padding: '10px 14px', borderRadius: 12, background: 'rgba(10,111,176,0.06)', border: '1px solid ' + PRIMARY + '33' }}>
           <span style={{ fontSize: 13, fontWeight: 700, color: PRIMARY }}>{selected.size} ausgewählt</span>
-          <button onClick={() => bulkMarkSponsor(true)} disabled={bulkMarking}
-            style={{ padding: '7px 14px', borderRadius: 9, border: 'none', background: PRIMARY, color: '#fff', fontSize: 12, fontWeight: 700, cursor: bulkMarking ? 'wait' : 'pointer', opacity: bulkMarking ? 0.6 : 1 }}>★ Als Sponsor markieren</button>
-          <button onClick={() => bulkMarkSponsor(false)} disabled={bulkMarking}
-            style={{ padding: '7px 14px', borderRadius: 9, border: '1px solid #E4E7EC', background: 'var(--surface)', color: '#6B7280', fontSize: 12, fontWeight: 700, cursor: bulkMarking ? 'wait' : 'pointer', opacity: bulkMarking ? 0.6 : 1 }}>Sponsor entfernen</button>
+          <button className="lk-btn lk-btn-primary" onClick={() => bulkMarkSponsor(true)} disabled={bulkMarking}
+            style={{ opacity: bulkMarking ? 0.6 : 1 }}>★ Als Sponsor markieren</button>
+          <button className="lk-btn lk-btn-ghost" onClick={() => bulkMarkSponsor(false)} disabled={bulkMarking}
+            style={{ opacity: bulkMarking ? 0.6 : 1 }}>Sponsor entfernen</button>
           <button onClick={() => setSelected(new Set())} style={{ marginLeft: 'auto', padding: '7px 12px', borderRadius: 9, border: 'none', background: 'transparent', color: '#6B7280', fontSize: 12, fontWeight: 600, cursor: 'pointer' }}>Auswahl aufheben</button>
         </div>
       )}
@@ -611,7 +592,7 @@ export default function Organizations({ session }) {
                     title="Für Sponsor-Markierung auswählen"
                     style={{ width: 17, height: 17, accentColor: PRIMARY, cursor: 'pointer', flexShrink: 0 }} />
                 )}
-                <div style={{ width: 40, height: 40, borderRadius: 10, background: 'rgba(49,90,231,0.08)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 20, flexShrink: 0 }}>
+                <div style={{ width: 40, height: 40, borderRadius: 10, background: 'rgba(10,111,176,0.08)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 20, flexShrink: 0 }}>
                   🏢
                 </div>
                 <div style={{ flex: 1, minWidth: 0 }}>

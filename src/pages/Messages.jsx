@@ -20,6 +20,7 @@
 //   #3  team_members-Subquery in RLS braucht GRANT (in Phase-0-Migration enthalten)
 //   #14 useLeads/Lead-Autocomplete mit explizitem team_id-Filter (siehe fetchLeads)
 
+import PillSelect from '../components/PillSelect'
 import React, { useState, useEffect, useCallback, useRef } from 'react'
 import { buildAudiencePrompt, buildStrike2AudiencePrompt } from '../lib/audiencePrompt'
 import TaskSourceIcon from '../components/TaskSourceIcon'
@@ -33,7 +34,7 @@ import { useBrandVoice } from '../context/BrandVoiceContext'
 import { useModel } from '../context/ModelContext'
 
 // ── Konstanten ───────────────────────────────────────────────────────────────
-const P = 'var(--wl-primary, rgb(49,90,231))'
+const P = 'var(--wl-primary, #0A6FB0)'
 
 // STRICT_FORMAT-Suffix gegen Markdown/Header/Bullet/Meta-Kommentar-Drift der LLM.
 // Phase-1-Smoke (2026-05-29) hat gezeigt: ohne expliziten Format-Hard-Stop produziert
@@ -475,15 +476,15 @@ export default function Messages({ session }) {
       {/* Journal-Header */}
       <div style={{ display:'flex', alignItems:'flex-end', justifyContent:'space-between', gap:20, flexWrap:'wrap', marginBottom:22 }}>
         <div style={{ flex:'1 1 auto', minWidth:280 }}>
-          <div style={{ fontSize:20, color:'#30A0D0', fontFamily:'"Caveat", cursive', fontWeight:600, marginBottom:6 }}>LinkedIn · Nachricht</div>
+          <div className="lk-eyebrow" style={{ fontSize:12, fontWeight:700, letterSpacing:'1.6px', textTransform:'uppercase', fontFamily:'Inter, sans-serif', color:'var(--primary, #003060)', marginBottom:6 }}>LinkedIn · Nachricht</div>
           <h1 style={{ fontSize:26, fontWeight:700, margin:0, letterSpacing:'-0.3px', lineHeight:1.2, color:'var(--text-primary, rgb(20,20,43))' }}>Deine nächste Nachricht.</h1>
           <p style={{ fontSize:13, color:'var(--text-muted)', margin:'8px 0 0', lineHeight:1.6, maxWidth:580 }}>
             Drei Modi für drei Momente: Vernetzungs-Note, First Message, Sales Pitch — in deiner Brand Voice, optional auf Zielgruppe + Lead-Kontext zugeschnitten.
           </p>
         </div>
         <div style={{ display:'flex', alignItems:'center', gap:8, flexWrap:'wrap' }}>
-          <button onClick={() => setShowHistory(h => !h)}
-            style={{ display:'flex', alignItems:'center', gap:6, padding:'7px 14px', borderRadius:8, border:'1px solid var(--border)', background:'var(--surface)', fontSize:12, fontWeight:600, color:'#475569', cursor:'pointer' }}>
+          <button className="lk-btn lk-btn-ghost" onClick={() => setShowHistory(h => !h)}
+            style={{ display:'flex', alignItems:'center', gap:6 }}>
             <span style={{display:'inline-flex',alignItems:'center',gap:6}}><Clock size={13} strokeWidth={1.75}/>Verlauf ({history.length})</span>
           </button>
         </div>
@@ -516,7 +517,7 @@ export default function Messages({ session }) {
       </div>
 
       {/* Generator-Card */}
-      <section style={{ background:'var(--surface)', border:'1px solid var(--border)', borderRadius:14, padding:'20px 22px', marginBottom:18 }}>
+      <section style={{ background:'var(--surface)', border:'1px solid var(--border)', borderRadius:16, boxShadow:'var(--shadow-card)', padding:'20px 22px', marginBottom:18 }}>
         <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:16, flexWrap:'wrap', gap:10 }}>
           <h3 style={{ fontSize:15, fontWeight:700, margin:0, display:'flex', alignItems:'center', gap:8 }}>
             <TaskSourceIcon name={cfg.iconName} size={18} /> {cfg.label}
@@ -545,7 +546,7 @@ export default function Messages({ session }) {
                     style={{ padding:'10px 14px', cursor:'pointer', borderBottom:'1px solid #F9FAFB', display:'flex', alignItems:'center', gap:10 }}
                     onMouseEnter={e => e.currentTarget.style.background='#F5F7FF'}
                     onMouseLeave={e => e.currentTarget.style.background='white'}>
-                    <div style={{ width:32, height:32, borderRadius:'50%', background:P, display:'flex', alignItems:'center', justifyContent:'center', color:'white', fontSize:12, fontWeight:700, flexShrink:0 }}>
+                    <div style={{ width:32, height:32, borderRadius:'50%', background:'var(--primary)', display:'flex', alignItems:'center', justifyContent:'center', color:'white', fontSize:12, fontWeight:700, flexShrink:0 }}>
                       {fullName(l).charAt(0)}
                     </div>
                     <div style={{ minWidth:0 }}>
@@ -560,14 +561,14 @@ export default function Messages({ session }) {
             )}
           </div>
           {selectedLead && (
-            <div style={{ display:'flex', alignItems:'center', gap:8, marginTop:6, padding:'6px 10px', background:'rgba(49,90,231,0.05)', borderRadius:8, border:'1px solid rgba(49,90,231,0.15)' }}>
+            <div style={{ display:'flex', alignItems:'center', gap:8, marginTop:6, padding:'6px 10px', background:'rgba(10,111,176,0.05)', borderRadius:8, border:'1px solid rgba(10,111,176,0.15)' }}>
               <span style={{ fontSize:12, color:'var(--text-muted)', flex:1 }}>{fullName(selectedLead)} verknüpft</span>
               <button onClick={() => navigate(`/leads/${selectedLead.id}`)}
-                style={{ padding:'3px 10px', borderRadius:6, border:'1px solid rgba(49,90,231,0.3)', background:'rgba(49,90,231,0.08)', color:P, fontSize:11, fontWeight:700, cursor:'pointer' }}>
+                style={{ padding:'3px 10px', borderRadius:6, border:'1px solid rgba(10,111,176,0.3)', background:'rgba(10,111,176,0.08)', color:P, fontSize:11, fontWeight:700, cursor:'pointer' }}>
                 ↗ Profil
               </button>
-              <button onClick={clearLead}
-                style={{ padding:'3px 10px', borderRadius:6, border:'1px solid #E5E7EB', background:'#fff', color:'#475569', fontSize:11, fontWeight:600, cursor:'pointer' }}>
+              <button className="lk-btn lk-btn-ghost" onClick={clearLead}
+                >
                 ✕ Lösen
               </button>
             </div>
@@ -580,19 +581,13 @@ export default function Messages({ session }) {
           : audiences.length === 0 ? <>Keine Zielgruppen für diese BV. Anlegen in <a href="/zielgruppen" style={{ color:P }}>Zielgruppen</a>.</>
           : 'Reichert den Prompt mit Pain-Points / Ansprache der Zielgruppe an.'
         }>
-          <select value={selectedAudienceId} onChange={e => setSelectedAudienceId(e.target.value)} style={{ ...inp, cursor:'pointer' }} disabled={!audiences.length}>
-            <option value="">Keine spezifische Zielgruppe</option>
-            {audiences.filter(a => a.kind !== 'strike2').map(a => (
-              <option key={a.id} value={a.id}>{a.name}{a.is_default ? ' (Default)' : ''}</option>
-            ))}
-            {audiences.some(a => a.kind === 'strike2') && (
-              <optgroup label="Strike2 Zielgruppen">
-                {audiences.filter(a => a.kind === 'strike2').map(a => (
-                  <option key={a.id} value={a.id}>{a.name}</option>
-                ))}
-              </optgroup>
-            )}
-          </select>
+          <PillSelect value={selectedAudienceId} onChange={setSelectedAudienceId} neutral disabled={!audiences.length}
+            options={[
+              { value:'', label:'Keine spezifische Zielgruppe' },
+              ...audiences.filter(a => a.kind !== 'strike2').map(a => ({ value:a.id, label:`${a.name}${a.is_default ? ' (Default)' : ''}` })),
+              ...audiences.filter(a => a.kind === 'strike2').map(a => ({ value:a.id, label:`Strike2 · ${a.name}` })),
+            ]}
+            buttonStyle={{ minWidth:220, cursor:'pointer' }} />
         </Field>
 
         {/* Kontext */}
@@ -608,26 +603,19 @@ export default function Messages({ session }) {
 
         {generating && <GenerationLoading title="KI-Nachricht wird formuliert" expectedSeconds={20} />}
 
-        <button onClick={generate} disabled={generating}
-          style={{
-            marginTop:6, width:'100%', padding:'12px', borderRadius:999, border:'none',
-            background: generating ? '#94A3B8' : 'linear-gradient(135deg,rgb(49,90,231),#8B5CF6)',
-            color:'#fff', fontSize:14, fontWeight:700,
-            cursor: generating ? 'not-allowed' : 'pointer',
-            display:'flex', alignItems:'center', justifyContent:'center', gap:8,
-            boxShadow: generating ? 'none' : '0 4px 14px rgba(49,90,231,0.25)',
-          }}>
+        <button className="lk-btn lk-btn-cta" onClick={generate} disabled={generating}
+          style={{ marginTop:6, width:'100%', display:'flex', alignItems:'center', justifyContent:'center', gap:8 }}>
           {generating ? 'Generiere…' : <span style={{display:'inline-flex',alignItems:'center',gap:6}}><Sparkles size={14}/>Nachricht generieren</span>}
         </button>
       </section>
 
       {/* Result-Card */}
       {result && (
-        <section style={{ background:'var(--surface)', borderRadius:14, border:'1px solid var(--border)', overflow:'hidden', marginBottom:18 }}>
+        <section style={{ background:'var(--surface)', borderRadius:16, border:'1px solid var(--border)', overflow:'hidden', marginBottom:18, boxShadow:'var(--shadow-card)' }}>
           <div style={{ padding:'12px 16px', borderBottom:'1px solid #F1F5F9', display:'flex', alignItems:'center', justifyContent:'space-between', background:'#FAFAFA', flexWrap:'wrap', gap:8 }}>
             <div style={{ fontWeight:700, fontSize:13, display:'flex', alignItems:'center', gap:6, flexWrap:'wrap' }}>
               Generierter Text
-              <span style={{ fontSize:10, fontWeight:700, padding:'2px 8px', borderRadius:999, background:'rgba(49,90,231,0.08)', color:P, border:'1px solid #BFDBFE' }}>
+              <span style={{ fontSize:10, fontWeight:700, padding:'2px 8px', borderRadius:999, background:'rgba(10,111,176,0.08)', color:P, border:'1px solid #BFDBFE' }}>
                 <TaskSourceIcon name={cfg.iconName}/> {cfg.label}
               </span>
               {activeBrandVoice && !ignoreBV && (
@@ -642,8 +630,8 @@ export default function Messages({ session }) {
               )}
             </div>
             <div style={{ display:'flex', gap:7, flexWrap:'wrap' }}>
-              <button onClick={generate} disabled={generating}
-                style={{ padding:'5px 10px', borderRadius:8, border:'1px solid var(--border)', background:'var(--surface)', color:'#475569', fontSize:11, fontWeight:600, cursor:generating?'wait':'pointer', display:'flex', alignItems:'center', gap:5 }}>
+              <button className="lk-btn lk-btn-ghost" onClick={generate} disabled={generating}
+                style={{ display:'flex', alignItems:'center', gap:5 }}>
                 🔄 Neu
               </button>
               <button onClick={copy}
@@ -652,7 +640,7 @@ export default function Messages({ session }) {
               </button>
               <button onClick={saveToArchive} disabled={savingArchive || !result.trim() || overHardCap}
                 title={overHardCap ? `Text zu lang (${cfg.hardCap}-Zeichen-Limit für ${cfg.label} überschritten)` : ''}
-                style={{ padding:'5px 12px', borderRadius:8, border:'1px solid ' + (savedArchive?'#A7F3D0':'rgba(49,90,231,0.3)'), background: savedArchive?'#ECFDF5':'rgba(49,90,231,0.07)', color: savedArchive?'#065F46':P, fontSize:11, fontWeight:700, cursor: (savingArchive||overHardCap)?'not-allowed':'pointer', display:'flex', alignItems:'center', gap:5, opacity: overHardCap ? 0.5 : 1 }}>
+                style={{ padding:'5px 12px', borderRadius:8, border:'1px solid ' + (savedArchive?'#A7F3D0':'rgba(10,111,176,0.3)'), background: savedArchive?'#ECFDF5':'rgba(10,111,176,0.07)', color: savedArchive?'#065F46':P, fontSize:11, fontWeight:700, cursor: (savingArchive||overHardCap)?'not-allowed':'pointer', display:'flex', alignItems:'center', gap:5, opacity: overHardCap ? 0.5 : 1 }}>
                 {savingArchive ? <span style={{display:'inline-flex',alignItems:'center',gap:6}}><Loader2 size={12} className='lk-spin'/>Speichere…</span> : savedArchive ? <span style={{display:'inline-flex',alignItems:'center',gap:6}}><Check size={12}/>Im Archiv</span> : <span style={{display:'inline-flex',alignItems:'center',gap:6}}><Save size={12}/>Im Archiv speichern</span>}
               </button>
               {canActivity && (
@@ -665,7 +653,7 @@ export default function Messages({ session }) {
               {canQueue && (
                 <button onClick={queueVernetzung} disabled={queueing || !result.trim() || overHardCap}
                   title={overHardCap ? 'Connect-Note ist über 300 Zeichen — LinkedIn lehnt sie ab' : ''}
-                  style={{ padding:'5px 12px', borderRadius:8, border:'1px solid ' + (queued?'#A7F3D0':'#A78BFA'), background: queued?'#ECFDF5':'#F5F3FF', color: queued?'#065F46':'#5B21B6', fontSize:11, fontWeight:700, cursor: (queueing||overHardCap)?'not-allowed':'pointer', display:'flex', alignItems:'center', gap:5, opacity: overHardCap ? 0.5 : 1 }}>
+                  style={{ padding:'5px 12px', borderRadius:8, border:'1px solid ' + (queued?'#A7F3D0':'#16A8DC'), background: queued?'#ECFDF5':'#F5F3FF', color: queued?'#065F46':'#5B21B6', fontSize:11, fontWeight:700, cursor: (queueing||overHardCap)?'not-allowed':'pointer', display:'flex', alignItems:'center', gap:5, opacity: overHardCap ? 0.5 : 1 }}>
                   {queueing ? <Loader2 size={12} className='lk-spin'/> : queued ? <span style={{display:'inline-flex',alignItems:'center',gap:6}}><Check size={12}/>In Queue</span> : <span style={{display:'inline-flex',alignItems:'center',gap:6}}><Rocket size={12}/>In Vernetzungs-Queue</span>}
                 </button>
               )}
@@ -715,7 +703,7 @@ export default function Messages({ session }) {
                   <div key={h.id} style={{ padding:'14px 18px', borderBottom:'1px solid #F8FAFC', cursor:'pointer' }}
                     onClick={() => { setResult(h.content || ''); if (h.message_type && MSG_TYPES[h.message_type]) setMode(h.message_type); setShowHistory(false) }}>
                     <div style={{ display:'flex', justifyContent:'space-between', marginBottom:6, alignItems:'center', gap:8 }}>
-                      <span style={{ fontSize:11, fontWeight:700, padding:'2px 8px', borderRadius:999, background:'rgba(49,90,231,0.08)', color:P }}>
+                      <span style={{ fontSize:11, fontWeight:700, padding:'2px 8px', borderRadius:999, background:'rgba(10,111,176,0.08)', color:P }}>
                         {m ? `${m.icon} ${m.label}` : (h.message_type || '—')}
                       </span>
                       <span style={{ fontSize:11, color:'var(--text-muted)' }}>{h.created_at ? new Date(h.created_at).toLocaleDateString('de-DE') : ''}</span>

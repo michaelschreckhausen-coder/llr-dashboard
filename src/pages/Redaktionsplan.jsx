@@ -24,7 +24,7 @@ const PLATFORMS = {
 const STATUS = {
   idee:      { label: 'Idee',           color: '#64748B', bg: '#F8FAFC', border: '#E2E8F0', bucket: 'ideen' },
   draft:     { label: 'Entwurf',        color: '#D97706', bg: '#FFFBEB', border: '#FDE68A', bucket: 'in_arbeit' },
-  in_review: { label: 'Review',         color: '#7C3AED', bg: '#F5F3FF', border: '#DDD6FE', bucket: 'in_arbeit' },
+  in_review: { label: 'Review',         color: '#003060', bg: '#F5F3FF', border: '#DDD6FE', bucket: 'in_arbeit' },
   approved:  { label: 'Freigegeben',    color: '#0891B2', bg: '#ECFEFF', border: '#A5F3FC', bucket: 'in_arbeit' },
   scheduled: { label: 'Eingeplant',     color: '#2563EB', bg: '#EFF6FF', border: '#BFDBFE', bucket: 'eingeplant' },
   published: { label: 'Veröffentlicht', color: '#059669', bg: '#ECFDF5', border: '#A7F3D0', bucket: 'veroeffentlicht' },
@@ -115,9 +115,9 @@ const STATUS_SIMPLE = {
 }
 
 // Standard-Tag-Farben (Planner-Stil) — beim ersten Öffnen als leere, umbenennbare Kategorien angelegt.
-const DEFAULT_TAG_COLORS = ['#EF4444','#F59E0B','#EAB308','#10B981','#06B6D4','#3B82F6','#8B5CF6','#EC4899']
+const DEFAULT_TAG_COLORS = ['#EF4444','#F59E0B','#EAB308','#10B981','#06B6D4','#3B82F6','#0A6FB0','#EC4899']
 // Erweiterte Palette für „+ Tag hinzufügen" (die ersten 8 sind die Defaults).
-const TAG_PALETTE = ['#EF4444','#F59E0B','#EAB308','#10B981','#06B6D4','#3B82F6','#8B5CF6','#EC4899','#F97316','#84CC16','#14B8A6','#0EA5E9','#6366F1','#A855F7','#D946EF','#F43F5E','#64748B','#78716C','#DC2626','#0891B2']
+const TAG_PALETTE = ['#EF4444','#F59E0B','#EAB308','#10B981','#06B6D4','#3B82F6','#0A6FB0','#EC4899','#F97316','#84CC16','#14B8A6','#0EA5E9','#0A6FB0','#A855F7','#D946EF','#F43F5E','#64748B','#78716C','#DC2626','#0891B2']
 
 // Kompaktes Tag-Dropdown (rechts neben Status). Fixed positioniert (Modal-overflow schneidet sonst ab).
 function TagPicker({ tags = [], selTagIds = [], onToggle, onRename, onPersist, onAddTag }) {
@@ -145,10 +145,10 @@ function TagPicker({ tags = [], selTagIds = [], onToggle, onRename, onPersist, o
   }
   return (
     <div ref={ref} style={{ position:'relative' }}>
-      <button ref={btnRef} type="button" onClick={openMenu}
-        style={{ width:'100%', minHeight:40, padding:'7px 12px', borderRadius:10, border:'1.5px solid var(--border)', background:'#fff', cursor:'pointer', fontFamily:'inherit', display:'flex', alignItems:'center', gap:6, boxSizing:'border-box' }}>
+      <button className="lk-dd-trigger" ref={btnRef} type="button" onClick={openMenu}
+        style={{ width:'100%', minHeight:40, fontFamily:'inherit', display:'flex', alignItems:'center', gap:6, boxSizing:'border-box' }}>
         {selected.length === 0
-          ? <span style={{ fontSize:13, color:'var(--text-muted)', flex:1, textAlign:'left' }}>Tags wählen…</span>
+          ? <span style={{ fontSize:13, color:'var(--text-primary)', flex:1, textAlign:'left' }}>Tags wählen…</span>
           : <span style={{ display:'flex', flexWrap:'wrap', gap:4, flex:1, minWidth:0 }}>
               {selected.slice(0, 3).map(t => (
                 <span key={t.id} style={{ display:'inline-flex', alignItems:'center', height:16, padding: t.name ? '0 6px' : '0 5px', borderRadius:5, background: t.color + '22', color: t.color, fontSize:10, fontWeight:700, border:'1px solid ' + t.color + '55', maxWidth:78, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{t.name || <span style={{ width:12, height:5, borderRadius:3, background:t.color, display:'inline-block' }}/>}</span>
@@ -174,8 +174,7 @@ function TagPicker({ tags = [], selTagIds = [], onToggle, onRename, onPersist, o
               </div>
             )
           })}
-          <button type="button" onClick={onAddTag}
-            style={{ width:'100%', marginTop:4, display:'inline-flex', alignItems:'center', justifyContent:'center', gap:6, height:32, borderRadius:8, cursor:'pointer', fontFamily:'inherit', fontSize:12, fontWeight:600, border:'1px dashed var(--border)', background:'#fff', color:'var(--text-secondary,#475467)' }}>
+          <button type="button" onClick={onAddTag} className="lk-btn lk-btn-ghost lk-btn-sm" style={{ width:'100%', marginTop:4 }}>
             <Plus size={14} strokeWidth={2} />Tag hinzufügen
           </button>
         </div>
@@ -190,7 +189,7 @@ const _DTP_MONTHS = ['Januar','Februar','März','April','Mai','Juni','Juli','Aug
 const _dtpNav = { width:30, height:30, borderRadius:8, border:'1px solid var(--border)', background:'#fff', cursor:'pointer', display:'inline-flex', alignItems:'center', justifyContent:'center', color:'var(--text-secondary,#475467)' }
 const _dtpLink = { background:'transparent', border:'none', cursor:'pointer', fontFamily:'inherit', fontSize:12.5, fontWeight:600, padding:'4px 6px' }
 function DateTimePicker({ value = '', onChange = () => {} }) {
-  const P = 'var(--wl-primary, rgb(49,90,231))'
+  const P = 'var(--wl-primary, #0A6FB0)'
   const [open, setOpen] = useState(false)
   const [coords, setCoords] = useState(null)
   const ref = useRef(null); const btnRef = useRef(null)
@@ -233,10 +232,10 @@ function DateTimePicker({ value = '', onChange = () => {} }) {
   const label = vp ? (vp.toLocaleString('de-DE', { day:'2-digit', month:'short', year:'numeric', hour:'2-digit', minute:'2-digit' }) + ' Uhr') : ''
   return (
     <div ref={ref} style={{ position:'relative' }}>
-      <button ref={btnRef} type="button" onClick={openMenu}
-        style={{ width:'100%', minHeight:40, padding:'9px 12px', borderRadius:10, border:'1.5px solid var(--border)', background:'#fff', cursor:'pointer', fontFamily:'inherit', display:'flex', alignItems:'center', gap:8, boxSizing:'border-box' }}>
+      <button className="lk-dd-trigger" ref={btnRef} type="button" onClick={openMenu}
+        style={{ width:'100%', minHeight:40, fontFamily:'inherit', display:'flex', alignItems:'center', gap:8, boxSizing:'border-box' }}>
         <Calendar size={14} strokeWidth={1.9} style={{ color:'var(--text-muted)', flexShrink:0 }}/>
-        <span style={{ flex:1, minWidth:0, textAlign:'left', fontSize:13, color: vp ? 'var(--text-primary)' : 'var(--text-muted)', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{label || 'Datum & Uhrzeit'}</span>
+        <span style={{ flex:1, minWidth:0, textAlign:'left', fontSize:13, color:'var(--text-primary)', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{label || 'Datum & Uhrzeit'}</span>
         <ChevronDown size={14} strokeWidth={2} style={{ opacity:0.5, flexShrink:0 }}/>
       </button>
       {open && coords && (
@@ -255,7 +254,7 @@ function DateTimePicker({ value = '', onChange = () => {} }) {
               <button key={d} type="button" onClick={() => pickDay(d)}
                 style={{ height:32, borderRadius:8, cursor:'pointer', fontFamily:'inherit', fontSize:12.5, fontWeight: sel ? 700 : 500,
                   border: td && !sel ? '1.5px solid ' + P : '1.5px solid transparent',
-                  background: sel ? P : 'transparent', color: sel ? '#fff' : 'var(--text-primary)' }}>{d}</button>
+                  background: sel ? 'var(--primary)' : 'transparent', color: sel ? '#fff' : 'var(--text-primary)' }}>{d}</button>
             )})}
           </div>
           <div style={{ display:'flex', alignItems:'center', gap:8, marginTop:12, paddingTop:12, borderTop:'1px solid var(--border)' }}>
@@ -290,7 +289,7 @@ function PostCard({ post, onClick, compact, showBVBadge, tagMap = {} }) {
         padding: compact ? '8px 12px' : '14px 16px',
         cursor:'pointer', transition:'all 0.15s', marginBottom: compact ? 6 : 10,
       }}
-      onMouseEnter={e => { e.currentTarget.style.boxShadow = '0 4px 12px rgba(15,23,42,0.06)'; e.currentTarget.style.borderColor = 'rgba(49,90,231,0.25)' }}
+      onMouseEnter={e => { e.currentTarget.style.boxShadow = '0 4px 12px rgba(15,23,42,0.06)'; e.currentTarget.style.borderColor = 'rgba(10,111,176,0.25)' }}
       onMouseLeave={e => { e.currentTarget.style.boxShadow = 'none'; e.currentTarget.style.borderColor = 'var(--border,#E5E7EB)' }}>
       {/* Status + Plattform + Tags in einer Reihe */}
       <div style={{ display:'flex', alignItems:'center', flexWrap:'wrap', gap:6, marginBottom: compact ? 4 : 6 }}>
@@ -992,8 +991,8 @@ function PostModal({ post, onClose, onSave, onDelete, session, activeTeamId, mem
               {!form.content?.trim() ? (
                 /* Empty-State: prominenter Button-Overlay UNTERHALB der Tipps */
                 <div style={{ position:'absolute', bottom:30, left:'50%', transform:'translateX(-50%)', pointerEvents:'none', display:'flex', flexDirection:'column', alignItems:'center', gap:8, padding:'12px 16px', background:'rgba(255,255,255,0.95)', borderRadius:14, boxShadow:'0 4px 18px rgba(15,23,42,0.08)', maxWidth:'88%' }}>
-                  <button type="button" onClick={() => jumpToTextStudio('auto')}
-                    style={{ pointerEvents:'auto', padding:'10px 18px', borderRadius:9, border:'none', background:'var(--wl-primary, rgb(49,90,231))', color:'#fff', fontSize:13, fontWeight:700, cursor:'pointer', display:'inline-flex', alignItems:'center', gap:6, boxShadow:'0 2px 10px rgba(49,90,231,.25)', whiteSpace:'nowrap' }}>
+                  <button className="lk-btn lk-btn-navy" type="button" onClick={() => jumpToTextStudio('auto')}
+                    style={{ pointerEvents:'auto', display:'inline-flex', alignItems:'center', gap:6, whiteSpace:'nowrap' }}>
                     <span style={{display:'inline-flex',alignItems:'center',gap:6}}><Sparkles size={13}/>In Content-Werkstatt schreiben →</span>
                   </button>
                   <div style={{ fontSize:11, color:'var(--text-muted)', textAlign:'center', lineHeight:1.4 }}>
@@ -1004,8 +1003,7 @@ function PostModal({ post, onClose, onSave, onDelete, session, activeTeamId, mem
                 /* Has-Text: nur Text-verbessern-Button oben rechts im Textfeld */
                 <div style={{ position:'absolute', top:8, right:10, display:'flex', gap:6, zIndex:2 }}>
                   <button type="button" onClick={() => jumpToTextStudio('improve')}
-                    title="Text in der Content-Werkstatt verbessern"
-                    style={{ padding:'5px 10px', borderRadius:7, border:'1.5px solid rgba(49,90,231,0.25)', background:'rgba(49,90,231,0.06)', color:'var(--wl-primary, rgb(49,90,231))', fontSize:11, fontWeight:700, cursor:'pointer', display:'inline-flex', alignItems:'center', gap:4, whiteSpace:'nowrap' }}>
+                    title="Text in der Content-Werkstatt verbessern" className="lk-btn lk-btn-ghost lk-btn-sm">
                     <span style={{display:'inline-flex',alignItems:'center',gap:6}}><Wand2 size={13}/>Text verbessern</span>
                   </button>
                 </div>
@@ -1111,8 +1109,8 @@ function PostModal({ post, onClose, onSave, onDelete, session, activeTeamId, mem
                               style={{ padding:'6px 12px', borderRadius:7, border:'none', background:'#fff', color:'var(--text-primary, rgb(20,20,43))', fontSize:11, fontWeight:700, cursor:'pointer', display:'inline-flex', alignItems:'center', gap:5, whiteSpace:'nowrap' }}>
                               ⬇ Download
                             </button>
-                            <button onClick={(e) => { e.stopPropagation(); openVisualInEditor(v) }}
-                              style={{ padding:'6px 12px', borderRadius:7, border:'none', background:'var(--wl-primary, rgb(49,90,231))', color:'#fff', fontSize:11, fontWeight:700, cursor:'pointer', display:'inline-flex', alignItems:'center', gap:5, whiteSpace:'nowrap' }}>
+                            <button className="lk-btn lk-btn-navy" onClick={(e) => { e.stopPropagation(); openVisualInEditor(v) }}
+                              style={{ display:'inline-flex', alignItems:'center', gap:5, whiteSpace:'nowrap' }}>
                               <span style={{display:'inline-flex',alignItems:'center',gap:6}}><Pencil size={12}/>Bild bearbeiten</span>
                             </button>
                           </div>
@@ -1123,14 +1121,14 @@ function PostModal({ post, onClose, onSave, onDelete, session, activeTeamId, mem
                 </div>
               )}
               <div style={{ display:'flex', gap:6, flexWrap:'wrap' }}>
-                <button type="button"
+                <button className="lk-btn lk-btn-ghost" type="button"
                   onClick={() => {
                     console.log('[upload-btn] clicked', { hasRef: !!fileInputRef.current, uploadingMedia })
                     if (uploadingMedia) return
                     fileInputRef.current?.click()
                   }}
                   disabled={uploadingMedia}
-                  style={{ flex:'1 1 auto', padding:'9px 12px', borderRadius:8, border:'1.5px solid var(--border)', background:'#fff', color:'var(--text-primary)', fontSize:12, fontWeight:600, cursor: uploadingMedia ? 'wait' : 'pointer', display:'inline-flex', alignItems:'center', justifyContent:'center', gap:5 }}>
+                  style={{ flex:'1 1 auto', display:'inline-flex', alignItems:'center', justifyContent:'center', gap:5 }}>
                   {uploadingMedia ? <span style={{display:'inline-flex',alignItems:'center',gap:6}}><Loader2 size={12} className='lk-spin'/>Lade hoch…</span> : <span style={{display:'inline-flex',alignItems:'center',gap:6}}><Paperclip size={12}/>Datei hochladen</span>}
                 </button>
                 <input ref={fileInputRef} type="file" multiple
@@ -1145,12 +1143,12 @@ function PostModal({ post, onClose, onSave, onDelete, session, activeTeamId, mem
                     uploadMediaFiles(files)
                   }}
                   style={{ position:'absolute', left:'-9999px', width:1, height:1, opacity:0, pointerEvents:'none' }}/>
-                <button onClick={openVisualPicker}
-                  style={{ flex:'1 1 auto', padding:'9px 12px', borderRadius:8, border:'1.5px solid var(--border)', background:'#fff', color:'var(--text-primary)', fontSize:12, fontWeight:600, cursor:'pointer', display:'inline-flex', alignItems:'center', justifyContent:'center', gap:5 }}>
+                <button className="lk-btn lk-btn-ghost" onClick={openVisualPicker}
+                  style={{ flex:'1 1 auto', display:'inline-flex', alignItems:'center', justifyContent:'center', gap:5 }}>
                   <span style={{display:'inline-flex',alignItems:'center',gap:6}}><BookOpen size={12}/>Aus Bibliothek</span>
                 </button>
-                <button onClick={() => { if (navigate) navigate('/content-studio?post_id=' + post.id + '&gen=image'); onClose() }}
-                  style={{ flex:'1 1 auto', padding:'9px 12px', borderRadius:8, border:'1.5px solid var(--border)', background:'#fff', color:'var(--text-primary)', fontSize:12, fontWeight:600, cursor:'pointer', display:'inline-flex', alignItems:'center', justifyContent:'center', gap:5 }}>
+                <button className="lk-btn lk-btn-ghost" onClick={() => { if (navigate) navigate('/content-studio?post_id=' + post.id + '&gen=image'); onClose() }}
+                  style={{ flex:'1 1 auto', display:'inline-flex', alignItems:'center', justifyContent:'center', gap:5 }}>
                   <span style={{display:'inline-flex',alignItems:'center',gap:6}}><Wand2 size={12}/>KI-Bild generieren</span>
                 </button>
               </div>
@@ -1230,10 +1228,7 @@ function PostModal({ post, onClose, onSave, onDelete, session, activeTeamId, mem
                 const { border:borderColor, bg, color } = palette[bucket] || palette.draft
                 return (
                   <>
-                    <select value={bucket} onChange={e => upd('status', e.target.value)}
-                      style={{ width:'100%', padding:'10px 12px', borderRadius:10, border:`1.5px solid ${borderColor}`, background: bg, color, fontSize:13, fontWeight:600, cursor:'pointer', fontFamily:'inherit', outline:'none', boxSizing:'border-box' }}>
-                      {opts.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
-                    </select>
+                    <PillSelect value={bucket} onChange={v => upd('status', v)} neutral options={[...opts.map((o) => ({ value: o.value, label: o.label }))]} buttonStyle={{ minWidth: 140 }} />
                     {form.status === 'scheduled' && form.scheduled_at && (
                       <div style={{ fontSize:11, color:'#1d4ed8', marginTop:6, lineHeight:1.4 }}>
                         <span style={{display:'inline-flex',alignItems:'center',gap:6}}><Calendar size={12}/>Auto-Publish geplant für {new Date(form.scheduled_at).toLocaleString('de-DE', { day:'2-digit', month:'short', hour:'2-digit', minute:'2-digit' })}.</span>
@@ -1269,7 +1264,7 @@ function PostModal({ post, onClose, onSave, onDelete, session, activeTeamId, mem
                   <span style={{ fontSize:11, color:'var(--text-muted)', fontStyle:'italic' }}>Niemand zugeordnet</span>
                 )}
                 {mentions.map(m => (
-                  <span key={m.user_id} style={{ display:'inline-flex', alignItems:'center', gap:5, padding:'4px 8px', borderRadius:99, fontSize:11, fontWeight:600, background:'rgba(49,90,231,0.08)', color:'var(--wl-primary, rgb(49,90,231))', border:'1px solid rgba(49,90,231,0.2)' }}>
+                  <span key={m.user_id} style={{ display:'inline-flex', alignItems:'center', gap:5, padding:'4px 8px', borderRadius:99, fontSize:11, fontWeight:600, background:'rgba(10,111,176,0.08)', color:'var(--wl-primary, #0A6FB0)', border:'1px solid rgba(10,111,176,0.2)' }}>
                     @{m.label}
                     <button type="button" onClick={() => removeMention(m.user_id)}
                       style={{ background:'none', border:'none', cursor:'pointer', color:'inherit', fontSize:11, padding:0, lineHeight:1 }}><X size={14} strokeWidth={1.75}/></button>
@@ -1284,9 +1279,9 @@ function PostModal({ post, onClose, onSave, onDelete, session, activeTeamId, mem
                 </div>
               )}
               <div style={{ position:'relative' }}>
-                <button type="button" onClick={() => setMentionPickerOpen(o => !o)}
+                <button className="lk-btn lk-btn-ghost" type="button" onClick={() => setMentionPickerOpen(o => !o)}
                   disabled={mentionableMembers.length === 0}
-                  style={{ width:'100%', padding:'7px 10px', borderRadius:8, border:'1.5px solid var(--border)', background:'#fff', fontSize:12, fontWeight:600, color: mentionableMembers.length === 0 ? 'var(--text-muted)' : 'var(--text-primary)', cursor: mentionableMembers.length === 0 ? 'not-allowed' : 'pointer', display:'inline-flex', alignItems:'center', justifyContent:'center', gap:5 }}>
+                  style={{ width:'100%', display:'inline-flex', alignItems:'center', justifyContent:'center', gap:5 }}>
                   {mentionableMembers.length === 0 ? 'Keine Team-Mitglieder verfügbar' : '+ Mitglied zuordnen'}
                 </button>
                 {mentionPickerOpen && mentionableMembers.length > 0 && (
@@ -1306,7 +1301,7 @@ function PostModal({ post, onClose, onSave, onDelete, session, activeTeamId, mem
                             {avatar ? (
                               <img src={avatar} alt={memberLabel(m)} style={{ width:22, height:22, borderRadius:'50%', objectFit:'cover', flexShrink:0 }}/>
                             ) : (
-                              <span style={{ width:22, height:22, borderRadius:'50%', background:'linear-gradient(135deg, rgb(49,90,231), #8b5cf6)', color:'#fff', display:'flex', alignItems:'center', justifyContent:'center', fontSize:9, fontWeight:700, flexShrink:0 }}>{memberInitials(m)}</span>
+                              <span style={{ width:22, height:22, borderRadius:'50%', background:'linear-gradient(135deg, #0A6FB0, #8b5cf6)', color:'#fff', display:'flex', alignItems:'center', justifyContent:'center', fontSize:9, fontWeight:700, flexShrink:0 }}>{memberInitials(m)}</span>
                             )}
                             <span style={{ flex:1, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{memberLabel(m)}{m.user_id === session.user.id ? ' (du)' : ''}</span>
                             {already && <span style={{ fontSize:10, color:'#94A3B8' }}>✓</span>}
@@ -1333,7 +1328,7 @@ function PostModal({ post, onClose, onSave, onDelete, session, activeTeamId, mem
                     <span style={{ fontSize:13, transition:'transform .15s', transform: notesAndCommentsOpen ? 'rotate(90deg)' : 'rotate(0)' }}>▸</span>
                     <span style={{display:'inline-flex',alignItems:'center',gap:6}}><FileText size={14} strokeWidth={1.75}/>Notizen &amp; Kommentare</span>
                     {totalBadge > 0 && (
-                      <span style={{ marginLeft:'auto', padding:'1px 7px', borderRadius:99, background:'rgba(49,90,231,0.1)', color:'var(--wl-primary, rgb(49,90,231))', fontSize:10, fontWeight:700 }}>
+                      <span style={{ marginLeft:'auto', padding:'1px 7px', borderRadius:99, background:'rgba(10,111,176,0.1)', color:'var(--wl-primary, #0A6FB0)', fontSize:10, fontWeight:700 }}>
                         {totalBadge}
                       </span>
                     )}
@@ -1365,7 +1360,7 @@ function PostModal({ post, onClose, onSave, onDelete, session, activeTeamId, mem
                     const author = (members || []).find(m => m.user_id === c.user_id)
                     const authorLabel = author ? memberLabel(author) : (c.user_id?.slice(0,8) || '?')
                     return (
-                      <div key={c.id} style={{ padding:'8px 10px', background:'#F8FAFC', borderRadius:7, borderLeft:'3px solid rgba(49,90,231,0.3)' }}>
+                      <div key={c.id} style={{ padding:'8px 10px', background:'#F8FAFC', borderRadius:7, borderLeft:'3px solid rgba(10,111,176,0.3)' }}>
                         <div style={{ fontSize:10, fontWeight:700, color:'var(--text-muted)', marginBottom:3 }}>
                           {authorLabel}
                           {' · '}
@@ -1384,9 +1379,9 @@ function PostModal({ post, onClose, onSave, onDelete, session, activeTeamId, mem
                     style={{ width:'100%', padding:'8px 10px', borderRadius:7, border:'1.5px solid #E5E7EB', fontSize:12, resize:'vertical', outline:'none', boxSizing:'border-box', fontFamily:'inherit' }}/>
                   <div style={{ display:'flex', gap:6, marginTop:6, alignItems:'center', flexWrap:'wrap' }}>
                     <div style={{ position:'relative' }}>
-                      <button type="button" onClick={() => setCommentMentionPickerOpen(o => !o)}
+                      <button className="lk-btn lk-btn-ghost" type="button" onClick={() => setCommentMentionPickerOpen(o => !o)}
                         disabled={mentionableMembers.length === 0}
-                        style={{ padding:'5px 9px', borderRadius:7, border:'1px solid var(--border)', background:'#fff', fontSize:11, fontWeight:600, color: mentionableMembers.length === 0 ? 'var(--text-muted)' : 'var(--text-primary)', cursor: mentionableMembers.length === 0 ? 'not-allowed' : 'pointer' }}>
+                        >
                         @ erwähnen
                       </button>
                       {commentMentionPickerOpen && (
@@ -1404,7 +1399,7 @@ function PostModal({ post, onClose, onSave, onDelete, session, activeTeamId, mem
                                   {avatar ? (
                                     <img src={avatar} alt={memberLabel(m)} style={{ width:20, height:20, borderRadius:'50%', objectFit:'cover', flexShrink:0 }}/>
                                   ) : (
-                                    <span style={{ width:20, height:20, borderRadius:'50%', background:'linear-gradient(135deg, rgb(49,90,231), #8b5cf6)', color:'#fff', display:'flex', alignItems:'center', justifyContent:'center', fontSize:9, fontWeight:700, flexShrink:0 }}>{memberInitials(m)}</span>
+                                    <span style={{ width:20, height:20, borderRadius:'50%', background:'linear-gradient(135deg, #0A6FB0, #8b5cf6)', color:'#fff', display:'flex', alignItems:'center', justifyContent:'center', fontSize:9, fontWeight:700, flexShrink:0 }}>{memberInitials(m)}</span>
                                   )}
                                   <span style={{ flex:1, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{memberLabel(m)}{m.user_id === session.user.id ? ' (du)' : ''}</span>
                                 </button>
@@ -1414,8 +1409,8 @@ function PostModal({ post, onClose, onSave, onDelete, session, activeTeamId, mem
                         </>
                       )}
                     </div>
-                    <button onClick={addComment} disabled={!newComment.trim()}
-                      style={{ marginLeft:'auto', padding:'5px 12px', borderRadius:7, border:'none', background: newComment.trim() ? 'var(--wl-primary, rgb(49,90,231))' : '#CBD5E1', color:'#fff', fontSize:11, fontWeight:700, cursor: newComment.trim() ? 'pointer' : 'not-allowed', whiteSpace:'nowrap' }}>
+                    <button className="lk-btn lk-btn-primary" onClick={addComment} disabled={!newComment.trim()}
+                      style={{ marginLeft:'auto', whiteSpace:'nowrap' }}>
                       Senden
                     </button>
                   </div>
@@ -1432,20 +1427,8 @@ function PostModal({ post, onClose, onSave, onDelete, session, activeTeamId, mem
             {showAdvanced && (members?.length || 0) > 1 && <div>
               <label style={{ fontSize:11, fontWeight:700, color:'var(--text-muted)', textTransform:'uppercase', letterSpacing:'0.05em', display:'block', marginBottom:6 }}>Team & Kontext</label>
               <div style={{ display:'flex', flexDirection:'column', gap:8 }}>
-<select value={form.assignee_id || ''} onChange={e => upd('assignee_id', e.target.value)}
-                  style={{ padding:'7px 10px', borderRadius:8, border:'1.5px solid #E5E7EB', fontSize:12, background:'#fff', cursor:'pointer' }}>
-                  <option value="">Assignee wählen…</option>
-                  {(members || []).map(m => (
-                    <option key={m.user_id} value={m.user_id}>{m.email || m.user_id}</option>
-                  ))}
-                </select>
-                <select value={form.reviewer_id || ''} onChange={e => upd('reviewer_id', e.target.value)}
-                  style={{ padding:'7px 10px', borderRadius:8, border:'1.5px solid #E5E7EB', fontSize:12, background:'#fff', cursor:'pointer' }}>
-                  <option value="">Reviewer wählen…</option>
-                  {(members || []).map(m => (
-                    <option key={m.user_id} value={m.user_id}>{m.email || m.user_id}</option>
-                  ))}
-                </select>
+<PillSelect value={form.assignee_id || ''} onChange={v => upd('assignee_id', v)} neutral options={[{ value: '', label: `Assignee wählen…` }, ...members || [].map((m) => ({ value: m.user_id, label: m.email || m.user_id }))]} buttonStyle={{ minWidth: 140 }} />
+                <PillSelect value={form.reviewer_id || ''} onChange={v => upd('reviewer_id', v)} neutral options={[{ value: '', label: `Reviewer wählen…` }, ...members || [].map((m) => ({ value: m.user_id, label: m.email || m.user_id }))]} buttonStyle={{ minWidth: 140 }} />
               </div>
             </div>}
 
@@ -1457,8 +1440,8 @@ function PostModal({ post, onClose, onSave, onDelete, session, activeTeamId, mem
               const initials = (dispName || 'BV').split(' ').map(s => s[0]).filter(Boolean).slice(0, 2).join('').toUpperCase() || 'BV'
               return (
                 <div>
-                  <button onClick={() => setShowPreview(s => !s)}
-                    style={{ width:'100%', padding:'9px 12px', borderRadius:10, border:'1.5px solid var(--border)', background:'#fff', color:'var(--text-primary)', fontSize:12, fontWeight:600, cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'center', gap:8 }}>
+                  <button className="lk-btn lk-btn-ghost" onClick={() => setShowPreview(s => !s)}
+                    style={{ width:'100%', display:'flex', alignItems:'center', justifyContent:'center', gap:8 }}>
                     {showPreview ? <span style={{display:'inline-flex',alignItems:'center',gap:6}}><ChevronUp size={12}/>Vorschau verbergen</span> : <span style={{display:'inline-flex',alignItems:'center',gap:6}}><Eye size={12}/>LinkedIn-Vorschau anzeigen</span>}
                   </button>
                   {showPreview && (
@@ -1471,7 +1454,7 @@ function PostModal({ post, onClose, onSave, onDelete, session, activeTeamId, mem
                           {avatarUrl ? (
                             <img src={avatarUrl} alt={dispName} style={{ width:44, height:44, borderRadius:'50%', objectFit:'cover', flexShrink:0 }}/>
                           ) : (
-                            <div style={{ width:44, height:44, borderRadius:'50%', background:'linear-gradient(135deg,rgb(49,90,231),#8b5cf6)', display:'flex', alignItems:'center', justifyContent:'center', color:'#fff', fontWeight:800, fontSize:14, flexShrink:0 }}>{initials}</div>
+                            <div style={{ width:44, height:44, borderRadius:'50%', background:'linear-gradient(135deg,#0A6FB0,#8b5cf6)', display:'flex', alignItems:'center', justifyContent:'center', color:'#fff', fontWeight:800, fontSize:14, flexShrink:0 }}>{initials}</div>
                           )}
                           <div style={{ minWidth:0, flex:1 }}>
                             <div style={{ fontSize:13, fontWeight:700, color:'rgb(20,20,43)', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{dispName}</div>
@@ -1642,12 +1625,12 @@ function PostModal({ post, onClose, onSave, onDelete, session, activeTeamId, mem
                       PDF{v.page_count ? ` · ${v.page_count} Seiten` : ''}{v.file_size_bytes ? ` · ${(v.file_size_bytes / 1024 / 1024).toFixed(1)} MB` : ''}
                     </div>
                     <div style={{ display:'flex', gap:10, justifyContent:'center', flexWrap:'wrap' }}>
-                      <button onClick={() => window.open(v.signed_url, '_blank', 'noopener')}
-                        style={{ padding:'10px 18px', borderRadius:9, border:'none', background:'var(--wl-primary, rgb(49,90,231))', color:'#fff', fontSize:13, fontWeight:700, cursor:'pointer', display:'inline-flex', alignItems:'center', gap:6 }}>
+                      <button className="lk-btn lk-btn-cta" onClick={() => window.open(v.signed_url, '_blank', 'noopener')}
+                        style={{ display:'inline-flex', alignItems:'center', gap:6 }}>
                         📄 Im neuen Tab öffnen
                       </button>
-                      <button onClick={() => downloadPostVisual(v)}
-                        style={{ padding:'10px 18px', borderRadius:9, border:'1.5px solid var(--border)', background:'#fff', color:'var(--text-primary)', fontSize:13, fontWeight:600, cursor:'pointer', display:'inline-flex', alignItems:'center', gap:6 }}>
+                      <button className="lk-btn lk-btn-ghost" onClick={() => downloadPostVisual(v)}
+                        style={{ display:'inline-flex', alignItems:'center', gap:6 }}>
                         ⬇ Download
                       </button>
                     </div>
@@ -1702,11 +1685,11 @@ function PostModal({ post, onClose, onSave, onDelete, session, activeTeamId, mem
                       return (
                         <button key={v.id} onClick={() => addVisualToPost(v)}
                           disabled={isAttached}
-                          style={{ position:'relative', padding:0, borderRadius:8, overflow:'hidden', border: isAttached ? '2px solid var(--wl-primary, rgb(49,90,231))' : '1px solid var(--border)', background:'#F1F5F9', aspectRatio:'1/1', cursor: isAttached ? 'default' : 'pointer' }}>
+                          style={{ position:'relative', padding:0, borderRadius:8, overflow:'hidden', border: isAttached ? '2px solid var(--wl-primary, #0A6FB0)' : '1px solid var(--border)', background:'#F1F5F9', aspectRatio:'1/1', cursor: isAttached ? 'default' : 'pointer' }}>
                           {v.signed_url && <img src={v.signed_url} alt={v.prompt} style={{ width:'100%', height:'100%', objectFit:'cover', display:'block' }}/>}
                           {isAttached && (
-                            <div style={{ position:'absolute', inset:0, background:'rgba(49,90,231,0.35)', display:'flex', alignItems:'center', justifyContent:'center' }}>
-                              <span style={{ background:'#fff', color:'var(--wl-primary, rgb(49,90,231))', padding:'3px 10px', borderRadius:99, fontSize:11, fontWeight:700 }}>Hinzugefügt</span>
+                            <div style={{ position:'absolute', inset:0, background:'rgba(10,111,176,0.35)', display:'flex', alignItems:'center', justifyContent:'center' }}>
+                              <span style={{ background:'#fff', color:'var(--wl-primary, #0A6FB0)', padding:'3px 10px', borderRadius:99, fontSize:11, fontWeight:700 }}>Hinzugefügt</span>
                             </div>
                           )}
                         </button>
@@ -1716,8 +1699,8 @@ function PostModal({ post, onClose, onSave, onDelete, session, activeTeamId, mem
                 )}
               </div>
               <div style={{ display:'flex', justifyContent:'flex-end', marginTop:10, paddingTop:10, borderTop:'1px solid var(--border)', flexShrink:0 }}>
-                <button onClick={() => setVisualPickerOpen(false)}
-                  style={{ padding:'8px 16px', borderRadius:8, border:'1px solid var(--border)', background:'#fff', cursor:'pointer', fontSize:13, fontWeight:600 }}>
+                <button className="lk-btn lk-btn-ghost" onClick={() => setVisualPickerOpen(false)}
+                  >
                   Fertig
                 </button>
               </div>
@@ -1733,11 +1716,11 @@ function PostModal({ post, onClose, onSave, onDelete, session, activeTeamId, mem
             return (
               <>
                 {!isNew && (
-                  <button onClick={() => { if (window.confirm('Beitrag löschen?')) onDelete(post.id) }} style={ghost}>
+                  <button onClick={() => { if (window.confirm('Beitrag löschen?')) onDelete(post.id) }} className="lk-btn lk-btn-ghost">
                     <Trash2 size={14} strokeWidth={1.75}/>Löschen
                   </button>
                 )}
-                <button onClick={onClose} style={ghost}>
+                <button onClick={onClose} className="lk-btn lk-btn-ghost">
                   <X size={14} strokeWidth={1.75}/>Abbrechen
                 </button>
                 {!isNew && (
@@ -1753,7 +1736,7 @@ function PostModal({ post, onClose, onSave, onDelete, session, activeTeamId, mem
                       scheduled_at: null,
                     }).select().single()
                     if (dup) { onSave(dup); }
-                  }} style={ghost}>
+                  }} className="lk-btn lk-btn-ghost">
                     <Copy size={14} strokeWidth={1.75}/>Duplizieren
                   </button>
                 )}
@@ -1773,8 +1756,8 @@ function PostModal({ post, onClose, onSave, onDelete, session, activeTeamId, mem
           )}
 
           {/* RECHTS: Speichern · Auf LinkedIn posten / planen — gleiche Brand-Primary-Farbe */}
-          <button onClick={save} disabled={saving}
-            style={{ padding:'9px 20px', borderRadius:10, border:'none', background:'var(--wl-primary, rgb(49,90,231))', color:'#fff', fontSize:13, fontWeight:700, cursor:'pointer', opacity: saving ? 0.7 : 1, display:'inline-flex', alignItems:'center', gap:5 }}>
+          <button className="lk-btn lk-btn-cta" onClick={save} disabled={saving}
+            style={{ opacity: saving ? 0.7 : 1, display:'inline-flex', alignItems:'center', gap:5 }}>
             {saving ? <span style={{display:'inline-flex',alignItems:'center',gap:6}}><Loader2 size={12} className='lk-spin'/>Speichere…</span> : isNew ? <span style={{display:'inline-flex',alignItems:'center',gap:6}}><Plus size={12}/>Erstellen</span> : <span style={{display:'inline-flex',alignItems:'center',gap:6}}><Save size={12}/>Speichern</span>}
           </button>
           {isPersonalPost && form.platform !== 'instagram' && form.content && form.status !== 'published' && (() => {
@@ -2244,7 +2227,7 @@ Danke für den Austausch! 🤝`,
               {[['kanban','Board',<LayoutGrid size={12} strokeWidth={1.75}/>],['woche','Woche',<CalendarRange size={12} strokeWidth={1.75}/>],['kalender','Monat',<Calendar size={12} strokeWidth={1.75}/>],['liste','Liste',<List size={12} strokeWidth={1.75}/>]].map(([v,l,ic]) => (
                 <button key={v} onClick={() => setView(v)}
                   style={{ padding:'6px 12px', borderRadius:8, border:'none', fontSize:12, fontWeight:700, cursor:'pointer',
-                    background: view===v ? '#fff' : 'transparent', color: view===v ? 'var(--wl-primary, rgb(49,90,231))' : '#64748B',
+                    background: view===v ? '#fff' : 'transparent', color: view===v ? 'var(--wl-primary, #0A6FB0)' : '#64748B',
                     boxShadow: view===v ? '0 1px 4px rgba(0,0,0,0.08)' : 'none', transition:'all 0.15s' }}>
                   {l}
                 </button>
@@ -2253,17 +2236,14 @@ Danke für den Austausch! 🤝`,
           )}
 
           {/* Brainstorm Button (Primary CTA) */}
-          <button data-tour-id="rp-brainstorm" onClick={() => setShowBrainstorm(true)}
-            style={{ padding:'8px 14px', borderRadius:10, border:'1.5px solid rgba(49,90,231,0.3)', background:'rgba(49,90,231,0.06)', color:'var(--wl-primary, rgb(49,90,231))',
-              fontSize:13, fontWeight:600, cursor:'pointer', display:'flex', alignItems:'center', gap:5, whiteSpace:'nowrap' }}>
+          <button data-tour-id="rp-brainstorm" className="lk-btn lk-btn-ghost" onClick={() => setShowBrainstorm(true)}
+            style={{ display:'flex', alignItems:'center', gap:5, whiteSpace:'nowrap' }}>
             <span style={{display:'inline-flex',alignItems:'center',gap:6}}><Brain size={13}/>Brainstormen</span>
           </button>
 
           {/* Neu Button */}
-          <button data-tour-id="rp-new-post" onClick={() => openNew()}
-            style={{ padding:'8px 18px', borderRadius:10, border:'none', background:'var(--wl-primary, rgb(49,90,231))', color:'#fff',
-              fontSize:13, fontWeight:700, cursor:'pointer', display:'flex', alignItems:'center', gap:6,
-              boxShadow:'0 2px 8px rgba(49,90,231,0.3)', whiteSpace:'nowrap' }}>
+          <button className="lk-btn lk-btn-navy" data-tour-id="rp-new-post" onClick={() => openNew()}
+            style={{ display:'flex', alignItems:'center', gap:6, whiteSpace:'nowrap' }}>
             <span style={{display:'inline-flex',alignItems:'center',gap:6}}><PenLine size={13}/>Neuer Beitrag</span>
           </button>
         </div>
@@ -2316,38 +2296,13 @@ Danke für den Austausch! 🤝`,
             Hier wird dein Redaktionsplan aufgebaut. Lass dir Ideen von der KI vorschlagen oder leg direkt mit einem ersten Entwurf los.
           </p>
           <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap', justifyContent: 'center' }}>
-            <button onClick={() => setShowBrainstorm(true)}
-              style={{
-                padding: '14px 26px',
-                borderRadius: 12,
-                border: 'none',
-                background: 'linear-gradient(135deg, rgb(49,90,231), #8B5CF6)',
-                color: '#fff',
-                fontSize: 15,
-                fontWeight: 700,
-                cursor: 'pointer',
-                boxShadow: '0 4px 14px rgba(49,90,231,0.28)',
-                display: 'inline-flex',
-                alignItems: 'center',
-                gap: 8,
-              }}>
-              <Brain size={18} strokeWidth={1.75} style={{ color:'var(--wl-primary, rgb(49,90,231))' }}/>
+            <button className="lk-btn lk-btn-primary" onClick={() => setShowBrainstorm(true)}
+              style={{ display: 'inline-flex', alignItems: 'center', gap: 8 }}>
+              <Brain size={18} strokeWidth={1.75} style={{ color:'var(--wl-primary, #0A6FB0)' }}/>
               Mit KI brainstormen
             </button>
-            <button onClick={() => openNew()}
-              style={{
-                padding: '14px 22px',
-                borderRadius: 12,
-                border: '1.5px solid var(--border)',
-                background: 'var(--surface)',
-                color: 'var(--text-primary)',
-                fontSize: 14,
-                fontWeight: 600,
-                cursor: 'pointer',
-                display: 'inline-flex',
-                alignItems: 'center',
-                gap: 8,
-              }}>
+            <button className="lk-btn lk-btn-ghost" onClick={() => openNew()}
+              style={{ display: 'inline-flex', alignItems: 'center', gap: 8 }}>
               <PenLine size={14} strokeWidth={1.75}/>
               Manuell anlegen
             </button>
@@ -2430,8 +2385,8 @@ Danke für den Austausch! 🤝`,
               return (
                 <div key={i} style={{ flex:1, minWidth:140, display:'flex', flexDirection:'column',
                   background: isToday ? '#EFF6FF' : '#F8FAFC', borderRadius:14,
-                  border: isToday ? '2px solid rgb(49,90,231)' : '1px solid #E5E7EB', overflow:'hidden' }}>
-                  <div style={{ padding:'10px 12px', borderBottom:'1px solid var(--border)', background: isToday ? 'var(--wl-primary, rgb(49,90,231))' : '#fff' }}>
+                  border: isToday ? '2px solid #0A6FB0' : '1px solid #E5E7EB', overflow:'hidden' }}>
+                  <div style={{ padding:'10px 12px', borderBottom:'1px solid var(--border)', background: isToday ? 'var(--wl-primary, #0A6FB0)' : '#fff' }}>
                     <div style={{ fontSize:11, fontWeight:800, color: isToday ? 'rgba(255,255,255,0.7)' : '#94A3B8', textTransform:'uppercase' }}>{DAYS[i]}</div>
                     <div style={{ fontSize:18, fontWeight:800, color: isToday ? '#fff' : 'rgb(20,20,43)' }}>{day.getDate()}</div>
                   </div>
@@ -2455,15 +2410,15 @@ Danke für den Austausch! 🤝`,
         <div style={{ flex:1, display:'flex', flexDirection:'column', minHeight:0 }}>
           {/* Monat Navigation */}
           <div style={{ display:'flex', alignItems:'center', gap:12, marginBottom:16, flexShrink:0 }}>
-            <button onClick={() => setCalDate(d => new Date(d.getFullYear(), d.getMonth()-1, 1))}
-              style={{ padding:'6px 12px', borderRadius:8, border:'1px solid var(--border)', background:'var(--surface)', cursor:'pointer', fontSize:16 }}>‹</button>
+            <button className="lk-btn lk-btn-ghost" onClick={() => setCalDate(d => new Date(d.getFullYear(), d.getMonth()-1, 1))}
+              >‹</button>
             <div style={{ fontSize:18, fontWeight:800, color:'rgb(20,20,43)', flex:1, textAlign:'center' }}>
               {MONTHS[calMonth]} {calYear}
             </div>
-            <button onClick={() => setCalDate(new Date())}
-              style={{ padding:'6px 12px', borderRadius:8, border:'1px solid var(--border)', background:'var(--surface)', cursor:'pointer', fontSize:12, fontWeight:600 }}>Heute</button>
-            <button onClick={() => setCalDate(d => new Date(d.getFullYear(), d.getMonth()+1, 1))}
-              style={{ padding:'6px 12px', borderRadius:8, border:'1px solid var(--border)', background:'var(--surface)', cursor:'pointer', fontSize:16 }}>›</button>
+            <button className="lk-btn lk-btn-ghost" onClick={() => setCalDate(new Date())}
+              >Heute</button>
+            <button className="lk-btn lk-btn-ghost" onClick={() => setCalDate(d => new Date(d.getFullYear(), d.getMonth()+1, 1))}
+              >›</button>
           </div>
 
           {/* Wochentage Header */}
@@ -2482,14 +2437,14 @@ Danke für den Austausch! 🤝`,
               return (
                 <div key={i}
                   style={{ background: !day.current ? '#FAFAFA' : (()=>{ const d=day.date.getDay(); return (d===2||d===3||d===4)?'#FAFFF4':'#fff' })(), borderRadius:10,
-                    border: isToday ? '2px solid rgb(49,90,231)' : (()=>{ const d=day.date.getDay(); return (d===2||d===3||d===4)?'1px solid #A7F3D0':'1px solid #E5E7EB' })(),
+                    border: isToday ? '2px solid #0A6FB0' : (()=>{ const d=day.date.getDay(); return (d===2||d===3||d===4)?'1px solid #A7F3D0':'1px solid #E5E7EB' })(),
                     padding:'6px', overflow:'hidden', cursor:'pointer', minHeight:80,
                     opacity: !day.current ? 0.5 : 1 }}
                   onClick={() => openNew({ scheduled_at: day.date.toISOString().slice(0,16) })}>
                   <div style={{ fontSize:11, fontWeight: isToday ? 800 : 600,
-                    color: isToday ? 'var(--wl-primary, rgb(49,90,231))' : isPast ? '#94A3B8' : 'rgb(20,20,43)',
+                    color: isToday ? 'var(--wl-primary, #0A6FB0)' : isPast ? '#94A3B8' : 'rgb(20,20,43)',
                     marginBottom:4, display:'flex', alignItems:'center', gap:4 }}>
-                    {isToday && <span style={{ width:6, height:6, borderRadius:'50%', background:'var(--wl-primary, rgb(49,90,231))', display:'inline-block' }}/>}
+                    {isToday && <span style={{ width:6, height:6, borderRadius:'50%', background:'var(--primary)', display:'inline-block' }}/>}
                     {day.date.getDate()}
                   </div>
                   {dayPosts.slice(0,3).map(p => (
@@ -2517,12 +2472,11 @@ Danke für den Austausch! 🤝`,
           {loading && <div style={{ textAlign:'center', padding:40, color:'var(--text-muted)' }}>Lädt…</div>}
           {!loading && filtered.length === 0 && (
             <div style={{ textAlign:'center', padding:60, color:'#CBD5E1' }}>
-              <div style={{ marginBottom:12, display:'inline-flex', color:'var(--wl-primary, rgb(49,90,231))' }}><PenLine size={40} strokeWidth={1.5}/></div>
+              <div style={{ marginBottom:12, display:'inline-flex', color:'var(--wl-primary, #0A6FB0)' }}><PenLine size={40} strokeWidth={1.5}/></div>
               <div style={{ fontSize:16, fontWeight:700 }}>Noch keine Beiträge</div>
               <div style={{ fontSize:13, marginTop:8 }}>Erstelle deinen ersten Content-Plan</div>
-              <button onClick={() => openNew()}
-                style={{ marginTop:16, padding:'10px 20px', borderRadius:10, border:'none',
-                  background:'var(--wl-primary, rgb(49,90,231))', color:'#fff', fontWeight:700, cursor:'pointer' }}>
+              <button className="lk-btn lk-btn-navy" onClick={() => openNew()}
+                style={{ marginTop:16 }}>
                 <span style={{display:'inline-flex',alignItems:'center',gap:6}}><PenLine size={13}/>Ersten Beitrag erstellen</span>
               </button>
             </div>
@@ -2599,8 +2553,8 @@ Danke für den Austausch! 🤝`,
         <div style={{ position:'fixed', inset:0, background:'rgba(0,0,0,0.55)', zIndex:1000, display:'flex', alignItems:'center', justifyContent:'center', padding:20 }}
           onClick={e => e.target === e.currentTarget && setShowBrainstorm(false)}>
           <div style={{ background:'var(--surface)', borderRadius:18, width:'100%', maxWidth:780, maxHeight:'90vh', display:'flex', flexDirection:'column', overflow:'hidden', boxShadow:'0 20px 60px rgba(0,0,0,0.25)' }}>
-            <div style={{ padding:'18px 22px 14px', background:'linear-gradient(135deg, rgba(49,90,231,.08), rgba(124,58,237,.06))' }}>
-              <div style={{ fontSize:11, color:'var(--wl-primary, rgb(49,90,231))', fontWeight:700, textTransform:'uppercase', letterSpacing:'0.08em', marginBottom:6, display:'inline-flex', alignItems:'center', gap:6 }}><Brain size={12} strokeWidth={1.75}/>Brainstorming-Session</div>
+            <div style={{ padding:'18px 22px 14px', background:'linear-gradient(135deg, rgba(10,111,176,.08), rgba(0,48,96,.06))' }}>
+              <div style={{ fontSize:11, color:'var(--wl-primary, #0A6FB0)', fontWeight:700, textTransform:'uppercase', letterSpacing:'0.08em', marginBottom:6, display:'inline-flex', alignItems:'center', gap:6 }}><Brain size={12} strokeWidth={1.75}/>Brainstorming-Session</div>
               <h2 style={{ fontSize:22, fontWeight:700, color:'rgb(20,20,43)', margin:0 }}>Was möchtest du heute posten?</h2>
               <p style={{ fontSize:13, color:'var(--text-muted)', margin:'8px 0 0', lineHeight:1.5 }}>
                 Lass dir Ideen passend zu deiner Brand Voice generieren. Die KI nutzt deinen Markenkontext und deine bisherigen Top-Posts.
@@ -2623,7 +2577,7 @@ Danke für den Austausch! 🤝`,
                   <div style={{ position:'relative' }}>
                     <button type="button" onClick={() => setShowBsKnowledge(v => !v)}
                       title="Optional: Wissensressourcen einbeziehen"
-                      style={{ display:'inline-flex', alignItems:'center', gap:6, width:120, height:38, boxSizing:'border-box', padding:'0 10px', borderRadius:9, border:'1.5px solid '+(brainstormKnowledgeIds.length?'var(--wl-primary, rgb(49,90,231))':'var(--border)'), fontSize:13, fontWeight:600, background:'var(--surface)', color: brainstormKnowledgeIds.length?'var(--wl-primary, rgb(49,90,231))':'var(--text-primary)', cursor:'pointer', fontFamily:'inherit' }}>
+                      style={{ display:'inline-flex', alignItems:'center', gap:6, width:120, height:38, boxSizing:'border-box', padding:'0 10px', borderRadius:9, border:'1.5px solid '+(brainstormKnowledgeIds.length?'var(--wl-primary, #0A6FB0)':'var(--border)'), fontSize:13, fontWeight:600, background:'var(--surface)', color: brainstormKnowledgeIds.length?'var(--wl-primary, #0A6FB0)':'var(--text-primary)', cursor:'pointer', fontFamily:'inherit' }}>
                       <BookOpen size={13} strokeWidth={1.75} style={{ flexShrink:0 }}/>
                       <span style={{ flex:1, minWidth:0, overflow:'hidden', textOverflow:'ellipsis', textAlign:'left' }}>Wissen{brainstormKnowledgeIds.length ? ` (${brainstormKnowledgeIds.length})` : ''}</span>
                       <ChevronDown size={13} strokeWidth={2} style={{ opacity:0.5, flexShrink:0 }}/>
@@ -2643,8 +2597,8 @@ Danke für den Austausch! 🤝`,
                     )}
                   </div>
                 )}
-                <button onClick={() => generateIdeas(brainstormTopic.trim())} disabled={generating}
-                  style={{ height:38, boxSizing:'border-box', padding:'0 16px', borderRadius:9, border:'none', background:'var(--wl-primary, rgb(49,90,231))', color:'#fff', fontSize:13, fontWeight:700, cursor:generating?'wait':'pointer', whiteSpace:'nowrap', display:'inline-flex', alignItems:'center' }}>
+                <button className="lk-btn lk-btn-cta" onClick={() => generateIdeas(brainstormTopic.trim())} disabled={generating}
+                  style={{ height:38, boxSizing:'border-box', whiteSpace:'nowrap', display:'inline-flex', alignItems:'center' }}>
                   {generating ? <span style={{display:'inline-flex',alignItems:'center',gap:6}}><Loader2 size={12} className='lk-spin'/>Generiere…</span> : <span style={{display:'inline-flex',alignItems:'center',gap:6}}><Wand2 size={12}/>Generieren</span>}
                 </button>
                 </div>
@@ -2671,10 +2625,10 @@ Danke für den Austausch! 🤝`,
                       })
                     }}
                     style={{ marginBottom:10, padding:'12px 14px', borderRadius:12,
-                      border: '2px solid ' + (selected ? 'var(--wl-primary, rgb(49,90,231))' : 'var(--border)'),
-                      background: selected ? 'rgba(49,90,231,.04)' : 'var(--surface)',
+                      border: '2px solid ' + (selected ? 'var(--wl-primary, #0A6FB0)' : 'var(--border)'),
+                      background: selected ? 'rgba(10,111,176,.04)' : 'var(--surface)',
                       cursor:'pointer', transition:'all .15s', display:'flex', gap:12, alignItems:'flex-start' }}>
-                    <div style={{ width:24, height:24, borderRadius:6, border: '2px solid ' + (selected ? 'var(--wl-primary, rgb(49,90,231))' : 'var(--border)'), background: selected ? 'var(--wl-primary, rgb(49,90,231))' : 'transparent', color:'#fff', display:'flex', alignItems:'center', justifyContent:'center', fontSize:12, flexShrink:0, marginTop:2 }}>
+                    <div style={{ width:24, height:24, borderRadius:6, border: '2px solid ' + (selected ? 'var(--wl-primary, #0A6FB0)' : 'var(--border)'), background: selected ? 'var(--wl-primary, #0A6FB0)' : 'transparent', color:'#fff', display:'flex', alignItems:'center', justifyContent:'center', fontSize:12, flexShrink:0, marginTop:2 }}>
                       {selected ? '✓' : ''}
                     </div>
                     <div style={{ flex:1 }}>
@@ -2696,7 +2650,7 @@ Danke für den Austausch! 🤝`,
                   Abbrechen
                 </button>
                 <button onClick={adoptSelectedIdeas} disabled={brainstormSelected.size === 0}
-                  style={{ padding:'9px 18px', borderRadius:9, border:'none', background: brainstormSelected.size === 0 ? '#CBD5E1' : 'var(--wl-primary, rgb(49,90,231))', color:'#fff', fontSize:13, fontWeight:700, cursor: brainstormSelected.size === 0 ? 'not-allowed' : 'pointer' }}>
+                  style={{ padding:'9px 18px', borderRadius:9, border:'none', background: brainstormSelected.size === 0 ? '#CBD5E1' : 'var(--wl-primary, #0A6FB0)', color:'#fff', fontSize:13, fontWeight:700, cursor: brainstormSelected.size === 0 ? 'not-allowed' : 'pointer' }}>
                   <span style={{display:'inline-flex',alignItems:'center',gap:6}}><Lightbulb size={13}/>{brainstormSelected.size > 0 ? brainstormSelected.size + ' Idee' + (brainstormSelected.size === 1 ? '' : 'n') + ' übernehmen' : 'Auswählen'}</span>
                 </button>
               </div>

@@ -448,7 +448,7 @@ export default function AdminDocs() {
                 { step:'5', title:'Leadesk-Tab offen lassen', desc:'app.leadesk.de muss offen und eingeloggt sein. Extension liest Auth-Token von dort.' },
               ].map(s => (
                 <div key={s.step} style={{ display:'flex', gap:12, alignItems:'flex-start', padding:'12px 14px', background:'var(--surface-muted)', borderRadius:10, border:'1px solid var(--border)' }}>
-                  <div style={{ width:28, height:28, borderRadius:'50%', background:'var(--wl-primary,rgb(49,90,231))', color:'#fff', display:'flex', alignItems:'center', justifyContent:'center', fontWeight:800, fontSize:13, flexShrink:0 }}>{s.step}</div>
+                  <div style={{ width:28, height:28, borderRadius:'50%', background:'var(--primary)', color:'#fff', display:'flex', alignItems:'center', justifyContent:'center', fontWeight:800, fontSize:13, flexShrink:0 }}>{s.step}</div>
                   <div><div style={{ fontWeight:700, fontSize:13, marginBottom:2 }}>{s.title}</div><div style={{ fontSize:12, color:'var(--text-muted)' }}>{s.desc}</div></div>
                 </div>
               ))}
@@ -565,7 +565,7 @@ export default function AdminDocs() {
                 ].map((r,i) => (
                   <tr key={r.val} style={{ borderBottom:'1px solid #EDE9FE', background:i%2===0?'#fff':'#FAFAFA' }}>
                     <td style={{ padding:'8px 10px', fontWeight:600, color:'var(--text-primary)' }}>{r.val}</td>
-                    <td style={{ padding:'8px 10px', fontFamily:'monospace', fontSize:11, color:'#7C3AED' }}>{r.sel}</td>
+                    <td style={{ padding:'8px 10px', fontFamily:'monospace', fontSize:11, color:'#003060' }}>{r.sel}</td>
                     <td style={{ padding:'8px 10px', color:'var(--text-muted)' }}>{r.ex}</td>
                   </tr>
                 ))}

@@ -296,7 +296,7 @@ export default function LeadlyHero({ firstName, leadly, stats = {}, onOpenTasks 
           <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 12.5, color: colors.inkMuted, fontWeight: 500 }}>
             <span>{dateLabel}</span>
           </div>
-          <div style={{ fontSize: 'clamp(22px, 2.6vw, 28px)', fontWeight: 600, letterSpacing: '-0.03em', lineHeight: 1.12, color: colors.ink, marginTop: 3 }}>
+          <div style={{ fontSize: 'clamp(22px, 2.6vw, 28px)', fontWeight: 800, letterSpacing: '-0.03em', lineHeight: 1.12, color: colors.ink, marginTop: 3 }}>
             {salute}, {firstName || 'dort'} 👋
           </div>
           <div style={{ fontSize: 15.5, lineHeight: 1.55, color: colors.ink, fontWeight: 450, marginTop: 8, maxWidth: '62ch', minHeight: 24 }}>
@@ -319,7 +319,7 @@ export default function LeadlyHero({ firstName, leadly, stats = {}, onOpenTasks 
           {visibleMessages
             .filter(m => !(pendingUserShown && m.role === 'user' && m.content === pendingUserText && String(m.id).startsWith('opt-')))
             .map((m) => m.role === 'user' ? (
-            <div key={m.id} style={{ alignSelf: 'flex-end', maxWidth: '78%', background: 'var(--wl-primary, var(--primary, rgb(49,90,231)))', color: '#fff', borderRadius: '14px 14px 4px 14px', padding: '9px 14px', fontSize: 14, lineHeight: 1.5 }}>
+            <div key={m.id} style={{ alignSelf: 'flex-end', maxWidth: '78%', background: 'var(--wl-primary, var(--primary, #0A6FB0))', color: '#fff', borderRadius: '14px 14px 4px 14px', padding: '9px 14px', fontSize: 14, lineHeight: 1.5 }}>
               {m.content}
             </div>
           ) : (
@@ -332,7 +332,7 @@ export default function LeadlyHero({ firstName, leadly, stats = {}, onOpenTasks 
           ))}
 
           {pendingUserShown && (
-            <div style={{ alignSelf: 'flex-end', maxWidth: '78%', background: 'var(--wl-primary, var(--primary, rgb(49,90,231)))', color: '#fff', borderRadius: '14px 14px 4px 14px', padding: '9px 14px', fontSize: 14, lineHeight: 1.5 }}>
+            <div style={{ alignSelf: 'flex-end', maxWidth: '78%', background: 'var(--wl-primary, var(--primary, #0A6FB0))', color: '#fff', borderRadius: '14px 14px 4px 14px', padding: '9px 14px', fontSize: 14, lineHeight: 1.5 }}>
               {pendingUserText}
             </div>
           )}
@@ -358,8 +358,8 @@ export default function LeadlyHero({ firstName, leadly, stats = {}, onOpenTasks 
               <span style={{ fontSize: 13, color: colors.ink, flex: 1, minWidth: 180 }}>
                 <strong style={{ fontWeight: 600 }}>Leadly möchte:</strong> {a.summary || a.name}
               </span>
-              <button type="button" onClick={() => leadly.confirmAction?.(a)} disabled={leadly.isSending}
-                style={{ padding: '7px 14px', borderRadius: 8, border: 'none', background: 'var(--wl-primary, var(--primary, rgb(49,90,231)))', color: '#fff', fontSize: 12.5, fontWeight: 700, cursor: 'pointer', opacity: leadly.isSending ? 0.6 : 1 }}>
+              <button className="lk-btn lk-btn-primary" type="button" onClick={() => leadly.confirmAction?.(a)} disabled={leadly.isSending}
+                style={{ opacity: leadly.isSending ? 0.6 : 1 }}>
                 Ausführen
               </button>
               <button type="button" onClick={() => leadly.dismissActions?.()}
@@ -415,7 +415,7 @@ export default function LeadlyHero({ firstName, leadly, stats = {}, onOpenTasks 
           style={{
             width: 36, height: 36, borderRadius: 10, flexShrink: 0,
             border: text.trim() ? 'none' : `1px solid ${colors.border}`,
-            background: text.trim() ? 'var(--wl-primary, var(--primary, rgb(49,90,231)))' : 'transparent',
+            background: text.trim() ? 'var(--wl-primary, var(--primary, #0A6FB0))' : 'transparent',
             color: text.trim() ? '#fff' : colors.inkSoft,
             cursor: text.trim() ? 'pointer' : 'not-allowed',
             display: 'flex', alignItems: 'center', justifyContent: 'center',

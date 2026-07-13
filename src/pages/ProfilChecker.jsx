@@ -5,7 +5,7 @@ import { supabase } from '../lib/supabase'
 import { useTeam } from '../context/TeamContext'
 import { checkOwnLinkedInProfile } from '../lib/leadeskExtension'
 
-const P = 'var(--wl-primary, rgb(49,90,231))'
+const P = 'var(--wl-primary, #0A6FB0)'
 const has = v => !!(v && String(v).trim())
 
 // Check-Definitionen: Label, Hinweis und Prüf-Funktion auf den gescrapten Profildaten.
@@ -124,8 +124,8 @@ export default function ProfilChecker({ session }) {
         title="Profil-Checker"
         subtitle="Prüft dein LinkedIn-Profil auf Vollständigkeit — Banner, Foto, Slogan, Info-Box, Erfahrung und mehr — und merkt sich deine früheren Analysen."
         action={
-          <button onClick={run} disabled={loading}
-            style={{ padding: '9px 16px', borderRadius: 10, border: 'none', background: P, color: '#fff', fontSize: 13, fontWeight: 700, cursor: loading ? 'default' : 'pointer', display: 'inline-flex', alignItems: 'center', gap: 7 }}>
+          <button className="lk-btn lk-btn-primary" onClick={run} disabled={loading}
+            style={{ display: 'inline-flex', alignItems: 'center', gap: 7 }}>
             {loading ? <Loader2 size={15} className="lk-spin" /> : (result ? <RefreshCw size={15} /> : <Sparkles size={15} />)}
             {loading ? 'Prüfe…' : (result ? 'Erneut prüfen' : 'Profil prüfen')}
           </button>
@@ -133,7 +133,7 @@ export default function ProfilChecker({ session }) {
       />
 
       {loading && (
-        <div style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 14, padding: '28px', textAlign: 'center', color: 'var(--text-muted)', fontSize: 14, marginBottom: 16 }}>
+        <div style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 16, boxShadow: 'var(--shadow-card)', padding: '28px', textAlign: 'center', color: 'var(--text-muted)', fontSize: 14, marginBottom: 16 }}>
           <Loader2 size={22} className="lk-spin" style={{ color: P }} />
           <div style={{ marginTop: 10 }}>Dein Profil wird geprüft — es öffnet sich kurz ein LinkedIn-Tab und schließt sich wieder.</div>
         </div>
@@ -146,12 +146,12 @@ export default function ProfilChecker({ session }) {
       )}
 
       {!loading && !error && !result && (
-        <div style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 14, padding: '36px 28px', textAlign: 'center', marginBottom: 16 }}>
+        <div style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 16, boxShadow: 'var(--shadow-card)', padding: '36px 28px', textAlign: 'center', marginBottom: 16 }}>
           <div style={{ fontSize: 15, fontWeight: 700, color: 'var(--text-strong)', marginBottom: 6 }}>Bereit, dein Profil zu prüfen?</div>
           <div style={{ fontSize: 13, color: 'var(--text-muted)', maxWidth: '52ch', margin: '0 auto 18px', lineHeight: 1.6 }}>
             Klick auf „Profil prüfen". Die Leadesk-Extension öffnet kurz dein eigenes LinkedIn-Profil, liest die wichtigsten Bereiche aus und bewertet die Vollständigkeit.
           </div>
-          <button onClick={run} style={{ padding: '10px 22px', borderRadius: 10, border: 'none', background: P, color: '#fff', fontSize: 14, fontWeight: 700, cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: 8 }}>
+          <button className="lk-btn lk-btn-primary" onClick={run} style={{ display: 'inline-flex', alignItems: 'center', gap: 8 }}>
             <Sparkles size={16} /> Profil prüfen
           </button>
         </div>
@@ -204,7 +204,7 @@ export default function ProfilChecker({ session }) {
           <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
             {history.map(row => (
               <button key={row.id} onClick={() => viewHistory(row)}
-                style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '9px 12px', borderRadius: 10, border: '1px solid ' + (viewingId === row.id ? P : 'var(--border-soft, #F1F5F9)'), background: viewingId === row.id ? 'rgba(49,90,231,0.05)' : 'var(--surface)', cursor: 'pointer', textAlign: 'left', width: '100%', font: 'inherit' }}>
+                style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '9px 12px', borderRadius: 10, border: '1px solid ' + (viewingId === row.id ? P : 'var(--border-soft, #F1F5F9)'), background: viewingId === row.id ? 'rgba(10,111,176,0.05)' : 'var(--surface)', cursor: 'pointer', textAlign: 'left', width: '100%', font: 'inherit' }}>
                 <span style={{ fontSize: 13, fontWeight: 800, color: scoreColor(row.score), minWidth: 44 }}>{row.score}%</span>
                 <span style={{ flex: 1, fontSize: 13, color: 'var(--text-strong)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{row.profile_name || 'Profil'}</span>
                 <span style={{ fontSize: 11, color: 'var(--text-muted)', whiteSpace: 'nowrap' }}>{row.passed}/{row.total}</span>

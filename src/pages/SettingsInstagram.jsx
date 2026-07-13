@@ -7,7 +7,7 @@ import {
   createConnectLink, syncConnection, disconnectAccount, getConnectionStatus,
 } from '../lib/instagram'
 
-const PRIMARY = 'var(--wl-primary, rgb(49,90,231))'
+const PRIMARY = 'var(--wl-primary, #0A6FB0)'
 const IG_PINK = '#E1306C'
 const C = { surface: '#fff', border: '#E4E7EC', text1: '#111827', text2: '#374151', text3: '#6B7280' }
 
@@ -84,7 +84,7 @@ export default function SettingsInstagram() {
   const card = { background: C.surface, border: `1px solid ${C.border}`, borderRadius: 16, padding: '22px 24px' }
   const btnPrimary = (extra = {}) => ({
     display: 'flex', alignItems: 'center', gap: 7, padding: '10px 18px', borderRadius: 9,
-    border: 'none', background: PRIMARY, color: '#fff', fontSize: 14, fontWeight: 700,
+    border: 'none', background: 'var(--primary)', color: '#fff', fontSize: 14, fontWeight: 700,
     cursor: busy ? 'default' : 'pointer', opacity: busy ? 0.6 : 1, ...extra,
   })
 
@@ -145,11 +145,7 @@ export default function SettingsInstagram() {
                 Verbunden{conn.account_type ? ` · ${conn.account_type}` : ''}
               </div>
             </div>
-            <button onClick={onDisconnect} disabled={busy} style={{
-              display: 'flex', alignItems: 'center', gap: 6, padding: '8px 14px',
-              borderRadius: 8, border: `1px solid ${C.border}`, background: '#fff',
-              color: '#991B1B', fontSize: 13, fontWeight: 600, cursor: 'pointer',
-            }}><Unlink size={15} /> Trennen</button>
+            <button className="lk-btn lk-btn-ghost" onClick={onDisconnect} disabled={busy} style={{ display: 'flex', alignItems: 'center', gap: 6 }}><Unlink size={15} /> Trennen</button>
           </div>
           {entitled && (
             <button onClick={() => navigate('/instagram')} style={btnPrimary({ marginTop: 16 })}>
@@ -166,15 +162,11 @@ export default function SettingsInstagram() {
             „Verbindung prüfen“ klicken.
           </div>
           <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
-            <button onClick={onConnect} disabled={busy} style={btnPrimary()}>
+            <button onClick={onConnect} disabled={busy} className="lk-btn lk-btn-primary">
               <ExternalLink size={16} /> {linkOpened ? 'Link erneut öffnen' : 'Instagram verbinden'}
             </button>
             {linkOpened && (
-              <button onClick={onCheck} disabled={busy} style={{
-                display: 'flex', alignItems: 'center', gap: 7, padding: '10px 18px', borderRadius: 9,
-                border: `1px solid ${C.border}`, background: '#fff', color: C.text2,
-                fontSize: 14, fontWeight: 700, cursor: busy ? 'default' : 'pointer',
-              }}>
+              <button className="lk-btn lk-btn-ghost" onClick={onCheck} disabled={busy} style={{ display: 'flex', alignItems: 'center', gap: 7 }}>
                 <RefreshCw size={16} style={busy ? { animation: 'spin 1s linear infinite' } : undefined} />
                 Verbindung prüfen
               </button>

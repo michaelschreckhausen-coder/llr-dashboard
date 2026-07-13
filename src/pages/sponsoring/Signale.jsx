@@ -2,13 +2,14 @@
 // Signal-Feed je Sponsor. KI-Extraktion aus eingefügtem Text (detect-signals EF)
 // oder manuelle Erfassung. Schema 'sponsoring'.
 
+import PillSelect from '../../components/PillSelect'
 import { useEffect, useMemo, useState, useCallback } from 'react'
 import { Radar, Sparkles, Plus, Loader2 } from 'lucide-react'
 import { supabase } from '../../lib/supabase'
 import { useTeam } from '../../context/TeamContext'
 import PageHeader from '../../components/PageHeader'
 
-const PRIMARY = 'var(--wl-primary, rgb(49,90,231))'
+const PRIMARY = 'var(--wl-primary, #0A6FB0)'
 const sp = () => supabase.schema('sponsoring')
 
 const TYPE_LABEL = {
@@ -81,16 +82,13 @@ export default function Signale() {
 
       <div style={{ ...card, marginBottom: 24 }}>
         <div style={{ display: 'flex', gap: 10, marginBottom: 10 }}>
-          <select value={selSponsor} onChange={(e) => setSelSponsor(e.target.value)} style={{ ...input, maxWidth: 280 }}>
-            <option value="">— Sponsor wählen —</option>
-            {sortedSponsors.map((s) => <option key={s.id} value={s.id}>{orgName[s.organization_id] || '—'}</option>)}
-          </select>
+          <PillSelect value={selSponsor} onChange={setSelSponsor} neutral options={[{ value: '', label: `— Sponsor wählen —` }, ...sortedSponsors.map((s) => ({ value: s.id, label: orgName[s.organization_id] || '—' }))]} buttonStyle={{ minWidth: 140 }} />
         </div>
         <textarea value={text} onChange={(e) => setText(e.target.value)} rows={5}
                   placeholder="Presse-/News-/LinkedIn-Auszug einfügen…" style={{ ...input, resize: 'vertical' }} />
         <div style={{ marginTop: 10 }}>
           <button onClick={detect} disabled={busy || !selSponsor || !text.trim()}
-                  style={{ ...primaryBtn, opacity: busy || !selSponsor || !text.trim() ? 0.6 : 1 }}>
+                  className="lk-btn lk-btn-navy" style={{ opacity: busy || !selSponsor || !text.trim() ? 0.6 : 1 }}>
             {busy ? <Loader2 size={14} className="spin" /> : <Sparkles size={14} />} Signale erkennen
           </button>
         </div>
@@ -127,8 +125,8 @@ export default function Signale() {
 
 const card = { border: '1px solid var(--border)', borderRadius: 14, background: 'var(--surface)', padding: 16 }
 const input = { padding: '8px 10px', borderRadius: 8, border: '1px solid var(--border)', background: 'var(--surface)', color: 'var(--text-strong)', fontSize: 13.5, width: '100%', boxSizing: 'border-box' }
-const primaryBtn = { display: 'inline-flex', alignItems: 'center', gap: 6, padding: '9px 16px', borderRadius: 999, border: 'none', background: PRIMARY, color: '#fff', fontSize: 13, fontWeight: 700, cursor: 'pointer' }
-const chip = { fontSize: 11.5, fontWeight: 700, color: PRIMARY, background: 'color-mix(in srgb, var(--wl-primary, rgb(49,90,231)) 12%, transparent)', border: '1px solid var(--border)', padding: '2px 9px', borderRadius: 999, whiteSpace: 'nowrap' }
+const primaryBtn = { display: 'inline-flex', alignItems: 'center', gap: 6, padding: '9px 16px', borderRadius: 999, border: 'none', background: 'var(--primary)', color: '#fff', fontSize: 13, fontWeight: 700, cursor: 'pointer' }
+const chip = { fontSize: 11.5, fontWeight: 700, color: PRIMARY, background: 'color-mix(in srgb, var(--wl-primary, #0A6FB0) 12%, transparent)', border: '1px solid var(--border)', padding: '2px 9px', borderRadius: 999, whiteSpace: 'nowrap' }
 const muted = { display: 'flex', alignItems: 'center', gap: 8, color: 'var(--text-muted)', fontSize: 14 }
 const errBox = { padding: '10px 14px', borderRadius: 10, background: '#FEE2E2', color: '#991B1B', fontSize: 13, marginBottom: 16 }
 const okBox = { padding: '10px 14px', borderRadius: 10, background: '#D1FAE5', color: '#065F46', fontSize: 13, marginBottom: 16 }

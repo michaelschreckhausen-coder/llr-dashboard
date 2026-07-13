@@ -6,7 +6,7 @@ import { Link } from 'react-router-dom'
 import { useEntitlements } from '../hooks/useEntitlements'
 import { MODULES } from '../lib/modules'
 
-const PRIMARY = 'var(--wl-primary, rgb(49,90,231))'
+const PRIMARY = 'var(--wl-primary, #0A6FB0)'
 
 export default function ModuleGuard({ module: moduleKey, children }) {
   const { hasModule, loading, isTrial, trialDaysLeft, accountStatus, planName } = useEntitlements()
@@ -67,12 +67,12 @@ export default function ModuleGuard({ module: moduleKey, children }) {
           style={{
             padding: '10px 24px',
             borderRadius: 999,
-            background: PRIMARY,
+            background: 'var(--primary)',
             color: '#fff',
             fontSize: 14,
             fontWeight: 700,
             textDecoration: 'none',
-            boxShadow: '0 4px 12px rgba(49,90,231,0.25)',
+            boxShadow: '0 4px 12px rgba(10,111,176,0.25)',
           }}
         >
           🚀 Plan ändern

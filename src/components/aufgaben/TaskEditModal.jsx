@@ -15,6 +15,7 @@
 //   onSaved     — () → void  (refetch trigger)
 //   onDeleted   — () → void  (refetch trigger; nur lead_task)
 
+import PillSelect from '../PillSelect'
 import React, { useEffect, useMemo, useState } from 'react'
 import TaskSourceIcon from '../TaskSourceIcon'
 import { useNavigate } from 'react-router-dom'
@@ -22,7 +23,7 @@ import { TASK_SOURCES } from '../../lib/taskSources'
 import { getCapabilities } from '../../lib/taskSourceCapabilities'
 import MultiAssigneePicker from '../leads/MultiAssigneePicker'
 
-const PRIMARY = 'rgb(49,90,231)'
+const PRIMARY = '#0A6FB0'
 
 const PRIORITY_OPTIONS = [
   { value: 'low',    label: 'Niedrig' },
@@ -217,14 +218,7 @@ export default function TaskEditModal({ task, members = [], uid, onClose, onSave
                   uid={uid}
                 />
               ) : (
-                <select value={assignedTo || ''} onChange={e => setAssignedTo(e.target.value)}
-                  style={inputStyle}>
-                  <option value="">— Niemand zugewiesen —</option>
-                  {(members || []).map(m => {
-                    const mid = m.user_id || m.id
-                    return <option key={mid} value={mid}>{memberLabel(m)}{mid === uid ? ' (Ich)' : ''}</option>
-                  })}
-                </select>
+                <PillSelect value={assignedTo || ''} onChange={v => setAssignedTo(v)} neutral options={[{ value: '', label: `— Niemand zugewiesen —` }, ...members || [].map((m) => { const mid = m.user_id || m.id; return ({ value: mid, label: `${memberLabel(m)}${mid === uid ? ' (Ich)' : ''}` }); })]} buttonStyle={{ minWidth: 140 }} />
               )}
             </Field>
           ) : caps?.assignedToHint ? (
@@ -247,10 +241,7 @@ export default function TaskEditModal({ task, members = [], uid, onClose, onSave
               )}
               {editable.priority && (
                 <Field label="Priorität">
-                  <select value={priority} onChange={e => setPriority(e.target.value)}
-                    style={inputStyle}>
-                    {PRIORITY_OPTIONS.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
-                  </select>
+                  <PillSelect value={priority} onChange={v => setPriority(v)} neutral options={[...PRIORITY_OPTIONS.map((o) => ({ value: o.value, label: o.label }))]} buttonStyle={{ minWidth: 140 }} />
                 </Field>
               )}
             </div>
@@ -280,29 +271,20 @@ export default function TaskEditModal({ task, members = [], uid, onClose, onSave
         <div style={{ padding: '14px 22px', borderTop: '1px solid #E5E7EB', display: 'flex', justifyContent: 'space-between', gap: 10, background: '#FAFAFA' }}>
           <div>
             {caps?.canDelete && (
-              <button onClick={handleDelete} disabled={saving}
-                style={{
-                  padding: '8px 14px', borderRadius: 10, border: '1px solid #FECACA',
-                  background: '#fff', color: '#DC2626', fontSize: 12, fontWeight: 600, cursor: saving ? 'wait' : 'pointer',
-                }}>
+              <button className="lk-btn lk-btn-ghost" onClick={handleDelete} disabled={saving}
+                >
                 🗑 Löschen
               </button>
             )}
           </div>
           <div style={{ display: 'flex', gap: 8 }}>
-            <button onClick={onClose} disabled={saving}
-              style={{
-                padding: '8px 16px', borderRadius: 10, border: '1px solid #E5E7EB',
-                background: '#fff', color: '#374151', fontSize: 13, fontWeight: 600, cursor: saving ? 'wait' : 'pointer',
-              }}>
+            <button className="lk-btn lk-btn-ghost" onClick={onClose} disabled={saving}
+              >
               Abbrechen
             </button>
             {!isSynthetic && caps?.save && (
-              <button onClick={handleSave} disabled={saving}
-                style={{
-                  padding: '8px 18px', borderRadius: 10, border: 'none',
-                  background: PRIMARY, color: '#fff', fontSize: 13, fontWeight: 700, cursor: saving ? 'wait' : 'pointer',
-                }}>
+              <button className="lk-btn lk-btn-cta" onClick={handleSave} disabled={saving}
+                >
                 {saving ? 'Speichert…' : 'Speichern'}
               </button>
             )}

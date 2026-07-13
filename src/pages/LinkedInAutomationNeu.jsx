@@ -2,12 +2,13 @@
 // Berührt NICHT das Altsystem (/automatisierung, automation_*). Liest RLS-scoped (Team-Policies P1) +
 // funnel-RPC (la_campaign_funnel) + health-View (la_runner_health). 0 reale Sends aus dem UI (Runner sendet
 // nur bei aktiver Kampagne + fälligem Job; die "ehrliche UI" zeigt genau das an).
+import PillSelect from '../components/PillSelect'
 import { useEffect, useState, useCallback, useRef } from 'react'
 import { supabase } from '../lib/supabase'
 import { useTeam } from '../context/TeamContext'
 import { Plus, Zap, Play, Pause, Square, RefreshCw, Users, AlertTriangle, Activity, Archive, RotateCcw, Trash2, X } from 'lucide-react'
 
-const PRIMARY = 'rgb(49,90,231)'
+const PRIMARY = '#0A6FB0'
 const PRIMARY_VAR = `var(--wl-primary, ${PRIMARY})`
 const pageOuterStyle = { background: 'var(--surface-canvas, #F8FAFC)', minHeight: '100vh', padding: '24px 24px 60px' }
 const pageStyle = { width: '100%', maxWidth: 1180, margin: '0 auto' }
@@ -15,7 +16,7 @@ const headerRowStyle = { display: 'flex', alignItems: 'center', justifyContent: 
 const titleStyle = { fontSize: 22, fontWeight: 800, margin: 0, color: 'var(--text-strong, #111827)' }
 const subtitleStyle = { fontSize: 13, color: 'var(--text-muted, #6B7280)', marginTop: 4 }
 const cardStyle = { background: 'var(--surface)', borderRadius: 12, border: '1px solid var(--border, #E4E7EC)', padding: '16px 18px' }
-const primaryBtn = { padding: '9px 18px', background: PRIMARY_VAR, color: '#fff', border: 'none', borderRadius: 10, fontSize: 13, fontWeight: 700, display: 'inline-flex', alignItems: 'center', gap: 6, cursor: 'pointer' }
+const primaryBtn = { padding: '9px 18px', background: 'var(--primary)', color: '#fff', border: 'none', borderRadius: 10, fontSize: 13, fontWeight: 700, display: 'inline-flex', alignItems: 'center', gap: 6, cursor: 'pointer' }
 const ghostBtn = { padding: '7px 12px', background: 'var(--surface)', color: '#374151', border: '1.5px solid #E4E7EC', borderRadius: 10, fontSize: 12, fontWeight: 600, display: 'inline-flex', alignItems: 'center', gap: 6, cursor: 'pointer' }
 const inputStyle = { padding: '8px 12px', borderRadius: 8, border: '1.5px solid #E4E7EC', fontSize: 13, outline: 'none', width: '100%', boxSizing: 'border-box', fontFamily: 'inherit', background: 'var(--surface)' }
 const labelStyle = { display: 'block', fontSize: 10, fontWeight: 700, color: 'var(--text-muted, #6B7280)', textTransform: 'uppercase', letterSpacing: '0.07em', marginBottom: 5 }
@@ -229,7 +230,7 @@ export default function LinkedInAutomationNeu({ session }) {
           <h1 style={titleStyle}>Automatisierung</h1>
           <p style={subtitleStyle}>Kampagnen-Builder + Funnel-Monitor.</p>
         </div>
-        <button style={primaryBtn} onClick={createCampaign} disabled={creating}><Plus size={16} /> Neue Kampagne</button>
+        <button className="lk-btn lk-btn-navy" onClick={createCampaign} disabled={creating}><Plus size={16} /> Neue Kampagne</button>
       </div>
 
       {/* Runner-Health-Leiste */}
@@ -251,7 +252,7 @@ export default function LinkedInAutomationNeu({ session }) {
             const activeC = campaigns.filter(c => !c.archived_at)
             const archivedC = campaigns.filter(c => c.archived_at)
             const visible = showArchived ? archivedC : activeC
-            const tabStyle = on => ({ flex: 1, padding: '6px 8px', borderRadius: 7, fontSize: 12, fontWeight: 700, cursor: 'pointer', textAlign: 'center', border: 'none', background: on ? PRIMARY_VAR + '18' : 'transparent', color: on ? PRIMARY_VAR : 'var(--text-muted)' })
+            const tabStyle = on => ({ flex: 1, padding: '6px 8px', borderRadius: 7, fontSize: 12, fontWeight: 700, cursor: 'pointer', textAlign: 'center', border: 'none', background: on ? PRIMARY_VAR + '18' : 'transparent', color: on ? 'var(--primary)' : 'var(--text-muted)' })
             return (
               <>
                 <div style={{ display: 'flex', gap: 4, marginBottom: 8 }}>
@@ -288,7 +289,7 @@ export default function LinkedInAutomationNeu({ session }) {
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 14 }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}><b style={{ fontSize: 15 }}>{sel.name}</b><Pill status={sel.status} /></div>
                 <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
-                  {sel.status !== 'active' && <button style={primaryBtn} onClick={() => { loadDetail(sel.id); setActivateModal(true) }}><Play size={14} /> Aktivieren</button>}
+                  {sel.status !== 'active' && <button className="lk-btn lk-btn-navy" onClick={() => { loadDetail(sel.id); setActivateModal(true) }}><Play size={14} /> Aktivieren</button>}
                   {sel.status === 'active' && <button style={ghostBtn} onClick={() => setStatus('paused')}><Pause size={13} /> Pausieren</button>}
                   <button style={ghostBtn} onClick={() => setStatus('completed')}><Square size={13} /> Stoppen</button>
                   {sel.archived_at
@@ -306,7 +307,7 @@ export default function LinkedInAutomationNeu({ session }) {
               <div style={{ display: 'flex', gap: 8 }}>
                 {funnelStages.map((s, i) => (
                   <div key={s.k} style={{ flex: 1, textAlign: 'center', padding: '12px 6px', background: 'var(--surface-canvas, #F8FAFC)', borderRadius: 10, position: 'relative' }}>
-                    <div style={{ fontSize: 22, fontWeight: 800, color: i === 0 ? PRIMARY_VAR : 'var(--text-strong)' }}>{s.n}</div>
+                    <div style={{ fontSize: 22, fontWeight: 800, color: i === 0 ? 'var(--primary)' : 'var(--text-strong)' }}>{s.n}</div>
                     <div style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 2 }}>{s.label}</div>
                   </div>
                 ))}
@@ -325,9 +326,7 @@ export default function LinkedInAutomationNeu({ session }) {
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginTop: 12 }}>
                 <div><label style={labelStyle}>Name</label><input style={inputStyle} defaultValue={sel.name} onBlur={e => e.target.value !== sel.name && saveCampaign({ name: e.target.value })} /></div>
                 <div><label style={labelStyle}>Account</label>
-                  <select style={inputStyle} value={sel.account_id} onChange={e => saveCampaign({ account_id: e.target.value })}>
-                    {accounts.map(a => <option key={a.id} value={a.id}>{a.public_identifier || a.unipile_account_id} ({a.status})</option>)}
-                  </select>
+                  <PillSelect value={sel.account_id} onChange={v => saveCampaign({ account_id: v })} neutral options={[...accounts.map((a) => ({ value: a.id, label: `${a.public_identifier || a.unipile_account_id} (${a.status})` }))]} buttonStyle={{ minWidth: 140 }} />
                 </div>
               </div>
 
@@ -347,14 +346,11 @@ export default function LinkedInAutomationNeu({ session }) {
                     )}
                     {selAudience.kind === 'list' && (
                       <div style={{ flex: 1, minWidth: 220 }}><label style={labelStyle}>Liste</label>
-                        <select style={inputStyle} value={selAudience.query?.list_id || ''} onChange={e => saveAudience({ query: { ...(selAudience.query || {}), list_id: e.target.value || null } })}>
-                          <option value="">— Liste wählen —</option>
-                          {inboxLists.map(l => <option key={l.id} value={l.id}>{l.name}</option>)}
-                        </select>
+                        <PillSelect value={selAudience.query?.list_id || ''} onChange={v => saveAudience({ query: { ...(selAudience.query || {}), list_id: v || null } })} neutral options={[{ value: '', label: `— Liste wählen —` }, ...inboxLists.map((l) => ({ value: l.id, label: l.name }))]} buttonStyle={{ minWidth: 140 }} />
                         {inboxLists.length === 0 && <div style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 4 }}>Noch keine Listen — unter „LinkedIn Kontakte" anlegen.</div>}
                       </div>
                     )}
-                    <button style={primaryBtn} onClick={runAudience}><Zap size={14} /> Audience ausführen</button>
+                    <button className="lk-btn lk-btn-navy" onClick={runAudience}><Zap size={14} /> Audience ausführen</button>
                     <button style={ghostBtn} onClick={runAudienceScan}><Users size={14} /> Audience scannen</button>
                     {selAudience.last_run_at && <span style={{ fontSize: 11, color: 'var(--text-muted)' }}>zuletzt: {new Date(selAudience.last_run_at).toLocaleString('de-DE')}</span>}
                   </div>
@@ -378,15 +374,13 @@ export default function LinkedInAutomationNeu({ session }) {
                     {steps.map((st, i) => (
                       <div key={st.id || st._key} style={{ display: 'flex', gap: 8, alignItems: 'center', marginBottom: 8, flexWrap: 'wrap' }}>
                         <span style={{ width: 22, height: 22, borderRadius: 6, background: PRIMARY_VAR + '18', color: PRIMARY_VAR, fontSize: 11, fontWeight: 800, display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }}>{i + 1}</span>
-                        <select disabled={seqLocked} style={{ ...inputStyle, width: 130 }} value={st.action} onChange={e => saveStep(i, { action: e.target.value })}>{ACTIONS.map(a => <option key={a} value={a}>{a}</option>)}</select>
-                        <select disabled={seqLocked} style={{ ...inputStyle, width: 170 }} value={st.condition} onChange={e => saveStep(i, { condition: e.target.value })}>{CONDITIONS.map(([c, l]) => <option key={c} value={c}>{l}</option>)}</select>
+                        <PillSelect value={st.action} onChange={__lkv => saveStep(i, { action: __lkv })} neutral disabled={seqLocked} options={[...ACTIONS.map((a) => ({ value: a, label: a }))]} buttonStyle={{ minWidth: 140 }} />
+                        <PillSelect value={st.condition} onChange={__lkv => saveStep(i, { condition: __lkv })} neutral disabled={seqLocked} options={[...CONDITIONS.map(([c, l]) => ({ value: c, label: l }))]} buttonStyle={{ minWidth: 140 }} />
                         {(st.action === 'message' || st.action === 'follow_up' || st.action === 'inmail' || st.action === 'comment') && (
                           <input disabled={seqLocked} style={{ ...inputStyle, flex: 1, minWidth: 180 }} defaultValue={st.template?.text || ''} placeholder={st.action === 'comment' ? 'Kommentartext (öffentlich!)…' : 'Nachrichtentext…'} onBlur={e => saveStep(i, { template: { ...(st.template || {}), text: e.target.value } })} />
                         )}
                         {st.action === 'react' && (
-                          <select disabled={seqLocked} style={{ ...inputStyle, width: 130 }} value={st.template?.reaction_type || 'like'} onChange={e => saveStep(i, { template: { ...(st.template || {}), reaction_type: e.target.value } })}>
-                            {['like', 'celebrate', 'support', 'love', 'insightful', 'funny'].map(t => <option key={t} value={t}>{t}</option>)}
-                          </select>
+                          <PillSelect value={st.template?.reaction_type || 'like'} onChange={__lkv => saveStep(i, { template: { ...(st.template || {}), reaction_type: __lkv } })} neutral disabled={seqLocked} options={[...['like', 'celebrate', 'support', 'love', 'insightful', 'funny'].map((t) => ({ value: t, label: t }))]} buttonStyle={{ minWidth: 140 }} />
                         )}
                         {!seqLocked && <button style={{ ...ghostBtn, padding: '6px 8px' }} onClick={() => delStep(i)}>✕</button>}
                       </div>
@@ -394,7 +388,7 @@ export default function LinkedInAutomationNeu({ session }) {
                     {!seqLocked && (
                       <div style={{ display: 'flex', gap: 8, marginTop: 4 }}>
                         <button style={ghostBtn} onClick={addStep}><Plus size={13} /> Schritt</button>
-                        <button style={{ ...primaryBtn, opacity: stepsDirty ? 1 : 0.5, cursor: stepsDirty ? 'pointer' : 'default' }} disabled={!stepsDirty} onClick={saveSteps}>Sequenz speichern</button>
+                        <button className="lk-btn lk-btn-navy" style={{ opacity: stepsDirty ? 1 : 0.5, cursor: stepsDirty ? 'pointer' : 'default' }} disabled={!stepsDirty} onClick={saveSteps}>Sequenz speichern</button>
                       </div>
                     )}
                   </div>
@@ -451,7 +445,7 @@ export default function LinkedInAutomationNeu({ session }) {
               </div>
               <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
                 <button style={ghostBtn} onClick={() => setActivateModal(false)}>Abbrechen</button>
-                <button style={primaryBtn} onClick={confirmActivate}><Play size={14} /> Ja, aktivieren &amp; senden</button>
+                <button className="lk-btn lk-btn-navy" onClick={confirmActivate}><Play size={14} /> Ja, aktivieren &amp; senden</button>
               </div>
             </div>
           </div>
@@ -481,7 +475,7 @@ export default function LinkedInAutomationNeu({ session }) {
               )}
               <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
                 <button style={ghostBtn} onClick={() => setDeleteModal(null)}>Abbrechen</button>
-                <button style={{ ...primaryBtn, background: '#DC2626' }} onClick={deleteCampaign}><Trash2 size={14} /> Endgültig löschen</button>
+                <button className="lk-btn lk-btn-danger" onClick={deleteCampaign}><Trash2 size={14} /> Endgültig löschen</button>
               </div>
             </div>
           </div>

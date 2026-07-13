@@ -6,7 +6,7 @@ import React, { useState, useEffect } from 'react'
 import { supabase } from '../lib/supabase'
 import { setMemoryEnabled } from '../lib/contentMemory'
 
-const P = 'var(--wl-primary, rgb(49,90,231))'
+const P = 'var(--wl-primary, #0A6FB0)'
 
 export default function MemoryConsentModal({ session, onClose }) {
   const [saving, setSaving] = useState(false)
@@ -23,7 +23,7 @@ export default function MemoryConsentModal({ session, onClose }) {
       style={{ position:'fixed', inset:0, background:'rgba(0,0,0,0.6)', zIndex:2000, display:'flex', alignItems:'center', justifyContent:'center', padding:24 }}>
       <div onClick={e => e.stopPropagation()}
         style={{ background:'var(--surface)', borderRadius:16, maxWidth:540, width:'100%', overflow:'hidden', display:'flex', flexDirection:'column', boxShadow:'0 20px 60px rgba(0,0,0,0.35)' }}>
-        <div style={{ padding:'24px 28px 18px', background:'linear-gradient(135deg, rgba(49,90,231,.08), rgba(124,58,237,.06))' }}>
+        <div style={{ padding:'24px 28px 18px', background:'linear-gradient(135deg, rgba(10,111,176,.08), rgba(0,48,96,.06))' }}>
           <div style={{ fontSize:42, marginBottom:10 }}>🧠</div>
           <h2 style={{ fontSize:22, fontWeight:700, color:'rgb(20,20,43)', margin:0, lineHeight:1.25 }}>
             Soll Leadesk von deinem Schreiben lernen?
@@ -54,8 +54,8 @@ export default function MemoryConsentModal({ session, onClose }) {
             style={{ padding:'10px 18px', borderRadius:10, border:'1px solid var(--border)', background:'transparent', color:'var(--text-muted)', fontSize:13, fontWeight:600, cursor: saving ? 'wait' : 'pointer' }}>
             Nein, danke
           </button>
-          <button onClick={() => decide(true)} disabled={saving}
-            style={{ padding:'10px 22px', borderRadius:10, border:'none', background: P, color:'#fff', fontSize:13, fontWeight:700, cursor: saving ? 'wait' : 'pointer', boxShadow:'0 2px 10px rgba(49,90,231,.25)' }}>
+          <button className="lk-btn lk-btn-primary" onClick={() => decide(true)} disabled={saving}
+            >
             {saving ? 'Speichere…' : 'Ja, lern von mir'}
           </button>
         </div>

@@ -32,7 +32,7 @@ export default function BrandVoiceSwitcher({ session, compact = false }) {
 
   return (
     <div ref={ref} style={{ position:'relative' }}>
-      <button onClick={() => setOpen(o => !o)}
+      <button className="lk-dd-trigger" onClick={() => setOpen(o => !o)}
         style={{
           display:'inline-flex', alignItems:'center', gap:8,
           height: 38, boxSizing: 'border-box',
@@ -41,7 +41,7 @@ export default function BrandVoiceSwitcher({ session, compact = false }) {
           border:'1px solid var(--border)',
           background:'var(--surface)',
           fontSize: compact ? 12 : 13,
-          fontWeight: 600,
+          fontWeight: 500,
           color:'var(--text-primary)',
           cursor:'pointer',
           maxWidth: 280,
@@ -64,10 +64,10 @@ export default function BrandVoiceSwitcher({ session, compact = false }) {
           maxHeight: '70vh', overflowY: 'auto',
         }}>
           <button onClick={() => { switchBrandVoice('__none__'); setOpen(false) }}
-            style={{ width:'100%', textAlign:'left', display:'flex', alignItems:'center', gap:10, padding:'9px 12px', borderRadius:9, border:'none', cursor:'pointer', background: noBrand ? 'rgba(49,90,231,0.08)' : 'transparent', color:'var(--text-primary)', fontSize:13, fontWeight:600 }}>
+            style={{ width:'100%', textAlign:'left', display:'flex', alignItems:'center', gap:10, padding:'9px 12px', borderRadius:9, border:'none', cursor:'pointer', background: noBrand ? 'rgba(10,111,176,0.08)' : 'transparent', color:'var(--text-primary)', fontSize:13, fontWeight:600 }}>
             <User size={14} strokeWidth={1.75}/>
             <span style={{ flex:1 }}>Ohne Brand <span style={{ fontSize:11, color:'var(--text-muted)', fontWeight:500 }}>· persönlich</span></span>
-            {noBrand && <span style={{ color:'var(--wl-primary, rgb(49,90,231))', fontSize:12 }}>✓</span>}
+            {noBrand && <span style={{ color:'var(--wl-primary, #0A6FB0)', fontSize:12 }}>✓</span>}
           </button>
           <div style={{ borderTop:'1px solid var(--border-soft, #F1F5F9)', margin:'4px 0' }}/>
           {own.length > 0 && (
@@ -88,11 +88,11 @@ export default function BrandVoiceSwitcher({ session, compact = false }) {
           )}
           <div style={{ borderTop:'1px solid var(--border-soft, #F1F5F9)', marginTop:6, padding:6 }}>
             <button onClick={() => { setOpen(false); navigate('/personal-brand') }}
-              style={{ width:'100%', textAlign:'left', padding:'8px 10px', borderRadius:8, border:'none', background:'transparent', cursor:'pointer', fontSize:12, fontWeight:600, color:'var(--wl-primary, rgb(49,90,231))' }}>
+              style={{ width:'100%', textAlign:'left', padding:'8px 10px', borderRadius:8, border:'none', background:'transparent', cursor:'pointer', fontSize:12, fontWeight:600, color:'var(--wl-primary, #0A6FB0)' }}>
               + Neue Personal Brand
             </button>
             <button onClick={() => { setOpen(false); navigate('/company-brand') }}
-              style={{ width:'100%', textAlign:'left', padding:'8px 10px', borderRadius:8, border:'none', background:'transparent', cursor:'pointer', fontSize:12, fontWeight:600, color:'var(--wl-primary, rgb(49,90,231))' }}>
+              style={{ width:'100%', textAlign:'left', padding:'8px 10px', borderRadius:8, border:'none', background:'transparent', cursor:'pointer', fontSize:12, fontWeight:600, color:'var(--wl-primary, #0A6FB0)' }}>
               + Neue Company Brand
             </button>
             <button onClick={() => { setOpen(false); navigate('/personal-brand') }}
@@ -116,22 +116,22 @@ function BVItem({ bv, active, onPick, shared = false }) {
         display:'flex', alignItems:'center', gap:10,
         padding:'9px 12px', borderRadius:9,
         border:'none',
-        background: active ? 'rgba(49,90,231,0.07)' : 'transparent',
+        background: active ? 'rgba(10,111,176,0.07)' : 'transparent',
         cursor:'pointer',
         transition:'background .12s',
       }}
-      onMouseEnter={e => { if (!active) e.currentTarget.style.background = '#F8FAFC' }}
+      onMouseEnter={e => { if (!active) e.currentTarget.style.background = 'var(--tint-cyan, #EAF8FE)' }}
       onMouseLeave={e => { if (!active) e.currentTarget.style.background = 'transparent' }}>
       <span style={{ fontSize:18 }}>{icon}</span>
       <div style={{ flex:1, minWidth:0 }}>
-        <div style={{ fontSize:13, fontWeight: active ? 700 : 600, color: active ? 'var(--wl-primary, rgb(49,90,231))' : 'var(--text-primary)', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>
+        <div style={{ fontSize:13, fontWeight: active ? 700 : 600, color: active ? 'var(--wl-primary, #0A6FB0)' : 'var(--text-primary)', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>
           {bv.name || '(Ohne Namen)'}
         </div>
         <div style={{ fontSize:10, color:'var(--text-muted)' }}>
           {typeLabel}{(shared || bv.is_shared) ? ' · geteilt' : ''}
         </div>
       </div>
-      {active && <span style={{ color:'var(--wl-primary, rgb(49,90,231))', fontSize:14 }}>✓</span>}
+      {active && <span style={{ color:'var(--wl-primary, #0A6FB0)', fontSize:14 }}>✓</span>}
     </button>
   )
 }

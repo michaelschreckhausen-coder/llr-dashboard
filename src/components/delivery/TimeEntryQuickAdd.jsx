@@ -1,4 +1,5 @@
 // src/components/delivery/TimeEntryQuickAdd.jsx
+import PillSelect from '../PillSelect'
 import { useEffect, useMemo, useState } from 'react'
 import { supabase } from '../../lib/supabase'
 import { useTeam } from '../../context/TeamContext'
@@ -234,24 +235,15 @@ export default function TimeEntryQuickAdd({
         )}
 
         <Field label="Projekt">
-          <select value={projectId} onChange={(e) => { setProjectId(e.target.value); setTaskId('') }} style={inputStyle}>
-            <option value="">— wählen —</option>
-            {projects.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
-          </select>
+          <PillSelect value={projectId} onChange={v => { setProjectId(v); setTaskId('') }} neutral options={[{ value: '', label: `— wählen —` }, ...projects.map((p) => ({ value: p.id, label: p.name }))]} buttonStyle={{ minWidth: 140 }} />
         </Field>
 
         <Field label="Task (optional)">
-          <select value={taskId} onChange={(e) => setTaskId(e.target.value)} style={inputStyle} disabled={!projectId}>
-            <option value="">— ohne Task —</option>
-            {tasks.map(t => <option key={t.id} value={t.id}>{t.title}</option>)}
-          </select>
+          <PillSelect value={taskId} onChange={__lkv => setTaskId(__lkv)} neutral disabled={!projectId} options={[{ value: '', label: `— ohne Task —` }, ...tasks.map((t) => ({ value: t.id, label: t.title }))]} buttonStyle={{ minWidth: 140 }} />
         </Field>
 
         <Field label="Tätigkeit (optional)">
-          <select value={activityTypeId} onChange={(e) => setActivityTypeId(e.target.value)} style={inputStyle}>
-            <option value="">— keine —</option>
-            {activityTypes.map(a => <option key={a.id} value={a.id}>{a.name}</option>)}
-          </select>
+          <PillSelect value={activityTypeId} onChange={v => setActivityTypeId(v)} neutral options={[{ value: '', label: `— keine —` }, ...activityTypes.map((a) => ({ value: a.id, label: a.name }))]} buttonStyle={{ minWidth: 140 }} />
         </Field>
 
         <Field label="Beschreibung (optional)">
@@ -283,15 +275,11 @@ export default function TimeEntryQuickAdd({
           >
             Abbrechen
           </button>
-          <button
+          <button className="lk-btn lk-btn-cta"
             type="button"
             onClick={handleSubmit}
             disabled={submitting}
-            style={{
-              padding: '8px 16px', backgroundColor: 'var(--wl-primary, rgb(49,90,231))', color: 'white',
-              border: 'none', borderRadius: 6, fontWeight: 600,
-              cursor: submitting ? 'not-allowed' : 'pointer', opacity: submitting ? 0.6 : 1,
-            }}
+            style={{ opacity: submitting ? 0.6 : 1 }}
           >
             {submitting ? 'Speichert…' : 'Speichern'}
           </button>

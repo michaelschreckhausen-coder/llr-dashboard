@@ -10,6 +10,7 @@
 //   - Toggle-Button oben links bleibt sichtbar
 //   - Beim ersten Send im Clean-Modus → Sidebar klappt automatisch auf
 
+import EmptyOrb from '../components/EmptyOrb'
 import React, { useState, useEffect, useRef } from 'react'
 import { Pencil, Pin, BookOpen, Target, Send, Loader2, Globe, Plus, FileText, ChevronLeft, ChevronRight, ChevronsRight, ChevronDown, X, Mic, Square, Image as ImageIcon, Download, Sparkles, Wand2, FilePlus2, Brush, MessageSquare, CalendarPlus, Maximize2, Minimize2, Paperclip, Trash2, MoreVertical, Unlink, Layers, Images } from 'lucide-react'
 import { useVoiceInput } from '../hooks/useVoiceInput'
@@ -54,7 +55,7 @@ function inlineLoaderHeight(ratio) {
   return Math.max(300, Math.min(460, h))
 }
 
-const P = 'var(--wl-primary, rgb(49,90,231))'
+const P = 'var(--wl-primary, #0A6FB0)'
 const ACCENT = '#30A0D0'
 
 // Minimal inline-Markdown-Parser: **bold**, *italic*. Lässt Listen/Linebreaks
@@ -104,7 +105,7 @@ function PostExtractCard({ text, actions }) {
   return (
     <div data-tour-id="cs-post-card" style={{
       margin:'10px 0', padding:'14px 16px',
-      background:'#F8FAFC', border:'1.5px solid rgba(49,90,231,0.25)', borderRadius:11, position:'relative',
+      background:'#F8FAFC', border:'1.5px solid rgba(10,111,176,0.25)', borderRadius:11, position:'relative',
     }}>
       <div style={{ fontSize:11, fontWeight:700, color:P, textTransform:'uppercase', letterSpacing:'0.06em', marginBottom:8 }}>
         📋 Beitragstext
@@ -127,7 +128,7 @@ function PostActions({ text, onInsertToDoc, onAttachToPost, loadExistingPosts, c
     <div style={{ display:'flex', gap:8, flexWrap:'wrap', marginTop:12 }}>
       <div style={{ position:'relative' }}>
         <Tip label="Ins Dokument"><button data-tour-id="cs-insert-doc" onClick={() => { if ((chatDocs||[]).length || hasOpenDoc) setMenuOpen(o => !o); else onInsertToDoc && onInsertToDoc(text, 'new') }}
-          style={{ width:34, height:34, padding:0, justifyContent:'center', borderRadius:8, border:'none', background:P, color:'#fff', cursor:'pointer', display:'inline-flex', alignItems:'center' }}>
+          style={{ width:34, height:34, padding:0, justifyContent:'center', borderRadius:8, border:'none', background:'var(--primary)', color:'#fff', cursor:'pointer', display:'inline-flex', alignItems:'center' }}>
           <FileText size={15} strokeWidth={1.9}/>
         </button></Tip>
         {menuOpen && (
@@ -152,7 +153,7 @@ function PostActions({ text, onInsertToDoc, onAttachToPost, loadExistingPosts, c
             const open = !postMenuOpen; setPostMenuOpen(open)
             if (open && posts === null && loadExistingPosts) { setPostsLoading(true); const r = await loadExistingPosts(); setPosts(r || []); setPostsLoading(false) }
           }}
-          style={{ width:34, height:34, padding:0, justifyContent:'center', borderRadius:8, border:'1.5px solid ' + P, background:'rgba(49,90,231,0.06)', color:P, cursor:'pointer', display:'inline-flex', alignItems:'center' }}>
+          style={{ width:34, height:34, padding:0, justifyContent:'center', borderRadius:8, border:'1.5px solid ' + P, background:'rgba(10,111,176,0.06)', color:P, cursor:'pointer', display:'inline-flex', alignItems:'center' }}>
           <CalendarPlus size={15} strokeWidth={1.9}/>
         </button></Tip>
         {postMenuOpen && (
@@ -197,9 +198,9 @@ function SourcesList({ sources }) {
 function TypingIndicator() {
   return (
     <div style={{ display:'flex', alignItems:'center', gap:6, padding:'12px 14px', background:'#fff', border:'1px solid var(--border)', borderRadius:12, width:'fit-content' }}>
-      <span style={{ width:7, height:7, borderRadius:'50%', background: P, animation: 'tw-blink 1.4s infinite ease-in-out', animationDelay:'0s' }}/>
-      <span style={{ width:7, height:7, borderRadius:'50%', background: P, animation: 'tw-blink 1.4s infinite ease-in-out', animationDelay:'0.2s' }}/>
-      <span style={{ width:7, height:7, borderRadius:'50%', background: P, animation: 'tw-blink 1.4s infinite ease-in-out', animationDelay:'0.4s' }}/>
+      <span style={{ width:7, height:7, borderRadius:'50%', background: 'var(--primary)', animation: 'tw-blink 1.4s infinite ease-in-out', animationDelay:'0s' }}/>
+      <span style={{ width:7, height:7, borderRadius:'50%', background: 'var(--primary)', animation: 'tw-blink 1.4s infinite ease-in-out', animationDelay:'0.2s' }}/>
+      <span style={{ width:7, height:7, borderRadius:'50%', background: 'var(--primary)', animation: 'tw-blink 1.4s infinite ease-in-out', animationDelay:'0.4s' }}/>
       <style>{`@keyframes tw-blink { 0%, 80%, 100% { opacity: 0.2; } 40% { opacity: 1; } }`}</style>
     </div>
   )
@@ -1381,8 +1382,8 @@ Neue Anfrage: "${p}"` },
           <div style={{ padding:'14px 12px 10px', display:'flex', gap:8 }}>
             <button onClick={() => setSidebarOpen(false)} title="Sidebar einklappen"
               style={{ width:36, height:36, display:'inline-flex', alignItems:'center', justifyContent:'center', borderRadius:9, border:'1px solid var(--border)', background:'var(--surface,#fff)', fontSize:14, cursor:'pointer', color:'var(--text-muted,#667085)' }}>☰</button>
-            <button onClick={newChat}
-              style={{ flex:1, height:36, padding:'0 12px', borderRadius:9, border:'none', background:P, color:'#fff', fontSize:12.5, fontWeight:700, cursor:'pointer', display:'inline-flex', alignItems:'center', justifyContent:'center', gap:6 }}>
+            <button className="lk-btn lk-btn-cta" onClick={newChat}
+              style={{ flex:1, height:36, display:'inline-flex', alignItems:'center', justifyContent:'center', gap:6 }}>
               <Pencil size={13} strokeWidth={2}/>Neuer Chat
             </button>
           </div>
@@ -1440,8 +1441,8 @@ Neue Anfrage: "${p}"` },
           transition:'opacity 0.2s ease' }}>
         {/* Floating Sidebar-Toggle wenn zu */}
         {!sidebarOpen && (
-          <button onClick={() => setSidebarOpen(true)} title="Sidebar öffnen"
-            style={{ position:'absolute', top:14, left:14, zIndex:10, padding:'8px 10px', borderRadius:8, border:'1px solid var(--border)', background:'#fff', fontSize:14, cursor:'pointer', boxShadow:'0 1px 3px rgba(0,0,0,0.05)' }}>
+          <button className="lk-btn lk-btn-ghost" onClick={() => setSidebarOpen(true)} title="Sidebar öffnen"
+            style={{ position:'absolute', top:14, left:14, zIndex:10 }}>
             ☰
           </button>
         )}
@@ -1685,7 +1686,7 @@ Neue Anfrage: "${p}"` },
           }
         }
         const swBtn = (active) => ({ width:46, height:50, display:'inline-flex', alignItems:'center', justifyContent:'center', border:'none', cursor:'pointer',
-          background: active ? 'rgba(49,90,231,0.08)' : 'transparent', color: active ? 'var(--wl-primary, rgb(49,90,231))' : 'var(--text-secondary,#475569)' })
+          background: active ? 'rgba(10,111,176,0.08)' : 'transparent', color: active ? 'var(--wl-primary, #0A6FB0)' : 'var(--text-secondary,#475569)' })
         const swCard = { display:'flex', flexDirection:'column', overflow:'hidden', background:'var(--surface,#fff)',
           border:'1px solid var(--border,#E9ECF2)', borderRight:'none', borderRadius:'10px 0 0 10px', boxShadow:'-2px 0 8px rgba(16,24,40,0.08)' }
         const Switcher = ({ rounded, horizontal } = {}) => (
@@ -1698,9 +1699,9 @@ Neue Anfrage: "${p}"` },
           </div>
         )
         const ctrlBtn = { width:42, height:42, display:'inline-flex', alignItems:'center', justifyContent:'center', border:'none', background:'transparent', cursor:'pointer', color:'var(--text-secondary,#475569)' }
-        const scriptHint = { fontFamily:"'Segoe Script','Bradley Hand','Brush Script MT','Comic Sans MS',cursive", fontStyle:'italic', fontSize:16, fontWeight:600, color:'var(--wl-primary, rgb(49,90,231))', whiteSpace:'nowrap', lineHeight:1 }
+        const scriptHint = { fontFamily:'Inter, sans-serif', fontSize:13, fontWeight:600, color:'var(--wl-primary, #0A6FB0)', whiteSpace:'nowrap', lineHeight:1 }
         const CurvedArrow = () => (
-          <svg width="34" height="24" viewBox="0 0 34 24" fill="none" style={{ color:'var(--wl-primary, rgb(49,90,231))', flexShrink:0 }} aria-hidden="true">
+          <svg width="34" height="24" viewBox="0 0 34 24" fill="none" style={{ color:'var(--wl-primary, #0A6FB0)', flexShrink:0 }} aria-hidden="true">
             <path d="M3 5 C 14 3, 25 7, 30 14" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" fill="none"/>
             <path d="M23 14.5 L 31 15 L 27 8" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" fill="none"/>
           </svg>
@@ -1790,8 +1791,8 @@ Neue Anfrage: "${p}"` },
                 ) : openPicker.type === 'design' ? (
                   <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fill, minmax(120px,1fr))', gap:10 }}>
                     {pickerItems.map(it => (
-                      <button key={it.id} onClick={() => pickerSelectItem(it)} title={it.title || 'Design'}
-                        style={{ display:'flex', flexDirection:'column', gap:5, padding:0, border:'1px solid var(--border,#E9ECF2)', borderRadius:10, background:'#fff', cursor:'pointer', fontFamily:'inherit', overflow:'hidden', textAlign:'left' }}>
+                      <button className="lk-btn lk-btn-ghost" key={it.id} onClick={() => pickerSelectItem(it)} title={it.title || 'Design'}
+                        style={{ display:'flex', flexDirection:'column', gap:5, fontFamily:'inherit', overflow:'hidden', textAlign:'left' }}>
                         <div style={{ width:'100%', aspectRatio:'1 / 1', background:'#f4f6fa center/cover no-repeat' + (it.signed_url ? ` url(${it.signed_url})` : '') }}/>
                         <div style={{ padding:'7px 9px 9px', fontSize:12, fontWeight:600, color:'var(--text-primary)', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{it.title || 'Design'}</div>
                       </button>
@@ -1803,7 +1804,7 @@ Neue Anfrage: "${p}"` },
                       <button key={it.id} onClick={() => pickerSelectItem(it)}
                         style={{ width:'100%', textAlign:'left', display:'flex', alignItems:'center', gap:10, padding:'10px 10px', borderRadius:9, border:'none', background:'transparent', cursor:'pointer', fontFamily:'inherit' }}
                         onMouseEnter={e => e.currentTarget.style.background='#F4F6FA'} onMouseLeave={e => e.currentTarget.style.background='transparent'}>
-                        <span style={{ width:30, height:30, borderRadius:8, flexShrink:0, display:'flex', alignItems:'center', justifyContent:'center', background:'rgba(49,90,231,0.07)', color:'var(--wl-primary, rgb(49,90,231))' }}><FileText size={15} strokeWidth={1.9}/></span>
+                        <span style={{ width:30, height:30, borderRadius:8, flexShrink:0, display:'flex', alignItems:'center', justifyContent:'center', background:'rgba(10,111,176,0.07)', color:'var(--wl-primary, #0A6FB0)' }}><FileText size={15} strokeWidth={1.9}/></span>
                         <span style={{ minWidth:0, flex:1, fontSize:13, fontWeight:600, color:'var(--text-primary)', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{it.title || 'Unbenanntes Dokument'}</span>
                       </button>
                     ))}
@@ -1813,8 +1814,8 @@ Neue Anfrage: "${p}"` },
                 <>
                   {pickerChats.length > 0 && !pickerShowOther && (
                     <>
-                      <button onClick={() => pickerOpenWith(pickerChats[0].id)}
-                        style={{ width:'100%', display:'flex', alignItems:'center', gap:8, padding:'11px 12px', borderRadius:10, border:'none', background:'var(--wl-primary, rgb(49,90,231))', color:'#fff', fontSize:13, fontWeight:700, cursor:'pointer', fontFamily:'inherit', marginBottom:10 }}>
+                      <button className="lk-btn lk-btn-navy" onClick={() => pickerOpenWith(pickerChats[0].id)}
+                        style={{ width:'100%', display:'flex', alignItems:'center', gap:8, fontFamily:'inherit', marginBottom:10 }}>
                         <MessageSquare size={15} strokeWidth={2}/><span style={{ minWidth:0, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>Letzter Chat · {pickerChats[0].title || 'Chat'}</span>
                       </button>
                       <div style={{ fontSize:10.5, fontWeight:700, color:'var(--text-soft,#98a2b3)', textTransform:'uppercase', letterSpacing:'0.06em', padding:'2px 2px 6px' }}>Zugeordnete Chats</div>
@@ -1822,7 +1823,7 @@ Neue Anfrage: "${p}"` },
                         <button key={c.id} onClick={() => pickerOpenWith(c.id)}
                           style={{ width:'100%', textAlign:'left', display:'flex', alignItems:'center', gap:10, padding:'9px 10px', borderRadius:9, border:'none', background:'transparent', cursor:'pointer', fontFamily:'inherit' }}
                           onMouseEnter={e => e.currentTarget.style.background='#F4F6FA'} onMouseLeave={e => e.currentTarget.style.background='transparent'}>
-                          <span style={{ width:30, height:30, borderRadius:8, flexShrink:0, display:'flex', alignItems:'center', justifyContent:'center', background:'rgba(49,90,231,0.07)', color:'var(--wl-primary, rgb(49,90,231))' }}><MessageSquare size={15} strokeWidth={1.9}/></span>
+                          <span style={{ width:30, height:30, borderRadius:8, flexShrink:0, display:'flex', alignItems:'center', justifyContent:'center', background:'rgba(10,111,176,0.07)', color:'var(--wl-primary, #0A6FB0)' }}><MessageSquare size={15} strokeWidth={1.9}/></span>
                           <span style={{ minWidth:0, flex:1, fontSize:13, fontWeight:600, color:'var(--text-primary)', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{c.title || 'Unbenannter Chat'}</span>
                         </button>
                       ))}
@@ -1839,7 +1840,7 @@ Neue Anfrage: "${p}"` },
                         <button key={c.id} onClick={() => pickerOpenWith(c.id)}
                           style={{ width:'100%', textAlign:'left', display:'flex', alignItems:'center', gap:10, padding:'9px 10px', borderRadius:9, border:'none', background:'transparent', cursor:'pointer', fontFamily:'inherit' }}
                           onMouseEnter={e => e.currentTarget.style.background='#F4F6FA'} onMouseLeave={e => e.currentTarget.style.background='transparent'}>
-                          <span style={{ width:30, height:30, borderRadius:8, flexShrink:0, display:'flex', alignItems:'center', justifyContent:'center', background:'rgba(49,90,231,0.07)', color:'var(--wl-primary, rgb(49,90,231))' }}><MessageSquare size={15} strokeWidth={1.9}/></span>
+                          <span style={{ width:30, height:30, borderRadius:8, flexShrink:0, display:'flex', alignItems:'center', justifyContent:'center', background:'rgba(10,111,176,0.07)', color:'var(--wl-primary, #0A6FB0)' }}><MessageSquare size={15} strokeWidth={1.9}/></span>
                           <span style={{ minWidth:0, flex:1, fontSize:13, fontWeight:600, color:'var(--text-primary)', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{c.title || 'Unbenannter Chat'}</span>
                         </button>
                       ))}
@@ -1848,7 +1849,7 @@ Neue Anfrage: "${p}"` },
                   )}
                   <div style={{ borderTop:'1px solid var(--border)', marginTop:10, paddingTop:10, display:'flex', flexDirection:'column', gap:4 }}>
                     {!pickerShowOther
-                      ? <button onClick={pickerLoadBrandChats} style={{ width:'100%', textAlign:'left', padding:'9px 10px', borderRadius:9, border:'none', background:'transparent', cursor:'pointer', fontSize:13, fontWeight:600, color:'var(--wl-primary, rgb(49,90,231))', fontFamily:'inherit' }} onMouseEnter={e => e.currentTarget.style.background='rgba(49,90,231,0.07)'} onMouseLeave={e => e.currentTarget.style.background='transparent'}>+ Anderen Chat wählen…</button>
+                      ? <button onClick={pickerLoadBrandChats} style={{ width:'100%', textAlign:'left', padding:'9px 10px', borderRadius:9, border:'none', background:'transparent', cursor:'pointer', fontSize:13, fontWeight:600, color:'var(--wl-primary, #0A6FB0)', fontFamily:'inherit' }} onMouseEnter={e => e.currentTarget.style.background='rgba(10,111,176,0.07)'} onMouseLeave={e => e.currentTarget.style.background='transparent'}>+ Anderen Chat wählen…</button>
                       : <button onClick={() => setPickerShowOther(false)} style={{ width:'100%', textAlign:'left', padding:'9px 10px', borderRadius:9, border:'none', background:'transparent', cursor:'pointer', fontSize:13, fontWeight:600, color:'var(--text-muted)', fontFamily:'inherit' }} onMouseEnter={e => e.currentTarget.style.background='#F4F6FA'} onMouseLeave={e => e.currentTarget.style.background='transparent'}>← Zurück</button>
                     }
                     <button onClick={pickerOpenWithout} style={{ width:'100%', textAlign:'left', padding:'9px 10px', borderRadius:9, border:'none', background:'transparent', cursor:'pointer', fontSize:13, fontWeight:600, color:'var(--text-muted)', fontFamily:'inherit' }} onMouseEnter={e => e.currentTarget.style.background='#F4F6FA'} onMouseLeave={e => e.currentTarget.style.background='transparent'}>Ohne Chat öffnen</button>
@@ -1893,8 +1894,8 @@ function CleanView({
     <div style={{ flex:1, display:'flex', flexDirection:'column', alignItems:'center', justifyContent:'center', padding:'40px 24px', overflowY:'auto' }}>
       <div style={{ width:'100%', maxWidth:680 }}>
         {refDoc && (
-          <div style={{ marginBottom:24, padding:'14px 18px', background:'rgba(49,90,231,0.06)', border:'1.5px solid rgba(49,90,231,0.20)', borderRadius:12, display:'flex', alignItems:'center', gap:12, flexWrap:'wrap' }}>
-            <FileText size={18} strokeWidth={1.75} style={{ color:'var(--wl-primary, rgb(49,90,231))' }}/>
+          <div style={{ marginBottom:24, padding:'14px 18px', background:'rgba(10,111,176,0.06)', border:'1.5px solid rgba(10,111,176,0.20)', borderRadius:12, display:'flex', alignItems:'center', gap:12, flexWrap:'wrap' }}>
+            <FileText size={18} strokeWidth={1.75} style={{ color:'var(--wl-primary, #0A6FB0)' }}/>
             <div style={{ flex:1, minWidth:200 }}>
               <div style={{ fontSize:10, fontWeight:700, color:P, textTransform:'uppercase', letterSpacing:'0.05em' }}>Dokument als Referenz</div>
               <div style={{ fontSize:13, fontWeight:600, color:'var(--text-primary)' }}>{refDoc.title || '(ohne Titel)'}</div>
@@ -1905,16 +1906,16 @@ function CleanView({
           // Banner statt Hero wenn aus Post heraus
           <div style={{
             marginBottom:24, padding:'14px 18px',
-            background:'rgba(49,90,231,0.06)', border:'1.5px solid rgba(49,90,231,0.20)', borderRadius:12,
+            background:'rgba(10,111,176,0.06)', border:'1.5px solid rgba(10,111,176,0.20)', borderRadius:12,
             display:'flex', alignItems:'center', gap:12, flexWrap:'wrap',
           }}>
-            <Pin size={18} strokeWidth={1.75} style={{ color:'var(--wl-primary, rgb(49,90,231))' }}/>
+            <Pin size={18} strokeWidth={1.75} style={{ color:'var(--wl-primary, #0A6FB0)' }}/>
             <div style={{ flex:1, minWidth:200 }}>
               <div style={{ fontSize:10, fontWeight:700, color:P, textTransform:'uppercase', letterSpacing:'0.05em' }}>Kontext aus dem Redaktionsplan</div>
               <div style={{ fontSize:13, fontWeight:600, color:'var(--text-primary)' }}>{linkedPost.title || '(ohne Titel)'}</div>
             </div>
-            <button onClick={() => navigate('/redaktionsplan?open=' + linkedPost.id)}
-              style={{ padding:'7px 14px', borderRadius:8, border:'1px solid var(--border)', background:'#fff', fontSize:12, fontWeight:600, cursor:'pointer' }}>
+            <button className="lk-btn lk-btn-ghost" onClick={() => navigate('/redaktionsplan?open=' + linkedPost.id)}
+              >
               ← Zurück zum Beitrag
             </button>
           </div>
@@ -1922,7 +1923,7 @@ function CleanView({
           // Hero (aufgeräumt)
           <div style={{ textAlign:'center', marginBottom:26 }}>
             <div style={{ display:'flex', justifyContent:'center', marginBottom:12 }}>
-              <img src="/Leadesk_Favicon (1).png" alt="Leadesk" width={54} height={54} style={{ display:'block', opacity:0.95 }}/>
+              <EmptyOrb size={120}/>
             </div>
             <h1 style={{ fontSize:22, fontWeight:800, margin:0, letterSpacing:'-0.02em', lineHeight:1.2, color:'var(--text-primary)' }}>Content-Werkstatt</h1>
             <p style={{ fontSize:13.5, color:'var(--text-muted)', margin:'8px auto 0', lineHeight:1.6, maxWidth:460 }}>
@@ -1971,8 +1972,8 @@ function ChatView({
     <>
       {/* Banner: Dokument als Referenz */}
       {refDoc && (
-        <div style={{ padding:'10px 18px 10px 52px', borderBottom:'1px solid var(--border)', background:'rgba(49,90,231,0.05)', display:'flex', alignItems:'center', gap:12, flexWrap:'wrap', flexShrink:0 }}>
-          <FileText size={14} strokeWidth={1.75} style={{ color:'var(--wl-primary, rgb(49,90,231))' }}/>
+        <div style={{ padding:'10px 18px 10px 52px', borderBottom:'1px solid var(--border)', background:'rgba(10,111,176,0.05)', display:'flex', alignItems:'center', gap:12, flexWrap:'wrap', flexShrink:0 }}>
+          <FileText size={14} strokeWidth={1.75} style={{ color:'var(--wl-primary, #0A6FB0)' }}/>
           <div style={{ flex:1, minWidth:200 }}>
             <div style={{ fontSize:10, fontWeight:700, color:P, textTransform:'uppercase', letterSpacing:'0.05em' }}>Dokument als Referenz</div>
             <div style={{ fontSize:13, fontWeight:600, color:'var(--text-primary)' }}>{refDoc.title || '(ohne Titel)'}</div>
@@ -1981,14 +1982,14 @@ function ChatView({
       )}
       {/* Banner wenn aus Post */}
       {linkedPost && (
-        <div style={{ padding:'10px 18px 10px 52px', borderBottom:'1px solid var(--border)', background:'rgba(49,90,231,0.05)', display:'flex', alignItems:'center', gap:12, flexWrap:'wrap', flexShrink:0 }}>
-          <Pin size={14} strokeWidth={1.75} style={{ color:'var(--wl-primary, rgb(49,90,231))' }}/>
+        <div style={{ padding:'10px 18px 10px 52px', borderBottom:'1px solid var(--border)', background:'rgba(10,111,176,0.05)', display:'flex', alignItems:'center', gap:12, flexWrap:'wrap', flexShrink:0 }}>
+          <Pin size={14} strokeWidth={1.75} style={{ color:'var(--wl-primary, #0A6FB0)' }}/>
           <div style={{ flex:1, minWidth:200 }}>
             <div style={{ fontSize:10, fontWeight:700, color:P, textTransform:'uppercase', letterSpacing:'0.05em' }}>Kontext aus dem Redaktionsplan</div>
             <div style={{ fontSize:13, fontWeight:600, color:'var(--text-primary)' }}>{linkedPost.title || '(ohne Titel)'}</div>
           </div>
-          <button onClick={() => navigate('/redaktionsplan?open=' + linkedPost.id)}
-            style={{ padding:'6px 12px', borderRadius:7, border:'1px solid var(--border)', background:'#fff', fontSize:12, fontWeight:600, cursor:'pointer' }}>
+          <button className="lk-btn lk-btn-ghost" onClick={() => navigate('/redaktionsplan?open=' + linkedPost.id)}
+            >
             ← Zurück zum Beitrag
           </button>
         </div>
@@ -2095,7 +2096,7 @@ function ChatInput({
       onDrop={e => { e.preventDefault(); setDragOver(false); if (e.dataTransfer?.files?.length) handleFiles(e.dataTransfer.files) }}
       style={{ position:'relative', border:'1.5px solid ' + (dragOver ? P : 'var(--border)'), borderRadius:14, background:'#fff', padding:'12px 14px 10px', boxShadow:'0 1px 3px rgba(15,23,42,.04)' }}>
       {dragOver && (
-        <div style={{ position:'absolute', inset:0, zIndex:6, borderRadius:14, background:'rgba(49,90,231,0.06)', border:'2px dashed ' + P, display:'flex', alignItems:'center', justifyContent:'center', pointerEvents:'none' }}>
+        <div style={{ position:'absolute', inset:0, zIndex:6, borderRadius:14, background:'rgba(10,111,176,0.06)', border:'2px dashed ' + P, display:'flex', alignItems:'center', justifyContent:'center', pointerEvents:'none' }}>
           <span style={{ fontSize:13, fontWeight:700, color:P }}>Dateien hier ablegen zum Anhängen</span>
         </div>
       )}
@@ -2240,14 +2241,8 @@ function ChatInput({
               cursor: enabled ? 'pointer' : 'not-allowed', opacity: enabled ? 1 : 0.5 }}>
             {voice.isRecording ? <Square size={14} strokeWidth={2}/> : <Mic size={16} strokeWidth={1.9}/>}
           </button></Tip>
-          <button onClick={sendMessage} disabled={!input.trim() || sending || !enabled}
-            style={{
-              padding:'8px 14px', borderRadius:9, border:'none',
-              background: (!input.trim() || sending || !enabled) ? '#CBD5E1' : P,
-              color:'#fff', fontSize:14, fontWeight:700,
-              cursor: (!input.trim() || sending) ? 'not-allowed' : 'pointer',
-              minWidth:44, display:'inline-flex', alignItems:'center', justifyContent:'center', gap:4,
-            }}>
+          <button className="lk-btn lk-btn-primary" onClick={sendMessage} disabled={!input.trim() || sending || !enabled}
+            style={{ minWidth:44, display:'inline-flex', alignItems:'center', justifyContent:'center', gap:4 }}>
             {sending ? <Loader2 size={14} className='lk-spin'/> : <Send size={14} strokeWidth={1.75}/>}
           </button>
         </div>
@@ -2284,7 +2279,7 @@ function IconBtn(active) {
   return {
     height:34, padding:'0 12px', borderRadius:9, boxSizing:'border-box',
     border: '1.5px solid ' + (active ? P : 'var(--border)'),
-    background: active ? 'rgba(49,90,231,0.06)' : '#fff',
+    background: active ? 'rgba(10,111,176,0.06)' : '#fff',
     color: active ? P : 'var(--text-primary)',
     fontSize:12.5, fontWeight:600, cursor:'pointer', whiteSpace:'nowrap', lineHeight:1,
     display:'inline-flex', alignItems:'center', gap:6, fontFamily:'inherit', flexShrink:0,
@@ -2325,7 +2320,7 @@ function AnswerFormatSelect({ value = 'auto', onChange = () => {} }) {
         return (
           <Tip key={x.id} label={x.tip}>
             <button type="button" onClick={() => onChange(x.id)} aria-pressed={active}
-              style={{ width:34, height:30, display:'inline-flex', alignItems:'center', justifyContent:'center', borderRadius:7, border:'none', cursor:'pointer', background: active ? P : 'transparent', color: active ? '#fff' : 'var(--text-primary)', transition:'background .12s, color .12s' }}
+              style={{ width:34, height:30, display:'inline-flex', alignItems:'center', justifyContent:'center', borderRadius:7, border:'none', cursor:'pointer', background: active ? 'var(--primary)' : 'transparent', color: active ? '#fff' : 'var(--text-primary)', transition:'background .12s, color .12s' }}
               onMouseEnter={e => { if (!active) e.currentTarget.style.background = 'var(--page-bg,#F2F4F8)' }}
               onMouseLeave={e => { if (!active) e.currentTarget.style.background = 'transparent' }}>
               <XI size={16} strokeWidth={1.75}/>
@@ -2347,8 +2342,8 @@ function ModelDropdown({ value, onChange }) {
   }, [open])
   return (
     <div ref={ref} style={{ position:'relative', display:'inline-block' }}>
-      <button type="button" onClick={() => setOpen(o => !o)} title="Bildmodell"
-        style={{ height:34, padding:'0 11px', borderRadius:9, boxSizing:'border-box', border:'1.5px solid var(--border)', background:'#fff', color:'var(--text-primary)', fontSize:12.5, fontWeight:600, lineHeight:1, cursor:'pointer', whiteSpace:'nowrap', display:'inline-flex', alignItems:'center', gap:6, fontFamily:'inherit', flexShrink:0, maxWidth:210 }}>
+      <button className="lk-dd-trigger" type="button" onClick={() => setOpen(o => !o)} title="Bildmodell"
+        style={{ boxSizing:'border-box', lineHeight:1, whiteSpace:'nowrap', display:'inline-flex', alignItems:'center', gap:6, fontFamily:'inherit', flexShrink:0, maxWidth:210 }}>
         <span style={{ flex:1, minWidth:0, overflow:'hidden', textOverflow:'ellipsis', textAlign:'left' }}>{imageModelName(value)}</span>
         <ChevronDown size={14} strokeWidth={2} style={{ opacity:0.5, marginLeft:2, flexShrink:0 }}/>
       </button>
@@ -2356,7 +2351,7 @@ function ModelDropdown({ value, onChange }) {
         <div style={{ position:'absolute', zIndex:60, bottom:'calc(100% + 6px)', left:0, minWidth:230, maxHeight:280, overflowY:'auto', background:'#fff', border:'1px solid var(--border)', borderRadius:10, boxShadow:'0 12px 32px rgba(15,23,42,0.16)', padding:6 }}>
           {IMAGE_MODELS.map(m => (
             <button key={m.value} type="button" onClick={() => { onChange(m.value); setOpen(false) }}
-              style={{ display:'flex', alignItems:'center', gap:8, width:'100%', textAlign:'left', padding:'7px 9px', borderRadius:7, border:'none', background: m.value === value ? 'rgba(49,90,231,0.06)' : 'transparent', cursor:'pointer', fontSize:13, color:'var(--text-primary)', fontFamily:'inherit' }}
+              style={{ display:'flex', alignItems:'center', gap:8, width:'100%', textAlign:'left', padding:'7px 9px', borderRadius:7, border:'none', background: m.value === value ? 'rgba(10,111,176,0.06)' : 'transparent', cursor:'pointer', fontSize:13, color:'var(--text-primary)', fontFamily:'inherit' }}
               onMouseEnter={e => { if (m.value !== value) e.currentTarget.style.background = 'var(--page-bg,#F2F4F8)' }}
               onMouseLeave={e => { if (m.value !== value) e.currentTarget.style.background = 'transparent' }}>
               <span style={{ flex:1, overflow:'hidden', textOverflow:'ellipsis' }}>{m.name}</span>
@@ -2388,8 +2383,8 @@ function CountDropdown({ value = 'auto', onChange = () => {} }) {
   const cur = IMAGE_COUNT_OPTS.find(o => o.v === value) || IMAGE_COUNT_OPTS[0]
   return (
     <div ref={ref} style={{ position:'relative', display:'inline-block' }}>
-      <Tip label="Anzahl der Bilder"><button type="button" onClick={() => setOpen(o => !o)}
-        style={{ height:34, padding:'0 11px', borderRadius:9, boxSizing:'border-box', border:'1.5px solid var(--border)', background:'#fff', color:'var(--text-primary)', fontSize:12.5, fontWeight:600, lineHeight:1, cursor:'pointer', whiteSpace:'nowrap', display:'inline-flex', alignItems:'center', gap:6, fontFamily:'inherit', flexShrink:0 }}>
+      <Tip label="Anzahl der Bilder"><button className="lk-dd-trigger" type="button" onClick={() => setOpen(o => !o)}
+        style={{ boxSizing:'border-box', lineHeight:1, whiteSpace:'nowrap', display:'inline-flex', alignItems:'center', gap:6, fontFamily:'inherit', flexShrink:0 }}>
         <span>{value === 'auto' ? 'Anzahl: Auto' : cur.label}</span>
         <ChevronDown size={14} strokeWidth={2} style={{ opacity:0.5, marginLeft:2, flexShrink:0 }}/>
       </button></Tip>
@@ -2399,7 +2394,7 @@ function CountDropdown({ value = 'auto', onChange = () => {} }) {
             const active = o.v === value
             return (
               <button key={String(o.v)} type="button" onClick={() => { onChange(o.v); setOpen(false) }}
-                style={{ display:'flex', flexDirection:'column', gap:1, width:'100%', textAlign:'left', padding:'7px 10px', borderRadius:7, border:'none', background: active ? 'rgba(49,90,231,0.08)' : 'transparent', cursor:'pointer', fontFamily:'inherit' }}
+                style={{ display:'flex', flexDirection:'column', gap:1, width:'100%', textAlign:'left', padding:'7px 10px', borderRadius:7, border:'none', background: active ? 'rgba(10,111,176,0.08)' : 'transparent', cursor:'pointer', fontFamily:'inherit' }}
                 onMouseEnter={e => { if (!active) e.currentTarget.style.background = 'var(--page-bg,#F2F4F8)' }}
                 onMouseLeave={e => { if (!active) e.currentTarget.style.background = 'transparent' }}>
                 <span style={{ fontSize:13, fontWeight:700, color: active ? P : 'var(--text-primary)' }}>{o.label}</span>
@@ -2465,7 +2460,7 @@ function SingleImage({ item, chatDesigns = [], onOpenInDesigner, onDownloadVisua
       <div style={{ display:'flex', gap:8, flexWrap:'wrap', alignItems:'center' }}>
         <div style={{ position:'relative' }}>
           <Tip label="In den Designer öffnen"><button onClick={() => { if ((chatDesigns||[]).length) setDesignMenuOpen(o => !o); else onOpenInDesigner && onOpenInDesigner(item) }}
-            style={{ width:34, height:34, padding:0, justifyContent:'center', borderRadius:8, border:'none', background:P, color:'#fff', cursor:'pointer', display:'inline-flex', alignItems:'center' }}>
+            style={{ width:34, height:34, padding:0, justifyContent:'center', borderRadius:8, border:'none', background:'var(--primary)', color:'#fff', cursor:'pointer', display:'inline-flex', alignItems:'center' }}>
             <Brush size={15} strokeWidth={1.9}/>
           </button></Tip>
           {designMenuOpen && (
@@ -2487,7 +2482,7 @@ function SingleImage({ item, chatDesigns = [], onOpenInDesigner, onDownloadVisua
         </div>
         <div style={{ position:'relative' }}>
           <Tip label={done ? 'Zum Beitrag hinzugefügt ✓' : 'In Beitrag'}><button onClick={openPostMenu} disabled={busy}
-            style={{ width:34, height:34, padding:0, justifyContent:'center', borderRadius:8, border:'1.5px solid '+(done?'#15803d':P), background:done?'rgba(21,128,61,0.10)':'rgba(49,90,231,0.06)', color:done?'#15803d':P, cursor:busy?'default':'pointer', display:'inline-flex', alignItems:'center' }}>
+            style={{ width:34, height:34, padding:0, justifyContent:'center', borderRadius:8, border:'1.5px solid '+(done?'#15803d':P), background:done?'rgba(21,128,61,0.10)':'rgba(10,111,176,0.06)', color:done?'#15803d':P, cursor:busy?'default':'pointer', display:'inline-flex', alignItems:'center' }}>
             {busy ? <Loader2 size={15} className="lk-spin"/> : <CalendarPlus size={15} strokeWidth={1.9}/>}
           </button></Tip>
           {postMenuOpen && (
@@ -2506,7 +2501,7 @@ function SingleImage({ item, chatDesigns = [], onOpenInDesigner, onDownloadVisua
           )}
         </div>
         <Tip label="Herunterladen"><button onClick={() => onDownloadVisual && onDownloadVisual(item)}
-          style={{ width:34, height:34, padding:0, justifyContent:'center', borderRadius:8, border:'1.5px solid '+P, background:'rgba(49,90,231,0.06)', color:P, cursor:'pointer', display:'inline-flex', alignItems:'center' }}>
+          style={{ width:34, height:34, padding:0, justifyContent:'center', borderRadius:8, border:'1.5px solid '+P, background:'rgba(10,111,176,0.06)', color:P, cursor:'pointer', display:'inline-flex', alignItems:'center' }}>
           <Download size={15} strokeWidth={1.9}/>
         </button></Tip>
       </div>
@@ -2569,7 +2564,7 @@ function MessageBubble({ msg, onAttachToPost, loadExistingPosts, onInsertToDoc, 
       )}
       <div style={{
         maxWidth:'92%', padding:'12px 14px', borderRadius:12,
-        background: isUser ? P : '#fff',
+        background: isUser ? 'var(--primary)' : '#fff',
         color: isUser ? '#fff' : 'var(--text-primary)',
         border: isUser ? 'none' : '1px solid var(--border)',
         fontSize:14, lineHeight:1.6, wordBreak:'break-word',
@@ -2623,9 +2618,9 @@ function DocTabsRail({ docs = [], activeDocId, chatId, teamId, brandVoiceId, onS
             onMouseLeave={() => setHover(h => (h && h.id === d.id) ? null : h)}
             style={{ position:'relative', width:34, height:34, borderRadius:9, flexShrink:0, cursor:'pointer',
               border:'1px solid ' + (active ? P : 'var(--border,#E9ECF2)'),
-              background: active ? 'rgba(49,90,231,0.10)' : 'var(--surface,#fff)',
+              background: active ? 'rgba(10,111,176,0.10)' : 'var(--surface,#fff)',
               color: active ? P : 'var(--text-muted,#667085)',
-              display:'flex', alignItems:'center', justifyContent:'center', boxShadow: active ? '0 1px 3px rgba(49,90,231,0.18)' : 'none' }}>
+              display:'flex', alignItems:'center', justifyContent:'center', boxShadow: active ? '0 1px 3px rgba(10,111,176,0.18)' : 'none' }}>
             <FileText size={16} strokeWidth={1.9}/>
             <span style={{ position:'absolute', bottom:-1, right:-1, fontSize:9, fontWeight:800, color: active ? P : 'var(--text-soft,#98a2b3)', background:'var(--page-bg,#F7F8FA)', borderRadius:4, padding:'0 2px', lineHeight:1.3 }}>{i + 1}</span>
           </button>
@@ -2654,7 +2649,7 @@ function DocTabsRail({ docs = [], activeDocId, chatId, teamId, brandVoiceId, onS
             </div>
             <div style={{ padding:'0 16px 12px' }}>
               <button onClick={() => { setPickerOpen(false); onNew() }}
-                style={{ width:'100%', display:'inline-flex', alignItems:'center', justifyContent:'center', gap:7, height:38, borderRadius:10, border:'none', background:P, color:'#fff', fontSize:13, fontWeight:700, cursor:'pointer', fontFamily:'inherit' }}>
+                style={{ width:'100%', display:'inline-flex', alignItems:'center', justifyContent:'center', gap:7, height:38, borderRadius:10, border:'none', background:'var(--primary)', color:'#fff', fontSize:13, fontWeight:700, cursor:'pointer', fontFamily:'inherit' }}>
                 <Plus size={16} strokeWidth={2.2}/>Neues Dokument
               </button>
             </div>
@@ -2674,7 +2669,7 @@ function DocTabsRail({ docs = [], activeDocId, chatId, teamId, brandVoiceId, onS
                     style={{ width:'100%', textAlign:'left', display:'flex', alignItems:'center', gap:10, padding:'9px 10px', borderRadius:9, border:'none', background:'transparent', cursor: already ? 'default' : 'pointer', opacity: already ? 0.45 : 1, fontFamily:'inherit' }}
                     onMouseEnter={e => { if (!already) e.currentTarget.style.background='#F4F6FA' }}
                     onMouseLeave={e => { e.currentTarget.style.background='transparent' }}>
-                    <span style={{ width:30, height:30, borderRadius:8, flexShrink:0, display:'flex', alignItems:'center', justifyContent:'center', background:'rgba(49,90,231,0.07)', color:P }}><FileText size={15} strokeWidth={1.9}/></span>
+                    <span style={{ width:30, height:30, borderRadius:8, flexShrink:0, display:'flex', alignItems:'center', justifyContent:'center', background:'rgba(10,111,176,0.07)', color:P }}><FileText size={15} strokeWidth={1.9}/></span>
                     <span style={{ minWidth:0, flex:1 }}>
                       <span style={{ display:'block', fontSize:13, fontWeight:600, color:'var(--text-primary)', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{d.title || 'Unbenanntes Dokument'}</span>
                       <span style={{ display:'block', fontSize:11, color:'var(--text-soft,#98a2b3)', marginTop:1 }}>{already ? 'Bereits hinzugefügt' : fmtDocDate(d)}</span>
@@ -2692,7 +2687,7 @@ function DocTabsRail({ docs = [], activeDocId, chatId, teamId, brandVoiceId, onS
 
 // ─── Leerer Pane (kein Dokument/Design offen) → zentral öffnen/neu ───────────
 function EmptyOpenPane({ type, onOpen, onNew }) {
-  const P = 'var(--wl-primary, rgb(49,90,231))'
+  const P = 'var(--wl-primary, #0A6FB0)'
   const label = type === 'design' ? 'Design' : 'Dokument'
   return (
     <div style={{ height: '100%', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 14, padding: 24, textAlign: 'center' }}>
@@ -2701,12 +2696,12 @@ function EmptyOpenPane({ type, onOpen, onNew }) {
         Öffne ein bestehendes {label} und ordne es einem Chat zu — oder erstelle ein neues.
       </div>
       <div style={{ display: 'flex', gap: 8, marginTop: 2 }}>
-        <button onClick={onOpen}
-          style={{ padding: '10px 16px', borderRadius: 10, border: 'none', background: P, color: '#fff', fontSize: 13, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit', boxShadow: '0 2px 10px rgba(49,90,231,.18)' }}>
+        <button className="lk-btn lk-btn-primary" onClick={onOpen}
+          style={{ fontFamily: 'inherit' }}>
           {label} öffnen
         </button>
-        <button onClick={onNew}
-          style={{ padding: '10px 16px', borderRadius: 10, border: '1px solid var(--border,#E9ECF2)', background: '#fff', color: 'var(--text-primary)', fontSize: 13, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit' }}>
+        <button className="lk-btn lk-btn-ghost" onClick={onNew}
+          style={{ fontFamily: 'inherit' }}>
           Neues {label}
         </button>
       </div>
@@ -2740,7 +2735,7 @@ function VisualRail({ visuals = [], activeVisualId, onSelect = () => {}, onNew =
             <button onClick={() => onSelect(v)} title={v.title || v.prompt || 'Design'}
               style={{ position:'relative', display:'block', width:42, height:42, borderRadius:9, cursor:'pointer', overflow:'hidden', padding:0,
                 border:'2px solid ' + (active ? P : 'var(--border,#E9ECF2)'),
-                background:'#fff', boxShadow: active ? '0 1px 3px rgba(49,90,231,0.25)' : 'none', opacity: busyId === v.id ? 0.45 : 1 }}>
+                background:'#fff', boxShadow: active ? '0 1px 3px rgba(10,111,176,0.25)' : 'none', opacity: busyId === v.id ? 0.45 : 1 }}>
               {v.signed_url
                 ? <img src={v.signed_url} alt="" style={{ width:'100%', height:'100%', objectFit:'cover', display:'block' }}/>
                 : <span style={{ display:'flex', width:'100%', height:'100%', alignItems:'center', justifyContent:'center', color:'var(--text-soft,#98a2b3)' }}><ImageIcon size={16} strokeWidth={1.8}/></span>}

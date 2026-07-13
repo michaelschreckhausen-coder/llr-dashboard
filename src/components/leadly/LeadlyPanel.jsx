@@ -13,7 +13,7 @@ import { renderMarkdown } from '../../lib/renderMarkdown';
 
 const PANEL_WIDTH = 410;
 const PANEL_HEIGHT = 640;
-const PRIMARY = 'var(--wl-primary, rgb(49,90,231))';
+const PRIMARY = 'var(--wl-primary, #0A6FB0)';
 
 const overlayStyle = {
   position: 'fixed',
@@ -85,7 +85,7 @@ const sendBtnStyle = (disabled) => ({
   padding: '9px 14px',
   borderRadius: 10,
   border: 'none',
-  background: disabled ? '#CBD5E1' : PRIMARY,
+  background: disabled ? '#CBD5E1' : 'var(--primary)',
   color: '#fff',
   fontSize: 13, fontWeight: 700,
   cursor: disabled ? 'not-allowed' : 'pointer',
@@ -93,7 +93,7 @@ const sendBtnStyle = (disabled) => ({
 
 const bubbleStyle = (role) => ({
   alignSelf: role === 'user' ? 'flex-end' : 'flex-start',
-  background: role === 'user' ? PRIMARY : '#fff',
+  background: role === 'user' ? 'var(--primary)' : '#fff',
   color: role === 'user' ? '#fff' : 'var(--text-primary, #101828)',
   borderRadius: 12,
   padding: '12px 14px',
@@ -216,7 +216,7 @@ function TypingDots() {
   return (
     <div style={{ alignSelf: 'flex-start', display: 'flex', alignItems: 'center', gap: 6, padding: '12px 14px', background: '#fff', border: '1px solid var(--border, #E4E7EC)', borderRadius: 12, width: 'fit-content' }}>
       {[0, 0.2, 0.4].map((d, i) => (
-        <span key={i} style={{ width: 7, height: 7, borderRadius: '50%', background: PRIMARY, animation: 'tw-blink 1.4s infinite ease-in-out', animationDelay: d + 's' }} />
+        <span key={i} style={{ width: 7, height: 7, borderRadius: '50%', background: 'var(--primary)', animation: 'tw-blink 1.4s infinite ease-in-out', animationDelay: d + 's' }} />
       ))}
       <style>{`@keyframes tw-blink { 0%, 80%, 100% { opacity: 0.2; } 40% { opacity: 1; } }`}</style>
     </div>
@@ -225,7 +225,7 @@ function TypingDots() {
 
 const convItemBase = { width: '100%', textAlign: 'left', border: 'none', cursor: 'pointer', borderRadius: 8, padding: '8px 10px', fontSize: 12.5, fontFamily: 'inherit', display: 'block', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', marginBottom: 2 };
 const convItem = (active) => ({ ...convItemBase, background: active ? '#EFF3FF' : 'transparent', color: active ? PRIMARY : 'var(--text-muted, #475467)', fontWeight: active ? 700 : 500 });
-const convItemNew = { ...convItemBase, background: PRIMARY, color: '#fff', fontWeight: 700, textAlign: 'center' };
+const convItemNew = { ...convItemBase, background: 'var(--primary)', color: '#fff', fontWeight: 700, textAlign: 'center' };
 
 export default function LeadlyPanel({ leadly, onClose, embedded = false, hideHeader = false }) {
   const nav = useNavigate();
@@ -464,14 +464,14 @@ export default function LeadlyPanel({ leadly, onClose, embedded = false, hideHea
             <div key={a.tool_use_id} style={{ background: '#fff', border: '1px solid #FDE68A', borderRadius: 10, padding: '10px 12px' }}>
               <div style={{ fontSize: 13, fontWeight: 600, color: '#1F2937', marginBottom: 8 }}>Soll ich das tun? — {a.summary}</div>
               <div style={{ display: 'flex', gap: 8 }}>
-                <button type="button" disabled={leadly.isSending}
+                <button className="lk-btn lk-btn-primary" type="button" disabled={leadly.isSending}
                   onClick={() => leadly.confirmAction(a)}
-                  style={{ padding: '7px 14px', borderRadius: 8, border: 'none', background: PRIMARY, color: '#fff', fontSize: 12, fontWeight: 700, cursor: leadly.isSending ? 'wait' : 'pointer', opacity: leadly.isSending ? 0.6 : 1 }}>
+                  style={{ opacity: leadly.isSending ? 0.6 : 1 }}>
                   Übernehmen
                 </button>
-                <button type="button" disabled={leadly.isSending}
+                <button className="lk-btn lk-btn-ghost" type="button" disabled={leadly.isSending}
                   onClick={() => leadly.dismissActions()}
-                  style={{ padding: '7px 14px', borderRadius: 8, border: '1px solid #E4E7EC', background: '#fff', color: '#6B7280', fontSize: 12, fontWeight: 600, cursor: 'pointer' }}>
+                  >
                   Verwerfen
                 </button>
               </div>
@@ -483,9 +483,9 @@ export default function LeadlyPanel({ leadly, onClose, embedded = false, hideHea
       {leadly.revertable && (!Array.isArray(leadly.pendingActions) || leadly.pendingActions.length === 0) && (
         <div style={{ borderTop: '1px solid #D1FAE5', background: '#ECFDF5', padding: '8px 12px', display: 'flex', alignItems: 'center', gap: 10 }}>
           <span style={{ fontSize: 12, color: '#065F46', flex: 1 }}>✓ Erledigt{leadly.revertable.label ? ` — ${leadly.revertable.label}` : ''}</span>
-          <button type="button" disabled={leadly.isSending}
+          <button className="lk-btn lk-btn-ghost" type="button" disabled={leadly.isSending}
             onClick={() => leadly.revertLast()}
-            style={{ padding: '5px 12px', borderRadius: 8, border: '1px solid #A7F3D0', background: '#fff', color: '#047857', fontSize: 12, fontWeight: 700, cursor: leadly.isSending ? 'wait' : 'pointer' }}>
+            >
             Rückgängig
           </button>
         </div>

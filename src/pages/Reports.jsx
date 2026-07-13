@@ -27,7 +27,7 @@ import {
   Mail, MessageSquare, FileText, Phone,
 } from 'lucide-react';
 
-const PRIMARY = 'rgb(49,90,231)';
+const PRIMARY = '#0A6FB0';
 const COLORS = {
   surface: '#ffffff',
   canvas: '#F8FAFC',
@@ -46,7 +46,7 @@ const DEAL_STAGES = [
   { key: 'interessent',  label: 'Interessent',      prob:  10, color: '#64748B' },
   { key: 'prospect',     label: 'Prospect',         prob:  15, color: '#3B82F6' },
   { key: 'qualifiziert', label: 'Qualifiziert',     prob:  25, color: '#0EA5E9' },
-  { key: 'opportunity',  label: 'Gespräch',         prob:  30, color: '#8B5CF6' },
+  { key: 'opportunity',  label: 'Gespräch',         prob:  30, color: '#0A6FB0' },
   { key: 'angebot',      label: 'Angebot',          prob:  50, color: '#F59E0B' },
   { key: 'verhandlung',  label: 'Verhandlung',      prob:  70, color: '#F97316' },
   { key: 'gewonnen',     label: 'Gewonnen',         prob: 100, color: '#22C55E' },
@@ -153,11 +153,11 @@ function KpiCard({ label, value, sub, color = PRIMARY, Icon, onClick, active }) 
       style={{
         background: COLORS.surface,
         border: `1px solid ${active ? color : COLORS.border}`,
-        borderRadius: 14,
+        borderRadius: 16,
         padding: '14px 16px',
         textAlign: 'left',
         cursor: onClick ? 'pointer' : 'default',
-        boxShadow: active ? `0 0 0 3px ${color}1a` : 'none',
+        boxShadow: active ? `0 0 0 3px ${color}1a` : 'var(--shadow-card)',
         font: 'inherit',
         display: 'flex',
         flexDirection: 'column',
@@ -317,7 +317,7 @@ function OverviewSection({ data, range }) {
     <>
       <SectionCard
         title="CRM-Pipeline (Status-Verteilung)"
-        action={<button type="button" style={ghostBtnStyle} onClick={() => {
+        action={<button type="button" className="lk-btn lk-btn-ghost" onClick={() => {
           const rows = [['Status', 'Sublabel', 'Anzahl']];
           STATUS_ORDER.forEach(s => {
             const cfg = STATUS_CONFIG[s];
@@ -409,8 +409,8 @@ function PipelineSection({ data }) {
       {members.length > 0 && (
         <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 14, flexWrap: 'wrap' }}>
           <span style={{ fontSize: 11, fontWeight: 600, color: COLORS.text3, textTransform: 'uppercase', letterSpacing: '0.06em' }}>Owner-Filter:</span>
-          <button type="button" onClick={() => setOwnerFilter(null)}
-            style={{ padding: '5px 11px', borderRadius: 99, border: `1.5px solid ${ownerFilter === null ? COLORS.primary : COLORS.border}`, background: ownerFilter === null ? COLORS.primary : '#fff', color: ownerFilter === null ? '#fff' : COLORS.text2, fontSize: 12, fontWeight: 600, cursor: 'pointer' }}>
+          <button className="lk-btn lk-btn-primary" type="button" onClick={() => setOwnerFilter(null)}
+            >
             Alle ({allDeals.length})
           </button>
           {members.map(m => {
@@ -430,7 +430,7 @@ function PipelineSection({ data }) {
 
       <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: 14, marginBottom: 14 }}>
         <SectionCard title={`Deal-Stages (Anzahl + Wert) · ${deals.length} Deals`}
-          action={<button type="button" style={ghostBtnStyle} onClick={() => {
+          action={<button type="button" className="lk-btn lk-btn-ghost" onClick={() => {
             const rows = [['Stage', 'Anzahl', 'Pipeline-Wert (EUR)']];
             stageStats.forEach(s => rows.push([s.label, s.count, s.value]));
             exportCsv(rows, `pipeline-stages-${new Date().toISOString().slice(0, 10)}.csv`);
@@ -449,7 +449,7 @@ function PipelineSection({ data }) {
             <div style={{ fontSize: 12, color: COLORS.text3, textAlign: 'center', lineHeight: 1.6 }}>
               {won?.count || 0} gewonnen · {lost?.count || 0} verloren<br />
               Pipeline-Wert: <strong style={{ color: COLORS.text1 }}>{fmtEUR.format(pipelineValue)}</strong><br />
-              Gewichtet: <strong style={{ color: '#7C3AED' }}>{fmtEUR.format(weightedPipeline)}</strong><br />
+              Gewichtet: <strong style={{ color: '#003060' }}>{fmtEUR.format(weightedPipeline)}</strong><br />
               Gewonnen-Wert: <strong style={{ color: '#22C55E' }}>{fmtEUR.format(wonValue)}</strong>
             </div>
           </div>
@@ -457,7 +457,7 @@ function PipelineSection({ data }) {
       </div>
 
       <SectionCard title="Top 10 Deals (aktive Pipeline)"
-        action={topDeals.length > 0 && <button type="button" style={ghostBtnStyle} onClick={() => {
+        action={topDeals.length > 0 && <button type="button" className="lk-btn lk-btn-ghost" onClick={() => {
           const rows = [['Deal', 'Unternehmen', 'Stage', 'Wahrscheinlichkeit', 'Wert (EUR)']];
           topDeals.forEach(d => rows.push([
             dealLabel(d),
@@ -525,7 +525,7 @@ function LinkedInSection({ data }) {
     <>
       <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: 14, marginBottom: 14 }}>
         <SectionCard title="Verbindungsstatus"
-          action={<button type="button" style={ghostBtnStyle} onClick={() => {
+          action={<button type="button" className="lk-btn lk-btn-ghost" onClick={() => {
             const rows = [['Status', 'Anzahl', 'Prozent']];
             connStats.forEach(s => rows.push([s.label, s.count, totalForConn ? Math.round(s.count / totalForConn * 100) + '%' : '0%']));
             exportCsv(rows, `linkedin-${new Date().toISOString().slice(0, 10)}.csv`);
@@ -638,7 +638,7 @@ function ActivitiesTasksSection({ data, members }) {
     <>
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14, marginBottom: 14 }}>
         <SectionCard title="Aktivitäten nach Typ"
-          action={<button type="button" style={ghostBtnStyle} onClick={() => {
+          action={<button type="button" className="lk-btn lk-btn-ghost" onClick={() => {
             const rows = [['Typ', 'Anzahl']];
             Object.entries(groupCounts).forEach(([g, c]) => rows.push([ACTIVITY_GROUP_META[g].label, c]));
             exportCsv(rows, `activity-types-${new Date().toISOString().slice(0, 10)}.csv`);
@@ -664,13 +664,13 @@ function ActivitiesTasksSection({ data, members }) {
 
       {performers.length > 0 && (
         <SectionCard title="Top-Performer (offene Aufgaben pro Team-Mitglied)"
-          action={<button type="button" style={ghostBtnStyle} onClick={() => {
+          action={<button type="button" className="lk-btn lk-btn-ghost" onClick={() => {
             const rows = [['Name', 'Offene Aufgaben']];
             performers.forEach(p => rows.push([p.name, p.count]));
             exportCsv(rows, `performers-${new Date().toISOString().slice(0, 10)}.csv`);
           }}><Download size={12} /> CSV</button>}>
           {performers.map(p => (
-            <BarRow key={p.uid} label={p.name} count={p.count} total={openTasks.length || 1} color="#7C3AED" />
+            <BarRow key={p.uid} label={p.name} count={p.count} total={openTasks.length || 1} color="#003060" />
           ))}
         </SectionCard>
       )}
@@ -721,7 +721,7 @@ function CrmStatusSection({ data }) {
     <>
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14, marginBottom: 14 }}>
         <SectionCard title="Top 10 Sources"
-          action={<button type="button" style={ghostBtnStyle} onClick={() => {
+          action={<button type="button" className="lk-btn lk-btn-ghost" onClick={() => {
             const rows = [['Source', 'Anzahl']];
             sourceRows.forEach(([s, c]) => rows.push([s, c]));
             exportCsv(rows, `sources-${new Date().toISOString().slice(0, 10)}.csv`);
@@ -729,7 +729,7 @@ function CrmStatusSection({ data }) {
           {sourceRows.length === 0 ? (
             <div style={emptyHintStyle}>Keine Source-Daten</div>
           ) : sourceRows.map(([s, c]) => (
-            <BarRow key={s} label={s} count={c} total={leads.length || 1} color="#7C3AED" />
+            <BarRow key={s} label={s} count={c} total={leads.length || 1} color="#003060" />
           ))}
         </SectionCard>
 
@@ -756,7 +756,7 @@ function CrmStatusSection({ data }) {
 
       {owners.length > 0 && (
         <SectionCard title="Owner-Performance"
-          action={<button type="button" style={ghostBtnStyle} onClick={() => {
+          action={<button type="button" className="lk-btn lk-btn-ghost" onClick={() => {
             const rows = [['Owner', 'Kontakte gesamt', 'Hot Kontakte (Score ≥ 70)', 'SQL']];
             owners.forEach(o => rows.push([o.name, o.count, o.hot, o.sql]));
             exportCsv(rows, `owner-performance-${new Date().toISOString().slice(0, 10)}.csv`);
@@ -813,7 +813,7 @@ function AiSection({ data }) {
     <>
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14, marginBottom: 14 }}>
         <SectionCard title="Buying-Intent-Verteilung"
-          action={<button type="button" style={ghostBtnStyle} onClick={() => {
+          action={<button type="button" className="lk-btn lk-btn-ghost" onClick={() => {
             const rows = [['Intent', 'Anzahl']];
             intentCounts.forEach(i => rows.push([i.label, i.count]));
             exportCsv(rows, `ai-intent-${new Date().toISOString().slice(0, 10)}.csv`);
@@ -902,7 +902,7 @@ function OrganizationsSection({ data }) {
     <>
       <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: 14, marginBottom: 14 }}>
         <SectionCard title="Top 10 Unternehmen (Kontakt-Anzahl)"
-          action={<button type="button" style={ghostBtnStyle} onClick={() => {
+          action={<button type="button" className="lk-btn lk-btn-ghost" onClick={() => {
             const rows = [['Unternehmen', 'Stadt', 'Branche', 'Kontakte', 'Deals']];
             top10.forEach(o => rows.push([o.name, o.city || '', o.industry_slug || '', o.leadCount, o.dealCount]));
             exportCsv(rows, `top-orgs-${new Date().toISOString().slice(0, 10)}.csv`);
@@ -1009,13 +1009,8 @@ export default function Reports({ session }) {
           action={(
             <div style={{ display: 'flex', gap: 6, alignItems: 'center', flexWrap: 'wrap', justifyContent: 'flex-end' }}>
               {[7, 30, 90].map(d => (
-                <button key={d} type="button" onClick={() => setRange(d)}
-                  style={{
-                    padding: '7px 14px', borderRadius: 8, fontSize: 13, fontWeight: 600, cursor: 'pointer',
-                    background: range === d ? PRIMARY : COLORS.surface,
-                    color: range === d ? '#fff' : COLORS.text2,
-                    border: range === d ? `1px solid ${PRIMARY}` : `1px solid ${COLORS.border}`,
-                  }}>{d} Tage</button>
+                <button className="lk-btn lk-btn-primary" key={d} type="button" onClick={() => setRange(d)}
+                  >{d} Tage</button>
               ))}
               <button type="button" onClick={refetch} title="Aktualisieren" style={iconBtnStyle}>
                 <RefreshCw size={14} />
@@ -1030,7 +1025,7 @@ export default function Reports({ session }) {
           <KpiCard label="Hot Kontakte"  value={fmt.format(hotLeads)}     sub="Score ≥ 70"       color="#DC2626"    Icon={Flame}       onClick={() => setTab('ai')}        active={tab === 'ai'} />
           <KpiCard label="Pipeline-Wert" value={fmtEUR.format(pipelineValue)} sub="aktiv"        color="#22C55E"    Icon={Target}      onClick={() => setTab('pipeline')}  active={tab === 'pipeline'} />
           <KpiCard label="Win-Rate"      value={`${winRate}%`}            sub={`${won} won · ${lost} lost`} color="#0C447C" Icon={TrendingUp} onClick={() => setTab('pipeline')}  active={tab === 'pipeline'} />
-          <KpiCard label="Offene Tasks"  value={fmt.format(openTasksCount)} sub={overdueCount > 0 ? `${overdueCount} überfällig` : 'alles im Plan'} color="#7C3AED" Icon={CheckCircle2} onClick={() => setTab('activities')} active={tab === 'activities'} />
+          <KpiCard label="Offene Tasks"  value={fmt.format(openTasksCount)} sub={overdueCount > 0 ? `${overdueCount} überfällig` : 'alles im Plan'} color="#003060" Icon={CheckCircle2} onClick={() => setTab('activities')} active={tab === 'activities'} />
         </div>
 
         {/* Tab-Bar */}

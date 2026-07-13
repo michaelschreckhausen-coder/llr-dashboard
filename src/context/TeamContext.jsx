@@ -180,7 +180,7 @@ export function TeamProvider({ session, children }) {
             <div style={{
               width: 44, height: 44, borderRadius: '50%',
               border: '3px solid rgba(0,0,0,0.06)',
-              borderTopColor: 'var(--wl-primary, rgb(49,90,231))',
+              borderTopColor: 'var(--wl-primary, #0A6FB0)',
               animation: 'team-switch-spin 0.7s linear infinite',
             }}/>
             <div style={{

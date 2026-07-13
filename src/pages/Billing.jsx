@@ -235,7 +235,7 @@ export default function Billing() {
 
       {/* Header */}
       <div style={{ marginBottom:36 }}>
-        <div style={{ fontFamily:'"Caveat",cursive', fontSize:26, color: SKY, marginBottom:4, lineHeight:1 }}>
+        <div style={{ fontFamily:'Inter, sans-serif', fontWeight:700, fontSize:15, color: NAVY, marginBottom:6, lineHeight:1.2 }}>
           {isActive ? 'Plan aktiv' : trialExpired ? 'Dein Trial ist zu Ende' : trialDaysLeft !== null ? `Noch ${trialDaysLeft} Tage Trial` : 'Billing'}
         </div>
         <h1 style={{ fontSize:42, fontWeight:900, color: NAVY, letterSpacing:'-0.03em', marginBottom:8, lineHeight:1.05 }}>
@@ -507,7 +507,7 @@ export default function Billing() {
           { q: 'Was passiert nach dem Trial?', a: 'Ohne Aktivierung wechselt dein Konto in den Nur-Lesen-Modus. Keine Daten gehen verloren.' },
           { q: 'Rechnung mit USt?', a: 'Ja, alle Rechnungen enthalten die ausgewiesene Umsatzsteuer und sind DATEV-kompatibel.' },
         ].map((f, i) => (
-          <div key={i} style={{ padding:'16px 18px', background:'var(--surface)', border:'1px solid var(--border)', borderRadius:12 }}>
+          <div key={i} style={{ padding:'16px 18px', background:'var(--surface)', border:'1px solid var(--border)', borderRadius:16, boxShadow:'var(--shadow-card)' }}>
             <div style={{ fontSize:13, fontWeight:800, color:'var(--text-strong)', marginBottom:4 }}>{f.q}</div>
             <div style={{ fontSize:13, color:'var(--text-primary)', lineHeight:1.5 }}>{f.a}</div>
           </div>

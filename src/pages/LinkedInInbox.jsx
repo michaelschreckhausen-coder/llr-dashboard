@@ -1,3 +1,4 @@
+import PillSelect from '../components/PillSelect'
 import React, { useEffect, useState, useCallback, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { Check, X, Loader2, UserPlus, Building2, Inbox as InboxIcon, Plus, ListChecks, Pencil, Trash2, AlertTriangle } from 'lucide-react'
@@ -369,12 +370,7 @@ export default function LinkedInInbox() {
                 )}
 
                 <label style={{ fontSize: 12, fontWeight: 700, color: muted, display: 'block', marginTop: 14 }}>In Liste (optional)</label>
-                <select value={impListMode} onChange={e => setImpListMode(e.target.value)}
-                  style={{ width: '100%', marginTop: 6, padding: 9, border: `1px solid ${border}`, borderRadius: 8, fontSize: 13, background: 'var(--surface)', color: text, boxSizing: 'border-box' }}>
-                  <option value="none">— keine Liste —</option>
-                  {lists.map(l => <option key={l.id} value={l.id}>{l.name}</option>)}
-                  <option value="new">+ Neue Liste anlegen…</option>
-                </select>
+                <PillSelect value={impListMode} onChange={setImpListMode} neutral options={[{ value: 'none', label: `— keine Liste —` }, ...lists.map((l) => ({ value: l.id, label: l.name })), { value: 'new', label: `+ Neue Liste anlegen…` }]} buttonStyle={{ minWidth: 140 }} />
                 {impListMode === 'new' && (
                   <input value={impNewList} onChange={e => setImpNewList(e.target.value)} placeholder="Name der neuen Liste"
                     style={{ width: '100%', marginTop: 8, padding: 9, border: `1px solid ${border}`, borderRadius: 8, fontSize: 13, background: 'var(--surface)', color: text, boxSizing: 'border-box' }} />
@@ -384,7 +380,7 @@ export default function LinkedInInbox() {
 
                 <div style={{ display: 'flex', gap: 10, justifyContent: 'flex-end', marginTop: 20 }}>
                   <button onClick={() => setImportOpen(false)} disabled={importing} style={{ border: `1px solid ${border}`, background: card, color: muted, borderRadius: 8, padding: '9px 16px', fontSize: 13, fontWeight: 600, cursor: 'pointer' }}>Abbrechen</button>
-                  <button onClick={runSalesNavImport} disabled={importing || !impUrl.trim()} style={{ border: 'none', background: primary, color: '#fff', borderRadius: 8, padding: '9px 18px', fontSize: 13, fontWeight: 700, cursor: importing ? 'not-allowed' : 'pointer', opacity: (importing || !impUrl.trim()) ? 0.6 : 1, display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+                  <button className="lk-btn lk-btn-cta" onClick={runSalesNavImport} disabled={importing || !impUrl.trim()} style={{ opacity: (importing || !impUrl.trim()) ? 0.6 : 1, display: 'inline-flex', alignItems: 'center', gap: 6 }}>
                     {importing ? <><Loader2 size={15} style={{ animation: 'spin 1s linear infinite' }} /> Importiere…</> : 'Importieren'}
                   </button>
                 </div>
@@ -395,12 +391,12 @@ export default function LinkedInInbox() {
       )}
       {/* Journal-Header (analog /messages, /automatisierung) */}
       <div style={{ marginBottom: 22 }}>
-        <div style={{ fontSize: 20, color: '#30A0D0', fontFamily: '"Caveat", cursive', fontWeight: 600, marginBottom: 6 }}>LinkedIn · Kontakte</div>
+        <div className="lk-eyebrow" style={{ fontSize:12, fontWeight:700, letterSpacing:'1.6px', textTransform:'uppercase', fontFamily:'Inter, sans-serif', color:'var(--primary, #003060)', marginBottom:6 }}>LinkedIn · Kontakte</div>
         <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
           <h1 style={{ fontSize: 26, fontWeight: 700, margin: 0, letterSpacing: '-0.3px', lineHeight: 1.2, color: 'var(--text-primary, rgb(20,20,43))' }}>Deine LinkedIn Kontakte.</h1>
-          {!loading && <span style={{ background: primary, color: '#fff', borderRadius: 99, padding: '2px 10px', fontSize: 13, fontWeight: 700 }}>{rows.length}</span>}
-          <button onClick={() => { setImportErr(null); setImportOpen(true) }}
-            style={{ marginLeft: 'auto', display: 'inline-flex', alignItems: 'center', gap: 6, background: primary, color: '#fff', border: 'none', borderRadius: 8, padding: '8px 14px', fontSize: 13, fontWeight: 700, cursor: 'pointer' }}>
+          {!loading && <span style={{ background: 'var(--primary)', color: '#fff', borderRadius: 99, padding: '2px 10px', fontSize: 13, fontWeight: 700 }}>{rows.length}</span>}
+          <button className="lk-btn lk-btn-cta" onClick={() => { setImportErr(null); setImportOpen(true) }}
+            style={{ marginLeft: 'auto', display: 'inline-flex', alignItems: 'center', gap: 6 }}>
             <Plus size={15} /> Sales-Navigator-Suche importieren
           </button>
         </div>
@@ -450,8 +446,8 @@ export default function LinkedInInbox() {
                 onKeyDown={e => { if (e.key === 'Enter') createStandaloneList(); if (e.key === 'Escape') { setShowNewList(false); setNewListName('') } }}
                 placeholder="Listenname" disabled={creatingList}
                 style={{ padding: '5px 10px', borderRadius: 99, border: `1.5px solid ${primary}`, fontSize: 13, background: card, color: text, outline: 'none', width: 150 }} />
-              <button onClick={createStandaloneList} disabled={creatingList || !newListName.trim()}
-                style={{ display: 'inline-flex', alignItems: 'center', gap: 4, background: primary, color: '#fff', border: 'none', borderRadius: 99, padding: '5px 12px', fontSize: 13, fontWeight: 700, cursor: newListName.trim() ? 'pointer' : 'default', opacity: newListName.trim() ? 1 : 0.6 }}>
+              <button className="lk-btn lk-btn-cta" onClick={createStandaloneList} disabled={creatingList || !newListName.trim()}
+                style={{ display: 'inline-flex', alignItems: 'center', gap: 4, opacity: newListName.trim() ? 1 : 0.6 }}>
                 {creatingList ? <Loader2 size={13} className="spin" /> : <Check size={13} />} Anlegen
               </button>
               <button onClick={() => { setShowNewList(false); setNewListName('') }} title="Abbrechen"
@@ -476,16 +472,16 @@ export default function LinkedInInbox() {
             <input type="checkbox" checked={allSelected} onChange={toggleAll} /> Alle auswählen
           </label>
           <div style={{ marginLeft: 'auto', display: 'flex', gap: 8 }}>
-            <button onClick={() => setListOpen(true)} disabled={busy || selected.size === 0}
-              style={{ display: 'inline-flex', alignItems: 'center', gap: 8, background: card, color: selected.size ? primary : muted, border: `1.5px solid ${selected.size ? primary : border}`, borderRadius: 9, padding: '9px 16px', fontWeight: 700, fontSize: 14, cursor: selected.size ? 'pointer' : 'default' }}>
+            <button className="lk-btn lk-btn-ghost" onClick={() => setListOpen(true)} disabled={busy || selected.size === 0}
+              style={{ gap: 8 }}>
               <ListChecks size={15} /> Zu Liste{selected.size ? ` (${selected.size})` : ''}
             </button>
-            <button onClick={promoteSelected} disabled={busy || selected.size === 0}
-              style={{ display: 'inline-flex', alignItems: 'center', gap: 8, background: selected.size ? primary : 'var(--border)', color: '#fff', border: 'none', borderRadius: 9, padding: '9px 16px', fontWeight: 700, fontSize: 14, cursor: selected.size ? 'pointer' : 'default' }}>
+            <button className="lk-btn lk-btn-navy" onClick={promoteSelected} disabled={busy || selected.size === 0}
+              style={{ gap: 8 }}>
               {busy ? <Loader2 size={15} className="spin" /> : <UserPlus size={15} />} In CRM übernehmen{selected.size ? ` (${selected.size})` : ''}
             </button>
-            <button onClick={openBulkDelete} disabled={busy || selected.size === 0}
-              style={{ display: 'inline-flex', alignItems: 'center', gap: 8, background: card, color: selected.size ? '#DC2626' : muted, border: `1.5px solid ${selected.size ? '#FECACA' : border}`, borderRadius: 9, padding: '9px 16px', fontWeight: 700, fontSize: 14, cursor: selected.size ? 'pointer' : 'default' }}>
+            <button className="lk-btn lk-btn-danger" onClick={openBulkDelete} disabled={busy || selected.size === 0}
+              style={{ gap: 8 }}>
               <Trash2 size={15} /> Löschen{selected.size ? ` (${selected.size})` : ''}
             </button>
           </div>
@@ -530,8 +526,8 @@ export default function LinkedInInbox() {
                     <Check size={14} /> {inCrm ? 'Zusammenführen' : 'In CRM übernehmen'}
                   </button>
                 )}
-                <button onClick={() => dismiss(row)} disabled={busy} title="Verwerfen"
-                  style={{ display: 'inline-flex', alignItems: 'center', background: 'none', color: muted, border: `1px solid ${border}`, borderRadius: 8, padding: 8, cursor: 'pointer', flexShrink: 0 }}>
+                <button className="lk-btn lk-btn-ghost" onClick={() => dismiss(row)} disabled={busy} title="Verwerfen"
+                  style={{ padding: 8, flexShrink: 0 }}>
                   <X size={14} />
                 </button>
               </div>
@@ -591,8 +587,8 @@ export default function LinkedInInbox() {
               </div>
             )}
             <div style={{ display: 'flex', gap: 10, justifyContent: 'flex-end', marginTop: 6 }}>
-              <button onClick={() => setDeleteBulkModal(null)} disabled={busy} style={{ border: `1px solid ${border}`, background: 'var(--surface)', color: muted, borderRadius: 10, padding: '9px 16px', fontSize: 13, fontWeight: 600, cursor: 'pointer' }}>Abbrechen</button>
-              <button onClick={confirmBulkDelete} disabled={busy || deleteBulkModal.checking} style={{ border: 'none', background: '#DC2626', color: '#fff', borderRadius: 10, padding: '9px 18px', fontSize: 13, fontWeight: 700, cursor: (busy || deleteBulkModal.checking) ? 'not-allowed' : 'pointer', opacity: (busy || deleteBulkModal.checking) ? 0.6 : 1, display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+              <button className="lk-btn lk-btn-ghost" onClick={() => setDeleteBulkModal(null)} disabled={busy} >Abbrechen</button>
+              <button className="lk-btn lk-btn-danger" onClick={confirmBulkDelete} disabled={busy || deleteBulkModal.checking} style={{ opacity: (busy || deleteBulkModal.checking) ? 0.6 : 1, display: 'inline-flex', alignItems: 'center', gap: 6 }}>
                 {busy ? <Loader2 size={14} className="spin" /> : <Trash2 size={14} />} Endgültig löschen
               </button>
             </div>
@@ -619,8 +615,8 @@ export default function LinkedInInbox() {
               </div>
             )}
             <div style={{ display: 'flex', gap: 10, justifyContent: 'flex-end', marginTop: 6 }}>
-              <button onClick={() => setDeleteListModal(null)} style={{ border: `1px solid ${border}`, background: 'var(--surface)', color: muted, borderRadius: 10, padding: '9px 16px', fontSize: 13, fontWeight: 600, cursor: 'pointer' }}>Abbrechen</button>
-              <button onClick={confirmDeleteList} disabled={deleteListModal.checking} style={{ border: 'none', background: '#DC2626', color: '#fff', borderRadius: 10, padding: '9px 18px', fontSize: 13, fontWeight: 700, cursor: deleteListModal.checking ? 'not-allowed' : 'pointer', opacity: deleteListModal.checking ? 0.6 : 1, display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+              <button className="lk-btn lk-btn-ghost" onClick={() => setDeleteListModal(null)} >Abbrechen</button>
+              <button className="lk-btn lk-btn-danger" onClick={confirmDeleteList} disabled={deleteListModal.checking} style={{ opacity: deleteListModal.checking ? 0.6 : 1, display: 'inline-flex', alignItems: 'center', gap: 6 }}>
                 <Trash2 size={14} /> Liste löschen
               </button>
             </div>
@@ -653,10 +649,7 @@ function ListModal({ lists, count, busy, onClose, onConfirm }) {
         </div>
 
         {mode === 'existing' ? (
-          <select value={listId} onChange={e => setListId(e.target.value)}
-            style={{ width: '100%', boxSizing: 'border-box', padding: '10px 12px', borderRadius: 10, border: `1.5px solid ${border}`, fontSize: 14, background: 'var(--surface)', color: text, outline: 'none' }}>
-            {lists.map(l => <option key={l.id} value={l.id}>{l.name}</option>)}
-          </select>
+          <PillSelect value={listId} onChange={setListId} neutral options={[...lists.map((l) => ({ value: l.id, label: l.name }))]} buttonStyle={{ minWidth: 140 }} />
         ) : (
           <>
             <input value={newName} onChange={e => setNewName(e.target.value)} placeholder="Listenname (z.B. Q3 Follow-up)"
@@ -672,11 +665,11 @@ function ListModal({ lists, count, busy, onClose, onConfirm }) {
         )}
 
         <div style={{ display: 'flex', gap: 10, marginTop: 20 }}>
-          <button onClick={onClose} style={{ flex: 1, padding: '10px 0', borderRadius: 10, border: `1px solid ${border}`, background: 'var(--surface)', color: muted, fontWeight: 600, fontSize: 13, cursor: 'pointer' }}>Abbrechen</button>
-          <button
+          <button className="lk-btn lk-btn-ghost" onClick={onClose} style={{ flex: 1 }}>Abbrechen</button>
+          <button className="lk-btn lk-btn-cta"
             onClick={() => onConfirm(mode === 'existing' ? { listId } : { newName, color })}
             disabled={busy || (mode === 'existing' ? !listId : !newName.trim())}
-            style={{ flex: 1.4, padding: '10px 0', borderRadius: 10, border: 'none', background: primary, color: '#fff', fontWeight: 700, fontSize: 13, cursor: 'pointer', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: 6 }}>
+            style={{ flex: 1.4, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: 6 }}>
             {busy ? <Loader2 size={15} className="spin" /> : <Plus size={15} />} Hinzufügen
           </button>
         </div>

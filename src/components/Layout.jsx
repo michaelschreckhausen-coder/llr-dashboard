@@ -773,12 +773,12 @@ export default function Layout({ session, role, onLogout, children }) {
               <img
                 src="/Leadesk_Favicon (1).png"
                 alt="Leadesk"
-                style={{ width: 36, height: 36, objectFit: 'contain', borderRadius: 8, cursor:'pointer' }}
+                style={{ width: 30, height: 30, objectFit: 'contain', borderRadius: 8, cursor:'pointer' }}
               />
             ) : (
               wl?.logo_url
-                ? <img src={wl.logo_url} alt={wl.app_name||'Leadesk'} style={{ height: isMobile ? 44 : 68, width: 'auto', objectFit: 'contain', maxWidth:160, cursor:'pointer' }}/>
-                : <img src="/Leadesk_Logo.png" alt="Leadesk" style={{ height: isMobile ? 44 : 68, width: 'auto', objectFit: 'contain', cursor:'pointer' }}/>
+                ? <img src={wl.logo_url} alt={wl.app_name||'Leadesk'} style={{ height: isMobile ? 30 : 34, width: 'auto', objectFit: 'contain', maxWidth:150, cursor:'pointer' }}/>
+                : <img src="/Leadesk_Logo.png" alt="Leadesk" style={{ height: isMobile ? 30 : 34, width: 'auto', objectFit: 'contain', cursor:'pointer' }}/>
             )}
           </NavLink>
           {isMobile && (
@@ -892,7 +892,7 @@ export default function Layout({ session, role, onLogout, children }) {
 
         {/* TOP BAR */}
         <header style={{
-          height: isMobile ? 56 : 68,
+          height: isMobile ? 52 : 56,
           background: isMobile ? 'var(--surface)' : 'transparent',
           backdropFilter: isMobile ? 'var(--glass-blur)' : 'none',
           WebkitBackdropFilter: isMobile ? 'var(--glass-blur)' : 'none',
@@ -982,7 +982,7 @@ export default function Layout({ session, role, onLogout, children }) {
             {extInstalled ? (
               <span title="Extension aktiv" style={{ position:'absolute', top:6, right:6, width:9, height:9, borderRadius:'50%', background:'rgb(34,197,94)', border:'2px solid var(--bg-body)' }}/>
             ) : (
-              <span title="Noch nicht installiert" style={{ position:'absolute', top:6, right:6, width:9, height:9, borderRadius:'50%', background:'var(--wl-primary, rgb(49,90,231))', border:'2px solid var(--bg-body)' }}/>
+              <span title="Noch nicht installiert" style={{ position:'absolute', top:6, right:6, width:9, height:9, borderRadius:'50%', background:'var(--primary)', border:'2px solid var(--bg-body)' }}/>
             )}
           </a>
 
@@ -1199,7 +1199,7 @@ export default function Layout({ session, role, onLogout, children }) {
                       style={{ display:'flex', alignItems:'center', gap:12, padding:'12px 16px', cursor:'pointer', borderBottom:'1px solid #F8FAFC' }}
                       onMouseEnter={e => e.currentTarget.style.background='#F8FAFC'}
                       onMouseLeave={e => e.currentTarget.style.background='transparent'}>
-                      <div style={{ width:36, height:36, borderRadius:'50%', background:'linear-gradient(135deg,#3b82f6,#8b5cf6)', display:'flex', alignItems:'center', justifyContent:'center', color:'#fff', fontWeight:800, fontSize:13, flexShrink:0 }}>
+                      <div style={{ width:36, height:36, borderRadius:'50%', background:'var(--grad, linear-gradient(120deg,#16A8DC,#0A6FB0,#003060))', display:'flex', alignItems:'center', justifyContent:'center', color:'#fff', fontWeight:800, fontSize:13, flexShrink:0 }}>
                         {name.charAt(0).toUpperCase()}
                       </div>
                       <div style={{ flex:1, minWidth:0 }}>

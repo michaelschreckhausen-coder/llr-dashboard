@@ -14,21 +14,10 @@
 //   helperText      — Mini-Text unter den Buttons (optional)
 
 import React from 'react'
+import EmptyOrb from './EmptyOrb'
 
-const P = 'var(--wl-primary, rgb(49,90,231))'
+const P = 'var(--wl-primary, #0A6FB0)'
 
-function AnimatedLogo({ size = 130 }) {
-  return (
-    <img
-      src="/Leadesk_Favicon (1).png"
-      alt="Leadesk"
-      width={size}
-      height={size}
-      draggable={false}
-      style={{ display: 'block', userSelect: 'none' }}
-    />
-  )
-}
 export default function EmptyHero({
   eyebrow,
   title,
@@ -49,29 +38,22 @@ export default function EmptyHero({
       position: 'relative',
     }}>
       <div style={{ display: 'flex', justifyContent: 'center', marginBottom: 8 }}>
-        <AnimatedLogo size={130}/>
+        <EmptyOrb size={150}/>
       </div>
 
       {eyebrow && (
-        <div style={{
-          marginTop: 28,
-          fontSize: 20,
-          color: '#30A0D0',
-          fontFamily: '"Caveat", cursive',
-          fontWeight: 600,
-          letterSpacing: '.2px',
-        }}>
-          {eyebrow}
+        <div style={{ display:'flex', justifyContent:'center', marginTop:20 }}>
+          <span className="lk-eyebrow">{eyebrow}</span>
         </div>
       )}
 
       <h1 style={{
         marginTop: eyebrow ? 6 : 24,
         marginBottom: 10,
-        fontSize: 26,
-        fontWeight: 700,
-        color: 'var(--text-primary, rgb(20,20,43))',
-        letterSpacing: '-0.4px',
+        fontSize: 30,
+        fontWeight: 800,
+        color: 'var(--text-primary, #0E1633)',
+        letterSpacing: '-0.6px',
         lineHeight: 1.15,
       }}>{title}</h1>
 
@@ -89,30 +71,7 @@ export default function EmptyHero({
         <button
           data-tour-id={primaryTourId}
           onClick={onPrimary}
-          style={{
-            padding: '13px 32px',
-            background: P,
-            color: '#fff',
-            border: 'none',
-            borderRadius: 12,
-            fontSize: 14.5,
-            fontWeight: 600,
-            cursor: 'pointer',
-            boxShadow: '0 4px 16px rgba(49,90,231,.28), 0 1px 2px rgba(49,90,231,.18)',
-            display: 'inline-flex',
-            alignItems: 'center',
-            gap: 8,
-            fontFamily: 'inherit',
-            transition: 'transform .12s, box-shadow .12s',
-          }}
-          onMouseEnter={e => {
-            e.currentTarget.style.transform = 'translateY(-1px)'
-            e.currentTarget.style.boxShadow = '0 8px 22px rgba(49,90,231,.36), 0 2px 4px rgba(49,90,231,.22)'
-          }}
-          onMouseLeave={e => {
-            e.currentTarget.style.transform = 'translateY(0)'
-            e.currentTarget.style.boxShadow = '0 4px 16px rgba(49,90,231,.28), 0 1px 2px rgba(49,90,231,.18)'
-          }}
+          className="lk-btn lk-btn-primary lk-btn-lg"
         >
           {primaryLabel}
         </button>

@@ -128,7 +128,7 @@ function LeadRowImpl({
       <div
         onClick={() => onNavigateToProfile(lead.id)}
         style={{ display:'flex', alignItems:'center', gap:12, padding:'12px 16px', background:'var(--surface)', borderBottom:'1px solid #EEEFF4', cursor:'pointer', borderLeft:`3px solid ${(lead.hs_score||0)>=70?'#ef4444':(lead.hs_score||0)>=40?'#f59e0b':'#e2e8f0'}` }}>
-        <div style={{ width:40, height:40, borderRadius:'50%', background:`linear-gradient(135deg,rgb(0,48,96),rgb(100,140,240))`, display:'flex', alignItems:'center', justifyContent:'center', color:'white', fontSize:14, fontWeight:700, flexShrink:0 }}>
+        <div style={{ width:40, height:40, borderRadius:'50%', background:`linear-gradient(135deg,rgb(0,48,96),#16A8DC)`, display:'flex', alignItems:'center', justifyContent:'center', color:'white', fontSize:14, fontWeight:700, flexShrink:0 }}>
           {lead.first_name?.[0] || lead.name?.[0] || '?'}
         </div>
         <div style={{ flex:1, minWidth:0 }}>
@@ -196,7 +196,7 @@ function LeadRowImpl({
           lead.avatar_url ? (
             <img src={lead.avatar_url} alt="" style={{ width:36, height:36, borderRadius:'50%', objectFit:'cover' }}/>
           ) : (
-            <div style={{ width:36, height:36, borderRadius:'50%', background:`linear-gradient(135deg, rgb(0,48,96), rgb(100,140,240))`, display:'flex', alignItems:'center', justifyContent:'center', color:'white', fontSize:13, fontWeight:700, flexShrink:0 }}>
+            <div style={{ width:36, height:36, borderRadius:'50%', background:`linear-gradient(135deg, rgb(0,48,96), #16A8DC)`, display:'flex', alignItems:'center', justifyContent:'center', color:'white', fontSize:13, fontWeight:700, flexShrink:0 }}>
               {(lead.first_name?.[0] || lead.name?.[0] || '?').toUpperCase()}
             </div>
           )
@@ -318,9 +318,9 @@ function LeadRowImpl({
                   const dt = new Date(); dt.setDate(dt.getDate()+days)
                   const iso = dt.toISOString().split('T')[0]
                   return (
-                    <button key={days}
+                    <button className="lk-btn lk-btn-ghost" key={days}
                       onClick={e => { e.stopPropagation(); onFollowupSet(lead.id, iso, label) }}
-                      style={{ padding:'6px 10px', borderRadius:7, border:'1px solid var(--border)', background:'var(--surface-muted)', fontSize:12, fontWeight:500, cursor:'pointer', color:'var(--text-primary)', textAlign:'left' }}>
+                      style={{ textAlign:'left' }}>
                       {label}
                     </button>
                   )

@@ -1,3 +1,4 @@
+import PillSelect from '../components/PillSelect'
 import React, { useEffect, useState, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
@@ -562,11 +563,7 @@ export default function Settings({ session }) {
         <div style={hdr}>{t('settings_output_lang')}</div>
         <div style={{ padding:'18px 20px' }}>
           <label style={lbl}>{t('settings_output_lang_label')}</label>
-          <select value={outputLang} onChange={e=>setOutputLang(e.target.value)} style={{ ...inp, cursor:'pointer' }}>
-            <option value="auto">{t('settings_output_auto')}</option>
-            <option value="de">{t('settings_output_de')}</option>
-            <option value="en">{t('settings_output_en')}</option>
-          </select>
+          <PillSelect value={outputLang} onChange={setOutputLang} neutral options={[{ value: 'auto', label: t('settings_output_auto') }, { value: 'de', label: t('settings_output_de') }, { value: 'en', label: t('settings_output_en') }]} buttonStyle={{ minWidth: 140 }} />
           <div style={{ fontSize:12, color:'#aaa', marginTop:6 }}>{t('settings_output_hint')}</div>
 
         </div>

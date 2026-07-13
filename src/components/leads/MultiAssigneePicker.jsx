@@ -21,7 +21,7 @@
 
 import React, { useState, useRef, useEffect } from 'react';
 
-const PRIMARY = 'rgb(49,90,231)';
+const PRIMARY = '#0A6FB0';
 
 export default function MultiAssigneePicker({ value = [], onChange, members = [], uid, disabled = false }) {
   const [open, setOpen] = useState(false);
@@ -66,7 +66,7 @@ export default function MultiAssigneePicker({ value = [], onChange, members = []
     }
     const letter = (memberLabel(m)[0] || '?').toUpperCase();
     return (
-      <div style={{ width: 18, height: 18, borderRadius: '50%', background: PRIMARY, color: '#fff', fontSize: 9, fontWeight: 800, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+      <div style={{ width: 18, height: 18, borderRadius: '50%', background: 'var(--primary)', color: '#fff', fontSize: 9, fontWeight: 800, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
         {letter}
       </div>
     );

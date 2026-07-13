@@ -76,6 +76,7 @@ export default function ModelSelector({ model, onChange, disabled = false, size 
   return (
     <div style={{ position: 'relative', display: 'inline-block' }}>
       <button
+        className="lk-dd-trigger"
         ref={btnRef}
         onClick={handleOpen}
         style={{
@@ -122,8 +123,8 @@ export default function ModelSelector({ model, onChange, disabled = false, size 
                   style={{
                     width: '100%', textAlign: 'left', padding: '7px 12px',
                     borderRadius: 7, border: 'none',
-                    background: m.id === model ? 'var(--wl-primary-soft, rgba(49,90,231,0.08))' : 'none',
-                    color: m.id === model ? 'var(--wl-primary, rgb(49,90,231))' : 'var(--text-primary, #333)',
+                    background: m.id === model ? 'var(--wl-primary-soft, rgba(10,111,176,0.08))' : 'none',
+                    color: m.id === model ? 'var(--wl-primary, #0A6FB0)' : 'var(--text-primary, #333)',
                     fontWeight: m.id === model ? 600 : 400,
                     fontSize: 13, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 8,
                   }}

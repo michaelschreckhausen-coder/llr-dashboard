@@ -9,7 +9,7 @@ import { useAddons } from '../hooks/useAddons'
 import { useBrandVoice } from '../context/BrandVoiceContext'
 import { STRIKE2_STEPS } from '../lib/strike2QuestionsCatalog'
 
-const PRIMARY = 'var(--wl-primary, rgb(49,90,231))'
+const PRIMARY = 'var(--wl-primary, #0A6FB0)'
 const S2 = '#F97316'
 const ADDON_SLUG = 'strike2-zielgruppen-plus'
 const PHASE_ORDER = ['PER', 'INF', 'BEF', 'EVA', 'BEW', 'KEN-ABS', 'IMP-RUC']
@@ -168,8 +168,8 @@ export default function Strike2PersonaIdeas() {
                           Im Redaktionsplan ✓
                         </Link>
                       ) : (
-                        <button type="button" onClick={() => uebernehmenOne(idx)} disabled={busyIdx === idx || bulk}
-                          style={{ border: 'none', background: PRIMARY, color: '#fff', borderRadius: 8, padding: '7px 12px', fontSize: 12, fontWeight: 600, cursor: 'pointer', whiteSpace: 'nowrap', opacity: (busyIdx === idx || bulk) ? 0.6 : 1 }}>
+                        <button className="lk-btn lk-btn-primary" type="button" onClick={() => uebernehmenOne(idx)} disabled={busyIdx === idx || bulk}
+                          style={{ whiteSpace: 'nowrap', opacity: (busyIdx === idx || bulk) ? 0.6 : 1 }}>
                           {busyIdx === idx ? '…' : '→ In Redaktionsplan'}
                         </button>
                       )}

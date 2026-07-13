@@ -13,6 +13,7 @@
 // Addon-Gate 'automation'. Fehlercodes der EF: 403 no_addon, 409 kein OK-Account,
 // 429 Rate-Limit.
 
+import PillSelect from '../components/PillSelect'
 import React, { useState, useEffect, useCallback } from 'react'
 import { useNavigate } from 'react-router-dom'
 import {
@@ -32,7 +33,7 @@ function Avatar({ name, avatar_url, size = 40 }) {
 }
 
 // ─── Tokens (Alignment mit Automatisierung.jsx / Leads.jsx) ────────────────
-const PRIMARY = 'rgb(49,90,231)'
+const PRIMARY = '#0A6FB0'
 const PRIMARY_VAR = `var(--wl-primary, ${PRIMARY})`
 
 const pageOuterStyle  = { background:'var(--surface-canvas, #F8FAFC)', minHeight:'100vh', padding:'24px 24px 60px' }
@@ -43,7 +44,7 @@ const subtitleStyle   = { fontSize:13, color:'var(--text-muted, #6B7280)', margi
 const cardStyle       = { background:'var(--surface)', borderRadius:12, border:'1px solid var(--border, #E4E7EC)', padding:'18px 20px' }
 const inputStyle      = { padding:'8px 12px', borderRadius:8, border:'1.5px solid #E4E7EC', fontSize:13, outline:'none', width:'100%', boxSizing:'border-box', fontFamily:'inherit', background:'var(--surface)' }
 const labelStyle      = { display:'block', fontSize:10, fontWeight:700, color:'var(--text-muted, #6B7280)', textTransform:'uppercase', letterSpacing:'0.07em', marginBottom:5 }
-const primaryBtnStyle = { padding:'9px 18px', background:PRIMARY_VAR, color:'#fff', border:'none', borderRadius:10, fontSize:13, fontWeight:700, display:'inline-flex', alignItems:'center', gap:6, cursor:'pointer' }
+const primaryBtnStyle = { padding:'9px 18px', background:'var(--primary)', color:'#fff', border:'none', borderRadius:10, fontSize:13, fontWeight:700, display:'inline-flex', alignItems:'center', gap:6, cursor:'pointer' }
 const ghostBtnStyle   = { padding:'7px 12px', background:'var(--surface)', color:'#374151', border:'1.5px solid #E4E7EC', borderRadius:10, fontSize:12, fontWeight:600, display:'inline-flex', alignItems:'center', gap:6, cursor:'pointer' }
 const sectionTitle    = { fontSize:12, fontWeight:700, color:'var(--text-strong, #111827)', marginBottom:10, display:'flex', alignItems:'center', gap:6 }
 const gridStyle       = { display:'grid', gridTemplateColumns:'repeat(auto-fit, minmax(200px, 1fr))', gap:12 }
@@ -210,7 +211,7 @@ export default function LinkedInSuche() {
             {flash.type === 'error' ? <AlertCircle size={16} /> : <CheckCircle2 size={16} />}
             <span style={{ flex:1 }}>{flash.text}</span>
             {flash.action && (
-              <button onClick={() => navigate(flash.action.to)} style={{ ...ghostBtnStyle, padding:'5px 10px' }}>
+              <button onClick={() => navigate(flash.action.to)} className="lk-btn lk-btn-ghost" style={{ padding:'5px 10px' }}>
                 {flash.action.label} <ExternalLink size={13} />
               </button>
             )}
@@ -228,15 +229,11 @@ export default function LinkedInSuche() {
               </div>
               <div>
                 <label style={labelStyle}>Quelle</label>
-                <select style={inputStyle} value={form.api} onChange={e => setField('api', e.target.value)}>
-                  {API_OPTIONS.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
-                </select>
+                <PillSelect value={form.api} onChange={v => setField('api', v)} neutral options={[...API_OPTIONS.map((o) => ({ value: o.value, label: o.label }))]} buttonStyle={{ minWidth: 140 }} />
               </div>
               <div>
                 <label style={labelStyle}>Kategorie</label>
-                <select style={inputStyle} value={form.category} onChange={e => setField('category', e.target.value)}>
-                  {CATEGORY_OPTIONS.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
-                </select>
+                <PillSelect value={form.category} onChange={v => setField('category', v)} neutral options={[...CATEGORY_OPTIONS.map((o) => ({ value: o.value, label: o.label }))]} buttonStyle={{ minWidth: 140 }} />
               </div>
             </div>
 
@@ -273,17 +270,14 @@ export default function LinkedInSuche() {
 
             <div>
               <label style={labelStyle}>Ziel-Liste in den LinkedIn Kontakten (optional)</label>
-              <select style={{ ...inputStyle, maxWidth:360 }} value={form.target_list_id} onChange={e => setField('target_list_id', e.target.value)}>
-                <option value="">— keine (nur in die Inbox) —</option>
-                {inboxLists.map(l => <option key={l.id} value={l.id}>{l.name}</option>)}
-              </select>
+              <PillSelect value={form.target_list_id} onChange={v => setField('target_list_id', v)} neutral options={[{ value: '', label: `— keine (nur in die Inbox) —` }, ...inboxLists.map((l) => ({ value: l.id, label: l.name }))]} buttonStyle={{ minWidth: 140 }} />
               <div style={{ fontSize:11, color:'var(--text-muted, #6B7280)', marginTop:4 }}>
                 Personen-Treffer werden dieser Liste zugeordnet — dieselbe Liste wählst du später in der Automatisierung als Zielgruppe.
               </div>
             </div>
 
             <div>
-              <button style={{ ...primaryBtnStyle, opacity: saving ? 0.6 : 1 }} disabled={saving} onClick={saveSearch}>
+              <button className="lk-btn lk-btn-navy" style={{ opacity: saving ? 0.6 : 1 }} disabled={saving} onClick={saveSearch}>
                 {saving ? <Loader2 size={15} className="lk-spin" /> : <Save size={15} />} Suche speichern
               </button>
             </div>
@@ -331,13 +325,13 @@ export default function LinkedInSuche() {
                   color:      s.status === 'running' ? '#92400E' : s.status === 'error' ? '#B91C1C' : s.status === 'done' ? '#15803D' : '#6B7280',
                 }}>{s.status || 'idle'}</span>
                 <button
-                  style={{ ...primaryBtnStyle, opacity: runningId === s.id ? 0.6 : 1 }}
+                  className="lk-btn lk-btn-navy" style={{ opacity: runningId === s.id ? 0.6 : 1 }}
                   disabled={runningId === s.id}
                   onClick={() => runSearch(s)}
                 >
                   {runningId === s.id ? <Loader2 size={15} className="lk-spin" /> : <Play size={15} />} Ausführen
                 </button>
-                <button style={{ ...ghostBtnStyle, color:'#B91C1C', borderColor:'#FECACA' }} onClick={() => deleteSearch(s.id)}>
+                <button className="lk-btn lk-btn-ghost" style={{ color:'#B91C1C', borderColor:'#FECACA' }} onClick={() => deleteSearch(s.id)}>
                   <Trash2 size={14} />
                 </button>
               </div>
@@ -351,7 +345,7 @@ export default function LinkedInSuche() {
             <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', gap:12, marginBottom:10, flexWrap:'wrap' }}>
               <div style={sectionTitle}><Users size={14} /> Ergebnisse für „{results.searchName}"</div>
               {results.category === 'people' && (
-                <button style={ghostBtnStyle} onClick={() => navigate('/linkedin-inbox')}>
+                <button className="lk-btn lk-btn-ghost" onClick={() => navigate('/linkedin-inbox')}>
                   <InboxIcon size={14} /> Zu den LinkedIn Kontakten
                 </button>
               )}
@@ -387,12 +381,12 @@ export default function LinkedInSuche() {
                         )}
                       </div>
                       {it.linkedin_url && (
-                        <a href={it.linkedin_url} target="_blank" rel="noopener noreferrer" style={{ ...ghostBtnStyle, textDecoration:'none' }}>
+                        <a href={it.linkedin_url} target="_blank" rel="noopener noreferrer" className="lk-btn lk-btn-ghost" style={{ textDecoration:'none' }}>
                           Profil öffnen <ExternalLink size={13} />
                         </a>
                       )}
                       {results.category === 'people' && (
-                        <span style={{ ...ghostBtnStyle, color:'#15803D', borderColor:'#BBF7D0', cursor:'default' }}>
+                        <span className="lk-btn lk-btn-ghost" style={{ color:'#15803D', borderColor:'#BBF7D0', cursor:'default' }}>
                           <InboxIcon size={14} /> in LinkedIn Kontakten
                         </span>
                       )}

@@ -21,7 +21,7 @@ function IcInstagram({ size = 22, strokeWidth = 2 }) {
   )
 }
 
-const PRIMARY = 'var(--wl-primary, rgb(49,90,231))'
+const PRIMARY = 'var(--wl-primary, #0A6FB0)'
 const IG_PINK = '#E1306C'
 const C = {
   surface: '#ffffff', border: '#E4E7EC', text1: '#111827',
@@ -132,11 +132,7 @@ export default function Instagram() {
         )}
       </div>
       {phase === 'ready' && (
-        <button onClick={onRefresh} disabled={refreshing} style={{
-          display: 'flex', alignItems: 'center', gap: 6, padding: '8px 14px',
-          borderRadius: 8, border: `1px solid ${C.border}`, background: '#fff',
-          color: C.text2, fontSize: 13, fontWeight: 600, cursor: 'pointer',
-        }}>
+        <button className="lk-btn lk-btn-ghost" onClick={onRefresh} disabled={refreshing} style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
           <RefreshCw size={15} style={refreshing ? { animation: 'spin 1s linear infinite' } : undefined} />
           Aktualisieren
         </button>
@@ -165,10 +161,7 @@ export default function Instagram() {
           Verbinde dein Instagram-Konto in den Einstellungen, um Analysen zu sehen und
           Beiträge direkt aus dem Redaktionsplan zu veröffentlichen.
         </div>
-        <button onClick={() => navigate('/settings/instagram')} style={{
-          padding: '10px 20px', borderRadius: 9, border: 'none', background: PRIMARY,
-          color: '#fff', fontSize: 14, fontWeight: 700, cursor: 'pointer',
-        }}>
+        <button className="lk-btn lk-btn-primary" onClick={() => navigate('/settings/instagram')} >
           Instagram verbinden
         </button>
       </div>
@@ -182,10 +175,7 @@ export default function Instagram() {
         padding: '18px 20px', color: '#991B1B', fontSize: 14,
       }}>
         {err || 'Es ist ein Fehler aufgetreten.'}
-        <button onClick={load} style={{
-          marginLeft: 12, padding: '4px 12px', borderRadius: 7, border: '1px solid #FECACA',
-          background: '#fff', color: '#991B1B', fontSize: 13, fontWeight: 600, cursor: 'pointer',
-        }}>Erneut versuchen</button>
+        <button className="lk-btn lk-btn-ghost" onClick={load} style={{ marginLeft: 12 }}>Erneut versuchen</button>
       </div>
     )
   }

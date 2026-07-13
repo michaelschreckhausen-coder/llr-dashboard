@@ -27,8 +27,8 @@ export default function CompanyBrandGate({ feature, children }) {
   return (
     <div style={{ maxWidth: 720, margin: '60px auto', padding: '0 24px' }}>
       <div style={{ padding: '36px 32px', background: 'var(--surface)', border: '1.5px solid var(--border)', borderRadius: 16, textAlign: 'center' }}>
-        <div style={{ width: 56, height: 56, borderRadius: 14, background: 'rgba(49,90,231,0.08)', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', marginBottom: 16 }}>
-          <Building2 size={26} strokeWidth={1.75} style={{ color: 'var(--wl-primary, rgb(49,90,231))' }} />
+        <div style={{ width: 56, height: 56, borderRadius: 14, background: 'rgba(10,111,176,0.08)', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', marginBottom: 16 }}>
+          <Building2 size={26} strokeWidth={1.75} style={{ color: 'var(--wl-primary, #0A6FB0)' }} />
         </div>
         <div style={{ fontSize: 18, fontWeight: 700, color: 'var(--text-primary)', marginBottom: 8 }}>{copy.title}</div>
         <div style={{ fontSize: 13, color: 'var(--text-muted)', lineHeight: 1.6, maxWidth: 480, margin: '0 auto' }}>

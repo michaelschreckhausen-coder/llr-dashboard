@@ -1,3 +1,4 @@
+import PillSelect from '../components/PillSelect'
 import { useResponsive } from '../hooks/useResponsive'
 import { useTeam } from '../context/TeamContext'
 import React, { useState, useEffect, useCallback } from 'react'
@@ -37,7 +38,7 @@ const DEFAULT_STAGE_CONFIG = {
   verloren:    { label:'Verloren',     color:'#94a3b8', bg:'#F8FAFC', border:'#E2E8F0', prob:0   },
   stage_custom1:  { label:'Neue Stage 1',          color:'#0891b2', bg:'#ECFEFF', border:'#A5F3FC', prob:25  },
   stage_custom2:  { label:'Neue Stage 2',          color:'#ec4899', bg:'#FDF2F8', border:'#F9A8D4', prob:45  },
-  stage_custom3:  { label:'Neue Stage 3',          color:'#6366f1', bg:'#EEF2FF', border:'#C7D2FE', prob:65  },
+  stage_custom3:  { label:'Neue Stage 3',          color:'#6366f1', bg:'#EAF6FC', border:'#C7D2FE', prob:65  },
 }
 
 // Lade/Speichere Stage-Labels in localStorage (user-spezifisch)
@@ -190,8 +191,8 @@ function DealCard({ lead, stage, onOpen, onMove, dragging, onDragStart, onDragEn
             → {STAGE_CONFIG[s].label.split('/')[0].trim()}
           </button>
         ))}
-        <button onClick={() => onMove(lead.id, 'verloren')}
-          style={{ fontSize:10, padding:'2px 8px', borderRadius:6, border:'1px solid var(--border)', background:'var(--surface-muted)', color:'#94a3b8', cursor:'pointer', fontWeight:600 }}><X size={14} strokeWidth={1.75}/></button>
+        <button className="lk-btn lk-btn-ghost" onClick={() => onMove(lead.id, 'verloren')}
+          ><X size={14} strokeWidth={1.75}/></button>
         {stage !== 'gewonnen' && (
           <button onClick={() => onMove(lead.id, 'gewonnen')}
             title="Als Gewonnen markieren"
@@ -371,8 +372,8 @@ const [stage, setStage] = useState(lead.deal_stage || 'kein_deal')
           </div>
           {/* AI Insights */}
           {(lead.ai_need_detected || (lead.ai_pain_points && lead.ai_pain_points.length > 0)) && (
-            <div style={{ marginBottom:20, background:'linear-gradient(135deg,rgba(139,92,246,0.08),rgba(59,130,246,0.08))', borderRadius:12, padding:'14px 16px', border:'1px solid rgba(139,92,246,0.2)' }}>
-              <div style={{ fontSize:11, fontWeight:700, color:'#7C3AED', marginBottom:8 }}>AI-Erkenntnisse</div>
+            <div style={{ marginBottom:20, background:'var(--tint-cyan, #EAF8FE)', borderRadius:12, padding:'14px 16px', border:'1px solid rgba(22,168,220,0.25)' }}>
+              <div style={{ fontSize:11, fontWeight:700, color:'#003060', marginBottom:8 }}>AI-Erkenntnisse</div>
               {lead.ai_need_detected && <div style={{ fontSize:13, color:'var(--text-primary)', marginBottom:6 }}><b>Bedarf:</b> {lead.ai_need_detected}</div>}
               {lead.ai_pain_points && lead.ai_pain_points.length > 0 && (
                 <div style={{ fontSize:13, color:'var(--text-primary)' }}><b>Pain Points:</b> {lead.ai_pain_points.join(', ')}</div>
@@ -699,7 +700,7 @@ export default function Pipeline({ session }) {
             { label:'In Pipeline',   val:withDeal,                                                                   color:'#1d4ed8', bg:'#EFF6FF', border:'#BFDBFE' },
             { label:'Win Rate',      val:winRate+'%',                                                                color:'#16a34a', bg:'#F0FDF4', border:'#BBF7D0' },
             { label:'Pipeline Wert', val:pipelineVal > 0 ? '€'+pipelineVal.toLocaleString('de-DE') : '—',          color:'#b45309', bg:'#FFFBEB', border:'#FDE68A', tip:'Rohwert aller aktiven Deals' },
-            { label:'Gewichtet',     val:weightedVal > 0 ? '€'+Math.round(weightedVal).toLocaleString('de-DE') : '—', color:'#7c3aed', bg:'#F5F3FF', border:'#DDD6FE', tip:'Wahrscheinlichkeitsgewichteter Wert' },
+            { label:'Gewichtet',     val:weightedVal > 0 ? '€'+Math.round(weightedVal).toLocaleString('de-DE') : '—', color:'#0A6FB0', bg:'#EAF8FE', border:'#BEE7F7', tip:'Wahrscheinlichkeitsgewichteter Wert' },
             { label:'Ø Tage',        val:avgDaysInPipeline > 0 ? avgDaysInPipeline+'d' : '—',                       color:avgDaysInPipeline>30?'#dc2626':avgDaysInPipeline>14?'#d97706':'#475569', bg:avgDaysInPipeline>30?'#FEF2F2':avgDaysInPipeline>14?'#FFFBEB':'#F8FAFC', border:avgDaysInPipeline>30?'#FECACA':avgDaysInPipeline>14?'#FDE68A':'#E2E8F0', tip:'Ø Tage in aktueller Stage' },
             { label:'Ø Deal',        val:avgDealVal > 0 ? '€'+avgDealVal.toLocaleString('de-DE') : '—',            color:'#0369a1', bg:'#F0F9FF', border:'#BAE6FD', tip:'Ø Deal-Wert aktiver Deals' },
             { label:'Gewonnen',      val:wonVal > 0 ? '€'+wonVal.toLocaleString('de-DE') : won+'',                 color:'#166534', bg:'#DCFCE7', border:'#86EFAC' },
@@ -713,8 +714,8 @@ export default function Pipeline({ session }) {
         <div style={{ marginLeft:'auto', display:'flex', gap:8, alignItems:'center' }}>
           <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Suchen..."
             style={{ padding:'8px 14px', borderRadius:10, border:'1.5px solid #E2E8F0', fontSize:13, outline:'none', width:200, fontFamily:'inherit' }}/>
-          <button onClick={() => setView(v => v==='kanban'?'list':'kanban')}
-            style={{ padding:'8px 14px', borderRadius:10, border:'1.5px solid #E2E8F0', background:'var(--surface-muted)', fontSize:12, fontWeight:700, cursor:'pointer', color:'#475569' }}>
+          <button className="lk-btn lk-btn-ghost" onClick={() => setView(v => v==='kanban'?'list':'kanban')}
+            >
             {effectiveView === 'kanban' ? 'Liste' : '⬚ Kanban'}
           </button>
           {effectiveView === 'list' && (
@@ -729,9 +730,9 @@ export default function Pipeline({ session }) {
               {showLost ? 'Mit Verloren' : 'Ohne Verloren'}
             </button>
           )}
-          <button onClick={() => setEditStages(true)}
+          <button className="lk-btn lk-btn-ghost" onClick={() => setEditStages(true)}
             title="Pipeline-Reiter umbenennen oder hinzufügen"
-            style={{ padding:'8px 14px', borderRadius:10, border:'1.5px solid #E2E8F0', background:'var(--surface-muted)', fontSize:12, fontWeight:700, cursor:'pointer', color:'#475569', display:'flex', alignItems:'center', gap:5 }}>
+            style={{ display:'flex', alignItems:'center', gap:5 }}>
             ✏ Reiter
           </button>
         </div>
@@ -851,8 +852,8 @@ export default function Pipeline({ session }) {
                             <div>
                               <div style={{ display:'flex', alignItems:'center', gap:6 }}>
                                 <div style={{ fontWeight:700, fontSize:13, color:'var(--text-strong)' }}>{fullName(lead)}</div>
-                                <button onClick={e => { e.stopPropagation(); navigate(`/leads/${lead.id}`) }}
-                                  style={{ padding:'2px 8px', borderRadius:6, border:'1px solid rgba(var(--wl-primary-rgb, 49,90,231),0.25)', background:'rgba(var(--wl-primary-rgb, 49,90,231),0.07)', color:'var(--wl-primary, rgb(49,90,231))', fontSize:10, fontWeight:700, cursor:'pointer' }}>Profil</button>
+                                <button className="lk-btn lk-btn-primary" onClick={e => { e.stopPropagation(); navigate(`/leads/${lead.id}`) }}
+                                  >Profil</button>
                               </div>
                               <div style={{ fontSize:11, color:'var(--text-muted)' }}>{lead.job_title || lead.headline}</div>
                             </div>
@@ -912,24 +913,23 @@ export default function Pipeline({ session }) {
             <div style={{ padding:'16px 24px', display:'flex', flexDirection:'column', gap:10 }}>
               <div>
                 <label style={{ fontSize:11, fontWeight:700, color:'var(--text-muted)', textTransform:'uppercase', letterSpacing:'0.06em', display:'block', marginBottom:4 }}>Existierenden Lead suchen</label>
-                <select onChange={async e => {
-                  if (!e.target.value) return
-                  const leadId = e.target.value
-                  await supabase.from('leads').update({ deal_stage: quickAddStage }).eq('id', leadId)
-                  setLeads(prev => prev.map(l => l.id === leadId ? {...l, deal_stage: quickAddStage} : l))
-                  setQuickAddStage(null)
-                }} style={{ width:'100%', padding:'9px 12px', borderRadius:10, border:'1.5px solid #E2E8F0', fontSize:13, fontFamily:'inherit', outline:'none' }}>
-                  <option value=''>Lead auswählen…</option>
-                  {leads.filter(l => !l.deal_stage || l.deal_stage === 'kein_deal' || l.deal_stage !== quickAddStage).map(l => (
-                    <option key={l.id} value={l.id}>
-                      {((l.first_name||'')+' '+(l.last_name||'')).trim() || l.name || 'Unbekannt'}{l.company ? ' · '+l.company : ''}
-                    </option>
-                  ))}
-                </select>
+                <PillSelect value="" neutral placeholder="Lead auswählen…"
+                  onChange={async __lkv => {
+                    if (!__lkv) return
+                    const leadId = __lkv
+                    await supabase.from('leads').update({ deal_stage: quickAddStage }).eq('id', leadId)
+                    setLeads(prev => prev.map(l => l.id === leadId ? {...l, deal_stage: quickAddStage} : l))
+                    setQuickAddStage(null)
+                  }}
+                  options={[
+                    { value:'', label:'Lead auswählen…' },
+                    ...leads.filter(l => !l.deal_stage || l.deal_stage === 'kein_deal' || l.deal_stage !== quickAddStage).map(l => ({ value:l.id, label:`${((l.first_name||'')+' '+(l.last_name||'')).trim() || l.name || 'Unbekannt'}${l.company ? ' · '+l.company : ''}` })),
+                  ]}
+                  buttonStyle={{ width:'100%' }} />
               </div>
               <div style={{ textAlign:'center', color:'var(--text-muted)', fontSize:12 }}>oder</div>
-              <button onClick={() => { setQuickAddStage(null); navigate('/leads') }}
-                style={{ padding:'10px', borderRadius:10, border:'1.5px solid #E2E8F0', background:'var(--surface-muted)', color:'#475569', fontSize:13, fontWeight:600, cursor:'pointer' }}>
+              <button className="lk-btn lk-btn-ghost" onClick={() => { setQuickAddStage(null); navigate('/leads') }}
+                >
                 + Neuen Lead hinzufügen → Interessenten
               </button>
             </div>

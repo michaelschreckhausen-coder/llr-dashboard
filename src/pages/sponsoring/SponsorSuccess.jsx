@@ -8,7 +8,7 @@ import { supabase } from '../../lib/supabase'
 import { useTeam } from '../../context/TeamContext'
 import PageHeader from '../../components/PageHeader'
 
-const PRIMARY = 'var(--wl-primary, rgb(49,90,231))'
+const PRIMARY = 'var(--wl-primary, #0A6FB0)'
 const sp = () => supabase.schema('sponsoring')
 const RISK_DAYS = 90
 
@@ -88,7 +88,7 @@ export default function SponsorSuccess() {
         title="Sponsor Success"
         subtitle="Health-Score je Vertrag aus Aktivierung, KI-Sichtbarkeit, Signalen und Status. Niedriger Score oder baldiges Vertragsende = Renewal-Risiko."
         action={
-          <button onClick={recompute} disabled={busy} style={{ ...primaryBtn, opacity: busy ? 0.6 : 1 }}>
+          <button onClick={recompute} disabled={busy} className="lk-btn lk-btn-navy" style={{ opacity: busy ? 0.6 : 1 }}>
             {busy ? <Loader2 size={14} className="spin" /> : <RefreshCw size={14} />} Health neu berechnen
           </button>
         }
@@ -154,7 +154,7 @@ export default function SponsorSuccess() {
   )
 }
 
-const primaryBtn = { display: 'inline-flex', alignItems: 'center', gap: 6, padding: '9px 16px', borderRadius: 999, border: 'none', background: PRIMARY, color: '#fff', fontSize: 13, fontWeight: 700, cursor: 'pointer', whiteSpace: 'nowrap' }
+const primaryBtn = { display: 'inline-flex', alignItems: 'center', gap: 6, padding: '9px 16px', borderRadius: 999, border: 'none', background: 'var(--primary)', color: '#fff', fontSize: 13, fontWeight: 700, cursor: 'pointer', whiteSpace: 'nowrap' }
 const muted = { display: 'flex', alignItems: 'center', gap: 8, color: 'var(--text-muted)', fontSize: 14 }
 const tableWrap = { border: '1px solid var(--border)', borderRadius: 14, overflow: 'hidden' }
 const table = { width: '100%', borderCollapse: 'collapse', fontSize: 13.5 }

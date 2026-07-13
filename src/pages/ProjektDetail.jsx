@@ -1,17 +1,18 @@
+import PillSelect from '../components/PillSelect'
 import React, { useEffect, useState, useCallback } from 'react'
 import { BarChart3, BookOpen, ClipboardList, FileText, Paperclip } from 'lucide-react'
 import { useParams, useNavigate, Link } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
 import { useTeam } from '../context/TeamContext'
 
-const PRIMARY = 'var(--wl-primary, rgb(49,90,231))'
+const PRIMARY = 'var(--wl-primary, #0A6FB0)'
 
 // ─── Status-Config ─────────────────────────────────────────────────────────────────
 const STATUS_CFG = {
   planning:  { label: 'In Planung',  color: '#0891B2', bg: '#CFFAFE' },
   active:    { label: 'Aktiv',       color: '#059669', bg: '#D1FAE5' },
   on_hold:   { label: 'Pausiert',    color: '#D97706', bg: '#FEF3C7' },
-  completed: { label: 'Abgeschlossen', color: '#6366F1', bg: '#E0E7FF' },
+  completed: { label: 'Abgeschlossen', color: '#0A6FB0', bg: '#E0E7FF' },
   archived:  { label: 'Archiviert',  color: '#64748B', bg: '#F1F5F9' }
 }
 
@@ -154,21 +155,7 @@ export default function ProjektDetail({ session }) {
         {/* Status-Dropdown */}
         <div style={{display:'flex', flexDirection:'column', gap:6, alignItems:'flex-end'}}>
           <label style={{fontSize:10, fontWeight:700, color:'var(--text-muted)', textTransform:'uppercase', letterSpacing:0.5}}>Status</label>
-          <select
-            disabled={statusSaving}
-            value={project.status}
-            onChange={e => updateStatus(e.target.value)}
-            style={{
-              padding:'8px 14px', borderRadius:8, fontSize:13, fontWeight:700,
-              border:`1.5px solid ${statusCfg.color}44`,
-              background:statusCfg.bg, color:statusCfg.color,
-              cursor: statusSaving ? 'wait' : 'pointer'
-            }}
-          >
-            {Object.entries(STATUS_CFG).map(([key, cfg]) => (
-              <option key={key} value={key}>{cfg.label}</option>
-            ))}
-          </select>
+          <PillSelect value={project.status} onChange={__lkv => updateStatus(__lkv)} neutral disabled={statusSaving} options={[...Object.entries(STATUS_CFG).map(([key, cfg]) => ({ value: key, label: cfg.label }))]} buttonStyle={{ minWidth: 140 }} />
         </div>
       </div>
 
@@ -258,7 +245,7 @@ function TabBoard({ project }) {
       </div>
       <Link to="/projekte" style={{
         display:'inline-block', padding:'10px 20px', borderRadius:8,
-        background:PRIMARY, color:'#fff', textDecoration:'none',
+        background:'var(--primary)', color:'#fff', textDecoration:'none',
         fontSize:13, fontWeight:700
       }}>
         → Zur Board-Übersicht

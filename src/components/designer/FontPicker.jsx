@@ -5,7 +5,7 @@ import {
   fontsInCategory, loadFontPreview,
 } from '../../lib/googleFonts'
 
-const PRIMARY = 'var(--wl-primary, rgb(49,90,231))'
+const PRIMARY = 'var(--wl-primary, #0A6FB0)'
 const ROW = 38
 const LIST_H = 344
 
@@ -32,7 +32,7 @@ function FontRow({ family, top, active, onPick }) {
         position: 'absolute', top, left: 6, right: 6, height: ROW - 4,
         display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8,
         padding: '0 12px', border: 'none', borderRadius: 8, cursor: 'pointer', textAlign: 'left',
-        background: active ? 'rgba(49,90,231,0.09)' : 'transparent',
+        background: active ? 'rgba(10,111,176,0.09)' : 'transparent',
       }}
       onMouseEnter={e => { if (!active) e.currentTarget.style.background = 'var(--surface-hover,#F4F6FA)' }}
       onMouseLeave={e => { if (!active) e.currentTarget.style.background = 'transparent' }}>
@@ -151,13 +151,8 @@ export default function FontPicker({ value, onPick, brandFonts = [] }) {
           {!query && (
             <div style={{ display: 'flex', gap: 5, padding: '8px 10px', overflowX: 'auto', borderBottom: '1px solid var(--border,#EEF1F5)', flexShrink: 0 }}>
               {chips.map(([id, label]) => (
-                <button key={id} type="button" onClick={() => { setCat(id); setScrollTop(0); if (listRef.current) listRef.current.scrollTop = 0 }}
-                  style={{
-                    flexShrink: 0, height: 26, padding: '0 11px', borderRadius: 999, cursor: 'pointer', fontSize: 12,
-                    border: '1px solid ' + (cat === id ? 'transparent' : 'var(--border,#E9ECF2)'),
-                    background: cat === id ? PRIMARY : '#fff', color: cat === id ? '#fff' : 'var(--text-secondary,#475467)',
-                    fontFamily: 'inherit', whiteSpace: 'nowrap',
-                  }}>{label}</button>
+                <button className="lk-btn lk-btn-primary" key={id} type="button" onClick={() => { setCat(id); setScrollTop(0); if (listRef.current) listRef.current.scrollTop = 0 }}
+                  style={{ flexShrink: 0, height: 26, fontFamily: 'inherit', whiteSpace: 'nowrap' }}>{label}</button>
               ))}
             </div>
           )}

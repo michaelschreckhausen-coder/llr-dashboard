@@ -1,3 +1,4 @@
+import PillSelect from '../components/PillSelect'
 import React, { useState, useEffect, useCallback } from 'react'
 import { supabase } from '../lib/supabase'
 
@@ -138,13 +139,7 @@ export default function AdminLogs() {
             <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr 1fr', gap:12 }}>
               <div>
                 <label style={{ fontSize:11, fontWeight:700, color:'var(--text-muted)', display:'block', marginBottom:4 }}>TYP *</label>
-                <select value={form.type} onChange={e => setForm(f=>({...f,type:e.target.value}))}
-                  style={{ width:'100%', padding:'8px 10px', borderRadius:8, border:'1.5px solid #E2E8F0', fontSize:13, fontFamily:'inherit' }}>
-                  <option value="feature">Feature</option>
-                  <option value="bugfix">Bugfix</option>
-                  <option value="update">Update</option>
-                  <option value="hotfix">Hotfix</option>
-                </select>
+                <PillSelect value={form.type} onChange={v => setForm(f=>({...f,type:v}))} neutral options={[{ value: 'feature', label: `Feature` }, { value: 'bugfix', label: `Bugfix` }, { value: 'update', label: `Update` }, { value: 'hotfix', label: `Hotfix` }]} buttonStyle={{ minWidth: 140 }} />
               </div>
               <div>
                 <label style={{ fontSize:11, fontWeight:700, color:'var(--text-muted)', display:'block', marginBottom:4 }}>VERSION</label>

@@ -2,13 +2,14 @@
 // Misst über mehrere KI-Provider, ob ein Sponsor/Verein in den Antworten genannt
 // wird. Sichtbarkeits-Index aus v_geo_visibility. Schema 'sponsoring'.
 
+import PillSelect from '../../components/PillSelect'
 import { useEffect, useMemo, useState, useCallback } from 'react'
 import { Eye, Sparkles, Loader2, RefreshCw } from 'lucide-react'
 import { supabase } from '../../lib/supabase'
 import { useTeam } from '../../context/TeamContext'
 import PageHeader from '../../components/PageHeader'
 
-const PRIMARY = 'var(--wl-primary, rgb(49,90,231))'
+const PRIMARY = 'var(--wl-primary, #0A6FB0)'
 const sp = () => supabase.schema('sponsoring')
 
 function indexColor(i) {
@@ -89,24 +90,18 @@ export default function Sichtbarkeit() {
 
       <div style={{ ...card, marginBottom: 24, display: 'flex', gap: 10, alignItems: 'flex-end', flexWrap: 'wrap' }}>
         <Field label="Subjekt-Typ">
-          <select value={subjectType} onChange={(e) => setSubjectType(e.target.value)} style={input}>
-            <option value="club">Verein</option>
-            <option value="sponsor">Sponsor</option>
-          </select>
+          <PillSelect value={subjectType} onChange={setSubjectType} neutral options={[{ value: 'club', label: `Verein` }, { value: 'sponsor', label: `Sponsor` }]} buttonStyle={{ minWidth: 140 }} />
         </Field>
         {subjectType === 'sponsor' ? (
           <Field label="Sponsor">
-            <select value={sponsorId} onChange={(e) => setSponsorId(e.target.value)} style={{ ...input, minWidth: 220 }}>
-              <option value="">— wählen —</option>
-              {sortedSponsors.map((s) => <option key={s.id} value={s.id}>{orgName[s.organization_id] || '—'}</option>)}
-            </select>
+            <PillSelect value={sponsorId} onChange={setSponsorId} neutral options={[{ value: '', label: `— wählen —` }, ...sortedSponsors.map((s) => ({ value: s.id, label: orgName[s.organization_id] || '—' }))]} buttonStyle={{ minWidth: 140 }} />
           </Field>
         ) : (
           <Field label="Vereinsname">
             <input value={clubName} onChange={(e) => setClubName(e.target.value)} placeholder="z.B. SV Musterstadt" style={{ ...input, minWidth: 240 }} />
           </Field>
         )}
-        <button onClick={runCheck} disabled={busy} style={{ ...primaryBtn, opacity: busy ? 0.6 : 1 }}>
+        <button onClick={runCheck} disabled={busy} className="lk-btn lk-btn-navy" style={{ opacity: busy ? 0.6 : 1 }}>
           {busy ? <Loader2 size={14} className="spin" /> : <Sparkles size={14} />} Sichtbarkeit prüfen
         </button>
       </div>
@@ -171,7 +166,7 @@ function Field({ label, children }) {
 
 const card = { border: '1px solid var(--border)', borderRadius: 14, background: 'var(--surface)', padding: 16 }
 const input = { padding: '8px 10px', borderRadius: 8, border: '1px solid var(--border)', background: 'var(--surface)', color: 'var(--text-strong)', fontSize: 13.5, boxSizing: 'border-box' }
-const primaryBtn = { display: 'inline-flex', alignItems: 'center', gap: 6, padding: '9px 16px', borderRadius: 999, border: 'none', background: PRIMARY, color: '#fff', fontSize: 13, fontWeight: 700, cursor: 'pointer', whiteSpace: 'nowrap' }
+const primaryBtn = { display: 'inline-flex', alignItems: 'center', gap: 6, padding: '9px 16px', borderRadius: 999, border: 'none', background: 'var(--primary)', color: '#fff', fontSize: 13, fontWeight: 700, cursor: 'pointer', whiteSpace: 'nowrap' }
 const iconBtn = { display: 'inline-flex', alignItems: 'center', justifyContent: 'center', width: 34, height: 34, borderRadius: 8, border: '1px solid var(--border)', background: 'var(--surface)', color: 'var(--text-muted)', cursor: 'pointer' }
 const h2 = { fontSize: 16, fontWeight: 700, color: 'var(--text-strong)', margin: '0 0 12px' }
 const muted = { display: 'flex', alignItems: 'center', gap: 8, color: 'var(--text-muted)', fontSize: 14 }

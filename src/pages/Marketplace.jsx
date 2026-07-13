@@ -35,7 +35,7 @@ const containerStyle = { width: '100%', maxWidth: 1100, margin: '0 auto', displa
 const heroStyle    = { display: 'flex', alignItems: 'center', gap: 16 }
 const heroIconBox  = {
   width: 56, height: 56, borderRadius: 16,
-  background: 'rgba(139,92,246,0.10)', color: '#8B5CF6',
+  background: 'rgba(139,92,246,0.10)', color: '#0A6FB0',
   display: 'flex', alignItems: 'center', justifyContent: 'center',
   flexShrink: 0,
 }
@@ -47,8 +47,8 @@ const tabStyle = (active) => ({
   display: 'inline-flex', alignItems: 'center', gap: 6,
   padding: '8px 16px', borderRadius: 99,
   fontSize: 13, fontWeight: 600,
-  border: `1.5px solid ${active ? 'var(--wl-primary, rgb(49,90,231))' : 'var(--border, #E4E7EC)'}`,
-  background: active ? 'var(--wl-primary, rgb(49,90,231))' : 'var(--surface, #fff)',
+  border: `1.5px solid ${active ? 'var(--wl-primary, #0A6FB0)' : 'var(--border, #E4E7EC)'}`,
+  background: active ? 'var(--wl-primary, #0A6FB0)' : 'var(--surface, #fff)',
   color: active ? '#fff' : 'var(--text-secondary, #4B5563)',
   cursor: 'pointer',
   transition: 'all .12s',
@@ -378,12 +378,12 @@ export default function Marketplace() {
               </div>
             )}
             <div style={{ display: 'flex', gap: 10, justifyContent: 'flex-end' }}>
-              <button onClick={() => setPendingAddon(null)} disabled={activating}
-                style={{ border: '0.5px solid #CBD5E1', background: '#fff', borderRadius: 10, padding: '10px 18px', fontSize: 13.5, fontWeight: 500, cursor: 'pointer', color: '#475569' }}>
+              <button className="lk-btn lk-btn-ghost" onClick={() => setPendingAddon(null)} disabled={activating}
+                >
                 Abbrechen
               </button>
-              <button onClick={() => doActivateFree(pendingAddon)} disabled={activating}
-                style={{ border: 'none', background: 'var(--wl-primary, rgb(49,90,231))', color: '#fff', borderRadius: 10, padding: '10px 20px', fontSize: 13.5, fontWeight: 600, cursor: 'pointer', opacity: activating ? 0.6 : 1 }}>
+              <button className="lk-btn lk-btn-primary" onClick={() => doActivateFree(pendingAddon)} disabled={activating}
+                style={{ opacity: activating ? 0.6 : 1 }}>
                 {activating ? 'Aktiviere…' : 'Aktivieren'}
               </button>
             </div>
@@ -402,8 +402,8 @@ export default function Marketplace() {
               (z.B. übernommene Ideen im Redaktionsplan) bleiben erhalten. Du kannst es jederzeit wieder aktivieren.
             </p>
             <div style={{ display: 'flex', gap: 10, justifyContent: 'flex-end' }}>
-              <button onClick={() => setPendingCancel(null)} disabled={canceling}
-                style={{ border: '0.5px solid #CBD5E1', background: '#fff', borderRadius: 10, padding: '10px 18px', fontSize: 13.5, fontWeight: 500, cursor: 'pointer', color: '#475569' }}>
+              <button className="lk-btn lk-btn-ghost" onClick={() => setPendingCancel(null)} disabled={canceling}
+                >
                 Abbrechen
               </button>
               <button onClick={() => doCancelConfirmed(pendingCancel)} disabled={canceling}

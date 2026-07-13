@@ -54,7 +54,7 @@ export default function BrandVoiceMultiSelect({ entityType, entityId, onSelectio
 
   if (!brandVoices.length) {
     return (
-      <div style={{ padding:'12px 14px', background:'#F8FAFC', borderRadius:10, border:'1px dashed var(--border)', fontSize:12, color:'var(--text-muted)' }}>
+      <div style={{ padding:'12px 14px', background:'var(--tint-cyan, #EAF8FE)', borderRadius:10, border:'1px dashed var(--border)', fontSize:12, color:'var(--text-muted)' }}>
         Noch keine Auftritte angelegt — leg in Brand Voice einen Auftritt an, um diese Zielgruppe einem Auftritt zuzuordnen.
       </div>
     )
@@ -70,9 +70,9 @@ export default function BrandVoiceMultiSelect({ entityType, entityId, onSelectio
             onClick={() => toggle(bv.id)}
             style={{
               padding:'7px 13px', borderRadius:99,
-              border: '1.5px solid ' + (sel ? 'var(--wl-primary, rgb(49,90,231))' : 'var(--border)'),
-              background: sel ? 'rgba(49,90,231,0.08)' : 'var(--surface)',
-              color: sel ? 'var(--wl-primary, rgb(49,90,231))' : 'var(--text-muted)',
+              border: '1.5px solid ' + (sel ? 'var(--wl-primary, #0A6FB0)' : 'var(--border)'),
+              background: sel ? 'rgba(10,111,176,0.08)' : 'var(--surface)',
+              color: sel ? 'var(--wl-primary, #0A6FB0)' : 'var(--text-muted)',
               fontSize: 12, fontWeight: sel ? 700 : 600,
               cursor: 'pointer', display:'inline-flex', alignItems:'center', gap:6,
               transition: 'all .12s',

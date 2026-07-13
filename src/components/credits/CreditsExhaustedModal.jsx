@@ -86,24 +86,15 @@ export default function CreditsExhaustedModal() {
         )}
 
         <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-          <button
+          <button className="lk-btn lk-btn-primary"
             onClick={() => { setOpen(false); navigate('/billing') }}
-            style={{
-              background: 'var(--wl-primary, rgb(49,90,231))', color: 'white',
-              border: 0, padding: '12px 16px', borderRadius: 8,
-              fontSize: 14, fontWeight: 700, cursor: 'pointer',
-            }}
+            
           >
             Top-Up kaufen
           </button>
-          <button
+          <button className="lk-btn lk-btn-ghost"
             onClick={() => { setOpen(false); navigate('/billing') }}
-            style={{
-              background: 'var(--surface-soft, #f1f5f9)', color: 'var(--text-primary, #0f172a)',
-              border: '1px solid var(--border, #e2e8f0)',
-              padding: '12px 16px', borderRadius: 8,
-              fontSize: 14, fontWeight: 600, cursor: 'pointer',
-            }}
+            
           >
             Plan upgraden
           </button>

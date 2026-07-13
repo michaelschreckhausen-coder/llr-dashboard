@@ -12,7 +12,7 @@ import { useTeam } from '../../context/TeamContext'
 import PageHeader from '../../components/PageHeader'
 import GenerationLoading from '../../components/GenerationLoading'
 
-const PRIMARY = 'var(--wl-primary, rgb(49,90,231))'
+const PRIMARY = 'var(--wl-primary, #0A6FB0)'
 const sp = () => supabase.schema('sponsoring')
 
 const EMPTY_IND = { industry: '', is_boom: false, fits_sport: false, open_at_club: false, note: '' }
@@ -183,7 +183,7 @@ export default function Branchenanalyse() {
           <input value={sourceUrl} onChange={(e) => setSourceUrl(e.target.value)}
                  placeholder="https://www.example-club.de" style={input} />
         </Field>
-        <button type="submit" disabled={scanBusy || !sourceUrl.trim()} style={{ ...primaryBtn, opacity: scanBusy || !sourceUrl.trim() ? 0.6 : 1 }}>
+        <button type="submit" disabled={scanBusy || !sourceUrl.trim()} className="lk-btn lk-btn-navy" style={{ opacity: scanBusy || !sourceUrl.trim() ? 0.6 : 1 }}>
           {scanBusy ? <Loader2 size={14} className="spin" /> : <Search size={14} />} Analysieren
         </button>
       </form>
@@ -243,7 +243,7 @@ export default function Branchenanalyse() {
                         <button type="button" disabled={adoptBusy}
                           onClick={() => adoptIndustries(labels, note)}
                           title="Alle Branchen dieser Analyse in Akquise-Branchen übernehmen"
-                          style={{ ...primaryBtn, padding: '5px 12px', fontSize: 12, opacity: adoptBusy ? 0.6 : 1 }}>
+                          className="lk-btn lk-btn-navy" style={{ padding: '5px 12px', fontSize: 12, opacity: adoptBusy ? 0.6 : 1 }}>
                           {adoptBusy ? <Loader2 size={12} className="spin" /> : <Plus size={12} />} Alle Branchen übernehmen
                         </button>
                       )}
@@ -320,7 +320,7 @@ export default function Branchenanalyse() {
           <input value={form.note} onChange={(e) => setForm({ ...form, note: e.target.value })}
                  placeholder="optional" style={input} />
         </Field>
-        <button type="submit" disabled={busy || !form.industry.trim()} style={{ ...primaryBtn, opacity: busy || !form.industry.trim() ? 0.6 : 1 }}>
+        <button type="submit" disabled={busy || !form.industry.trim()} className="lk-btn lk-btn-navy" style={{ opacity: busy || !form.industry.trim() ? 0.6 : 1 }}>
           {busy ? <Loader2 size={14} className="spin" /> : <Plus size={14} />} Anlegen
         </button>
       </form>
@@ -414,7 +414,7 @@ const input = {
 const checkbox = { width: 18, height: 18, accentColor: PRIMARY, cursor: 'pointer', margin: '8px 0' }
 const primaryBtn = {
   display: 'inline-flex', alignItems: 'center', gap: 6, padding: '9px 16px', borderRadius: 999,
-  border: 'none', background: PRIMARY, color: '#fff', fontSize: 13, fontWeight: 700, cursor: 'pointer', whiteSpace: 'nowrap',
+  border: 'none', background: 'var(--primary)', color: '#fff', fontSize: 13, fontWeight: 700, cursor: 'pointer', whiteSpace: 'nowrap',
 }
 const iconBtn = {
   display: 'inline-flex', alignItems: 'center', justifyContent: 'center', width: 34, height: 34, borderRadius: 8,

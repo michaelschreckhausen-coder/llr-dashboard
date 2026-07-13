@@ -8,8 +8,8 @@ export default function PageHeader({ overline, title, subtitle, action }) {
     <div style={{ marginBottom: 22 }}>
       <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 12 }}>
         <div>
-          <div style={{ fontSize: 20, color: '#30A0D0', fontFamily: '"Caveat", cursive', fontWeight: 600, marginBottom: 6 }}>{overline}</div>
-          <h1 style={{ fontSize: 26, fontWeight: 700, margin: 0, letterSpacing: '-0.3px', lineHeight: 1.2 }}>{title}</h1>
+          <div className="lk-eyebrow">{overline}</div>
+          <h1 style={{ fontSize: 26, fontWeight: 800, margin: 0, letterSpacing: '-0.5px', lineHeight: 1.15, fontFamily: 'Inter, sans-serif', color: 'var(--text-primary, #0E1633)' }}>{title}</h1>
         </div>
         {action || null}
       </div>

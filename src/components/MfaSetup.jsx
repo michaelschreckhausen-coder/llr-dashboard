@@ -10,13 +10,13 @@ import React, { useEffect, useState } from 'react'
 import { supabase } from '../lib/supabase'
 import { ShieldCheck, ShieldOff, Loader2 } from 'lucide-react'
 
-const PRIMARY = 'var(--wl-primary, rgb(49,90,231))'
+const PRIMARY = 'var(--wl-primary, #0A6FB0)'
 
 const card = { background: 'var(--surface)', borderRadius: 14, border: '1px solid #E4E7EC', marginBottom: 16 }
 const hdr  = { padding: '14px 20px', borderBottom: '1px solid #EEF1F5', fontWeight: 700, fontSize: 14, display: 'flex', alignItems: 'center', gap: 8 }
 const bdy  = { padding: '18px 20px' }
 const codeInput = { width: 180, padding: '12px 14px', border: '1.5px solid #dde3ea', borderRadius: 8, fontSize: 22, letterSpacing: '0.3em', textAlign: 'center', fontFamily: 'monospace', boxSizing: 'border-box' }
-const btnPrimary = { padding: '10px 20px', borderRadius: 10, background: PRIMARY, color: '#fff', border: 'none', fontSize: 13, fontWeight: 700, cursor: 'pointer' }
+const btnPrimary = { padding: '10px 20px', borderRadius: 10, background: 'var(--primary)', color: '#fff', border: 'none', fontSize: 13, fontWeight: 700, cursor: 'pointer' }
 const btnGhost   = { padding: '9px 16px', borderRadius: 10, background: 'transparent', color: 'var(--text-muted)', border: '1.5px solid #E4E7EC', fontSize: 13, fontWeight: 600, cursor: 'pointer' }
 
 export default function MfaSetup() {

@@ -20,6 +20,7 @@
 // LeadRow.jsx braucht eine 1-Zeile-Anpassung (handleOwnerAdd gibt e.currentTarget
 // weiter) — Diff im PATCH-README.
 
+import PillSelect from '../components/PillSelect'
 import { useState, useCallback, useMemo, useRef, useEffect } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import {
@@ -50,7 +51,7 @@ import { useTeam } from '../context/TeamContext';
 
 // ─── Styles ──────────────────────────────────────────────────────────────
 // Visual aligned mit Deals/Organisationen (siehe pages/Deals.jsx).
-const PRIMARY = 'rgb(49,90,231)';
+const PRIMARY = '#0A6FB0';
 
 const pageOuterStyle = { background: 'var(--surface-canvas, #F8FAFC)', minHeight:'100vh', padding:'24px 16px 60px' };
 const pageStyle = { width:'100%', maxWidth:1100, margin:'0 auto', display:'flex', flexDirection:'column' };
@@ -61,7 +62,7 @@ const fmtNum = new Intl.NumberFormat('de-DE');
 
 function Panel({ title, action, children }) {
   return (
-    <div style={{ background:RC.surface, border:`1px solid ${RC.border}`, borderRadius:14, padding:18, marginBottom:16 }}>
+    <div style={{ background:RC.surface, border:`1px solid ${RC.border}`, borderRadius:16, padding:'18px 20px', marginBottom:16, boxShadow:'var(--shadow-card)' }}>
       {title && (
         <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:14 }}>
           <h3 style={{ fontSize:14, fontWeight:700, color:RC.text1, margin:0 }}>{title}</h3>{action}
@@ -92,10 +93,10 @@ function EmptyBars({ text }) {
 }
 
 // Handgezeichneter Hinweis-Pfeil + Schreibschrift-Label (gespiegelt aus ContentStudio.jsx)
-const scriptHintStyle = { fontFamily:"'Segoe Script','Bradley Hand','Brush Script MT','Comic Sans MS',cursive", fontStyle:'italic', fontSize:16, fontWeight:600, color:'var(--wl-primary, rgb(49,90,231))', whiteSpace:'nowrap', lineHeight:1 };
+const scriptHintStyle = { fontFamily:'Inter, sans-serif', fontSize:13, fontWeight:600, color:'var(--wl-primary, #0A6FB0)', whiteSpace:'nowrap', lineHeight:1 };
 function CurvedArrow() {
   return (
-    <svg width="34" height="24" viewBox="0 0 34 24" fill="none" style={{ color:'var(--wl-primary, rgb(49,90,231))', flexShrink:0 }} aria-hidden="true">
+    <svg width="34" height="24" viewBox="0 0 34 24" fill="none" style={{ color:'var(--wl-primary, #0A6FB0)', flexShrink:0 }} aria-hidden="true">
       <path d="M3 5 C 14 3, 25 7, 30 14" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" fill="none"/>
       <path d="M23 14.5 L 31 15 L 27 8" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" fill="none"/>
     </svg>
@@ -108,7 +109,7 @@ const searchWrapStyle = { position:'relative' };
 const searchInputStyle = { width:200, padding:'7px 12px 7px 32px', fontSize:13, border:'1.5px solid #E4E7EC', borderRadius:10, background:'var(--surface)', outline:'none' };
 const searchIconStyle = { position:'absolute', left:10, top:'50%', transform:'translateY(-50%)', color:'#9CA3AF' };
 const iconBtnStyle = { width:34, height:34, border:'1.5px solid #E4E7EC', background:'var(--surface)', borderRadius:10, display:'flex', alignItems:'center', justifyContent:'center', color:'#6B7280', cursor:'pointer' };
-const primaryBtnStyle = { padding:'9px 18px', background: PRIMARY, color:'#fff', border:'none', borderRadius:10, fontSize:13, fontWeight:700, display:'inline-flex', alignItems:'center', gap:6, cursor:'pointer' };
+const primaryBtnStyle = { padding:'9px 18px', background: 'var(--primary)', color:'#fff', border:'none', borderRadius:10, fontSize:13, fontWeight:700, display:'inline-flex', alignItems:'center', gap:6, cursor:'pointer' };
 const ghostBtnStyle = { padding:'7px 12px', background:'var(--surface)', color:'#374151', border:'1.5px solid #E4E7EC', borderRadius:10, fontSize:12, fontWeight:600, display:'inline-flex', alignItems:'center', gap:6, cursor:'pointer' };
 const kpisRowStyle = { display:'grid', gridTemplateColumns:'repeat(4, 1fr)', gap:12, marginBottom:20 };
 const filtersBarStyle = { display:'flex', alignItems:'center', justifyContent:'space-between', gap:12, flexWrap:'wrap', marginBottom:16 };
@@ -117,7 +118,7 @@ const toggleGroupStyle = { display:'inline-flex', background:'#F3F4F6', borderRa
 const toggleBtnStyle = { height:30, padding:'0 14px', fontSize:13, background:'transparent', border:'none', color:'#6B7280', display:'flex', alignItems:'center', gap:6, borderRadius:8, cursor:'pointer', fontWeight:600 };
 const toggleBtnActiveStyle = { ...toggleBtnStyle, background:'var(--surface)', color:'#111827', boxShadow:'0 1px 2px rgba(0,0,0,0.05)' };
 const filterChipStyle = { padding:'7px 12px', fontSize:12, border:'1.5px solid #E4E7EC', borderRadius:20, background:'var(--surface)', color:'#374151', display:'inline-flex', alignItems:'center', gap:6, cursor:'pointer', fontWeight:600 };
-const filterChipActiveStyle = { ...filterChipStyle, background: PRIMARY, color:'#fff', borderColor: PRIMARY };
+const filterChipActiveStyle = { ...filterChipStyle, background: 'var(--primary)', color:'#fff', borderColor: PRIMARY };
 const contentStyle = { display:'flex', flexDirection:'column', gap:0 };
 const dividerStyle = { width:1, height:20, background:'#E4E7EC', margin:'0 4px' };
 
@@ -775,9 +776,9 @@ export default function Leads() {
     setListFilter(null);
   };
   const kpis = [
-    { label:'Gesamt Kontakte', value: leads.length,        color: PRIMARY,    bg:'rgba(49,90,231,0.06)', qf:'all',            Icon: UsersIcon },
+    { label:'Gesamt Kontakte', value: leads.length,        color: PRIMARY,    bg:'rgba(10,111,176,0.06)', qf:'all',            Icon: UsersIcon },
     { label:'Hot Kontakte',    value: hotCount,            color:'#DC2626',   bg:'#FEF2F2',              qf:'hot',            Icon: Flame },
-    { label:'Follow-up heute', value: followupTodayCount,  color:'#7C3AED',   bg:'#F5F3FF',              qf:'followup_today', Icon: Clock },
+    { label:'Follow-up heute', value: followupTodayCount,  color:'#003060',   bg:'#F5F3FF',              qf:'followup_today', Icon: Clock },
     { label:'Überfällig',      value: overdueCount,        color:'#D97706',   bg:'#FFFBEB',              qf:'overdue',        Icon: AlertTriangle },
   ];
 
@@ -821,7 +822,7 @@ export default function Leads() {
       </div>
       <button type="button" onClick={toggleDash}
         title={showDash ? 'Dashboard ausblenden' : 'Dashboard einblenden'}
-        style={{ ...ghostBtnStyle, height:34 }}>
+        className="lk-btn lk-btn-ghost" style={{ height:34 }}>
         {showDash ? <ChevronUp size={15}/> : <ChevronDown size={15}/>} Dashboard
       </button>
       <div style={searchWrapStyle}>
@@ -833,7 +834,7 @@ export default function Leads() {
       <button type="button" style={iconBtnStyle} aria-label="Benachrichtigungen">
         <Bell size={16} />
       </button>
-      <button type="button" style={primaryBtnStyle} onClick={() => setNewLeadOpen(true)}>
+      <button type="button" className="lk-btn lk-btn-cta" onClick={() => setNewLeadOpen(true)}>
         <Plus size={16} /> Neuer Kontakt
       </button>
     </div>
@@ -861,9 +862,9 @@ export default function Leads() {
               <button key={k.label} type="button"
                 onClick={() => setQuickFilterAndResetStage(k.qf)}
                 style={{
-                  background: RC.surface, borderRadius:14, padding:'14px 16px',
+                  background: RC.surface, borderRadius:16, padding:'14px 16px',
                   border: `1px solid ${highlight ? k.color : RC.border}`,
-                  boxShadow: highlight ? `0 0 0 3px ${k.color}1a` : 'none',
+                  boxShadow: highlight ? `0 0 0 3px ${k.color}1a` : 'var(--shadow-card)',
                   textAlign:'left', cursor:'pointer', transition:'box-shadow 0.15s, border-color 0.15s',
                   font:'inherit', display:'flex', flexDirection:'column', gap:4,
                 }}
@@ -1188,7 +1189,7 @@ export default function Leads() {
             />
             <button type="button"
               onClick={allVisibleSelected ? clearSelection : selectAll}
-              style={ghostBtnStyle}
+              className="lk-btn lk-btn-ghost"
               aria-label="Alles auswählen"
               title={allVisibleSelected ? 'Auswahl aufheben' : 'Alles auswählen'}
             >
@@ -1230,7 +1231,7 @@ export default function Leads() {
               <div style={{ fontSize:13, marginBottom:16 }}>
                 {leads.length} Kontakt{leads.length === 1 ? '' : 'e'} insgesamt — derzeit ausgeblendet.
               </div>
-              <button type="button" style={ghostBtnStyle}
+              <button type="button" className="lk-btn lk-btn-ghost"
                 onClick={() => { setSearch(''); setQuickFilter('all'); setStageTab(null); setListFilter(null); setTagsFilter([]); setOwnerFilter(null); }}>
                 <X size={14} /> Filter zurücksetzen
               </button>
@@ -1263,7 +1264,7 @@ export default function Leads() {
                           padding:'5px 11px', borderRadius:8, fontSize:12, fontWeight: pageSize===n ? 700 : 500,
                           cursor:'pointer',
                           border:`1.5px solid ${pageSize===n ? PRIMARY : '#E4E7EC'}`,
-                          background: pageSize===n ? PRIMARY : 'var(--surface)',
+                          background: pageSize===n ? 'var(--primary)' : 'var(--surface)',
                           color: pageSize===n ? '#fff' : COLORS.textSecondary,
                         }}>{n}</button>
                     ))}
@@ -1273,12 +1274,12 @@ export default function Leads() {
                       {pageStartIdx + 1}–{Math.min(pageStartIdx + pageSize, filteredLeads.length)} von {filteredLeads.length}
                     </span>
                     <button type="button" onClick={() => setPage(p => Math.max(1, p - 1))} disabled={pageClamped <= 1}
-                      style={{ ...ghostBtnStyle, padding:'6px 12px', opacity: pageClamped <= 1 ? 0.45 : 1, cursor: pageClamped <= 1 ? 'default' : 'pointer' }}>
+                      className="lk-btn lk-btn-ghost" style={{ padding:'6px 12px', opacity: pageClamped <= 1 ? 0.45 : 1, cursor: pageClamped <= 1 ? 'default' : 'pointer' }}>
                       Zurück
                     </button>
                     <span style={{ fontSize:12, color: COLORS.textSecondary, fontVariantNumeric:'tabular-nums' }}>Seite {pageClamped} / {totalPages}</span>
                     <button type="button" onClick={() => setPage(p => Math.min(totalPages, p + 1))} disabled={pageClamped >= totalPages}
-                      style={{ ...ghostBtnStyle, padding:'6px 12px', opacity: pageClamped >= totalPages ? 0.45 : 1, cursor: pageClamped >= totalPages ? 'default' : 'pointer' }}>
+                      className="lk-btn lk-btn-ghost" style={{ padding:'6px 12px', opacity: pageClamped >= totalPages ? 0.45 : 1, cursor: pageClamped >= totalPages ? 'default' : 'pointer' }}>
                       Weiter
                     </button>
                   </div>
@@ -1447,7 +1448,7 @@ function EmptyStateOnboarding({ onImport, onCreate }) {
           onMouseEnter={(e) => { e.currentTarget.style.borderColor = PRIMARY; }}
           onMouseLeave={(e) => { e.currentTarget.style.borderColor = '#E4E7EC'; }}
           onClick={onImport}>
-          <div style={iconWrap('#EEF2FF', PRIMARY)}><FileUp size={20} /></div>
+          <div style={iconWrap('#EAF6FC', PRIMARY)}><FileUp size={20} /></div>
           <h3 style={cardTitle}>CSV importieren</h3>
           <p style={cardDesc}>Excel-Export, LinkedIn-Sales-Navigator-Liste oder anderer CRM — mit Spalten-Mapping in einem Wizard.</p>
         </button>
@@ -2128,8 +2129,8 @@ function NewLeadModal({ onClose, onSaved, activeTeamId, userId, teamMembers = []
   return (
     <ModalShell title="Neuer Kontakt" onClose={onClose} footer={
       <>
-        <button type="button" style={ghostBtnStyle} onClick={onClose} disabled={busy}>Abbrechen</button>
-        <button type="button" style={primaryBtnStyle} onClick={submit} disabled={busy}>
+        <button type="button" className="lk-btn lk-btn-ghost" onClick={onClose} disabled={busy}>Abbrechen</button>
+        <button type="button" className="lk-btn lk-btn-cta" onClick={submit} disabled={busy}>
           {busy ? 'Speichere…' : 'Lead anlegen'}
         </button>
       </>
@@ -2158,24 +2159,13 @@ function NewLeadModal({ onClose, onSaved, activeTeamId, userId, teamMembers = []
       <Field label="LinkedIn-URL"><Input value={form.linkedin_url || ''} onChange={e => set('linkedin_url', e.target.value)} placeholder="https://linkedin.com/in/…" /></Field>
       <Row2>
         <Field label="Status">
-          <select style={inputBaseStyle} value={form.status} onChange={e => set('status', e.target.value)}>
-            {STATUS_ORDER.map(s => (
-              <option key={s} value={s}>{s} · {STATUS_CONFIG[s]?.sublabel || ''}</option>
-            ))}
-          </select>
+          <PillSelect value={form.status} onChange={v => set('status', v)} neutral options={[...STATUS_ORDER.map((s) => ({ value: s, label: `${s} · ${STATUS_CONFIG[s]?.sublabel || ''}` }))]} buttonStyle={{ minWidth: 140 }} />
         </Field>
         <Field label="Owner">
-          <select style={inputBaseStyle}
-            value={form.owner_id === undefined ? (userId || '') : (form.owner_id || '')}
-            onChange={e => set('owner_id', e.target.value || null)}>
-            <option value="">— Kein Owner —</option>
-            {teamMembers.map(m => (
-              <option key={m.id} value={m.id}>
-                {`${m.first_name || ''} ${m.last_name || ''}`.trim() || (m.id ? m.id.slice(0, 8) : '—')}
-                {m.id === userId ? ' (du)' : ''}
-              </option>
-            ))}
-          </select>
+          <PillSelect value={form.owner_id === undefined ? (userId || '') : (form.owner_id || '')} onChange={v => set('owner_id', v || null)} neutral options={[{ value: '', label: `— Kein Owner —` }, ...teamMembers.map((m) => ({ value: m.id, label: `
+                ${`${m.first_name || ''} ${m.last_name || ''}`.trim() || (m.id ? m.id.slice(0, 8) : '—')}
+                ${m.id === userId ? ' (du)' : ''}
+              ` }))]} buttonStyle={{ minWidth: 140 }} />
         </Field>
       </Row2>
       {err && <div style={{ color:'#B91C1C', fontSize:12 }}>{err}</div>}
@@ -2184,7 +2174,7 @@ function NewLeadModal({ onClose, onSaved, activeTeamId, userId, teamMembers = []
 }
 
 // ─── NewListModal ────────────────────────────────────────────────────────
-const LIST_COLORS = ['#185FA5', '#DC2626', '#D97706', '#059669', '#7C3AED', '#0EA5E9'];
+const LIST_COLORS = ['#185FA5', '#DC2626', '#D97706', '#059669', '#003060', '#0EA5E9'];
 function NewListModal({ activeTeamId, onClose, onSaved }) {
   const [name, setName] = useState('');
   const [color, setColor] = useState(LIST_COLORS[0]);
@@ -2206,8 +2196,8 @@ function NewListModal({ activeTeamId, onClose, onSaved }) {
   return (
     <ModalShell title="Neue Liste" onClose={onClose} footer={
       <>
-        <button type="button" style={ghostBtnStyle} onClick={onClose} disabled={busy}>Abbrechen</button>
-        <button type="button" style={primaryBtnStyle} onClick={submit} disabled={busy}>
+        <button type="button" className="lk-btn lk-btn-ghost" onClick={onClose} disabled={busy}>Abbrechen</button>
+        <button type="button" className="lk-btn lk-btn-cta" onClick={submit} disabled={busy}>
           {busy ? 'Speichere…' : 'Anlegen'}
         </button>
       </>
@@ -2318,8 +2308,8 @@ function ImportCsvModal({ activeTeamId, onClose, onImported }) {
   return (
     <ModalShell title="CSV importieren" onClose={onClose} width={620} footer={
       <>
-        <button type="button" style={ghostBtnStyle} onClick={onClose} disabled={busy}>Abbrechen</button>
-        <button type="button" style={primaryBtnStyle} onClick={submit} disabled={busy || !preview}>
+        <button type="button" className="lk-btn lk-btn-ghost" onClick={onClose} disabled={busy}>Abbrechen</button>
+        <button type="button" className="lk-btn lk-btn-cta" onClick={submit} disabled={busy || !preview}>
           {busy ? 'Importiere…' : preview ? `${preview.rows.length} Leads importieren` : 'Datei wählen'}
         </button>
       </>
@@ -2338,13 +2328,7 @@ function ImportCsvModal({ activeTeamId, onClose, onImported }) {
             {preview.headers.map(h => (
               <div key={h} style={{ display:'flex', flexDirection:'column', gap:4 }}>
                 <span style={{ fontSize:11, color: COLORS.textTertiary }}>{h}</span>
-                <select
-                  style={inputBaseStyle}
-                  value={preview.mapping[h] || ''}
-                  onChange={e => setPreview(p => ({ ...p, mapping: { ...p.mapping, [h]: e.target.value } }))}
-                >
-                  {FIELDS.map(f => <option key={f.id} value={f.id}>{f.label}</option>)}
-                </select>
+                <PillSelect value={preview.mapping[h] || ''} onChange={v => setPreview(p => ({ ...p, mapping: { ...p.mapping, [h]: v } }))} neutral options={[...FIELDS.map((f) => ({ value: f.id, label: f.label }))]} buttonStyle={{ minWidth: 140 }} />
               </div>
             ))}
           </div>

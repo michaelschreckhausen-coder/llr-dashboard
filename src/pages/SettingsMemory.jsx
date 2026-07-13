@@ -7,7 +7,7 @@ import { supabase } from '../lib/supabase'
 import SettingsTabs from '../components/SettingsTabs'
 import { useTeam } from '../context/TeamContext'
 
-const P = 'var(--wl-primary, rgb(49,90,231))'
+const P = 'var(--wl-primary, #0A6FB0)'
 
 export default function SettingsMemory({ session }) {
   const { activeTeamId } = useTeam()
@@ -100,7 +100,7 @@ export default function SettingsMemory({ session }) {
       </div>
 
       {/* Toggle */}
-      <div style={{ background:'var(--surface)', borderRadius:14, border:'1px solid var(--border)', padding:'18px 22px', marginBottom:22, display:'flex', alignItems:'center', justifyContent:'space-between', gap:18 }}>
+      <div style={{ background:'var(--surface)', borderRadius:16, border:'1px solid var(--border)', boxShadow:'var(--shadow-card)', padding:'18px 22px', marginBottom:22, display:'flex', alignItems:'center', justifyContent:'space-between', gap:18 }}>
         <div>
           <div style={{ fontSize:14, fontWeight:700, color:'rgb(20,20,43)' }}>
             {memEnabled === true && 'Memory ist aktiv'}
@@ -118,8 +118,8 @@ export default function SettingsMemory({ session }) {
             style={{ padding:'9px 18px', borderRadius:9, border:'1px solid var(--border)', background: memEnabled === false ? '#F1F5F9' : 'transparent', color: memEnabled === false ? 'var(--text-primary)' : 'var(--text-muted)', fontSize:13, fontWeight:600, cursor: saving ? 'wait' : 'pointer' }}>
             Deaktivieren
           </button>
-          <button onClick={() => toggleMemory(true)} disabled={saving || memEnabled === true}
-            style={{ padding:'9px 22px', borderRadius:9, border:'none', background: memEnabled === true ? '#10B981' : P, color:'#fff', fontSize:13, fontWeight:700, cursor: saving ? 'wait' : 'pointer', boxShadow: memEnabled === true ? '0 2px 10px rgba(16,185,129,.25)' : '0 2px 10px rgba(49,90,231,.25)' }}>
+          <button className="lk-btn lk-btn-primary" onClick={() => toggleMemory(true)} disabled={saving || memEnabled === true}
+            >
             {memEnabled === true ? 'Aktiviert' : 'Aktivieren'}
           </button>
         </div>
@@ -147,13 +147,13 @@ export default function SettingsMemory({ session }) {
                   padding: '14px 16px',
                   borderRadius: 12,
                   border: active ? `1.5px solid ${P}` : '1px solid var(--border)',
-                  background: active ? 'rgba(49,90,231,0.04)' : 'var(--surface)',
+                  background: active ? 'rgba(10,111,176,0.04)' : 'var(--surface)',
                   cursor: savingScope ? 'wait' : 'pointer',
                   transition: 'all 0.15s',
                 }}>
                 <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 6 }}>
                   <div style={{ fontSize: 22 }}>{opt.icon}</div>
-                  {active && <div style={{ fontSize: 11, fontWeight: 700, color: P, background: 'rgba(49,90,231,0.1)', padding: '2px 9px', borderRadius: 99 }}>Aktiv</div>}
+                  {active && <div style={{ fontSize: 11, fontWeight: 700, color: P, background: 'rgba(10,111,176,0.1)', padding: '2px 9px', borderRadius: 99 }}>Aktiv</div>}
                 </div>
                 <div style={{ fontSize: 14, fontWeight: 700, color: 'rgb(20,20,43)', marginBottom: 4 }}>{opt.title}</div>
                 <div style={{ fontSize: 12, color: 'var(--text-muted)', lineHeight: 1.5 }}>{opt.desc}</div>
@@ -175,7 +175,7 @@ export default function SettingsMemory({ session }) {
       </div>
 
       {/* Top-picked (was die KI sich gemerkt hat) */}
-      <div style={{ background:'var(--surface)', borderRadius:14, border:'1px solid var(--border)', padding:'18px 22px' }}>
+      <div style={{ background:'var(--surface)', borderRadius:16, border:'1px solid var(--border)', boxShadow:'var(--shadow-card)', padding:'18px 22px' }}>
         <h3 style={{ fontSize:14, fontWeight:700, color:'rgb(20,20,43)', margin:'0 0 14px' }}>
           📚 Aus diesen letzten Picks lernt die KI gerade
         </h3>
@@ -186,7 +186,7 @@ export default function SettingsMemory({ session }) {
           </div>
         )}
         {topVariants.map((v, i) => (
-          <div key={i} style={{ padding:'10px 14px', background:'#F8FAFC', borderRadius:8, borderLeft:'3px solid rgba(49,90,231,0.3)', marginBottom:8 }}>
+          <div key={i} style={{ padding:'10px 14px', background:'#F8FAFC', borderRadius:8, borderLeft:'3px solid rgba(10,111,176,0.3)', marginBottom:8 }}>
             <div style={{ fontSize:10, fontWeight:700, color:'var(--text-muted)', marginBottom:4, textTransform:'uppercase', letterSpacing:'0.06em' }}>
               {v.kind} · {new Date(v.date).toLocaleDateString('de-DE')}
             </div>
@@ -205,7 +205,7 @@ export default function SettingsMemory({ session }) {
 
 function StatCard({ icon, label, val }) {
   return (
-    <div style={{ padding:'14px 16px', background:'var(--surface)', borderRadius:12, border:'1px solid var(--border)' }}>
+    <div style={{ padding:'14px 16px', background:'var(--surface)', borderRadius:16, border:'1px solid var(--border)', boxShadow:'var(--shadow-card)' }}>
       <div style={{ fontSize:20, marginBottom:4 }}>{icon}</div>
       <div style={{ fontSize:22, fontWeight:800, color:'rgb(20,20,43)', lineHeight:1 }}>{val}</div>
       <div style={{ fontSize:11, color:'var(--text-muted)', fontWeight:600, marginTop:4 }}>{label}</div>

@@ -16,7 +16,7 @@ import { useState, useEffect, useRef } from 'react';
 import { supabase } from '../lib/supabase';
 import { useTeam } from '../context/TeamContext';
 
-const PRIMARY = 'var(--wl-primary, rgb(49,90,231))';
+const PRIMARY = 'var(--wl-primary, #0A6FB0)';
 
 function leadDisplay(lead) {
   if (!lead) return '';
@@ -115,8 +115,8 @@ export default function LeadPicker({ value, valueName, onChange, placeholder, di
           }}
         />
         {display && allowClear && !disabled && (
-          <button type="button" onClick={clearLead}
-            style={{ padding: '6px 10px', border: '1px solid #E4E7EC', background: 'var(--surface)', borderRadius: 8, fontSize: 12, color: '#6B7280', cursor: 'pointer' }}>
+          <button className="lk-btn lk-btn-ghost" type="button" onClick={clearLead}
+            >
             ×
           </button>
         )}

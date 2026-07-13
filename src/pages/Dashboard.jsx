@@ -68,7 +68,7 @@ const card = {
 const AREA_META = {
   'follow-up': { key: 'follow-up', label: 'Follow-up', color: '#0369A1', bg: '#F0F9FF' },
   'kontakt':   { key: 'kontakt',   label: 'Kontakt',   color: '#047857', bg: '#ECFDF5' },
-  'deal':      { key: 'deal',      label: 'Deal',      color: '#7C3AED', bg: '#F5F3FF' },
+  'deal':      { key: 'deal',      label: 'Deal',      color: '#003060', bg: '#F5F3FF' },
   'aufgabe':   { key: 'aufgabe',   label: 'Aufgabe',   color: '#B45309', bg: '#FFFBEB' },
   'content':   { key: 'content',   label: 'Content',   color: '#0F766E', bg: '#F0FDFA' },
 };
@@ -325,7 +325,7 @@ export default function Dashboard({ session }) {
         {/* Leadlys Plan für heute — priorisierte, übernehmbare Aktionen */}
         <div style={{ marginTop: space[5] }}>
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 8, marginBottom: space[3] }}>
-            <div style={{ fontSize: 12, fontWeight: 700, color: colors.inkMuted, textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+            <div className="lk-eyebrow" style={{ marginBottom: 0 }}>
               Leadlys Plan für heute
             </div>
             {suggestions.length >= 3 && (
@@ -333,7 +333,7 @@ export default function Dashboard({ session }) {
                 onClick={() => askLeadly(
                   `Hier ist mein heutiger Plan:\n${displayedSuggestions.map((s, i) => `${i + 1}. [${s.area.label}] ${s.title}${s.reason ? ` (${s.reason})` : ''}`).join('\n')}\nGeh ihn mit mir durch: Womit starte ich am besten, und welche Schritte kannst du direkt für mich vorbereiten?`
                 )}
-                style={{ padding: '5px 12px', borderRadius: radii.pill, border: `1px solid ${colors.border}`, background: colors.white, color: colors.inkMuted, fontSize: 12, fontWeight: 600, cursor: 'pointer' }}>
+                className="lk-btn lk-btn-ghost lk-btn-sm">
                 Alle mit Leadly durchgehen
               </button>
             )}
@@ -346,13 +346,12 @@ export default function Dashboard({ session }) {
                   <div style={{ fontSize: 14, fontWeight: 600, color: colors.ink, lineHeight: 1.35 }}>{s.title}</div>
                   {s.reason && <div style={{ fontSize: 12, color: colors.inkMuted }}>{s.reason}</div>}
                   <div style={{ display: 'flex', gap: 8, marginTop: 'auto', paddingTop: 4 }}>
-                    <button onClick={() => (s.action ? takeAction(s.action) : askLeadly(s.prompt))}
-                      style={{ padding: '7px 14px', borderRadius: 8, border: 'none', background: colors.primary, color: '#fff', fontSize: 12, fontWeight: 700, cursor: 'pointer' }}>
+                    <button className="lk-btn lk-btn-primary" onClick={() => (s.action ? takeAction(s.action) : askLeadly(s.prompt))}
+                      >
                       {s.action ? 'Erledigen' : 'Mit Leadly angehen'}
                     </button>
                     {s.href && (
-                      <button onClick={() => nav(s.href)}
-                        style={{ padding: '7px 12px', borderRadius: 8, border: `1px solid ${colors.border}`, background: colors.white, color: colors.inkMuted, fontSize: 12, fontWeight: 600, cursor: 'pointer' }}>
+                      <button onClick={() => nav(s.href)} className="lk-btn lk-btn-ghost">
                         Öffnen
                       </button>
                     )}
@@ -373,7 +372,7 @@ export default function Dashboard({ session }) {
                 Aktuell stehen keine offenen Follow-ups, heißen Kontakte, aktiven Deals oder überfälligen Aufgaben an. Sobald sich etwas ergibt, erscheinen hier konkrete Vorschläge.
               </div>
               <button onClick={() => askLeadly('Was kann ich heute im Vertrieb sinnvoll angehen?')}
-                style={{ alignSelf: 'flex-start', marginTop: 4, padding: '7px 14px', borderRadius: 8, border: `1px solid ${colors.border}`, background: colors.white, color: colors.inkMuted, fontSize: 12, fontWeight: 600, cursor: 'pointer' }}>
+                className="lk-btn lk-btn-ghost lk-btn-sm" style={{ alignSelf: 'flex-start', marginTop: 4 }}>
                 Leadly fragen
               </button>
             </div>

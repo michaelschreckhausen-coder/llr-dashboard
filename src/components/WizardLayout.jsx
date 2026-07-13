@@ -18,7 +18,7 @@
 
 import React from 'react'
 
-const P = 'var(--wl-primary, rgb(49,90,231))'
+const P = 'var(--wl-primary, #0A6FB0)'
 
 export default function WizardLayout({ eyebrow, title, subtitle, steps = [], currentStep = 1, onSkip, onBack, onStepClick, children, footer }) {
   return (
@@ -33,13 +33,7 @@ export default function WizardLayout({ eyebrow, title, subtitle, steps = [], cur
         )}
         <div style={{ flex: 1, minWidth: 0, maxWidth: 720 }}>
           {eyebrow && (
-            <div style={{
-              fontSize: 20,
-              color: '#30A0D0',
-              fontFamily: '"Caveat", cursive',
-              fontWeight: 600,
-              marginBottom: 6,
-            }}>{eyebrow}</div>
+            <div className="lk-eyebrow" style={{ fontSize:12, fontWeight:700, letterSpacing:'1.6px', textTransform:'uppercase', fontFamily:'Inter, sans-serif', color:'var(--primary, #003060)', marginBottom:6 }}>{eyebrow}</div>
           )}
           {title && (
             <h1 style={{
@@ -82,7 +76,7 @@ export default function WizardLayout({ eyebrow, title, subtitle, steps = [], cur
                   tabIndex={onStepClick ? 0 : undefined}
                   onClick={onStepClick ? () => onStepClick(stepNum) : undefined}
                   onKeyDown={onStepClick ? (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onStepClick(stepNum) } } : undefined}
-                  onMouseEnter={onStepClick && !isActive ? (e) => { e.currentTarget.style.background = 'rgba(49,90,231,.04)' } : undefined}
+                  onMouseEnter={onStepClick && !isActive ? (e) => { e.currentTarget.style.background = 'rgba(10,111,176,.04)' } : undefined}
                   onMouseLeave={onStepClick && !isActive ? (e) => { e.currentTarget.style.background = 'transparent' } : undefined}
                   style={{
                     display: 'inline-flex',
@@ -90,19 +84,19 @@ export default function WizardLayout({ eyebrow, title, subtitle, steps = [], cur
                     gap: 10,
                     padding: '4px 12px 4px 4px',
                     borderRadius: 24,
-                    background: isActive ? 'rgba(49,90,231,.08)' : 'transparent',
+                    background: isActive ? 'rgba(10,111,176,.08)' : 'transparent',
                     transition: 'all .2s',
                     cursor: onStepClick && !isActive ? 'pointer' : 'default',
                     userSelect: 'none',
                   }}>
                   <div style={{
                     width: 28, height: 28, borderRadius: '50%', flexShrink: 0,
-                    background: isActive ? P : isDone ? P : '#fff',
+                    background: isActive ? 'var(--primary)' : isDone ? 'var(--primary)' : '#fff',
                     border: '2px solid ' + (isActive || isDone ? P : '#E5E7EB'),
                     color: isActive ? '#fff' : isDone ? '#fff' : '#9CA3AF',
                     display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
                     fontSize: 11.5, fontWeight: 700,
-                    boxShadow: isActive ? '0 2px 8px rgba(49,90,231,.30)' : 'none',
+                    boxShadow: isActive ? '0 2px 8px rgba(10,111,176,.30)' : 'none',
                   }}>
                     {isDone ? '✓' : stepNum}
                   </div>
@@ -123,7 +117,7 @@ export default function WizardLayout({ eyebrow, title, subtitle, steps = [], cur
                     flex: 1,
                     minWidth: 24,
                     height: 2,
-                    background: stepNum < currentStep ? P : 'var(--border, #E5E7EB)',
+                    background: stepNum < currentStep ? 'var(--primary)' : 'var(--border, #E5E7EB)',
                     margin: '0 8px',
                     borderRadius: 1,
                   }}/>

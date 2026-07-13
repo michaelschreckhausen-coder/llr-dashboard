@@ -2,13 +2,14 @@
 // Assets (Logen/Business-Seats/VIP/Events) + Gästeverwaltung mit Check-in/No-Show.
 // Auslastung & No-Show-Rate aus v_hospitality_load. Schema 'sponsoring'.
 
+import PillSelect from '../../components/PillSelect'
 import { useEffect, useState, useCallback } from 'react'
 import { Ticket, Plus, Loader2, UserPlus, Check, UserX, Image as ImageIcon } from 'lucide-react'
 import { supabase } from '../../lib/supabase'
 import { useTeam } from '../../context/TeamContext'
 import PageHeader from '../../components/PageHeader'
 
-const PRIMARY = 'var(--wl-primary, rgb(49,90,231))'
+const PRIMARY = 'var(--wl-primary, #0A6FB0)'
 const sp = () => supabase.schema('sponsoring')
 const HOSPITALITY_BUCKET = 'sponsoring-hospitality'
 
@@ -146,9 +147,7 @@ export default function Hospitality() {
       <form onSubmit={createAsset} style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 10, alignItems: 'end', ...card, marginBottom: 22 }}>
         <Field label="Name"><input value={aForm.name} onChange={(e) => setAForm({ ...aForm, name: e.target.value })} placeholder="z.B. Loge Nord" style={input} /></Field>
         <Field label="Typ">
-          <select value={aForm.type} onChange={(e) => setAForm({ ...aForm, type: e.target.value })} style={input}>
-            {TYPES.map((t) => <option key={t} value={t}>{TYPE_LABEL[t]}</option>)}
-          </select>
+          <PillSelect value={aForm.type} onChange={v => setAForm({ ...aForm, type: v })} neutral options={[...TYPES.map((t) => ({ value: t, label: TYPE_LABEL[t] }))]} buttonStyle={{ minWidth: 140 }} />
         </Field>
         <Field label="Saison-Kapazität"><input type="number" min="0" value={aForm.capacity} onChange={(e) => setAForm({ ...aForm, capacity: e.target.value })} style={input} /></Field>
         <Field label="Event-Datum"><input type="date" value={aForm.event_date} onChange={(e) => setAForm({ ...aForm, event_date: e.target.value })} style={input} /></Field>
@@ -156,7 +155,7 @@ export default function Hospitality() {
         <Field label="Spieltag"><input value={aForm.matchday} onChange={(e) => setAForm({ ...aForm, matchday: e.target.value })} placeholder="z.B. Spieltag 12" style={input} /></Field>
         <Field label="Spieltag-Kapazität"><input type="number" min="0" value={aForm.matchday_capacity} onChange={(e) => setAForm({ ...aForm, matchday_capacity: e.target.value })} placeholder="(opt.)" style={input} /></Field>
         <Field label="Zusatz-Kapazität"><input type="number" min="0" value={aForm.extra_capacity} onChange={(e) => setAForm({ ...aForm, extra_capacity: e.target.value })} placeholder="0" style={input} /></Field>
-        <button type="submit" disabled={busy || !aForm.name.trim()} style={{ ...primaryBtn, gridColumn: '1 / -1', justifySelf: 'start', opacity: busy || !aForm.name.trim() ? 0.6 : 1 }}>
+        <button type="submit" disabled={busy || !aForm.name.trim()} className="lk-btn lk-btn-navy" style={{ gridColumn: '1 / -1', justifySelf: 'start', opacity: busy || !aForm.name.trim() ? 0.6 : 1 }}>
           {busy ? <Loader2 size={14} className="spin" /> : <Plus size={14} />} Anlegen
         </button>
       </form>
@@ -206,7 +205,7 @@ export default function Hospitality() {
                         <input type="checkbox" checked={!!a.extra_capacity_approved} onChange={() => toggleApproved(a)} />
                         Zusatzkapazität freigegeben
                       </label>
-                      <label style={{ ...secondaryBtn, cursor: uploadingId === a.id ? 'default' : 'pointer', opacity: uploadingId === a.id ? 0.6 : 1 }}>
+                      <label className="lk-btn lk-btn-ghost" style={{ cursor: uploadingId === a.id ? 'default' : 'pointer', opacity: uploadingId === a.id ? 0.6 : 1 }}>
                         {uploadingId === a.id ? <Loader2 size={14} className="spin" /> : <ImageIcon size={14} />}
                         {a.image_path ? 'Bild ersetzen' : 'Bild hochladen'}
                         <input type="file" accept="image/*" style={{ display: 'none' }} disabled={uploadingId === a.id}
@@ -217,7 +216,7 @@ export default function Hospitality() {
                     <div style={{ display: 'flex', gap: 8, marginBottom: 12 }}>
                       <input value={guestName} onChange={(e) => setGuestName(e.target.value)} placeholder="Gastname"
                              onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); addGuest(a.id) } }} style={{ ...input, maxWidth: 260 }} />
-                      <button onClick={() => addGuest(a.id)} style={secondaryBtn}><UserPlus size={14} /> Gast hinzufügen</button>
+                      <button onClick={() => addGuest(a.id)} className="lk-btn lk-btn-ghost"><UserPlus size={14} /> Gast hinzufügen</button>
                     </div>
                     {(guests[a.id] || []).length === 0 ? (
                       <div style={{ fontSize: 13, color: 'var(--text-muted)' }}>Noch keine Gäste.</div>
@@ -280,7 +279,7 @@ function Field({ label, children }) {
 
 const card = { border: '1px solid var(--border)', borderRadius: 14, background: 'var(--surface)', padding: 16 }
 const input = { padding: '8px 10px', borderRadius: 8, border: '1px solid var(--border)', background: 'var(--surface)', color: 'var(--text-strong)', fontSize: 13.5, width: '100%', boxSizing: 'border-box' }
-const primaryBtn = { display: 'inline-flex', alignItems: 'center', gap: 6, padding: '9px 16px', borderRadius: 999, border: 'none', background: PRIMARY, color: '#fff', fontSize: 13, fontWeight: 700, cursor: 'pointer', whiteSpace: 'nowrap' }
+const primaryBtn = { display: 'inline-flex', alignItems: 'center', gap: 6, padding: '9px 16px', borderRadius: 999, border: 'none', background: 'var(--primary)', color: '#fff', fontSize: 13, fontWeight: 700, cursor: 'pointer', whiteSpace: 'nowrap' }
 const secondaryBtn = { display: 'inline-flex', alignItems: 'center', gap: 6, padding: '8px 14px', borderRadius: 999, border: '1px solid var(--border)', background: 'var(--surface)', color: 'var(--text-strong)', fontSize: 13, fontWeight: 600, cursor: 'pointer' }
 const muted = { display: 'flex', alignItems: 'center', gap: 8, color: 'var(--text-muted)', fontSize: 14 }
 const errBox = { padding: '10px 14px', borderRadius: 10, background: '#FEE2E2', color: '#991B1B', fontSize: 13, marginBottom: 16 }

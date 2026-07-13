@@ -9,6 +9,7 @@
 // Repo-Migration hat `action`/`target_url`) ist in einer separaten Session zu
 // klären — diese Page behält die existierenden Schreibpfade bei.
 
+import PillSelect from '../components/PillSelect'
 import React, { useState, useEffect, useCallback, useMemo } from 'react'
 import { useNavigate } from 'react-router-dom'
 import InboxLink from '../components/InboxLink'
@@ -26,7 +27,7 @@ import WizardLayout from '../components/WizardLayout'
 import { EXTENSION_WEBSTORE_URL } from '../lib/leadeskExtension'
 
 // ─── Tokens (Leads.jsx-Alignment) ─────────────────────────────────────────
-const PRIMARY = 'rgb(49,90,231)'
+const PRIMARY = '#0A6FB0'
 const PRIMARY_VAR = `var(--wl-primary, ${PRIMARY})`
 
 const pageOuterStyle    = { background:'var(--surface-canvas, #F8FAFC)', minHeight:'100vh', padding:'24px 24px 60px' }
@@ -37,10 +38,10 @@ const subtitleStyle     = { fontSize:13, color:'var(--text-muted, #6B7280)', mar
 const searchInputStyle  = { width:220, padding:'7px 12px 7px 32px', fontSize:13, border:'1.5px solid #E4E7EC', borderRadius:10, background:'var(--surface)', outline:'none', boxSizing:'border-box' }
 const searchIconStyle   = { position:'absolute', left:10, top:'50%', transform:'translateY(-50%)', color:'#9CA3AF' }
 const iconBtnStyle      = { width:34, height:34, border:'1.5px solid #E4E7EC', background:'var(--surface)', borderRadius:10, display:'flex', alignItems:'center', justifyContent:'center', color:'#6B7280', cursor:'pointer' }
-const primaryBtnStyle   = { padding:'9px 18px', background: PRIMARY_VAR, color:'#fff', border:'none', borderRadius:10, fontSize:13, fontWeight:700, display:'inline-flex', alignItems:'center', gap:6, cursor:'pointer' }
+const primaryBtnStyle   = { padding:'9px 18px', background: 'var(--primary)', color:'#fff', border:'none', borderRadius:10, fontSize:13, fontWeight:700, display:'inline-flex', alignItems:'center', gap:6, cursor:'pointer' }
 const ghostBtnStyle     = { padding:'7px 12px', background:'var(--surface)', color:'#374151', border:'1.5px solid #E4E7EC', borderRadius:10, fontSize:12, fontWeight:600, display:'inline-flex', alignItems:'center', gap:6, cursor:'pointer' }
 const kpiRowStyle       = { display:'grid', gridTemplateColumns:'repeat(4, 1fr)', gap:12, marginBottom:20 }
-const kpiCardStyle      = { background:'var(--surface)', border:'1px solid var(--border, #E4E7EC)', borderRadius:12, padding:'14px 16px' }
+const kpiCardStyle      = { background:'var(--surface)', border:'1px solid var(--border, #E4E7EC)', borderRadius:16, padding:'14px 16px', boxShadow:'var(--shadow-card)' }
 const toggleGroupStyle  = { display:'inline-flex', background:'#F3F4F6', borderRadius:10, padding:3, gap:2 }
 const toggleBtnStyle    = { height:32, padding:'0 14px', fontSize:13, background:'transparent', border:'none', color:'#6B7280', display:'inline-flex', alignItems:'center', gap:6, borderRadius:8, cursor:'pointer', fontWeight:600 }
 const toggleBtnActive   = { ...toggleBtnStyle, background:'var(--surface)', color:'#111827', boxShadow:'0 1px 2px rgba(0,0,0,0.05)' }
@@ -55,7 +56,7 @@ const STEP_TYPES = {
   follow_profile: { label:'Profil folgen',     Icon: UserCheck,     color:'#0891b2', bg:'#ECFEFF', desc:'Folgt der Person auf LinkedIn (ohne Vernetzungsanfrage)' },
   send_connect:   { label:'Vernetzen',         Icon: UserPlus,      color:'#16a34a', bg:'#F0FDF4', desc:'Sendet eine Vernetzungsanfrage' },
   send_message:   { label:'Nachricht',         Icon: MessageSquare, color:'#c2410c', bg:'#FFF7ED', desc:'Sendet eine LinkedIn-Nachricht' },
-  wait:           { label:'Warten',            Icon: Hourglass,     color:'#7c3aed', bg:'#F5F3FF', desc:'Zeitverzögerung zwischen Schritten' },
+  wait:           { label:'Warten',            Icon: Hourglass,     color:'#0A6FB0', bg:'#EAF8FE', desc:'Zeitverzögerung zwischen Schritten' },
 }
 
 // #13: Step-Type → kanonische automation_jobs.action (CHECK connect/message/follow/visit/like/endorse)
@@ -480,7 +481,7 @@ export default function Automatisierung({ session }) {
         {/* Journal-Header (analog /messages) */}
         <div style={{ display:'flex', alignItems:'flex-end', justifyContent:'space-between', gap:20, flexWrap:'wrap', marginBottom:22 }}>
           <div style={{ flex:'1 1 auto', minWidth:280 }}>
-            <div style={{ fontSize:20, color:'#30A0D0', fontFamily:'"Caveat", cursive', fontWeight:600, marginBottom:6 }}>LinkedIn · Automatisierung</div>
+            <div className="lk-eyebrow" style={{ fontSize:12, fontWeight:700, letterSpacing:'1.6px', textTransform:'uppercase', fontFamily:'Inter, sans-serif', color:'var(--primary, #003060)', marginBottom:6 }}>LinkedIn · Automatisierung</div>
             <h1 style={{ fontSize:26, fontWeight:700, margin:0, letterSpacing:'-0.3px', lineHeight:1.2, color:'var(--text-primary, rgb(20,20,43))' }}>Deine Kampagnen, auf Autopilot.</h1>
             <p style={{ fontSize:13, color:'var(--text-muted)', margin:'8px 0 0', lineHeight:1.6, maxWidth:600 }}>
               LinkedIn-Sequenzen aus deinen Import-Kontakten — Vernetzen, Nachrichten und Follow-ups, automatisch &amp; serverseitig über Unipile.
@@ -493,13 +494,13 @@ export default function Automatisierung({ session }) {
               <input value={search} onChange={e => setSearch(e.target.value)}
                 placeholder="Kampagnen suchen…" style={searchInputStyle} />
             </div>
-            <button style={ghostBtnStyle} onClick={load} title="Neu laden">
+            <button className="lk-btn lk-btn-ghost" onClick={load} title="Neu laden">
               <RotateCw size={14} /> Aktualisieren
             </button>
-            <button style={ghostBtnStyle} onClick={exportCampaignsCsv} title="CSV-Export aller Kampagnen">
+            <button className="lk-btn lk-btn-ghost" onClick={exportCampaignsCsv} title="CSV-Export aller Kampagnen">
               <Download size={14} /> Export
             </button>
-            <button style={primaryBtnStyle} onClick={() => setShowNew(true)}>
+            <button className="lk-btn lk-btn-navy" onClick={() => setShowNew(true)}>
               <Plus size={14} /> Neue Kampagne
             </button>
           </div>
@@ -542,7 +543,7 @@ export default function Automatisierung({ session }) {
             <button onClick={() => setView('queue')} style={view === 'queue' ? toggleBtnActive : toggleBtnStyle}>
               <Clock size={14} /> Warteschlange
               {jobs.length > 0 && (
-                <span style={{ marginLeft:4, padding:'1px 6px', borderRadius:99, fontSize:10, fontWeight:800, background:PRIMARY_VAR, color:'#fff' }}>
+                <span style={{ marginLeft:4, padding:'1px 6px', borderRadius:99, fontSize:10, fontWeight:800, background:'var(--primary)', color:'#fff' }}>
                   {jobs.length}
                 </span>
               )}
@@ -564,8 +565,8 @@ export default function Automatisierung({ session }) {
                       style={{
                         display:'inline-flex', alignItems:'center', gap:6,
                         padding:'7px 14px', borderRadius:99, cursor:'pointer',
-                        fontSize:12, fontWeight:700, border:`1.5px solid ${active ? PRIMARY_VAR : '#E4E7EC'}`,
-                        background: active ? PRIMARY_VAR : 'var(--surface)',
+                        fontSize:12, fontWeight:700, border:`1.5px solid ${active ? 'var(--primary)' : '#E4E7EC'}`,
+                        background: active ? 'var(--primary)' : 'var(--surface)',
                         color: active ? '#fff' : '#374151',
                       }}>
                       <t.Icon size={13} />
@@ -670,10 +671,10 @@ function DraftCard({ draft, onApprove, onReject }) {
       <textarea value={text} onChange={e => setText(e.target.value)} rows={3}
         style={{ width:'100%', boxSizing:'border-box', border:'1px solid #E4E7EC', borderRadius:8, padding:'8px 10px', fontSize:12.5, fontFamily:'inherit', resize:'vertical', color:'var(--text-strong)' }} />
       <div style={{ display:'flex', gap:8, justifyContent:'flex-end', marginTop:8 }}>
-        <button disabled={busy} onClick={async () => { setBusy(true); await onReject(draft.id) }}
-          style={{ padding:'7px 14px', borderRadius:8, border:'1px solid #FCA5A5', background:'#FEF2F2', color:'#dc2626', fontSize:12.5, fontWeight:700, cursor:'pointer' }}>Verwerfen</button>
+        <button className="lk-btn lk-btn-danger" disabled={busy} onClick={async () => { setBusy(true); await onReject(draft.id) }}
+          >Verwerfen</button>
         <button disabled={!canSend} onClick={async () => { setBusy(true); await onApprove(draft.id, text) }}
-          style={{ padding:'7px 14px', borderRadius:8, border:'none', background:PRIMARY_VAR, color:'#fff', fontSize:12.5, fontWeight:700, cursor: canSend ? 'pointer' : 'default', opacity: canSend ? 1 : 0.6 }}>Freigeben &amp; senden</button>
+          style={{ padding:'7px 14px', borderRadius:8, border:'none', background:'var(--primary)', color:'#fff', fontSize:12.5, fontWeight:700, cursor: canSend ? 'pointer' : 'default', opacity: canSend ? 1 : 0.6 }}>Freigeben &amp; senden</button>
       </div>
     </div>
   )
@@ -704,7 +705,7 @@ function ExtensionBanner({ connected = false, runningCount = 0, waitingCount = 0
         {connected ? 'Verbunden' : 'Nicht verbunden'}
       </span>
       <button onClick={onManage}
-        style={{ ...ghostBtnStyle, cursor:'pointer', color:PRIMARY_VAR, borderColor:'rgba(49,90,231,0.35)', background:'rgba(49,90,231,0.06)' }}>
+        className="lk-btn lk-btn-ghost" style={{ cursor:'pointer', color:PRIMARY_VAR, borderColor:'rgba(10,111,176,0.35)', background:'rgba(10,111,176,0.06)' }}>
         <ExternalLink size={13} /> Verbindung verwalten
       </button>
     </div>
@@ -724,7 +725,7 @@ function EmptyState({ statusTab, hasAny, onCreate }) {
       <div style={{ fontSize:13, color:'var(--text-muted)', marginBottom:18 }}>
         {hasAny ? 'Wechsle den Status-Tab oder erstelle eine neue Kampagne.' : 'Erstelle deine erste LinkedIn-Automatisierungskampagne in unter zwei Minuten.'}
       </div>
-      <button onClick={onCreate} style={primaryBtnStyle}>
+      <button onClick={onCreate} className="lk-btn lk-btn-navy">
         <Plus size={14} /> Neue Kampagne
       </button>
     </div>
@@ -779,7 +780,7 @@ function CampaignRow({ campaign: c, onToggle, onDelete }) {
           {/* Progress */}
           <div style={{ display:'flex', alignItems:'center', gap:10 }}>
             <div style={{ flex:1, height:5, background:'#F1F5F9', borderRadius:99, overflow:'hidden' }}>
-              <div style={{ width:progress + '%', height:'100%', background:PRIMARY_VAR, borderRadius:99, transition:'width .3s' }}/>
+              <div style={{ width:progress + '%', height:'100%', background:'var(--primary)', borderRadius:99, transition:'width .3s' }}/>
             </div>
             <span style={{ fontSize:11, color:'var(--text-muted)', whiteSpace:'nowrap' }}>
               {c.leads_done || 0}/{c.leads_total || 0} Leads · {c.leads_replied || 0} Antworten
@@ -801,7 +802,7 @@ function QueueView({ jobs, onCancel, onReload }) {
     <div>
       <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:12 }}>
         <span style={{ fontSize:13, color:'var(--text-muted)' }}>{jobs.length} ausstehende Jobs</span>
-        <button onClick={onReload} style={ghostBtnStyle}><RotateCw size={13} /> Aktualisieren</button>
+        <button onClick={onReload} className="lk-btn lk-btn-ghost"><RotateCw size={13} /> Aktualisieren</button>
       </div>
       {jobs.length === 0 ? (
         <div style={{ ...cardStyle, textAlign:'center', padding:'40px 20px', color:'var(--text-muted)', fontSize:13 }}>
@@ -862,7 +863,7 @@ function WIn({ value, onChange, placeholder, type='text', autoFocus, max, min })
       onFocus={() => setFocused(true)} onBlur={() => setFocused(false)}
       style={{
         width:'100%', padding:'11px 14px',
-        border:'1.5px solid '+(focused ? PRIMARY_VAR : 'var(--border, #E5E7EB)'),
+        border:'1.5px solid '+(focused ? 'var(--primary)' : 'var(--border, #E5E7EB)'),
         borderRadius:10, fontSize:13.5, boxSizing:'border-box', outline:'none',
         background:'var(--surface, #fff)', fontFamily:'inherit',
         transition:'border-color .15s',
@@ -879,7 +880,7 @@ function WTx({ value, onChange, rows=3, placeholder }) {
       onFocus={() => setFocused(true)} onBlur={() => setFocused(false)}
       style={{
         width:'100%', padding:'11px 14px',
-        border:'1.5px solid '+(focused ? PRIMARY_VAR : 'var(--border, #E5E7EB)'),
+        border:'1.5px solid '+(focused ? 'var(--primary)' : 'var(--border, #E5E7EB)'),
         borderRadius:10, fontSize:13.5, lineHeight:1.55, resize:'vertical',
         boxSizing:'border-box', outline:'none', background:'var(--surface, #fff)',
         fontFamily:'inherit', transition:'border-color .15s',
@@ -1049,7 +1050,7 @@ function NewCampaignWizard({
   const nextDisabled = step === 'configure' ? !canConfigureNext : step === 'list' ? !sourceListId : false
   const footer = (
     <>
-      <button onClick={prevStep} style={ghostBtnStyle}>
+      <button onClick={prevStep} className="lk-btn lk-btn-ghost">
         <ChevronLeft size={14} /> {step === 'template' ? 'Abbrechen' : 'Zurück'}
       </button>
       <div style={{ fontSize:12, color:'var(--text-muted)' }}>
@@ -1088,18 +1089,12 @@ function NewCampaignWizard({
         >
           <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fill, minmax(280px, 1fr))', gap:12 }}>
             {quickTemplates.map(t => (
-              <button key={t.id} onClick={() => pickTemplate(t)}
-                onMouseEnter={e => { e.currentTarget.style.borderColor = PRIMARY_VAR; e.currentTarget.style.transform = 'translateY(-1px)'; e.currentTarget.style.boxShadow = '0 4px 16px rgba(49,90,231,0.10)' }}
-                onMouseLeave={e => { e.currentTarget.style.borderColor = 'var(--border, #E5E7EB)'; e.currentTarget.style.transform = 'translateY(0)'; e.currentTarget.style.boxShadow = '0 1px 2px rgba(15,23,42,.04)' }}
-                style={{
-                  textAlign:'left', cursor:'pointer', padding:'16px 18px',
-                  borderRadius:12, border:'1.5px solid var(--border, #E5E7EB)',
-                  background:'var(--surface, #fff)', display:'flex', flexDirection:'column', gap:10,
-                  boxShadow:'0 1px 2px rgba(15,23,42,.04)',
-                  transition:'all .15s ease',
-                }}>
+              <button className="lk-btn lk-btn-ghost" key={t.id} onClick={() => pickTemplate(t)}
+                
+                
+                style={{ textAlign:'left', display:'flex', flexDirection:'column', gap:10 }}>
                 <div style={{ display:'flex', alignItems:'center', gap:10 }}>
-                  <span style={{ width:36, height:36, borderRadius:10, background:'rgba(49,90,231,0.10)', display:'inline-flex', alignItems:'center', justifyContent:'center', color:PRIMARY_VAR }}>
+                  <span style={{ width:36, height:36, borderRadius:10, background:'rgba(10,111,176,0.10)', display:'inline-flex', alignItems:'center', justifyContent:'center', color:PRIMARY_VAR }}>
                     <t.Icon size={17} />
                   </span>
                   <div>
@@ -1154,11 +1149,7 @@ function NewCampaignWizard({
             {sponsoringCampaigns.length > 0 && (
               <div style={{ marginTop:14 }}>
                 <WLb label="Sponsoring-Kampagne (optional)" hint="Ordne diesen Outreach einer Sponsoring-Kampagne zu — er läuft dann unter dieser Kampagne." />
-                <select value={newCamp.sponsoring_campaign_id || ''} onChange={e => setNewCamp(p => ({ ...p, sponsoring_campaign_id:e.target.value }))}
-                  style={{ width:'100%', padding:'10px 12px', borderRadius:10, border:'1px solid var(--border)', background:'var(--surface)', color:'var(--text-primary, #111827)', fontSize:14, outline:'none' }}>
-                  <option value="">— keine —</option>
-                  {sponsoringCampaigns.map(c => <option key={c.id} value={c.id}>{c.title}</option>)}
-                </select>
+                <PillSelect value={newCamp.sponsoring_campaign_id || ''} onChange={v => setNewCamp(p => ({ ...p, sponsoring_campaign_id:v }))} neutral options={[{ value: '', label: `— keine —` }, ...sponsoringCampaigns.map((c) => ({ value: c.id, label: c.title }))]} buttonStyle={{ minWidth: 140 }} />
               </div>
             )}
           </WSc>
@@ -1191,8 +1182,8 @@ function NewCampaignWizard({
             hint="Aktionen werden in dieser Reihenfolge ausgeführt. Wait-Steps dazwischen definieren die Verzögerung."
             action={
               <div style={{ display:'flex', gap:6 }}>
-                <button onClick={() => addStep('send_message')} style={ghostBtnStyle}><Plus size={12} /> Aktion</button>
-                <button onClick={() => addStep('wait')}         style={ghostBtnStyle}><Hourglass size={12} /> Warten</button>
+                <button onClick={() => addStep('send_message')} className="lk-btn lk-btn-ghost"><Plus size={12} /> Aktion</button>
+                <button onClick={() => addStep('wait')}         className="lk-btn lk-btn-ghost"><Hourglass size={12} /> Warten</button>
               </div>
             }
           >
@@ -1250,14 +1241,7 @@ function NewCampaignWizard({
           ) : (
             <>
               <WLb label="Inbox-Liste" hint="Zahl in Klammern = Anzahl Kontakte in der Liste." />
-              <select value={sourceListId} onChange={e => setSourceListId(e.target.value)}
-                style={{ width:'100%', padding:'10px 12px', borderRadius:10, border:'1px solid var(--border)', background:'var(--surface)', color:'var(--text-primary, #111827)', fontSize:14, outline:'none' }}>
-                <option value="">— Liste wählen —</option>
-                {inboxLists.map(l => {
-                  const cnt = (membersByList.get(l.id) || new Set()).size
-                  return <option key={l.id} value={l.id}>{l.name} ({cnt})</option>
-                })}
-              </select>
+              <PillSelect value={sourceListId} onChange={v => setSourceListId(v)} neutral options={[{ value: '', label: `— Liste wählen —` }, ...inboxLists.map((l) => { const cnt = (membersByList.get(l.id) || new Set()).size; return ({ value: l.id, label: `${l.name} (${cnt})` }); })]} buttonStyle={{ minWidth: 140 }} />
               {sourceListId && (
                 <div style={{ fontSize:12, color:'var(--text-muted)', marginTop:2 }}>
                   {candidates.length} Kontakt(e) mit LinkedIn-URL in dieser Liste.
@@ -1371,12 +1355,7 @@ function StepRow({ idx, step: s, onChange, onRemove, canRemove }) {
         <span style={{ display:'inline-flex', alignItems:'center', gap:5, fontSize:12, padding:'3px 9px', borderRadius:6, background:info.bg, color:info.color, fontWeight:700 }}>
           <Icon size={12} /> {info.label}
         </span>
-        <select value={s.type} onChange={e => onChange('type', e.target.value)}
-          style={{ ...inputStyle, width:'auto', padding:'4px 8px', fontSize:12 }}>
-          {Object.entries(STEP_TYPES).map(([k, v]) => (
-            <option key={k} value={k}>{v.label}</option>
-          ))}
-        </select>
+        <PillSelect value={s.type} onChange={v => onChange('type', v)} neutral options={[...Object.entries(STEP_TYPES).map(([k, v]) => ({ value: k, label: v.label }))]} buttonStyle={{ minWidth: 140 }} />
         <div style={{ flex:1 }}/>
         <span style={{ fontSize:11, color:'var(--text-muted)' }}>{isWait ? 'Warten' : 'Delay min.'}</span>
         <input type="number" value={s.delay_min} onChange={e => onChange('delay_min', Number(e.target.value))}

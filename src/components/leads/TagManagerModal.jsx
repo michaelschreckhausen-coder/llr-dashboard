@@ -7,7 +7,7 @@ import { useState, useMemo } from 'react';
 import { Plus, Trash2, Check } from 'lucide-react';
 import { TAG_PALETTE_KEYS, paletteColor, tagColor } from '../../lib/tagColors';
 
-const PRIMARY = 'var(--wl-primary, rgb(49,90,231))';
+const PRIMARY = 'var(--wl-primary, #0A6FB0)';
 
 function Swatch({ colorKey, active, onClick }) {
   const c = paletteColor(colorKey);
@@ -78,8 +78,8 @@ export function TagManagerModal({ onClose, tags = [], usedTags = [], isLoading, 
             <input value={newName} onChange={e => setNewName(e.target.value)}
               onKeyDown={e => { if (e.key === 'Enter') onCreate(); }}
               placeholder="Neuer Tag…" style={inputStyle} />
-            <button type="button" onClick={onCreate} disabled={!newName.trim() || busy}
-              style={{ height: 36, padding: '0 14px', background: PRIMARY, color: '#fff', border: 'none', borderRadius: 8, fontSize: 13, fontWeight: 600, cursor: newName.trim() ? 'pointer' : 'not-allowed', opacity: newName.trim() ? 1 : 0.5, display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+            <button className="lk-btn lk-btn-cta" type="button" onClick={onCreate} disabled={!newName.trim() || busy}
+              style={{ height: 36, opacity: newName.trim() ? 1 : 0.5, display: 'inline-flex', alignItems: 'center', gap: 6 }}>
               <Plus size={15} /> Anlegen
             </button>
           </div>

@@ -2,6 +2,7 @@
 // Detailseite einer Organisation — /organizations/:id
 // Tabs: Übersicht · Kontakte · Deals
 
+import PillSelect from '../components/PillSelect'
 import React, { useState, useEffect } from 'react'
 import { supabase } from '../lib/supabase'
 import { useNavigate, useParams, useLocation, Link } from 'react-router-dom'
@@ -9,13 +10,13 @@ import { useTeam } from '../context/TeamContext'
 import { useEntitlements } from '../hooks/useEntitlements'
 import { EMPLOYEE_RANGES, EMPLOYEE_LABEL, REVENUE_RANGES, REVENUE_LABEL } from '../constants/orgLabels'
 
-const PRIMARY = 'var(--wl-primary, rgb(49,90,231))'
+const PRIMARY = 'var(--wl-primary, #0A6FB0)'
 
 const STAGE_COLORS = {
   prospect:    { label: 'Interessent',  color: '#6B7280', bg: '#F3F4F6' },
   opportunity: { label: 'Qualifiziert', color: '#185FA5', bg: '#EFF6FF' },
   angebot:     { label: 'Angebot',      color: '#D97706', bg: '#FFFBEB' },
-  verhandlung: { label: 'Verhandlung',  color: '#7C3AED', bg: '#F5F3FF' },
+  verhandlung: { label: 'Verhandlung',  color: '#003060', bg: '#F5F3FF' },
   gewonnen:    { label: 'Gewonnen',     color: '#059669', bg: '#ECFDF5' },
   verloren:    { label: 'Verloren',     color: '#DC2626', bg: '#FEF2F2' },
   kein_deal:   { label: 'Kein Deal',    color: '#9CA3AF', bg: '#F9FAFB' },
@@ -337,7 +338,7 @@ export default function OrganizationProfile({ session }) {
   if (!org) return (
     <div style={{ padding: 40, textAlign: 'center' }}>
       <div style={{ fontSize: 15, color: '#6B7280', marginBottom: 12 }}>Organisation nicht gefunden</div>
-      <button onClick={() => navigate('/organizations')} style={{ padding: '8px 16px', borderRadius: 10, border: '1px solid #E4E7EC', background: 'var(--surface)', fontSize: 13, color: PRIMARY, cursor: 'pointer' }}>← Zurück zur Liste</button>
+      <button className="lk-btn lk-btn-ghost" onClick={() => navigate('/organizations')} >← Zurück zur Liste</button>
     </div>
   )
 
@@ -358,7 +359,7 @@ export default function OrganizationProfile({ session }) {
       {/* Header */}
       <div style={{ background: 'var(--surface)', borderRadius: 14, border: '1px solid #E4E7EC', padding: '22px 24px', marginBottom: 20 }}>
         <div style={{ display: 'flex', alignItems: 'flex-start', gap: 16 }}>
-          <div style={{ width: 60, height: 60, borderRadius: 14, background: org.logo_url ? '#fff' : 'rgba(49,90,231,0.08)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 28, flexShrink: 0, overflow: 'hidden', border: org.logo_url ? '1px solid #E4E7EC' : 'none' }}>
+          <div style={{ width: 60, height: 60, borderRadius: 14, background: org.logo_url ? '#fff' : 'rgba(10,111,176,0.08)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 28, flexShrink: 0, overflow: 'hidden', border: org.logo_url ? '1px solid #E4E7EC' : 'none' }}>
             {org.logo_url ? (
               <img src={org.logo_url} alt={`${org.name} Logo`}
                 onError={(e) => { e.currentTarget.style.display = 'none'; e.currentTarget.parentElement.textContent = '🏢' }}
@@ -366,7 +367,7 @@ export default function OrganizationProfile({ session }) {
             ) : '🏢'}
           </div>
           <div style={{ flex: 1, minWidth: 0 }}>
-            <div style={{ fontSize: 18, color: '#30A0D0', fontFamily: '"Caveat", cursive', fontWeight: 600, marginBottom: 2 }}>CRM · Unternehmen</div>
+            <div className="lk-eyebrow" style={{ fontSize:12, fontWeight:700, letterSpacing:'1.6px', textTransform:'uppercase', fontFamily:'Inter, sans-serif', color:'var(--primary, #003060)', marginBottom:2 }}>CRM · Unternehmen</div>
             <div style={{ display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: 10, marginBottom: 4 }}>
               <h1 style={{ fontSize: 26, fontWeight: 700, letterSpacing: '-0.3px', lineHeight: 1.2, color: 'var(--text-primary, #111827)', margin: 0 }}>{org.name}</h1>
               {sponsoringActive && isSponsor && (
@@ -384,17 +385,17 @@ export default function OrganizationProfile({ session }) {
           </div>
           <div style={{ display: 'flex', gap: 8 }}>
             {!editing && sponsoringActive && (
-              <button onClick={() => toggleSponsor(!isSponsor)} disabled={extMarking}
+              <button className="lk-btn lk-btn-primary" onClick={() => toggleSponsor(!isSponsor)} disabled={extMarking}
                 title={isSponsor ? 'Aus der Sponsoren-Lens entfernen' : 'Als Sponsor markieren — erscheint in der Sponsoren-Lens'}
-                style={{ padding: '7px 14px', borderRadius: 9, border: isSponsor ? '1px solid #E4E7EC' : 'none', background: isSponsor ? 'var(--surface)' : PRIMARY, color: isSponsor ? '#6B7280' : '#fff', fontSize: 12, fontWeight: 700, cursor: extMarking ? 'wait' : 'pointer', opacity: extMarking ? 0.6 : 1, whiteSpace: 'nowrap' }}>
+                style={{ opacity: extMarking ? 0.6 : 1, whiteSpace: 'nowrap' }}>
                 {extMarking ? '…' : (isSponsor ? 'Kein Sponsor mehr' : '★ Als Sponsor markieren')}
               </button>
             )}
-            {!editing && <button onClick={() => setEditing(true)} style={{ padding: '7px 14px', borderRadius: 9, border: '1px solid #E4E7EC', background: 'var(--surface)', fontSize: 12, fontWeight: 700, cursor: 'pointer', color: '#374151' }}>Bearbeiten</button>}
+            {!editing && <button className="lk-btn lk-btn-ghost" onClick={() => setEditing(true)} >Bearbeiten</button>}
             {editing && (
               <>
-                <button onClick={() => { setEditing(false); setEditForm(org) }} style={{ padding: '7px 14px', borderRadius: 9, border: '1px solid #E4E7EC', background: 'var(--surface)', fontSize: 12, fontWeight: 700, cursor: 'pointer', color: '#374151' }}>Abbrechen</button>
-                <button onClick={saveEdit} disabled={saving} style={{ padding: '7px 16px', borderRadius: 9, border: 'none', background: PRIMARY, color: '#fff', fontSize: 12, fontWeight: 700, cursor: 'pointer' }}>{saving ? '⏳…' : 'Speichern'}</button>
+                <button className="lk-btn lk-btn-ghost" onClick={() => { setEditing(false); setEditForm(org) }} >Abbrechen</button>
+                <button className="lk-btn lk-btn-cta" onClick={saveEdit} disabled={saving} >{saving ? '⏳…' : 'Speichern'}</button>
               </>
             )}
           </div>
@@ -446,15 +447,10 @@ export default function OrganizationProfile({ session }) {
             {editing ? (
               <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
                 <Field label="Owner">
-                  <select value={editForm.owner_id || ''} onChange={e => setEditForm(f => ({...f, owner_id: e.target.value || null}))} style={inputS}>
-                    <option value="">— Kein Owner —</option>
-                    {teamMembers.map(m => (
-                      <option key={m.id} value={m.id}>
-                        {m.full_name || `${m.first_name} ${m.last_name}`.trim() || m.id.slice(0,8)}
-                        {m.id === uid ? ' (du)' : ''}
-                      </option>
-                    ))}
-                  </select>
+                  <PillSelect value={editForm.owner_id || ''} onChange={v => setEditForm(f => ({...f, owner_id: v || null}))} neutral options={[{ value: '', label: `— Kein Owner —` }, ...teamMembers.map((m) => ({ value: m.id, label: `
+                        ${m.full_name || `${m.first_name} ${m.last_name}`.trim() || m.id.slice(0,8)}
+                        ${m.id === uid ? ' (du)' : ''}
+                      ` }))]} buttonStyle={{ minWidth: 140 }} />
                 </Field>
                 <Field label="Website"><input value={editForm.website||''} onChange={e => setEditForm(f => ({...f, website: e.target.value}))} style={inputS}/></Field>
                 <Field label="LinkedIn"><input value={editForm.linkedin_company_url||''} onChange={e => setEditForm(f => ({...f, linkedin_company_url: e.target.value}))} style={inputS}/></Field>
@@ -530,22 +526,13 @@ export default function OrganizationProfile({ session }) {
             {editing ? (
               <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
                 <Field label="Mitarbeiteranzahl">
-                  <select value={editForm.employee_range||''} onChange={e => setEditForm(f => ({...f, employee_range: e.target.value}))} style={inputS}>
-                    <option value="">— keine Angabe —</option>
-                    {EMPLOYEE_RANGES.map(r => <option key={r.id} value={r.id}>{r.label}</option>)}
-                  </select>
+                  <PillSelect value={editForm.employee_range||''} onChange={v => setEditForm(f => ({...f, employee_range: v}))} neutral options={[{ value: '', label: `— keine Angabe —` }, ...EMPLOYEE_RANGES.map((r) => ({ value: r.id, label: r.label }))]} buttonStyle={{ minWidth: 140 }} />
                 </Field>
                 <Field label="Umsatz">
-                  <select value={editForm.revenue_range||''} onChange={e => setEditForm(f => ({...f, revenue_range: e.target.value}))} style={inputS}>
-                    <option value="">— keine Angabe —</option>
-                    {REVENUE_RANGES.map(r => <option key={r.id} value={r.id}>{r.label}</option>)}
-                  </select>
+                  <PillSelect value={editForm.revenue_range||''} onChange={v => setEditForm(f => ({...f, revenue_range: v}))} neutral options={[{ value: '', label: `— keine Angabe —` }, ...REVENUE_RANGES.map((r) => ({ value: r.id, label: r.label }))]} buttonStyle={{ minWidth: 140 }} />
                 </Field>
                 <Field label="Branche">
-                  <select value={editForm.industry_slug||''} onChange={e => setEditForm(f => ({...f, industry_slug: e.target.value}))} style={inputS}>
-                    <option value="">— keine Angabe —</option>
-                    {industries.map(i => <option key={i.slug} value={i.slug}>{i.label_de}</option>)}
-                  </select>
+                  <PillSelect value={editForm.industry_slug||''} onChange={v => setEditForm(f => ({...f, industry_slug: v}))} neutral options={[{ value: '', label: `— keine Angabe —` }, ...industries.map((i) => ({ value: i.slug, label: i.label_de }))]} buttonStyle={{ minWidth: 140 }} />
                 </Field>
               </div>
             ) : (
@@ -569,7 +556,7 @@ export default function OrganizationProfile({ session }) {
 
           {!editing && (
             <div style={{ gridColumn: '1 / -1', marginTop: 8 }}>
-              <button onClick={deleteOrg} style={{ padding: '7px 14px', borderRadius: 9, border: '1px solid #FECACA', background: 'var(--surface)', fontSize: 12, fontWeight: 700, cursor: 'pointer', color: '#DC2626' }}>Organisation löschen</button>
+              <button className="lk-btn lk-btn-ghost" onClick={deleteOrg} >Organisation löschen</button>
             </div>
           )}
         </div>
@@ -581,9 +568,9 @@ export default function OrganizationProfile({ session }) {
           {/* Add-Contact Control */}
           <div style={{ marginBottom: 12 }}>
             {!addOpen ? (
-              <button
+              <button className="lk-btn lk-btn-cta"
                 onClick={() => { setAddOpen(true); searchLeadsForAdd('') }}
-                style={{ background: PRIMARY, color: '#fff', border: 'none', borderRadius: 8, padding: '8px 14px', fontSize: 13, fontWeight: 700, cursor: 'pointer' }}>
+                >
                 + Kontakt hinzufügen
               </button>
             ) : (
@@ -702,7 +689,7 @@ export default function OrganizationProfile({ session }) {
         ) : extError ? (
           <div style={{ padding: 40, textAlign: 'center' }}>
             <div style={{ fontSize: 13, color: '#DC2626', marginBottom: 12 }}>Sponsoring-Profil konnte nicht geladen werden: {extError}</div>
-            <button onClick={loadSponsorExt} style={{ padding: '8px 16px', borderRadius: 10, border: '1px solid #E4E7EC', background: 'var(--surface)', fontSize: 13, color: PRIMARY, cursor: 'pointer' }}>Erneut versuchen</button>
+            <button className="lk-btn lk-btn-ghost" onClick={loadSponsorExt} >Erneut versuchen</button>
           </div>
         ) : !ext ? (
           <div style={{ padding: 40, textAlign: 'center', color: '#9CA3AF' }}>Kein Sponsoring-Profil verfügbar.</div>
@@ -714,8 +701,8 @@ export default function OrganizationProfile({ session }) {
                   {typeof ext.fit_score === 'number' ? ext.fit_score : '—'}
                   <span style={{ fontSize: 14, fontWeight: 600, color: '#9CA3AF' }}> / 100</span>
                 </div>
-                <button onClick={scoreSponsor} disabled={extScoring}
-                  style={{ padding: '8px 16px', borderRadius: 9, border: 'none', background: PRIMARY, color: '#fff', fontSize: 12, fontWeight: 700, cursor: extScoring ? 'wait' : 'pointer', opacity: extScoring ? 0.6 : 1 }}>
+                <button className="lk-btn lk-btn-primary" onClick={scoreSponsor} disabled={extScoring}
+                  style={{ opacity: extScoring ? 0.6 : 1 }}>
                   {extScoring ? '⏳ Berechne…' : 'KI-Score berechnen'}
                 </button>
               </div>
@@ -747,26 +734,14 @@ export default function OrganizationProfile({ session }) {
               <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
                 <Field label="Status">
                   {/* CHECK-Feld → einzeln speichern */}
-                  <select value={extForm.status || ''} disabled={extSaving}
-                    onChange={e => { const v = e.target.value || null; setExtForm(f => ({...f, status: v})); saveSponsorField('status', v) }}
-                    style={inputS}>
-                    <option value="">— keine Angabe —</option>
-                    {SPONSOR_STATUS_OPTIONS.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
-                  </select>
+                  <PillSelect value={extForm.status || ''} onChange={__lkv => { const v = __lkv || null; setExtForm(f => ({...f, status: v})); saveSponsorField('status', v) }} neutral disabled={extSaving} options={[{ value: '', label: `— keine Angabe —` }, ...SPONSOR_STATUS_OPTIONS.map((o) => ({ value: o.value, label: o.label }))]} buttonStyle={{ minWidth: 140 }} />
                 </Field>
                 <Field label="Sales-Cycle-Phase">
                   {/* CHECK-Feld → einzeln speichern */}
-                  <select value={extForm.cycle_stage ?? ''} disabled={extSaving}
-                    onChange={e => { const v = e.target.value === '' ? null : Number(e.target.value); setExtForm(f => ({...f, cycle_stage: v})); saveSponsorField('cycle_stage', v) }}
-                    style={inputS}>
-                    <option value="">— keine Angabe —</option>
-                    {cycleStages.map(s => (
-                      <option key={s.stage} value={s.stage}>{s.name || s.label || `Phase ${s.stage}`}</option>
-                    ))}
-                  </select>
+                  <PillSelect value={extForm.cycle_stage ?? ''} onChange={__lkv => { const v = __lkv === '' ? null : Number(__lkv); setExtForm(f => ({...f, cycle_stage: v})); saveSponsorField('cycle_stage', v) }} neutral disabled={extSaving} options={[{ value: '', label: `— keine Angabe —` }, ...cycleStages.map((s) => ({ value: s.stage, label: s.name || s.label || `Phase ${s.stage}` }))]} buttonStyle={{ minWidth: 140 }} />
                   {cycleStages.length === 0 && (
-                    <button type="button" onClick={seedCycle} disabled={seedingCycle}
-                      style={{ marginTop: 6, padding: '6px 12px', borderRadius: 8, border: '1px solid var(--border)', background: 'var(--surface)', color: PRIMARY, fontSize: 12, fontWeight: 600, cursor: 'pointer', opacity: seedingCycle ? 0.6 : 1 }}>
+                    <button className="lk-btn lk-btn-ghost" type="button" onClick={seedCycle} disabled={seedingCycle}
+                      style={{ marginTop: 6, opacity: seedingCycle ? 0.6 : 1 }}>
                       {seedingCycle ? 'Lege an…' : '+ Standard-Phasen anlegen'}
                     </button>
                   )}
@@ -831,7 +806,7 @@ function KeyVal({ items }) {
         <div key={i.k} style={{ display: 'flex', justifyContent: 'space-between', gap: 12, fontSize: 13 }}>
           <span style={{ color: '#6B7280', flexShrink: 0 }}>{i.k}</span>
           {i.href
-            ? <a href={i.href} target="_blank" rel="noopener noreferrer" style={{ color: 'var(--wl-primary, rgb(49,90,231))', textDecoration: 'none', textAlign: 'right', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{i.v}</a>
+            ? <a href={i.href} target="_blank" rel="noopener noreferrer" style={{ color: 'var(--wl-primary, #0A6FB0)', textDecoration: 'none', textAlign: 'right', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{i.v}</a>
             : <span style={{ color: 'var(--text-primary, #111827)', fontWeight: 600, textAlign: 'right' }}>{i.v}</span>}
         </div>
       ))}

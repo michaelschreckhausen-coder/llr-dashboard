@@ -8,14 +8,14 @@ import { Pipette } from 'lucide-react'
 // Gradient-Objekt-Form: { type:'linear', angle:<Grad>, stops:[[offset,color],...] }
 // ─────────────────────────────────────────────────────────────────────────────
 
-const P = 'var(--wl-primary, rgb(49,90,231))'
+const P = 'var(--wl-primary, #0A6FB0)'
 const TRANSPARENT_BG = 'linear-gradient(135deg, #fff 43%, #EF4444 44%, #EF4444 56%, #fff 57%)'
 
 const STD_SWATCHES = [
   '#000000', '#475467', '#98A2B3', '#D0D5DD', '#FFFFFF',
   '#B91C1C', '#EF4444', '#F97316', '#F59E0B', '#FACC15',
   '#16A34A', '#22C55E', '#10B981', '#06B6D4', '#3B82F6',
-  '#1D4ED8', '#6366F1', '#8B5CF6', '#D946EF', '#EC4899',
+  '#1D4ED8', '#0A6FB0', '#0A6FB0', '#D946EF', '#EC4899',
 ]
 
 const clamp = (n, a, b) => Math.max(a, Math.min(b, n))
@@ -256,7 +256,7 @@ export function ColorPopover({ value, gradient = null, onChange, onGradient, onS
               {allowNone && (
                 <button type="button" onClick={() => pickSwatch('transparent')}
                   style={{ display: 'flex', alignItems: 'center', gap: 8, width: '100%', marginTop: 9, padding: '7px 8px', borderRadius: 8, cursor: 'pointer', fontFamily: 'inherit', fontSize: 12.5, fontWeight: 600,
-                    border: '1px solid ' + ((value === 'transparent' || !value) ? P : 'var(--border,#E9ECF2)'), background: (value === 'transparent' || !value) ? 'rgba(49,90,231,0.06)' : 'var(--surface,#fff)', color: 'var(--text-primary)' }}>
+                    border: '1px solid ' + ((value === 'transparent' || !value) ? P : 'var(--border,#E9ECF2)'), background: (value === 'transparent' || !value) ? 'rgba(10,111,176,0.06)' : 'var(--surface,#fff)', color: 'var(--text-primary)' }}>
                   <span style={{ width: 18, height: 18, borderRadius: 5, flexShrink: 0, border: '1px solid var(--border,#E9ECF2)', background: TRANSPARENT_BG }} />
                   Keine Füllung
                 </button>

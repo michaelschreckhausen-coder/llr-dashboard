@@ -10,7 +10,7 @@
 
 import { useEffect, useState } from 'react'
 
-const PRIMARY = 'rgb(49,90,231)'
+const PRIMARY = '#0A6FB0'
 
 const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL
 const ANON_KEY    = import.meta.env.VITE_SUPABASE_ANON_KEY

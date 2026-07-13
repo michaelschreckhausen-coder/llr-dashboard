@@ -1,3 +1,4 @@
+import PillSelect from '../components/PillSelect'
 import React, { useEffect, useState, useRef, useCallback } from 'react'
 import { X } from 'lucide-react'
 import { useNavigate } from 'react-router-dom'
@@ -53,7 +54,7 @@ function LabelChip({label,small=false}){
 // ─── Avatar
 function Avatar({user,size=26}){
   const init=(user?.full_name||user?.email||'?')[0].toUpperCase()
-  const colors=['#0A66C2','#8B5CF6','#059669','#DC2626','#D97706','#0891B2']
+  const colors=['#0A66C2','#0A6FB0','#059669','#DC2626','#D97706','#0891B2']
   const color=colors[(user?.email||'').charCodeAt(0)%colors.length]||'#0A66C2'
   return(
     <div title={user?.full_name||user?.email} style={{width:size,height:size,borderRadius:'50%',background:color,color:'#fff',fontSize:size*0.42,fontWeight:700,display:'flex',alignItems:'center',justifyContent:'center',flexShrink:0,border:'2px solid #fff'}}>
@@ -317,9 +318,7 @@ function TaskDetailModal({task,columns,onClose,onSaved,onDeleted,session,allUser
               <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:12}}>
                 <div>
                   <label style={{fontSize:11,fontWeight:700,color:'var(--text-muted)',display:'block',marginBottom:5}}>PRIORITÄT</label>
-                  <select value={form.priority||'medium'} onChange={e=>setForm(p=>({...p,priority:e.target.value}))} style={inp}>
-                    <option value="low">↓ Niedrig</option><option value="medium">→ Mittel</option><option value="high">↑ Hoch</option><option value="urgent">Dringend</option>
-                  </select>
+                  <PillSelect value={form.priority||'medium'} onChange={v => setForm(p=>({...p,priority:v}))} neutral options={[{ value: 'low', label: `↓ Niedrig` }, { value: 'medium', label: `→ Mittel` }, { value: 'high', label: `↑ Hoch` }, { value: 'urgent', label: `Dringend` }]} buttonStyle={{ minWidth: 140 }} />
                 </div>
                 <div>
                   <label style={{fontSize:11,fontWeight:700,color:'var(--text-muted)',display:'block',marginBottom:5}}>FÄLLIGKEITSDATUM</label>
@@ -331,9 +330,7 @@ function TaskDetailModal({task,columns,onClose,onSaved,onDeleted,session,allUser
                 </div>
                 <div>
                   <label style={{fontSize:11,fontWeight:700,color:'var(--text-muted)',display:'block',marginBottom:5}}>SPALTE VERSCHIEBEN</label>
-                  <select value={form.column_id} onChange={e=>setForm(p=>({...p,column_id:e.target.value}))} style={inp}>
-                    {columns.map(c=><option key={c.id} value={c.id}>{c.name}</option>)}
-                  </select>
+                  <PillSelect value={form.column_id} onChange={v => setForm(p=>({...p,column_id:v}))} neutral options={[...columns.map((c) => ({ value: c.id, label: c.name }))]} buttonStyle={{ minWidth: 140 }} />
                 </div>
               </div>
               <div>
@@ -347,7 +344,7 @@ function TaskDetailModal({task,columns,onClose,onSaved,onDeleted,session,allUser
                 </div>
               </div>
               <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',paddingTop:8,borderTop:'1px solid #F1F5F9'}}>
-                <button onClick={()=>{if(window.confirm('Task löschen?'))onDeleted(task.id)}} style={{padding:'9px 16px',borderRadius:10,border:'1.5px solid #FECACA',background:'#FEF2F2',color:'#ef4444',fontSize:13,fontWeight:700,cursor:'pointer'}}>Löschen</button>
+                <button className="lk-btn lk-btn-danger" onClick={()=>{if(window.confirm('Task löschen?'))onDeleted(task.id)}} >Löschen</button>
                 <button onClick={save} disabled={saving} style={{padding:'9px 20px',borderRadius:10,border:'none',background:'#0A66C2',color:'#fff',fontSize:13,fontWeight:700,cursor:'pointer',opacity:saving?0.7:1}}>{saving?'Speichern…':'Speichern'}</button>
               </div>
             </div>
@@ -752,7 +749,7 @@ export default function Projektmanagement({session}){
         <div style={{display:'flex',gap:6,flexWrap:'wrap',flex:1}}>
           {projects.map(p=>(
             <div key={p.id} style={{display:'flex',alignItems:'center',gap:0}}>
-              <button onClick={()=>setActiveProj(p.id)} style={{padding:'6px 12px',borderRadius:activeProj===p.id?'8px 0 0 8px':8,border:activeProj===p.id?`2px solid ${p.color}`:'1.5px solid #E2E8F0',borderRight:activeProj===p.id?`1px solid ${p.color}66`:'none',background:activeProj===p.id?p.color+'18':'#fff',color:activeProj===p.id?p.color:'var(--text-muted)',fontSize:12,fontWeight:activeProj===p.id?800:500,cursor:'pointer',display:'flex',alignItems:'center',gap:6}}>
+              <button className="lk-btn lk-btn-ghost" onClick={()=>setActiveProj(p.id)} style={{ borderRight:activeProj===p.id?`1px solid ${p.color}66`:'none', display:'flex', alignItems:'center', gap:6 }}>
                 <div style={{width:8,height:8,borderRadius:'50%',background:p.color}}/>{p.name}
               </button>
               {activeProj===p.id&&(
@@ -768,10 +765,8 @@ export default function Projektmanagement({session}){
         </div>
         <div style={{display:'flex',gap:8,alignItems:'center'}}>
           {/* Kanban-Board-Umschalter ausgeblendet — Board-Ansicht aktuell nicht nutzbar, nur Liste */}
-          <button onClick={()=>setShowLabelManager(true)} style={{padding:'6px 12px',borderRadius:8,border:'1.5px solid #E2E8F0',background:'var(--surface)',color:'var(--text-muted)',fontSize:12,fontWeight:600,cursor:'pointer'}}>Labels</button>
-          <select value={sortBy} onChange={e=>setSortBy(e.target.value)} style={{padding:'6px 10px',borderRadius:8,border:'1.5px solid #E2E8F0',fontSize:12,fontFamily:'inherit',color:'var(--text-muted)',background:'var(--surface)'}}>
-            <option value="position">Standard</option><option value="priority">Priorität</option><option value="due_date">Fälligkeit</option><option value="name">Name A→Z</option>
-          </select>
+          <button className="lk-btn lk-btn-ghost" onClick={()=>setShowLabelManager(true)} >Labels</button>
+          <PillSelect value={sortBy} onChange={setSortBy} neutral options={[{ value: 'position', label: 'Standard' }, { value: 'priority', label: 'Priorität' }, { value: 'due_date', label: 'Fälligkeit' }, { value: 'name', label: 'Name A→Z' }]} buttonStyle={{ minWidth: 140 }} />
           <button onClick={()=>{setColModal('new');setColForm({name:'',color:'#0A66C2',wip_limit:''})}} style={{padding:'6px 14px',borderRadius:8,border:'1.5px solid #0A66C2',background:'#EFF6FF',color:'#0A66C2',fontSize:12,fontWeight:700,cursor:'pointer'}}>+ Spalte</button>
         </div>
       </div>
@@ -785,24 +780,16 @@ export default function Projektmanagement({session}){
         }} style={{padding:'6px 14px',borderRadius:8,border:'1.5px solid '+(filterMember===session?.user?.id?'#0A66C2':'#E2E8F0'),background:filterMember===session?.user?.id?'#EFF6FF':'#fff',color:filterMember===session?.user?.id?'#0A66C2':'#64748B',fontSize:12,fontWeight:filterMember===session?.user?.id?700:500,cursor:'pointer',whiteSpace:'nowrap'}}>
           👤 Meine Aufgaben
         </button>
-        <select value={filterMember} onChange={e=>setFilterMember(e.target.value)} style={{padding:'6px 10px',borderRadius:8,border:'1.5px solid #E2E8F0',fontSize:12,fontFamily:'inherit',color:filterMember?'#0A66C2':'#94A3B8',background:filterMember?'#EFF6FF':'#fff'}}>
-          <option value="">Alle Mitglieder</option>
-          {allUsers.map(u=><option key={u.id} value={u.id}>{u.full_name||u.email}</option>)}
-        </select>
-        <select value={filterLabel} onChange={e=>setFilterLabel(e.target.value)} style={{padding:'6px 10px',borderRadius:8,border:'1.5px solid #E2E8F0',fontSize:12,fontFamily:'inherit',color:filterLabel?'#0A66C2':'#94A3B8',background:filterLabel?'#EFF6FF':'#fff'}}>
-          <option value="">Alle Labels</option>
-          {projectLabels.map(l=><option key={l.id} value={l.id}>{l.name}</option>)}
-        </select>
-        <select value={filterPriority} onChange={e=>setFilterPriority(e.target.value)} style={{padding:'6px 10px',borderRadius:8,border:'1.5px solid #E2E8F0',fontSize:12,fontFamily:'inherit',color:filterPriority?'#0A66C2':'#94A3B8',background:filterPriority?'#EFF6FF':'#fff'}}>
-          <option value="">⬆ Alle Prioritäten</option><option value="urgent">Dringend</option><option value="high">↑ Hoch</option><option value="medium">→ Mittel</option><option value="low">↓ Niedrig</option>
-        </select>
+        <PillSelect value={filterMember} onChange={setFilterMember} neutral options={[{ value: '', label: `Alle Mitglieder` }, ...allUsers.map((u) => ({ value: u.id, label: u.full_name||u.email }))]} buttonStyle={{ minWidth: 140 }} />
+        <PillSelect value={filterLabel} onChange={setFilterLabel} neutral options={[{ value: '', label: `Alle Labels` }, ...projectLabels.map((l) => ({ value: l.id, label: l.name }))]} buttonStyle={{ minWidth: 140 }} />
+        <PillSelect value={filterPriority} onChange={setFilterPriority} neutral options={[{ value: '', label: '⬆ Alle Prioritäten' }, { value: 'urgent', label: 'Dringend' }, { value: 'high', label: '↑ Hoch' }, { value: 'medium', label: '→ Mittel' }, { value: 'low', label: '↓ Niedrig' }]} buttonStyle={{ minWidth: 140 }} />
         {overdueTasks.length>0&&(
           <div style={{display:'flex',alignItems:'center',gap:6,padding:'5px 12px',borderRadius:8,background:'#FEF2F2',border:'1px solid #FECACA',cursor:'pointer'}} onClick={()=>{setFilterPriority('');setFilterMember('');setFilterLabel('');setSearchQuery('');setSortBy('due_date')}}>
             <span style={{fontSize:12,color:'#ef4444',fontWeight:700}}>{overdueTasks.length} überfällig</span>
           </div>
         )}
         {hasFilters&&(
-          <button onClick={()=>{setFilterMember('');setFilterLabel('');setFilterPriority('');setSearchQuery('')}} style={{padding:'6px 12px',borderRadius:8,border:'1.5px solid #E2E8F0',background:'#F1F5F9',color:'var(--text-muted)',fontSize:12,fontWeight:600,cursor:'pointer'}}>Filter zurücksetzen</button>
+          <button className="lk-btn lk-btn-ghost" onClick={()=>{setFilterMember('');setFilterLabel('');setFilterPriority('');setSearchQuery('')}} >Filter zurücksetzen</button>
         )}
       </div>
 
@@ -848,7 +835,7 @@ export default function Projektmanagement({session}){
         <Modal title={`+ Task — ${columns.find(c=>c.id===addTaskCol)?.name||''}`} onClose={()=>setAddTaskCol(null)} width={420}>
           <input value={quickTitle} onChange={e=>setQuickTitle(e.target.value)} onKeyDown={e=>e.key==='Enter'&&handleQuickAdd()} placeholder="Task-Titel…" style={{...inp,marginBottom:14,fontSize:15}} autoFocus/>
           <div style={{display:'flex',justifyContent:'flex-end',gap:8}}>
-            <button onClick={()=>setAddTaskCol(null)} style={{padding:'9px 16px',borderRadius:10,border:'1.5px solid #E2E8F0',background:'var(--surface)',color:'var(--text-muted)',fontSize:13,cursor:'pointer'}}>Abbrechen</button>
+            <button className="lk-btn lk-btn-ghost" onClick={()=>setAddTaskCol(null)} >Abbrechen</button>
             <button onClick={handleQuickAdd} disabled={saving||!quickTitle.trim()} style={{padding:'9px 20px',borderRadius:10,border:'none',background:'#0A66C2',color:'#fff',fontSize:13,fontWeight:700,cursor:'pointer',opacity:!quickTitle.trim()?0.5:1}}>{saving?'…':'+ Erstellen'}</button>
           </div>
         </Modal>
@@ -865,9 +852,9 @@ export default function Projektmanagement({session}){
             </div>
             <div><label style={{fontSize:11,fontWeight:700,color:'var(--text-muted)',display:'block',marginBottom:5}}>WIP-LIMIT (optional)</label><input type="number" value={colForm.wip_limit} onChange={e=>setColForm(p=>({...p,wip_limit:e.target.value}))} placeholder="Max. Tasks" style={inp} min={0}/></div>
             <div style={{display:'flex',justifyContent:'space-between',paddingTop:8}}>
-              {colModal!=='new'&&<button onClick={()=>handleDeleteCol(colModal)} style={{padding:'9px 16px',borderRadius:10,border:'1.5px solid #FECACA',background:'#FEF2F2',color:'#ef4444',fontSize:13,fontWeight:700,cursor:'pointer'}}>Löschen</button>}
+              {colModal!=='new'&&<button className="lk-btn lk-btn-danger" onClick={()=>handleDeleteCol(colModal)} >Löschen</button>}
               <div style={{display:'flex',gap:8,marginLeft:'auto'}}>
-                <button onClick={()=>setColModal(null)} style={{padding:'9px 16px',borderRadius:10,border:'1.5px solid #E2E8F0',background:'var(--surface)',color:'var(--text-muted)',fontSize:13,cursor:'pointer'}}>Abbrechen</button>
+                <button className="lk-btn lk-btn-ghost" onClick={()=>setColModal(null)} >Abbrechen</button>
                 <button onClick={handleSaveCol} disabled={saving||!colForm.name.trim()} style={{padding:'9px 20px',borderRadius:10,border:'none',background:'#0A66C2',color:'#fff',fontSize:13,fontWeight:700,cursor:'pointer',opacity:!colForm.name.trim()?0.5:1}}>Speichern</button>
               </div>
             </div>
@@ -883,18 +870,18 @@ export default function Projektmanagement({session}){
             <div><label style={{fontSize:11,fontWeight:700,color:'var(--text-muted)',display:'block',marginBottom:5}}>BESCHREIBUNG</label><textarea value={projForm.description} onChange={e=>setProjForm(p=>({...p,description:e.target.value}))} rows={2} placeholder="Projektbeschreibung (optional)" style={{...inp,resize:'vertical'}}/></div>
             <div>
               <label style={{fontSize:11,fontWeight:700,color:'var(--text-muted)',display:'block',marginBottom:8}}>FARBE</label>
-              <div style={{display:'flex',gap:8}}>{['#0A66C2','#8B5CF6','#059669','#DC2626','#D97706','#0891B2','#374151','#ec4899'].map(c=><button key={c} onClick={()=>setProjForm(p=>({...p,color:c}))} style={{width:28,height:28,borderRadius:8,background:c,border:projForm.color===c?'3px solid #0F172A':'2px solid transparent',cursor:'pointer'}}/>)}</div>
+              <div style={{display:'flex',gap:8}}>{['#0A66C2','#0A6FB0','#059669','#DC2626','#D97706','#0891B2','#374151','#ec4899'].map(c=><button key={c} onClick={()=>setProjForm(p=>({...p,color:c}))} style={{width:28,height:28,borderRadius:8,background:c,border:projForm.color===c?'3px solid #0F172A':'2px solid transparent',cursor:'pointer'}}/>)}</div>
             </div>
             <div style={{display:'flex',justifyContent:'space-between',paddingTop:8}}>
               {projModal!=='new'&&(
-                <button onClick={async()=>{
+                <button className="lk-btn lk-btn-danger" onClick={async()=>{
                   if(!window.confirm(`Projekt "${projForm.name}" und alle Tasks löschen?`))return
                   await supabase.from('pm_projects').delete().eq('id',projModal)
                   setProjModal(null);setProjects(prev=>{const r=prev.filter(p=>p.id!==projModal);if(r.length>0)setActiveProj(r[0].id);return r});showFlash('Projekt gelöscht')
-                }} style={{padding:'9px 16px',borderRadius:10,border:'1.5px solid #FECACA',background:'#FEF2F2',color:'#ef4444',fontSize:13,fontWeight:700,cursor:'pointer'}}>Löschen</button>
+                }} >Löschen</button>
               )}
               <div style={{display:'flex',gap:8,marginLeft:'auto'}}>
-                <button onClick={()=>setProjModal(null)} style={{padding:'9px 16px',borderRadius:10,border:'1.5px solid #E2E8F0',background:'var(--surface)',color:'var(--text-muted)',fontSize:13,cursor:'pointer'}}>Abbrechen</button>
+                <button className="lk-btn lk-btn-ghost" onClick={()=>setProjModal(null)} >Abbrechen</button>
                 <button onClick={handleSaveProject} disabled={saving||!projForm.name.trim()} style={{padding:'9px 20px',borderRadius:10,border:'none',background:'#0A66C2',color:'#fff',fontSize:13,fontWeight:700,cursor:'pointer',opacity:!projForm.name.trim()?0.5:1}}>{saving?'…':projModal==='new'?'+ Erstellen':'Speichern'}</button>
               </div>
             </div>

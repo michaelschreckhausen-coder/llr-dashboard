@@ -6,7 +6,7 @@ import { useBrandVoice } from '../context/BrandVoiceContext'
 import { supabase } from '../lib/supabase'
 import { listDocuments, createDocument, deleteDocument, listChatsForDocument, addDocumentToChat } from '../lib/contentDocuments'
 
-const P = 'var(--wl-primary, rgb(49,90,231))'
+const P = 'var(--wl-primary, #0A6FB0)'
 
 export default function Documents({ embedded = false }) {
   const navigate = useNavigate()
@@ -154,7 +154,7 @@ export default function Documents({ embedded = false }) {
       <div style={{ display:'flex', alignItems:'flex-end', justifyContent: embedded ? 'flex-end' : 'space-between', gap:16, marginBottom: embedded ? 12 : 22, flexWrap:'wrap' }}>
         {!embedded && (
         <div>
-          <div style={{ fontSize:20, color:'#30A0D0', fontFamily:'"Caveat", cursive', fontWeight:600, marginBottom:6 }}>Content · Dokumente</div>
+          <div className="lk-eyebrow" style={{ fontSize:12, fontWeight:700, letterSpacing:'1.6px', textTransform:'uppercase', fontFamily:'Inter, sans-serif', color:'var(--primary, #003060)', marginBottom:6 }}>Content · Dokumente</div>
           <h1 style={{ fontSize:26, fontWeight:700, margin:0, letterSpacing:'-0.3px', lineHeight:1.2 }}>Deine Dokumente.</h1>
           <p style={{ fontSize:13, color:'var(--text-muted)', margin:'8px 0 0', lineHeight:1.6 }}>
             Bearbeitbare Texte aus der Content-Werkstatt{activeBrandVoice?.name ? ` von ${activeBrandVoice.name}` : ''} — öffnen sich zusammen mit dem zugehörigen Chat.
@@ -162,8 +162,8 @@ export default function Documents({ embedded = false }) {
         </div>
         )}
         {!embedded && (
-        <button onClick={handleNew} disabled={creating}
-          style={{ padding:'9px 16px', borderRadius:9, border:'none', background: creating ? '#94A3B8' : P, color:'#fff', fontSize:13, fontWeight:700, cursor: creating ? 'wait' : 'pointer', whiteSpace:'nowrap', boxShadow: creating ? 'none' : '0 2px 10px rgba(49,90,231,.18)' }}>
+        <button className="lk-btn lk-btn-cta" onClick={handleNew} disabled={creating}
+          style={{ whiteSpace:'nowrap' }}>
           {creating ? 'Lege an…' : 'Neues Dokument'}
         </button>
         )}
@@ -182,9 +182,9 @@ export default function Documents({ embedded = false }) {
           {docs.map(d => (
             <div key={d.id} onClick={() => openDoc(d)}
               style={{ background:'var(--surface,#fff)', border:'1px solid var(--border,#E9ECF2)', borderRadius:12, padding:'14px 18px', cursor:'pointer', display:'flex', alignItems:'center', gap:14 }}
-              onMouseEnter={e => { e.currentTarget.style.borderColor = 'rgba(49,90,231,0.35)' }}
+              onMouseEnter={e => { e.currentTarget.style.borderColor = 'rgba(10,111,176,0.35)' }}
               onMouseLeave={e => { e.currentTarget.style.borderColor = 'var(--border,#E9ECF2)' }}>
-              <span style={{ width:38, height:38, borderRadius:10, flexShrink:0, display:'flex', alignItems:'center', justifyContent:'center', background:'rgba(49,90,231,0.07)', color:P }}>
+              <span style={{ width:38, height:38, borderRadius:10, flexShrink:0, display:'flex', alignItems:'center', justifyContent:'center', background:'rgba(10,111,176,0.07)', color:P }}>
                 <FileText size={18} strokeWidth={1.9}/>
               </span>
               <div style={{ minWidth:0, flex:1 }}>
@@ -195,7 +195,7 @@ export default function Documents({ embedded = false }) {
                   {(d.content_text || '').slice(0,140) || 'Leer'}
                 </div>
                 {chatCounts[d.id] > 0 && (
-                  <span title="Diesem Dokument zugeordnete Chats" style={{ display:'inline-flex', alignItems:'center', gap:4, marginTop:6, fontSize:11, fontWeight:600, color:P, background:'rgba(49,90,231,0.07)', borderRadius:6, padding:'2px 8px' }}>
+                  <span title="Diesem Dokument zugeordnete Chats" style={{ display:'inline-flex', alignItems:'center', gap:4, marginTop:6, fontSize:11, fontWeight:600, color:P, background:'rgba(10,111,176,0.07)', borderRadius:6, padding:'2px 8px' }}>
                     <MessageSquare size={11} strokeWidth={2}/> In {chatCounts[d.id]} {chatCounts[d.id] === 1 ? 'Chat' : 'Chats'}
                   </span>
                 )}
@@ -238,7 +238,7 @@ export default function Documents({ embedded = false }) {
                   {docChats.length > 0 && !showOther && (
                     <>
                       <button onClick={() => openWith(docChats[0].id)}
-                        style={{ width:'100%', display:'flex', alignItems:'center', gap:8, padding:'11px 12px', borderRadius:10, border:'none', background:P, color:'#fff', fontSize:13, fontWeight:700, cursor:'pointer', fontFamily:'inherit', marginBottom:10 }}>
+                        style={{ width:'100%', display:'flex', alignItems:'center', gap:8, padding:'11px 12px', borderRadius:10, border:'none', background:'var(--primary)', color:'#fff', fontSize:13, fontWeight:700, cursor:'pointer', fontFamily:'inherit', marginBottom:10 }}>
                         <MessageSquare size={15} strokeWidth={2}/><span style={{ minWidth:0, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>Zuletzt bearbeitender Chat · {docChats[0].title || 'Chat'}</span>
                       </button>
                       <div style={{ fontSize:10.5, fontWeight:700, color:'var(--text-soft,#98a2b3)', textTransform:'uppercase', letterSpacing:'0.06em', padding:'2px 2px 6px' }}>Zugeordnete Chats</div>
@@ -246,7 +246,7 @@ export default function Documents({ embedded = false }) {
                         <button key={c.id} onClick={() => openWith(c.id)}
                           style={{ width:'100%', textAlign:'left', display:'flex', alignItems:'center', gap:10, padding:'9px 10px', borderRadius:9, border:'none', background:'transparent', cursor:'pointer', fontFamily:'inherit' }}
                           onMouseEnter={e => e.currentTarget.style.background='#F4F6FA'} onMouseLeave={e => e.currentTarget.style.background='transparent'}>
-                          <span style={{ width:30, height:30, borderRadius:8, flexShrink:0, display:'flex', alignItems:'center', justifyContent:'center', background:'rgba(49,90,231,0.07)', color:P }}><MessageSquare size={15} strokeWidth={1.9}/></span>
+                          <span style={{ width:30, height:30, borderRadius:8, flexShrink:0, display:'flex', alignItems:'center', justifyContent:'center', background:'rgba(10,111,176,0.07)', color:P }}><MessageSquare size={15} strokeWidth={1.9}/></span>
                           <span style={{ minWidth:0, flex:1, fontSize:13, fontWeight:600, color:'var(--text-primary)', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{c.title || 'Unbenannter Chat'}</span>
                         </button>
                       ))}
@@ -264,7 +264,7 @@ export default function Documents({ embedded = false }) {
                         <button key={c.id} onClick={() => openWith(c.id)}
                           style={{ width:'100%', textAlign:'left', display:'flex', alignItems:'center', gap:10, padding:'9px 10px', borderRadius:9, border:'none', background:'transparent', cursor:'pointer', fontFamily:'inherit' }}
                           onMouseEnter={e => e.currentTarget.style.background='#F4F6FA'} onMouseLeave={e => e.currentTarget.style.background='transparent'}>
-                          <span style={{ width:30, height:30, borderRadius:8, flexShrink:0, display:'flex', alignItems:'center', justifyContent:'center', background:'rgba(49,90,231,0.07)', color:P }}><MessageSquare size={15} strokeWidth={1.9}/></span>
+                          <span style={{ width:30, height:30, borderRadius:8, flexShrink:0, display:'flex', alignItems:'center', justifyContent:'center', background:'rgba(10,111,176,0.07)', color:P }}><MessageSquare size={15} strokeWidth={1.9}/></span>
                           <span style={{ minWidth:0, flex:1, fontSize:13, fontWeight:600, color:'var(--text-primary)', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{c.title || 'Unbenannter Chat'}</span>
                         </button>
                       ))}
@@ -276,7 +276,7 @@ export default function Documents({ embedded = false }) {
                     {!showOther && (
                       <button onClick={loadBrandChats}
                         style={{ width:'100%', textAlign:'left', padding:'9px 10px', borderRadius:9, border:'none', background:'transparent', cursor:'pointer', fontSize:13, fontWeight:600, color:P, fontFamily:'inherit' }}
-                        onMouseEnter={e => e.currentTarget.style.background='rgba(49,90,231,0.07)'} onMouseLeave={e => e.currentTarget.style.background='transparent'}>
+                        onMouseEnter={e => e.currentTarget.style.background='rgba(10,111,176,0.07)'} onMouseLeave={e => e.currentTarget.style.background='transparent'}>
                         + Anderen Chat wählen…
                       </button>
                     )}
@@ -311,8 +311,8 @@ export default function Documents({ embedded = false }) {
               <button onClick={() => setPostPickDoc(null)} style={{ border:'none', background:'transparent', cursor:'pointer', color:'var(--text-muted)', padding:4, display:'inline-flex', flexShrink:0 }}><X size={18}/></button>
             </div>
             <div style={{ flex:1, overflowY:'auto', padding:'8px 14px 14px' }}>
-              <button onClick={() => createPostFromDoc(postPickDoc)} disabled={busyId===postPickDoc.id}
-                style={{ width:'100%', display:'flex', alignItems:'center', gap:8, padding:'11px 12px', borderRadius:10, border:'none', background:P, color:'#fff', fontSize:13, fontWeight:700, cursor: busyId===postPickDoc.id ? 'wait' : 'pointer', fontFamily:'inherit', marginBottom:10 }}>
+              <button className="lk-btn lk-btn-cta" onClick={() => createPostFromDoc(postPickDoc)} disabled={busyId===postPickDoc.id}
+                style={{ width:'100%', display:'flex', alignItems:'center', gap:8, fontFamily:'inherit', marginBottom:10 }}>
                 <Plus size={15} strokeWidth={2.4}/>Als neuen Beitrag anlegen
               </button>
               <div style={{ fontSize:10.5, fontWeight:700, color:'var(--text-soft,#98a2b3)', textTransform:'uppercase', letterSpacing:'0.06em', padding:'2px 2px 6px' }}>Zu bestehendem Beitrag</div>
@@ -324,7 +324,7 @@ export default function Documents({ embedded = false }) {
                 <button key={pp.id} onClick={() => addDocToExistingPost(postPickDoc, pp.id)} disabled={busyId===postPickDoc.id} title={pp.title || '(ohne Titel)'}
                   style={{ width:'100%', textAlign:'left', display:'flex', alignItems:'center', gap:10, padding:'9px 10px', borderRadius:9, border:'none', background:'transparent', cursor:'pointer', fontFamily:'inherit' }}
                   onMouseEnter={e => e.currentTarget.style.background='#F4F6FA'} onMouseLeave={e => e.currentTarget.style.background='transparent'}>
-                  <span style={{ width:30, height:30, borderRadius:8, flexShrink:0, display:'flex', alignItems:'center', justifyContent:'center', background:'rgba(49,90,231,0.07)', color:P }}><CalendarPlus size={15} strokeWidth={1.9}/></span>
+                  <span style={{ width:30, height:30, borderRadius:8, flexShrink:0, display:'flex', alignItems:'center', justifyContent:'center', background:'rgba(10,111,176,0.07)', color:P }}><CalendarPlus size={15} strokeWidth={1.9}/></span>
                   <span style={{ minWidth:0, flex:1, fontSize:13, fontWeight:600, color:'var(--text-primary)', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{pp.title || '(ohne Titel)'}</span>
                 </button>
               ))}
@@ -343,8 +343,8 @@ export default function Documents({ embedded = false }) {
             <div style={{ flex:1, overflowY:'auto', padding:'8px 14px 14px' }}>
               {!newDocPick ? (
                 <>
-                  <button onClick={createInNewChat} disabled={creating}
-                    style={{ width:'100%', display:'flex', alignItems:'center', gap:8, padding:'11px 12px', borderRadius:10, border:'none', background:P, color:'#fff', fontSize:13, fontWeight:700, cursor: creating ? 'wait' : 'pointer', fontFamily:'inherit', marginBottom:8 }}>
+                  <button className="lk-btn lk-btn-cta" onClick={createInNewChat} disabled={creating}
+                    style={{ width:'100%', display:'flex', alignItems:'center', gap:8, fontFamily:'inherit', marginBottom:8 }}>
                     <Plus size={15} strokeWidth={2.4}/>In neuem Chat
                   </button>
                   <button onClick={loadBrandChatsForNew} disabled={creating}
@@ -361,7 +361,7 @@ export default function Documents({ embedded = false }) {
                     <button key={c.id} onClick={() => createInExistingChat(c.id)} disabled={creating}
                       style={{ width:'100%', textAlign:'left', display:'flex', alignItems:'center', gap:10, padding:'9px 10px', borderRadius:9, border:'none', background:'transparent', cursor:'pointer', fontFamily:'inherit' }}
                       onMouseEnter={e => e.currentTarget.style.background='#F4F6FA'} onMouseLeave={e => e.currentTarget.style.background='transparent'}>
-                      <span style={{ width:30, height:30, borderRadius:8, flexShrink:0, display:'flex', alignItems:'center', justifyContent:'center', background:'rgba(49,90,231,0.07)', color:P }}><MessageSquare size={15} strokeWidth={1.9}/></span>
+                      <span style={{ width:30, height:30, borderRadius:8, flexShrink:0, display:'flex', alignItems:'center', justifyContent:'center', background:'rgba(10,111,176,0.07)', color:P }}><MessageSquare size={15} strokeWidth={1.9}/></span>
                       <span style={{ minWidth:0, flex:1, fontSize:13, fontWeight:600, color:'var(--text-primary)', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{c.title || 'Unbenannter Chat'}</span>
                     </button>
                   ))}
@@ -387,7 +387,7 @@ function ActionBtn({ onClick, title, children, danger, disabled }) {
   return (
     <button onClick={onClick} title={title} disabled={disabled}
       style={{ border:'none', background:'transparent', cursor: disabled ? 'default' : 'pointer', color:'var(--text-soft,#94a3b8)', padding:7, display:'inline-flex', borderRadius:8, opacity: disabled ? 0.5 : 1 }}
-      onMouseEnter={e => { if (disabled) return; e.currentTarget.style.color = danger ? '#ef4444' : P; e.currentTarget.style.background = danger ? 'rgba(239,68,68,0.08)' : 'rgba(49,90,231,0.08)' }}
+      onMouseEnter={e => { if (disabled) return; e.currentTarget.style.color = danger ? '#ef4444' : P; e.currentTarget.style.background = danger ? 'rgba(239,68,68,0.08)' : 'rgba(10,111,176,0.08)' }}
       onMouseLeave={e => { e.currentTarget.style.color = 'var(--text-soft,#94a3b8)'; e.currentTarget.style.background = 'transparent' }}>
       {children}
     </button>

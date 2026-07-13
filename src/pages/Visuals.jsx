@@ -21,7 +21,7 @@ import { listTeamVisuals, addImagePageToDesign, signedThumbUrl } from '../lib/co
 import { useTeam } from '../context/TeamContext'
 import { useBrandVoice } from '../context/BrandVoiceContext'
 
-const P = 'var(--wl-primary, rgb(49,90,231))'
+const P = 'var(--wl-primary, #0A6FB0)'
 
 // ─── Hauptkomponente ────────────────────────────────────────────────────────
 export default function Visuals({ session, kindFilter = null, embedded = false, allowUpload = false }) {
@@ -320,14 +320,14 @@ export default function Visuals({ session, kindFilter = null, embedded = false, 
       {!embedded && (
       <div style={{ marginBottom:22, display:'flex', alignItems:'flex-start', justifyContent:'space-between', gap:16, flexWrap:'wrap' }}>
         <div>
-          <div style={{ fontSize:20, color:'#30A0D0', fontFamily:'"Caveat", cursive', fontWeight:600, marginBottom:6 }}>Content · Visuals</div>
+          <div className="lk-eyebrow" style={{ fontSize:12, fontWeight:700, letterSpacing:'1.6px', textTransform:'uppercase', fontFamily:'Inter, sans-serif', color:'var(--primary, #003060)', marginBottom:6 }}>Content · Visuals</div>
           <h1 style={{ fontSize:26, fontWeight:700, margin:0, letterSpacing:'-0.3px', lineHeight:1.2 }}>Deine Bilder.</h1>
           <p style={{ fontSize:13, color:'var(--text-muted)', margin:'8px 0 0', lineHeight:1.6 }}>
             Deine Galerie aller KI-Bilder. Erstellen und Bearbeiten passiert in der Content-Werkstatt.
           </p>
         </div>
-        <button onClick={() => navigate('/content-studio')}
-          style={{ padding:'10px 16px', borderRadius:10, border:'none', background:P, color:'#fff', fontSize:13, fontWeight:700, cursor:'pointer', whiteSpace:'nowrap', display:'inline-flex', alignItems:'center', gap:7, boxShadow:'0 2px 10px rgba(49,90,231,.18)' }}>
+        <button className="lk-btn lk-btn-cta" onClick={() => navigate('/content-studio')}
+          style={{ whiteSpace:'nowrap', display:'inline-flex', alignItems:'center', gap:7 }}>
           <Sparkles size={15} strokeWidth={1.9}/>Neues Bild erstellen
         </button>
       </div>
@@ -335,9 +335,9 @@ export default function Visuals({ session, kindFilter = null, embedded = false, 
 
       {/* Linked-Post-Banner (Closed-Loop mit Redaktionsplan) */}
       {linkedPostId && linkedPost && (
-        <div style={{ padding:'10px 14px', marginBottom:16, borderRadius:10, background:'rgba(49,90,231,0.06)', border:'1px solid rgba(49,90,231,0.2)', display:'flex', alignItems:'center', justifyContent:'space-between', gap:12, flexWrap:'wrap' }}>
+        <div style={{ padding:'10px 14px', marginBottom:16, borderRadius:10, background:'rgba(10,111,176,0.06)', border:'1px solid rgba(10,111,176,0.2)', display:'flex', alignItems:'center', justifyContent:'space-between', gap:12, flexWrap:'wrap' }}>
           <div style={{ display:'flex', alignItems:'center', gap:10, minWidth:0 }}>
-            <Pin size={16} strokeWidth={1.75} style={{ color:'var(--wl-primary, rgb(49,90,231))' }} />
+            <Pin size={16} strokeWidth={1.75} style={{ color:'var(--wl-primary, #0A6FB0)' }} />
             <div style={{ minWidth:0 }}>
               <div style={{ fontSize:11, fontWeight:700, color: P, textTransform:'uppercase', letterSpacing:'0.05em' }}>Aus dem Redaktionsplan</div>
               <div style={{ fontSize:13, fontWeight:600, color:'var(--text-primary)', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>
@@ -345,8 +345,8 @@ export default function Visuals({ session, kindFilter = null, embedded = false, 
               </div>
             </div>
           </div>
-          <button onClick={() => navigate('/redaktionsplan?open=' + linkedPostId)}
-            style={{ padding:'6px 12px', borderRadius:7, border:'1px solid var(--border)', background:'#fff', fontSize:12, fontWeight:600, cursor:'pointer', whiteSpace:'nowrap' }}>
+          <button className="lk-btn lk-btn-ghost" onClick={() => navigate('/redaktionsplan?open=' + linkedPostId)}
+            style={{ whiteSpace:'nowrap' }}>
             ← Zurück zum Beitrag
           </button>
         </div>
@@ -359,7 +359,7 @@ export default function Visuals({ session, kindFilter = null, embedded = false, 
         onDrop={allowUpload ? (e => { e.preventDefault(); setDragOver(false); if (e.dataTransfer?.files?.length) uploadFiles(e.dataTransfer.files) }) : undefined}
         style={{ position:'relative' }}>
         {allowUpload && dragOver && (
-          <div style={{ position:'absolute', inset:-6, zIndex:20, borderRadius:14, background:'rgba(49,90,231,0.07)', border:'2px dashed '+P, display:'flex', alignItems:'center', justifyContent:'center', pointerEvents:'none' }}>
+          <div style={{ position:'absolute', inset:-6, zIndex:20, borderRadius:14, background:'rgba(10,111,176,0.07)', border:'2px dashed '+P, display:'flex', alignItems:'center', justifyContent:'center', pointerEvents:'none' }}>
             <span style={{ fontSize:14, fontWeight:700, color:P }}>Dateien hier ablegen zum Hochladen</span>
           </div>
         )}
@@ -370,8 +370,8 @@ export default function Visuals({ session, kindFilter = null, embedded = false, 
           <div style={{ display:'flex', alignItems:'center', gap:8, flexWrap:'wrap' }}>
             {allowUpload && (<>
               <input ref={fileInputRef} type="file" multiple accept="image/*,application/pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.csv,.txt" style={{ display:'none' }} onChange={e => { uploadFiles(e.target.files); e.target.value='' }} />
-              <button onClick={() => fileInputRef.current?.click()} disabled={uploading}
-                style={{ padding:'7px 14px', borderRadius:8, border:'none', background:P, color:'#fff', fontSize:12.5, fontWeight:700, cursor: uploading?'default':'pointer', display:'inline-flex', alignItems:'center', gap:6, opacity: uploading?0.7:1 }}>
+              <button className="lk-btn lk-btn-primary" onClick={() => fileInputRef.current?.click()} disabled={uploading}
+                style={{ display:'inline-flex', alignItems:'center', gap:6, opacity: uploading?0.7:1 }}>
                 <FileUp size={14} strokeWidth={2}/>{uploading ? 'Lädt…' : 'Dateien hochladen'}
               </button>
             </>)}
@@ -383,7 +383,7 @@ export default function Visuals({ session, kindFilter = null, embedded = false, 
               <span style={{display:'inline-flex',alignItems:'center',gap:6}}><Star size={13} strokeWidth={1.75}/>Favoriten</span>
             </button>
             <button onClick={() => setLibraryShowAllBVs(!libraryShowAllBVs)}
-              style={{ padding:'6px 12px', borderRadius:8, border:'1.5px solid ' + (libraryShowAllBVs ? P : 'var(--border)'), background: libraryShowAllBVs ? 'rgba(49,90,231,0.06)' : '#fff', color: libraryShowAllBVs ? P : 'var(--text-muted)', fontSize:12, fontWeight:600, cursor:'pointer' }}>
+              style={{ padding:'6px 12px', borderRadius:8, border:'1.5px solid ' + (libraryShowAllBVs ? P : 'var(--border)'), background: libraryShowAllBVs ? 'rgba(10,111,176,0.06)' : '#fff', color: libraryShowAllBVs ? P : 'var(--text-muted)', fontSize:12, fontWeight:600, cursor:'pointer' }}>
               {libraryShowAllBVs ? 'Alle BVs' : '' + (activeBrandVoice?.name?.slice(0,20) || 'Aktive BV')}
             </button>
           </div>
@@ -393,8 +393,8 @@ export default function Visuals({ session, kindFilter = null, embedded = false, 
           <div style={{ padding:'40px 20px', textAlign:'center', background:'var(--surface)', borderRadius:14, border:'1px dashed var(--border)', color:'var(--text-muted)', fontSize:13 }}>
             Noch keine Bilder. Erstelle dein erstes Bild in der Content-Werkstatt.
             <div style={{ marginTop:12 }}>
-              <button onClick={() => navigate('/content-studio')}
-                style={{ padding:'8px 16px', borderRadius:9, border:'none', background:P, color:'#fff', fontSize:12.5, fontWeight:700, cursor:'pointer', display:'inline-flex', alignItems:'center', gap:6 }}>
+              <button className="lk-btn lk-btn-primary" onClick={() => navigate('/content-studio')}
+                style={{ display:'inline-flex', alignItems:'center', gap:6 }}>
                 <Sparkles size={14} strokeWidth={1.9}/>Zur Content-Werkstatt
               </button>
             </div>
@@ -423,13 +423,13 @@ export default function Visuals({ session, kindFilter = null, embedded = false, 
             <div style={{ padding:'14px 18px', borderBottom:'1px solid var(--border)', display:'flex', alignItems:'center', gap:8, flexWrap:'wrap' }}>
               <span style={{ fontSize:13, fontWeight:700, color:'var(--text-primary)' }}>{lightbox.aspect_ratio} · {lightbox.model}</span>
               <span style={{ flex:1, minWidth:8 }}/>
-              <button onClick={() => { openAttachModal(lightbox); setLightbox(null) }}
-                style={{ padding:'7px 14px', borderRadius:8, border:'none', background: P, color:'#fff', cursor:'pointer', fontSize:12, fontWeight:700, display:'inline-flex', alignItems:'center', gap:6, boxShadow:'0 2px 6px rgba(49,90,231,.25)' }}>
+              <button className="lk-btn lk-btn-cta" onClick={() => { openAttachModal(lightbox); setLightbox(null) }}
+                style={{ display:'inline-flex', alignItems:'center', gap:6 }}>
                 <ImageIcon size={13} strokeWidth={1.9}/>Zu Beitrag hinzufügen
               </button>
-              <button onClick={() => downloadImage(lightbox)} style={{ padding:'6px 14px', borderRadius:8, border:'1px solid var(--border)', background:'#fff', cursor:'pointer', fontSize:12, fontWeight:600 }}><Upload size={12} strokeWidth={1.9} style={{ transform:'rotate(180deg)', marginRight:6 }}/>Download</button>
-              <button onClick={() => { openDesignerPicker(lightbox); setLightbox(null) }} style={{ padding:'6px 14px', borderRadius:8, border:'1px solid var(--border)', background:'#fff', cursor:'pointer', fontSize:12, fontWeight:600 }}><Pencil size={12} strokeWidth={1.75} style={{ marginRight:6 }} />Im Designer öffnen</button>
-              <button onClick={() => { archiveVisual(lightbox.id); setLightbox(null) }} style={{ padding:'6px 12px', borderRadius:8, border:'1px solid #FCA5A5', background:'#FEF2F2', color:'#b91c1c', cursor:'pointer', fontSize:12, fontWeight:600 }}><Trash2 size={12} strokeWidth={1.75} style={{ marginRight:6 }} />Löschen</button>
+              <button className="lk-btn lk-btn-ghost" onClick={() => downloadImage(lightbox)} ><Upload size={12} strokeWidth={1.9} style={{ transform:'rotate(180deg)', marginRight:6 }}/>Download</button>
+              <button className="lk-btn lk-btn-ghost" onClick={() => { openDesignerPicker(lightbox); setLightbox(null) }} ><Pencil size={12} strokeWidth={1.75} style={{ marginRight:6 }} />Im Designer öffnen</button>
+              <button className="lk-btn lk-btn-danger" onClick={() => { archiveVisual(lightbox.id); setLightbox(null) }} ><Trash2 size={12} strokeWidth={1.75} style={{ marginRight:6 }} />Löschen</button>
               <button onClick={() => setLightbox(null)} style={{ background:'none', border:'none', fontSize:18, cursor:'pointer', color:'var(--text-muted)' }}><X size={14} strokeWidth={1.75}/></button>
             </div>
             {lightbox.signed_url && (
@@ -452,8 +452,8 @@ export default function Visuals({ session, kindFilter = null, embedded = false, 
               <button onClick={() => setDesignerPick(null)} style={{ border:'none', background:'transparent', cursor:'pointer', color:'var(--text-muted)', padding:4, display:'inline-flex', flexShrink:0 }}><X size={18}/></button>
             </div>
             <div style={{ flex:1, overflowY:'auto', padding:'8px 14px 14px' }}>
-              <button onClick={() => openInNewDesign(designerPick)}
-                style={{ width:'100%', display:'flex', alignItems:'center', gap:8, padding:'11px 12px', borderRadius:10, border:'none', background:P, color:'#fff', fontSize:13, fontWeight:700, cursor:'pointer', fontFamily:'inherit', marginBottom:10 }}>
+              <button className="lk-btn lk-btn-cta" onClick={() => openInNewDesign(designerPick)}
+                style={{ width:'100%', display:'flex', alignItems:'center', gap:8, fontFamily:'inherit', marginBottom:10 }}>
                 <Sparkles size={15} strokeWidth={2}/>Als neues Design öffnen
               </button>
               <div style={{ fontSize:10.5, fontWeight:700, color:'var(--text-soft,#98a2b3)', textTransform:'uppercase', letterSpacing:'0.06em', padding:'2px 2px 6px' }}>In bestehendes Design (als neue Seite)</div>
@@ -465,7 +465,7 @@ export default function Visuals({ session, kindFilter = null, embedded = false, 
                 <button key={d.id} onClick={() => openInExistingDesign(designerPick, d.id)} disabled={designBusy} title={d.title || 'Design'}
                   style={{ width:'100%', textAlign:'left', display:'flex', alignItems:'center', gap:10, padding:'9px 10px', borderRadius:9, border:'none', background:'transparent', cursor: designBusy ? 'wait' : 'pointer', fontFamily:'inherit' }}
                   onMouseEnter={e => e.currentTarget.style.background='#F4F6FA'} onMouseLeave={e => e.currentTarget.style.background='transparent'}>
-                  <span style={{ width:30, height:30, borderRadius:8, flexShrink:0, display:'flex', alignItems:'center', justifyContent:'center', background:'rgba(49,90,231,0.07)', color:P }}><ImageIcon size={15} strokeWidth={1.9}/></span>
+                  <span style={{ width:30, height:30, borderRadius:8, flexShrink:0, display:'flex', alignItems:'center', justifyContent:'center', background:'rgba(10,111,176,0.07)', color:P }}><ImageIcon size={15} strokeWidth={1.9}/></span>
                   <span style={{ minWidth:0, flex:1, fontSize:13, fontWeight:600, color:'var(--text-primary)', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{d.title || 'Unbenanntes Design'}</span>
                 </button>
               ))}
@@ -505,7 +505,7 @@ export default function Visuals({ session, kindFilter = null, embedded = false, 
             <button onClick={() => createPostWithVisual(attachModal)}
               style={{
                 width:'100%', padding:'12px 14px', marginBottom:10, borderRadius:10,
-                border:'1.5px dashed ' + P, background:'rgba(49,90,231,0.04)',
+                border:'1.5px dashed ' + P, background:'rgba(10,111,176,0.04)',
                 color: P, fontSize:13, fontWeight:700, cursor:'pointer',
                 display:'flex', alignItems:'center', gap:8, justifyContent:'center', flexShrink:0,
               }}>
@@ -585,8 +585,8 @@ export default function Visuals({ session, kindFilter = null, embedded = false, 
             </div>
 
             <div style={{ display:'flex', justifyContent:'flex-end', marginTop:10, paddingTop:10, borderTop:'1px solid var(--border)', flexShrink:0 }}>
-              <button onClick={() => setAttachModal(null)}
-                style={{ padding:'8px 16px', borderRadius:8, border:'1px solid var(--border)', background:'#fff', cursor:'pointer', fontSize:13, fontWeight:600 }}>
+              <button className="lk-btn lk-btn-ghost" onClick={() => setAttachModal(null)}
+                >
                 Schließen
               </button>
             </div>
@@ -643,14 +643,14 @@ function GalleryCard({ v, linkedMode, onOpenStudio, onLightbox, onDownload, onAt
         opacity: hover ? 1 : 0, transition:'opacity 0.15s', pointerEvents: hover ? 'auto' : 'none' }}>
         <div style={{ color:'#fff', fontSize:10.5, lineHeight:1.35, maxHeight:42, overflow:'hidden', marginBottom:2 }}>{v.prompt}</div>
         {linkedMode && (
-          <button onClick={e => { e.stopPropagation(); onAttach() }}
-            style={{ padding:'7px 10px', borderRadius:8, border:'none', background:P, color:'#fff', fontSize:11.5, fontWeight:700, cursor:'pointer', display:'inline-flex', alignItems:'center', justifyContent:'center', gap:5 }}>
+          <button className="lk-btn lk-btn-cta" onClick={e => { e.stopPropagation(); onAttach() }}
+            style={{ display:'inline-flex', alignItems:'center', justifyContent:'center', gap:5 }}>
             <Pin size={12} strokeWidth={1.9}/>Zu Beitrag hinzufügen
           </button>
         )}
         {isImage && (
-        <button onClick={e => { e.stopPropagation(); onOpenStudio() }}
-          style={{ padding:'7px 10px', borderRadius:8, border:'none', background: linkedMode ? 'rgba(255,255,255,0.92)' : P, color: linkedMode ? '#111' : '#fff', fontSize:11.5, fontWeight:700, cursor:'pointer', display:'inline-flex', alignItems:'center', justifyContent:'center', gap:5 }}>
+        <button className="lk-btn lk-btn-primary" onClick={e => { e.stopPropagation(); onOpenStudio() }}
+          style={{ display:'inline-flex', alignItems:'center', justifyContent:'center', gap:5 }}>
           <Pencil size={12} strokeWidth={1.9}/>Im Designer öffnen
         </button>
         )}

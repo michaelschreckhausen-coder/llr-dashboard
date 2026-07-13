@@ -58,7 +58,7 @@ export default function GenerationLoading({ premium = false, expectedSeconds, ti
     return () => { clearInterval(tick); clearInterval(timer) }
   }, [])
 
-  const P = 'var(--wl-primary, rgb(49,90,231))'
+  const P = 'var(--wl-primary, #0A6FB0)'
   const progress = Math.min(99, Math.round((elapsedSec / expectedMax) * 100))
 
   return (
@@ -78,7 +78,7 @@ export default function GenerationLoading({ premium = false, expectedSeconds, ti
       padding: 12,
       borderRadius: 12,
       background: '#fff',
-      border: '1px solid rgba(49,90,231,0.18)',
+      border: '1px solid rgba(10,111,176,0.18)',
       boxShadow: '0 1px 6px rgba(15,23,42,0.08)',
       overflow: 'hidden',
       display: 'flex', flexDirection: 'column',
@@ -88,7 +88,7 @@ export default function GenerationLoading({ premium = false, expectedSeconds, ti
       padding: compact ? 16 : 24,
       borderRadius: 16,
       background: '#fff',
-      border: '1px solid rgba(49,90,231,0.18)',
+      border: '1px solid rgba(10,111,176,0.18)',
       boxShadow: '0 24px 64px rgba(15,23,42,0.20)',
       overflow: 'hidden',
     }}>
@@ -96,7 +96,7 @@ export default function GenerationLoading({ premium = false, expectedSeconds, ti
         <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
           <div style={{
             width: embedded ? 20 : 28, height: embedded ? 20 : 28, borderRadius: '50%', flexShrink: 0,
-            border: '3px solid rgba(49,90,231,0.18)', borderTopColor: P,
+            border: '3px solid rgba(10,111,176,0.18)', borderTopColor: P,
             animation: 'genLoadSpin 0.9s linear infinite',
           }} />
           <div>
@@ -111,8 +111,8 @@ export default function GenerationLoading({ premium = false, expectedSeconds, ti
         <button
           onClick={() => setMode(m => m === 'art' ? 'game' : 'art')}
           style={{
-            padding: embedded ? '5px 10px' : '7px 14px', borderRadius: 8, border: '1.5px solid rgba(49,90,231,0.3)',
-            background: mode === 'game' ? P : 'transparent',
+            padding: embedded ? '5px 10px' : '7px 14px', borderRadius: 8, border: '1.5px solid rgba(10,111,176,0.3)',
+            background: mode === 'game' ? 'var(--primary)' : 'transparent',
             color: mode === 'game' ? '#fff' : P,
             fontSize: embedded ? 11 : 12, fontWeight: 600, cursor: 'pointer', flexShrink: 0, whiteSpace: 'nowrap',
             display: 'inline-flex', alignItems: 'center', gap: 6,
@@ -124,7 +124,7 @@ export default function GenerationLoading({ premium = false, expectedSeconds, ti
         </button>
       </div>
 
-      <div style={{ position: 'relative', height: 6, borderRadius: 4, background: 'rgba(49,90,231,0.12)', overflow: 'hidden', marginBottom: 14 }}>
+      <div style={{ position: 'relative', height: 6, borderRadius: 4, background: 'rgba(10,111,176,0.12)', overflow: 'hidden', marginBottom: 14 }}>
         <div style={{
           position: 'absolute', top: 0, left: 0, height: '100%', width: progress + '%',
           background: 'linear-gradient(90deg, ' + P + ' 0%, rgb(139,92,246) 100%)',
@@ -172,7 +172,7 @@ export default function GenerationLoading({ premium = false, expectedSeconds, ti
 
 function ArtScene({ status, compact = false }) {
   const dots = []
-  const palette = ['#1F3EAF', '#2A4ECC', '#315ae7', '#5478ED', '#7B8FF2', '#9D8FF5', '#8B5CF6', '#A78BFA']
+  const palette = ['#1F3EAF', '#2A4ECC', '#0A6FB0', '#5478ED', '#7B8FF2', '#9D8FF5', '#0A6FB0', '#16A8DC']
   for (let i = 0; i < 22; i++) {
     const angle = (i / 22) * Math.PI * 2
     const r = 60 + (i % 4) * 22
@@ -472,7 +472,7 @@ function SnakeGame({ primaryColor }) {
               style={{
                 padding: '11px 32px', borderRadius: 999, border: 'none',
                 background: primaryColor, color: '#fff', fontSize: 14, fontWeight: 700, cursor: 'pointer',
-                boxShadow: '0 6px 20px rgba(49,90,231,0.4)',
+                boxShadow: '0 6px 20px rgba(10,111,176,0.4)',
                 transition: 'transform 0.15s',
               }}
               onMouseDown={e => e.currentTarget.style.transform = 'scale(0.96)'}

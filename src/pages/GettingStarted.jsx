@@ -9,7 +9,7 @@ const STEPS = [
   {
     id: 'welcome', icon: <Target size={16} strokeWidth={1.75}/>, title: 'Leadesk kennenlernen',
     description: 'Starte die interaktive Einführung und lerne alle Features kennen.',
-    color: 'var(--wl-primary, rgb(49,90,231))', bg: 'rgba(49,90,231,0.08)', border: 'rgba(49,90,231,0.2)',
+    color: 'var(--wl-primary, #0A6FB0)', bg: 'rgba(10,111,176,0.08)', border: 'rgba(10,111,176,0.2)',
     action: { label: 'Einführung starten', href: '/onboarding' },
   },
   {
@@ -21,13 +21,13 @@ const STEPS = [
   {
     id: 'extension', icon: '🔌', title: 'Chrome Extension installieren',
     description: 'Jetzt offiziell im Chrome Web Store: ein Klick auf „Hinzufügen", dann auf LinkedIn „In Leadesk speichern" klicken. Profile, SSI und Vernetzungen direkt aus LinkedIn ins CRM.',
-    color: '#7C3AED', bg: '#F5F3FF', border: '#DDD6FE',
+    color: '#003060', bg: '#F5F3FF', border: '#DDD6FE',
     action: { label: 'Im Chrome Web Store öffnen', href: 'https://chromewebstore.google.com/detail/leadesk/iikeboliakdgmmaefjjemfakndfelpof', external: true },
   },
   {
     id: 'vernetzung', icon: <Handshake size={16} strokeWidth={1.75}/>, title: 'Vernetzungsanfrage senden',
     description: 'Schicke eine erste personalisierte KI-Vernetzungsanfrage an einen Lead.',
-    color: '#8B5CF6', bg: '#F5F3FF', border: '#DDD6FE',
+    color: '#0A6FB0', bg: '#F5F3FF', border: '#DDD6FE',
     action: { label: 'Vernetzungen öffnen', href: '/vernetzungen' },
   },
   {
@@ -57,7 +57,7 @@ const STEPS = [
   {
     id: 'projektmanagement', icon: <ClipboardList size={16} strokeWidth={1.75}/>, title: 'Aufgaben-Board nutzen',
     description: 'Verwalte Sales-Aufgaben im Trello-ähnlichen Board. Labels, Team-Zuweisung und Listen-Ansicht inklusive.',
-    color: '#7C3AED', bg: '#F5F3FF', border: '#DDD6FE',
+    color: '#003060', bg: '#F5F3FF', border: '#DDD6FE',
     action: { label: 'Aufgaben öffnen', href: '/projekte' },
   },
   {
@@ -119,8 +119,8 @@ export default function GettingStarted() {
             flexShrink:0, display:'inline-flex', alignItems:'center', gap:7,
             fontSize:13, fontWeight:600, fontFamily:'inherit', cursor:'pointer',
             padding:'9px 14px', borderRadius:10, whiteSpace:'nowrap',
-            border:'1px solid var(--wl-primary, rgb(49,90,231))',
-            background:'transparent', color:'var(--wl-primary, rgb(49,90,231))',
+            border:'1px solid var(--wl-primary, #0A6FB0)',
+            background:'transparent', color:'var(--wl-primary, #0A6FB0)',
           }}>
           ↻ Produkt-Tour starten
         </button>
@@ -132,11 +132,11 @@ export default function GettingStarted() {
         <p style={{ fontSize:13, color:'var(--text-muted)', margin:'0 0 14px', lineHeight:1.5 }}>Lass dich Schritt für Schritt durch die Funktionen eines Bereichs führen.</p>
         <div style={{ display:'flex', gap:10, flexWrap:'wrap' }}>
           <button onClick={() => startAreaTour('branding')}
-            style={{ display:'inline-flex', alignItems:'center', gap:7, fontSize:13, fontWeight:600, fontFamily:'inherit', cursor:'pointer', padding:'9px 16px', borderRadius:10, border:'1px solid var(--wl-primary, rgb(49,90,231))', background:'transparent', color:'var(--wl-primary, rgb(49,90,231))' }}>
+            style={{ display:'inline-flex', alignItems:'center', gap:7, fontSize:13, fontWeight:600, fontFamily:'inherit', cursor:'pointer', padding:'9px 16px', borderRadius:10, border:'1px solid var(--wl-primary, #0A6FB0)', background:'transparent', color:'var(--wl-primary, #0A6FB0)' }}>
             Branding-Tour starten
           </button>
           <button onClick={() => startAreaTour('content')}
-            style={{ display:'inline-flex', alignItems:'center', gap:7, fontSize:13, fontWeight:600, fontFamily:'inherit', cursor:'pointer', padding:'9px 16px', borderRadius:10, border:'1px solid var(--wl-primary, rgb(49,90,231))', background:'transparent', color:'var(--wl-primary, rgb(49,90,231))' }}>
+            style={{ display:'inline-flex', alignItems:'center', gap:7, fontSize:13, fontWeight:600, fontFamily:'inherit', cursor:'pointer', padding:'9px 16px', borderRadius:10, border:'1px solid var(--wl-primary, #0A6FB0)', background:'transparent', color:'var(--wl-primary, #0A6FB0)' }}>
             Content-Tour starten
           </button>
         </div>
@@ -156,12 +156,12 @@ export default function GettingStarted() {
               {doneCount} <span style={{ color:'var(--text-muted)', fontWeight:600 }}>/ {total} Schritte</span>
             </div>
           </div>
-          <div style={{ fontSize:28, fontWeight:800, color: allDone ? 'var(--success)' : 'var(--wl-primary, rgb(49,90,231))' }}>
+          <div style={{ fontSize:28, fontWeight:800, color: allDone ? 'var(--success)' : 'var(--wl-primary, #0A6FB0)' }}>
             {pct}%
           </div>
         </div>
         <div style={{ height:8, background:'var(--surface-muted)', borderRadius:999, overflow:'hidden' }}>
-          <div style={{ height:'100%', width:pct+'%', background: allDone ? 'var(--success)' : 'var(--wl-primary, rgb(49,90,231))', borderRadius:999, transition:'width 0.5s ease' }}/>
+          <div style={{ height:'100%', width:pct+'%', background: allDone ? 'var(--success)' : 'var(--wl-primary, #0A6FB0)', borderRadius:999, transition:'width 0.5s ease' }}/>
         </div>
       </div>
 
@@ -230,15 +230,9 @@ export default function GettingStarted() {
                     <a href={step.action.href} style={actionStyle}>{step.action.label} ↗</a>
                   )
                 )}
-                <button
+                <button className="lk-btn lk-btn-ghost"
                   onClick={() => toggle(step.id)}
-                  style={{
-                    fontSize:11, fontWeight:700, padding:'6px 12px', borderRadius:8,
-                    border:'1px solid var(--border)',
-                    background: done ? 'var(--surface-muted)' : 'var(--surface)',
-                    color: done ? 'var(--text-muted)' : 'var(--text-secondary)',
-                    cursor:'pointer', whiteSpace:'nowrap'
-                  }}>
+                  style={{ whiteSpace:'nowrap' }}>
                   {done ? 'Rückgängig' : 'Als erledigt markieren'}
                 </button>
               </div>

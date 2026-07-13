@@ -1486,8 +1486,8 @@ export default function Dashboard({ session }) {
             Edit-Modus — Widget-Grid (Legacy-Ansicht)
           </div>
           <div style={{ display:'flex', gap: space[2] }}>
-            <button onClick={() => setCatalog(true)}
-              style={{ padding:'9px 18px', borderRadius: radii.pill, border:'none', background: colors.primary, color: colors.onPrimary, fontSize:13, fontWeight:500, cursor:'pointer', letterSpacing: '-0.005em', boxShadow: '0 6px 18px rgba(0,48,96,0.08)', transition: `all ${motion.base}` }}>
+            <button className="lk-btn lk-btn-navy" onClick={() => setCatalog(true)}
+              style={{ letterSpacing: '-0.005em' }}>
               ＋ Widget
             </button>
             <button onClick={resetLayout}
