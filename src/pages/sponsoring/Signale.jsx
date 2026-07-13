@@ -2,6 +2,7 @@
 // Signal-Feed je Sponsor. KI-Extraktion aus eingefügtem Text (detect-signals EF)
 // oder manuelle Erfassung. Schema 'sponsoring'.
 
+import PillSelect from '../../components/PillSelect'
 import { useEffect, useMemo, useState, useCallback } from 'react'
 import { Radar, Sparkles, Plus, Loader2 } from 'lucide-react'
 import { supabase } from '../../lib/supabase'
@@ -81,10 +82,7 @@ export default function Signale() {
 
       <div style={{ ...card, marginBottom: 24 }}>
         <div style={{ display: 'flex', gap: 10, marginBottom: 10 }}>
-          <select value={selSponsor} onChange={(e) => setSelSponsor(e.target.value)} style={{ ...input, maxWidth: 280 }}>
-            <option value="">— Sponsor wählen —</option>
-            {sortedSponsors.map((s) => <option key={s.id} value={s.id}>{orgName[s.organization_id] || '—'}</option>)}
-          </select>
+          <PillSelect value={selSponsor} onChange={setSelSponsor} neutral options={[{ value: '', label: `— Sponsor wählen —` }, ...sortedSponsors.map((s) => ({ value: s.id, label: orgName[s.organization_id] || '—' }))]} buttonStyle={{ minWidth: 140 }} />
         </div>
         <textarea value={text} onChange={(e) => setText(e.target.value)} rows={5}
                   placeholder="Presse-/News-/LinkedIn-Auszug einfügen…" style={{ ...input, resize: 'vertical' }} />

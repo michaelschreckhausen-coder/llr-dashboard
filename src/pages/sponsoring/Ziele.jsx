@@ -5,6 +5,7 @@
 // Liest/schreibt im Schema 'sponsoring' via supabase.schema('sponsoring').
 // Ligen-Select aus sponsoring.leagues. team_id kommt aus useTeam().activeTeamId.
 
+import PillSelect from '../../components/PillSelect'
 import { useEffect, useMemo, useState, useCallback } from 'react'
 import { Target, Plus, Loader2, RefreshCw, Pencil, Trash2, X, Check } from 'lucide-react'
 import { supabase } from '../../lib/supabase'
@@ -133,10 +134,7 @@ export default function Ziele() {
       <PageHeader overline="Sponsoring" title="SOLL-Ziele" subtitle="SOLL-Vorgaben pro Saison, Kategorie, Abwicklung und Liga. Diese Ziele dienen als Vergleichsbasis im Reporting." action={
         <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
           {seasons.length > 0 && (
-            <select value={seasonFilter} onChange={(e) => setSeasonFilter(e.target.value)} style={{ ...input, width: 'auto' }}>
-              <option value="">Alle Saisons</option>
-              {seasons.map((s) => <option key={s} value={s}>{s}</option>)}
-            </select>
+            <PillSelect value={seasonFilter} onChange={setSeasonFilter} neutral options={[{ value: '', label: `Alle Saisons` }, ...seasons.map((s) => ({ value: s, label: s }))]} buttonStyle={{ minWidth: 140 }} />
           )}
           <button onClick={fetchAll} title="Aktualisieren" style={iconBtn}>
             <RefreshCw size={16} />
@@ -213,16 +211,10 @@ export default function Ziele() {
                   <tr key={t.id} style={{ borderTop: '1px solid var(--border)' }}>
                     <td style={{ ...td, fontWeight: 600, color: 'var(--text-strong)' }}>{t.season}</td>
                     <td style={td}>
-                      <select value={t.category} onChange={(e) => updateField(t.id, 'category', e.target.value)}
-                              style={{ ...input, padding: '4px 8px' }}>
-                        {CATEGORY.map((c) => <option key={c} value={c}>{CATEGORY_LABEL[c]}</option>)}
-                      </select>
+                      <PillSelect value={t.category} onChange={v => updateField(t.id, 'category', v)} neutral options={[...CATEGORY.map((c) => ({ value: c, label: CATEGORY_LABEL[c] }))]} buttonStyle={{ minWidth: 140 }} />
                     </td>
                     <td style={td}>
-                      <select value={t.settlement} onChange={(e) => updateField(t.id, 'settlement', e.target.value)}
-                              style={{ ...input, padding: '4px 8px' }}>
-                        {SETTLEMENT.map((s) => <option key={s} value={s}>{SETTLEMENT_LABEL[s]}</option>)}
-                      </select>
+                      <PillSelect value={t.settlement} onChange={v => updateField(t.id, 'settlement', v)} neutral options={[...SETTLEMENT.map((s) => ({ value: s, label: SETTLEMENT_LABEL[s] }))]} buttonStyle={{ minWidth: 140 }} />
                     </td>
                     <td style={td}>
                       <select value={t.league_id || ''} onChange={(e) => updateField(t.id, 'league_id', e.target.value || null)}

@@ -5,6 +5,7 @@
 // Liest/schreibt im Schema 'sponsoring' via supabase.schema('sponsoring').
 // team_id kommt aus useTeam().activeTeamId.
 
+import PillSelect from '../../components/PillSelect'
 import { Fragment, useEffect, useMemo, useState, useCallback } from 'react'
 import { Search, Plus, Loader2, RefreshCw, Trash2, ExternalLink, Wand2, Building2, Sparkles, ChevronDown } from 'lucide-react'
 import { supabase } from '../../lib/supabase'
@@ -591,11 +592,7 @@ export default function Branchenanalyse() {
                   {adopted && (
                     <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 8 }}>
                       <span style={{ fontSize: 12, color: 'var(--text-muted)' }}>Kampagne:</span>
-                      <select value={tc.campaign_id || ''} onChange={(e) => assignCampaign(tc, e.target.value)}
-                              style={{ ...input, width: 'auto', minWidth: 180, padding: '5px 8px', fontSize: 12.5 }}>
-                        <option value="">{campaigns.length ? '— zuordnen —' : '— keine Kampagnen —'}</option>
-                        {campaigns.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
-                      </select>
+                      <PillSelect value={tc.campaign_id || ''} onChange={v => assignCampaign(tc, v)} neutral options={[{ value: '', label: campaigns.length ? '— zuordnen —' : '— keine Kampagnen —' }, ...campaigns.map((c) => ({ value: c.id, label: c.name }))]} buttonStyle={{ minWidth: 140 }} />
                       {campaignName && <span style={{ fontSize: 12, color: '#065F46', fontWeight: 600 }}>→ {campaignName}</span>}
                     </div>
                   )}

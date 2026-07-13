@@ -2,6 +2,7 @@
 // Offene Angebote -> Vertrag (RPC accept_offer, bucht Inventar). Vertragsliste
 // mit Laufzeit/Status. Schema 'sponsoring', team_id aus useTeam().
 
+import PillSelect from '../../components/PillSelect'
 import { useEffect, useMemo, useState, useCallback } from 'react'
 import { ScrollText, Loader2, ArrowRight, X, Pencil, FileDown, Trash2 } from 'lucide-react'
 import { supabase } from '../../lib/supabase'
@@ -249,11 +250,7 @@ export default function Vertraege() {
         {leagues.length > 0 && (
           <label style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 12, color: 'var(--text-muted)', marginBottom: 12 }}>
             Liga
-            <select value={leagueFilter} onChange={(e) => setLeagueFilter(e.target.value)}
-                    style={{ ...input, width: 'auto', padding: '6px 8px' }}>
-              <option value="">Alle Ligen</option>
-              {leagues.map((l) => <option key={l.id} value={l.id}>{l.name}</option>)}
-            </select>
+            <PillSelect value={leagueFilter} onChange={setLeagueFilter} neutral options={[{ value: '', label: `Alle Ligen` }, ...leagues.map((l) => ({ value: l.id, label: l.name }))]} buttonStyle={{ minWidth: 140 }} />
           </label>
         )}
       </div>
@@ -279,10 +276,7 @@ export default function Vertraege() {
                   <td style={td}>{dateStr(c.starts_on)} – {dateStr(c.ends_on)}</td>
                   <td style={td}>{c.notice_period_days ? `${c.notice_period_days} Tage` : '—'}</td>
                   <td style={td}>
-                    <select value={c.status} onChange={(e) => updateStatus(c.id, e.target.value)}
-                            style={{ ...input, padding: '4px 8px', color: CTR_COLOR[c.status], fontWeight: 600 }}>
-                      {CTR_STATUS.map((s) => <option key={s} value={s}>{CTR_LABEL[s]}</option>)}
-                    </select>
+                    <PillSelect value={c.status} onChange={v => updateStatus(c.id, v)} neutral options={[...CTR_STATUS.map((s) => ({ value: s, label: CTR_LABEL[s] }))]} buttonStyle={{ minWidth: 140 }} />
                   </td>
                   <td style={{ ...td, textAlign: 'right', whiteSpace: 'nowrap' }}>
                     <button onClick={() => openEdit(c)} style={ghostBtn} title="Bearbeiten"><Pencil size={14} /></button>

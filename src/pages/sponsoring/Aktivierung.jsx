@@ -2,6 +2,7 @@
 // Aktivierungsmassnahmen je Vertrag, Status-Board (geplant→Umsetzung→abgeschlossen→reportet).
 // Schema 'sponsoring', team_id aus useTeam().
 
+import PillSelect from '../../components/PillSelect'
 import { useEffect, useMemo, useState, useCallback } from 'react'
 import { Megaphone, Plus, Loader2, ListChecks, Image as ImageIcon, Trash2, Upload, Wand2 } from 'lucide-react'
 import { supabase } from '../../lib/supabase'
@@ -308,10 +309,7 @@ export default function Aktivierung() {
                         Verantwortlich: {memberName[a.responsible] || '—'}
                       </div>
                     ) : null}
-                    <select value={a.status} onChange={(e) => move(a.id, e.target.value)}
-                            style={{ ...input, padding: '3px 6px', marginTop: 8, fontSize: 12, color: STATUS_COLOR[a.status], fontWeight: 600 }}>
-                      {STATUS.map((s) => <option key={s} value={s}>{STATUS_LABEL[s]}</option>)}
-                    </select>
+                    <PillSelect value={a.status} onChange={v => move(a.id, v)} neutral options={[...STATUS.map((s) => ({ value: s, label: STATUS_LABEL[s] }))]} buttonStyle={{ minWidth: 140 }} />
 
                     {/* Nachweis-Bilder (Bucket privat → signedUrl-Thumbnails) */}
                     <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginTop: 8 }}>

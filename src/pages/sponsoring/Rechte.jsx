@@ -5,6 +5,7 @@
 // Liest/schreibt im Schema 'sponsoring' via supabase.schema('sponsoring').
 // team_id kommt aus useTeam().activeTeamId.
 
+import PillSelect from '../../components/PillSelect'
 import { useEffect, useMemo, useState, useCallback } from 'react'
 import { Layers, Plus, Loader2, RefreshCw } from 'lucide-react'
 import { supabase } from '../../lib/supabase'
@@ -193,12 +194,7 @@ export default function Rechte() {
       {leagues.length > 0 && (
         <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 14 }}>
           <span style={{ fontSize: 12, fontWeight: 600, color: 'var(--text-muted)' }}>Liga:</span>
-          <select value={leagueFilter} onChange={(e) => setLeagueFilter(e.target.value)}
-                  style={{ ...input, width: 'auto', minWidth: 180 }}>
-            <option value="">Alle</option>
-            <option value="none">Ohne Liga</option>
-            {leagues.map((l) => <option key={l.id} value={l.id}>{l.name}</option>)}
-          </select>
+          <PillSelect value={leagueFilter} onChange={setLeagueFilter} neutral options={[{ value: '', label: `Alle` }, { value: 'none', label: `Ohne Liga` }, ...leagues.map((l) => ({ value: l.id, label: l.name }))]} buttonStyle={{ minWidth: 140 }} />
         </div>
       )}
 
@@ -250,10 +246,7 @@ export default function Rechte() {
                       </div>
                     </td>
                     <td style={td}>
-                      <select value={r.status} onChange={(e) => updateStatus(r.id, e.target.value)}
-                              style={{ ...input, padding: '4px 8px', color: STATUS_COLOR[r.status], fontWeight: 600 }}>
-                        {STATUS.map((s) => <option key={s} value={s}>{STATUS_LABEL[s]}</option>)}
-                      </select>
+                      <PillSelect value={r.status} onChange={v => updateStatus(r.id, v)} neutral options={[...STATUS.map((s) => ({ value: s, label: STATUS_LABEL[s] }))]} buttonStyle={{ minWidth: 140 }} />
                     </td>
                   </tr>
                 )

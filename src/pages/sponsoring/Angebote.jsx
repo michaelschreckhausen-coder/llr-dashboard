@@ -8,6 +8,7 @@
 //  - Sponsor optional mit Leadesk-deal_id/lead_id verknuepfen (lose Refs).
 //  - "Als PDF an Lead senden": STUB — echte PDF via Delivery-Unterbau folgt (P5).
 
+import PillSelect from '../../components/PillSelect'
 import { Fragment, useEffect, useMemo, useState, useCallback } from 'react'
 import { FileText, Plus, Loader2, UserPlus, ListPlus, Trash2, Send } from 'lucide-react'
 import { supabase } from '../../lib/supabase'
@@ -345,10 +346,7 @@ export default function Angebote() {
                     </div>
                   </td>
                   <td style={td}>
-                    <select value={o.status} onChange={(e) => updateOfferStatus(o.id, e.target.value)}
-                            style={{ ...input, padding: '4px 8px', color: OFFER_COLOR[o.status], fontWeight: 600 }}>
-                      {OFFER_STATUS.map((s) => <option key={s} value={s}>{OFFER_LABEL[s]}</option>)}
-                    </select>
+                    <PillSelect value={o.status} onChange={v => updateOfferStatus(o.id, v)} neutral options={[...OFFER_STATUS.map((s) => ({ value: s, label: OFFER_LABEL[s] }))]} buttonStyle={{ minWidth: 140 }} />
                   </td>
                   <td style={td}>
                     <button type="button" onClick={() => sendPdfToLead(o)} style={ghostBtn} title="PDF an Lead senden (Delivery-Unterbau folgt)">

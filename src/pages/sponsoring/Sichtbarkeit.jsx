@@ -2,6 +2,7 @@
 // Misst über mehrere KI-Provider, ob ein Sponsor/Verein in den Antworten genannt
 // wird. Sichtbarkeits-Index aus v_geo_visibility. Schema 'sponsoring'.
 
+import PillSelect from '../../components/PillSelect'
 import { useEffect, useMemo, useState, useCallback } from 'react'
 import { Eye, Sparkles, Loader2, RefreshCw } from 'lucide-react'
 import { supabase } from '../../lib/supabase'
@@ -89,17 +90,11 @@ export default function Sichtbarkeit() {
 
       <div style={{ ...card, marginBottom: 24, display: 'flex', gap: 10, alignItems: 'flex-end', flexWrap: 'wrap' }}>
         <Field label="Subjekt-Typ">
-          <select value={subjectType} onChange={(e) => setSubjectType(e.target.value)} style={input}>
-            <option value="club">Verein</option>
-            <option value="sponsor">Sponsor</option>
-          </select>
+          <PillSelect value={subjectType} onChange={setSubjectType} neutral options={[{ value: 'club', label: `Verein` }, { value: 'sponsor', label: `Sponsor` }]} buttonStyle={{ minWidth: 140 }} />
         </Field>
         {subjectType === 'sponsor' ? (
           <Field label="Sponsor">
-            <select value={sponsorId} onChange={(e) => setSponsorId(e.target.value)} style={{ ...input, minWidth: 220 }}>
-              <option value="">— wählen —</option>
-              {sortedSponsors.map((s) => <option key={s.id} value={s.id}>{orgName[s.organization_id] || '—'}</option>)}
-            </select>
+            <PillSelect value={sponsorId} onChange={setSponsorId} neutral options={[{ value: '', label: `— wählen —` }, ...sortedSponsors.map((s) => ({ value: s.id, label: orgName[s.organization_id] || '—' }))]} buttonStyle={{ minWidth: 140 }} />
           </Field>
         ) : (
           <Field label="Vereinsname">

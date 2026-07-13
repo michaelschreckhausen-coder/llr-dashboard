@@ -6,6 +6,7 @@
 // team_id kommt aus useTeam().activeTeamId. brand_voices/target_audiences im public-Schema.
 // Status-Updates bewusst per-Row .eq() (kein .in()-Bulk → CHECK-Status-silent-fail vermeiden).
 
+import PillSelect from '../../components/PillSelect'
 import { useEffect, useState, useCallback } from 'react'
 import { Megaphone, Plus, Loader2, Sparkles, X, RefreshCw, Trash2, UserPlus } from 'lucide-react'
 import { supabase } from '../../lib/supabase'
@@ -451,10 +452,7 @@ export default function Kampagnen() {
                   </td>
                   <td style={td}>{c.expected_value != null ? `${Number(c.expected_value).toLocaleString('de-DE')} €` : '—'}</td>
                   <td style={td} onClick={(e) => e.stopPropagation()}>
-                    <select value={c.status || 'draft'} onChange={(e) => updateStatus(c.id, e.target.value)}
-                            style={{ ...input, padding: '4px 8px', color: STATUS_COLOR[c.status] || 'var(--text-strong)', fontWeight: 600 }}>
-                      {STATUS.map((s) => <option key={s} value={s}>{STATUS_LABEL[s]}</option>)}
-                    </select>
+                    <PillSelect value={c.status || 'draft'} onChange={v => updateStatus(c.id, v)} neutral options={[...STATUS.map((s) => ({ value: s, label: STATUS_LABEL[s] }))]} buttonStyle={{ minWidth: 140 }} />
                   </td>
                 </tr>
               ))}
@@ -593,10 +591,7 @@ export default function Kampagnen() {
               <div style={{ display: 'flex', gap: 8, margin: '10px 0 6px', alignItems: 'flex-end' }}>
                 <div style={{ flex: 1 }}>
                   <Field label="Bestehenden Kontakt zuordnen">
-                    <select value={pickLead} onChange={(e) => setPickLead(e.target.value)} style={input}>
-                      <option value="">— Kontakt wählen —</option>
-                      {allLeads.map((l) => <option key={l.id} value={l.id}>{leadLabel(l.id)}{l.company ? ' · ' + l.company : ''}</option>)}
-                    </select>
+                    <PillSelect value={pickLead} onChange={setPickLead} neutral options={[{ value: '', label: `— Kontakt wählen —` }, ...allLeads.map((l) => ({ value: l.id, label: `${leadLabel(l.id)}${l.company ? ' · ' + l.company : ''}` }))]} buttonStyle={{ minWidth: 140 }} />
                   </Field>
                 </div>
                 <button onClick={addExistingLead} disabled={!pickLead} style={{ ...primaryBtn, opacity: !pickLead ? 0.6 : 1 }}><Plus size={14} /></button>
@@ -610,10 +605,7 @@ export default function Kampagnen() {
                 </div>
                 <div style={{ flex: 1 }}>
                   <Field label="Sponsor (optional)">
-                    <select value={leadSponsorId} onChange={(e) => setLeadSponsorId(e.target.value)} style={input}>
-                      <option value="">— keiner —</option>
-                      {sponsors.map((p) => <option key={p.id} value={p.id}>{sponsorName(p, orgName) || p.id}</option>)}
-                    </select>
+                    <PillSelect value={leadSponsorId} onChange={setLeadSponsorId} neutral options={[{ value: '', label: `— keiner —` }, ...sponsors.map((p) => ({ value: p.id, label: sponsorName(p, orgName) || p.id }))]} buttonStyle={{ minWidth: 140 }} />
                   </Field>
                 </div>
                 <button onClick={addManualLead} disabled={savingLead || !leadName.trim()}
@@ -649,10 +641,7 @@ export default function Kampagnen() {
               <div style={{ display: 'flex', gap: 8, margin: '10px 0 12px', alignItems: 'flex-end' }}>
                 <div style={{ flex: 1 }}>
                   <Field label="Bestehendes Unternehmen zuordnen">
-                    <select value={pickOrg} onChange={(e) => setPickOrg(e.target.value)} style={input}>
-                      <option value="">— Unternehmen wählen —</option>
-                      {allOrgs.map((o) => <option key={o.id} value={o.id}>{o.name}</option>)}
-                    </select>
+                    <PillSelect value={pickOrg} onChange={setPickOrg} neutral options={[{ value: '', label: `— Unternehmen wählen —` }, ...allOrgs.map((o) => ({ value: o.id, label: o.name }))]} buttonStyle={{ minWidth: 140 }} />
                   </Field>
                 </div>
                 <button onClick={addOrg} disabled={!pickOrg} style={{ ...primaryBtn, opacity: !pickOrg ? 0.6 : 1 }}><Plus size={14} /></button>
@@ -677,10 +666,7 @@ export default function Kampagnen() {
               <div style={{ display: 'flex', gap: 8, margin: '10px 0 12px', alignItems: 'flex-end' }}>
                 <div style={{ flex: 1 }}>
                   <Field label="Bestehenden Deal zuordnen">
-                    <select value={pickDeal} onChange={(e) => setPickDeal(e.target.value)} style={input}>
-                      <option value="">— Deal wählen —</option>
-                      {allDeals.map((d) => <option key={d.id} value={d.id}>{(d.title || d.name || 'Deal')}{d.value ? ' · ' + Number(d.value).toLocaleString('de-DE') + ' €' : ''}</option>)}
-                    </select>
+                    <PillSelect value={pickDeal} onChange={setPickDeal} neutral options={[{ value: '', label: `— Deal wählen —` }, ...allDeals.map((d) => ({ value: d.id, label: `${d.title || d.name || 'Deal'}${d.value ? ' · ' + Number(d.value).toLocaleString('de-DE') + ' €' : ''}` }))]} buttonStyle={{ minWidth: 140 }} />
                   </Field>
                 </div>
                 <button onClick={addDeal} disabled={!pickDeal} style={{ ...primaryBtn, opacity: !pickDeal ? 0.6 : 1 }}><Plus size={14} /></button>
