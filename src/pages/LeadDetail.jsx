@@ -636,26 +636,26 @@ export default function LeadDetail({ lead: leadProp }) {
           </div>
           <div style={{ display:'flex', gap:8, flexShrink:0 }}>
             {lead.linkedin_url && (
-              <button type="button" style={secondaryBtnStyle} onClick={openLinkedIn}
+              <button type="button" className="lk-btn lk-btn-ghost" onClick={openLinkedIn}
                 title="LinkedIn-Profil in neuem Tab öffnen">
                 <IcLinkedin size={16} /> Profil
               </button>
             )}
             {lead.linkedin_url && (
-              <button type="button" style={secondaryBtnStyle} onClick={addToInbox} disabled={addingInbox}
+              <button type="button" className="lk-btn lk-btn-ghost" onClick={addToInbox} disabled={addingInbox}
                 title="Diesen Kontakt in LinkedIn Kontakte aufnehmen (für Listen und Automatisierung)">
                 {addingInbox ? <Loader2 size={16} className="lk-spin" /> : <InboxIcon size={16} />} In LinkedIn Kontakte
               </button>
             )}
-            <button type="button" style={secondaryBtnStyle} onClick={() => setEditModalOpen(true)}
+            <button type="button" className="lk-btn lk-btn-ghost" onClick={() => setEditModalOpen(true)}
               title="Lead bearbeiten">
               <Pencil size={16} /> Bearbeiten
             </button>
-            <button type="button" style={primaryBtnStyle} onClick={() => setActiveTab('activity')}>
+            <button type="button" className="lk-btn lk-btn-navy" onClick={() => setActiveTab('activity')}>
               <Send size={16} /> Nachricht senden
             </button>
             {lead.archived ? (
-              <button type="button" style={secondaryBtnStyle} onClick={handleRestore}
+              <button type="button" className="lk-btn lk-btn-ghost" onClick={handleRestore}
                 title="Kontakt wiederherstellen">
                 <Archive size={16} /> Wiederherstellen
               </button>
@@ -1107,7 +1107,7 @@ function ActivityTab({ leadId, leadTeamId, lead, initialDraft, onDraftConsumed }
           placeholder="Was ist passiert? Kurzbeschreibung…"
           value={newSubject} onChange={e => setNewSubject(e.target.value)}
           onKeyDown={e => { if (e.key === 'Enter') submit(); }} />
-        <button type="button" style={primaryBtnStyle} onClick={submit} disabled={adding || !newSubject.trim()}>
+        <button type="button" className="lk-btn lk-btn-navy" onClick={submit} disabled={adding || !newSubject.trim()}>
           {adding ? 'Speichere…' : 'Hinzufügen'}
         </button>
       </div>
@@ -1133,7 +1133,7 @@ function ActivityTab({ leadId, leadTeamId, lead, initialDraft, onDraftConsumed }
           <span style={{ fontSize:11, color: COLORS.textTertiary }}>
             Wird im Activity-Log protokolliert. Versand separat über LinkedIn / E-Mail-Client.
           </span>
-          <button type="button" style={primaryBtnStyle} onClick={sendMessage} disabled={composing || !msgBody.trim()}>
+          <button type="button" className="lk-btn lk-btn-navy" onClick={sendMessage} disabled={composing || !msgBody.trim()}>
             <Send size={14} /> {composing ? 'Senden…' : 'Protokollieren'}
           </button>
         </div>
@@ -1308,7 +1308,7 @@ function NotesTab({ leadId, leadTeamId }) {
             <input type="checkbox" checked={isPrivate} onChange={e => setIsPrivate(e.target.checked)} />
             Privat (nur ich sehe sie)
           </label>
-          <button type="button" style={primaryBtnStyle} onClick={submit} disabled={adding || !body.trim()}>
+          <button type="button" className="lk-btn lk-btn-navy" onClick={submit} disabled={adding || !body.trim()}>
             <Plus size={14} /> {adding ? 'Speichere…' : 'Notiz hinzufügen'}
           </button>
         </div>
@@ -1333,8 +1333,8 @@ function NotesTab({ leadId, leadTeamId }) {
               <>
                 <textarea style={textareaStyle} value={editBody} onChange={e => setEditBody(e.target.value)} rows={3} />
                 <div style={{ display:'flex', gap:8, justifyContent:'flex-end', marginTop:8 }}>
-                  <button type="button" style={ghostBtnStyle} onClick={() => { setEditId(null); setEditBody(''); }}>Abbrechen</button>
-                  <button type="button" style={primaryBtnStyle} onClick={() => saveEdit(n.id)} disabled={!editBody.trim()}>Speichern</button>
+                  <button type="button" className="lk-btn lk-btn-ghost lk-btn-sm" onClick={() => { setEditId(null); setEditBody(''); }}>Abbrechen</button>
+                  <button type="button" className="lk-btn lk-btn-navy" onClick={() => saveEdit(n.id)} disabled={!editBody.trim()}>Speichern</button>
                 </div>
               </>
             ) : (
@@ -1732,7 +1732,7 @@ function DealsTab({ lead, leadId, navigate, onMutated }) {
           <span style={{ fontSize:12, color: COLORS.textTertiary }}>
             {loading ? 'Lade…' : `${items.length} Deals`}
           </span>
-          <button type="button" style={primaryBtnStyle} onClick={() => setOpen(true)}>
+          <button type="button" className="lk-btn lk-btn-navy" onClick={() => setOpen(true)}>
             <Plus size={14} /> Neuer Deal
           </button>
         </div>
@@ -1883,7 +1883,7 @@ function DetailNotFound({ error, onBack }) {
       }}>
         <div style={{ fontSize:18, fontWeight:500, color: COLORS.textPrimary }}>Lead nicht gefunden</div>
         {error && <div style={{ fontSize:13, color: COLORS.textTertiary, maxWidth:480 }}>{error.message}</div>}
-        <button type="button" onClick={onBack} style={primaryBtnStyle}>← Zurück zu Leads</button>
+        <button type="button" onClick={onBack} className="lk-btn lk-btn-navy">← Zurück zu Leads</button>
       </div>
     </div>
   );

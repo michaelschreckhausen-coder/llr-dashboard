@@ -427,7 +427,7 @@ export default function DealDetail({ session }) {
 
       {/* Löschen */}
       {deal.created_by === uid && (
-        <button onClick={deleteDeal} style={{ marginTop: 20, padding: '8px 14px', borderRadius: 8, border: '1px solid #FECACA', background: 'var(--surface, #fff)', fontSize: 12, fontWeight: 600, cursor: 'pointer', color: '#DC2626', display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+        <button className="lk-btn lk-btn-ghost" onClick={deleteDeal} style={{ marginTop: 20, display: 'inline-flex', alignItems: 'center', gap: 6 }}>
           <Trash2 size={14} /> Deal löschen
         </button>
       )}

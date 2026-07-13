@@ -569,7 +569,7 @@ export default function OrganizationProfile({ session }) {
 
           {!editing && (
             <div style={{ gridColumn: '1 / -1', marginTop: 8 }}>
-              <button onClick={deleteOrg} style={{ padding: '7px 14px', borderRadius: 9, border: '1px solid #FECACA', background: 'var(--surface)', fontSize: 12, fontWeight: 700, cursor: 'pointer', color: '#DC2626' }}>Organisation löschen</button>
+              <button className="lk-btn lk-btn-ghost" onClick={deleteOrg} >Organisation löschen</button>
             </div>
           )}
         </div>
