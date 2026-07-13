@@ -1270,7 +1270,7 @@ export default function Leads() {
             />
             <button type="button"
               onClick={allVisibleSelected ? clearSelection : selectAll}
-              style={ghostBtnStyle}
+              className="lk-btn lk-btn-ghost"
               aria-label="Alles auswählen"
               title={allVisibleSelected ? 'Auswahl aufheben' : 'Alles auswählen'}
             >
@@ -1348,10 +1348,8 @@ export default function Leads() {
                 {enrichConfirm.capped > 0 && <> {enrichConfirm.capped} weitere über dem Deckel ({ENRICH_CAP}/Durchlauf).</>}
               </div>
               <div style={{ display:'flex', justifyContent:'flex-end', gap:8 }}>
-                <button type="button" onClick={() => setEnrichConfirm(null)}
-                  style={{ height:34, padding:'0 14px', borderRadius:8, border:`0.5px solid ${COLORS.borderSubtle}`, background: COLORS.surface, color: COLORS.textPrimary, fontSize:13, cursor:'pointer' }}>Abbrechen</button>
-                <button type="button" onClick={() => runBulkEnrich(enrichConfirm)}
-                  style={{ height:34, padding:'0 16px', borderRadius:8, border:'none', background:'var(--wl-primary, rgb(49,90,231))', color:'#fff', fontSize:13, fontWeight:700, cursor:'pointer', display:'inline-flex', alignItems:'center', gap:6 }}>
+                <button type="button" onClick={() => setEnrichConfirm(null)} className="lk-btn lk-btn-ghost">Abbrechen</button>
+                <button type="button" onClick={() => runBulkEnrich(enrichConfirm)} className="lk-btn lk-btn-cta">
                   <IcLinkedin size={14} /> Anreichern
                 </button>
               </div>
@@ -1377,7 +1375,7 @@ export default function Leads() {
               <div style={{ fontSize:13, marginBottom:16 }}>
                 {leads.length} Kontakt{leads.length === 1 ? '' : 'e'} insgesamt — derzeit ausgeblendet.
               </div>
-              <button type="button" style={ghostBtnStyle}
+              <button type="button" className="lk-btn lk-btn-ghost"
                 onClick={() => { setSearch(''); setQuickFilter('all'); setStageTab(null); setListFilter(null); setTagsFilter([]); setOwnerFilter(null); }}>
                 <X size={14} /> Filter zurücksetzen
               </button>
@@ -2282,7 +2280,7 @@ function NewLeadModal({ onClose, onSaved, activeTeamId, userId, teamMembers = []
   return (
     <ModalShell title="Neuer Kontakt" onClose={onClose} footer={
       <>
-        <button type="button" style={ghostBtnStyle} onClick={onClose} disabled={busy}>Abbrechen</button>
+        <button type="button" className="lk-btn lk-btn-ghost" onClick={onClose} disabled={busy}>Abbrechen</button>
         <button type="button" className="lk-btn lk-btn-cta" onClick={submit} disabled={busy}>
           {busy ? 'Speichere…' : 'Lead anlegen'}
         </button>
@@ -2360,7 +2358,7 @@ function NewListModal({ activeTeamId, onClose, onSaved }) {
   return (
     <ModalShell title="Neue Liste" onClose={onClose} footer={
       <>
-        <button type="button" style={ghostBtnStyle} onClick={onClose} disabled={busy}>Abbrechen</button>
+        <button type="button" className="lk-btn lk-btn-ghost" onClick={onClose} disabled={busy}>Abbrechen</button>
         <button type="button" className="lk-btn lk-btn-cta" onClick={submit} disabled={busy}>
           {busy ? 'Speichere…' : 'Anlegen'}
         </button>
@@ -2472,7 +2470,7 @@ function ImportCsvModal({ activeTeamId, onClose, onImported }) {
   return (
     <ModalShell title="CSV importieren" onClose={onClose} width={620} footer={
       <>
-        <button type="button" style={ghostBtnStyle} onClick={onClose} disabled={busy}>Abbrechen</button>
+        <button type="button" className="lk-btn lk-btn-ghost" onClick={onClose} disabled={busy}>Abbrechen</button>
         <button type="button" className="lk-btn lk-btn-cta" onClick={submit} disabled={busy || !preview}>
           {busy ? 'Importiere…' : preview ? `${preview.rows.length} Leads importieren` : 'Datei wählen'}
         </button>
