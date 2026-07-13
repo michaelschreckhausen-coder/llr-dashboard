@@ -271,11 +271,8 @@ export default function TaskEditModal({ task, members = [], uid, onClose, onSave
         <div style={{ padding: '14px 22px', borderTop: '1px solid #E5E7EB', display: 'flex', justifyContent: 'space-between', gap: 10, background: '#FAFAFA' }}>
           <div>
             {caps?.canDelete && (
-              <button onClick={handleDelete} disabled={saving}
-                style={{
-                  padding: '8px 14px', borderRadius: 10, border: '1px solid #FECACA',
-                  background: '#fff', color: '#DC2626', fontSize: 12, fontWeight: 600, cursor: saving ? 'wait' : 'pointer',
-                }}>
+              <button className="lk-btn lk-btn-ghost" onClick={handleDelete} disabled={saving}
+                >
                 🗑 Löschen
               </button>
             )}

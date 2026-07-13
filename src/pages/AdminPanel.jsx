@@ -187,7 +187,7 @@ export default function AdminPanel({ session }) {
                       style={{padding:'5px 12px',borderRadius:8,border:'1px solid '+IND,background:addMode?IND:'white',color:addMode?'#fff':IND,fontSize:12,fontWeight:700,cursor:'pointer'}}>
                       {addMode ? '× Schließen' : '+ Nutzer hinzufügen'}
                     </button>
-                    <button onClick={()=>deleteTeam(t.id,t.name)} style={{padding:'5px 10px',borderRadius:8,border:'1px solid #FCA5A5',background:'#FEF2F2',color:'#DC2626',fontSize:11,fontWeight:700,cursor:'pointer'}}>Löschen</button>
+                    <button className="lk-btn lk-btn-danger" onClick={()=>deleteTeam(t.id,t.name)} >Löschen</button>
                   </div>
                 </div>
 
@@ -224,8 +224,8 @@ export default function AdminPanel({ session }) {
                           <td><span className='bg' style={{background:rB[m.role||'user'],color:rC[m.role||'user']}}>{m.role}</span></td>
                           <td style={{fontSize:12,color:'var(--text-muted)'}}>{m.joined_at ? new Date(m.joined_at).toLocaleDateString('de-DE') : '—'}</td>
                           <td>
-                            <button onClick={()=>removeFromTeam(t.id, m.user_id)}
-                              style={{padding:'3px 8px',borderRadius:6,border:'1px solid #FCA5A5',background:'#FEF2F2',color:'#DC2626',fontSize:11,fontWeight:700,cursor:'pointer'}}>
+                            <button className="lk-btn lk-btn-danger" onClick={()=>removeFromTeam(t.id, m.user_id)}
+                              >
                               Entfernen
                             </button>
                           </td>
@@ -255,7 +255,7 @@ export default function AdminPanel({ session }) {
           <div style={{background:'var(--surface)',borderRadius:16,border:'1px solid var(--border)',overflow:'hidden',marginBottom:16}}>
             <div style={{padding:'14px 18px',borderBottom:'1px solid #F3F4F6',fontSize:14,fontWeight:800}}>Lizenz-Pools ({licenses.length})</div>
             <table className='dt'><thead><tr><th>Team</th><th>Feature</th><th>Seats</th><th>Status</th><th>Gueltig bis</th><th></th></tr></thead>
-            <tbody>{licenses.map(l=>(<tr key={l.id}><td style={{fontWeight:700}}>{l.teams?.name||'—'}</td><td><span className='bg' style={{background:'#F0FDF4',color:'#065F46'}}>{l.feature_key}</span></td><td><div style={{display:'flex',alignItems:'center',gap:8}}><div style={{width:70,height:6,background:'var(--surface-muted)',borderRadius:3,overflow:'hidden'}}><div style={{width:(l.total_seats>0?l.used_seats/l.total_seats*100:0)+'%',height:'100%',background:l.used_seats/l.total_seats>.8?'#EF4444':IND,borderRadius:3}}/></div><span style={{fontSize:11,color:'var(--text-muted)'}}>{l.used_seats}/{l.total_seats}</span></div></td><td><span className='bg' style={{background:l.status==='active'?'#F0FDF4':'#FEF2F2',color:l.status==='active'?'#065F46':'#DC2626'}}>{l.status}</span></td><td style={{color:'var(--text-muted)',fontSize:12}}>{l.valid_until?new Date(l.valid_until).toLocaleDateString('de-DE'):'Unbegrenzt'}</td><td><div style={{display:'flex',gap:6}}><button onClick={()=>setEditLic({...l})} style={{padding:'4px 10px',borderRadius:7,border:'1px solid #0A6FB0',background:'var(--surface)',color:'var(--wl-primary, #0A6FB0)',fontSize:11,fontWeight:700,cursor:'pointer'}}>Bearbeiten</button><button onClick={()=>deleteLicense(l.id,l.feature_key)} style={{padding:'4px 10px',borderRadius:7,border:'1px solid #FCA5A5',background:'#FEF2F2',color:'#DC2626',fontSize:11,fontWeight:700,cursor:'pointer'}}>Löschen</button></div></td></tr>))}</tbody>
+            <tbody>{licenses.map(l=>(<tr key={l.id}><td style={{fontWeight:700}}>{l.teams?.name||'—'}</td><td><span className='bg' style={{background:'#F0FDF4',color:'#065F46'}}>{l.feature_key}</span></td><td><div style={{display:'flex',alignItems:'center',gap:8}}><div style={{width:70,height:6,background:'var(--surface-muted)',borderRadius:3,overflow:'hidden'}}><div style={{width:(l.total_seats>0?l.used_seats/l.total_seats*100:0)+'%',height:'100%',background:l.used_seats/l.total_seats>.8?'#EF4444':IND,borderRadius:3}}/></div><span style={{fontSize:11,color:'var(--text-muted)'}}>{l.used_seats}/{l.total_seats}</span></div></td><td><span className='bg' style={{background:l.status==='active'?'#F0FDF4':'#FEF2F2',color:l.status==='active'?'#065F46':'#DC2626'}}>{l.status}</span></td><td style={{color:'var(--text-muted)',fontSize:12}}>{l.valid_until?new Date(l.valid_until).toLocaleDateString('de-DE'):'Unbegrenzt'}</td><td><div style={{display:'flex',gap:6}}><button className="lk-btn lk-btn-ghost" onClick={()=>setEditLic({...l})} >Bearbeiten</button><button className="lk-btn lk-btn-danger" onClick={()=>deleteLicense(l.id,l.feature_key)} >Löschen</button></div></td></tr>))}</tbody>
             </table>
           </div>
           <div style={{background:'var(--surface)',borderRadius:14,border:'1px solid var(--border)',padding:'18px 20px'}}>

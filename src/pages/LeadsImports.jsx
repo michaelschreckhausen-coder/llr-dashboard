@@ -118,7 +118,7 @@ function JobCard({ job, onDetails }) {
           </div>
           <div style={{ fontSize: 12, color: '#94A3B8' }}>{fmtDate(job.created_at)}</div>
         </div>
-        <button onClick={() => onDetails(job)} style={{ border: '0.5px solid #E2E8F0', background: '#fff', borderRadius: 8, padding: '6px 12px', fontSize: 12, fontWeight: 500, cursor: 'pointer', color: '#334155', whiteSpace: 'nowrap' }}>
+        <button className="lk-btn lk-btn-ghost" onClick={() => onDetails(job)} style={{ whiteSpace: 'nowrap' }}>
           Details
         </button>
       </div>

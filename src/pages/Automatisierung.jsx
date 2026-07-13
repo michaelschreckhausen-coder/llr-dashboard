@@ -672,8 +672,8 @@ function DraftCard({ draft, onApprove, onReject }) {
       <textarea value={text} onChange={e => setText(e.target.value)} rows={3}
         style={{ width:'100%', boxSizing:'border-box', border:'1px solid #E4E7EC', borderRadius:8, padding:'8px 10px', fontSize:12.5, fontFamily:'inherit', resize:'vertical', color:'var(--text-strong)' }} />
       <div style={{ display:'flex', gap:8, justifyContent:'flex-end', marginTop:8 }}>
-        <button disabled={busy} onClick={async () => { setBusy(true); await onReject(draft.id) }}
-          style={{ padding:'7px 14px', borderRadius:8, border:'1px solid #FCA5A5', background:'#FEF2F2', color:'#dc2626', fontSize:12.5, fontWeight:700, cursor:'pointer' }}>Verwerfen</button>
+        <button className="lk-btn lk-btn-danger" disabled={busy} onClick={async () => { setBusy(true); await onReject(draft.id) }}
+          >Verwerfen</button>
         <button disabled={!canSend} onClick={async () => { setBusy(true); await onApprove(draft.id, text) }}
           style={{ padding:'7px 14px', borderRadius:8, border:'none', background:PRIMARY_VAR, color:'#fff', fontSize:12.5, fontWeight:700, cursor: canSend ? 'pointer' : 'default', opacity: canSend ? 1 : 0.6 }}>Freigeben &amp; senden</button>
       </div>

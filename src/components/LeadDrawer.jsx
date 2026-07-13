@@ -254,8 +254,8 @@ export default function LeadDrawer({ lead, session, onClose, onUpdate, onDelete 
                 return <button key={d} onClick={async()=>{ await supabase.from('leads').update({next_followup:iso}).eq('id',lead.id); onUpdate({...lead,next_followup:iso}); setQuickLog(null) }}
                   style={{ padding:'3px 9px', borderRadius:6, border:'1px solid #BFDBFE', background:'#EFF6FF', fontSize:11, fontWeight:600, color:'#1d4ed8', cursor:'pointer' }}>{l}</button>
               })}
-              {lead.next_followup && <button onClick={async()=>{ await supabase.from('leads').update({next_followup:null}).eq('id',lead.id); onUpdate({...lead,next_followup:null}); setQuickLog(null) }}
-                style={{ padding:'3px 9px', borderRadius:6, border:'1px solid #FECACA', background:'#FEF2F2', fontSize:11, fontWeight:600, color:'#dc2626', cursor:'pointer' }}>Löschen</button>}
+              {lead.next_followup && <button className="lk-btn lk-btn-danger" onClick={async()=>{ await supabase.from('leads').update({next_followup:null}).eq('id',lead.id); onUpdate({...lead,next_followup:null}); setQuickLog(null) }}
+                >Löschen</button>}
             </div>
           </div>
         )}

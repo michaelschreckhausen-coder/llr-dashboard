@@ -483,9 +483,9 @@ export default function LeadlyPanel({ leadly, onClose, embedded = false, hideHea
       {leadly.revertable && (!Array.isArray(leadly.pendingActions) || leadly.pendingActions.length === 0) && (
         <div style={{ borderTop: '1px solid #D1FAE5', background: '#ECFDF5', padding: '8px 12px', display: 'flex', alignItems: 'center', gap: 10 }}>
           <span style={{ fontSize: 12, color: '#065F46', flex: 1 }}>✓ Erledigt{leadly.revertable.label ? ` — ${leadly.revertable.label}` : ''}</span>
-          <button type="button" disabled={leadly.isSending}
+          <button className="lk-btn lk-btn-ghost" type="button" disabled={leadly.isSending}
             onClick={() => leadly.revertLast()}
-            style={{ padding: '5px 12px', borderRadius: 8, border: '1px solid #A7F3D0', background: '#fff', color: '#047857', fontSize: 12, fontWeight: 700, cursor: leadly.isSending ? 'wait' : 'pointer' }}>
+            >
             Rückgängig
           </button>
         </div>

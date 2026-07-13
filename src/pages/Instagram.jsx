@@ -132,11 +132,7 @@ export default function Instagram() {
         )}
       </div>
       {phase === 'ready' && (
-        <button onClick={onRefresh} disabled={refreshing} style={{
-          display: 'flex', alignItems: 'center', gap: 6, padding: '8px 14px',
-          borderRadius: 8, border: `1px solid ${C.border}`, background: '#fff',
-          color: C.text2, fontSize: 13, fontWeight: 600, cursor: 'pointer',
-        }}>
+        <button className="lk-btn lk-btn-ghost" onClick={onRefresh} disabled={refreshing} style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
           <RefreshCw size={15} style={refreshing ? { animation: 'spin 1s linear infinite' } : undefined} />
           Aktualisieren
         </button>
@@ -179,10 +175,7 @@ export default function Instagram() {
         padding: '18px 20px', color: '#991B1B', fontSize: 14,
       }}>
         {err || 'Es ist ein Fehler aufgetreten.'}
-        <button onClick={load} style={{
-          marginLeft: 12, padding: '4px 12px', borderRadius: 7, border: '1px solid #FECACA',
-          background: '#fff', color: '#991B1B', fontSize: 13, fontWeight: 600, cursor: 'pointer',
-        }}>Erneut versuchen</button>
+        <button className="lk-btn lk-btn-ghost" onClick={load} style={{ marginLeft: 12 }}>Erneut versuchen</button>
       </div>
     )
   }

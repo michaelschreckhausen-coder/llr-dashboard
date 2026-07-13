@@ -146,7 +146,7 @@ export default function LinkedInConnect({ session }) {
                 <div style={{ width:8, height:8, borderRadius:'50%', background:'#10B981' }}/>
                 <span style={{ fontSize:13, fontWeight:700, color:'#065F46' }}>Connected</span>
               </div>
-              <button onClick={handleDisconnect} style={{ padding:'7px 14px', borderRadius:10, border:'1px solid #FCA5A5', background:'#FEF2F2', color:'#DC2626', fontSize:12, fontWeight:700, cursor:'pointer' }}>Trennen</button>
+              <button className="lk-btn lk-btn-danger" onClick={handleDisconnect} >Trennen</button>
             </div>
           ) : (
             <div style={{ display:'flex', alignItems:'center', gap:7, background:'var(--surface-muted)', border:'1px solid var(--border)', borderRadius:20, padding:'6px 14px' }}>

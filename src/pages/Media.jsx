@@ -352,7 +352,7 @@ export default function Media({ session }) {
                 <button className="lk-btn lk-btn-ghost" onClick={() => window.open(lightbox.signed_url, '_blank', 'noopener')} >Öffnen</button>
               )}
               {!lightbox.identity && (
-                <button onClick={() => archiveItem(lightbox.id)} style={{ padding:'6px 12px', borderRadius:7, border:'1px solid #FCA5A5', background:'#FEF2F2', color:'#b91c1c', cursor:'pointer', fontSize:12, fontWeight:600 }}>Entfernen</button>
+                <button className="lk-btn lk-btn-danger" onClick={() => archiveItem(lightbox.id)} >Entfernen</button>
               )}
               <button onClick={() => setLightbox(null)} style={{ background:'none', border:'none', fontSize:18, cursor:'pointer', color:'var(--text-muted)' }}><X size={14} strokeWidth={1.75}/></button>
             </div>

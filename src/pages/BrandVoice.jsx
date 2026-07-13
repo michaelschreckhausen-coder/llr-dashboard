@@ -601,7 +601,7 @@ function QuickSetup({ session, onDone, onSkip, onBack, brandType = 'personal' })
           <Lb l={isCo ? 'Ziel der Company Page' : 'Dein LinkedIn-Ziel'} />
           <PillSelect value={goal} onChange={setGoal} neutral placeholder={'Ziel wählen…'} options={GOAL_LIST.map(g => ({ value:g, label:g }))} buttonStyle={{ width:'100%', padding:'9px 11px', borderRadius:8 }} />
           <div style={{ display:'flex', gap:8, marginTop:8 }}>
-            <button onClick={()=>setStep(1)} style={{ padding:'10px 24px', background:'#f5f5f5', border:'none', borderRadius:8, fontSize:14, cursor:'pointer' }}>← Zurück</button>
+            <button className="lk-btn lk-btn-ghost" onClick={()=>setStep(1)} >← Zurück</button>
             <button className="lk-btn lk-btn-primary" onClick={()=>setStep(3)} >Weiter →</button>
           </div>
         </>}/>
@@ -624,7 +624,7 @@ function QuickSetup({ session, onDone, onSkip, onBack, brandType = 'personal' })
           )}
           {generating && <GenerationLoading title={isCo ? 'Company Brand wird gebaut' : 'Personal Brand wird gebaut'} expectedSeconds={45} />}
           <div style={{ display:'flex', gap:8, marginTop:8 }}>
-            <button onClick={()=>setStep(2)} disabled={generating} style={{ padding:'10px 24px', background:'#f5f5f5', border:'none', borderRadius:8, fontSize:14, cursor:generating?'not-allowed':'pointer', opacity:generating?.5:1 }}>← Zurück</button>
+            <button className="lk-btn lk-btn-ghost" onClick={()=>setStep(2)} disabled={generating} style={{ opacity:generating?.5:1 }}>← Zurück</button>
             <button className="lk-btn lk-btn-cta" onClick={generate} disabled={generating} style={{ opacity:generating?.6:1 }}>
               {generating ? <span style={{display:'inline-flex',alignItems:'center',gap:6}}><Loader2 size={14} className="lk-spin"/>KI generiert…</span> : <span style={{display:'inline-flex',alignItems:'center',gap:6}}><Sparkles size={14}/>{isCo ? 'Company Brand generieren' : 'Personal Brand generieren'}</span>}
             </button>

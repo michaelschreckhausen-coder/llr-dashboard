@@ -344,7 +344,7 @@ function TaskDetailModal({task,columns,onClose,onSaved,onDeleted,session,allUser
                 </div>
               </div>
               <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',paddingTop:8,borderTop:'1px solid #F1F5F9'}}>
-                <button onClick={()=>{if(window.confirm('Task löschen?'))onDeleted(task.id)}} style={{padding:'9px 16px',borderRadius:10,border:'1.5px solid #FECACA',background:'#FEF2F2',color:'#ef4444',fontSize:13,fontWeight:700,cursor:'pointer'}}>Löschen</button>
+                <button className="lk-btn lk-btn-danger" onClick={()=>{if(window.confirm('Task löschen?'))onDeleted(task.id)}} >Löschen</button>
                 <button onClick={save} disabled={saving} style={{padding:'9px 20px',borderRadius:10,border:'none',background:'#0A66C2',color:'#fff',fontSize:13,fontWeight:700,cursor:'pointer',opacity:saving?0.7:1}}>{saving?'Speichern…':'Speichern'}</button>
               </div>
             </div>
@@ -789,7 +789,7 @@ export default function Projektmanagement({session}){
           </div>
         )}
         {hasFilters&&(
-          <button onClick={()=>{setFilterMember('');setFilterLabel('');setFilterPriority('');setSearchQuery('')}} style={{padding:'6px 12px',borderRadius:8,border:'1.5px solid #E2E8F0',background:'#F1F5F9',color:'var(--text-muted)',fontSize:12,fontWeight:600,cursor:'pointer'}}>Filter zurücksetzen</button>
+          <button className="lk-btn lk-btn-ghost" onClick={()=>{setFilterMember('');setFilterLabel('');setFilterPriority('');setSearchQuery('')}} >Filter zurücksetzen</button>
         )}
       </div>
 
@@ -852,7 +852,7 @@ export default function Projektmanagement({session}){
             </div>
             <div><label style={{fontSize:11,fontWeight:700,color:'var(--text-muted)',display:'block',marginBottom:5}}>WIP-LIMIT (optional)</label><input type="number" value={colForm.wip_limit} onChange={e=>setColForm(p=>({...p,wip_limit:e.target.value}))} placeholder="Max. Tasks" style={inp} min={0}/></div>
             <div style={{display:'flex',justifyContent:'space-between',paddingTop:8}}>
-              {colModal!=='new'&&<button onClick={()=>handleDeleteCol(colModal)} style={{padding:'9px 16px',borderRadius:10,border:'1.5px solid #FECACA',background:'#FEF2F2',color:'#ef4444',fontSize:13,fontWeight:700,cursor:'pointer'}}>Löschen</button>}
+              {colModal!=='new'&&<button className="lk-btn lk-btn-danger" onClick={()=>handleDeleteCol(colModal)} >Löschen</button>}
               <div style={{display:'flex',gap:8,marginLeft:'auto'}}>
                 <button className="lk-btn lk-btn-ghost" onClick={()=>setColModal(null)} >Abbrechen</button>
                 <button onClick={handleSaveCol} disabled={saving||!colForm.name.trim()} style={{padding:'9px 20px',borderRadius:10,border:'none',background:'#0A66C2',color:'#fff',fontSize:13,fontWeight:700,cursor:'pointer',opacity:!colForm.name.trim()?0.5:1}}>Speichern</button>
@@ -874,11 +874,11 @@ export default function Projektmanagement({session}){
             </div>
             <div style={{display:'flex',justifyContent:'space-between',paddingTop:8}}>
               {projModal!=='new'&&(
-                <button onClick={async()=>{
+                <button className="lk-btn lk-btn-danger" onClick={async()=>{
                   if(!window.confirm(`Projekt "${projForm.name}" und alle Tasks löschen?`))return
                   await supabase.from('pm_projects').delete().eq('id',projModal)
                   setProjModal(null);setProjects(prev=>{const r=prev.filter(p=>p.id!==projModal);if(r.length>0)setActiveProj(r[0].id);return r});showFlash('Projekt gelöscht')
-                }} style={{padding:'9px 16px',borderRadius:10,border:'1.5px solid #FECACA',background:'#FEF2F2',color:'#ef4444',fontSize:13,fontWeight:700,cursor:'pointer'}}>Löschen</button>
+                }} >Löschen</button>
               )}
               <div style={{display:'flex',gap:8,marginLeft:'auto'}}>
                 <button className="lk-btn lk-btn-ghost" onClick={()=>setProjModal(null)} >Abbrechen</button>

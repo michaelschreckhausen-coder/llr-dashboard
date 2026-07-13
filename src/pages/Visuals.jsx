@@ -429,7 +429,7 @@ export default function Visuals({ session, kindFilter = null, embedded = false, 
               </button>
               <button className="lk-btn lk-btn-ghost" onClick={() => downloadImage(lightbox)} ><Upload size={12} strokeWidth={1.9} style={{ transform:'rotate(180deg)', marginRight:6 }}/>Download</button>
               <button className="lk-btn lk-btn-ghost" onClick={() => { openDesignerPicker(lightbox); setLightbox(null) }} ><Pencil size={12} strokeWidth={1.75} style={{ marginRight:6 }} />Im Designer öffnen</button>
-              <button onClick={() => { archiveVisual(lightbox.id); setLightbox(null) }} style={{ padding:'6px 12px', borderRadius:8, border:'1px solid #FCA5A5', background:'#FEF2F2', color:'#b91c1c', cursor:'pointer', fontSize:12, fontWeight:600 }}><Trash2 size={12} strokeWidth={1.75} style={{ marginRight:6 }} />Löschen</button>
+              <button className="lk-btn lk-btn-danger" onClick={() => { archiveVisual(lightbox.id); setLightbox(null) }} ><Trash2 size={12} strokeWidth={1.75} style={{ marginRight:6 }} />Löschen</button>
               <button onClick={() => setLightbox(null)} style={{ background:'none', border:'none', fontSize:18, cursor:'pointer', color:'var(--text-muted)' }}><X size={14} strokeWidth={1.75}/></button>
             </div>
             {lightbox.signed_url && (

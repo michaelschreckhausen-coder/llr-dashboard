@@ -125,7 +125,7 @@ export default function ICP({ session }) {
           </label>
         </div>
         <div style={{ display: 'flex', justifyContent: 'space-between', padding: '14px 0' }}>
-          <button onClick={() => setEditing(null)} style={{ padding: '8px 18px', borderRadius: 18, background: '#F1F5F9', border: 'none', fontSize: 13, cursor: 'pointer' }}>
+          <button className="lk-btn lk-btn-ghost" onClick={() => setEditing(null)} >
             Abbrechen
           </button>
           <div style={{ display: 'flex', gap: 10, alignItems: 'center' }}>

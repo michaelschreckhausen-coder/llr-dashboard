@@ -405,8 +405,8 @@ export default function Marketplace() {
               </div>
             )}
             <div style={{ display: 'flex', gap: 10, justifyContent: 'flex-end' }}>
-              <button onClick={() => setPendingAddon(null)} disabled={activating}
-                style={{ border: '0.5px solid #CBD5E1', background: '#fff', borderRadius: 10, padding: '10px 18px', fontSize: 13.5, fontWeight: 500, cursor: 'pointer', color: '#475569' }}>
+              <button className="lk-btn lk-btn-ghost" onClick={() => setPendingAddon(null)} disabled={activating}
+                >
                 Abbrechen
               </button>
               <button className="lk-btn lk-btn-primary" onClick={() => doActivateFree(pendingAddon)} disabled={activating}
@@ -429,8 +429,8 @@ export default function Marketplace() {
               (z.B. übernommene Ideen im Redaktionsplan) bleiben erhalten. Du kannst es jederzeit wieder aktivieren.
             </p>
             <div style={{ display: 'flex', gap: 10, justifyContent: 'flex-end' }}>
-              <button onClick={() => setPendingCancel(null)} disabled={canceling}
-                style={{ border: '0.5px solid #CBD5E1', background: '#fff', borderRadius: 10, padding: '10px 18px', fontSize: 13.5, fontWeight: 500, cursor: 'pointer', color: '#475569' }}>
+              <button className="lk-btn lk-btn-ghost" onClick={() => setPendingCancel(null)} disabled={canceling}
+                >
                 Abbrechen
               </button>
               <button onClick={() => doCancelConfirmed(pendingCancel)} disabled={canceling}
