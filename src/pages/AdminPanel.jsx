@@ -1,3 +1,4 @@
+import PillSelect from '../components/PillSelect'
 import React, { useState, useEffect } from 'react'
 import { supabase } from '../lib/supabase'
 const IND = 'var(--wl-primary, #0A6FB0)'
@@ -203,12 +204,7 @@ export default function AdminPanel({ session }) {
                         </option>
                       ))}
                     </select>
-                    <select value={addRole} onChange={e=>setAddRole(e.target.value)}
-                      style={{padding:'7px 10px',border:'1px solid var(--border)',borderRadius:8,fontSize:13,outline:'none'}}>
-                      <option value='member'>member</option>
-                      <option value='admin'>admin</option>
-                      <option value='team_member'>team_member</option>
-                    </select>
+                    <PillSelect value={addRole} onChange={setAddRole} neutral options={[{ value: 'member', label: 'member' }, { value: 'admin', label: 'admin' }, { value: 'team_member', label: 'team_member' }]} buttonStyle={{ minWidth: 140 }} />
                     <button onClick={async()=>{
                       if(!addUserId){flash_('Bitte Nutzer wählen','err');return}
                       await addUserToTeam(t.id, addUserId, addRole)

@@ -1093,16 +1093,7 @@ function ActivityTab({ leadId, leadTeamId, lead, initialDraft, onDraftConsumed }
 
       {/* Quick-Add — schreibt in activities-Tabelle */}
       <div style={{ display:'flex', gap:8, marginBottom:18 }}>
-        <select value={newType} onChange={e => setNewType(e.target.value)}
-          style={{ ...inputStyle, width: 150, flex: 'none' }}>
-          <option value="note">Notiz</option>
-          <option value="call">Anruf</option>
-          <option value="meeting">Meeting</option>
-          <option value="email">E-Mail</option>
-          <option value="task">Aufgabe</option>
-          <option value="linkedin_message">LinkedIn-Nachricht</option>
-          <option value="linkedin_connection">LinkedIn-Verbindung</option>
-        </select>
+        <PillSelect value={newType} onChange={setNewType} neutral options={[{ value: 'note', label: 'Notiz' }, { value: 'call', label: 'Anruf' }, { value: 'meeting', label: 'Meeting' }, { value: 'email', label: 'E-Mail' }, { value: 'task', label: 'Aufgabe' }, { value: 'linkedin_message', label: 'LinkedIn-Nachricht' }, { value: 'linkedin_connection', label: 'LinkedIn-Verbindung' }]} buttonStyle={{ minWidth: 140 }} />
         <input style={{ ...inputStyle, flex:1 }}
           placeholder="Was ist passiert? Kurzbeschreibung…"
           value={newSubject} onChange={e => setNewSubject(e.target.value)}
@@ -1119,12 +1110,7 @@ function ActivityTab({ leadId, leadTeamId, lead, initialDraft, onDraftConsumed }
             <Send size={15} />
           </span>
           <span style={{ fontSize:11, fontWeight:700, color: COLORS.textTertiary, textTransform:'uppercase', letterSpacing:'0.06em', whiteSpace:'nowrap' }}>Nachricht verfassen</span>
-          <select value={msgType} onChange={e => setMsgType(e.target.value)}
-            style={{ ...inputStyle, width: 180, flex: 'none', marginLeft:'auto', height:32 }}>
-            <option value="linkedin_message">LinkedIn-Nachricht</option>
-            <option value="email">E-Mail</option>
-            <option value="message">Sonstige Nachricht</option>
-          </select>
+          <PillSelect value={msgType} onChange={setMsgType} neutral options={[{ value: 'linkedin_message', label: 'LinkedIn-Nachricht' }, { value: 'email', label: 'E-Mail' }, { value: 'message', label: 'Sonstige Nachricht' }]} buttonStyle={{ minWidth: 140 }} />
         </div>
         <textarea style={textareaStyle}
           placeholder={lead && (lead.first_name || lead.last_name) ? `Nachricht an ${[lead.first_name, lead.last_name].filter(Boolean).join(' ')}…` : 'Nachricht eingeben…'}
@@ -1572,12 +1558,7 @@ function TasksTab({ leadId, leadTeamId, onMutated }) {
           </div>
           {/* Priorität */}
           <div style={selectChipWrapStyle} title="Priorität">
-            <select style={{ ...selectChipStyle, minWidth: 120 }}
-              value={priority} onChange={e => setPriority(e.target.value)}>
-              <option value="low">Niedrig</option>
-              <option value="normal">Normal</option>
-              <option value="high">Hoch</option>
-            </select>
+            <PillSelect value={priority} onChange={setPriority} neutral options={[{ value: 'low', label: 'Niedrig' }, { value: 'normal', label: 'Normal' }, { value: 'high', label: 'Hoch' }]} buttonStyle={{ minWidth: 140 }} />
             <ChevronDown size={14} style={chevronStyle} />
           </div>
           <div style={{ flex: 1, minWidth: 12 }} />

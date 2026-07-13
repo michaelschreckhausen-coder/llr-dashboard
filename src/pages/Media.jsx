@@ -2,6 +2,7 @@
 // Medien-Bibliothek: alle eigenen Uploads (Bilder, Videos, PDFs) zentral.
 // Unterscheidet sich von /visuals (das nur AI-generierte Bilder zeigt).
 
+import PillSelect from '../components/PillSelect'
 import React, { useState, useEffect, useRef } from 'react'
 import { User, X } from 'lucide-react'
 import { useNavigate } from 'react-router-dom'
@@ -255,15 +256,7 @@ export default function Media({ session }) {
         <input type="text" value={search} onChange={e => setSearch(e.target.value)}
           placeholder="Suche nach Dateiname…"
           style={{ flex:'1 1 240px', minWidth:200, padding:'8px 12px', borderRadius:8, border:'1.5px solid var(--border)', fontSize:13, fontFamily:'inherit', outline:'none' }}/>
-        <select value={typeFilter} onChange={e => setTypeFilter(e.target.value)}
-          style={{ padding:'8px 10px', borderRadius:8, border:'1.5px solid var(--border)', fontSize:13, fontFamily:'inherit', background:'#fff', cursor:'pointer' }}>
-          <option value="all">Alle Medien</option>
-          <option value="identity">Visuelle Identität</option>
-          <option value="generated">Generiert</option>
-          <option value="upload">Uploads</option>
-          <option value="video">Videos</option>
-          <option value="document">PDFs</option>
-        </select>
+        <PillSelect value={typeFilter} onChange={setTypeFilter} neutral options={[{ value: 'all', label: 'Alle Medien' }, { value: 'identity', label: 'Visuelle Identität' }, { value: 'generated', label: 'Generiert' }, { value: 'upload', label: 'Uploads' }, { value: 'video', label: 'Videos' }, { value: 'document', label: 'PDFs' }]} buttonStyle={{ minWidth: 140 }} />
 
         <div style={{ flex:1 }}/>
         <button className="lk-btn lk-btn-primary" type="button" onClick={() => fileInputRef.current?.click()}

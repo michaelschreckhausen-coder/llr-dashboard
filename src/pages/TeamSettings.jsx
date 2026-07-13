@@ -1,3 +1,4 @@
+import PillSelect from '../components/PillSelect'
 import React, { useState, useEffect } from 'react'
 import { ClipboardList, FileText, Search, User, X } from 'lucide-react'
 import { supabase } from '../lib/supabase'
@@ -496,13 +497,7 @@ export default function TeamSettings({ session }) {
                       {new Date(m.joined_at).toLocaleDateString('de-DE')}
                     </td>
                     <td>
-                      <select value={m.role||'member'} onChange={e => changeRole(m.id, e.target.value)}
-                        disabled={roleChanging === m.id || isMe}
-                        style={{ padding:'4px 8px', borderRadius:7, border:'1.5px solid #E2E8F0', fontSize:12, fontWeight:600, color:rC[m.role||'user']||'#64748B', background:'var(--surface-muted)', cursor:'pointer' }}>
-                        <option value="member">member</option>
-                        <option value="admin">admin</option>
-                        <option value="owner">owner</option>
-                      </select>
+                      <PillSelect value={m.role||'member'} onChange={v => changeRole(m.id, v)} neutral options={[{ value: 'member', label: 'member' }, { value: 'admin', label: 'admin' }, { value: 'owner', label: 'owner' }]} buttonStyle={{ minWidth: 140 }} />
                     </td>
                     <td style={{ textAlign:'right' }}>
                       <div style={{ display:'flex', gap:6, justifyContent:'flex-end', alignItems:'center' }}>
@@ -615,10 +610,7 @@ export default function TeamSettings({ session }) {
             <div style={{ display:'grid', gridTemplateColumns:'1fr auto auto', gap:10 }}>
               <input className='ts-ip' type='email' value={invEmail} onChange={e => setInvEmail(e.target.value)}
                 placeholder='email@beispiel.de' onKeyDown={e => e.key === 'Enter' && sendInvite()}/>
-              <select className='ts-ip' value={invRole} onChange={e => setInvRole(e.target.value)}>
-                <option value='user'>User</option>
-                <option value='team_member'>Team Admin</option>
-              </select>
+              <PillSelect value={invRole} onChange={setInvRole} neutral options={[{ value: 'user', label: 'User' }, { value: 'team_member', label: 'Team Admin' }]} buttonStyle={{ minWidth: 140 }} />
               <button className='ts-bp' onClick={sendInvite}>Einladen</button>
             </div>
           </div>

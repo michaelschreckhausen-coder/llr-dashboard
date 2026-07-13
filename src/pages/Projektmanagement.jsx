@@ -1,3 +1,4 @@
+import PillSelect from '../components/PillSelect'
 import React, { useEffect, useState, useRef, useCallback } from 'react'
 import { X } from 'lucide-react'
 import { useNavigate } from 'react-router-dom'
@@ -769,9 +770,7 @@ export default function Projektmanagement({session}){
         <div style={{display:'flex',gap:8,alignItems:'center'}}>
           {/* Kanban-Board-Umschalter ausgeblendet — Board-Ansicht aktuell nicht nutzbar, nur Liste */}
           <button className="lk-btn lk-btn-ghost" onClick={()=>setShowLabelManager(true)} >Labels</button>
-          <select value={sortBy} onChange={e=>setSortBy(e.target.value)} style={{padding:'6px 10px',borderRadius:8,border:'1.5px solid #E2E8F0',fontSize:12,fontFamily:'inherit',color:'var(--text-muted)',background:'var(--surface)'}}>
-            <option value="position">Standard</option><option value="priority">Priorität</option><option value="due_date">Fälligkeit</option><option value="name">Name A→Z</option>
-          </select>
+          <PillSelect value={sortBy} onChange={setSortBy} neutral options={[{ value: 'position', label: 'Standard' }, { value: 'priority', label: 'Priorität' }, { value: 'due_date', label: 'Fälligkeit' }, { value: 'name', label: 'Name A→Z' }]} buttonStyle={{ minWidth: 140 }} />
           <button onClick={()=>{setColModal('new');setColForm({name:'',color:'#0A66C2',wip_limit:''})}} style={{padding:'6px 14px',borderRadius:8,border:'1.5px solid #0A66C2',background:'#EFF6FF',color:'#0A66C2',fontSize:12,fontWeight:700,cursor:'pointer'}}>+ Spalte</button>
         </div>
       </div>
@@ -793,9 +792,7 @@ export default function Projektmanagement({session}){
           <option value="">Alle Labels</option>
           {projectLabels.map(l=><option key={l.id} value={l.id}>{l.name}</option>)}
         </select>
-        <select value={filterPriority} onChange={e=>setFilterPriority(e.target.value)} style={{padding:'6px 10px',borderRadius:8,border:'1.5px solid #E2E8F0',fontSize:12,fontFamily:'inherit',color:filterPriority?'#0A66C2':'#94A3B8',background:filterPriority?'#EFF6FF':'#fff'}}>
-          <option value="">⬆ Alle Prioritäten</option><option value="urgent">Dringend</option><option value="high">↑ Hoch</option><option value="medium">→ Mittel</option><option value="low">↓ Niedrig</option>
-        </select>
+        <PillSelect value={filterPriority} onChange={setFilterPriority} neutral options={[{ value: '', label: '⬆ Alle Prioritäten' }, { value: 'urgent', label: 'Dringend' }, { value: 'high', label: '↑ Hoch' }, { value: 'medium', label: '→ Mittel' }, { value: 'low', label: '↓ Niedrig' }]} buttonStyle={{ minWidth: 140 }} />
         {overdueTasks.length>0&&(
           <div style={{display:'flex',alignItems:'center',gap:6,padding:'5px 12px',borderRadius:8,background:'#FEF2F2',border:'1px solid #FECACA',cursor:'pointer'}} onClick={()=>{setFilterPriority('');setFilterMember('');setFilterLabel('');setSearchQuery('');setSortBy('due_date')}}>
             <span style={{fontSize:12,color:'#ef4444',fontWeight:700}}>{overdueTasks.length} überfällig</span>
