@@ -1,4 +1,5 @@
 import { useTranslation } from 'react-i18next'
+import PillSelect from '../components/PillSelect'
 import React, { useEffect, useState } from 'react'
 import { useLocalStorageState, clearDraftsByPrefix } from '../lib/useLocalStorageState'
 import { useTabPersistedState, clearTabPersistedKey } from '../lib/useTabPersistedState'
@@ -205,11 +206,14 @@ function GlossaryEditor({ items, onChange }) {
 // ─── Dropdown ─────────────────────────────────────────────────────────────────
 function Dd({ v, fn, opts, ph }) {
   return (
-    <select value={v||''} onChange={e=>fn(e.target.value)}
-      style={{ width:'100%', padding:'8px 11px', border:'1.5px solid #dde3ea', borderRadius:8, fontSize:13, background:'var(--surface)', outline:'none' }}>
-      {ph && <option value="">{ph}</option>}
-      {opts.map(o => <option key={o} value={o}>{o}</option>)}
-    </select>
+    <PillSelect
+      value={v||''}
+      onChange={fn}
+      placeholder={ph||'Wählen…'}
+      neutral
+      options={[ ...(ph ? [{ value:'', label:ph }] : []), ...opts.map(o => ({ value:o, label:o })) ]}
+      buttonStyle={{ width:'100%', padding:'9px 11px', borderRadius:8 }}
+    />
   )
 }
 
@@ -595,9 +599,7 @@ function QuickSetup({ session, onDone, onSkip, onBack, brandType = 'personal' })
             + Tonalität hinzufügen
           </button>
           <Lb l={isCo ? 'Ziel der Company Page' : 'Dein LinkedIn-Ziel'} />
-          <select value={goal} onChange={e=>setGoal(e.target.value)} style={{ width:'100%', padding:'8px 11px', border:'1.5px solid #dde3ea', borderRadius:8, fontSize:13 }}>
-            {GOAL_LIST.map(g => <option key={g}>{g}</option>)}
-          </select>
+          <PillSelect value={goal} onChange={setGoal} neutral placeholder={'Ziel wählen…'} options={GOAL_LIST.map(g => ({ value:g, label:g }))} buttonStyle={{ width:'100%', padding:'9px 11px', borderRadius:8 }} />
           <div style={{ display:'flex', gap:8, marginTop:8 }}>
             <button onClick={()=>setStep(1)} style={{ padding:'10px 24px', background:'#f5f5f5', border:'none', borderRadius:8, fontSize:14, cursor:'pointer' }}>← Zurück</button>
             <button className="lk-btn lk-btn-primary" onClick={()=>setStep(3)} >Weiter →</button>
