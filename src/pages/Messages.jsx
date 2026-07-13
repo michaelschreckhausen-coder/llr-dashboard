@@ -616,7 +616,7 @@ export default function Messages({ session }) {
 
       {/* Result-Card */}
       {result && (
-        <section style={{ background:'var(--surface)', borderRadius:14, border:'1px solid var(--border)', overflow:'hidden', marginBottom:18 }}>
+        <section style={{ background:'var(--surface)', borderRadius:16, border:'1px solid var(--border)', overflow:'hidden', marginBottom:18, boxShadow:'var(--shadow-card)' }}>
           <div style={{ padding:'12px 16px', borderBottom:'1px solid #F1F5F9', display:'flex', alignItems:'center', justifyContent:'space-between', background:'#FAFAFA', flexWrap:'wrap', gap:8 }}>
             <div style={{ fontWeight:700, fontSize:13, display:'flex', alignItems:'center', gap:6, flexWrap:'wrap' }}>
               Generierter Text
