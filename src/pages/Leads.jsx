@@ -915,7 +915,7 @@ export default function Leads() {
       <button type="button" style={iconBtnStyle} aria-label="Benachrichtigungen">
         <Bell size={16} />
       </button>
-      <button type="button" style={primaryBtnStyle} onClick={() => setNewLeadOpen(true)}>
+      <button type="button" className="lk-btn lk-btn-cta" onClick={() => setNewLeadOpen(true)}>
         <Plus size={16} /> Neuer Kontakt
       </button>
     </div>
@@ -1405,8 +1405,14 @@ export default function Leads() {
                   <div style={{ display:'flex', alignItems:'center', gap:8 }}>
                     <span style={{ fontSize:12, color: COLORS.textTertiary }}>Pro Seite:</span>
                     {[25, 50, 100].map(n => (
-                      <button className="lk-btn lk-btn-primary" key={n} type="button" onClick={() => changePageSize(n)}
-                        >{n}</button>
+                      <button key={n} type="button" onClick={() => changePageSize(n)}
+                        style={{
+                          padding:'5px 11px', borderRadius:8, fontSize:12, fontWeight: pageSize===n ? 700 : 500,
+                          cursor:'pointer',
+                          border:`1.5px solid ${pageSize===n ? PRIMARY : '#E4E7EC'}`,
+                          background: pageSize===n ? PRIMARY : 'var(--surface)',
+                          color: pageSize===n ? '#fff' : COLORS.textSecondary,
+                        }}>{n}</button>
                     ))}
                   </div>
                   <div style={{ display:'flex', alignItems:'center', gap:10 }}>
@@ -2277,7 +2283,7 @@ function NewLeadModal({ onClose, onSaved, activeTeamId, userId, teamMembers = []
     <ModalShell title="Neuer Kontakt" onClose={onClose} footer={
       <>
         <button type="button" style={ghostBtnStyle} onClick={onClose} disabled={busy}>Abbrechen</button>
-        <button type="button" style={primaryBtnStyle} onClick={submit} disabled={busy}>
+        <button type="button" className="lk-btn lk-btn-cta" onClick={submit} disabled={busy}>
           {busy ? 'Speichere…' : 'Lead anlegen'}
         </button>
       </>
@@ -2355,7 +2361,7 @@ function NewListModal({ activeTeamId, onClose, onSaved }) {
     <ModalShell title="Neue Liste" onClose={onClose} footer={
       <>
         <button type="button" style={ghostBtnStyle} onClick={onClose} disabled={busy}>Abbrechen</button>
-        <button type="button" style={primaryBtnStyle} onClick={submit} disabled={busy}>
+        <button type="button" className="lk-btn lk-btn-cta" onClick={submit} disabled={busy}>
           {busy ? 'Speichere…' : 'Anlegen'}
         </button>
       </>
@@ -2467,7 +2473,7 @@ function ImportCsvModal({ activeTeamId, onClose, onImported }) {
     <ModalShell title="CSV importieren" onClose={onClose} width={620} footer={
       <>
         <button type="button" style={ghostBtnStyle} onClick={onClose} disabled={busy}>Abbrechen</button>
-        <button type="button" style={primaryBtnStyle} onClick={submit} disabled={busy || !preview}>
+        <button type="button" className="lk-btn lk-btn-cta" onClick={submit} disabled={busy || !preview}>
           {busy ? 'Importiere…' : preview ? `${preview.rows.length} Leads importieren` : 'Datei wählen'}
         </button>
       </>
