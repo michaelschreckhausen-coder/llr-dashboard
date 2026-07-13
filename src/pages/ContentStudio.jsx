@@ -2357,7 +2357,7 @@ function ModelDropdown({ value, onChange }) {
   }, [open])
   return (
     <div ref={ref} style={{ position:'relative', display:'inline-block' }}>
-      <button className="lk-btn lk-btn-ghost" type="button" onClick={() => setOpen(o => !o)} title="Bildmodell"
+      <button className="lk-dd-trigger" type="button" onClick={() => setOpen(o => !o)} title="Bildmodell"
         style={{ boxSizing:'border-box', lineHeight:1, whiteSpace:'nowrap', display:'inline-flex', alignItems:'center', gap:6, fontFamily:'inherit', flexShrink:0, maxWidth:210 }}>
         <span style={{ flex:1, minWidth:0, overflow:'hidden', textOverflow:'ellipsis', textAlign:'left' }}>{imageModelName(value)}</span>
         <ChevronDown size={14} strokeWidth={2} style={{ opacity:0.5, marginLeft:2, flexShrink:0 }}/>
@@ -2398,7 +2398,7 @@ function CountDropdown({ value = 'auto', onChange = () => {} }) {
   const cur = IMAGE_COUNT_OPTS.find(o => o.v === value) || IMAGE_COUNT_OPTS[0]
   return (
     <div ref={ref} style={{ position:'relative', display:'inline-block' }}>
-      <Tip label="Anzahl der Bilder"><button className="lk-btn lk-btn-ghost" type="button" onClick={() => setOpen(o => !o)}
+      <Tip label="Anzahl der Bilder"><button className="lk-dd-trigger" type="button" onClick={() => setOpen(o => !o)}
         style={{ boxSizing:'border-box', lineHeight:1, whiteSpace:'nowrap', display:'inline-flex', alignItems:'center', gap:6, fontFamily:'inherit', flexShrink:0 }}>
         <span>{value === 'auto' ? 'Anzahl: Auto' : cur.label}</span>
         <ChevronDown size={14} strokeWidth={2} style={{ opacity:0.5, marginLeft:2, flexShrink:0 }}/>
