@@ -202,8 +202,8 @@ function DesignsTab({ reloadKey = 0 } = {}) {
       ) : (
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(180px, 1fr))', gap: 14 }}>
           {designs.map(d => (
-            <button key={d.id} onClick={() => openDesign(d)} title={d.title || 'Design'}
-              style={{ display: 'flex', flexDirection: 'column', gap: 6, padding: 0, border: '1px solid var(--border,#E9ECF2)', borderRadius: 12, background: '#fff', cursor: 'pointer', fontFamily: 'inherit', overflow: 'hidden', textAlign: 'left' }}>
+            <button className="lk-btn lk-btn-ghost" key={d.id} onClick={() => openDesign(d)} title={d.title || 'Design'}
+              style={{ display: 'flex', flexDirection: 'column', gap: 6, fontFamily: 'inherit', overflow: 'hidden', textAlign: 'left' }}>
               <div style={{ width: '100%', aspectRatio: '1 / 1', background: '#f4f6fa center/cover no-repeat' + (d.signed_url ? ` url(${d.signed_url})` : '') }} />
               <div style={{ padding: '8px 10px 10px', fontSize: 12.5, fontWeight: 600, color: 'var(--text-primary)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                 {d.title || 'Design'}

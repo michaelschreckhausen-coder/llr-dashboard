@@ -233,8 +233,8 @@ function DateTimePicker({ value = '', onChange = () => {} }) {
   const label = vp ? (vp.toLocaleString('de-DE', { day:'2-digit', month:'short', year:'numeric', hour:'2-digit', minute:'2-digit' }) + ' Uhr') : ''
   return (
     <div ref={ref} style={{ position:'relative' }}>
-      <button ref={btnRef} type="button" onClick={openMenu}
-        style={{ width:'100%', minHeight:40, padding:'9px 12px', borderRadius:10, border:'1.5px solid var(--border)', background:'#fff', cursor:'pointer', fontFamily:'inherit', display:'flex', alignItems:'center', gap:8, boxSizing:'border-box' }}>
+      <button className="lk-btn lk-btn-ghost" ref={btnRef} type="button" onClick={openMenu}
+        style={{ width:'100%', minHeight:40, fontFamily:'inherit', display:'flex', alignItems:'center', gap:8, boxSizing:'border-box' }}>
         <Calendar size={14} strokeWidth={1.9} style={{ color:'var(--text-muted)', flexShrink:0 }}/>
         <span style={{ flex:1, minWidth:0, textAlign:'left', fontSize:13, color: vp ? 'var(--text-primary)' : 'var(--text-muted)', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{label || 'Datum & Uhrzeit'}</span>
         <ChevronDown size={14} strokeWidth={2} style={{ opacity:0.5, flexShrink:0 }}/>
@@ -995,8 +995,8 @@ function PostModal({ post, onClose, onSave, onDelete, session, activeTeamId, mem
               {!form.content?.trim() ? (
                 /* Empty-State: prominenter Button-Overlay UNTERHALB der Tipps */
                 <div style={{ position:'absolute', bottom:30, left:'50%', transform:'translateX(-50%)', pointerEvents:'none', display:'flex', flexDirection:'column', alignItems:'center', gap:8, padding:'12px 16px', background:'rgba(255,255,255,0.95)', borderRadius:14, boxShadow:'0 4px 18px rgba(15,23,42,0.08)', maxWidth:'88%' }}>
-                  <button type="button" onClick={() => jumpToTextStudio('auto')}
-                    style={{ pointerEvents:'auto', padding:'10px 18px', borderRadius:9, border:'none', background:'var(--wl-primary, #0A6FB0)', color:'#fff', fontSize:13, fontWeight:700, cursor:'pointer', display:'inline-flex', alignItems:'center', gap:6, boxShadow:'0 2px 10px rgba(10,111,176,.25)', whiteSpace:'nowrap' }}>
+                  <button className="lk-btn lk-btn-navy" type="button" onClick={() => jumpToTextStudio('auto')}
+                    style={{ pointerEvents:'auto', display:'inline-flex', alignItems:'center', gap:6, whiteSpace:'nowrap' }}>
                     <span style={{display:'inline-flex',alignItems:'center',gap:6}}><Sparkles size={13}/>In Content-Werkstatt schreiben →</span>
                   </button>
                   <div style={{ fontSize:11, color:'var(--text-muted)', textAlign:'center', lineHeight:1.4 }}>
@@ -1114,8 +1114,8 @@ function PostModal({ post, onClose, onSave, onDelete, session, activeTeamId, mem
                               style={{ padding:'6px 12px', borderRadius:7, border:'none', background:'#fff', color:'var(--text-primary, rgb(20,20,43))', fontSize:11, fontWeight:700, cursor:'pointer', display:'inline-flex', alignItems:'center', gap:5, whiteSpace:'nowrap' }}>
                               ⬇ Download
                             </button>
-                            <button onClick={(e) => { e.stopPropagation(); openVisualInEditor(v) }}
-                              style={{ padding:'6px 12px', borderRadius:7, border:'none', background:'var(--wl-primary, #0A6FB0)', color:'#fff', fontSize:11, fontWeight:700, cursor:'pointer', display:'inline-flex', alignItems:'center', gap:5, whiteSpace:'nowrap' }}>
+                            <button className="lk-btn lk-btn-navy" onClick={(e) => { e.stopPropagation(); openVisualInEditor(v) }}
+                              style={{ display:'inline-flex', alignItems:'center', gap:5, whiteSpace:'nowrap' }}>
                               <span style={{display:'inline-flex',alignItems:'center',gap:6}}><Pencil size={12}/>Bild bearbeiten</span>
                             </button>
                           </div>
@@ -1148,12 +1148,12 @@ function PostModal({ post, onClose, onSave, onDelete, session, activeTeamId, mem
                     uploadMediaFiles(files)
                   }}
                   style={{ position:'absolute', left:'-9999px', width:1, height:1, opacity:0, pointerEvents:'none' }}/>
-                <button onClick={openVisualPicker}
-                  style={{ flex:'1 1 auto', padding:'9px 12px', borderRadius:8, border:'1.5px solid var(--border)', background:'#fff', color:'var(--text-primary)', fontSize:12, fontWeight:600, cursor:'pointer', display:'inline-flex', alignItems:'center', justifyContent:'center', gap:5 }}>
+                <button className="lk-btn lk-btn-ghost" onClick={openVisualPicker}
+                  style={{ flex:'1 1 auto', display:'inline-flex', alignItems:'center', justifyContent:'center', gap:5 }}>
                   <span style={{display:'inline-flex',alignItems:'center',gap:6}}><BookOpen size={12}/>Aus Bibliothek</span>
                 </button>
-                <button onClick={() => { if (navigate) navigate('/content-studio?post_id=' + post.id + '&gen=image'); onClose() }}
-                  style={{ flex:'1 1 auto', padding:'9px 12px', borderRadius:8, border:'1.5px solid var(--border)', background:'#fff', color:'var(--text-primary)', fontSize:12, fontWeight:600, cursor:'pointer', display:'inline-flex', alignItems:'center', justifyContent:'center', gap:5 }}>
+                <button className="lk-btn lk-btn-ghost" onClick={() => { if (navigate) navigate('/content-studio?post_id=' + post.id + '&gen=image'); onClose() }}
+                  style={{ flex:'1 1 auto', display:'inline-flex', alignItems:'center', justifyContent:'center', gap:5 }}>
                   <span style={{display:'inline-flex',alignItems:'center',gap:6}}><Wand2 size={12}/>KI-Bild generieren</span>
                 </button>
               </div>
@@ -2323,10 +2323,8 @@ Danke für den Austausch! 🤝`,
           </button>
 
           {/* Neu Button */}
-          <button data-tour-id="rp-new-post" onClick={() => openNew()}
-            style={{ padding:'8px 18px', borderRadius:10, border:'none', background:'var(--wl-primary, #0A6FB0)', color:'#fff',
-              fontSize:13, fontWeight:700, cursor:'pointer', display:'flex', alignItems:'center', gap:6,
-              boxShadow:'0 2px 8px rgba(10,111,176,0.3)', whiteSpace:'nowrap' }}>
+          <button className="lk-btn lk-btn-navy" data-tour-id="rp-new-post" onClick={() => openNew()}
+            style={{ display:'flex', alignItems:'center', gap:6, whiteSpace:'nowrap' }}>
             <span style={{display:'inline-flex',alignItems:'center',gap:6}}><PenLine size={13}/>Neuer Beitrag</span>
           </button>
         </div>
@@ -2629,9 +2627,8 @@ Danke für den Austausch! 🤝`,
               <div style={{ marginBottom:12, display:'inline-flex', color:'var(--wl-primary, #0A6FB0)' }}><PenLine size={40} strokeWidth={1.5}/></div>
               <div style={{ fontSize:16, fontWeight:700 }}>Noch keine Beiträge</div>
               <div style={{ fontSize:13, marginTop:8 }}>Erstelle deinen ersten Content-Plan</div>
-              <button onClick={() => openNew()}
-                style={{ marginTop:16, padding:'10px 20px', borderRadius:10, border:'none',
-                  background:'var(--wl-primary, #0A6FB0)', color:'#fff', fontWeight:700, cursor:'pointer' }}>
+              <button className="lk-btn lk-btn-navy" onClick={() => openNew()}
+                style={{ marginTop:16 }}>
                 <span style={{display:'inline-flex',alignItems:'center',gap:6}}><PenLine size={13}/>Ersten Beitrag erstellen</span>
               </button>
             </div>
