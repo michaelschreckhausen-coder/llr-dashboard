@@ -45,6 +45,17 @@ Deno.serve(async (req) => {
           team_id: tm.team_id, user_id: evt.name, unipile_account_id: evt.account_id,
           provider_public_id: v.slug, status: "OK", last_status_update: new Date().toISOString(),
         }, { onConflict: "unipile_account_id" });
+        // DURABLE ACCOUNT-HYGIENE: Reconnect legt eine neue unipile_account_id an, die alte OK-Zeile bleibt
+        // sonst stale-OK → getUnipileConnection greift eine tote id (404/409) → alle Unipile-Worker liegen lahm.
+        // Fix: ältere OK-Sessions DERSELBEN Identität (slug, andere id) → DISCONNECTED (superseded).
+        // Scope user_id+provider_public_id (nicht nur user_id) → ein legitimer 2. LinkedIn-Account bleibt OK.
+        // Ergebnis: nach jedem Reconnect genau 1 OK-Zeile je Identität, deterministisch, ohne manuellen Sync.
+        if (v.slug) {
+          await db.from("unipile_accounts")
+            .update({ status: "DISCONNECTED", last_status_update: new Date().toISOString() })
+            .eq("user_id", evt.name).eq("provider_public_id", v.slug)
+            .neq("unipile_account_id", evt.account_id).eq("status", "OK");
+        }
         // Connect-Zeit-Sync in la_accounts (V2-Onboarding: Hosted-Auth → Builder sieht Account).
         // IDENTITY-COLLAPSE: der eben verbundene Account ist die NEUESTE Session dieser LinkedIn-Identität.
         // Andere connected-Rows derselben Identität (gleicher public_identifier, andere id) → disconnected,
