@@ -1,0 +1,22 @@
+-- ============================================================================
+-- F4 · Unipile Post-Monitoring — pg_cron-Job (Staging zuerst).
+-- ----------------------------------------------------------------------------
+-- Feuert /unipile-monitor periodisch (~alle 4h). Der Worker holt Metriken
+-- (impressions_counter etc.) + Kommentar-Engager für veröffentlichte Posts
+-- mit content_posts.linkedin_social_id.
+--
+-- GUC-Muster = Repo-Standard (wie trigger_process_automation_jobs /
+-- trigger_import_unipile_relations): app.supabase_functions_url enthält bereits
+-- .../functions/v1, Service-Key aus app.supabase_service_role_key.
+--
+-- BEWUSST AUSKOMMENTIERT — scharf erst NACH EF-Deploy per "los staging-apply".
+-- cron.schedule upsertet per jobname (idempotent).
+-- ============================================================================
+
+-- select cron.schedule('unipile-monitor', '0 */4 * * *', $$
+--   select net.http_post(
+--     url     := current_setting('app.supabase_functions_url', true) || '/unipile-monitor',
+--     headers := jsonb_build_object('Content-Type','application/json',
+--                  'Authorization','Bearer ' || current_setting('app.supabase_service_role_key', true)),
+--     body    := '{}'::jsonb
+--   ) $$);

@@ -113,8 +113,12 @@ Deno.serve(async (req) => {
       return jsonResponse({ error: msg, rate_limited: rl }, rl ? 429 : 502);
     }
 
-    // Erfolg: { object: "PostCreated", post_id }
-    const socialId = resp?.post_id ?? resp?.social_id ?? resp?.id ?? null;
+    // Erfolg: { object: "PostCreated", post_id } (numerisch).
+    // Kanonisch als activity-URN speichern -> getPost + listPostComments (Monitor)
+    // laufen beide mit der URN (listPostComments akzeptiert NUR die URN-Form).
+    const socialId = resp?.post_id
+      ? `urn:li:activity:${resp.post_id}`
+      : (resp?.social_id ?? null);
     const shareUrl = resp?.share_url ?? resp?.url ??
       (socialId ? `https://www.linkedin.com/feed/update/${socialId}` : null);
 

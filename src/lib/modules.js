@@ -26,7 +26,7 @@ export const MODULES = {
     key:   'linkedin',
     label: 'LinkedIn',
     description: 'Vernetzungen, Nachrichten, Automatisierung, Profiltexte, Profil-Checker',
-    routes: ['/vernetzungen', '/messages', '/automatisierung', '/linkedin-connect', '/profiltexte', '/profil-checker', '/linkedin-suche'],
+    routes: ['/vernetzungen', '/messages', '/automatisierung', '/linkedin-connect', '/profiltexte', '/profil-checker', '/linkedin-suche', '/linkedin-analytics'],
     color: '#0077B5',
   },
   content: {

@@ -42,39 +42,51 @@ Deno.serve(async (req) => {
     for (const post of posts) {
       const conn = await getUnipileConnection(sb, post.user_id);
       if (!conn) continue;
-      const socialId = post.linkedin_social_id as string;
+      // Defensive ID-Normalisierung: Metriken UND Kommentare brauchen die activity-URN
+      // (listPostComments 400 bei numerischer ID). Falls doch mal numerisch gespeichert.
+      const rawId = post.linkedin_social_id as string;
+      const socialId = rawId.startsWith("urn:") ? rawId : `urn:li:activity:${rawId}`;
 
       // content_post_metrics.team_id ist NOT NULL -> Team aus unipile_accounts
       // (Authority für die verbundene LinkedIn-Session), NICHT via team_members-Lookup.
       const teamId: string | null = conn.teamId ?? null;
 
       try {
-        // a) Metriken (nur wenn team_id auflösbar)
+        // a) Metriken (gelockte Shapes: TOP-LEVEL *_counter). getPost akzeptiert URN.
         const p = await getPost(conn, socialId);
         const daysSince = post.published_at
           ? Math.max(0, Math.floor((Date.now() - new Date(post.published_at).getTime()) / 86400_000))
           : 0;
+        const impr = p?.impressions_counter ?? 0;
+        const engagementRate = impr > 0
+          ? Number((((p?.reaction_counter ?? 0) + (p?.comment_counter ?? 0) + (p?.repost_counter ?? 0)) / impr).toFixed(4))
+          : null;
         if (teamId) await sb.from("content_post_metrics").insert({
           post_id: post.id,
           team_id: teamId,
           measured_at: new Date().toISOString(),
           days_since_publish: daysSince,
-          impressions: p?.impressions ?? p?.stats?.impressions ?? null,
-          likes: p?.reaction_count ?? p?.stats?.likes ?? null,
-          comments_count: p?.comment_count ?? p?.stats?.comments ?? null,
-          reshares: p?.share_count ?? p?.stats?.reshares ?? null,
-          clicks: p?.stats?.clicks ?? null,
-          raw_data: p ?? null,
+          impressions: p?.impressions_counter ?? null,
+          likes: p?.reaction_counter ?? null,
+          comments_count: p?.comment_counter ?? null,
+          reshares: p?.repost_counter ?? null,
+          clicks: null,                          // Unipile liefert keine clicks
+          engagement_rate: engagementRate,
+          raw_data: p ?? null,                   // enthält analytics { profile_viewers…, followers_gained… }
         });
         if (teamId) metricsWritten++;
 
-        // b) Kommentare -> Engager (+ Lead)
+        // b) Kommentare -> Engager (+ Lead). Gelockte Shape: c.author ist NAME-STRING,
+        //    das Objekt ist c.author_details; Profil-URL = author_details.profile_url.
         const comments = await listPostComments(conn, socialId);
         const items: any[] = comments?.items ?? comments?.data ?? [];
         for (const c of items) {
-          const author = c.author ?? c.commenter ?? {};
-          const url = author.public_profile_url ?? author.profile_url ?? c.author_url ?? null;
-          const name = author.name ?? c.author_name ?? "Unbekannt";
+          const ad = c.author_details ?? {};
+          const name = (typeof c.author === "string" && c.author) || ad.name || "Unbekannt";
+          const url = ad.profile_url ?? null;    // NICHT public_profile_url
+          const headline = ad.headline ?? null;
+          const providerId = ad.id ?? null;
+          const text = c.text ?? null;
           const { error: insErr } = await sb.from("linkedin_post_engagers").upsert({
             user_id: post.user_id,
             team_id: teamId,           // team_id von Anfang an (aus unipile_accounts)
@@ -82,10 +94,10 @@ Deno.serve(async (req) => {
             post_social_id: socialId,
             engagement_type: "comment",
             actor_name: name,
-            actor_headline: author.headline ?? null,
+            actor_headline: headline,
             actor_profile_url: url,
-            actor_provider_id: author.provider_id ?? author.id ?? null,
-            comment_text: c.text ?? c.comment ?? null,
+            actor_provider_id: providerId,
+            comment_text: text,
           }, { onConflict: "post_id,actor_profile_url,engagement_type", ignoreDuplicates: true });
           if (!insErr) engagersWritten++;
 
@@ -98,7 +110,7 @@ Deno.serve(async (req) => {
                 user_id: post.user_id,
                 team_id: teamId,           // team_id von Anfang an (aus unipile_accounts)
                 name,
-                headline: author.headline ?? null,
+                headline,
                 linkedin_url: url,
                 profile_url: url,
                 status: "Lead",

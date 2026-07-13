@@ -124,6 +124,7 @@ function getNav(t) {
   { to: (isFlagEnabled('linkedinAutomationV2') || import.meta.env.VITE_APP_ENV === 'staging') ? '/automatisierung-neu' : '/automatisierung', icon: IcZap, label: 'Automatisierung' },
   { to: '/messages',        icon: IcMail,     label: 'Nachrichten' },
   { to: '/ssi',             icon: IcTarget,   label: t('nav.ssiTracker') },
+  { to: '/linkedin-analytics', icon: IcBarChart, label: 'Post-Analytics' },
   { to: '/profil-checker',  icon: IcLinkedIn, label: 'Profil-Checker' },
   { to: '/profiltexte',     icon: IcLinkedIn, label: t('nav.profiltexte') },
 
