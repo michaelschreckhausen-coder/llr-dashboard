@@ -1,3 +1,4 @@
+import PillSelect from '../components/PillSelect'
 import React, { useEffect, useState } from 'react'
 import { supabase } from '../lib/supabase'
 import { loadSettingsByTenantId, saveWhiteLabelSettings, DEFAULT_WL, applyTheme } from '../lib/whitelabel'
@@ -113,9 +114,7 @@ export default function WhiteLabel() {
           </div>
           <div>
             <label style={lbl}>Schriftart</label>
-            <select value={wl.font_family||'Inter'} onChange={e=>s('font_family')(e.target.value)} style={inp}>
-              {['Inter','Roboto','Poppins','DM Sans','Outfit','Nunito','Manrope'].map(f => <option key={f} value={f}>{f}</option>)}
-            </select>
+            <PillSelect value={wl.font_family||'Inter'} onChange={s('font_family')} neutral options={[...['Inter','Roboto','Poppins','DM Sans','Outfit','Nunito','Manrope'].map((f) => ({ value: f, label: f }))]} buttonStyle={{ minWidth: 140 }} />
           </div>
           <div>
             <label style={lbl}>Logo-URL (PNG/SVG)</label>

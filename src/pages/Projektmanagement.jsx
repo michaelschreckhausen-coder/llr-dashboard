@@ -784,14 +784,8 @@ export default function Projektmanagement({session}){
         }} style={{padding:'6px 14px',borderRadius:8,border:'1.5px solid '+(filterMember===session?.user?.id?'#0A66C2':'#E2E8F0'),background:filterMember===session?.user?.id?'#EFF6FF':'#fff',color:filterMember===session?.user?.id?'#0A66C2':'#64748B',fontSize:12,fontWeight:filterMember===session?.user?.id?700:500,cursor:'pointer',whiteSpace:'nowrap'}}>
           👤 Meine Aufgaben
         </button>
-        <select value={filterMember} onChange={e=>setFilterMember(e.target.value)} style={{padding:'6px 10px',borderRadius:8,border:'1.5px solid #E2E8F0',fontSize:12,fontFamily:'inherit',color:filterMember?'#0A66C2':'#94A3B8',background:filterMember?'#EFF6FF':'#fff'}}>
-          <option value="">Alle Mitglieder</option>
-          {allUsers.map(u=><option key={u.id} value={u.id}>{u.full_name||u.email}</option>)}
-        </select>
-        <select value={filterLabel} onChange={e=>setFilterLabel(e.target.value)} style={{padding:'6px 10px',borderRadius:8,border:'1.5px solid #E2E8F0',fontSize:12,fontFamily:'inherit',color:filterLabel?'#0A66C2':'#94A3B8',background:filterLabel?'#EFF6FF':'#fff'}}>
-          <option value="">Alle Labels</option>
-          {projectLabels.map(l=><option key={l.id} value={l.id}>{l.name}</option>)}
-        </select>
+        <PillSelect value={filterMember} onChange={setFilterMember} neutral options={[{ value: '', label: `Alle Mitglieder` }, ...allUsers.map((u) => ({ value: u.id, label: u.full_name||u.email }))]} buttonStyle={{ minWidth: 140 }} />
+        <PillSelect value={filterLabel} onChange={setFilterLabel} neutral options={[{ value: '', label: `Alle Labels` }, ...projectLabels.map((l) => ({ value: l.id, label: l.name }))]} buttonStyle={{ minWidth: 140 }} />
         <PillSelect value={filterPriority} onChange={setFilterPriority} neutral options={[{ value: '', label: '⬆ Alle Prioritäten' }, { value: 'urgent', label: 'Dringend' }, { value: 'high', label: '↑ Hoch' }, { value: 'medium', label: '→ Mittel' }, { value: 'low', label: '↓ Niedrig' }]} buttonStyle={{ minWidth: 140 }} />
         {overdueTasks.length>0&&(
           <div style={{display:'flex',alignItems:'center',gap:6,padding:'5px 12px',borderRadius:8,background:'#FEF2F2',border:'1px solid #FECACA',cursor:'pointer'}} onClick={()=>{setFilterPriority('');setFilterMember('');setFilterLabel('');setSearchQuery('');setSortBy('due_date')}}>

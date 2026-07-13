@@ -194,16 +194,10 @@ export default function AdminPanel({ session }) {
                 {/* Nutzer hinzufügen */}
                 {addMode && (
                   <div style={{padding:'14px 18px',background:'var(--surface-muted)',borderBottom:'1px solid #F3F4F6',display:'flex',gap:10,alignItems:'center',flexWrap:'wrap'}}>
-                    <select value={addUserId} onChange={e=>setAddUserId(e.target.value)}
-                      style={{padding:'7px 10px',border:'1px solid var(--border)',borderRadius:8,fontSize:13,flex:2,minWidth:200,outline:'none'}}>
-                      <option value=''>Nutzer wählen...</option>
-                      {users.map(u => (
-                        <option key={u.id} value={u.id}>
-                          {u.full_name||u.email||u.id}
-                          {teamMembers.some(m=>m.user_id===u.id) ? ' ✓ (bereits Mitglied)' : ''}
-                        </option>
-                      ))}
-                    </select>
+                    <PillSelect value={addUserId} onChange={setAddUserId} neutral options={[{ value: '', label: `Nutzer wählen...` }, ...users.map((u) => ({ value: u.id, label: `
+                          ${u.full_name||u.email||u.id}
+                          ${teamMembers.some(m=>m.user_id===u.id) ? ' ✓ (bereits Mitglied)' : ''}
+                        ` }))]} buttonStyle={{ minWidth: 140 }} />
                     <PillSelect value={addRole} onChange={setAddRole} neutral options={[{ value: 'member', label: 'member' }, { value: 'admin', label: 'admin' }, { value: 'team_member', label: 'team_member' }]} buttonStyle={{ minWidth: 140 }} />
                     <button onClick={async()=>{
                       if(!addUserId){flash_('Bitte Nutzer wählen','err');return}

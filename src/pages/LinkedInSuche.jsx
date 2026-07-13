@@ -13,6 +13,7 @@
 // Addon-Gate 'automation'. Fehlercodes der EF: 403 no_addon, 409 kein OK-Account,
 // 429 Rate-Limit.
 
+import PillSelect from '../components/PillSelect'
 import React, { useState, useEffect, useCallback } from 'react'
 import { useNavigate } from 'react-router-dom'
 import {
@@ -228,15 +229,11 @@ export default function LinkedInSuche() {
               </div>
               <div>
                 <label style={labelStyle}>Quelle</label>
-                <select style={inputStyle} value={form.api} onChange={e => setField('api', e.target.value)}>
-                  {API_OPTIONS.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
-                </select>
+                <PillSelect value={form.api} onChange={v => setField('api', v)} neutral options={[...API_OPTIONS.map((o) => ({ value: o.value, label: o.label }))]} buttonStyle={{ minWidth: 140 }} />
               </div>
               <div>
                 <label style={labelStyle}>Kategorie</label>
-                <select style={inputStyle} value={form.category} onChange={e => setField('category', e.target.value)}>
-                  {CATEGORY_OPTIONS.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
-                </select>
+                <PillSelect value={form.category} onChange={v => setField('category', v)} neutral options={[...CATEGORY_OPTIONS.map((o) => ({ value: o.value, label: o.label }))]} buttonStyle={{ minWidth: 140 }} />
               </div>
             </div>
 
@@ -273,10 +270,7 @@ export default function LinkedInSuche() {
 
             <div>
               <label style={labelStyle}>Ziel-Liste in den LinkedIn Kontakten (optional)</label>
-              <select style={{ ...inputStyle, maxWidth:360 }} value={form.target_list_id} onChange={e => setField('target_list_id', e.target.value)}>
-                <option value="">— keine (nur in die Inbox) —</option>
-                {inboxLists.map(l => <option key={l.id} value={l.id}>{l.name}</option>)}
-              </select>
+              <PillSelect value={form.target_list_id} onChange={v => setField('target_list_id', v)} neutral options={[{ value: '', label: `— keine (nur in die Inbox) —` }, ...inboxLists.map((l) => ({ value: l.id, label: l.name }))]} buttonStyle={{ minWidth: 140 }} />
               <div style={{ fontSize:11, color:'var(--text-muted, #6B7280)', marginTop:4 }}>
                 Personen-Treffer werden dieser Liste zugeordnet — dieselbe Liste wählst du später in der Automatisierung als Zielgruppe.
               </div>

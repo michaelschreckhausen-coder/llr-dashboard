@@ -1233,10 +1233,7 @@ function PostModal({ post, onClose, onSave, onDelete, session, activeTeamId, mem
                 const { border:borderColor, bg, color } = palette[bucket] || palette.draft
                 return (
                   <>
-                    <select value={bucket} onChange={e => upd('status', e.target.value)}
-                      style={{ width:'100%', padding:'10px 12px', borderRadius:10, border:`1.5px solid ${borderColor}`, background: bg, color, fontSize:13, fontWeight:600, cursor:'pointer', fontFamily:'inherit', outline:'none', boxSizing:'border-box' }}>
-                      {opts.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
-                    </select>
+                    <PillSelect value={bucket} onChange={v => upd('status', v)} neutral options={[...opts.map((o) => ({ value: o.value, label: o.label }))]} buttonStyle={{ minWidth: 140 }} />
                     {form.status === 'scheduled' && form.scheduled_at && (
                       <div style={{ fontSize:11, color:'#1d4ed8', marginTop:6, lineHeight:1.4 }}>
                         <span style={{display:'inline-flex',alignItems:'center',gap:6}}><Calendar size={12}/>Auto-Publish geplant für {new Date(form.scheduled_at).toLocaleString('de-DE', { day:'2-digit', month:'short', hour:'2-digit', minute:'2-digit' })}.</span>
@@ -1435,20 +1432,8 @@ function PostModal({ post, onClose, onSave, onDelete, session, activeTeamId, mem
             {showAdvanced && (members?.length || 0) > 1 && <div>
               <label style={{ fontSize:11, fontWeight:700, color:'var(--text-muted)', textTransform:'uppercase', letterSpacing:'0.05em', display:'block', marginBottom:6 }}>Team & Kontext</label>
               <div style={{ display:'flex', flexDirection:'column', gap:8 }}>
-<select value={form.assignee_id || ''} onChange={e => upd('assignee_id', e.target.value)}
-                  style={{ padding:'7px 10px', borderRadius:8, border:'1.5px solid #E5E7EB', fontSize:12, background:'#fff', cursor:'pointer' }}>
-                  <option value="">Assignee wählen…</option>
-                  {(members || []).map(m => (
-                    <option key={m.user_id} value={m.user_id}>{m.email || m.user_id}</option>
-                  ))}
-                </select>
-                <select value={form.reviewer_id || ''} onChange={e => upd('reviewer_id', e.target.value)}
-                  style={{ padding:'7px 10px', borderRadius:8, border:'1.5px solid #E5E7EB', fontSize:12, background:'#fff', cursor:'pointer' }}>
-                  <option value="">Reviewer wählen…</option>
-                  {(members || []).map(m => (
-                    <option key={m.user_id} value={m.user_id}>{m.email || m.user_id}</option>
-                  ))}
-                </select>
+<PillSelect value={form.assignee_id || ''} onChange={v => upd('assignee_id', v)} neutral options={[{ value: '', label: `Assignee wählen…` }, ...members || [].map((m) => ({ value: m.user_id, label: m.email || m.user_id }))]} buttonStyle={{ minWidth: 140 }} />
+                <PillSelect value={form.reviewer_id || ''} onChange={v => upd('reviewer_id', v)} neutral options={[{ value: '', label: `Reviewer wählen…` }, ...members || [].map((m) => ({ value: m.user_id, label: m.email || m.user_id }))]} buttonStyle={{ minWidth: 140 }} />
               </div>
             </div>}
 

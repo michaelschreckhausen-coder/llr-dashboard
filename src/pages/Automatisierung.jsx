@@ -9,6 +9,7 @@
 // Repo-Migration hat `action`/`target_url`) ist in einer separaten Session zu
 // klären — diese Page behält die existierenden Schreibpfade bei.
 
+import PillSelect from '../components/PillSelect'
 import React, { useState, useEffect, useCallback, useMemo } from 'react'
 import { useNavigate } from 'react-router-dom'
 import InboxLink from '../components/InboxLink'
@@ -1300,12 +1301,7 @@ function StepRow({ idx, step: s, onChange, onRemove, canRemove }) {
         <span style={{ display:'inline-flex', alignItems:'center', gap:5, fontSize:12, padding:'3px 9px', borderRadius:6, background:info.bg, color:info.color, fontWeight:700 }}>
           <Icon size={12} /> {info.label}
         </span>
-        <select value={s.type} onChange={e => onChange('type', e.target.value)}
-          style={{ ...inputStyle, width:'auto', padding:'4px 8px', fontSize:12 }}>
-          {Object.entries(STEP_TYPES).map(([k, v]) => (
-            <option key={k} value={k}>{v.label}</option>
-          ))}
-        </select>
+        <PillSelect value={s.type} onChange={v => onChange('type', v)} neutral options={[...Object.entries(STEP_TYPES).map(([k, v]) => ({ value: k, label: v.label }))]} buttonStyle={{ minWidth: 140 }} />
         <div style={{ flex:1 }}/>
         <span style={{ fontSize:11, color:'var(--text-muted)' }}>{isWait ? 'Warten' : 'Delay min.'}</span>
         <input type="number" value={s.delay_min} onChange={e => onChange('delay_min', Number(e.target.value))}
