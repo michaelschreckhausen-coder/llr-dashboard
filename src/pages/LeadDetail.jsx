@@ -67,12 +67,12 @@ const contentStyle = { flex:1, padding:'24px 28px', overflow:'auto' };
 const threeColStyle = { display:'grid', gridTemplateColumns:'290px minmax(0,1fr)', gap:16, padding:'20px 28px 48px', alignItems:'start', flex:1 };
 const railColStyle = { display:'flex', flexDirection:'column', gap:14, minWidth:0 };
 const centerColStyle = { display:'flex', flexDirection:'column', minWidth:0 };
-const railCardStyle = { background: COLORS.surface, borderRadius: RADIUS.lg, border:`0.5px solid ${COLORS.borderSubtle}`, padding:'14px 16px' };
+const railCardStyle = { background: COLORS.surface, borderRadius: 16, border:'1px solid var(--border)', padding:'16px 18px', boxShadow:'var(--shadow-card)' };
 const railHeadStyle = { display:'flex', alignItems:'center', gap:6, marginBottom:10 };
 const railTitleStyle = { fontSize:13, fontWeight:500, color: COLORS.textPrimary, flex:1 };
 const propLabelStyle = { fontSize:11, color: COLORS.textTertiary, marginTop:12 };
 const propValueStyle = { fontSize:13, color: COLORS.textPrimary, wordBreak:'break-word', marginTop:1 };
-const cardStyle = { background: COLORS.surface, borderRadius: RADIUS.lg, border:`0.5px solid ${COLORS.borderSubtle}`, padding:'22px 24px', marginBottom:20 };
+const cardStyle = { background: COLORS.surface, borderRadius: 16, border:'1px solid var(--border)', padding:'22px 24px', marginBottom:20, boxShadow:'var(--shadow-card)' };
 const sectionLabelStyle = { fontSize:11, color: COLORS.textTertiary, textTransform:'uppercase', letterSpacing:'0.04em', marginBottom:6 };
 const tagStyle = { background: COLORS.surfaceMuted, color: COLORS.textSecondary, fontSize:11, padding:'3px 10px', borderRadius:999, display:'inline-flex', alignItems:'center', gap:4 };
 const metricsGridStyle = { display:'grid', gridTemplateColumns:'repeat(4, 1fr)', gap:12, padding:'16px 0', borderTop:`0.5px solid ${COLORS.borderSubtle}`, borderBottom:`0.5px solid ${COLORS.borderSubtle}`, marginBottom:18 };
@@ -819,7 +819,7 @@ function SummaryRail({ lead, owner, navigate, onOpenOwnerPicker, updateLead }) {
 // Verknuepfte Datensaetze: Unternehmen, Deals, Aufgaben, KI-Analyse-Kurzfassung.
 function RelatedRail({ lead, navigate, refreshKey, analysis, analyzeLoading, onAnalyze, onReanalyze, onUseOutreach, onJumpTab, onEnrich, enrichLoading, enrichCompany, enrichMsg, canEnrich, enrichedAt }) {
   const railAddBtn = { background:'none', border:'none', cursor:'pointer', color: COLORS.textTertiary, padding:0, display:'inline-flex' };
-  const miniCardStyle = { padding:'8px 10px', borderRadius: RADIUS.md, border:`0.5px solid ${COLORS.borderSubtle}`, marginTop:8, cursor:'pointer' };
+  const miniCardStyle = { padding:'10px 12px', borderRadius: 10, border:'1px solid var(--border)', marginTop:8, cursor:'pointer', background:'var(--surface)' };
   const [deals, setDeals] = useState([]);
   const [openTasks, setOpenTasks] = useState([]);
 
