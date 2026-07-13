@@ -1,38 +1,87 @@
 // =====================================================================
-// Feature 3 — Engagement-Worker (Auto-Kommentar / Reaktion)
-// Cron- oder user-getriggert. Verarbeitet linkedin_engagement_jobs
-// (status='pending', scheduled_at <= now()). Rate-Guard pro User/Tag.
+// Feature 3 — Engagement-Worker (Auto-Kommentar / Reaktion), post-scoped.
+// Zwei Trigger (Muster wie F5-Härtung / unipile-post-publish):
+//   - service-role-Bearer (Cron): ALLE pending Jobs.
+//   - JWT (Frontend): NUR Jobs des verifizierten Users (Scope aus JWT, nicht body).
+// Verarbeitet linkedin_engagement_jobs (status='pending', scheduled_at <= now).
+// Reaktion/Kommentar laufen JSON (verifiziert). Konservative Tageslimits pro kind.
 // =====================================================================
 import { handlePreflight, jsonResponse } from "../_shared/cors.ts";
 import {
   addReaction,
-  dailyCount,
+  getAuthenticatedUser,
   getUnipileConnection,
   sendComment,
   serviceClient,
   UnipileError,
 } from "../_shared/unipile.ts";
 
-const BATCH = 15;
-// Konservative Tageslimits (LinkedIn/Unipile). Ggf. aus Plan ableiten.
+const BATCH = 10;                    // kleine Batches (Engagement ist hart limitiert)
+const PAUSE_MS = 500;                // Pause zwischen Real-Calls (Rate-Limit-Schonung)
+// Konservative Tageslimits pro User/Tag, PRO kind getrennt gezählt.
 const MAX_COMMENTS_PER_DAY = 40;
 const MAX_REACTIONS_PER_DAY = 80;
+
+const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
+
+// post_url -> activity-URN (best effort). Akzeptiert bereits-URNs unverändert.
+function toActivityUrn(socialId: string | null, postUrl: string | null): string | null {
+  const raw = (socialId && socialId.trim()) || null;
+  if (raw) return raw.startsWith("urn:") ? raw : `urn:li:activity:${raw}`;
+  if (postUrl) {
+    const m = postUrl.match(/urn:li:(?:activity|ugcPost|share):\d+/);
+    if (m) return m[0];
+    const d = postUrl.match(/(?:activity[:-]|update\/)(\d{6,})/);
+    if (d) return `urn:li:activity:${d[1]}`;
+  }
+  return null;
+}
+
+// Tagesverbrauch PRO kind (comment|reaction) für einen User.
+async function dailyKindCount(sb: any, userId: string, kind: string): Promise<number> {
+  const since = new Date();
+  since.setUTCHours(0, 0, 0, 0);
+  const { count, error } = await sb
+    .from("linkedin_engagement_jobs")
+    .select("id", { count: "exact", head: true })
+    .eq("user_id", userId)
+    .eq("kind", kind)
+    .eq("status", "done")
+    .gte("executed_at", since.toISOString());
+  if (error) { console.warn(`[unipile-engagement] dailyKindCount: ${error.message}`); return 0; }
+  return count ?? 0;
+}
 
 Deno.serve(async (req) => {
   const pre = handlePreflight(req);
   if (pre) return pre;
+  if (req.method !== "POST") return jsonResponse({ error: "method not allowed" }, 405);
 
   try {
     const sb = serviceClient();
     const nowIso = new Date().toISOString();
 
-    const { data: jobs, error } = await sb
+    // ── Auth-Gate (Pflicht): kein Token -> 401. service-role -> alle; JWT -> nur eigene. ──
+    const authHeader = req.headers.get("Authorization") || "";
+    const token = authHeader.startsWith("Bearer ") ? authHeader.slice(7) : "";
+    if (!token) return jsonResponse({ error: "unauthorized" }, 401);
+    const isServiceRole = token === Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
+    let scopeUserId: string | null = null;
+    if (!isServiceRole) {
+      const auth = await getAuthenticatedUser(req);
+      if (!auth) return jsonResponse({ error: "unauthorized" }, 401);
+      scopeUserId = auth.userId;   // Scope aus JWT, NICHT aus dem Body
+    }
+
+    let jobQuery = sb
       .from("linkedin_engagement_jobs")
       .select("*")
       .eq("status", "pending")
       .lte("scheduled_at", nowIso)
       .order("scheduled_at", { ascending: true })
       .limit(BATCH);
+    if (!isServiceRole && scopeUserId) jobQuery = jobQuery.eq("user_id", scopeUserId);
+    const { data: jobs, error } = await jobQuery;
     if (error) return jsonResponse({ error: error.message }, 500);
     if (!jobs || jobs.length === 0) return jsonResponse({ ok: true, processed: 0 });
 
@@ -46,25 +95,26 @@ Deno.serve(async (req) => {
       const conn = await getUnipileConnection(sb, job.user_id);
       if (!conn) {
         await sb.from("linkedin_engagement_jobs")
-          .update({ status: "error", error: "Kein Unipile-Account" }).eq("id", job.id);
+          .update({ status: "error", error: "Kein aktiver Unipile-Account (status OK / bei Unipile gültig)" }).eq("id", job.id);
         failed++;
         continue;
       }
 
-      // Rate-Guard
-      const usedToday = await dailyCount(sb, "linkedin_engagement_jobs", job.user_id, "executed_at");
+      // Rate-Guard PRO kind (Kommentare/Reaktionen teilen sich NICHT mehr den Zähler).
+      const usedToday = await dailyKindCount(sb, job.user_id, job.kind);
       const cap = job.kind === "comment" ? MAX_COMMENTS_PER_DAY : MAX_REACTIONS_PER_DAY;
-      if (usedToday > cap) {
+      if (usedToday >= cap) {
         await sb.from("linkedin_engagement_jobs")
           .update({ status: "skipped", error: "Tageslimit erreicht" }).eq("id", job.id);
         skipped++;
         continue;
       }
 
-      const socialId: string | null = job.post_social_id ?? null;
+      // URN auflösen (post_social_id bevorzugt, sonst best-effort aus post_url).
+      const socialId = toActivityUrn(job.post_social_id ?? null, job.post_url ?? null);
       if (!socialId) {
         await sb.from("linkedin_engagement_jobs")
-          .update({ status: "error", error: "post_social_id fehlt (urn:li:activity:...)" })
+          .update({ status: "error", error: "Kein Post-Identifier ableitbar (post_social_id oder gültige post_url nötig)" })
           .eq("id", job.id);
         failed++;
         continue;
@@ -75,8 +125,9 @@ Deno.serve(async (req) => {
         if (job.kind === "comment") {
           let text = job.comment_text;
           if (!text && job.saved_comment_id) {
-            const { data: sc } = await sb.from("saved_comments")
+            const { data: sc, error: scErr } = await sb.from("saved_comments")
               .select("comment_text").eq("id", job.saved_comment_id).maybeSingle();
+            if (scErr) console.warn(`[unipile-engagement] saved_comment: ${scErr.message}`);
             text = sc?.comment_text ?? null;
           }
           if (!text) throw new Error("comment_text/saved_comment_id fehlt");
@@ -96,8 +147,10 @@ Deno.serve(async (req) => {
           .update({ status: rl ? "pending" : "error", error: String(e).slice(0, 500) })
           .eq("id", job.id);
         failed++;
-        if (rl) break;
+        if (rl) break;   // 429 -> Rest des Batches zurückstellen
       }
+
+      await sleep(PAUSE_MS);   // Pause zwischen Real-Calls
     }
 
     return jsonResponse({ ok: true, processed: jobs.length, done, failed, skipped });

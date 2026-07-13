@@ -103,27 +103,47 @@ export async function getUnipileConnection(
   sb: SupabaseClient,
   userId: string,
 ): Promise<UnipileConn | null> {
-  const { data, error } = await sb
+  // ALLE OK-Zeilen des Users (neueste zuerst) — nicht nur die neueste, weil die
+  // bei Unipile längst ungültig sein kann (Reconnect -> neue account_id).
+  const { data: rows, error } = await sb
     .from("unipile_accounts")
-    .select("id, unipile_account_id, team_id, user_id, status")
+    .select("id, unipile_account_id, team_id, user_id, status, last_status_update")
     .eq("user_id", userId)
     .eq("status", "OK")                          // nur funktionierende LinkedIn-Session
     .not("unipile_account_id", "is", null)
-    .order("last_status_update", { ascending: false }) // neueste OK-Session bevorzugen
-    .limit(1)
-    .maybeSingle();                              // limit(1) -> kein Multi-Row-Throw
+    .order("last_status_update", { ascending: false }); // neueste OK-Session zuerst
   // Fallstrick #12: error immer prüfen (silent-null bei fehlenden Grants).
   if (error) {
     console.warn(`[unipile] getUnipileConnection lookup: ${error.message}`);
     return null;
   }
-  if (!data?.unipile_account_id) return null;
+  if (!rows || rows.length === 0) return null;
+
+  // Durable Cross-Check: EINMAL die real bei Unipile gültigen account_ids holen und
+  // nur eine OK-Zeile zurückgeben, deren unipile_account_id dort existiert. Sonst
+  // liefert der Worker eine tote ID -> "Account not found" statt sauberem null/409.
+  let validIds: Set<string> | null = null;
+  try {
+    const res = await call("GET", "/api/v1/accounts");
+    const items: any[] = res?.items ?? [];
+    validIds = new Set(items.map((a: any) => a?.id).filter(Boolean));
+  } catch (e) {
+    console.warn(`[unipile] getUnipileConnection accounts cross-check: ${e}`);
+    // Bei API-Fehler NICHT hart abbrechen: nimm die neueste OK-Zeile (Best-Effort,
+    // Verhalten wie vor dem Cross-Check).
+    validIds = null;
+  }
+
+  const pick = validIds
+    ? rows.find((r: any) => validIds!.has(r.unipile_account_id as string))
+    : rows[0];
+  if (!pick) return null;   // keine der OK-Zeilen ist bei Unipile real gültig
   return {
-    accountId: data.unipile_account_id as string,
+    accountId: pick.unipile_account_id as string,
     dsn: null,
-    connectionId: data.id as string,
-    teamId: data.team_id as string,
-    userId: data.user_id as string,
+    connectionId: pick.id as string,
+    teamId: pick.team_id as string,
+    userId: pick.user_id as string,
   };
 }
 

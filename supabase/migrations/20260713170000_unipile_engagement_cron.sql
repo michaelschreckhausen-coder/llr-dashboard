@@ -1,0 +1,21 @@
+-- ============================================================================
+-- F3 · Engagement-Worker — pg_cron-Job (Staging zuerst).
+-- ----------------------------------------------------------------------------
+-- Feuert /unipile-engagement periodisch (~alle 10 min). Der Worker verarbeitet
+-- linkedin_engagement_jobs (status='pending', scheduled_at<=now) — Reaktion/
+-- Kommentar via Unipile, konservative Tageslimits pro kind, 429-Backoff.
+--
+-- GUC-Muster = Repo-Standard: app.supabase_functions_url enthält bereits
+-- .../functions/v1, Service-Key aus app.supabase_service_role_key.
+--
+-- BEWUSST AUSKOMMENTIERT — scharf erst NACH EF-Deploy per "los staging-apply".
+-- cron.schedule upsertet per jobname (idempotent).
+-- ============================================================================
+
+-- select cron.schedule('unipile-engagement', '*/10 * * * *', $$
+--   select net.http_post(
+--     url     := current_setting('app.supabase_functions_url', true) || '/unipile-engagement',
+--     headers := jsonb_build_object('Content-Type','application/json',
+--                  'Authorization','Bearer ' || current_setting('app.supabase_service_role_key', true)),
+--     body    := '{}'::jsonb
+--   ) $$);
