@@ -371,7 +371,7 @@ const [stage, setStage] = useState(lead.deal_stage || 'kein_deal')
           </div>
           {/* AI Insights */}
           {(lead.ai_need_detected || (lead.ai_pain_points && lead.ai_pain_points.length > 0)) && (
-            <div style={{ marginBottom:20, background:'linear-gradient(135deg,rgba(139,92,246,0.08),rgba(59,130,246,0.08))', borderRadius:12, padding:'14px 16px', border:'1px solid rgba(139,92,246,0.2)' }}>
+            <div style={{ marginBottom:20, background:'var(--tint-cyan, #EAF8FE)', borderRadius:12, padding:'14px 16px', border:'1px solid rgba(22,168,220,0.25)' }}>
               <div style={{ fontSize:11, fontWeight:700, color:'#003060', marginBottom:8 }}>AI-Erkenntnisse</div>
               {lead.ai_need_detected && <div style={{ fontSize:13, color:'var(--text-primary)', marginBottom:6 }}><b>Bedarf:</b> {lead.ai_need_detected}</div>}
               {lead.ai_pain_points && lead.ai_pain_points.length > 0 && (
@@ -699,7 +699,7 @@ export default function Pipeline({ session }) {
             { label:'In Pipeline',   val:withDeal,                                                                   color:'#1d4ed8', bg:'#EFF6FF', border:'#BFDBFE' },
             { label:'Win Rate',      val:winRate+'%',                                                                color:'#16a34a', bg:'#F0FDF4', border:'#BBF7D0' },
             { label:'Pipeline Wert', val:pipelineVal > 0 ? '€'+pipelineVal.toLocaleString('de-DE') : '—',          color:'#b45309', bg:'#FFFBEB', border:'#FDE68A', tip:'Rohwert aller aktiven Deals' },
-            { label:'Gewichtet',     val:weightedVal > 0 ? '€'+Math.round(weightedVal).toLocaleString('de-DE') : '—', color:'#7c3aed', bg:'#F5F3FF', border:'#DDD6FE', tip:'Wahrscheinlichkeitsgewichteter Wert' },
+            { label:'Gewichtet',     val:weightedVal > 0 ? '€'+Math.round(weightedVal).toLocaleString('de-DE') : '—', color:'#0A6FB0', bg:'#EAF8FE', border:'#BEE7F7', tip:'Wahrscheinlichkeitsgewichteter Wert' },
             { label:'Ø Tage',        val:avgDaysInPipeline > 0 ? avgDaysInPipeline+'d' : '—',                       color:avgDaysInPipeline>30?'#dc2626':avgDaysInPipeline>14?'#d97706':'#475569', bg:avgDaysInPipeline>30?'#FEF2F2':avgDaysInPipeline>14?'#FFFBEB':'#F8FAFC', border:avgDaysInPipeline>30?'#FECACA':avgDaysInPipeline>14?'#FDE68A':'#E2E8F0', tip:'Ø Tage in aktueller Stage' },
             { label:'Ø Deal',        val:avgDealVal > 0 ? '€'+avgDealVal.toLocaleString('de-DE') : '—',            color:'#0369a1', bg:'#F0F9FF', border:'#BAE6FD', tip:'Ø Deal-Wert aktiver Deals' },
             { label:'Gewonnen',      val:wonVal > 0 ? '€'+wonVal.toLocaleString('de-DE') : won+'',                 color:'#166534', bg:'#DCFCE7', border:'#86EFAC' },
