@@ -152,6 +152,60 @@ async function uploadImageToLinkedIn(
   return { imageUrn };
 }
 
+// ─── Dokument-Upload (PDF-Carousel) — gleiches Muster wie Bild, /rest/documents ───
+async function uploadDocumentToLinkedIn(
+  admin: any, visual: any, memberUrn: string, accessToken: string,
+): Promise<{ documentUrn: string } | { error: string }> {
+  const { data: blob, error: dlErr } = await admin.storage.from("visuals").download(visual.storage_path);
+  if (dlErr || !blob) return { error: "Storage-Download: " + (dlErr?.message || "kein Blob") };
+  const initRes = await fetch("https://api.linkedin.com/rest/documents?action=initializeUpload", {
+    method: "POST",
+    headers: { "Authorization": "Bearer " + accessToken, "Content-Type": "application/json", "Linkedin-Version": LINKEDIN_API_VERSION, "X-Restli-Protocol-Version": "2.0.0" },
+    body: JSON.stringify({ initializeUploadRequest: { owner: memberUrn } }),
+  });
+  const initData = await initRes.json().catch(() => null);
+  if (!initRes.ok || !initData?.value?.uploadUrl || !initData?.value?.document) {
+    return { error: "Dok-Init: HTTP " + initRes.status + " " + (initData?.message || JSON.stringify(initData).slice(0, 200)) };
+  }
+  const arrayBuf = await blob.arrayBuffer();
+  const upRes = await fetch(initData.value.uploadUrl as string, { method: "PUT", headers: { "Authorization": "Bearer " + accessToken }, body: arrayBuf });
+  if (!upRes.ok) { const t = await upRes.text().catch(() => ""); return { error: "Dok-Upload: HTTP " + upRes.status + " " + t.slice(0, 200) }; }
+  return { documentUrn: initData.value.document as string };
+}
+
+// ─── Video-Upload — chunked (initializeUpload -> PUT je uploadInstruction -> finalizeUpload) ───
+async function uploadVideoToLinkedIn(
+  admin: any, visual: any, memberUrn: string, accessToken: string,
+): Promise<{ videoUrn: string } | { error: string }> {
+  const { data: blob, error: dlErr } = await admin.storage.from("visuals").download(visual.storage_path);
+  if (dlErr || !blob) return { error: "Storage-Download: " + (dlErr?.message || "kein Blob") };
+  const arrayBuf = await blob.arrayBuffer();
+  const H = { "Authorization": "Bearer " + accessToken, "Content-Type": "application/json", "Linkedin-Version": LINKEDIN_API_VERSION, "X-Restli-Protocol-Version": "2.0.0" };
+  const initRes = await fetch("https://api.linkedin.com/rest/videos?action=initializeUpload", {
+    method: "POST", headers: H,
+    body: JSON.stringify({ initializeUploadRequest: { owner: memberUrn, fileSizeBytes: arrayBuf.byteLength, uploadCaptions: false, uploadThumbnail: false } }),
+  });
+  const initData = await initRes.json().catch(() => null);
+  if (!initRes.ok || !initData?.value?.video || !Array.isArray(initData?.value?.uploadInstructions)) {
+    return { error: "Video-Init: HTTP " + initRes.status + " " + (initData?.message || JSON.stringify(initData).slice(0, 200)) };
+  }
+  const videoUrn = initData.value.video as string;
+  const uploadToken = (initData.value.uploadToken ?? "") as string;
+  const partIds: string[] = [];
+  for (const ins of initData.value.uploadInstructions as Array<{ uploadUrl: string; firstByte: number; lastByte: number }>) {
+    const chunk = arrayBuf.slice(ins.firstByte, ins.lastByte + 1);
+    const upRes = await fetch(ins.uploadUrl, { method: "PUT", headers: { "Authorization": "Bearer " + accessToken }, body: chunk });
+    if (!upRes.ok) { const t = await upRes.text().catch(() => ""); return { error: "Video-Chunk: HTTP " + upRes.status + " " + t.slice(0, 200) }; }
+    partIds.push(upRes.headers.get("etag") || upRes.headers.get("ETag") || "");
+  }
+  const finRes = await fetch("https://api.linkedin.com/rest/videos?action=finalizeUpload", {
+    method: "POST", headers: H,
+    body: JSON.stringify({ finalizeUploadRequest: { video: videoUrn, uploadToken, uploadedPartIds: partIds } }),
+  });
+  if (!finRes.ok) { const t = await finRes.text().catch(() => ""); return { error: "Video-Finalize: HTTP " + finRes.status + " " + t.slice(0, 300) }; }
+  return { videoUrn };
+}
+
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: CORS });
   if (req.method !== "POST")    return json({ error: "Method not allowed" }, 405);
@@ -230,27 +284,43 @@ Deno.serve(async (req) => {
     accessToken = refreshed.accessToken;
   }
 
-  // 4a) Optional: Bild-Upload zu LinkedIn (Phase 1c)
-  let mediaContent: { id: string; altText: string } | null = null;
-  if (post.visual_id) {
-    const { data: visual, error: vErr } = await admin
-      .from("visuals")
-      .select("storage_path, prompt")
-      .eq("id", post.visual_id)
-      .maybeSingle();
-    if (vErr || !visual) {
-      await markPostFailed(admin, postId, queueId, "Visual nicht gefunden: " + (vErr?.message || post.visual_id));
-      return json({ error: "Visual nicht gefunden" }, 404);
+  // 4a) Medien-Upload — typ-abhängig: Bild-Carousel (multiImage), Video oder Dokument (PDF)
+  //     Slides in Reihenfolge aus content_post_visuals; Fallback auf Einzel-Cover (post.visual_id)
+  const { data: cpvRows } = await admin
+    .from("content_post_visuals")
+    .select("position, visuals(storage_path, prompt, media_type)")
+    .eq("post_id", postId)
+    .order("position", { ascending: true });
+  let slides: { storage_path: string; prompt: string | null; media_type: string | null }[] = [];
+  if (cpvRows && cpvRows.length > 0) {
+    slides = cpvRows.map((r: any) => r.visuals).filter((v: any) => v && v.storage_path);
+  } else if (post.visual_id) {
+    const { data: v } = await admin
+      .from("visuals").select("storage_path, prompt, media_type").eq("id", post.visual_id).maybeSingle();
+    if (v && v.storage_path) slides = [v];
+  }
+  const primaryType = (slides[0]?.media_type || "image").toLowerCase();
+  let contentBlock: Record<string, unknown> | null = null;
+
+  if (slides.length > 0 && primaryType === "video") {
+    const up = await uploadVideoToLinkedIn(admin, slides[0], connection.member_urn, accessToken);
+    if ("error" in up) { await markPostFailed(admin, postId, queueId, "Video-Upload: " + up.error); return json({ error: "Video-Upload: " + up.error }, 502); }
+    contentBlock = { media: { id: up.videoUrn, title: (post.title || slides[0].prompt || "Video").slice(0, 100) } };
+  } else if (slides.length > 0 && primaryType === "document") {
+    const up = await uploadDocumentToLinkedIn(admin, slides[0], connection.member_urn, accessToken);
+    if ("error" in up) { await markPostFailed(admin, postId, queueId, "Dokument-Upload: " + up.error); return json({ error: "Dokument-Upload: " + up.error }, 502); }
+    contentBlock = { media: { id: up.documentUrn, title: (post.title || slides[0].prompt || "Dokument").slice(0, 100) } };
+  } else {
+    // Bilder: nur echte Bild-Slides hochladen (gemischte Typen ignorieren wir für den Carousel)
+    const imgSlides = slides.filter((sl) => (sl.media_type || "image").toLowerCase() === "image");
+    const uploadedImages: { id: string; altText: string }[] = [];
+    for (const slide of imgSlides) {
+      const upRes = await uploadImageToLinkedIn(admin, slide, connection.member_urn, accessToken);
+      if ("error" in upRes) { await markPostFailed(admin, postId, queueId, "Bild-Upload zu LinkedIn: " + upRes.error); return json({ error: "Bild-Upload: " + upRes.error }, 502); }
+      uploadedImages.push({ id: upRes.imageUrn, altText: (slide.prompt || "Visual").slice(0, 200) });
     }
-    const upRes = await uploadImageToLinkedIn(admin, visual, connection.member_urn, accessToken);
-    if ("error" in upRes) {
-      await markPostFailed(admin, postId, queueId, "Bild-Upload zu LinkedIn: " + upRes.error);
-      return json({ error: "Bild-Upload: " + upRes.error }, 502);
-    }
-    mediaContent = {
-      id:      upRes.imageUrn,
-      altText: (visual.prompt || "Visual").slice(0, 200),
-    };
+    if (uploadedImages.length === 1) contentBlock = { media: uploadedImages[0] };
+    else if (uploadedImages.length > 1) contentBlock = { multiImage: { images: uploadedImages } };
   }
 
   // 4b) Posts-API-Body bauen (Text + optional Bild)
@@ -262,8 +332,8 @@ Deno.serve(async (req) => {
     lifecycleState: "PUBLISHED",
     isReshareDisabledByAuthor: false,
   };
-  if (mediaContent) {
-    postBody.content = { media: mediaContent };
+  if (contentBlock) {
+    postBody.content = contentBlock;
   }
 
   // 5) POST an LinkedIn
