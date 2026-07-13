@@ -220,7 +220,7 @@ export default function MfaSetup() {
             </p>
             <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
               <button style={btnGhost} disabled={busy} onClick={regenerateCodes}>Neue Backup-Codes</button>
-              <button style={{ ...btnGhost, color: '#B91C1C', borderColor: '#FCA5A5', display: 'inline-flex', alignItems: 'center', gap: 6 }} disabled={busy} onClick={disable}>
+              <button className="lk-btn lk-btn-danger-ghost" disabled={busy} onClick={disable}>
                 <ShieldOff size={14} /> {busy ? 'Moment…' : 'Deaktivieren'}
               </button>
             </div>

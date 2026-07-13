@@ -435,6 +435,12 @@ main { padding: 24px !important; }
 .lk-btn-ghost:hover{border-color:var(--accent);color:var(--accent-mid);background:var(--tint-cyan);}
 .lk-btn-danger{background:linear-gradient(135deg,#EF4444,#DC2626);color:#fff;box-shadow:0 8px 20px rgba(239,68,68,.28);}
 .lk-btn-danger:hover{transform:translateY(-1px);box-shadow:0 10px 26px rgba(239,68,68,.42);}
+.lk-btn-danger-ghost{background:var(--danger-soft,#FEF2F2);color:var(--danger-text,#991B1B);border:1.5px solid #FCA5A5;box-shadow:none;}
+.lk-btn-danger-ghost:hover{background:#FEE2E2;border-color:#EF4444;color:#B91C1C;transform:translateY(-1px);box-shadow:0 8px 20px rgba(239,68,68,.20);}
+
+/* Baseline-Hover-Garantie: JEDER klickbare Button ohne eigene lk-btn/Dropdown-Hover bekommt subtiles Feedback (Julian: absolut alle Buttons brauchen Hover) */
+button:not(.lk-btn):not(.lk-dd-trigger):not(.lk-dd-opt):not(:disabled){transition:filter .12s ease, opacity .12s ease, background .12s ease;}
+button:not(.lk-btn):not(.lk-dd-trigger):not(.lk-dd-opt):not([aria-pressed]):not(:disabled):hover{filter:brightness(0.94);}
 .lk-btn:disabled,.lk-btn[disabled]{opacity:.55;cursor:not-allowed;transform:none;filter:none;box-shadow:none;}
 
 /* Eyebrow — Inter 700, 12px, Versalien, LS 1.68, Navy + Verlaufs-Strich */

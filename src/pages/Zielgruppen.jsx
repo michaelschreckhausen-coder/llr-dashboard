@@ -476,7 +476,7 @@ export default function Zielgruppen({ session }) {
                     >
                     {v.is_shared ? `${team.name || 'Team'}` : 'Sichtbarkeit'}
                   </button>}
-                  {v.user_id === session.user.id && <button onClick={()=>remove(v.id)} style={{ padding:'6px 10px', borderRadius:8, border:'1.5px solid #FCA5A5', background:'var(--danger-soft)', color:'var(--danger-text)', fontSize:12, cursor:'pointer' }}><Trash2 size={14} strokeWidth={1.75}/></button>}
+                  {v.user_id === session.user.id && <button className="lk-btn lk-btn-danger-ghost" onClick={()=>remove(v.id)}><Trash2 size={14} strokeWidth={1.75}/></button>}
                 </div>
               </div>
             </div>

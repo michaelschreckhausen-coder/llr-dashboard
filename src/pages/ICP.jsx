@@ -196,7 +196,7 @@ export default function ICP({ session }) {
                   >
                     Bearbeiten
                   </button>
-                  <button onClick={() => del(icp.id)} style={{ padding: '6px 11px', borderRadius: 7, border: '1px solid #FCA5A5', background: '#FEF2F2', fontSize: 11, cursor: 'pointer', color: '#DC2626' }}>
+                  <button className="lk-btn lk-btn-sm lk-btn-danger-ghost" onClick={() => del(icp.id)}>
                     x
                   </button>
                 </div>

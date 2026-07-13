@@ -1487,7 +1487,7 @@ export default function BrandVoice({ session, brandType = 'personal' }) {
                   {team && v.user_id === uid && <button onClick={() => setSharingModalFor(v)} className="lk-btn lk-btn-ghost">
                     {v.is_shared ? `${team.name}` : 'Sichtbarkeit'}
                   </button>}
-                  {v.user_id === uid && <button onClick={()=>deleteVoice(v.id)} style={{ padding:'6px 10px', borderRadius:8, border:'1.5px solid #FCA5A5', background:'#FEF2F2', color:'#991B1B', fontSize:12, cursor:'pointer' }}><Trash2 size={14} strokeWidth={1.75}/></button>}
+                  {v.user_id === uid && <button className="lk-btn lk-btn-danger-ghost" onClick={()=>deleteVoice(v.id)}><Trash2 size={14} strokeWidth={1.75}/></button>}
                 </div>
               </div>
             </div>
