@@ -148,7 +148,7 @@ function TagPicker({ tags = [], selTagIds = [], onToggle, onRename, onPersist, o
       <button className="lk-dd-trigger" ref={btnRef} type="button" onClick={openMenu}
         style={{ width:'100%', minHeight:40, fontFamily:'inherit', display:'flex', alignItems:'center', gap:6, boxSizing:'border-box' }}>
         {selected.length === 0
-          ? <span style={{ fontSize:13, color:'var(--text-muted)', flex:1, textAlign:'left' }}>Tags wählen…</span>
+          ? <span style={{ fontSize:13, color:'var(--text-primary)', flex:1, textAlign:'left' }}>Tags wählen…</span>
           : <span style={{ display:'flex', flexWrap:'wrap', gap:4, flex:1, minWidth:0 }}>
               {selected.slice(0, 3).map(t => (
                 <span key={t.id} style={{ display:'inline-flex', alignItems:'center', height:16, padding: t.name ? '0 6px' : '0 5px', borderRadius:5, background: t.color + '22', color: t.color, fontSize:10, fontWeight:700, border:'1px solid ' + t.color + '55', maxWidth:78, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{t.name || <span style={{ width:12, height:5, borderRadius:3, background:t.color, display:'inline-block' }}/>}</span>
@@ -235,7 +235,7 @@ function DateTimePicker({ value = '', onChange = () => {} }) {
       <button className="lk-dd-trigger" ref={btnRef} type="button" onClick={openMenu}
         style={{ width:'100%', minHeight:40, fontFamily:'inherit', display:'flex', alignItems:'center', gap:8, boxSizing:'border-box' }}>
         <Calendar size={14} strokeWidth={1.9} style={{ color:'var(--text-muted)', flexShrink:0 }}/>
-        <span style={{ flex:1, minWidth:0, textAlign:'left', fontSize:13, color: vp ? 'var(--text-primary)' : 'var(--text-muted)', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{label || 'Datum & Uhrzeit'}</span>
+        <span style={{ flex:1, minWidth:0, textAlign:'left', fontSize:13, color:'var(--text-primary)', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{label || 'Datum & Uhrzeit'}</span>
         <ChevronDown size={14} strokeWidth={2} style={{ opacity:0.5, flexShrink:0 }}/>
       </button>
       {open && coords && (
