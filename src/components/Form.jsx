@@ -15,6 +15,7 @@
 //     <Textarea v={x} onChange={setX} rows={3}/>
 //   </Field>
 
+import PillSelect from './PillSelect'
 import React from 'react'
 
 const P = 'var(--wl-primary, #0A6FB0)'
@@ -138,31 +139,14 @@ export function Textarea({ value, onChange, placeholder, rows=4, disabled, style
 
 // ─── Select ─────────────────────────────────────────────────────────
 export function Select({ value, onChange, children, disabled, style={} }) {
-  const [focused, setFocused] = React.useState(false)
+  // Nutzt das einheitliche Leadesk-Dropdown (PillSelect) statt des nativen <select>.
+  // <option>-Kinder werden zur Laufzeit in ein Options-Array übersetzt.
+  const options = React.Children.toArray(children)
+    .filter(c => c && c.props)
+    .map(c => ({ value: c.props.value ?? '', label: c.props.children }))
   return (
-    <select
-      value={value || ''}
-      disabled={disabled}
-      onChange={e => onChange && onChange(e.target.value)}
-      onFocus={() => setFocused(true)}
-      onBlur={() => setFocused(false)}
-      style={{
-        ...inputBase,
-        appearance: 'none',
-        WebkitAppearance: 'none',
-        cursor: 'pointer',
-        backgroundImage: `url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'><path d='M3 4.5l3 3 3-3' stroke='%236B7280' stroke-width='1.5' fill='none' stroke-linecap='round' stroke-linejoin='round'/></svg>")`,
-        backgroundRepeat: 'no-repeat',
-        backgroundPosition: 'right 14px center',
-        paddingRight: 36,
-        borderColor: focused ? P : 'var(--border, #E5E7EB)',
-        boxShadow: focused ? `0 0 0 3px rgba(10,111,176,.10)` : 'none',
-        opacity: disabled ? .6 : 1,
-        ...style,
-      }}
-    >
-      {children}
-    </select>
+    <PillSelect value={value || ''} onChange={onChange} disabled={disabled} neutral
+      options={options} buttonStyle={{ width: '100%', ...style }} />
   )
 }
 

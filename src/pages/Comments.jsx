@@ -1,3 +1,4 @@
+import PillSelect from '../components/PillSelect'
 import React, { useEffect, useState } from 'react'
 import { Trash2 } from 'lucide-react'
 import { supabase } from '../lib/supabase'
@@ -103,11 +104,9 @@ export default function Comments({ session }) {
                   {c.used ? 'Verwendet' : '○ Als verwendet markieren'}
                 </button>
 
-                <select value={c.lead_id||''} onChange={e=>assignLead(c.id, e.target.value)}
-                  style={{fontSize:12,padding:'4px 8px',borderRadius:8,color:'#555'}}>
-                  <option value="">– Lead zuweisen –</option>
-                  {leads.map(l=><option key={l.id} value={l.id}>{l.name}</option>)}
-                </select>
+                <PillSelect value={c.lead_id||''} onChange={__lkv=>assignLead(c.id, __lkv)} neutral
+                  options={[{ value:'', label:'– Lead zuweisen –' }, ...leads.map(l=>({ value:l.id, label:l.name }))]}
+                  buttonStyle={{ minWidth:140, fontSize:12 }} />
 
                 {c.leads?.name && <span style={{fontSize:12,color:'#0a66c2'}}>{c.leads.name}</span>}
 
