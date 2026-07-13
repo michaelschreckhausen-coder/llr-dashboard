@@ -59,7 +59,7 @@ export default function FormatPicker({ value, onChange, openUp = true, compact =
 
   return (
     <div ref={rootRef} style={{ position: 'relative', display: 'inline-block' }}>
-      <button type="button" onClick={() => setOpen((v) => !v)}
+      <button className="lk-dd-trigger" type="button" onClick={() => setOpen((v) => !v)}
         style={{
           display: 'inline-flex', alignItems: 'center', gap: 6, height: 34, padding: '0 11px',
           borderRadius: 9, border: '1.5px solid var(--border, #D7DCE5)', background: 'var(--surface, #FFFFFF)',

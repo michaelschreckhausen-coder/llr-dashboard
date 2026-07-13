@@ -76,6 +76,7 @@ export default function ModelSelector({ model, onChange, disabled = false, size 
   return (
     <div style={{ position: 'relative', display: 'inline-block' }}>
       <button
+        className="lk-dd-trigger"
         ref={btnRef}
         onClick={handleOpen}
         style={{

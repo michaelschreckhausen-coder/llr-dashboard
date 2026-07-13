@@ -32,7 +32,7 @@ export default function BrandVoiceSwitcher({ session, compact = false }) {
 
   return (
     <div ref={ref} style={{ position:'relative' }}>
-      <button onClick={() => setOpen(o => !o)}
+      <button className="lk-dd-trigger" onClick={() => setOpen(o => !o)}
         style={{
           display:'inline-flex', alignItems:'center', gap:8,
           height: 38, boxSizing: 'border-box',
@@ -120,7 +120,7 @@ function BVItem({ bv, active, onPick, shared = false }) {
         cursor:'pointer',
         transition:'background .12s',
       }}
-      onMouseEnter={e => { if (!active) e.currentTarget.style.background = '#F8FAFC' }}
+      onMouseEnter={e => { if (!active) e.currentTarget.style.background = 'var(--tint-cyan, #EAF8FE)' }}
       onMouseLeave={e => { if (!active) e.currentTarget.style.background = 'transparent' }}>
       <span style={{ fontSize:18 }}>{icon}</span>
       <div style={{ flex:1, minWidth:0 }}>

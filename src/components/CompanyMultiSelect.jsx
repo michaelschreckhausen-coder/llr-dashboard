@@ -57,7 +57,7 @@ export default function CompanyMultiSelect({
 
   return (
     <div ref={ref} style={{ position:'relative', display:'inline-block' }}>
-      <button ref={btnRef} type="button" onClick={openMenu}
+      <button className="lk-dd-trigger" ref={btnRef} type="button" onClick={openMenu}
         onMouseEnter={() => setHover(true)} onMouseLeave={() => setHover(false)} onMouseDown={() => setHover(false)}
         title={iconOnly ? undefined : (count ? `Unternehmen: ${btnLabel}` : 'Optional: Du schreibst in deiner Stimme als Ambassador für ein oder mehrere Unternehmen')}
         style={iconOnly ? {
@@ -94,7 +94,7 @@ export default function CompanyMultiSelect({
             return (
               <label key={c.id}
                 style={{ display:'flex', alignItems:'center', gap:9, padding:'7px 8px', borderRadius:7, cursor:'pointer', background: checked ? 'rgba(10,111,176,0.06)' : 'transparent' }}
-                onMouseEnter={e => { if (!checked) e.currentTarget.style.background = '#F8FAFC' }}
+                onMouseEnter={e => { if (!checked) e.currentTarget.style.background = 'var(--tint-cyan, #EAF8FE)' }}
                 onMouseLeave={e => { if (!checked) e.currentTarget.style.background = 'transparent' }}>
                 <span style={{
                   width:16, height:16, borderRadius:5, flexShrink:0, display:'flex', alignItems:'center', justifyContent:'center',

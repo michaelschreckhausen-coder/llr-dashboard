@@ -23,7 +23,7 @@ export default function AudienceSelect({ audiences = [], value = '', onChange = 
 
   return (
     <div ref={ref} style={{ position:'relative', display:'inline-block' }}>
-      <button type="button" onClick={() => setOpen(o => !o)}
+      <button className="lk-dd-trigger" type="button" onClick={() => setOpen(o => !o)}
         onMouseEnter={() => setHover(true)} onMouseLeave={() => setHover(false)} onMouseDown={() => setHover(false)}
         title={iconOnly ? undefined : (sel ? `Zielgruppe: ${sel.name}` : 'Zielgruppe für die Generierung')}
         style={iconOnly ? {

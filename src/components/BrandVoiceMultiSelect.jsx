@@ -54,7 +54,7 @@ export default function BrandVoiceMultiSelect({ entityType, entityId, onSelectio
 
   if (!brandVoices.length) {
     return (
-      <div style={{ padding:'12px 14px', background:'#F8FAFC', borderRadius:10, border:'1px dashed var(--border)', fontSize:12, color:'var(--text-muted)' }}>
+      <div style={{ padding:'12px 14px', background:'var(--tint-cyan, #EAF8FE)', borderRadius:10, border:'1px dashed var(--border)', fontSize:12, color:'var(--text-muted)' }}>
         Noch keine Auftritte angelegt — leg in Brand Voice einen Auftritt an, um diese Zielgruppe einem Auftritt zuzuordnen.
       </div>
     )

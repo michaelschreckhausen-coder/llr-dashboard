@@ -198,7 +198,7 @@ export default function SharingPicker({
               return (
                 <label key={m.user_id}
                   style={{ display:'flex', alignItems:'center', gap:9, padding:'6px 8px', borderRadius:7, cursor:'pointer', background: checked ? 'rgba(10,111,176,0.06)' : 'transparent' }}
-                  onMouseEnter={e => { if (!checked) e.currentTarget.style.background = '#F8FAFC' }}
+                  onMouseEnter={e => { if (!checked) e.currentTarget.style.background = 'var(--tint-cyan, #EAF8FE)' }}
                   onMouseLeave={e => { if (!checked) e.currentTarget.style.background = 'transparent' }}>
                   <input type="checkbox" checked={checked} onChange={() => toggleUser(m.user_id)}
                     style={{ width:14, height:14, cursor:'pointer', accentColor: '#0A6FB0' }}/>
@@ -228,7 +228,7 @@ export default function SharingPicker({
               return (
                 <label key={t.id}
                   style={{ display:'flex', alignItems:'center', gap:9, padding:'6px 8px', borderRadius:7, cursor:'pointer', background: checked ? 'rgba(10,111,176,0.06)' : 'transparent' }}
-                  onMouseEnter={e => { if (!checked) e.currentTarget.style.background = '#F8FAFC' }}
+                  onMouseEnter={e => { if (!checked) e.currentTarget.style.background = 'var(--tint-cyan, #EAF8FE)' }}
                   onMouseLeave={e => { if (!checked) e.currentTarget.style.background = 'transparent' }}>
                   <input type="checkbox" checked={checked} onChange={() => toggleTeam(t.id)}
                     style={{ width:14, height:14, cursor:'pointer', accentColor: '#0A6FB0' }}/>
