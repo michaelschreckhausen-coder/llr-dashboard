@@ -333,7 +333,7 @@ export default function Dashboard({ session }) {
                 onClick={() => askLeadly(
                   `Hier ist mein heutiger Plan:\n${displayedSuggestions.map((s, i) => `${i + 1}. [${s.area.label}] ${s.title}${s.reason ? ` (${s.reason})` : ''}`).join('\n')}\nGeh ihn mit mir durch: Womit starte ich am besten, und welche Schritte kannst du direkt für mich vorbereiten?`
                 )}
-                style={{ padding: '5px 12px', borderRadius: radii.pill, border: `1px solid ${colors.border}`, background: colors.white, color: colors.inkMuted, fontSize: 12, fontWeight: 600, cursor: 'pointer' }}>
+                className="lk-btn lk-btn-ghost lk-btn-sm">
                 Alle mit Leadly durchgehen
               </button>
             )}
@@ -351,8 +351,7 @@ export default function Dashboard({ session }) {
                       {s.action ? 'Erledigen' : 'Mit Leadly angehen'}
                     </button>
                     {s.href && (
-                      <button onClick={() => nav(s.href)}
-                        style={{ padding: '7px 12px', borderRadius: 8, border: `1px solid ${colors.border}`, background: colors.white, color: colors.inkMuted, fontSize: 12, fontWeight: 600, cursor: 'pointer' }}>
+                      <button onClick={() => nav(s.href)} className="lk-btn lk-btn-ghost">
                         Öffnen
                       </button>
                     )}
@@ -373,7 +372,7 @@ export default function Dashboard({ session }) {
                 Aktuell stehen keine offenen Follow-ups, heißen Kontakte, aktiven Deals oder überfälligen Aufgaben an. Sobald sich etwas ergibt, erscheinen hier konkrete Vorschläge.
               </div>
               <button onClick={() => askLeadly('Was kann ich heute im Vertrieb sinnvoll angehen?')}
-                style={{ alignSelf: 'flex-start', marginTop: 4, padding: '7px 14px', borderRadius: 8, border: `1px solid ${colors.border}`, background: colors.white, color: colors.inkMuted, fontSize: 12, fontWeight: 600, cursor: 'pointer' }}>
+                className="lk-btn lk-btn-ghost lk-btn-sm" style={{ alignSelf: 'flex-start', marginTop: 4 }}>
                 Leadly fragen
               </button>
             </div>
