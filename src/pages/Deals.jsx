@@ -37,7 +37,7 @@ const PV = 'var(--wl-primary, #0A6FB0)'
 
 function KpiCard({ label, value, sub, color }) {
   return (
-    <div style={{ background:RC.surface, border:`1px solid ${RC.border}`, borderRadius:14, padding:'14px 16px', display:'flex', flexDirection:'column', gap:4 }}>
+    <div style={{ background:RC.surface, border:`1px solid ${RC.border}`, borderRadius:16, padding:'14px 16px', display:'flex', flexDirection:'column', gap:4, boxShadow:'var(--shadow-card)' }}>
       <span style={{ fontSize:10, fontWeight:700, color, textTransform:'uppercase', letterSpacing:'0.06em' }}>{label}</span>
       <div style={{ fontSize:22, fontWeight:800, color:RC.text1, fontVariantNumeric:'tabular-nums' }}>{value}</div>
       {sub && <div style={{ fontSize:11, color:RC.text3 }}>{sub}</div>}
@@ -47,7 +47,7 @@ function KpiCard({ label, value, sub, color }) {
 
 function Panel({ title, children }) {
   return (
-    <div style={{ background:RC.surface, border:`1px solid ${RC.border}`, borderRadius:14, padding:18, marginBottom:16 }}>
+    <div style={{ background:RC.surface, border:`1px solid ${RC.border}`, borderRadius:16, padding:'18px 20px', marginBottom:16, boxShadow:'var(--shadow-card)' }}>
       {title && <div style={{ fontSize:14, fontWeight:700, color:RC.text1, margin:'0 0 14px' }}>{title}</div>}
       {children}
     </div>
