@@ -135,9 +135,19 @@ Deno.serve(async (req) => {
         } else {
           result = await addReaction(conn, socialId, job.reaction_type ?? "like");
         }
-        await sb.from("linkedin_engagement_jobs")
-          .update({ status: "done", result, error: null }).eq("id", job.id);
-        done++;
+        // Soft-Fail-Guard: done nur bei erwartetem Response-Objekt (2xx mit leerem/
+        // anderem Objekt fängt künftige Unipile-Soft-Fails ab).
+        const expected = job.kind === "comment" ? "CommentSent" : "ReactionAdded";
+        if (result?.object !== expected) {
+          await sb.from("linkedin_engagement_jobs")
+            .update({ status: "error", error: `Unerwartete Unipile-Response: ${JSON.stringify(result).slice(0, 300)}`, result })
+            .eq("id", job.id);
+          failed++;
+        } else {
+          await sb.from("linkedin_engagement_jobs")
+            .update({ status: "done", result, error: null }).eq("id", job.id);
+          done++;
+        }
       } catch (e) {
         const rl = e instanceof UnipileError && e.isRateLimited;
         await sb.from("linkedin_engagement_jobs")

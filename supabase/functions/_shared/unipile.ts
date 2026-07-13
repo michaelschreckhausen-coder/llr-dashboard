@@ -394,9 +394,13 @@ export async function resolvePostSocialId(
 ): Promise<string | null> {
   const primary = postUrnFromUrl(input);
   if (!primary) return null;
-  const candidates = [primary];
-  const m = primary.match(/urn:li:(activity|ugcPost):(\d+)/);
-  if (m) candidates.push(`urn:li:${m[1] === "activity" ? "ugcPost" : "activity"}:${m[2]}`);
+  // Alle drei Formen als Kandidaten (primary zuerst): welche getPost real auflöst,
+  // ist die social_id. Deckt share->activity/ugcPost mit ab.
+  const num = primary.match(/:(\d+)$/)?.[1];
+  const candidates = num
+    ? [primary, ...["activity", "ugcPost", "share"]
+        .map((t) => `urn:li:${t}:${num}`).filter((c) => c !== primary)]
+    : [primary];
   for (const c of candidates) {
     try {
       await getPost(conn, c);
