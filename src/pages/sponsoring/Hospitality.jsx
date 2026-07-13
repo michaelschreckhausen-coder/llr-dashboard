@@ -216,7 +216,7 @@ export default function Hospitality() {
                     <div style={{ display: 'flex', gap: 8, marginBottom: 12 }}>
                       <input value={guestName} onChange={(e) => setGuestName(e.target.value)} placeholder="Gastname"
                              onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); addGuest(a.id) } }} style={{ ...input, maxWidth: 260 }} />
-                      <button onClick={() => addGuest(a.id)} style={secondaryBtn}><UserPlus size={14} /> Gast hinzufügen</button>
+                      <button onClick={() => addGuest(a.id)} className="lk-btn lk-btn-ghost"><UserPlus size={14} /> Gast hinzufügen</button>
                     </div>
                     {(guests[a.id] || []).length === 0 ? (
                       <div style={{ fontSize: 13, color: 'var(--text-muted)' }}>Noch keine Gäste.</div>

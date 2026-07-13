@@ -557,7 +557,7 @@ export default function LeadEditModal({ lead, isOpen, onClose, onSave }) {
             <Keyboard size={13} /> ⌘ + S speichern · Esc abbrechen
           </div>
           <div style={footerBtnsStyle}>
-            <button type="button" style={secondaryBtnStyle} onClick={handleClose}>Abbrechen</button>
+            <button type="button" className="lk-btn lk-btn-ghost" onClick={handleClose}>Abbrechen</button>
             <button type="button"
               style={isDirty && !saving ? primaryBtnStyle : primaryBtnDisabledStyle}
               onClick={handleSave} disabled={!isDirty || saving}>

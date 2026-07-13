@@ -233,7 +233,7 @@ export default function Vertraege() {
                   <td style={td}>{packageName[o.package_id] || '—'}</td>
                   <td style={{ ...td, fontWeight: 700 }}>{fmt(o.total_price)}</td>
                   <td style={{ ...td, textAlign: 'right' }}>
-                    <button onClick={() => setConvert(o)} style={primaryBtn}>
+                    <button onClick={() => setConvert(o)} className="lk-btn lk-btn-navy">
                       In Vertrag wandeln <ArrowRight size={14} />
                     </button>
                   </td>

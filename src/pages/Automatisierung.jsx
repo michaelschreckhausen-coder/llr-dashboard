@@ -495,13 +495,13 @@ export default function Automatisierung({ session }) {
               <input value={search} onChange={e => setSearch(e.target.value)}
                 placeholder="Kampagnen suchen…" style={searchInputStyle} />
             </div>
-            <button style={ghostBtnStyle} onClick={load} title="Neu laden">
+            <button className="lk-btn lk-btn-ghost" onClick={load} title="Neu laden">
               <RotateCw size={14} /> Aktualisieren
             </button>
-            <button style={ghostBtnStyle} onClick={exportCampaignsCsv} title="CSV-Export aller Kampagnen">
+            <button className="lk-btn lk-btn-ghost" onClick={exportCampaignsCsv} title="CSV-Export aller Kampagnen">
               <Download size={14} /> Export
             </button>
-            <button style={primaryBtnStyle} onClick={() => setShowNew(true)}>
+            <button className="lk-btn lk-btn-navy" onClick={() => setShowNew(true)}>
               <Plus size={14} /> Neue Kampagne
             </button>
           </div>
@@ -726,7 +726,7 @@ function EmptyState({ statusTab, hasAny, onCreate }) {
       <div style={{ fontSize:13, color:'var(--text-muted)', marginBottom:18 }}>
         {hasAny ? 'Wechsle den Status-Tab oder erstelle eine neue Kampagne.' : 'Erstelle deine erste LinkedIn-Automatisierungskampagne in unter zwei Minuten.'}
       </div>
-      <button onClick={onCreate} style={primaryBtnStyle}>
+      <button onClick={onCreate} className="lk-btn lk-btn-navy">
         <Plus size={14} /> Neue Kampagne
       </button>
     </div>
@@ -803,7 +803,7 @@ function QueueView({ jobs, onCancel, onReload }) {
     <div>
       <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:12 }}>
         <span style={{ fontSize:13, color:'var(--text-muted)' }}>{jobs.length} ausstehende Jobs</span>
-        <button onClick={onReload} style={ghostBtnStyle}><RotateCw size={13} /> Aktualisieren</button>
+        <button onClick={onReload} className="lk-btn lk-btn-ghost"><RotateCw size={13} /> Aktualisieren</button>
       </div>
       {jobs.length === 0 ? (
         <div style={{ ...cardStyle, textAlign:'center', padding:'40px 20px', color:'var(--text-muted)', fontSize:13 }}>
@@ -1064,14 +1064,14 @@ function NewCampaignWizard({
 
   const footer = (
     <>
-      <button onClick={prevStep} style={ghostBtnStyle}>
+      <button onClick={prevStep} className="lk-btn lk-btn-ghost">
         <ChevronLeft size={14} /> {step === 'template' ? 'Abbrechen' : 'Zurück'}
       </button>
       <div style={{ fontSize:12, color:'var(--text-muted)' }}>
         Schritt {stepIndex + 1} von {path.length}
       </div>
       {canCreate ? (
-        <button onClick={onCreate} style={primaryBtnStyle}>
+        <button onClick={onCreate} className="lk-btn lk-btn-navy">
           <Zap size={14} /> Kampagne erstellen{selectedLeads.length > 0 ? ` (${selectedLeads.length} Lead${selectedLeads.length === 1 ? '' : 's'})` : ''}
         </button>
       ) : step === 'source' ? (
@@ -1200,8 +1200,8 @@ function NewCampaignWizard({
             hint="Aktionen werden in dieser Reihenfolge ausgeführt. Wait-Steps dazwischen definieren die Verzögerung."
             action={
               <div style={{ display:'flex', gap:6 }}>
-                <button onClick={() => addStep('send_message')} style={ghostBtnStyle}><Plus size={12} /> Aktion</button>
-                <button onClick={() => addStep('wait')}         style={ghostBtnStyle}><Hourglass size={12} /> Warten</button>
+                <button onClick={() => addStep('send_message')} className="lk-btn lk-btn-ghost"><Plus size={12} /> Aktion</button>
+                <button onClick={() => addStep('wait')}         className="lk-btn lk-btn-ghost"><Hourglass size={12} /> Warten</button>
               </div>
             }
           >

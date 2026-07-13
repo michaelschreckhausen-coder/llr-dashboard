@@ -513,7 +513,7 @@ export default function Kampagnen() {
                     <button onClick={saveDraft} disabled={busy} style={{ ...primaryBtn, opacity: busy ? 0.6 : 1 }}>
                       {busy ? <Loader2 size={14} className="spin" /> : null} Speichern
                     </button>
-                    <button onClick={() => setEditing(false)} disabled={busy} style={secondaryBtn}>Abbrechen</button>
+                    <button onClick={() => setEditing(false)} disabled={busy} className="lk-btn lk-btn-ghost">Abbrechen</button>
                   </div>
                 </>
               )}
@@ -553,7 +553,7 @@ export default function Kampagnen() {
                           return (
                             <div key={i} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}>
                               <span style={{ fontSize: 13, color: 'var(--text-strong)' }}>{name}</span>
-                              <button onClick={() => adoptSuggestion(s)} style={secondaryBtn}>
+                              <button onClick={() => adoptSuggestion(s)} className="lk-btn lk-btn-ghost">
                                 <UserPlus size={13} /> Uebernehmen
                               </button>
                             </div>

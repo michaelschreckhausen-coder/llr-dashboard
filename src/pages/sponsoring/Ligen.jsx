@@ -107,7 +107,7 @@ export default function Ligen() {
     <div style={{ width: '100%', maxWidth: 1100, margin: '0 auto', padding: '24px 16px 40px' }}>
       <PageHeader overline="Sponsoring" title="Ligen" subtitle="Ligen werden in Rechten, Verträgen und Reporting als Filter genutzt." action={
         <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-          <button onClick={seedLeagues} disabled={busy} style={secondaryBtn}>
+          <button onClick={seedLeagues} disabled={busy} className="lk-btn lk-btn-ghost">
             {busy ? <Loader2 size={14} className="spin" /> : <Plus size={14} />} Standard-Ligen anlegen
           </button>
           <button onClick={fetchAll} title="Aktualisieren" style={iconBtn}>

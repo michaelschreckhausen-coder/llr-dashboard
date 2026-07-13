@@ -230,7 +230,7 @@ export default function LinkedInAutomationNeu({ session }) {
           <h1 style={titleStyle}>Automatisierung</h1>
           <p style={subtitleStyle}>Kampagnen-Builder + Funnel-Monitor.</p>
         </div>
-        <button style={primaryBtn} onClick={createCampaign} disabled={creating}><Plus size={16} /> Neue Kampagne</button>
+        <button className="lk-btn lk-btn-navy" onClick={createCampaign} disabled={creating}><Plus size={16} /> Neue Kampagne</button>
       </div>
 
       {/* Runner-Health-Leiste */}
@@ -289,7 +289,7 @@ export default function LinkedInAutomationNeu({ session }) {
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 14 }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}><b style={{ fontSize: 15 }}>{sel.name}</b><Pill status={sel.status} /></div>
                 <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
-                  {sel.status !== 'active' && <button style={primaryBtn} onClick={() => { loadDetail(sel.id); setActivateModal(true) }}><Play size={14} /> Aktivieren</button>}
+                  {sel.status !== 'active' && <button className="lk-btn lk-btn-navy" onClick={() => { loadDetail(sel.id); setActivateModal(true) }}><Play size={14} /> Aktivieren</button>}
                   {sel.status === 'active' && <button style={ghostBtn} onClick={() => setStatus('paused')}><Pause size={13} /> Pausieren</button>}
                   <button style={ghostBtn} onClick={() => setStatus('completed')}><Square size={13} /> Stoppen</button>
                   {sel.archived_at
@@ -350,7 +350,7 @@ export default function LinkedInAutomationNeu({ session }) {
                         {inboxLists.length === 0 && <div style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 4 }}>Noch keine Listen — unter „LinkedIn Kontakte" anlegen.</div>}
                       </div>
                     )}
-                    <button style={primaryBtn} onClick={runAudience}><Zap size={14} /> Audience ausführen</button>
+                    <button className="lk-btn lk-btn-navy" onClick={runAudience}><Zap size={14} /> Audience ausführen</button>
                     <button style={ghostBtn} onClick={runAudienceScan}><Users size={14} /> Audience scannen</button>
                     {selAudience.last_run_at && <span style={{ fontSize: 11, color: 'var(--text-muted)' }}>zuletzt: {new Date(selAudience.last_run_at).toLocaleString('de-DE')}</span>}
                   </div>
@@ -445,7 +445,7 @@ export default function LinkedInAutomationNeu({ session }) {
               </div>
               <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
                 <button style={ghostBtn} onClick={() => setActivateModal(false)}>Abbrechen</button>
-                <button style={primaryBtn} onClick={confirmActivate}><Play size={14} /> Ja, aktivieren &amp; senden</button>
+                <button className="lk-btn lk-btn-navy" onClick={confirmActivate}><Play size={14} /> Ja, aktivieren &amp; senden</button>
               </div>
             </div>
           </div>

@@ -267,7 +267,7 @@ export default function MockupStudio() {
       {/* ─── Block 3: Ergebnisse ───────────────────────────────────────────── */}
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginTop: 8 }}>
         <h2 style={{ ...sectionTitle, marginBottom: 0 }}>Ergebnisse</h2>
-        <button onClick={fetchAll} style={secondaryBtn}>
+        <button onClick={fetchAll} className="lk-btn lk-btn-ghost">
           <RefreshCw size={14} /> Neu laden
         </button>
       </div>

@@ -345,7 +345,7 @@ export default function LinkedInSuche() {
             <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', gap:12, marginBottom:10, flexWrap:'wrap' }}>
               <div style={sectionTitle}><Users size={14} /> Ergebnisse für „{results.searchName}"</div>
               {results.category === 'people' && (
-                <button style={ghostBtnStyle} onClick={() => navigate('/linkedin-inbox')}>
+                <button className="lk-btn lk-btn-ghost" onClick={() => navigate('/linkedin-inbox')}>
                   <InboxIcon size={14} /> Zu den LinkedIn Kontakten
                 </button>
               )}

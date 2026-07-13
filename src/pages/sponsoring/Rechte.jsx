@@ -136,7 +136,7 @@ export default function Rechte() {
             <span key={c.id} style={chip}>{c.name}</span>
           ))}
           {categories.length === 0 && (
-            <button onClick={seedCategories} disabled={busy} style={secondaryBtn}>
+            <button onClick={seedCategories} disabled={busy} className="lk-btn lk-btn-ghost">
               {busy ? <Loader2 size={14} className="spin" /> : <Plus size={14} />} Standard-Kategorien anlegen
             </button>
           )}
