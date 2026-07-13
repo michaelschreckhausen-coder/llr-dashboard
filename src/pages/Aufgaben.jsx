@@ -196,7 +196,7 @@ export default function Aufgaben({ session }) {
         title="Alles an einem Ort."
         subtitle={<span style={{display:'inline-flex',alignItems:'center',gap:4,flexWrap:'wrap'}}>{team ? `Team: ${team.name}` : 'Meine Aufgaben'} · {counts.all} offen{counts.overdue > 0 && <> · <AlertTriangle size={12} strokeWidth={1.75}/> {counts.overdue} überfällig</>}</span>}
         actions={
-          <button className="lk-btn lk-btn-primary" type="button" onClick={() => setNewTaskOpen(true)}
+          <button className="lk-btn lk-btn-cta" type="button" onClick={() => setNewTaskOpen(true)}
             style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
             + Neue Aufgabe
           </button>

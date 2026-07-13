@@ -112,7 +112,7 @@ export default function AdminTenants({ session }) {
         <div style={{ display:'flex', gap:8, alignItems:'center' }}>
           <input value={search} onChange={e=>setSearch(e.target.value)} placeholder="Suche…"
             style={{ ...inp, width:200, padding:'7px 12px' }}/>
-          <button className="lk-btn lk-btn-primary" onClick={openNew}
+          <button className="lk-btn lk-btn-cta" onClick={openNew}
             style={{ whiteSpace:'nowrap' }}>
             + Neuer Tenant
           </button>
@@ -321,7 +321,7 @@ export default function AdminTenants({ session }) {
                 >
                 Abbrechen
               </button>
-              <button className="lk-btn lk-btn-primary" onClick={saveTenant} disabled={saving || !form.name.trim()}
+              <button className="lk-btn lk-btn-cta" onClick={saveTenant} disabled={saving || !form.name.trim()}
                 >
                 {saving ? 'Speichere…' : modal==='new' ? '+ Anlegen' : 'Speichern'}
               </button>

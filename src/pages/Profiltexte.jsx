@@ -891,7 +891,7 @@ REGELN (hart):
             
             {hLoading && <GenerationLoading title="Profilslogan wird formuliert" expectedSeconds={15} />}
 
-            <div style={{display:'flex',gap:10,alignItems:'center',flexWrap:'wrap',marginTop:4}}>              <button className="lk-btn lk-btn-primary" onClick={genHeadline} disabled={hLoading} >
+            <div style={{display:'flex',gap:10,alignItems:'center',flexWrap:'wrap',marginTop:4}}>              <button className="lk-btn lk-btn-cta" onClick={genHeadline} disabled={hLoading} >
                 {hLoading ? 'Generiere…' : (isCompany ? 'Tagline generieren' : 'Profilslogan generieren')}
               </button>
             </div>
@@ -975,7 +975,7 @@ REGELN (hart):
             
             {aLoading && <GenerationLoading title="Info-Box wird gestaltet" expectedSeconds={25} />}
 
-            <div style={{display:'flex',gap:10,alignItems:'center',flexWrap:'wrap',marginTop:4}}>              <button className="lk-btn lk-btn-primary" onClick={genAbout} disabled={aLoading} >
+            <div style={{display:'flex',gap:10,alignItems:'center',flexWrap:'wrap',marginTop:4}}>              <button className="lk-btn lk-btn-cta" onClick={genAbout} disabled={aLoading} >
                 {aLoading ? 'Generiere…' : 'Info-Box generieren'}
               </button>
             </div>
@@ -1083,7 +1083,7 @@ REGELN (hart):
             
             {pLoading && <GenerationLoading title="Positionsbeschreibung wird verfasst" expectedSeconds={20} />}
 
-            <div style={{display:'flex',gap:10,alignItems:'center',flexWrap:'wrap',marginTop:4}}>              <button className="lk-btn lk-btn-primary" onClick={genPosition} disabled={pLoading} >
+            <div style={{display:'flex',gap:10,alignItems:'center',flexWrap:'wrap',marginTop:4}}>              <button className="lk-btn lk-btn-cta" onClick={genPosition} disabled={pLoading} >
                 {pLoading ? 'Generiere…' : 'Positionsbeschreibung generieren'}
               </button>
             </div>
@@ -1163,7 +1163,7 @@ REGELN (hart):
               />
             </Collapsible>
 
-            <div style={{display:'flex',gap:10,alignItems:'center',flexWrap:'wrap',marginTop:4}}>              <button className="lk-btn lk-btn-primary" onClick={genAll} disabled={allLoading} >
+            <div style={{display:'flex',gap:10,alignItems:'center',flexWrap:'wrap',marginTop:4}}>              <button className="lk-btn lk-btn-cta" onClick={genAll} disabled={allLoading} >
                 {allLoading ? 'Generiere alle drei…' : 'Alle drei generieren'}
               </button>
             </div>

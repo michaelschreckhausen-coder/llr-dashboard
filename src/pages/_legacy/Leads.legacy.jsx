@@ -993,7 +993,7 @@ export default function Leads({ session }) {
             </div>
             <div style={{ padding:'12px 24px 20px', display:'flex', justifyContent:'flex-end', gap:10, borderTop:'1px solid #EEEFF4' }}>
               <button type="button" onClick={()=>setModal(null)} style={{ padding:'8px 18px', borderRadius:999, border:'1px solid var(--border)', background:'transparent', color:'var(--text-muted)', fontSize:13, fontWeight:600, cursor:'pointer' }}>Abbrechen</button>
-              <button className="lk-btn lk-btn-primary" type="submit" disabled={saving} >
+              <button className="lk-btn lk-btn-cta" type="submit" disabled={saving} >
                 {saving ? 'Speichere…' : 'Erstellen'}
               </button>
             </div>
@@ -1022,7 +1022,7 @@ export default function Leads({ session }) {
             </div>
             <div style={{ padding:'12px 24px 20px', display:'flex', justifyContent:'flex-end', gap:10, borderTop:'1px solid #EEEFF4' }}>
               <button type="button" onClick={()=>setModal(null)} style={{ padding:'8px 18px', borderRadius:999, border:'1px solid var(--border)', background:'transparent', color:'var(--text-muted)', fontSize:13, fontWeight:600, cursor:'pointer' }}>Abbrechen</button>
-              <button className="lk-btn lk-btn-primary" type="submit" >Erstellen</button>
+              <button className="lk-btn lk-btn-cta" type="submit" >Erstellen</button>
             </div>
           </form>
         </Modal>

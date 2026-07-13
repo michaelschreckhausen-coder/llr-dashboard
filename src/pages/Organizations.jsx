@@ -336,7 +336,7 @@ function OrganizationModal({ org, industries, teamId, uid, onSave, onClose }) {
 
         <div style={{ padding: '14px 22px', borderTop: '1px solid #F1F5F9', display: 'flex', gap: 10, justifyContent: 'flex-end' }}>
           <button className="lk-btn lk-btn-ghost" onClick={onClose} >Abbrechen</button>
-          <button className="lk-btn lk-btn-primary" onClick={save} disabled={saving}
+          <button className="lk-btn lk-btn-cta" onClick={save} disabled={saving}
             style={{ opacity: saving ? 0.6 : 1 }}>
             {saving ? 'Speichern…' : 'Speichern'}
           </button>
@@ -502,7 +502,7 @@ export default function Organizations({ session }) {
         style={{ display: 'inline-flex', alignItems: 'center', gap: 6, whiteSpace: 'nowrap' }}>
         {showDash ? <ChevronUp size={15}/> : <ChevronDown size={15}/>}Dashboard
       </button>
-      <button className="lk-btn lk-btn-primary" onClick={() => setModal('new')}
+      <button className="lk-btn lk-btn-cta" onClick={() => setModal('new')}
         style={{ whiteSpace: 'nowrap' }}>
         + Neues Unternehmen
       </button>

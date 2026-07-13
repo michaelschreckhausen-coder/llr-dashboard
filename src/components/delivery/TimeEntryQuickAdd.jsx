@@ -283,7 +283,7 @@ export default function TimeEntryQuickAdd({
           >
             Abbrechen
           </button>
-          <button className="lk-btn lk-btn-primary"
+          <button className="lk-btn lk-btn-cta"
             type="button"
             onClick={handleSubmit}
             disabled={submitting}

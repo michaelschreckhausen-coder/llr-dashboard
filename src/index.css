@@ -426,10 +426,11 @@ main { padding: 24px !important; }
 .lk-btn-lg{padding:11px 22px;font-size:14.5px;}
 .lk-btn-sm{padding:6px 12px;font-size:12px;}
 .lk-btn-block{width:100%;}
-.lk-btn-primary{background:var(--grad);color:#fff;box-shadow:0 8px 22px rgba(0,48,96,.22);}
-.lk-btn-primary:hover{transform:translateY(-2px);box-shadow:0 12px 30px rgba(10,111,176,.40);filter:saturate(1.1);}
-.lk-btn-navy{background:var(--primary);color:#fff;box-shadow:0 6px 18px rgba(0,48,96,.12);}
-.lk-btn-navy:hover{transform:translateY(-1px);box-shadow:0 8px 22px rgba(0,48,96,.28);}
+.lk-btn-primary,.lk-btn-navy{background:var(--primary);color:#fff;box-shadow:0 6px 18px rgba(0,48,96,.12);}
+.lk-btn-primary:hover,.lk-btn-navy:hover{transform:translateY(-1px);box-shadow:0 8px 22px rgba(0,48,96,.28);}
+/* CTA = Marken-Verlauf, nur für den einen Haupt-CTA je Ansicht */
+.lk-btn-cta{background:var(--grad);color:#fff;box-shadow:0 8px 22px rgba(0,48,96,.22);}
+.lk-btn-cta:hover{transform:translateY(-2px);box-shadow:0 12px 30px rgba(10,111,176,.40);filter:saturate(1.1);}
 .lk-btn-ghost{background:var(--surface);color:var(--text-primary);border:1px solid var(--border);}
 .lk-btn-ghost:hover{border-color:var(--accent);color:var(--accent-mid);background:var(--tint-cyan);}
 .lk-btn-danger{background:linear-gradient(135deg,#EF4444,#DC2626);color:#fff;box-shadow:0 8px 20px rgba(239,68,68,.28);}

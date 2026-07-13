@@ -1395,7 +1395,7 @@ Neue Anfrage: "${p}"` },
           <div style={{ padding:'14px 12px 10px', display:'flex', gap:8 }}>
             <button onClick={() => setSidebarOpen(false)} title="Sidebar einklappen"
               style={{ width:36, height:36, display:'inline-flex', alignItems:'center', justifyContent:'center', borderRadius:9, border:'1px solid var(--border)', background:'var(--surface,#fff)', fontSize:14, cursor:'pointer', color:'var(--text-muted,#667085)' }}>☰</button>
-            <button className="lk-btn lk-btn-primary" onClick={newChat}
+            <button className="lk-btn lk-btn-cta" onClick={newChat}
               style={{ flex:1, height:36, display:'inline-flex', alignItems:'center', justifyContent:'center', gap:6 }}>
               <Pencil size={13} strokeWidth={2}/>Neuer Chat
             </button>

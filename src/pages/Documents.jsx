@@ -162,7 +162,7 @@ export default function Documents({ embedded = false }) {
         </div>
         )}
         {!embedded && (
-        <button className="lk-btn lk-btn-primary" onClick={handleNew} disabled={creating}
+        <button className="lk-btn lk-btn-cta" onClick={handleNew} disabled={creating}
           style={{ whiteSpace:'nowrap' }}>
           {creating ? 'Lege an…' : 'Neues Dokument'}
         </button>
@@ -311,7 +311,7 @@ export default function Documents({ embedded = false }) {
               <button onClick={() => setPostPickDoc(null)} style={{ border:'none', background:'transparent', cursor:'pointer', color:'var(--text-muted)', padding:4, display:'inline-flex', flexShrink:0 }}><X size={18}/></button>
             </div>
             <div style={{ flex:1, overflowY:'auto', padding:'8px 14px 14px' }}>
-              <button className="lk-btn lk-btn-primary" onClick={() => createPostFromDoc(postPickDoc)} disabled={busyId===postPickDoc.id}
+              <button className="lk-btn lk-btn-cta" onClick={() => createPostFromDoc(postPickDoc)} disabled={busyId===postPickDoc.id}
                 style={{ width:'100%', display:'flex', alignItems:'center', gap:8, fontFamily:'inherit', marginBottom:10 }}>
                 <Plus size={15} strokeWidth={2.4}/>Als neuen Beitrag anlegen
               </button>
@@ -343,7 +343,7 @@ export default function Documents({ embedded = false }) {
             <div style={{ flex:1, overflowY:'auto', padding:'8px 14px 14px' }}>
               {!newDocPick ? (
                 <>
-                  <button className="lk-btn lk-btn-primary" onClick={createInNewChat} disabled={creating}
+                  <button className="lk-btn lk-btn-cta" onClick={createInNewChat} disabled={creating}
                     style={{ width:'100%', display:'flex', alignItems:'center', gap:8, fontFamily:'inherit', marginBottom:8 }}>
                     <Plus size={15} strokeWidth={2.4}/>In neuem Chat
                   </button>

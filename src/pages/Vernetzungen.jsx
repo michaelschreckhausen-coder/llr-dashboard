@@ -202,7 +202,7 @@ function AnfrageModal({ lead, onClose, onSaved, session }) {
           <button className="lk-btn lk-btn-ghost" onClick={generate} disabled={gen} style={{ flex:1 }}>
             {gen ? <span style={{display:'inline-flex',alignItems:'center',gap:6}}><Loader2 size={14} className='lk-spin'/>Generiere…</span> : <span style={{display:'inline-flex',alignItems:'center',gap:6}}><Sparkles size={14}/>KI-Nachricht</span>}
           </button>
-          <button className="lk-btn lk-btn-primary" onClick={queueConnect} disabled={saving||sent} title="Wird automatisch über die Leadesk Chrome Extension gesendet" style={{ flex:1.4 }}>
+          <button className="lk-btn lk-btn-cta" onClick={queueConnect} disabled={saving||sent} title="Wird automatisch über die Leadesk Chrome Extension gesendet" style={{ flex:1.4 }}>
             {sent ? <span style={{display:'inline-flex',alignItems:'center',gap:6}}><Check size={14}/>In Queue!</span> : saving ? <Loader2 size={14} className='lk-spin'/> : <span style={{display:'inline-flex',alignItems:'center',gap:6}}><Bot size={14}/>Auto-vernetzen</span>}
           </button>
           <button className="lk-btn lk-btn-ghost" onClick={saveManual} disabled={saving||sent||!msg} title="Nur Nachricht merken & Status setzen (manuell auf LinkedIn senden)" style={{ flex:1 }}>
@@ -262,7 +262,7 @@ function StatusModal({ lead, onClose, onSaved }) {
 
         <div style={{ display:'flex', gap:10 }}>
           <button className="lk-btn lk-btn-ghost" onClick={onClose} style={{ flex:1 }}>Abbrechen</button>
-          <button className="lk-btn lk-btn-primary" onClick={save} disabled={saving} style={{ flex:1 }}>
+          <button className="lk-btn lk-btn-cta" onClick={save} disabled={saving} style={{ flex:1 }}>
             {saving ? <Loader2 size={14} className='lk-spin'/> : <span style={{display:'inline-flex',alignItems:'center',gap:6}}><Save size={14}/>Speichern</span>}
           </button>
         </div>
@@ -424,7 +424,7 @@ export default function Vernetzungen({ session }) {
   const headerAction = (
     <div style={{ display:'flex', gap:8, alignItems:'center', flexWrap:'wrap', justifyContent:'flex-end' }}>
       <InboxLink />
-      <button className="lk-btn lk-btn-primary" onClick={abgleichen} disabled={syncing}
+      <button className="lk-btn lk-btn-cta" onClick={abgleichen} disabled={syncing}
         title="Scannt deine LinkedIn-Connections-Seite und erkennt angenommene Anfragen automatisch"
         style={{ display:'inline-flex', alignItems:'center', gap:7 }}>
         {syncing ? <Loader2 size={15} className='lk-spin'/> : <RefreshCw size={15}/>}
@@ -486,7 +486,7 @@ export default function Vernetzungen({ session }) {
 
       {/* Toolbar: Bulk-Vernetzen + Sort + Suche + CSV */}
       <div style={{ display:'flex', gap:8, marginBottom:16, flexWrap:'wrap', alignItems:'center' }}>
-        <button className="lk-btn lk-btn-primary" onClick={async () => {
+        <button className="lk-btn lk-btn-cta" onClick={async () => {
           const toQueue = filtered.filter(l => !['verbunden','pending'].includes(l.li_connection_status) && (l.linkedin_url || l.profile_url))
           if (!toQueue.length) { alert('Keine offenen Kontakte zum Vernetzen'); return }
           if (!window.confirm(`${toQueue.length} Kontakte automatisch vernetzen?`)) return

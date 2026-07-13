@@ -295,7 +295,7 @@ export default function TaskEditModal({ task, members = [], uid, onClose, onSave
               Abbrechen
             </button>
             {!isSynthetic && caps?.save && (
-              <button className="lk-btn lk-btn-primary" onClick={handleSave} disabled={saving}
+              <button className="lk-btn lk-btn-cta" onClick={handleSave} disabled={saving}
                 >
                 {saving ? 'Speichert…' : 'Speichern'}
               </button>

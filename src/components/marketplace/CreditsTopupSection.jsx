@@ -137,7 +137,7 @@ export default function CreditsTopupSection({ onFlash }) {
                         </span>
                       )}
                     </div>
-                    <button className="lk-btn lk-btn-primary"
+                    <button className="lk-btn lk-btn-cta"
                       onClick={() => handleBuy(offer)}
                       disabled={!hasStripe || !!pendingSlug}
                       title={!hasStripe ? 'Stripe-Price-ID fehlt (Setup pending)' : undefined}

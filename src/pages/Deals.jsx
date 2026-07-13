@@ -277,7 +277,7 @@ export function DealModal({ deal, leads, teamMembers = [], teamId, uid, onSave, 
           {/* Buttons */}
           <div style={{ display: 'flex', gap: 10, justifyContent: 'flex-end', marginTop: 4 }}>
             <button className="lk-btn lk-btn-ghost" onClick={onClose} >{t('common.cancel')}</button>
-            <button className="lk-btn lk-btn-primary" onClick={save} disabled={saving}
+            <button className="lk-btn lk-btn-cta" onClick={save} disabled={saving}
               >
               {saving ? '…' : deal?.id ? 'Speichern' : '+ Deal erstellen'}
             </button>
@@ -404,7 +404,7 @@ export default function Deals({ session }) {
               style={{ display:'inline-flex', alignItems:'center', gap:6, whiteSpace:'nowrap' }}>
               {showDash ? <ChevronUp size={15}/> : <ChevronDown size={15}/>}Dashboard
             </button>
-            <button className="lk-btn lk-btn-primary" onClick={() => setModal('new')}
+            <button className="lk-btn lk-btn-cta" onClick={() => setModal('new')}
               style={{ whiteSpace:'nowrap' }}>
               + Neuer Deal
             </button>

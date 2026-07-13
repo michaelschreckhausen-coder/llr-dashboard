@@ -78,7 +78,7 @@ export function TagManagerModal({ onClose, tags = [], usedTags = [], isLoading, 
             <input value={newName} onChange={e => setNewName(e.target.value)}
               onKeyDown={e => { if (e.key === 'Enter') onCreate(); }}
               placeholder="Neuer Tag…" style={inputStyle} />
-            <button className="lk-btn lk-btn-primary" type="button" onClick={onCreate} disabled={!newName.trim() || busy}
+            <button className="lk-btn lk-btn-cta" type="button" onClick={onCreate} disabled={!newName.trim() || busy}
               style={{ height: 36, opacity: newName.trim() ? 1 : 0.5, display: 'inline-flex', alignItems: 'center', gap: 6 }}>
               <Plus size={15} /> Anlegen
             </button>

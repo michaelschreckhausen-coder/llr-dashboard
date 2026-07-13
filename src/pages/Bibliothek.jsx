@@ -35,7 +35,7 @@ export default function Bibliothek({ session }) {
           <p style={{ fontSize: 13, color: 'var(--text-muted)', margin: '8px 0 0', lineHeight: 1.6 }}>Dokumente, Designs und Medien an einem Ort.</p>
         </div>
         {tab !== 'medien' && (
-          <button className="lk-btn lk-btn-primary" onClick={() => setNewKind(tab === 'designs' ? 'design' : 'doc')}
+          <button className="lk-btn lk-btn-cta" onClick={() => setNewKind(tab === 'designs' ? 'design' : 'doc')}
             style={{ flexShrink: 0, display: 'inline-flex', alignItems: 'center', gap: 7, fontFamily: 'inherit' }}>
             <Plus size={16} strokeWidth={2.4} />{tab === 'designs' ? 'Neues Design' : 'Neues Dokument'}
           </button>

@@ -297,7 +297,7 @@ export default function IntegrationSettings({ session }) {
 
         {/* Buttons */}
         <div style={{ display:'flex', gap:10 }}>
-          <button className="lk-btn lk-btn-primary" onClick={save} disabled={saving}
+          <button className="lk-btn lk-btn-cta" onClick={save} disabled={saving}
             >
             {saving ? 'Speichern…' : 'Speichern'}
           </button>

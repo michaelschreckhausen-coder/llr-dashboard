@@ -193,7 +193,7 @@ export default function WhiteLabel() {
       {/* Speichern */}
       <div style={{ display:'flex', justifyContent:'flex-end', alignItems:'center', gap:14, paddingBottom:16 }}>
         {saved && <span style={{ color:'#059669', fontSize:13, fontWeight:600 }}>Gespeichert!</span>}
-        <button className="lk-btn lk-btn-primary" onClick={handleSave} disabled={saving||!selTenant}
+        <button className="lk-btn lk-btn-cta" onClick={handleSave} disabled={saving||!selTenant}
           style={{ opacity:saving?0.6:1 }}>
           {saving ? 'Speichere…' : 'WhiteLabel speichern'}
         </button>

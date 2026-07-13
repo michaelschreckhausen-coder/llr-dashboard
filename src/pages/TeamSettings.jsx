@@ -306,7 +306,7 @@ export default function TeamSettings({ session }) {
         Erstelle ein Team um Leads, Listen und Inhalte mit Kollegen zu teilen.
       </p>
       {!creatingTeam ? (
-        <button className="lk-btn lk-btn-primary" onClick={() => setCreatingTeam(true)}
+        <button className="lk-btn lk-btn-cta" onClick={() => setCreatingTeam(true)}
           >
           + Neues Team erstellen
         </button>
@@ -322,7 +322,7 @@ export default function TeamSettings({ session }) {
             autoFocus
           />
           <div style={{ display:'flex', gap:10 }}>
-            <button className="lk-btn lk-btn-primary" onClick={handleCreateTeam} disabled={!newTeamName.trim() || teamCreating}
+            <button className="lk-btn lk-btn-cta" onClick={handleCreateTeam} disabled={!newTeamName.trim() || teamCreating}
               style={{ flex:1 }}>
               {teamCreating ? 'Erstelle…' : 'Team erstellen'}
             </button>
@@ -416,7 +416,7 @@ export default function TeamSettings({ session }) {
               style={{ padding:'7px 12px', border:'1.5px solid var(--wl-primary, #0A6FB0)', borderRadius:8, fontSize:13, outline:'none', width:180 }}
               autoFocus
             />
-            <button className="lk-btn lk-btn-primary" onClick={handleCreateTeam} disabled={!newTeamName.trim() || teamCreating}
+            <button className="lk-btn lk-btn-cta" onClick={handleCreateTeam} disabled={!newTeamName.trim() || teamCreating}
               >
               {teamCreating ? '⏳' : 'Erstellen'}
             </button>

@@ -623,7 +623,7 @@ function QuickSetup({ session, onDone, onSkip, onBack, brandType = 'personal' })
           {generating && <GenerationLoading title={isCo ? 'Company Brand wird gebaut' : 'Personal Brand wird gebaut'} expectedSeconds={45} />}
           <div style={{ display:'flex', gap:8, marginTop:8 }}>
             <button onClick={()=>setStep(2)} disabled={generating} style={{ padding:'10px 24px', background:'#f5f5f5', border:'none', borderRadius:8, fontSize:14, cursor:generating?'not-allowed':'pointer', opacity:generating?.5:1 }}>← Zurück</button>
-            <button className="lk-btn lk-btn-primary" onClick={generate} disabled={generating} style={{ opacity:generating?.6:1 }}>
+            <button className="lk-btn lk-btn-cta" onClick={generate} disabled={generating} style={{ opacity:generating?.6:1 }}>
               {generating ? <span style={{display:'inline-flex',alignItems:'center',gap:6}}><Loader2 size={14} className="lk-spin"/>KI generiert…</span> : <span style={{display:'inline-flex',alignItems:'center',gap:6}}><Sparkles size={14}/>{isCo ? 'Company Brand generieren' : 'Personal Brand generieren'}</span>}
             </button>
           </div>
@@ -1434,7 +1434,7 @@ export default function BrandVoice({ session, brandType = 'personal' }) {
       </div>
 
       <div style={{ display:'flex', justifyContent:'flex-start', gap:10, marginBottom:18 }}>
-        <button className="lk-btn lk-btn-primary" data-tour-id="brand-new-ai" onClick={()=>{ const draftSuffix = isCompanyPage ? '_co' : ''; ['step','name','position','company','offering','motivation','goal','examples','sliders2','importData','importedText'].forEach(f => { try { window.localStorage.removeItem('bv_w_'+f+'_'+uid+draftSuffix) } catch(_) {} }); clearTabPersistedKey('ki_tab_brand'); setView('wizard') }} >
+        <button className="lk-btn lk-btn-cta" data-tour-id="brand-new-ai" onClick={()=>{ const draftSuffix = isCompanyPage ? '_co' : ''; ['step','name','position','company','offering','motivation','goal','examples','sliders2','importData','importedText'].forEach(f => { try { window.localStorage.removeItem('bv_w_'+f+'_'+uid+draftSuffix) } catch(_) {} }); clearTabPersistedKey('ki_tab_brand'); setView('wizard') }} >
           {isCompanyPage ? 'Neue Company Brand mit KI' : 'Neue Personal Brand mit KI'}
         </button>
         <button className="lk-btn lk-btn-ghost" onClick={()=>{ setEdit({...E0, user_id:session.user.id, account_type:brandType}); setView('editor'); setTab('marke') }}

@@ -558,7 +558,7 @@ export default function LeadDrawer({ lead, session, onClose, onUpdate, onDelete 
               </div>
 
               {/* Speichern */}
-              <button className="lk-btn lk-btn-primary" onClick={saveEdit} disabled={editSaving || !editDirty}
+              <button className="lk-btn lk-btn-cta" onClick={saveEdit} disabled={editSaving || !editDirty}
                 >
                 {editSaving ? 'Speichere…' : editDirty ? 'Änderungen speichern' : 'Keine Änderungen'}
               </button>

@@ -183,7 +183,7 @@ export default function LeadTasks({ leadId, teamId, session, members = [] }) {
           {open.length > 0 && <span style={{ marginLeft: 6, fontSize: 11, background: PRIMARY, color: '#fff', borderRadius: 99, padding: '1px 7px', fontWeight: 700 }}>{open.length}</span>}
         </div>
         {!showForm && (
-          <button className="lk-btn lk-btn-primary" onClick={() => setShowForm(true)}
+          <button className="lk-btn lk-btn-cta" onClick={() => setShowForm(true)}
             style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
             + Neue Aufgabe
           </button>
@@ -258,7 +258,7 @@ export default function LeadTasks({ leadId, teamId, session, members = [] }) {
               >
               Abbrechen
             </button>
-            <button className="lk-btn lk-btn-primary" onClick={save} disabled={saving}
+            <button className="lk-btn lk-btn-cta" onClick={save} disabled={saving}
               >
               {saving ? '…' : editId ? 'Speichern' : '+ Erstellen'}
             </button>

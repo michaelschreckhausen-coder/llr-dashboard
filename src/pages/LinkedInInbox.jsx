@@ -384,7 +384,7 @@ export default function LinkedInInbox() {
 
                 <div style={{ display: 'flex', gap: 10, justifyContent: 'flex-end', marginTop: 20 }}>
                   <button onClick={() => setImportOpen(false)} disabled={importing} style={{ border: `1px solid ${border}`, background: card, color: muted, borderRadius: 8, padding: '9px 16px', fontSize: 13, fontWeight: 600, cursor: 'pointer' }}>Abbrechen</button>
-                  <button className="lk-btn lk-btn-primary" onClick={runSalesNavImport} disabled={importing || !impUrl.trim()} style={{ opacity: (importing || !impUrl.trim()) ? 0.6 : 1, display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+                  <button className="lk-btn lk-btn-cta" onClick={runSalesNavImport} disabled={importing || !impUrl.trim()} style={{ opacity: (importing || !impUrl.trim()) ? 0.6 : 1, display: 'inline-flex', alignItems: 'center', gap: 6 }}>
                     {importing ? <><Loader2 size={15} style={{ animation: 'spin 1s linear infinite' }} /> Importiere…</> : 'Importieren'}
                   </button>
                 </div>
@@ -399,7 +399,7 @@ export default function LinkedInInbox() {
         <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
           <h1 style={{ fontSize: 26, fontWeight: 700, margin: 0, letterSpacing: '-0.3px', lineHeight: 1.2, color: 'var(--text-primary, rgb(20,20,43))' }}>Deine LinkedIn Kontakte.</h1>
           {!loading && <span style={{ background: primary, color: '#fff', borderRadius: 99, padding: '2px 10px', fontSize: 13, fontWeight: 700 }}>{rows.length}</span>}
-          <button className="lk-btn lk-btn-primary" onClick={() => { setImportErr(null); setImportOpen(true) }}
+          <button className="lk-btn lk-btn-cta" onClick={() => { setImportErr(null); setImportOpen(true) }}
             style={{ marginLeft: 'auto', display: 'inline-flex', alignItems: 'center', gap: 6 }}>
             <Plus size={15} /> Sales-Navigator-Suche importieren
           </button>
@@ -450,7 +450,7 @@ export default function LinkedInInbox() {
                 onKeyDown={e => { if (e.key === 'Enter') createStandaloneList(); if (e.key === 'Escape') { setShowNewList(false); setNewListName('') } }}
                 placeholder="Listenname" disabled={creatingList}
                 style={{ padding: '5px 10px', borderRadius: 99, border: `1.5px solid ${primary}`, fontSize: 13, background: card, color: text, outline: 'none', width: 150 }} />
-              <button className="lk-btn lk-btn-primary" onClick={createStandaloneList} disabled={creatingList || !newListName.trim()}
+              <button className="lk-btn lk-btn-cta" onClick={createStandaloneList} disabled={creatingList || !newListName.trim()}
                 style={{ display: 'inline-flex', alignItems: 'center', gap: 4, opacity: newListName.trim() ? 1 : 0.6 }}>
                 {creatingList ? <Loader2 size={13} className="spin" /> : <Check size={13} />} Anlegen
               </button>
@@ -673,7 +673,7 @@ function ListModal({ lists, count, busy, onClose, onConfirm }) {
 
         <div style={{ display: 'flex', gap: 10, marginTop: 20 }}>
           <button onClick={onClose} style={{ flex: 1, padding: '10px 0', borderRadius: 10, border: `1px solid ${border}`, background: 'var(--surface)', color: muted, fontWeight: 600, fontSize: 13, cursor: 'pointer' }}>Abbrechen</button>
-          <button className="lk-btn lk-btn-primary"
+          <button className="lk-btn lk-btn-cta"
             onClick={() => onConfirm(mode === 'existing' ? { listId } : { newName, color })}
             disabled={busy || (mode === 'existing' ? !listId : !newName.trim())}
             style={{ flex: 1.4, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: 6 }}>

@@ -1645,7 +1645,7 @@ function PostModal({ post, onClose, onSave, onDelete, session, activeTeamId, mem
                       PDF{v.page_count ? ` · ${v.page_count} Seiten` : ''}{v.file_size_bytes ? ` · ${(v.file_size_bytes / 1024 / 1024).toFixed(1)} MB` : ''}
                     </div>
                     <div style={{ display:'flex', gap:10, justifyContent:'center', flexWrap:'wrap' }}>
-                      <button className="lk-btn lk-btn-primary" onClick={() => window.open(v.signed_url, '_blank', 'noopener')}
+                      <button className="lk-btn lk-btn-cta" onClick={() => window.open(v.signed_url, '_blank', 'noopener')}
                         style={{ display:'inline-flex', alignItems:'center', gap:6 }}>
                         📄 Im neuen Tab öffnen
                       </button>
@@ -1776,7 +1776,7 @@ function PostModal({ post, onClose, onSave, onDelete, session, activeTeamId, mem
           )}
 
           {/* RECHTS: Speichern · Auf LinkedIn posten / planen — gleiche Brand-Primary-Farbe */}
-          <button className="lk-btn lk-btn-primary" onClick={save} disabled={saving}
+          <button className="lk-btn lk-btn-cta" onClick={save} disabled={saving}
             style={{ opacity: saving ? 0.7 : 1, display:'inline-flex', alignItems:'center', gap:5 }}>
             {saving ? <span style={{display:'inline-flex',alignItems:'center',gap:6}}><Loader2 size={12} className='lk-spin'/>Speichere…</span> : isNew ? <span style={{display:'inline-flex',alignItems:'center',gap:6}}><Plus size={12}/>Erstellen</span> : <span style={{display:'inline-flex',alignItems:'center',gap:6}}><Save size={12}/>Speichern</span>}
           </button>
@@ -1794,7 +1794,7 @@ function PostModal({ post, onClose, onSave, onDelete, session, activeTeamId, mem
             const hasSchedule = !!form.scheduled_at
             const future = hasSchedule && new Date(form.scheduled_at) > new Date()
             return (
-              <button className="lk-btn lk-btn-primary" onClick={async () => {
+              <button className="lk-btn lk-btn-cta" onClick={async () => {
                 // ── Phase 2a: Unipile-Route (mit Monitoring) ──
                 if (viaUnipile) {
                   if (!post?.id) { alert('Bitte zuerst speichern.'); return }
@@ -2515,7 +2515,7 @@ Danke für den Austausch! 🤝`,
               return (
                 <div style={{ flex:1, display:'flex', flexDirection:'column', alignItems:'center', justifyContent:'center', gap:12, padding:'40px 16px', color:'var(--text-muted)', textAlign:'center' }}>
                   <div style={{ fontSize:14 }}>Keine Beiträge im {MONTHS[calMonth]} {calYear}.</div>
-                  <button className="lk-btn lk-btn-primary" onClick={() => openNew()}
+                  <button className="lk-btn lk-btn-cta" onClick={() => openNew()}
                     >
                     Beitrag planen
                   </button>
@@ -2752,7 +2752,7 @@ Danke für den Austausch! 🤝`,
                     )}
                   </div>
                 )}
-                <button className="lk-btn lk-btn-primary" onClick={() => generateIdeas(brainstormTopic.trim())} disabled={generating}
+                <button className="lk-btn lk-btn-cta" onClick={() => generateIdeas(brainstormTopic.trim())} disabled={generating}
                   style={{ height:38, boxSizing:'border-box', whiteSpace:'nowrap', display:'inline-flex', alignItems:'center' }}>
                   {generating ? <span style={{display:'inline-flex',alignItems:'center',gap:6}}><Loader2 size={12} className='lk-spin'/>Generiere…</span> : <span style={{display:'inline-flex',alignItems:'center',gap:6}}><Wand2 size={12}/>Generieren</span>}
                 </button>

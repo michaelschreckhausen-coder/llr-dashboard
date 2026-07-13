@@ -130,7 +130,7 @@ export default function ICP({ session }) {
           </button>
           <div style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
             {saved && <span style={{ color: '#057642', fontSize: 13, fontWeight: 600 }}>Gespeichert!</span>}
-            <button className="lk-btn lk-btn-primary" onClick={save} disabled={saving || !form.name?.trim()} >
+            <button className="lk-btn lk-btn-cta" onClick={save} disabled={saving || !form.name?.trim()} >
               {saving ? '...' : 'Speichern'}
             </button>
           </div>
@@ -146,7 +146,7 @@ export default function ICP({ session }) {
           <h1 style={{ fontSize: 22, fontWeight: 800, margin: 0 }}>Zielgruppen (ICP)</h1>
           <p style={{ color: '#64748B', fontSize: 13, margin: '4px 0 0' }}>Ideal Customer Profiles fuer automatisches Lead Scoring</p>
         </div>
-        <button className="lk-btn lk-btn-primary"
+        <button className="lk-btn lk-btn-cta"
           onClick={() => { setForm(EMPTY); setEditing('new') }}
           
         >
@@ -159,7 +159,7 @@ export default function ICP({ session }) {
           <div style={{ fontSize: 44, marginBottom: 14 }}>&#127919;</div>
           <div style={{ fontSize: 17, fontWeight: 700, marginBottom: 7 }}>Noch kein ICP</div>
           <p style={{ color: '#888', fontSize: 13, marginBottom: 20 }}>Erstelle ein ICP um Lead Scoring zu aktivieren.</p>
-          <button className="lk-btn lk-btn-primary"
+          <button className="lk-btn lk-btn-cta"
             onClick={() => { setForm(EMPTY); setEditing('new') }}
             
           >

@@ -394,7 +394,7 @@ export default function OrganizationProfile({ session }) {
             {editing && (
               <>
                 <button className="lk-btn lk-btn-ghost" onClick={() => { setEditing(false); setEditForm(org) }} >Abbrechen</button>
-                <button className="lk-btn lk-btn-primary" onClick={saveEdit} disabled={saving} >{saving ? '⏳…' : 'Speichern'}</button>
+                <button className="lk-btn lk-btn-cta" onClick={saveEdit} disabled={saving} >{saving ? '⏳…' : 'Speichern'}</button>
               </>
             )}
           </div>
@@ -581,7 +581,7 @@ export default function OrganizationProfile({ session }) {
           {/* Add-Contact Control */}
           <div style={{ marginBottom: 12 }}>
             {!addOpen ? (
-              <button className="lk-btn lk-btn-primary"
+              <button className="lk-btn lk-btn-cta"
                 onClick={() => { setAddOpen(true); searchLeadsForAdd('') }}
                 >
                 + Kontakt hinzufügen

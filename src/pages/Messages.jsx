@@ -608,7 +608,7 @@ export default function Messages({ session }) {
 
         {generating && <GenerationLoading title="KI-Nachricht wird formuliert" expectedSeconds={20} />}
 
-        <button className="lk-btn lk-btn-primary" onClick={generate} disabled={generating}
+        <button className="lk-btn lk-btn-cta" onClick={generate} disabled={generating}
           style={{ marginTop:6, width:'100%', display:'flex', alignItems:'center', justifyContent:'center', gap:8 }}>
           {generating ? 'Generiere…' : <span style={{display:'inline-flex',alignItems:'center',gap:6}}><Sparkles size={14}/>Nachricht generieren</span>}
         </button>

@@ -349,7 +349,7 @@ export default function Media({ session }) {
                 </div>
               </div>
               {!lightbox.identity && (
-                <button className="lk-btn lk-btn-primary" onClick={() => openAttachModal(lightbox)}
+                <button className="lk-btn lk-btn-cta" onClick={() => openAttachModal(lightbox)}
                   style={{ display:'inline-flex', alignItems:'center', gap:6 }}>
                   📅 Zu Beitrag hinzufügen
                 </button>

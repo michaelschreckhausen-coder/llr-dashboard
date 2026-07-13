@@ -241,7 +241,7 @@ export default function SSI({ session }) {
               <textarea value={form.notes} onChange={e=>setForm(f=>({...f,notes:e.target.value}))} style={{...inp,minHeight:60,resize:'vertical'}} placeholder="Was hast du diese Woche gemacht?"/>
             </div>
             <div style={{ display:'flex', gap:10 }}>
-              <button className="lk-btn lk-btn-primary" type="submit" disabled={saving} >{saving?'Speichert...':'Speichern'}</button>
+              <button className="lk-btn lk-btn-cta" type="submit" disabled={saving} >{saving?'Speichert...':'Speichern'}</button>
               <button className="lk-btn lk-btn-ghost" type="button" onClick={()=>setShowForm(false)} >Abbrechen</button>
             </div>
           </form>

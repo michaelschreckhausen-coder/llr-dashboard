@@ -326,7 +326,7 @@ export default function Visuals({ session, kindFilter = null, embedded = false, 
             Deine Galerie aller KI-Bilder. Erstellen und Bearbeiten passiert in der Content-Werkstatt.
           </p>
         </div>
-        <button className="lk-btn lk-btn-primary" onClick={() => navigate('/content-studio')}
+        <button className="lk-btn lk-btn-cta" onClick={() => navigate('/content-studio')}
           style={{ whiteSpace:'nowrap', display:'inline-flex', alignItems:'center', gap:7 }}>
           <Sparkles size={15} strokeWidth={1.9}/>Neues Bild erstellen
         </button>
@@ -423,7 +423,7 @@ export default function Visuals({ session, kindFilter = null, embedded = false, 
             <div style={{ padding:'14px 18px', borderBottom:'1px solid var(--border)', display:'flex', alignItems:'center', gap:8, flexWrap:'wrap' }}>
               <span style={{ fontSize:13, fontWeight:700, color:'var(--text-primary)' }}>{lightbox.aspect_ratio} · {lightbox.model}</span>
               <span style={{ flex:1, minWidth:8 }}/>
-              <button className="lk-btn lk-btn-primary" onClick={() => { openAttachModal(lightbox); setLightbox(null) }}
+              <button className="lk-btn lk-btn-cta" onClick={() => { openAttachModal(lightbox); setLightbox(null) }}
                 style={{ display:'inline-flex', alignItems:'center', gap:6 }}>
                 <ImageIcon size={13} strokeWidth={1.9}/>Zu Beitrag hinzufügen
               </button>
@@ -452,7 +452,7 @@ export default function Visuals({ session, kindFilter = null, embedded = false, 
               <button onClick={() => setDesignerPick(null)} style={{ border:'none', background:'transparent', cursor:'pointer', color:'var(--text-muted)', padding:4, display:'inline-flex', flexShrink:0 }}><X size={18}/></button>
             </div>
             <div style={{ flex:1, overflowY:'auto', padding:'8px 14px 14px' }}>
-              <button className="lk-btn lk-btn-primary" onClick={() => openInNewDesign(designerPick)}
+              <button className="lk-btn lk-btn-cta" onClick={() => openInNewDesign(designerPick)}
                 style={{ width:'100%', display:'flex', alignItems:'center', gap:8, fontFamily:'inherit', marginBottom:10 }}>
                 <Sparkles size={15} strokeWidth={2}/>Als neues Design öffnen
               </button>
@@ -643,7 +643,7 @@ function GalleryCard({ v, linkedMode, onOpenStudio, onLightbox, onDownload, onAt
         opacity: hover ? 1 : 0, transition:'opacity 0.15s', pointerEvents: hover ? 'auto' : 'none' }}>
         <div style={{ color:'#fff', fontSize:10.5, lineHeight:1.35, maxHeight:42, overflow:'hidden', marginBottom:2 }}>{v.prompt}</div>
         {linkedMode && (
-          <button className="lk-btn lk-btn-primary" onClick={e => { e.stopPropagation(); onAttach() }}
+          <button className="lk-btn lk-btn-cta" onClick={e => { e.stopPropagation(); onAttach() }}
             style={{ display:'inline-flex', alignItems:'center', justifyContent:'center', gap:5 }}>
             <Pin size={12} strokeWidth={1.9}/>Zu Beitrag hinzufügen
           </button>
