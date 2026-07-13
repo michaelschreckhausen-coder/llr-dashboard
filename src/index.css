@@ -418,7 +418,7 @@ main { padding: 24px !important; }
 
 .lk-btn{
   display:inline-flex;align-items:center;justify-content:center;gap:6px;
-  font-family:'Inter',-apple-system,sans-serif;font-size:13px;font-weight:700;
+  font-family:'Inter',-apple-system,sans-serif;font-size:13px;font-weight:500;
   letter-spacing:-0.005em;line-height:1.1;padding:8px 15px;border-radius:var(--radius-btn);
   border:none;cursor:pointer;white-space:nowrap;text-decoration:none;
   transition:transform .16s ease,box-shadow .16s ease,background .16s ease,border-color .16s ease,color .16s ease,filter .16s ease;
@@ -495,7 +495,7 @@ button:not(.lk-btn):not(.lk-dd-trigger):not(.lk-dd-opt):not([aria-pressed]):not(
 .lk-label{font-family:'Inter',sans-serif;font-weight:700;font-size:11px;letter-spacing:0.4px;text-transform:uppercase;color:var(--text-muted);}
 
 /* ═══ Leadesk-Dropdown: Hover für Trigger + Optionen ═══ */
-.lk-dd-trigger{transition:border-color .15s ease, background .15s ease, box-shadow .15s ease; font-weight:600; font-size:13px; display:inline-flex; align-items:center; gap:6px; padding:9px 11px; min-height:40px; box-sizing:border-box; border:1.5px solid var(--border); border-radius:9px; background:var(--surface,#fff); color:var(--text-primary); cursor:pointer; font-family:inherit;}
+.lk-dd-trigger{transition:border-color .15s ease, background .15s ease, box-shadow .15s ease; font-weight:500; font-size:13px; display:inline-flex; align-items:center; gap:6px; padding:9px 11px; min-height:40px; box-sizing:border-box; border:1.5px solid var(--border); border-radius:9px; background:var(--surface,#fff); color:var(--text-primary); cursor:pointer; font-family:inherit;}
 .lk-dd-trigger:hover{border-color:var(--accent) !important;}
 .lk-dd-opt{transition:background .12s ease;}
 .lk-dd-opt:hover{background:var(--tint-cyan, #EAF8FE) !important;}

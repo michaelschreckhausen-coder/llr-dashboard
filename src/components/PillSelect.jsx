@@ -27,7 +27,7 @@ export default function PillSelect({ icon: Icon, value, options = [], onChange =
           border:'1.5px solid ' + (active ? P : 'var(--border)'),
           background: active ? 'rgba(10,111,176,0.06)' : 'var(--surface, #fff)',
           color: active ? P : (sel ? 'var(--text-primary)' : 'var(--text-muted)'),
-          fontSize:13, fontWeight:600, cursor: disabled ? 'not-allowed' : 'pointer', opacity: disabled ? 0.55 : 1, whiteSpace:'nowrap', fontFamily:'inherit', ...buttonStyle,
+          fontSize:13, fontWeight:500, cursor: disabled ? 'not-allowed' : 'pointer', opacity: disabled ? 0.55 : 1, whiteSpace:'nowrap', fontFamily:'inherit', ...buttonStyle,
         }}>
         {Icon && <Icon size={13} strokeWidth={1.75} style={{ flexShrink:0 }}/>}
         <span style={{ flex:1, minWidth:0, overflow:'hidden', textOverflow:'ellipsis', textAlign:'left' }}>{label}</span>
