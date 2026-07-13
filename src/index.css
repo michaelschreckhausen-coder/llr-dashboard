@@ -483,7 +483,7 @@ main { padding: 24px !important; }
 .lk-label{font-family:'Inter',sans-serif;font-weight:700;font-size:11px;letter-spacing:0.4px;text-transform:uppercase;color:var(--text-muted);}
 
 /* ═══ Leadesk-Dropdown: Hover für Trigger + Optionen ═══ */
-.lk-dd-trigger{transition:border-color .15s ease, background .15s ease, box-shadow .15s ease;}
+.lk-dd-trigger{transition:border-color .15s ease, background .15s ease, box-shadow .15s ease; font-weight:600; font-size:13px;}
 .lk-dd-trigger:hover{border-color:var(--accent) !important;}
 .lk-dd-opt{transition:background .12s ease;}
 .lk-dd-opt:hover{background:var(--tint-cyan, #EAF8FE) !important;}

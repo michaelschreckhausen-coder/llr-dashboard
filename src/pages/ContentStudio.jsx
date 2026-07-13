@@ -129,7 +129,7 @@ function PostActions({ text, onInsertToDoc, onAttachToPost, loadExistingPosts, c
     <div style={{ display:'flex', gap:8, flexWrap:'wrap', marginTop:12 }}>
       <div style={{ position:'relative' }}>
         <Tip label="Ins Dokument"><button data-tour-id="cs-insert-doc" onClick={() => { if ((chatDocs||[]).length || hasOpenDoc) setMenuOpen(o => !o); else onInsertToDoc && onInsertToDoc(text, 'new') }}
-          style={{ width:34, height:34, padding:0, justifyContent:'center', borderRadius:8, border:'none', background:P, color:'#fff', cursor:'pointer', display:'inline-flex', alignItems:'center' }}>
+          style={{ width:34, height:34, padding:0, justifyContent:'center', borderRadius:8, border:'none', background:'var(--primary)', color:'#fff', cursor:'pointer', display:'inline-flex', alignItems:'center' }}>
           <FileText size={15} strokeWidth={1.9}/>
         </button></Tip>
         {menuOpen && (
@@ -199,9 +199,9 @@ function SourcesList({ sources }) {
 function TypingIndicator() {
   return (
     <div style={{ display:'flex', alignItems:'center', gap:6, padding:'12px 14px', background:'#fff', border:'1px solid var(--border)', borderRadius:12, width:'fit-content' }}>
-      <span style={{ width:7, height:7, borderRadius:'50%', background: P, animation: 'tw-blink 1.4s infinite ease-in-out', animationDelay:'0s' }}/>
-      <span style={{ width:7, height:7, borderRadius:'50%', background: P, animation: 'tw-blink 1.4s infinite ease-in-out', animationDelay:'0.2s' }}/>
-      <span style={{ width:7, height:7, borderRadius:'50%', background: P, animation: 'tw-blink 1.4s infinite ease-in-out', animationDelay:'0.4s' }}/>
+      <span style={{ width:7, height:7, borderRadius:'50%', background: 'var(--primary)', animation: 'tw-blink 1.4s infinite ease-in-out', animationDelay:'0s' }}/>
+      <span style={{ width:7, height:7, borderRadius:'50%', background: 'var(--primary)', animation: 'tw-blink 1.4s infinite ease-in-out', animationDelay:'0.2s' }}/>
+      <span style={{ width:7, height:7, borderRadius:'50%', background: 'var(--primary)', animation: 'tw-blink 1.4s infinite ease-in-out', animationDelay:'0.4s' }}/>
       <style>{`@keyframes tw-blink { 0%, 80%, 100% { opacity: 0.2; } 40% { opacity: 1; } }`}</style>
     </div>
   )
@@ -2335,7 +2335,7 @@ function AnswerFormatSelect({ value = 'auto', onChange = () => {} }) {
         return (
           <Tip key={x.id} label={x.tip}>
             <button type="button" onClick={() => onChange(x.id)} aria-pressed={active}
-              style={{ width:34, height:30, display:'inline-flex', alignItems:'center', justifyContent:'center', borderRadius:7, border:'none', cursor:'pointer', background: active ? P : 'transparent', color: active ? '#fff' : 'var(--text-primary)', transition:'background .12s, color .12s' }}
+              style={{ width:34, height:30, display:'inline-flex', alignItems:'center', justifyContent:'center', borderRadius:7, border:'none', cursor:'pointer', background: active ? 'var(--primary)' : 'transparent', color: active ? '#fff' : 'var(--text-primary)', transition:'background .12s, color .12s' }}
               onMouseEnter={e => { if (!active) e.currentTarget.style.background = 'var(--page-bg,#F2F4F8)' }}
               onMouseLeave={e => { if (!active) e.currentTarget.style.background = 'transparent' }}>
               <XI size={16} strokeWidth={1.75}/>
@@ -2475,7 +2475,7 @@ function SingleImage({ item, chatDesigns = [], onOpenInDesigner, onDownloadVisua
       <div style={{ display:'flex', gap:8, flexWrap:'wrap', alignItems:'center' }}>
         <div style={{ position:'relative' }}>
           <Tip label="In den Designer öffnen"><button onClick={() => { if ((chatDesigns||[]).length) setDesignMenuOpen(o => !o); else onOpenInDesigner && onOpenInDesigner(item) }}
-            style={{ width:34, height:34, padding:0, justifyContent:'center', borderRadius:8, border:'none', background:P, color:'#fff', cursor:'pointer', display:'inline-flex', alignItems:'center' }}>
+            style={{ width:34, height:34, padding:0, justifyContent:'center', borderRadius:8, border:'none', background:'var(--primary)', color:'#fff', cursor:'pointer', display:'inline-flex', alignItems:'center' }}>
             <Brush size={15} strokeWidth={1.9}/>
           </button></Tip>
           {designMenuOpen && (
@@ -2579,7 +2579,7 @@ function MessageBubble({ msg, onAttachToPost, loadExistingPosts, onInsertToDoc, 
       )}
       <div style={{
         maxWidth:'92%', padding:'12px 14px', borderRadius:12,
-        background: isUser ? P : '#fff',
+        background: isUser ? 'var(--primary)' : '#fff',
         color: isUser ? '#fff' : 'var(--text-primary)',
         border: isUser ? 'none' : '1px solid var(--border)',
         fontSize:14, lineHeight:1.6, wordBreak:'break-word',
@@ -2664,7 +2664,7 @@ function DocTabsRail({ docs = [], activeDocId, chatId, teamId, brandVoiceId, onS
             </div>
             <div style={{ padding:'0 16px 12px' }}>
               <button onClick={() => { setPickerOpen(false); onNew() }}
-                style={{ width:'100%', display:'inline-flex', alignItems:'center', justifyContent:'center', gap:7, height:38, borderRadius:10, border:'none', background:P, color:'#fff', fontSize:13, fontWeight:700, cursor:'pointer', fontFamily:'inherit' }}>
+                style={{ width:'100%', display:'inline-flex', alignItems:'center', justifyContent:'center', gap:7, height:38, borderRadius:10, border:'none', background:'var(--primary)', color:'#fff', fontSize:13, fontWeight:700, cursor:'pointer', fontFamily:'inherit' }}>
                 <Plus size={16} strokeWidth={2.2}/>Neues Dokument
               </button>
             </div>

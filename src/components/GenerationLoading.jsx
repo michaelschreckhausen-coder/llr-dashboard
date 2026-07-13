@@ -112,7 +112,7 @@ export default function GenerationLoading({ premium = false, expectedSeconds, ti
           onClick={() => setMode(m => m === 'art' ? 'game' : 'art')}
           style={{
             padding: embedded ? '5px 10px' : '7px 14px', borderRadius: 8, border: '1.5px solid rgba(10,111,176,0.3)',
-            background: mode === 'game' ? P : 'transparent',
+            background: mode === 'game' ? 'var(--primary)' : 'transparent',
             color: mode === 'game' ? '#fff' : P,
             fontSize: embedded ? 11 : 12, fontWeight: 600, cursor: 'pointer', flexShrink: 0, whiteSpace: 'nowrap',
             display: 'inline-flex', alignItems: 'center', gap: 6,

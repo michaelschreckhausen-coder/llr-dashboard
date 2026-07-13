@@ -74,7 +74,7 @@ export default function CompanyMultiSelect({
         {iconOnly && <Building2 size={16} strokeWidth={1.75}/>}
         {!iconOnly && <span style={{ flex:1, minWidth:0, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap', textAlign:'left', fontSize:13 }}>{btnLabel}</span>}
         {!iconOnly && <ChevronDown size={13} strokeWidth={2} style={{ opacity:0.5, marginLeft:2, flexShrink:0 }}/>}
-        {iconOnly && count > 1 && <span style={{ position:'absolute', top:-5, right:-5, minWidth:15, height:15, padding:'0 3px', borderRadius:8, background:P, color:'#fff', fontSize:9, fontWeight:800, display:'inline-flex', alignItems:'center', justifyContent:'center' }}>{count}</span>}
+        {iconOnly && count > 1 && <span style={{ position:'absolute', top:-5, right:-5, minWidth:15, height:15, padding:'0 3px', borderRadius:8, background:'var(--primary)', color:'#fff', fontSize:9, fontWeight:800, display:'inline-flex', alignItems:'center', justifyContent:'center' }}>{count}</span>}
       </button>
       {iconOnly && hover && !open && (
         <span style={{ position:'absolute', bottom:'calc(100% + 6px)', left:'50%', transform:'translateX(-50%)', zIndex:200, background:'#101828', color:'#fff', fontSize:11, fontWeight:600, lineHeight:1.2, padding:'4px 8px', borderRadius:6, whiteSpace:'nowrap', pointerEvents:'none', boxShadow:'0 4px 12px rgba(16,24,40,0.25)' }}>{count ? btnLabel : 'Unternehmen'}</span>
@@ -98,7 +98,7 @@ export default function CompanyMultiSelect({
                 onMouseLeave={e => { if (!checked) e.currentTarget.style.background = 'transparent' }}>
                 <span style={{
                   width:16, height:16, borderRadius:5, flexShrink:0, display:'flex', alignItems:'center', justifyContent:'center',
-                  border:'1.5px solid ' + (checked ? P : 'var(--border)'), background: checked ? P : '#fff',
+                  border:'1.5px solid ' + (checked ? P : 'var(--border)'), background: checked ? 'var(--primary)' : '#fff',
                 }}>{checked && <Check size={11} strokeWidth={3} color="#fff"/>}</span>
                 <span style={{ fontSize:13, color:'var(--text-primary)' }}>{nameOf(c)}</span>
                 <input type="checkbox" checked={checked} onChange={() => toggle(c.id)} style={{ display:'none' }}/>

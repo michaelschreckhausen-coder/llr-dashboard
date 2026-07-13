@@ -1024,7 +1024,7 @@ export default function Layout({ session, role, onLogout, children }) {
             {extInstalled ? (
               <span title="Extension aktiv" style={{ position:'absolute', top:6, right:6, width:9, height:9, borderRadius:'50%', background:'rgb(34,197,94)', border:'2px solid var(--bg-body)' }}/>
             ) : (
-              <span title="Noch nicht installiert" style={{ position:'absolute', top:6, right:6, width:9, height:9, borderRadius:'50%', background:'var(--wl-primary, #0A6FB0)', border:'2px solid var(--bg-body)' }}/>
+              <span title="Noch nicht installiert" style={{ position:'absolute', top:6, right:6, width:9, height:9, borderRadius:'50%', background:'var(--primary)', border:'2px solid var(--bg-body)' }}/>
             )}
           </a>
 

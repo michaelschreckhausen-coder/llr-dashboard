@@ -190,7 +190,7 @@ export default function BrainButton({ model, onChange, eyebrow = 'Schreibt mit',
                   >
                     <span style={{
                       width: 6, height: 6, borderRadius: '50%',
-                      background: isActive ? P : '#E5E7EB',
+                      background: isActive ? 'var(--primary)' : '#E5E7EB',
                       flexShrink: 0,
                     }}/>
                     <span style={{

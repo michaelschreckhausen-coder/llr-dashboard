@@ -751,7 +751,7 @@ REGELN (hart):
 
       {/* Flash */}
       {flash && (
-        <div style={{position:'fixed',top:20,right:20,background:P,color:'#fff',padding:'10px 16px',borderRadius:8,fontSize:13,boxShadow:'0 4px 12px rgba(0,0,0,0.15)',zIndex:1000}}>
+        <div style={{position:'fixed',top:20,right:20,background:'var(--primary)',color:'#fff',padding:'10px 16px',borderRadius:8,fontSize:13,boxShadow:'0 4px 12px rgba(0,0,0,0.15)',zIndex:1000}}>
           {flash}
         </div>
       )}
@@ -783,7 +783,7 @@ REGELN (hart):
             ) : (
               <div style={{padding:'14px 12px',background:'var(--surface-muted)',border:'1px dashed var(--border)',borderRadius:8,textAlign:'center'}}>
                 <div style={{fontSize:11,color:'var(--text-muted)',marginBottom:8,lineHeight:1.5}}>Noch keine Brand Voice — steuert Tonalität aller Texte.</div>
-                <a href="/brand-voice" style={{display:'inline-block',padding:'6px 12px',background:P,color:'#fff',borderRadius:6,fontSize:12,fontWeight:600,textDecoration:'none'}}>→ Brand Voice anlegen</a>
+                <a href="/brand-voice" style={{display:'inline-block',padding:'6px 12px',background:'var(--primary)',color:'#fff',borderRadius:6,fontSize:12,fontWeight:600,textDecoration:'none'}}>→ Brand Voice anlegen</a>
               </div>
             )}
           </div>
@@ -794,7 +794,7 @@ REGELN (hart):
             {audiences.length === 0 ? (
               <div style={{padding:'14px 12px',background:'var(--surface-muted)',border:'1px dashed var(--border)',borderRadius:8,textAlign:'center'}}>
                 <div style={{fontSize:11,color:'var(--text-muted)',marginBottom:8,lineHeight:1.5}}>Noch keine Zielgruppen — schärft die Ansprache.</div>
-                <a href="/zielgruppen" style={{display:'inline-block',padding:'6px 12px',background:P,color:'#fff',borderRadius:6,fontSize:12,fontWeight:600,textDecoration:'none'}}>→ Zielgruppe anlegen</a>
+                <a href="/zielgruppen" style={{display:'inline-block',padding:'6px 12px',background:'var(--primary)',color:'#fff',borderRadius:6,fontSize:12,fontWeight:600,textDecoration:'none'}}>→ Zielgruppe anlegen</a>
               </div>
             ) : (<>
               <div style={{maxHeight:140,overflowY:'auto',border:'1px solid var(--border)',borderRadius:8,padding:6}}>
@@ -825,7 +825,7 @@ REGELN (hart):
             {knowledgeItems.length === 0 ? (
               <div style={{padding:'14px 12px',background:'var(--surface-muted)',border:'1px dashed var(--border)',borderRadius:8,textAlign:'center'}}>
                 <div style={{fontSize:11,color:'var(--text-muted)',marginBottom:8,lineHeight:1.5}}>Noch nichts — liefert Fakten &amp; Referenzen.</div>
-                <a href="/wissensdatenbank" style={{display:'inline-block',padding:'6px 12px',background:P,color:'#fff',borderRadius:6,fontSize:12,fontWeight:600,textDecoration:'none'}}>→ Wissen hinzufügen</a>
+                <a href="/wissensdatenbank" style={{display:'inline-block',padding:'6px 12px',background:'var(--primary)',color:'#fff',borderRadius:6,fontSize:12,fontWeight:600,textDecoration:'none'}}>→ Wissen hinzufügen</a>
               </div>
             ) : (<>
               <div style={{maxHeight:140,overflowY:'auto',border:'1px solid var(--border)',borderRadius:8,padding:6}}>

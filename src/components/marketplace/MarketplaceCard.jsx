@@ -54,7 +54,7 @@ const pillActiveStyle = {
 }
 const ctaPrimary = {
   flex: 1, height: 38, padding: '0 16px',
-  background: 'var(--wl-primary, #0A6FB0)', color: '#fff',
+  background: 'var(--primary)', color: '#fff',
   border: 'none', borderRadius: 10,
   fontSize: 13, fontWeight: 700,
   cursor: 'pointer',

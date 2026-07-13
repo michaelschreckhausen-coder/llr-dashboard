@@ -254,7 +254,7 @@ function DateTimePicker({ value = '', onChange = () => {} }) {
               <button key={d} type="button" onClick={() => pickDay(d)}
                 style={{ height:32, borderRadius:8, cursor:'pointer', fontFamily:'inherit', fontSize:12.5, fontWeight: sel ? 700 : 500,
                   border: td && !sel ? '1.5px solid ' + P : '1.5px solid transparent',
-                  background: sel ? P : 'transparent', color: sel ? '#fff' : 'var(--text-primary)' }}>{d}</button>
+                  background: sel ? 'var(--primary)' : 'transparent', color: sel ? '#fff' : 'var(--text-primary)' }}>{d}</button>
             )})}
           </div>
           <div style={{ display:'flex', alignItems:'center', gap:8, marginTop:12, paddingTop:12, borderTop:'1px solid var(--border)' }}>
@@ -2524,7 +2524,7 @@ Danke für den Austausch! 🤝`,
                           {g.date.toLocaleDateString('de-DE', { weekday:'long' })}
                         </span>
                         {isToday && (
-                          <span style={{ fontSize:10, fontWeight:700, color:'#fff', background:'var(--wl-primary, #0A6FB0)', padding:'1px 8px', borderRadius:999 }}>Heute</span>
+                          <span style={{ fontSize:10, fontWeight:700, color:'#fff', background:'var(--primary)', padding:'1px 8px', borderRadius:999 }}>Heute</span>
                         )}
                       </div>
                       <div style={{ display:'flex', flexDirection:'column', gap:6 }}>
@@ -2578,7 +2578,7 @@ Danke für den Austausch! 🤝`,
                   <div style={{ fontSize:11, fontWeight: isToday ? 800 : 600,
                     color: isToday ? 'var(--wl-primary, #0A6FB0)' : isPast ? '#94A3B8' : 'rgb(20,20,43)',
                     marginBottom:4, display:'flex', alignItems:'center', gap:4 }}>
-                    {isToday && <span style={{ width:6, height:6, borderRadius:'50%', background:'var(--wl-primary, #0A6FB0)', display:'inline-block' }}/>}
+                    {isToday && <span style={{ width:6, height:6, borderRadius:'50%', background:'var(--primary)', display:'inline-block' }}/>}
                     {day.date.getDate()}
                   </div>
                   {dayPosts.slice(0,3).map(p => (

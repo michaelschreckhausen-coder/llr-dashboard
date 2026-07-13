@@ -352,7 +352,7 @@ function OffeneAnfragen({ session, activeTeamId }) {
   const acceptRate = denom > 0 ? Math.round((accepted.length / denom) * 100) : 0
 
   const cardStyle = { background:RC.surface, border:`1px solid ${RC.border}`, borderRadius:14, padding:'16px 18px', marginBottom:16 }
-  const btnPrimary = { padding:'8px 14px', background:P, color:'#fff', border:'none', borderRadius:10, fontSize:13, fontWeight:700, display:'inline-flex', alignItems:'center', gap:6, cursor:'pointer' }
+  const btnPrimary = { padding:'8px 14px', background:'var(--primary)', color:'#fff', border:'none', borderRadius:10, fontSize:13, fontWeight:700, display:'inline-flex', alignItems:'center', gap:6, cursor:'pointer' }
 
   return (
     <div style={cardStyle}>
@@ -746,7 +746,7 @@ export default function Vernetzungen({ session }) {
                   <span style={{ fontSize:11, padding:'4px 10px', borderRadius:8, background:conn.bg, color:conn.color, border:'1px solid '+conn.border, fontWeight:700, whiteSpace:'nowrap' }}>{conn.label}</span>
                   {!alreadySent && (
                     <button onClick={e => { e.stopPropagation(); setAnfrageModal(lead) }}
-                      style={{ padding:'6px 12px', borderRadius:8, fontSize:12, fontWeight:700, cursor:'pointer', border:'none', background:P, color:'#fff', whiteSpace:'nowrap' }}>
+                      style={{ padding:'6px 12px', borderRadius:8, fontSize:12, fontWeight:700, cursor:'pointer', border:'none', background:'var(--primary)', color:'#fff', whiteSpace:'nowrap' }}>
                       <span style={{display:'inline-flex',alignItems:'center',gap:4}}><Sparkles size={10} strokeWidth={1.75}/>Anfrage</span>
                     </button>
                   )}

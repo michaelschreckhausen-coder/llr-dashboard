@@ -546,7 +546,7 @@ export default function Messages({ session }) {
                     style={{ padding:'10px 14px', cursor:'pointer', borderBottom:'1px solid #F9FAFB', display:'flex', alignItems:'center', gap:10 }}
                     onMouseEnter={e => e.currentTarget.style.background='#F5F7FF'}
                     onMouseLeave={e => e.currentTarget.style.background='white'}>
-                    <div style={{ width:32, height:32, borderRadius:'50%', background:P, display:'flex', alignItems:'center', justifyContent:'center', color:'white', fontSize:12, fontWeight:700, flexShrink:0 }}>
+                    <div style={{ width:32, height:32, borderRadius:'50%', background:'var(--primary)', display:'flex', alignItems:'center', justifyContent:'center', color:'white', fontSize:12, fontWeight:700, flexShrink:0 }}>
                       {fullName(l).charAt(0)}
                     </div>
                     <div style={{ minWidth:0 }}>

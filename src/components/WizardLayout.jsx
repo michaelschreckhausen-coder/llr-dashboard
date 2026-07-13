@@ -91,7 +91,7 @@ export default function WizardLayout({ eyebrow, title, subtitle, steps = [], cur
                   }}>
                   <div style={{
                     width: 28, height: 28, borderRadius: '50%', flexShrink: 0,
-                    background: isActive ? P : isDone ? P : '#fff',
+                    background: isActive ? 'var(--primary)' : isDone ? 'var(--primary)' : '#fff',
                     border: '2px solid ' + (isActive || isDone ? P : '#E5E7EB'),
                     color: isActive ? '#fff' : isDone ? '#fff' : '#9CA3AF',
                     display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
@@ -117,7 +117,7 @@ export default function WizardLayout({ eyebrow, title, subtitle, steps = [], cur
                     flex: 1,
                     minWidth: 24,
                     height: 2,
-                    background: stepNum < currentStep ? P : 'var(--border, #E5E7EB)',
+                    background: stepNum < currentStep ? 'var(--primary)' : 'var(--border, #E5E7EB)',
                     margin: '0 8px',
                     borderRadius: 1,
                   }}/>

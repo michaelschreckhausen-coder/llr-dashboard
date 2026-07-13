@@ -182,7 +182,7 @@ export default function LinkedInConnect({ session }) {
           <a href={EXTENSION_WEBSTORE_URL}
             target="_blank" rel="noreferrer"
             style={{ display:'inline-flex', alignItems:'center', gap:6, padding:'9px 16px', borderRadius:10,
-              background:P, color:'white', textDecoration:'none', fontSize:13, fontWeight:700, flexShrink:0 }}>
+              background:'var(--primary)', color:'white', textDecoration:'none', fontSize:13, fontWeight:700, flexShrink:0 }}>
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
             Im Chrome Web Store öffnen
           </a>
@@ -201,7 +201,7 @@ export default function LinkedInConnect({ session }) {
                 ].map(step => (
                   <div key={step.n} style={{ background:BG, borderRadius:14, padding:'16px 18px', border:'1px solid rgba(10,111,176,0.1)' }}>
                     <div style={{ display:'flex', alignItems:'center', gap:10, marginBottom:10 }}>
-                      <div style={{ width:28, height:28, borderRadius:'50%', background:P, color:'white', fontSize:13, fontWeight:900, display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0 }}>{step.n}</div>
+                      <div style={{ width:28, height:28, borderRadius:'50%', background:'var(--primary)', color:'white', fontSize:13, fontWeight:900, display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0 }}>{step.n}</div>
                       <div style={{ width:32, height:32, borderRadius:8, background:'var(--surface)', border:'1px solid rgba(10,111,176,0.15)', display:'flex', alignItems:'center', justifyContent:'center' }}>{step.icon}</div>
                       <div style={{ fontSize:13, fontWeight:800, color:'rgb(20,20,43)' }}>{step.title}</div>
                     </div>

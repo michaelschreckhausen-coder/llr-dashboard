@@ -44,7 +44,7 @@ function StatusPill({ connected, labelOn = 'Verbunden', labelOff = 'Nicht verbun
   )
 }
 
-const btnPrimary = { padding: '8px 16px', borderRadius: 9, border: 'none', background: P, color: '#fff', fontSize: 12.5, fontWeight: 700, cursor: 'pointer', whiteSpace: 'nowrap' }
+const btnPrimary = { padding: '8px 16px', borderRadius: 9, border: 'none', background: 'var(--primary)', color: '#fff', fontSize: 12.5, fontWeight: 700, cursor: 'pointer', whiteSpace: 'nowrap' }
 const btnGhost   = { padding: '8px 14px', borderRadius: 9, border: '1px solid #E4E7EC', background: 'var(--surface)', color: '#374151', fontSize: 12.5, fontWeight: 700, cursor: 'pointer', whiteSpace: 'nowrap' }
 const btnDanger  = { padding: '8px 14px', borderRadius: 9, border: '1px solid #FCA5A5', background: '#FEF2F2', color: '#DC2626', fontSize: 12.5, fontWeight: 700, cursor: 'pointer', whiteSpace: 'nowrap' }
 const subText    = { fontSize: 12.5, color: 'var(--text-muted)', lineHeight: 1.5 }

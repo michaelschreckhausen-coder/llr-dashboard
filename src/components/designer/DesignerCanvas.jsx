@@ -5539,7 +5539,7 @@ Ignoriere reine Deko/Muster ohne Text. Antworte AUSSCHLIESSLICH mit JSON, ohne E
           <Download size={15} strokeWidth={1.9} />
         </button>
         <button onClick={() => openPagesAction('media')} title="Bilder in Medien speichern — einzelne oder mehrere Seiten auswählen"
-          style={{ flexShrink: 0, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', width: 34, height: 32, borderRadius: 9, border: 'none', background: P, color: '#fff', cursor: 'pointer', fontFamily: 'inherit', boxShadow: '0 1px 2px rgba(16,24,40,0.10)' }}>
+          style={{ flexShrink: 0, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', width: 34, height: 32, borderRadius: 9, border: 'none', background: 'var(--primary)', color: '#fff', cursor: 'pointer', fontFamily: 'inherit', boxShadow: '0 1px 2px rgba(16,24,40,0.10)' }}>
           <Save size={15} strokeWidth={2} />
         </button>
       </div>
@@ -5602,7 +5602,7 @@ Ignoriere reine Deko/Muster ohne Text. Antworte AUSSCHLIESSLICH mit JSON, ohne E
                       <button key={val} onClick={() => setDlFormat(val)}
                         style={{ display: 'flex', alignItems: 'center', gap: 12, textAlign: 'left', padding: '10px 12px', borderRadius: 10, cursor: 'pointer', border: '1.5px solid ' + (dlFormat === val ? P : 'var(--border,#E9ECF2)'), background: dlFormat === val ? 'rgba(10,111,176,0.05)' : '#fff' }}>
                         <span style={{ width: 18, height: 18, borderRadius: '50%', border: '2px solid ' + (dlFormat === val ? P : 'var(--border,#C9CFDB)'), display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                          {dlFormat === val && <span style={{ width: 9, height: 9, borderRadius: '50%', background: P }} />}
+                          {dlFormat === val && <span style={{ width: 9, height: 9, borderRadius: '50%', background: 'var(--primary)' }} />}
                         </span>
                         <span style={{ display: 'flex', flexDirection: 'column' }}>
                           <span style={{ fontSize: 14, fontWeight: 800, color: 'var(--text-primary)' }}>{lbl}</span>
@@ -6150,7 +6150,7 @@ function SmallBtn({ children, onClick, primary, disabled }) {
   return (
     <button onClick={onClick} disabled={disabled}
       style={{ height: 30, padding: '0 12px', borderRadius: 8, cursor: disabled ? 'wait' : 'pointer', fontSize: 12, fontWeight: 700, fontFamily: 'inherit',
-        border: primary ? 'none' : '1px solid var(--border)', background: primary ? P : '#fff', color: primary ? '#fff' : 'var(--text-primary)' }}>
+        border: primary ? 'none' : '1px solid var(--border)', background: primary ? 'var(--primary)' : '#fff', color: primary ? '#fff' : 'var(--text-primary)' }}>
       {children}
     </button>
   )
@@ -6658,7 +6658,7 @@ function Slider({ label, min, max, step, value, onChange, onStart, onEnd }) {
           <span style={{ position: 'absolute', left: zeroPct + '%', top: 3, width: 2, height: 10, background: 'var(--border,#D0D5DD)', transform: 'translateX(-50%)', pointerEvents: 'none', borderRadius: 1 }} />
         )}
         {dragging && (
-          <span style={{ position: 'absolute', left: frac * 100 + '%', top: -25, transform: 'translateX(-50%)', background: P, color: '#fff', fontSize: 10.5, fontWeight: 700, fontVariantNumeric: 'tabular-nums', padding: '2px 7px', borderRadius: 6, whiteSpace: 'nowrap', pointerEvents: 'none', boxShadow: '0 2px 8px rgba(16,24,40,0.22)' }}>{sign}{disp}</span>
+          <span style={{ position: 'absolute', left: frac * 100 + '%', top: -25, transform: 'translateX(-50%)', background: 'var(--primary)', color: '#fff', fontSize: 10.5, fontWeight: 700, fontVariantNumeric: 'tabular-nums', padding: '2px 7px', borderRadius: 6, whiteSpace: 'nowrap', pointerEvents: 'none', boxShadow: '0 2px 8px rgba(16,24,40,0.22)' }}>{sign}{disp}</span>
         )}
         <input type="range" min={min} max={max} step={step} value={v}
           onMouseDown={() => { setDragging(true); onStart && onStart() }}
@@ -6735,7 +6735,7 @@ function ToolRail({ active, onSelect }) {
               color: on ? P : 'var(--text-muted,#475467)' }}
             onMouseEnter={e => { if (!on) e.currentTarget.style.background = 'rgba(16,24,40,0.04)' }}
             onMouseLeave={e => { if (!on) e.currentTarget.style.background = 'transparent' }}>
-            {on && <span style={{ position: 'absolute', left: 0, top: 8, bottom: 8, width: 3, borderRadius: 3, background: P }} />}
+            {on && <span style={{ position: 'absolute', left: 0, top: 8, bottom: 8, width: 3, borderRadius: 3, background: 'var(--primary)' }} />}
             <t.Icon size={20} strokeWidth={on ? 2.1 : 1.9} />
             <span style={{ fontSize: 10, fontWeight: on ? 700 : 600, letterSpacing: '0.01em' }}>{t.label}</span>
           </button>
@@ -7026,7 +7026,7 @@ function PanelBtn({ children, onClick, primary, full, disabled }) {
     <button onClick={onClick} disabled={disabled}
       style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: 6, height: 36, padding: '0 12px',
         width: full ? '100%' : 'auto', borderRadius: 9, cursor: disabled ? 'wait' : 'pointer', fontSize: 12.5, fontWeight: 700, fontFamily: 'inherit',
-        border: primary ? 'none' : '1px solid var(--border)', background: primary ? P : '#fff', color: primary ? '#fff' : 'var(--text-primary)', opacity: disabled ? 0.6 : 1 }}>
+        border: primary ? 'none' : '1px solid var(--border)', background: primary ? 'var(--primary)' : '#fff', color: primary ? '#fff' : 'var(--text-primary)', opacity: disabled ? 0.6 : 1 }}>
       {children}
     </button>
   )

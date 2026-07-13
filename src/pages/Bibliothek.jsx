@@ -232,7 +232,7 @@ function DesignsTab({ reloadKey = 0 } = {}) {
                   {chats.length > 0 && !showOther && (
                     <>
                       <button onClick={() => openWith(chats[0].id)}
-                        style={{ width: '100%', display: 'flex', alignItems: 'center', gap: 8, padding: '11px 12px', borderRadius: 10, border: 'none', background: P, color: '#fff', fontSize: 13, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit', marginBottom: 10 }}>
+                        style={{ width: '100%', display: 'flex', alignItems: 'center', gap: 8, padding: '11px 12px', borderRadius: 10, border: 'none', background: 'var(--primary)', color: '#fff', fontSize: 13, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit', marginBottom: 10 }}>
                         <MessageSquare size={15} strokeWidth={2} /><span style={{ minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>Zuletzt bearbeitender Chat · {chats[0].title || 'Chat'}</span>
                       </button>
                       <div style={{ fontSize: 10.5, fontWeight: 700, color: 'var(--text-soft,#98a2b3)', textTransform: 'uppercase', letterSpacing: '0.06em', padding: '2px 2px 6px' }}>Zugeordnete Chats</div>

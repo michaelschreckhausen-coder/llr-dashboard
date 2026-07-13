@@ -358,7 +358,7 @@ const inputStyle = {
 const btnPrimary = {
   padding: '10px 20px',
   borderRadius: 999,
-  background: 'var(--wl-primary, #0A6FB0)',
+  background: 'var(--primary)',
   color: '#fff',
   border: 'none',
   fontSize: 13,

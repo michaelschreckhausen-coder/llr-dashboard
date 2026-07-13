@@ -653,7 +653,7 @@ const DocumentEditorPane = forwardRef(function DocumentEditorPane({
                     placeholder="Anweisung an die KI … z. B. „knackiger“"
                     style={{ flex:1, minWidth:0, border:'none', outline:'none', background:'transparent', color:'var(--text-primary)', fontSize:13, fontFamily:'inherit' }}/>
                   <button onClick={runCustomInstruction} disabled={!aiInstruction.trim()}
-                    style={{ width:30, height:30, flexShrink:0, display:'inline-flex', alignItems:'center', justifyContent:'center', border:'none', borderRadius:8, background: aiInstruction.trim() ? P : '#E4E7EC', color:'#fff', cursor: aiInstruction.trim() ? 'pointer' : 'default' }}>
+                    style={{ width:30, height:30, flexShrink:0, display:'inline-flex', alignItems:'center', justifyContent:'center', border:'none', borderRadius:8, background: aiInstruction.trim() ? 'var(--primary)' : '#E4E7EC', color:'#fff', cursor: aiInstruction.trim() ? 'pointer' : 'default' }}>
                     <Send size={13} strokeWidth={2}/>
                   </button>
                 </div>
@@ -695,7 +695,7 @@ const DocumentEditorPane = forwardRef(function DocumentEditorPane({
 
 // ── Styles & kleine Komponenten ─────────────────────────────────────────────
 const MenuItem = { display:'flex', alignItems:'center', gap:10, width:'100%', padding:'8px 10px', background:'transparent', border:'none', cursor:'pointer', borderRadius:7, fontSize:13, color:'var(--text-primary)', textAlign:'left', fontFamily:'inherit' }
-const PrimaryBtn = { display:'inline-flex', alignItems:'center', gap:5, height:32, padding:'0 12px', borderRadius:9, border:'none', background:P, color:'#fff', fontSize:12.5, fontWeight:700, cursor:'pointer', fontFamily:'inherit' }
+const PrimaryBtn = { display:'inline-flex', alignItems:'center', gap:5, height:32, padding:'0 12px', borderRadius:9, border:'none', background:'var(--primary)', color:'#fff', fontSize:12.5, fontWeight:700, cursor:'pointer', fontFamily:'inherit' }
 const GhostBtn = { display:'inline-flex', alignItems:'center', gap:5, height:32, padding:'0 11px', borderRadius:9, border:'1px solid var(--border,#E9ECF2)', background:'#fff', color:'var(--text-primary)', fontSize:12.5, fontWeight:600, cursor:'pointer', fontFamily:'inherit' }
 const InputStyle = { width:'100%', boxSizing:'border-box', border:'1px solid var(--border,#E9ECF2)', borderRadius:9, padding:'8px 10px', fontSize:13, fontFamily:'inherit', outline:'none', color:'var(--text-primary)', background:'#fff' }
 
@@ -736,7 +736,7 @@ function Toolbar({ editor, onContinue, continuing }) {
   const c = () => editor.chain().focus()
   const Btn = ({ on, active, title, children }) => (
     <button type="button" title={title} onMouseDown={e => e.preventDefault()} onClick={on}
-      style={{ display:'inline-flex', alignItems:'center', justifyContent:'center', width:30, height:30, border:'none', borderRadius:7, background: active ? P : 'transparent', color: active ? '#fff' : 'var(--text-muted,#475467)', cursor:'pointer', flexShrink:0 }}
+      style={{ display:'inline-flex', alignItems:'center', justifyContent:'center', width:30, height:30, border:'none', borderRadius:7, background: active ? 'var(--primary)' : 'transparent', color: active ? '#fff' : 'var(--text-muted,#475467)', cursor:'pointer', flexShrink:0 }}
       onMouseEnter={e=>{ if(!active) e.currentTarget.style.background='#EEF1F6' }} onMouseLeave={e=>{ if(!active) e.currentTarget.style.background='transparent' }}>
       {children}
     </button>
@@ -761,7 +761,7 @@ function Toolbar({ editor, onContinue, continuing }) {
       {/* Markieren / Highlight */}
       <div style={{ position:'relative', display:'inline-flex' }}>
         <button type="button" title="Text farbig markieren" onMouseDown={e => e.preventDefault()} onClick={() => { setHlOpen(o => !o); setEmojiOpen(false) }}
-          style={{ display:'inline-flex', alignItems:'center', justifyContent:'center', width:30, height:30, border:'none', borderRadius:7, background: (hlOpen || editor.isActive('highlight')) ? (editor.isActive('highlight') ? P : '#EEF1F6') : 'transparent', color: editor.isActive('highlight') ? '#fff' : 'var(--text-muted,#475467)', cursor:'pointer', flexShrink:0 }}
+          style={{ display:'inline-flex', alignItems:'center', justifyContent:'center', width:30, height:30, border:'none', borderRadius:7, background: (hlOpen || editor.isActive('highlight')) ? (editor.isActive('highlight') ? 'var(--primary)' : '#EEF1F6') : 'transparent', color: editor.isActive('highlight') ? '#fff' : 'var(--text-muted,#475467)', cursor:'pointer', flexShrink:0 }}
           onMouseEnter={e=>{ if(!hlOpen && !editor.isActive('highlight')) e.currentTarget.style.background='#EEF1F6' }} onMouseLeave={e=>{ if(!hlOpen && !editor.isActive('highlight')) e.currentTarget.style.background='transparent' }}>
           <Highlighter size={16} strokeWidth={2}/>
         </button>

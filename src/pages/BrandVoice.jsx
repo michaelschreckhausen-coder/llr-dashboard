@@ -1580,7 +1580,7 @@ export default function BrandVoice({ session, brandType = 'personal' }) {
               <LinkedinIcon size={15}/><span>{edit.linkedin_member_id ? 'LinkedIn verbunden' : 'LinkedIn verbinden'}</span>
             </button>
           )}
-          <button onClick={saveVoice} style={{ padding:'11px 22px', background:P, color:'#fff', border:'none', borderRadius:10, fontSize:13.5, fontWeight:600, cursor:'pointer', boxShadow:'0 2px 10px rgba(10,111,176,.25)', display:'inline-flex', alignItems:'center', gap:8, fontFamily:'inherit', flexShrink:0 }}>
+          <button onClick={saveVoice} style={{ padding:'11px 22px', background:'var(--primary)', color:'#fff', border:'none', borderRadius:10, fontSize:13.5, fontWeight:600, cursor:'pointer', boxShadow:'0 2px 10px rgba(10,111,176,.25)', display:'inline-flex', alignItems:'center', gap:8, fontFamily:'inherit', flexShrink:0 }}>
             <span style={{display:'inline-flex'}}><Save size={14}/></span><span>{editIsCompany ? 'Company Brand speichern' : 'Personal Brand speichern'}</span>
           </button>
         </div>
@@ -1738,7 +1738,7 @@ export default function BrandVoice({ session, brandType = 'personal' }) {
             const i = TABS.findIndex(t => t.v === tab)
             if (i < TABS.length-1) setTab(TABS[i+1].v)
           }}
-            style={{ padding:'12px 28px', background:P, color:'#fff', border:'none', borderRadius:10, fontSize:14, fontWeight:600, cursor:'pointer', boxShadow:'0 2px 10px rgba(10,111,176,.25)', display:'inline-flex', alignItems:'center', gap:8, fontFamily:'inherit' }}>
+            style={{ padding:'12px 28px', background:'var(--primary)', color:'#fff', border:'none', borderRadius:10, fontSize:14, fontWeight:600, cursor:'pointer', boxShadow:'0 2px 10px rgba(10,111,176,.25)', display:'inline-flex', alignItems:'center', gap:8, fontFamily:'inherit' }}>
             <span>Weiter</span><span>→</span>
           </button>
         )}

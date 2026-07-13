@@ -98,7 +98,7 @@ const footerStyle = {
 };
 
 const btnPrimary = {
-  background: 'var(--wl-primary, #0A6FB0)',
+  background: 'var(--primary)',
   color: '#ffffff',
   padding: '9px 16px',
   border: 'none',

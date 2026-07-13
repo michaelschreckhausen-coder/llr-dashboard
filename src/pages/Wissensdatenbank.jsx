@@ -448,8 +448,8 @@ export default function Wissensdatenbank({ session }) {
         <input value={search} onChange={e=>setSearch(e.target.value)} placeholder="Suchen…" style={{padding:'8px 14px',border:'1.5px solid var(--border)',borderRadius:10,fontSize:13,width:220}}/>
       </div>
       <div style={{ display:'flex', flexWrap:'wrap', gap:6, marginBottom:16 }}>
-        <button onClick={()=>setFilter('alle')} style={{padding:'5px 12px',borderRadius:20,border:filter==='alle'?`1.5px solid ${P}`:'1.5px solid #dde3ea',background:filter==='alle'?P:'#fff',color:filter==='alle'?'#fff':'#666',fontSize:12,cursor:'pointer',fontWeight:filter==='alle'?600:400}}>Alle ({items.length})</button>
-        {CATEGORIES.map(c => { const cnt=counts[c.v]||0; if(cnt===0&&filter!==c.v) return null; return <button key={c.v} onClick={()=>setFilter(c.v)} style={{padding:'5px 12px',borderRadius:20,border:filter===c.v?`1.5px solid ${P}`:'1.5px solid #dde3ea',background:filter===c.v?P:'#fff',color:filter===c.v?'#fff':'#666',fontSize:12,cursor:'pointer',fontWeight:filter===c.v?600:400}}>{c.icon} {c.l} ({cnt})</button> })}
+        <button onClick={()=>setFilter('alle')} style={{padding:'5px 12px',borderRadius:20,border:filter==='alle'?`1.5px solid ${P}`:'1.5px solid #dde3ea',background:filter==='alle'?'var(--primary)':'#fff',color:filter==='alle'?'#fff':'#666',fontSize:12,cursor:'pointer',fontWeight:filter==='alle'?600:400}}>Alle ({items.length})</button>
+        {CATEGORIES.map(c => { const cnt=counts[c.v]||0; if(cnt===0&&filter!==c.v) return null; return <button key={c.v} onClick={()=>setFilter(c.v)} style={{padding:'5px 12px',borderRadius:20,border:filter===c.v?`1.5px solid ${P}`:'1.5px solid #dde3ea',background:filter===c.v?'var(--primary)':'#fff',color:filter===c.v?'#fff':'#666',fontSize:12,cursor:'pointer',fontWeight:filter===c.v?600:400}}>{c.icon} {c.l} ({cnt})</button> })}
       </div>
       {filtered.length === 0 ? (
         <div style={{textAlign:'center',color:'#888',padding:40}}>{items.length===0?'Noch kein Wissen hinterlegt. Füge dein erstes Kontextdokument hinzu!':'Keine Einträge für diesen Filter.'}</div>
@@ -607,7 +607,7 @@ export default function Wissensdatenbank({ session }) {
             style={{ display:'inline-flex', alignItems:'center', gap:7, fontFamily:'inherit' }}>
             <Eye size={15} strokeWidth={1.75}/><span>{edit.is_shared ? 'Geteilt' : 'Sichtbarkeit'}</span>
           </button>
-          <button onClick={save} disabled={!edit.name?.trim()} style={{ padding:'12px 26px', background:edit.name?.trim()?P:'#94A3B8', color:'#fff', border:'none', borderRadius:10, fontSize:14, fontWeight:600, cursor:edit.name?.trim()?'pointer':'not-allowed', boxShadow:edit.name?.trim()?'0 2px 10px rgba(10,111,176,.25)':'none', display:'inline-flex', alignItems:'center', gap:8, fontFamily:'inherit', opacity:edit.name?.trim()?1:.8 }}>
+          <button onClick={save} disabled={!edit.name?.trim()} style={{ padding:'12px 26px', background:edit.name?.trim()?'var(--primary)':'#94A3B8', color:'#fff', border:'none', borderRadius:10, fontSize:14, fontWeight:600, cursor:edit.name?.trim()?'pointer':'not-allowed', boxShadow:edit.name?.trim()?'0 2px 10px rgba(10,111,176,.25)':'none', display:'inline-flex', alignItems:'center', gap:8, fontFamily:'inherit', opacity:edit.name?.trim()?1:.8 }}>
             <span style={{display:'inline-flex'}}><Save size={14}/></span><span>Speichern</span>
           </button>
         </div>
