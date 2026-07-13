@@ -307,12 +307,12 @@ export async function listSentInvitations(
     query: { account_id: conn.accountId, cursor },
   });
 }
-// DELETE /api/v1/users/invite/{invitation_id}?account_id=...  (withdraw)
+// DELETE /api/v1/users/invite/sent/{invitation_id}?account_id=...  (withdraw; das /sent/-Segment ist Pflicht -> sonst 404)
 export async function withdrawInvitation(
   conn: UnipileConn,
   invitationId: string,
 ): Promise<any> {
-  return await call("DELETE", `/api/v1/users/invite/${encodeURIComponent(invitationId)}`, {
+  return await call("DELETE", `/api/v1/users/invite/sent/${encodeURIComponent(invitationId)}`, {
     dsn: conn.dsn,
     query: { account_id: conn.accountId },
   });

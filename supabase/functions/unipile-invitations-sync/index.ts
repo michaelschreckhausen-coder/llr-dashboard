@@ -4,11 +4,13 @@
 //   a) Gesendete (pending) Invites listen -> linkedin_invitations spiegeln
 //   b) Nicht mehr gelistete pending-Invites -> als 'accepted' markieren
 //      und leads.li_connection_status='verbunden' setzen (Reconcile, kanonisches ENUM)
-//   c) Optional: pending-Invites älter als WITHDRAW_AFTER_DAYS zurückziehen
-//      (mit la_*-Ausschluss: keine Person in aktiver Greenfield-Sequenz)
+//   c) Opt-in: pending-Invites älter als user_preferences.linkedin_withdraw_after_days (>0)
+//      zurückziehen (mit la_*-Ausschluss: keine Person in aktiver Greenfield-Sequenz).
+//      Kein Default -> ohne Setting wird NICHTS zurückgezogen.
 // =====================================================================
 import { handlePreflight, jsonResponse } from "../_shared/cors.ts";
 import {
+  getAuthenticatedUser,
   listSentInvitations,
   serviceClient,
   UnipileConn,
@@ -18,7 +20,8 @@ import {
 
 // Janitor (Weg A): KEIN Invite-Send. Nur Reconcile (accepted -> li_connection_status='verbunden')
 // + Auto-Withdraw veralteter pending-Invites mit la_*-Ausschluss. Send macht Julians Greenfield.
-const DEFAULT_WITHDRAW_AFTER_DAYS = 21; // Fallback wenn user_preferences NULL (0 = aus)
+// Auto-Withdraw ist strikt OPT-IN pro User (user_preferences.linkedin_withdraw_after_days > 0);
+// KEIN Default -> ohne Setting wird NICHTS zurückgezogen.
 
 Deno.serve(async (req) => {
   const pre = handlePreflight(req);
@@ -28,20 +31,33 @@ Deno.serve(async (req) => {
     const sb = serviceClient();
     const input = await req.json().catch(() => ({}));
 
-    // Alle aktiven Unipile-Accounts (Authority: unipile_accounts, status='OK').
-    // Pro Account eine eigene LinkedIn-Session -> jeder Account einzeln verarbeitet
-    // (ein User kann mehrere Accounts haben; kein Collapse auf "neuester" wie in
-    // getUnipileConnection).
-    const { data: accts, error } = await sb
+    // ── Auth-Gate (Pflicht): zwei Pfade (Muster wie unipile-post-publish) ──
+    // Cron (service-role-Bearer): verarbeitet ALLE OK-Accounts (Background-Worker).
+    // Frontend (JWT): NUR die OK-Accounts des verifizierten Users (kein body.user_id-Trust).
+    const authHeader = req.headers.get("Authorization") || "";
+    const token = authHeader.startsWith("Bearer ") ? authHeader.slice(7) : "";
+    if (!token) return jsonResponse({ error: "unauthorized" }, 401);
+    const isServiceRole = token === Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
+    let scopeUserId: string | null = null;
+    if (!isServiceRole) {
+      const auth = await getAuthenticatedUser(req);
+      if (!auth) return jsonResponse({ error: "unauthorized" }, 401);
+      scopeUserId = auth.userId;   // Scope kommt aus dem JWT, NICHT aus dem Body
+    }
+
+    // Aktive Unipile-Accounts (Authority: unipile_accounts, status='OK'). Pro Account eine
+    // eigene LinkedIn-Session -> jeder Account einzeln (Multi-Account-safe). JWT-Pfad: nur eigene.
+    let acctQuery = sb
       .from("unipile_accounts")
       .select("user_id, team_id, unipile_account_id, status")
       .eq("status", "OK")
       .not("unipile_account_id", "is", null);
+    if (!isServiceRole && scopeUserId) acctQuery = acctQuery.eq("user_id", scopeUserId);
+    const { data: accts, error } = await acctQuery;
     if (error) return jsonResponse({ error: error.message }, 500);
     if (!accts || accts.length === 0) return jsonResponse({ ok: true, accounts: 0 });
 
-    // Optional auf einen User beschränken (user-invoke).
-    const filtered = input.user_id ? accts.filter((a) => a.user_id === input.user_id) : accts;
+    const filtered = accts;
 
     let synced = 0, accepted = 0, withdrawn = 0;
 
@@ -54,14 +70,18 @@ Deno.serve(async (req) => {
         userId: c.user_id,
       };
 
-      // withdraw_after_days pro User: user_preferences (Fallback-Const 21; NULL=Default; 0=aus).
-      let withdrawAfter = DEFAULT_WITHDRAW_AFTER_DAYS;
+      // withdraw_after_days pro User — STRIKT OPT-IN (kein Default!): nur > 0 aktiviert Auto-Withdraw.
+      // manueller Override via input.withdraw_after_days, sonst user_preferences; NULL/0/fehlt = AUS.
+      let withdrawAfter = 0;
       {
-        const { data: pref, error: prefErr } = await sb.from("user_preferences")
-          .select("linkedin_withdraw_after_days").eq("user_id", c.user_id).maybeSingle();
-        if (prefErr) console.warn(`[unipile-invitations-sync] user_preferences: ${prefErr.message}`);
-        if (input.withdraw_after_days != null) withdrawAfter = Number(input.withdraw_after_days); // manueller Override
-        else if (pref?.linkedin_withdraw_after_days != null) withdrawAfter = Number(pref.linkedin_withdraw_after_days);
+        if (input.withdraw_after_days != null) {
+          withdrawAfter = Number(input.withdraw_after_days) || 0;
+        } else {
+          const { data: pref, error: prefErr } = await sb.from("user_preferences")
+            .select("linkedin_withdraw_after_days").eq("user_id", c.user_id).maybeSingle();
+          if (prefErr) console.warn(`[unipile-invitations-sync] user_preferences: ${prefErr.message}`);
+          if (pref?.linkedin_withdraw_after_days != null) withdrawAfter = Number(pref.linkedin_withdraw_after_days) || 0;
+        }
       }
 
       try {
