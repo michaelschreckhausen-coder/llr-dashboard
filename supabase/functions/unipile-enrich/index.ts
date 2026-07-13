@@ -65,16 +65,27 @@ Deno.serve(async (req) => {
     // Rückschreiben in leads (nur wenn Lead-Kontext vorhanden)
     let companyResult: any = null;
     if (lead) {
+      // Reale Unipile-getProfile-Shape: first_name/last_name/headline/summary/
+      // location/profile_picture_url liegen TOP-LEVEL; Position/Firma/Branche
+      // dagegen in work_experience[0] (.position/.company als String/.industry).
+      // ⚠️ Envelope noch zu verifizieren: falls Unipile das Profil wrappt
+      //    (z.B. unter data/ oder als Array), greift profile.* ins Leere -> per
+      //    read-only Test-GET /api/v1/users/{identifier} die echte Shape prüfen
+      //    und den Zugriff hier ggf. entpacken.
+      const exp = Array.isArray(profile?.work_experience) ? profile.work_experience[0] : null;
+      const fullName = [profile?.first_name, profile?.last_name].filter(Boolean).join(" ");
       const patch: Record<string, unknown> = {
+        // name nur setzen, wenn der Lead noch keinen echten Namen hat
+        name: (!lead.name || lead.name === "Unbekannt") && fullName ? fullName : lead.name,
         headline: profile?.headline ?? lead.headline,
-        job_title: profile?.occupation ?? profile?.headline ?? lead.job_title,
-        company: profile?.company?.name ?? profile?.current_company ?? lead.company,
-        location: profile?.location ?? lead.location,
+        job_title: exp?.position ?? profile?.headline ?? lead.job_title,
+        company: exp?.company ?? lead.company,
+        location: profile?.location ?? exp?.location ?? lead.location,
         first_name: profile?.first_name ?? lead.first_name,
         last_name: profile?.last_name ?? lead.last_name,
         avatar_url: profile?.profile_picture_url ?? lead.avatar_url,
-        industry: profile?.industry ?? lead.industry,
-        li_about_summary: profile?.summary ?? profile?.about ?? lead.li_about_summary,
+        industry: exp?.industry ?? lead.industry,
+        li_about_summary: profile?.summary ?? lead.li_about_summary,
         enriched_at: new Date().toISOString(),
         enrichment_source: "unipile_profile",
       };
@@ -83,9 +94,11 @@ Deno.serve(async (req) => {
       const { error } = await sb.from("leads").update(patch).eq("id", lead.id);
       if (error) console.warn(`[unipile-enrich] lead update: ${error.message}`);
 
-      // Firmenprofil, falls Company-Identifier vorhanden
-      const companyId = profile?.company?.public_identifier
-        ?? identifierFromUrl(profile?.company?.url);
+      // Firmenprofil: kein profile.company-Objekt — der aktuelle Arbeitgeber
+      // kommt aus work_experience[0]. Company-ID/URN bevorzugen, sonst
+      // best-effort über den Firmennamen (getCompany akzeptiert "name or ID").
+      const companyId = exp?.company_id ?? exp?.company_urn
+        ?? identifierFromUrl(exp?.company_url) ?? exp?.company ?? null;
       if (companyId) {
         companyResult = await enrichCompany(sb, conn, companyId);
         if (companyResult) {
