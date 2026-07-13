@@ -73,7 +73,7 @@ export default function Strike2Personas() {
             Content-Ideen für deinen Redaktionsplan.
           </p>
           <p style={{ fontSize: 13, color: '#C2410C', margin: '0 0 22px' }}>Kostenfrei bis 31. August 2026.</p>
-          <Link to="/marketplace" style={{ display: 'inline-block', background: '#F97316', color: '#fff', textDecoration: 'none', fontWeight: 600, fontSize: 14, padding: '11px 22px', borderRadius: 10 }}>
+          <Link to="/marketplace" className="lk-btn lk-btn-strike lk-btn-lg">
             Im Marketplace aktivieren →
           </Link>
         </div>
@@ -84,7 +84,7 @@ export default function Strike2Personas() {
   return (
     <div style={{ width: '100%', maxWidth: 1100, margin: '0 auto', padding: '24px 16px 40px' }}>
       <div style={{ marginBottom: 18 }}>
-        <div className="lk-eyebrow" style={{ fontSize:12, fontWeight:700, letterSpacing:'1.6px', textTransform:'uppercase', fontFamily:'Inter, sans-serif', color:'#F97316', marginBottom:6 }}>Branding · Strike2</div>
+        <div className="lk-eyebrow lk-eyebrow-strike" style={{ fontSize:12, fontWeight:700, letterSpacing:'1.6px', textTransform:'uppercase', fontFamily:'Inter, sans-serif', color:'#F97316', marginBottom:6 }}>Branding · Strike2</div>
         <h1 style={{ fontSize: 26, fontWeight: 700, margin: 0, letterSpacing: '-0.3px', lineHeight: 1.2 }}>Strike2 Zielgruppen.</h1>
         <p style={{ fontSize: 13, color: 'var(--text-muted)', margin: '8px 0 0', lineHeight: 1.6 }}>
           Tiefgehende B2B-Zielgruppen nach dem Schuster-Modell® + Empathischer Funnel®. Durch alle 7 Kaufphasen, inklusive 70 KI-Content-Ideen für deinen Redaktionsplan.
@@ -94,7 +94,7 @@ export default function Strike2Personas() {
       <div style={{ display: 'flex', gap: 10, marginBottom: 18 }}>
         <button
           type="button" onClick={createPersona} disabled={creating}
-          style={{ border: 'none', background: '#F97316', color: '#fff', borderRadius: 10, padding: '10px 20px', fontSize: 13, fontWeight: 600, cursor: creating ? 'default' : 'pointer', whiteSpace: 'nowrap', opacity: creating ? 0.6 : 1, boxShadow: '0 2px 8px rgba(249,115,22,.22)' }}>
+          className="lk-btn lk-btn-strike">
           {creating ? 'Lege an…' : '⚡ Neue Zielgruppe'}
         </button>
       </div>
@@ -127,13 +127,11 @@ export default function Strike2Personas() {
                 </div>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 14, whiteSpace: 'nowrap' }}>
                   {p.generation_status === 'done' && (
-                    <Link to={`/branding/strike2-personas/${p.id}/ideen`}
-                      style={{ fontSize: 12, fontWeight: 600, color: '#9A3412', textDecoration: 'none' }}>
+                    <Link to={`/branding/strike2-personas/${p.id}/ideen`} className="lk-btn lk-btn-strike-ghost lk-btn-sm">
                       Ideen →
                     </Link>
                   )}
-                  <Link to={`/branding/strike2-personas/${p.id}?step=${p.current_step ?? 0}`}
-                    style={{ fontSize: 12, fontWeight: 500, color: PRIMARY, textDecoration: 'none' }}>
+                  <Link to={`/branding/strike2-personas/${p.id}?step=${p.current_step ?? 0}`} className="lk-btn lk-btn-strike-ghost lk-btn-sm">
                     Bearbeiten →
                   </Link>
                 </div>
