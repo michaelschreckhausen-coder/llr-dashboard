@@ -16,7 +16,7 @@ const headerRowStyle = { display: 'flex', alignItems: 'center', justifyContent: 
 const titleStyle = { fontSize: 22, fontWeight: 800, margin: 0, color: 'var(--text-strong, #111827)' }
 const subtitleStyle = { fontSize: 13, color: 'var(--text-muted, #6B7280)', marginTop: 4 }
 const cardStyle = { background: 'var(--surface)', borderRadius: 12, border: '1px solid var(--border, #E4E7EC)', padding: '16px 18px' }
-const primaryBtn = { padding: '9px 18px', background: PRIMARY_VAR, color: '#fff', border: 'none', borderRadius: 10, fontSize: 13, fontWeight: 700, display: 'inline-flex', alignItems: 'center', gap: 6, cursor: 'pointer' }
+const primaryBtn = { padding: '9px 18px', background: 'var(--primary)', color: '#fff', border: 'none', borderRadius: 10, fontSize: 13, fontWeight: 700, display: 'inline-flex', alignItems: 'center', gap: 6, cursor: 'pointer' }
 const ghostBtn = { padding: '7px 12px', background: 'var(--surface)', color: '#374151', border: '1.5px solid #E4E7EC', borderRadius: 10, fontSize: 12, fontWeight: 600, display: 'inline-flex', alignItems: 'center', gap: 6, cursor: 'pointer' }
 const inputStyle = { padding: '8px 12px', borderRadius: 8, border: '1.5px solid #E4E7EC', fontSize: 13, outline: 'none', width: '100%', boxSizing: 'border-box', fontFamily: 'inherit', background: 'var(--surface)' }
 const labelStyle = { display: 'block', fontSize: 10, fontWeight: 700, color: 'var(--text-muted, #6B7280)', textTransform: 'uppercase', letterSpacing: '0.07em', marginBottom: 5 }
@@ -252,7 +252,7 @@ export default function LinkedInAutomationNeu({ session }) {
             const activeC = campaigns.filter(c => !c.archived_at)
             const archivedC = campaigns.filter(c => c.archived_at)
             const visible = showArchived ? archivedC : activeC
-            const tabStyle = on => ({ flex: 1, padding: '6px 8px', borderRadius: 7, fontSize: 12, fontWeight: 700, cursor: 'pointer', textAlign: 'center', border: 'none', background: on ? PRIMARY_VAR + '18' : 'transparent', color: on ? PRIMARY_VAR : 'var(--text-muted)' })
+            const tabStyle = on => ({ flex: 1, padding: '6px 8px', borderRadius: 7, fontSize: 12, fontWeight: 700, cursor: 'pointer', textAlign: 'center', border: 'none', background: on ? PRIMARY_VAR + '18' : 'transparent', color: on ? 'var(--primary)' : 'var(--text-muted)' })
             return (
               <>
                 <div style={{ display: 'flex', gap: 4, marginBottom: 8 }}>
@@ -307,7 +307,7 @@ export default function LinkedInAutomationNeu({ session }) {
               <div style={{ display: 'flex', gap: 8 }}>
                 {funnelStages.map((s, i) => (
                   <div key={s.k} style={{ flex: 1, textAlign: 'center', padding: '12px 6px', background: 'var(--surface-canvas, #F8FAFC)', borderRadius: 10, position: 'relative' }}>
-                    <div style={{ fontSize: 22, fontWeight: 800, color: i === 0 ? PRIMARY_VAR : 'var(--text-strong)' }}>{s.n}</div>
+                    <div style={{ fontSize: 22, fontWeight: 800, color: i === 0 ? 'var(--primary)' : 'var(--text-strong)' }}>{s.n}</div>
                     <div style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 2 }}>{s.label}</div>
                   </div>
                 ))}

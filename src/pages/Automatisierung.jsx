@@ -38,7 +38,7 @@ const subtitleStyle     = { fontSize:13, color:'var(--text-muted, #6B7280)', mar
 const searchInputStyle  = { width:220, padding:'7px 12px 7px 32px', fontSize:13, border:'1.5px solid #E4E7EC', borderRadius:10, background:'var(--surface)', outline:'none', boxSizing:'border-box' }
 const searchIconStyle   = { position:'absolute', left:10, top:'50%', transform:'translateY(-50%)', color:'#9CA3AF' }
 const iconBtnStyle      = { width:34, height:34, border:'1.5px solid #E4E7EC', background:'var(--surface)', borderRadius:10, display:'flex', alignItems:'center', justifyContent:'center', color:'#6B7280', cursor:'pointer' }
-const primaryBtnStyle   = { padding:'9px 18px', background: PRIMARY_VAR, color:'#fff', border:'none', borderRadius:10, fontSize:13, fontWeight:700, display:'inline-flex', alignItems:'center', gap:6, cursor:'pointer' }
+const primaryBtnStyle   = { padding:'9px 18px', background: 'var(--primary)', color:'#fff', border:'none', borderRadius:10, fontSize:13, fontWeight:700, display:'inline-flex', alignItems:'center', gap:6, cursor:'pointer' }
 const ghostBtnStyle     = { padding:'7px 12px', background:'var(--surface)', color:'#374151', border:'1.5px solid #E4E7EC', borderRadius:10, fontSize:12, fontWeight:600, display:'inline-flex', alignItems:'center', gap:6, cursor:'pointer' }
 const kpiRowStyle       = { display:'grid', gridTemplateColumns:'repeat(4, 1fr)', gap:12, marginBottom:20 }
 const kpiCardStyle      = { background:'var(--surface)', border:'1px solid var(--border, #E4E7EC)', borderRadius:16, padding:'14px 16px', boxShadow:'var(--shadow-card)' }
@@ -544,7 +544,7 @@ export default function Automatisierung({ session }) {
             <button onClick={() => setView('queue')} style={view === 'queue' ? toggleBtnActive : toggleBtnStyle}>
               <Clock size={14} /> Warteschlange
               {jobs.length > 0 && (
-                <span style={{ marginLeft:4, padding:'1px 6px', borderRadius:99, fontSize:10, fontWeight:800, background:PRIMARY_VAR, color:'#fff' }}>
+                <span style={{ marginLeft:4, padding:'1px 6px', borderRadius:99, fontSize:10, fontWeight:800, background:'var(--primary)', color:'#fff' }}>
                   {jobs.length}
                 </span>
               )}
@@ -566,8 +566,8 @@ export default function Automatisierung({ session }) {
                       style={{
                         display:'inline-flex', alignItems:'center', gap:6,
                         padding:'7px 14px', borderRadius:99, cursor:'pointer',
-                        fontSize:12, fontWeight:700, border:`1.5px solid ${active ? PRIMARY_VAR : '#E4E7EC'}`,
-                        background: active ? PRIMARY_VAR : 'var(--surface)',
+                        fontSize:12, fontWeight:700, border:`1.5px solid ${active ? 'var(--primary)' : '#E4E7EC'}`,
+                        background: active ? 'var(--primary)' : 'var(--surface)',
                         color: active ? '#fff' : '#374151',
                       }}>
                       <t.Icon size={13} />
@@ -675,7 +675,7 @@ function DraftCard({ draft, onApprove, onReject }) {
         <button className="lk-btn lk-btn-danger" disabled={busy} onClick={async () => { setBusy(true); await onReject(draft.id) }}
           >Verwerfen</button>
         <button disabled={!canSend} onClick={async () => { setBusy(true); await onApprove(draft.id, text) }}
-          style={{ padding:'7px 14px', borderRadius:8, border:'none', background:PRIMARY_VAR, color:'#fff', fontSize:12.5, fontWeight:700, cursor: canSend ? 'pointer' : 'default', opacity: canSend ? 1 : 0.6 }}>Freigeben &amp; senden</button>
+          style={{ padding:'7px 14px', borderRadius:8, border:'none', background:'var(--primary)', color:'#fff', fontSize:12.5, fontWeight:700, cursor: canSend ? 'pointer' : 'default', opacity: canSend ? 1 : 0.6 }}>Freigeben &amp; senden</button>
       </div>
     </div>
   )
@@ -781,7 +781,7 @@ function CampaignRow({ campaign: c, onToggle, onDelete }) {
           {/* Progress */}
           <div style={{ display:'flex', alignItems:'center', gap:10 }}>
             <div style={{ flex:1, height:5, background:'#F1F5F9', borderRadius:99, overflow:'hidden' }}>
-              <div style={{ width:progress + '%', height:'100%', background:PRIMARY_VAR, borderRadius:99, transition:'width .3s' }}/>
+              <div style={{ width:progress + '%', height:'100%', background:'var(--primary)', borderRadius:99, transition:'width .3s' }}/>
             </div>
             <span style={{ fontSize:11, color:'var(--text-muted)', whiteSpace:'nowrap' }}>
               {c.leads_done || 0}/{c.leads_total || 0} Leads · {c.leads_replied || 0} Antworten
@@ -864,7 +864,7 @@ function WIn({ value, onChange, placeholder, type='text', autoFocus, max, min })
       onFocus={() => setFocused(true)} onBlur={() => setFocused(false)}
       style={{
         width:'100%', padding:'11px 14px',
-        border:'1.5px solid '+(focused ? PRIMARY_VAR : 'var(--border, #E5E7EB)'),
+        border:'1.5px solid '+(focused ? 'var(--primary)' : 'var(--border, #E5E7EB)'),
         borderRadius:10, fontSize:13.5, boxSizing:'border-box', outline:'none',
         background:'var(--surface, #fff)', fontFamily:'inherit',
         transition:'border-color .15s',
@@ -881,7 +881,7 @@ function WTx({ value, onChange, rows=3, placeholder }) {
       onFocus={() => setFocused(true)} onBlur={() => setFocused(false)}
       style={{
         width:'100%', padding:'11px 14px',
-        border:'1.5px solid '+(focused ? PRIMARY_VAR : 'var(--border, #E5E7EB)'),
+        border:'1.5px solid '+(focused ? 'var(--primary)' : 'var(--border, #E5E7EB)'),
         borderRadius:10, fontSize:13.5, lineHeight:1.55, resize:'vertical',
         boxSizing:'border-box', outline:'none', background:'var(--surface, #fff)',
         fontFamily:'inherit', transition:'border-color .15s',
@@ -1236,8 +1236,8 @@ function NewCampaignWizard({
                   else                          { setSource('later'); setSelectedLeads([]); onCreate() }
                 }}
                 onMouseEnter={e => { e.currentTarget.style.borderColor = PRIMARY_VAR; e.currentTarget.style.transform = 'translateY(-1px)' }}
-                onMouseLeave={e => { e.currentTarget.style.borderColor = active ? PRIMARY_VAR : 'var(--border, #E5E7EB)'; e.currentTarget.style.transform = 'translateY(0)' }}
-                style={{ textAlign:'left', cursor:'pointer', padding:'16px 18px', borderRadius:12, border:`1.5px solid ${active ? PRIMARY_VAR : 'var(--border, #E5E7EB)'}`, background: active ? 'rgba(10,111,176,0.06)' : 'var(--surface, #fff)', display:'flex', flexDirection:'column', gap:10, boxShadow:'0 1px 2px rgba(15,23,42,.04)', transition:'all .15s ease' }}>
+                onMouseLeave={e => { e.currentTarget.style.borderColor = active ? 'var(--primary)' : 'var(--border, #E5E7EB)'; e.currentTarget.style.transform = 'translateY(0)' }}
+                style={{ textAlign:'left', cursor:'pointer', padding:'16px 18px', borderRadius:12, border:`1.5px solid ${active ? 'var(--primary)' : 'var(--border, #E5E7EB)'}`, background: active ? 'rgba(10,111,176,0.06)' : 'var(--surface, #fff)', display:'flex', flexDirection:'column', gap:10, boxShadow:'0 1px 2px rgba(15,23,42,.04)', transition:'all .15s ease' }}>
                 <span style={{ width:36, height:36, borderRadius:10, background:'rgba(10,111,176,0.10)', display:'inline-flex', alignItems:'center', justifyContent:'center', color:PRIMARY_VAR }}>
                   <opt.Icon size={17} />
                 </span>

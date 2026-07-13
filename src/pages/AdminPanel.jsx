@@ -184,7 +184,7 @@ export default function AdminPanel({ session }) {
                   </div>
                   <div style={{display:'flex',gap:8}}>
                     <button onClick={()=>{setAddTeamId(addMode?null:t.id);setAddUserId('');setAddRole('member')}}
-                      style={{padding:'5px 12px',borderRadius:8,border:'1px solid '+IND,background:addMode?IND:'white',color:addMode?'#fff':IND,fontSize:12,fontWeight:700,cursor:'pointer'}}>
+                      style={{padding:'5px 12px',borderRadius:8,border:'1px solid '+IND,background:addMode?'var(--primary)':'white',color:addMode?'#fff':IND,fontSize:12,fontWeight:700,cursor:'pointer'}}>
                       {addMode ? '× Schließen' : '+ Nutzer hinzufügen'}
                     </button>
                     <button className="lk-btn lk-btn-danger" onClick={()=>deleteTeam(t.id,t.name)} >Löschen</button>
@@ -203,7 +203,7 @@ export default function AdminPanel({ session }) {
                       if(!addUserId){flash_('Bitte Nutzer wählen','err');return}
                       await addUserToTeam(t.id, addUserId, addRole)
                       setAddUserId(''); setAddTeamId(null)
-                    }} style={{padding:'7px 16px',borderRadius:8,border:'none',background:IND,color:'#fff',fontSize:13,fontWeight:700,cursor:'pointer'}}>
+                    }} style={{padding:'7px 16px',borderRadius:8,border:'none',background:'var(--primary)',color:'#fff',fontSize:13,fontWeight:700,cursor:'pointer'}}>
                       Hinzufügen
                     </button>
                   </div>

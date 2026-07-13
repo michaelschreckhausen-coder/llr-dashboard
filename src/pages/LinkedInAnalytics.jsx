@@ -28,7 +28,7 @@ const headerRowStyle  = { display:'flex', alignItems:'center', justifyContent:'s
 const titleStyle      = { fontSize:22, fontWeight:800, margin:0, color:'var(--text-strong, #111827)', display:'flex', alignItems:'center', gap:10 }
 const subtitleStyle   = { fontSize:13, color:'var(--text-muted, #6B7280)', marginTop:4 }
 const cardStyle       = { background:'var(--surface)', borderRadius:12, border:'1px solid var(--border, #E4E7EC)', padding:'16px 18px' }
-const primaryBtnStyle = { padding:'9px 18px', background:PRIMARY_VAR, color:'#fff', border:'none', borderRadius:10, fontSize:13, fontWeight:700, display:'inline-flex', alignItems:'center', gap:6, cursor:'pointer' }
+const primaryBtnStyle = { padding:'9px 18px', background:'var(--primary)', color:'#fff', border:'none', borderRadius:10, fontSize:13, fontWeight:700, display:'inline-flex', alignItems:'center', gap:6, cursor:'pointer' }
 const ghostBtnStyle   = { padding:'7px 12px', background:'var(--surface)', color:'#374151', border:'1.5px solid #E4E7EC', borderRadius:10, fontSize:12, fontWeight:600, display:'inline-flex', alignItems:'center', gap:6, cursor:'pointer' }
 const sectionTitle    = { fontSize:12, fontWeight:700, color:'var(--text-strong, #111827)', marginBottom:10, display:'flex', alignItems:'center', gap:6 }
 const kpiTile         = { flex:1, minWidth:90, background:'var(--surface)', border:'1px solid var(--border, #E4E7EC)', borderRadius:10, padding:'10px 12px' }
@@ -222,7 +222,7 @@ export default function LinkedInAnalytics() {
                   return (
                     <div key={p.id} onClick={() => setSelectedId(p.id)}
                       style={{ ...cardStyle, cursor:'pointer', display:'flex', alignItems:'center', gap:14, flexWrap:'wrap',
-                        borderColor: active ? PRIMARY_VAR : 'var(--border, #E4E7EC)', boxShadow: active ? `0 0 0 1px ${PRIMARY_VAR}` : 'none' }}>
+                        borderColor: active ? 'var(--primary)' : 'var(--border, #E4E7EC)', boxShadow: active ? `0 0 0 1px ${PRIMARY_VAR}` : 'none' }}>
                       <div style={{ flex:1, minWidth:200 }}>
                         <div style={{ fontSize:14, fontWeight:700, color:'var(--text-strong, #111827)' }}>{postTitle(p)}</div>
                         <div style={{ fontSize:12, color:'var(--text-muted, #6B7280)', marginTop:2 }}>
