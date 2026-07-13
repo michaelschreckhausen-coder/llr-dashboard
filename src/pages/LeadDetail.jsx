@@ -9,6 +9,7 @@
 //   contact_notes (id, lead_id, user_id, body, created_at)
 //   deals         (id, title, value, currency, stage, lead_id, created_at, ...)
 
+import PillSelect from '../components/PillSelect'
 import { useState, useCallback, useMemo, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import {
