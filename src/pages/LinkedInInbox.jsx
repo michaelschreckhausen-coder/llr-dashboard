@@ -480,8 +480,8 @@ export default function LinkedInInbox() {
               style={{ display: 'inline-flex', alignItems: 'center', gap: 8, background: card, color: selected.size ? primary : muted, border: `1.5px solid ${selected.size ? primary : border}`, borderRadius: 9, padding: '9px 16px', fontWeight: 700, fontSize: 14, cursor: selected.size ? 'pointer' : 'default' }}>
               <ListChecks size={15} /> Zu Liste{selected.size ? ` (${selected.size})` : ''}
             </button>
-            <button className="lk-btn lk-btn-primary" onClick={promoteSelected} disabled={busy || selected.size === 0}
-              style={{ display: 'inline-flex', alignItems: 'center', gap: 8 }}>
+            <button onClick={promoteSelected} disabled={busy || selected.size === 0}
+              style={{ display: 'inline-flex', alignItems: 'center', gap: 8, background: selected.size ? primary : 'var(--border)', color: '#fff', border: 'none', borderRadius: 9, padding: '9px 16px', fontWeight: 700, fontSize: 14, cursor: selected.size ? 'pointer' : 'default' }}>
               {busy ? <Loader2 size={15} className="spin" /> : <UserPlus size={15} />} In CRM übernehmen{selected.size ? ` (${selected.size})` : ''}
             </button>
             <button onClick={openBulkDelete} disabled={busy || selected.size === 0}
@@ -646,10 +646,10 @@ function ListModal({ lists, count, busy, onClose, onConfirm }) {
         <div style={{ fontSize: 13, color: muted, marginBottom: 18 }}>Reine Auswahl-Sammlung — später in Automatisierung und Vernetzung auswählbar. Startet keinen Outreach.</div>
 
         <div style={{ display: 'flex', gap: 8, marginBottom: 14 }}>
-          <button className="lk-btn lk-btn-primary" onClick={() => setMode('existing')} disabled={!lists.length}
-            style={{ flex: 1 }}>Bestehende</button>
-          <button className="lk-btn lk-btn-primary" onClick={() => setMode('new')}
-            style={{ flex: 1 }}>Neue Liste</button>
+          <button onClick={() => setMode('existing')} disabled={!lists.length}
+            style={{ flex: 1, padding: '8px 0', borderRadius: 9, border: `1.5px solid ${mode === 'existing' ? primary : border}`, background: mode === 'existing' ? 'var(--primary-soft)' : 'var(--surface)', color: mode === 'existing' ? primary : muted, fontWeight: 700, fontSize: 13, cursor: lists.length ? 'pointer' : 'default' }}>Bestehende</button>
+          <button onClick={() => setMode('new')}
+            style={{ flex: 1, padding: '8px 0', borderRadius: 9, border: `1.5px solid ${mode === 'new' ? primary : border}`, background: mode === 'new' ? 'var(--primary-soft)' : 'var(--surface)', color: mode === 'new' ? primary : muted, fontWeight: 700, fontSize: 13, cursor: 'pointer' }}>Neue Liste</button>
         </div>
 
         {mode === 'existing' ? (

@@ -6148,8 +6148,12 @@ function ToolBtn({ children, onClick, title, active }) {
 
 function SmallBtn({ children, onClick, primary, disabled }) {
   return (
-    <button className="lk-btn lk-btn-primary" onClick={onClick} disabled={disabled}
-      style={{ height: 30, fontFamily: 'inherit' }}>
+    <button onClick={onClick} title={title}
+      style={{ width: 32, height: 32, flexShrink: 0, display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+        borderRadius: 8, cursor: 'pointer', fontFamily: 'inherit',
+        border: '1px solid ' + (active ? P : 'var(--border,#E9ECF2)'),
+        background: active ? 'rgba(10,111,176,0.08)' : 'var(--surface,#fff)',
+        color: active ? P : 'var(--text-muted,#475467)' }}>
       {children}
     </button>
   )

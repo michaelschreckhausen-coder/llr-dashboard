@@ -255,8 +255,14 @@ export default function Aufgaben({ session }) {
       <div style={{ display: 'flex', gap: 12, marginBottom: 20, flexWrap: 'wrap', alignItems: 'center' }}>
         <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
           {STATUS_FILTERS.map(f => (
-            <button className="lk-btn lk-btn-primary" key={f.id} onClick={() => setStatusFilter(f.id)}
-              style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
+            <button key={f.id} onClick={() => setStatusFilter(f.id)}
+              style={{
+                padding: '6px 12px', borderRadius: 20, border: '1.5px solid',
+                borderColor: statusFilter === f.id ? PRIMARY : '#E5E7EB',
+                background: statusFilter === f.id ? PRIMARY : '#fff',
+                color: statusFilter === f.id ? '#fff' : '#374151',
+                fontSize: 12, fontWeight: 600, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 5, transition: 'all 0.15s',
+              }}>
               {f.label}
               {counts[f.id] > 0 && (
                 <span style={{ background: statusFilter === f.id ? 'rgba(255,255,255,0.3)' : '#F3F4F6', color: statusFilter === f.id ? '#fff' : '#6B7280', borderRadius: 99, padding: '0 6px', fontSize: 11, fontWeight: 700, minWidth: 18, textAlign: 'center' }}>

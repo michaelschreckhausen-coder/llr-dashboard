@@ -447,8 +447,8 @@ export default function Wissensdatenbank({ session }) {
         <input value={search} onChange={e=>setSearch(e.target.value)} placeholder="Suchen…" style={{padding:'8px 14px',border:'1.5px solid var(--border)',borderRadius:10,fontSize:13,width:220}}/>
       </div>
       <div style={{ display:'flex', flexWrap:'wrap', gap:6, marginBottom:16 }}>
-        <button className="lk-btn lk-btn-primary" onClick={()=>setFilter('alle')} >Alle ({items.length})</button>
-        {CATEGORIES.map(c => { const cnt=counts[c.v]||0; if(cnt===0&&filter!==c.v) return null; return <button className="lk-btn lk-btn-primary" key={c.v} onClick={()=>setFilter(c.v)} >{c.icon} {c.l} ({cnt})</button> })}
+        <button onClick={()=>setFilter('alle')} style={{padding:'5px 12px',borderRadius:20,border:filter==='alle'?`1.5px solid ${P}`:'1.5px solid #dde3ea',background:filter==='alle'?P:'#fff',color:filter==='alle'?'#fff':'#666',fontSize:12,cursor:'pointer',fontWeight:filter==='alle'?600:400}}>Alle ({items.length})</button>
+        {CATEGORIES.map(c => { const cnt=counts[c.v]||0; if(cnt===0&&filter!==c.v) return null; return <button key={c.v} onClick={()=>setFilter(c.v)} style={{padding:'5px 12px',borderRadius:20,border:filter===c.v?`1.5px solid ${P}`:'1.5px solid #dde3ea',background:filter===c.v?P:'#fff',color:filter===c.v?'#fff':'#666',fontSize:12,cursor:'pointer',fontWeight:filter===c.v?600:400}}>{c.icon} {c.l} ({cnt})</button> })}
       </div>
       {filtered.length === 0 ? (
         <div style={{textAlign:'center',color:'#888',padding:40}}>{items.length===0?'Noch kein Wissen hinterlegt. Füge dein erstes Kontextdokument hinzu!':'Keine Einträge für diesen Filter.'}</div>

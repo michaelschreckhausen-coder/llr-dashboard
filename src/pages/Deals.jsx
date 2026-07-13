@@ -440,8 +440,8 @@ export default function Deals({ session }) {
       <div style={{ display: 'flex', gap: 10, marginBottom: 20, flexWrap: 'wrap', alignItems: 'center' }}>
         <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
           {FILTERS.map(f => (
-            <button className="lk-btn lk-btn-primary" key={f.id} onClick={() => setFilter(f.id)}
-              style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
+            <button key={f.id} onClick={() => setFilter(f.id)}
+              style={{ padding: '6px 12px', borderRadius: 20, border: '1.5px solid', borderColor: filter === f.id ? PRIMARY : '#E5E7EB', background: filter === f.id ? PRIMARY : '#fff', color: filter === f.id ? '#fff' : '#374151', fontSize: 12, fontWeight: 600, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 5 }}>
               {f.label}
               {f.count > 0 && <span style={{ background: filter===f.id?'rgba(255,255,255,0.3)':'#F3F4F6', color: filter===f.id?'#fff':'#6B7280', borderRadius: 99, padding: '0 6px', fontSize: 11, fontWeight: 700 }}>{f.count}</span>}
             </button>

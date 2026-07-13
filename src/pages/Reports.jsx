@@ -419,8 +419,8 @@ function PipelineSection({ data }) {
             if (count === 0) return null;
             const active = ownerFilter === userId;
             return (
-              <button className="lk-btn lk-btn-primary" key={userId} type="button" onClick={() => setOwnerFilter(active ? null : userId)}
-                >
+              <button key={userId} type="button" onClick={() => setOwnerFilter(active ? null : userId)}
+                style={{ padding: '5px 11px', borderRadius: 99, border: `1.5px solid ${active ? COLORS.primary : COLORS.border}`, background: active ? COLORS.primary : '#fff', color: active ? '#fff' : COLORS.text2, fontSize: 12, fontWeight: 600, cursor: 'pointer' }}>
                 {memberName(userId)} ({count})
               </button>
             );
