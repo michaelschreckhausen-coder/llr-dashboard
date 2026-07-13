@@ -43,9 +43,13 @@ Deno.serve(async (req) => {
   const auth = req.headers.get("Authorization") || "";
   const isService = auth.includes(SB_SERVICE);
 
-  // Scope: service-role + all → alle Teams; sonst JWT-User → seine Teams.
+  // Scope: service-role + all → alle Teams; service-role + team_ids → gezielt; sonst JWT-User → seine Teams.
   let teamFilter: string[] | null = null;
-  if (!(isService && body?.all)) {
+  if (isService && body?.all) {
+    teamFilter = null;                                   // alle Teams (Breit-Lauf)
+  } else if (isService && Array.isArray(body?.team_ids) && body.team_ids.length) {
+    teamFilter = body.team_ids as string[];              // gezielter Repair (z.B. ein Team)
+  } else {
     const uc = createClient(SB_URL, SB_ANON, { global: { headers: { Authorization: auth } }, auth: { persistSession: false } });
     const { data: { user } } = await uc.auth.getUser();
     if (!user) return json({ error: "unauthorized" }, 401);
@@ -87,47 +91,54 @@ Deno.serve(async (req) => {
     }
   }
 
-  // ── (2a) la_accounts aus validierten OK-unipile_accounts synchronisieren ──
-  let uq2 = db.from("unipile_accounts").select("team_id, unipile_account_id").eq("status", "OK");
+  // ── (2) la_accounts aus validierten OK-Sessions ABLEITEN — genau EINE connected-Row je Identität ──
+  // Authority = unipile_accounts(status OK) ∩ Unipile-live. Canonical je (team, slug) = NEUESTE Session
+  // (last_status_update). Alle anderen la_accounts derselben Identität → disconnected; fehlende
+  // canonical-Row → insert. Deckt sich mit getUnipileConnection (newest OK) → Send-Routing == Dropdown.
+  let uq2 = db.from("unipile_accounts").select("team_id, unipile_account_id, provider_public_id, last_status_update").eq("status", "OK");
   if (teamFilter) uq2 = uq2.in("team_id", teamFilter);
   const { data: okRows } = await uq2;
+  const canonical = new Map<string, { unipileId: string; providerId: string | null; slug: string | null; ts: string }>();
   for (const r of okRows || []) {
-    const valid = byId.get(r.unipile_account_id);
-    if (!valid) continue;
-    const { data: ex } = await db.from("la_accounts").select("id").eq("team_id", r.team_id).eq("unipile_account_id", r.unipile_account_id).maybeSingle();
-    if (ex) {
-      await db.from("la_accounts").update({ provider_id: valid.providerId, public_identifier: valid.slug, status: "connected", updated_at: nowIso() }).eq("id", ex.id);
-    } else {
-      await db.from("la_accounts").insert({ team_id: r.team_id, unipile_account_id: r.unipile_account_id, provider_id: valid.providerId, public_identifier: valid.slug, status: "connected", features: {} });
-      rep.la_synced.push({ team_id: r.team_id, unipile_account_id: r.unipile_account_id });
-    }
+    const live = byId.get(r.unipile_account_id);
+    if (!live || live.status !== "OK") continue;         // muss auch bei Unipile live sein (kein 404)
+    const slug = String(live.slug || r.provider_public_id || "").toLowerCase();
+    if (!slug) continue;
+    const key = `${r.team_id}|${slug}`;
+    const ts = r.last_status_update || "";
+    const cur = canonical.get(key);
+    if (!cur || ts > cur.ts) canonical.set(key, { unipileId: r.unipile_account_id, providerId: live.providerId, slug: live.slug, ts });
   }
 
-  // ── (2b) la_accounts stale-Rows reparieren/disconnecten ──
+  // Bestehende la_accounts gegen canonical abgleichen.
   let laq = db.from("la_accounts").select("id, team_id, unipile_account_id, public_identifier, status");
   if (teamFilter) laq = laq.in("team_id", teamFilter);
   const { data: laRows } = await laq;
+  const seen = new Set<string>();                        // canonical-Identitäten mit bereits vorhandener Row
   for (const r of laRows || []) {
-    const valid = byId.get(r.unipile_account_id);
-    if (valid && valid.status === "OK") {
-      if (r.status !== "connected") await db.from("la_accounts").update({ status: "connected", updated_at: nowIso() }).eq("id", r.id);
-      continue;
-    }
-    const match = r.public_identifier ? bySlug.get(String(r.public_identifier).toLowerCase()) : null;
-    if (match && match.status === "OK") {
-      const { data: dupe } = await db.from("la_accounts").select("id").eq("team_id", r.team_id).eq("unipile_account_id", match.id).maybeSingle();
-      if (dupe && dupe.id !== r.id) {
-        if (r.status === "connected") {   // nur wenn nicht schon disconnected (Idempotenz)
-          await db.from("la_accounts").update({ status: "disconnected", updated_at: nowIso() }).eq("id", r.id);
-          rep.la_disconnected.push({ id: r.id, reason: "dup_of_valid" });
-        }
-      } else {
-        await db.from("la_accounts").update({ unipile_account_id: match.id, provider_id: match.providerId, public_identifier: match.slug, status: "connected", updated_at: nowIso() }).eq("id", r.id);
-        rep.la_fixed.push({ id: r.id, old: r.unipile_account_id, new: match.id });
-      }
-    } else if (r.status === "connected") {
+    const live = byId.get(r.unipile_account_id);
+    const slug = String((live?.slug) || r.public_identifier || "").toLowerCase();
+    const canon = slug ? canonical.get(`${r.team_id}|${slug}`) : null;
+    if (canon && canon.unipileId === r.unipile_account_id) {
+      await db.from("la_accounts").update({ provider_id: canon.providerId, public_identifier: canon.slug, status: "connected", updated_at: nowIso() }).eq("id", r.id);
+      if (r.status !== "connected") rep.la_fixed.push({ id: r.id, to: "connected" });
+      seen.add(`${r.team_id}|${slug}`);
+    } else if (r.status === "connected") {               // andere/ältere/stale Row derselben Identität → disconnected
       await db.from("la_accounts").update({ status: "disconnected", updated_at: nowIso() }).eq("id", r.id);
-      rep.la_disconnected.push({ id: r.id, reason: "no_match" });
+      rep.la_disconnected.push({ id: r.id, reason: canon ? "superseded_by_newer_session" : "no_live_session" });
+    }
+  }
+
+  // Fehlende canonical-Rows anlegen (OK-Session ohne la_account).
+  for (const [key, canon] of canonical) {
+    if (seen.has(key)) continue;
+    const teamId = key.split("|")[0];
+    const { data: ex } = await db.from("la_accounts").select("id").eq("team_id", teamId).eq("unipile_account_id", canon.unipileId).maybeSingle();
+    if (ex) {
+      await db.from("la_accounts").update({ provider_id: canon.providerId, public_identifier: canon.slug, status: "connected", updated_at: nowIso() }).eq("id", ex.id);
+    } else {
+      await db.from("la_accounts").insert({ team_id: teamId, unipile_account_id: canon.unipileId, provider_id: canon.providerId, public_identifier: canon.slug, status: "connected", features: {} });
+      rep.la_synced.push({ team_id: teamId, unipile_account_id: canon.unipileId });
     }
   }
 
