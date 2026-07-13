@@ -46,6 +46,16 @@ Deno.serve(async (req) => {
           provider_public_id: v.slug, status: "OK", last_status_update: new Date().toISOString(),
         }, { onConflict: "unipile_account_id" });
         // Connect-Zeit-Sync in la_accounts (V2-Onboarding: Hosted-Auth → Builder sieht Account).
+        // IDENTITY-COLLAPSE: der eben verbundene Account ist die NEUESTE Session dieser LinkedIn-Identität.
+        // Andere connected-Rows derselben Identität (gleicher public_identifier, andere id) → disconnected,
+        // sonst legt "Neu verbinden" (neue Unipile-id für dieselbe Person) eine zweite connected-Row an
+        // → Dublette im Builder-Dropdown. Ziel: genau EINE connected-Row je Identität.
+        if (v.slug) {
+          await db.from("la_accounts")
+            .update({ status: "disconnected", updated_at: new Date().toISOString() })
+            .eq("team_id", tm.team_id).eq("public_identifier", v.slug)
+            .neq("unipile_account_id", evt.account_id).eq("status", "connected");
+        }
         const { data: ex } = await db.from("la_accounts").select("id").eq("team_id", tm.team_id).eq("unipile_account_id", evt.account_id).maybeSingle();
         if (ex) {
           await db.from("la_accounts").update({ provider_id: v.providerId, public_identifier: v.slug, status: "connected", updated_at: new Date().toISOString() }).eq("id", ex.id);
