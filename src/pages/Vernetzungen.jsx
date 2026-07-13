@@ -1,3 +1,4 @@
+import PillSelect from '../components/PillSelect'
 import React, { useEffect, useState, useCallback } from 'react'
 import {
   Check, Loader2, MessageSquare, Sparkles, Bot, Save, Download,
@@ -515,11 +516,7 @@ export default function Vernetzungen({ session }) {
         </div>
 
         {inboxLists.length > 0 && (
-          <select value={listFilter} onChange={e=>setListFilter(e.target.value)} title="Nach Inbox-Liste filtern"
-            style={{ padding:'9px 12px', borderRadius:10, border:'1.5px solid #E2E8F0', fontSize:13, outline:'none', background:'var(--surface)', color:'var(--text-primary)', cursor:'pointer' }}>
-            <option value="all">Alle Listen</option>
-            {inboxLists.map(l => <option key={l.id} value={l.id}>{l.name}</option>)}
-          </select>
+          <PillSelect value={listFilter} onChange={setListFilter} neutral options={[{ value: 'all', label: `Alle Listen` }, ...inboxLists.map((l) => ({ value: l.id, label: l.name }))]} buttonStyle={{ minWidth: 140 }} />
         )}
 
         <input value={search} onChange={e=>setSearch(e.target.value)} placeholder="Name, Firma oder Jobtitel suchen…"

@@ -1,3 +1,4 @@
+import PillSelect from '../components/PillSelect'
 import React, { useEffect, useState, useCallback, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { Check, X, Loader2, UserPlus, Building2, Inbox as InboxIcon, Plus, ListChecks, Pencil, Trash2, AlertTriangle } from 'lucide-react'
@@ -369,12 +370,7 @@ export default function LinkedInInbox() {
                 )}
 
                 <label style={{ fontSize: 12, fontWeight: 700, color: muted, display: 'block', marginTop: 14 }}>In Liste (optional)</label>
-                <select value={impListMode} onChange={e => setImpListMode(e.target.value)}
-                  style={{ width: '100%', marginTop: 6, padding: 9, border: `1px solid ${border}`, borderRadius: 8, fontSize: 13, background: 'var(--surface)', color: text, boxSizing: 'border-box' }}>
-                  <option value="none">— keine Liste —</option>
-                  {lists.map(l => <option key={l.id} value={l.id}>{l.name}</option>)}
-                  <option value="new">+ Neue Liste anlegen…</option>
-                </select>
+                <PillSelect value={impListMode} onChange={setImpListMode} neutral options={[{ value: 'none', label: `— keine Liste —` }, ...lists.map((l) => ({ value: l.id, label: l.name })), { value: 'new', label: `+ Neue Liste anlegen…` }]} buttonStyle={{ minWidth: 140 }} />
                 {impListMode === 'new' && (
                   <input value={impNewList} onChange={e => setImpNewList(e.target.value)} placeholder="Name der neuen Liste"
                     style={{ width: '100%', marginTop: 8, padding: 9, border: `1px solid ${border}`, borderRadius: 8, fontSize: 13, background: 'var(--surface)', color: text, boxSizing: 'border-box' }} />
@@ -653,10 +649,7 @@ function ListModal({ lists, count, busy, onClose, onConfirm }) {
         </div>
 
         {mode === 'existing' ? (
-          <select value={listId} onChange={e => setListId(e.target.value)}
-            style={{ width: '100%', boxSizing: 'border-box', padding: '10px 12px', borderRadius: 10, border: `1.5px solid ${border}`, fontSize: 14, background: 'var(--surface)', color: text, outline: 'none' }}>
-            {lists.map(l => <option key={l.id} value={l.id}>{l.name}</option>)}
-          </select>
+          <PillSelect value={listId} onChange={setListId} neutral options={[...lists.map((l) => ({ value: l.id, label: l.name }))]} buttonStyle={{ minWidth: 140 }} />
         ) : (
           <>
             <input value={newName} onChange={e => setNewName(e.target.value)} placeholder="Listenname (z.B. Q3 Follow-up)"

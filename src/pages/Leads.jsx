@@ -20,6 +20,7 @@
 // LeadRow.jsx braucht eine 1-Zeile-Anpassung (handleOwnerAdd gibt e.currentTarget
 // weiter) — Diff im PATCH-README.
 
+import PillSelect from '../components/PillSelect'
 import { useState, useCallback, useMemo, useRef, useEffect } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import {
@@ -2310,11 +2311,7 @@ function NewLeadModal({ onClose, onSaved, activeTeamId, userId, teamMembers = []
       <Field label="LinkedIn-URL"><Input value={form.linkedin_url || ''} onChange={e => set('linkedin_url', e.target.value)} placeholder="https://linkedin.com/in/…" /></Field>
       <Row2>
         <Field label="Status">
-          <select style={inputBaseStyle} value={form.status} onChange={e => set('status', e.target.value)}>
-            {STATUS_ORDER.map(s => (
-              <option key={s} value={s}>{s} · {STATUS_CONFIG[s]?.sublabel || ''}</option>
-            ))}
-          </select>
+          <PillSelect value={form.status} onChange={v => set('status', v)} neutral options={[...STATUS_ORDER.map((s) => ({ value: s, label: `${s} · ${STATUS_CONFIG[s]?.sublabel || ''}` }))]} buttonStyle={{ minWidth: 140 }} />
         </Field>
         <Field label="Owner">
           <select style={inputBaseStyle}

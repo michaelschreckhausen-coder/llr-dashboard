@@ -1,3 +1,4 @@
+import PillSelect from './PillSelect'
 import { useTeam } from '../context/TeamContext'
 import LeadTasks from './LeadTasks'
 import React, { useState, useEffect } from 'react'
@@ -287,25 +288,16 @@ export default function LeadDrawer({ lead, session, onClose, onUpdate, onDelete 
 
             <div>
               <div style={{ fontSize:10, fontWeight:700, color:'#94A3B8', textTransform:'uppercase', letterSpacing:'0.07em', marginBottom:6 }}>Pipeline Stage</div>
-              <select value={lead.deal_stage||'kein_deal'} onChange={e=>changeDealStage(e.target.value)}
-                style={{ width:'100%', padding:'8px 10px', border:'1.5px solid #E5E7EB', borderRadius:8, fontSize:13, fontWeight:600, color:'#0F172A', background:'#FAFAFA', cursor:'pointer', outline:'none' }}>
-                {STAGE_ORDER.map(s => <option key={s} value={s}>{STAGE_CFG[s].label}</option>)}
-              </select>
+              <PillSelect value={lead.deal_stage||'kein_deal'} onChange={changeDealStage} neutral options={[...STAGE_ORDER.map((s) => ({ value: s, label: STAGE_CFG[s].label }))]} buttonStyle={{ minWidth: 140 }} />
             </div>
 
             <div>
               <div style={{ fontSize:10, fontWeight:700, color:'#94A3B8', textTransform:'uppercase', letterSpacing:'0.07em', marginBottom:6 }}>Verbindung</div>
-              <select value={lead.li_connection_status||'nicht_verbunden'} onChange={e=>changeConn(e.target.value)}
-                style={{ width:'100%', padding:'8px 10px', border:'1.5px solid #E5E7EB', borderRadius:8, fontSize:13, fontWeight:600, color:'#0F172A', background:'#FAFAFA', cursor:'pointer', outline:'none' }}>
-                {Object.entries(CONN_CFG).map(([k,v]) => <option key={k} value={k}>{v.label}</option>)}
-              </select>
+              <PillSelect value={lead.li_connection_status||'nicht_verbunden'} onChange={changeConn} neutral options={[...Object.entries(CONN_CFG).map(([k,v]) => ({ value: k, label: v.label }))]} buttonStyle={{ minWidth: 140 }} />
             </div>
             <div>
               <div style={{ fontSize:10, fontWeight:700, color:'#94A3B8', textTransform:'uppercase', letterSpacing:'0.07em', marginBottom:6 }}>Lifecycle</div>
-              <select value={lead.lifecycle_stage||'lead'} onChange={e=>changeLifecycle(e.target.value)}
-                style={{ width:'100%', padding:'8px 10px', border:'1.5px solid #E5E7EB', borderRadius:8, fontSize:13, fontWeight:600, color:'#0F172A', background:'#FAFAFA', cursor:'pointer', outline:'none' }}>
-                {[['lead','Lead'],['marketing_qualified','MQL'],['sales_qualified','SQL'],['opportunity','Opportunity'],['customer','Kunde']].map(([k,l]) => <option key={k} value={k}>{l}</option>)}
-              </select>
+              <PillSelect value={lead.lifecycle_stage||'lead'} onChange={changeLifecycle} neutral options={[...[['lead','Lead'],['marketing_qualified','MQL'],['sales_qualified','SQL'],['opportunity','Opportunity'],['customer','Kunde']].map(([k,l]) => ({ value: k, label: l }))]} buttonStyle={{ minWidth: 140 }} />
             </div>
 
             {/* Deals für diesen Lead */}

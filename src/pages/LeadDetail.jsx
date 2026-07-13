@@ -1548,12 +1548,7 @@ function TasksTab({ leadId, leadTeamId, onMutated }) {
           </label>
           {/* Typ */}
           <div style={selectChipWrapStyle} title="Art der Aufgabe">
-            <select style={{ ...selectChipStyle, minWidth: 150 }}
-              value={taskType} onChange={e => setTaskType(e.target.value)}>
-              {TASK_TYPES.map(t => (
-                <option key={t.value} value={t.value}>{t.icon} {t.label}</option>
-              ))}
-            </select>
+            <PillSelect value={taskType} onChange={setTaskType} neutral options={[...TASK_TYPES.map((t) => ({ value: t.value, label: `${t.icon} ${t.label}` }))]} buttonStyle={{ minWidth: 140 }} />
             <ChevronDown size={14} style={chevronStyle} />
           </div>
           {/* Priorität */}
