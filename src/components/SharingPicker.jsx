@@ -268,8 +268,8 @@ function OptionRow({ active, onClick, icon, title, subtitle }) {
       </div>
       <div style={{
         width:18, height:18, borderRadius:'50%', flexShrink:0,
-        border: '2px solid ' + (active ? '#0A6FB0' : 'var(--border)'),
-        background: active ? '#0A6FB0' : '#fff',
+        border: '2px solid ' + (active ? 'var(--primary)' : 'var(--border)'),
+        background: active ? 'var(--primary)' : '#fff',
         display:'flex', alignItems:'center', justifyContent:'center', marginTop:2,
       }}>
         {active && <div style={{ width:6, height:6, borderRadius:'50%', background:'#fff' }}/>}

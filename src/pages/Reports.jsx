@@ -1009,7 +1009,7 @@ export default function Reports({ session }) {
           action={(
             <div style={{ display: 'flex', gap: 6, alignItems: 'center', flexWrap: 'wrap', justifyContent: 'flex-end' }}>
               {[7, 30, 90].map(d => (
-                <button className="lk-btn lk-btn-primary" key={d} type="button" onClick={() => setRange(d)}
+                <button className={d === range ? "lk-btn lk-btn-navy" : "lk-btn lk-btn-ghost"} key={d} type="button" onClick={() => setRange(d)}
                   >{d} Tage</button>
               ))}
               <button type="button" onClick={refetch} title="Aktualisieren" style={iconBtnStyle}>
