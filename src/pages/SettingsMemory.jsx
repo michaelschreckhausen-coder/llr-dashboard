@@ -100,7 +100,7 @@ export default function SettingsMemory({ session }) {
       </div>
 
       {/* Toggle */}
-      <div style={{ background:'var(--surface)', borderRadius:14, border:'1px solid var(--border)', padding:'18px 22px', marginBottom:22, display:'flex', alignItems:'center', justifyContent:'space-between', gap:18 }}>
+      <div style={{ background:'var(--surface)', borderRadius:16, border:'1px solid var(--border)', boxShadow:'var(--shadow-card)', padding:'18px 22px', marginBottom:22, display:'flex', alignItems:'center', justifyContent:'space-between', gap:18 }}>
         <div>
           <div style={{ fontSize:14, fontWeight:700, color:'rgb(20,20,43)' }}>
             {memEnabled === true && 'Memory ist aktiv'}
@@ -175,7 +175,7 @@ export default function SettingsMemory({ session }) {
       </div>
 
       {/* Top-picked (was die KI sich gemerkt hat) */}
-      <div style={{ background:'var(--surface)', borderRadius:14, border:'1px solid var(--border)', padding:'18px 22px' }}>
+      <div style={{ background:'var(--surface)', borderRadius:16, border:'1px solid var(--border)', boxShadow:'var(--shadow-card)', padding:'18px 22px' }}>
         <h3 style={{ fontSize:14, fontWeight:700, color:'rgb(20,20,43)', margin:'0 0 14px' }}>
           📚 Aus diesen letzten Picks lernt die KI gerade
         </h3>
@@ -205,7 +205,7 @@ export default function SettingsMemory({ session }) {
 
 function StatCard({ icon, label, val }) {
   return (
-    <div style={{ padding:'14px 16px', background:'var(--surface)', borderRadius:12, border:'1px solid var(--border)' }}>
+    <div style={{ padding:'14px 16px', background:'var(--surface)', borderRadius:16, border:'1px solid var(--border)', boxShadow:'var(--shadow-card)' }}>
       <div style={{ fontSize:20, marginBottom:4 }}>{icon}</div>
       <div style={{ fontSize:22, fontWeight:800, color:'rgb(20,20,43)', lineHeight:1 }}>{val}</div>
       <div style={{ fontSize:11, color:'var(--text-muted)', fontWeight:600, marginTop:4 }}>{label}</div>

@@ -47,7 +47,7 @@ export default function WhiteLabel() {
 
   const inp = { width:'100%', padding:'9px 12px', border:'1px solid var(--border)', borderRadius:8, fontSize:13, outline:'none', background:'var(--surface)', boxSizing:'border-box' }
   const lbl = { display:'block', fontSize:10, fontWeight:700, color:'var(--text-muted)', textTransform:'uppercase', letterSpacing:'0.07em', marginBottom:5 }
-  const card = { background:'var(--surface)', borderRadius:12, border:'1px solid var(--border)', padding:'18px 22px', marginBottom:16 }
+  const card = { background:'var(--surface)', borderRadius:16, border:'1px solid var(--border)', boxShadow:'var(--shadow-card)', padding:'18px 22px', marginBottom:16 }
 
   if (loading) return <div style={{ padding:48, textAlign:'center', color:'var(--text-muted)' }}>Lade…</div>
 

@@ -435,7 +435,7 @@ export default function TeamSettings({ session }) {
           { l:'Geteilte Leads',      v:(sharedLeads||[]).length,                                               c:'#10b981' },
           { l:'Offene Einladungen',  v:invites.length,                                                   c:'#F59E0B' },
         ].map(s => (
-          <div key={s.l} style={{ background:'var(--surface)', borderRadius:14, border:'1px solid var(--border)', padding:'16px 20px' }}>
+          <div key={s.l} style={{ background:'var(--surface)', borderRadius:16, border:'1px solid var(--border)', boxShadow:'var(--shadow-card)', padding:'16px 20px' }}>
             <div style={{ fontSize:11, fontWeight:700, color:'#9CA3AF', textTransform:'uppercase', letterSpacing:'.07em', marginBottom:4 }}>{s.l}</div>
             <div style={{ fontSize:28, fontWeight:900, color:s.c, lineHeight:1 }}>{s.v}</div>
           </div>
@@ -475,7 +475,7 @@ export default function TeamSettings({ session }) {
                   <tr key={m.id}>
                     <td>
                       <div style={{ display:'flex', alignItems:'center', gap:10 }}>
-                        <div style={{ width:32, height:32, borderRadius:'50%', background:'linear-gradient(135deg,#3b82f6,#8b5cf6)', display:'flex', alignItems:'center', justifyContent:'center', fontSize:12, fontWeight:800, color:'#fff', flexShrink:0 }}>
+                        <div style={{ width:32, height:32, borderRadius:'50%', background:'var(--grad, linear-gradient(120deg,#16A8DC,#0A6FB0,#003060))', display:'flex', alignItems:'center', justifyContent:'center', fontSize:12, fontWeight:800, color:'#fff', flexShrink:0 }}>
                           {(m.profile?.full_name||m.profile?.email||'?').substring(0,2).toUpperCase()}
                         </div>
                         <div>
@@ -610,7 +610,7 @@ export default function TeamSettings({ session }) {
               </tbody>
             </table>
           </div>
-          <div style={{ background:'var(--surface)', borderRadius:14, border:'1px solid var(--border)', padding:'18px 20px' }}>
+          <div style={{ background:'var(--surface)', borderRadius:16, border:'1px solid var(--border)', boxShadow:'var(--shadow-card)', padding:'18px 20px' }}>
             <div style={{ fontSize:13, fontWeight:800, marginBottom:12 }}>Neues Mitglied einladen</div>
             <div style={{ display:'grid', gridTemplateColumns:'1fr auto auto', gap:10 }}>
               <input className='ts-ip' type='email' value={invEmail} onChange={e => setInvEmail(e.target.value)}
@@ -659,7 +659,7 @@ export default function TeamSettings({ session }) {
             </div>
           ))}
           {licenses.length === 0 && (
-            <div style={{ background:'var(--surface)', borderRadius:14, border:'1px solid var(--border)', padding:40, textAlign:'center', color:'#9CA3AF' }}>
+            <div style={{ background:'var(--surface)', borderRadius:16, border:'1px solid var(--border)', boxShadow:'var(--shadow-card)', padding:40, textAlign:'center', color:'#9CA3AF' }}>
               Noch keine Lizenzen vorhanden. Bitte beim Admin anfragen.
             </div>
           )}
@@ -671,7 +671,7 @@ export default function TeamSettings({ session }) {
         <div style={{ display:'flex', flexDirection:'column', gap:20 }}>
 
           {/* Geteilte Leads */}
-          <div style={{ background:'var(--surface)', borderRadius:14, border:'1px solid var(--border)', overflow:'hidden' }}>
+          <div style={{ background:'var(--surface)', borderRadius:16, border:'1px solid var(--border)', boxShadow:'var(--shadow-card)', overflow:'hidden' }}>
             <div style={{ padding:'14px 20px', borderBottom:'1px solid var(--border)', display:'flex', alignItems:'center', justifyContent:'space-between' }}>
               <div>
                 <div style={{ fontSize:14, fontWeight:700, color:'rgb(20,20,43)' }}>Geteilte Leads</div>
@@ -717,7 +717,7 @@ export default function TeamSettings({ session }) {
           </div>
 
           {/* Geteilte Listen */}
-          <div style={{ background:'var(--surface)', borderRadius:14, border:'1px solid var(--border)', overflow:'hidden' }}>
+          <div style={{ background:'var(--surface)', borderRadius:16, border:'1px solid var(--border)', boxShadow:'var(--shadow-card)', overflow:'hidden' }}>
             <div style={{ padding:'14px 20px', borderBottom:'1px solid var(--border)', display:'flex', alignItems:'center', justifyContent:'space-between' }}>
               <div>
                 <div style={{ fontSize:14, fontWeight:700, color:'rgb(20,20,43)' }}>Geteilte Lead-Listen</div>
@@ -745,7 +745,7 @@ export default function TeamSettings({ session }) {
           </div>
 
           {/* Geteilte Brand Voices */}
-          <div style={{ background:'var(--surface)', borderRadius:14, border:'1px solid var(--border)', overflow:'hidden' }}>
+          <div style={{ background:'var(--surface)', borderRadius:16, border:'1px solid var(--border)', boxShadow:'var(--shadow-card)', overflow:'hidden' }}>
             <div style={{ padding:'14px 20px', borderBottom:'1px solid var(--border)', display:'flex', alignItems:'center', justifyContent:'space-between' }}>
               <div>
                 <div style={{ fontSize:14, fontWeight:700, color:'rgb(20,20,43)' }}>Geteilte Brand Voices</div>
