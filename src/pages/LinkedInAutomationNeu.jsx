@@ -181,6 +181,20 @@ export default function LinkedInAutomationNeu({ session }) {
     show(`${data?.inserted ?? 0} neu, ${data?.deduped ?? 0} bekannt${data?.more_available ? ' (mehr verfügbar)' : ''}`)
     loadDetail(sel.id); load()
   }
+  // B1 Pre-Scan: relation_status je Ziel cachen → Confirm-Gate zeigt exakte Zahl statt „bis zu N".
+  async function runAudienceScan() {
+    if (!sel?.id) return
+    show('Audience wird gescannt…')
+    const { data, error } = await supabase.functions.invoke('la-audience-scan', { body: { campaign_id: sel.id } })
+    if (error) { show('Scan-Fehler: ' + error.message, true); return }
+    const c = data?.counts || {}
+    const offen = c.not_connected || 0
+    const vernetzt = (c.first_degree || 0) + (c.pending || 0)
+    const uni = data?.unipile_used || 0
+    const cache = Math.max(0, (data?.scanned_this_run || 0) - uni)
+    show(`${offen} offen · ${vernetzt} vernetzt · ${uni} Unipile / ${cache} Cache`)
+    loadDetail(sel.id)
+  }
 
   const selAudience = audiences.find(a => a.id === sel?.audience_id)
 
@@ -341,6 +355,7 @@ export default function LinkedInAutomationNeu({ session }) {
                       </div>
                     )}
                     <button style={primaryBtn} onClick={runAudience}><Zap size={14} /> Audience ausführen</button>
+                    <button style={ghostBtn} onClick={runAudienceScan}><Users size={14} /> Audience scannen</button>
                     {selAudience.last_run_at && <span style={{ fontSize: 11, color: 'var(--text-muted)' }}>zuletzt: {new Date(selAudience.last_run_at).toLocaleString('de-DE')}</span>}
                   </div>
                 )}
@@ -405,6 +420,12 @@ export default function LinkedInAutomationNeu({ session }) {
         const dueNow = funnel?.due_now || 0
         const pendingTotal = funnel?.jobs?.pending || 0
         const actionWord = firstAction === 'invite' ? 'LinkedIn-Invites' : 'LinkedIn-Aktionen'
+        // B1 Pre-Scan-Prognose (abwärtskompatibel: fehlt das Feld — z.B. Prod vor RPC-Cutover — → alter „bis zu N"-Text).
+        const hasScan = funnel && typeof funnel.real_invites === 'number'
+        const realInvites = funnel?.real_invites || 0
+        const alreadyConnected = funnel?.already_connected || 0
+        const unknownCnt = funnel?.unknown || 0
+        const scanComplete = !!funnel?.scan_complete
         return (
           <div onClick={() => setActivateModal(false)} style={{ position: 'fixed', inset: 0, background: 'rgba(17,24,39,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 200 }}>
             <div onClick={e => e.stopPropagation()} style={{ background: 'var(--surface, #fff)', borderRadius: 14, padding: 24, width: 460, maxWidth: '92vw', boxShadow: '0 20px 60px rgba(0,0,0,0.3)' }}>
@@ -419,7 +440,14 @@ export default function LinkedInAutomationNeu({ session }) {
               </div>
               <div style={{ display: 'flex', gap: 8, alignItems: 'flex-start', fontSize: 13, color: '#B45309', background: '#FFFBEB', border: '1px solid #FDE68A', borderRadius: 8, padding: '10px 12px', marginBottom: 16 }}>
                 <AlertTriangle size={16} style={{ flexShrink: 0, marginTop: 1 }} />
-                <span>Beim Aktivieren gehen <b>bis zu {dueNow} reale {actionWord}</b> von <b>{acctLabel}</b> sofort raus{pendingTotal > dueNow ? ` (${pendingTotal} insgesamt geplant, gestaffelt)` : ''}. Bereits vernetzte Kontakte werden übersprungen. Das sind echte Anfragen an echte Personen. Fortfahren?</span>
+                <span>
+                  {hasScan && scanComplete
+                    ? <>Beim Aktivieren gehen <b>{realInvites} reale {actionWord}</b> von <b>{acctLabel}</b> raus — <b>{alreadyConnected}</b> bereits vernetzt/ausstehend werden übersprungen.</>
+                    : hasScan
+                      ? <>Beim Aktivieren gehen <b>mind. {realInvites}, bis zu {realInvites + unknownCnt} reale {actionWord}</b> von <b>{acctLabel}</b> raus · <b>{unknownCnt}</b> noch nicht gescannt — „Audience scannen" für die exakte Zahl.</>
+                      : <>Beim Aktivieren gehen <b>bis zu {dueNow} reale {actionWord}</b> von <b>{acctLabel}</b> sofort raus{pendingTotal > dueNow ? ` (${pendingTotal} insgesamt geplant, gestaffelt)` : ''}. Bereits vernetzte Kontakte werden übersprungen.</>}
+                  {' '}Das sind echte Anfragen an echte Personen. Fortfahren?
+                </span>
               </div>
               <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
                 <button style={ghostBtn} onClick={() => setActivateModal(false)}>Abbrechen</button>
