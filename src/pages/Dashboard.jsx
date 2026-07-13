@@ -325,7 +325,7 @@ export default function Dashboard({ session }) {
         {/* Leadlys Plan für heute — priorisierte, übernehmbare Aktionen */}
         <div style={{ marginTop: space[5] }}>
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 8, marginBottom: space[3] }}>
-            <div style={{ fontSize: 12, fontWeight: 700, color: colors.inkMuted, textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+            <div className="lk-eyebrow" style={{ marginBottom: 0 }}>
               Leadlys Plan für heute
             </div>
             {suggestions.length >= 3 && (

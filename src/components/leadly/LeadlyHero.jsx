@@ -296,7 +296,7 @@ export default function LeadlyHero({ firstName, leadly, stats = {}, onOpenTasks 
           <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 12.5, color: colors.inkMuted, fontWeight: 500 }}>
             <span>{dateLabel}</span>
           </div>
-          <div style={{ fontSize: 'clamp(22px, 2.6vw, 28px)', fontWeight: 600, letterSpacing: '-0.03em', lineHeight: 1.12, color: colors.ink, marginTop: 3 }}>
+          <div style={{ fontSize: 'clamp(22px, 2.6vw, 28px)', fontWeight: 800, letterSpacing: '-0.03em', lineHeight: 1.12, color: colors.ink, marginTop: 3 }}>
             {salute}, {firstName || 'dort'} 👋
           </div>
           <div style={{ fontSize: 15.5, lineHeight: 1.55, color: colors.ink, fontWeight: 450, marginTop: 8, maxWidth: '62ch', minHeight: 24 }}>
