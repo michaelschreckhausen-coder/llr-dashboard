@@ -40,7 +40,7 @@ const iconBtnStyle      = { width:34, height:34, border:'1.5px solid #E4E7EC', b
 const primaryBtnStyle   = { padding:'9px 18px', background: PRIMARY_VAR, color:'#fff', border:'none', borderRadius:10, fontSize:13, fontWeight:700, display:'inline-flex', alignItems:'center', gap:6, cursor:'pointer' }
 const ghostBtnStyle     = { padding:'7px 12px', background:'var(--surface)', color:'#374151', border:'1.5px solid #E4E7EC', borderRadius:10, fontSize:12, fontWeight:600, display:'inline-flex', alignItems:'center', gap:6, cursor:'pointer' }
 const kpiRowStyle       = { display:'grid', gridTemplateColumns:'repeat(4, 1fr)', gap:12, marginBottom:20 }
-const kpiCardStyle      = { background:'var(--surface)', border:'1px solid var(--border, #E4E7EC)', borderRadius:12, padding:'14px 16px' }
+const kpiCardStyle      = { background:'var(--surface)', border:'1px solid var(--border, #E4E7EC)', borderRadius:16, padding:'14px 16px', boxShadow:'var(--shadow-card)' }
 const toggleGroupStyle  = { display:'inline-flex', background:'#F3F4F6', borderRadius:10, padding:3, gap:2 }
 const toggleBtnStyle    = { height:32, padding:'0 14px', fontSize:13, background:'transparent', border:'none', color:'#6B7280', display:'inline-flex', alignItems:'center', gap:6, borderRadius:8, cursor:'pointer', fontWeight:600 }
 const toggleBtnActive   = { ...toggleBtnStyle, background:'var(--surface)', color:'#111827', boxShadow:'0 1px 2px rgba(0,0,0,0.05)' }
@@ -55,7 +55,7 @@ const STEP_TYPES = {
   follow_profile: { label:'Profil folgen',     Icon: UserCheck,     color:'#0891b2', bg:'#ECFEFF', desc:'Folgt der Person auf LinkedIn (ohne Vernetzungsanfrage)' },
   send_connect:   { label:'Vernetzen',         Icon: UserPlus,      color:'#16a34a', bg:'#F0FDF4', desc:'Sendet eine Vernetzungsanfrage' },
   send_message:   { label:'Nachricht',         Icon: MessageSquare, color:'#c2410c', bg:'#FFF7ED', desc:'Sendet eine LinkedIn-Nachricht' },
-  wait:           { label:'Warten',            Icon: Hourglass,     color:'#7c3aed', bg:'#F5F3FF', desc:'Zeitverzögerung zwischen Schritten' },
+  wait:           { label:'Warten',            Icon: Hourglass,     color:'#0A6FB0', bg:'#EAF8FE', desc:'Zeitverzögerung zwischen Schritten' },
 }
 
 // #13: Step-Type → kanonische automation_jobs.action (CHECK connect/message/follow/visit/like/endorse)
