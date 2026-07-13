@@ -163,7 +163,7 @@ export default function Rechte() {
           <input type="number" min="0" value={form.total_slots}
                  onChange={(e) => setForm({ ...form, total_slots: e.target.value })} style={input} />
         </Field>
-        <button type="submit" disabled={busy || !form.name.trim()} style={{ ...primaryBtn, opacity: busy || !form.name.trim() ? 0.6 : 1 }}>
+        <button type="submit" disabled={busy || !form.name.trim()} className="lk-btn lk-btn-navy" style={{ opacity: busy || !form.name.trim() ? 0.6 : 1 }}>
           {busy ? <Loader2 size={14} className="spin" /> : <Plus size={14} />} Anlegen
         </button>
 

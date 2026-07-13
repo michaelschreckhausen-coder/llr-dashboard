@@ -101,7 +101,7 @@ export default function Sichtbarkeit() {
             <input value={clubName} onChange={(e) => setClubName(e.target.value)} placeholder="z.B. SV Musterstadt" style={{ ...input, minWidth: 240 }} />
           </Field>
         )}
-        <button onClick={runCheck} disabled={busy} style={{ ...primaryBtn, opacity: busy ? 0.6 : 1 }}>
+        <button onClick={runCheck} disabled={busy} className="lk-btn lk-btn-navy" style={{ opacity: busy ? 0.6 : 1 }}>
           {busy ? <Loader2 size={14} className="spin" /> : <Sparkles size={14} />} Sichtbarkeit prüfen
         </button>
       </div>

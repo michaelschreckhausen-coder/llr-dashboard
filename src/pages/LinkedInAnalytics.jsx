@@ -178,7 +178,7 @@ export default function LinkedInAnalytics() {
               {lastSync > 0 && ` · Zuletzt aktualisiert: ${new Date(lastSync).toLocaleString('de-DE')}`}
             </div>
           </div>
-          <button style={{ ...primaryBtnStyle, opacity: syncing ? 0.6 : 1 }} disabled={syncing} onClick={syncMetrics}>
+          <button className="lk-btn lk-btn-navy" style={{ opacity: syncing ? 0.6 : 1 }} disabled={syncing} onClick={syncMetrics}>
             {syncing ? <Loader2 size={15} className="lk-spin" /> : <RefreshCw size={15} />} Metriken aktualisieren
           </button>
         </div>
@@ -193,7 +193,7 @@ export default function LinkedInAnalytics() {
             {flash.type === 'error' ? <AlertCircle size={16} /> : <CheckCircle2 size={16} />}
             <span style={{ flex:1 }}>{flash.text}</span>
             {flash.action && (
-              <button onClick={() => navigate(flash.action.to)} style={{ ...ghostBtnStyle, padding:'5px 10px' }}>
+              <button onClick={() => navigate(flash.action.to)} className="lk-btn lk-btn-ghost" style={{ padding:'5px 10px' }}>
                 {flash.action.label} <ExternalLink size={13} />
               </button>
             )}
@@ -242,7 +242,7 @@ export default function LinkedInAnalytics() {
                       )}
                       {p.linkedin_post_url && (
                         <a href={p.linkedin_post_url} target="_blank" rel="noopener noreferrer" onClick={ev => ev.stopPropagation()}
-                          style={{ ...ghostBtnStyle, textDecoration:'none' }}>
+                          className="lk-btn lk-btn-ghost" style={{ textDecoration:'none' }}>
                           Post öffnen <ExternalLink size={13} />
                         </a>
                       )}
@@ -317,16 +317,16 @@ export default function LinkedInAnalytics() {
                               {e.comment_text && <div style={{ fontSize:12, color:'var(--text-soft, #4B5563)', marginTop:4, fontStyle:'italic' }}>„{e.comment_text}"</div>}
                             </div>
                             {e.actor_profile_url && (
-                              <a href={e.actor_profile_url} target="_blank" rel="noopener noreferrer" style={{ ...ghostBtnStyle, textDecoration:'none' }}>
+                              <a href={e.actor_profile_url} target="_blank" rel="noopener noreferrer" className="lk-btn lk-btn-ghost" style={{ textDecoration:'none' }}>
                                 Profil <ExternalLink size={13} />
                               </a>
                             )}
                             {converted ? (
                               leadId
-                                ? <button style={{ ...ghostBtnStyle, color:'#15803D', borderColor:'#BBF7D0' }} onClick={() => navigate(`/leads/${leadId}`)}>im CRM öffnen <ExternalLink size={13} /></button>
-                                : <span style={{ ...ghostBtnStyle, color:'#15803D', borderColor:'#BBF7D0', cursor:'default' }}><Check size={14} /> im CRM</span>
+                                ? <button className="lk-btn lk-btn-ghost" style={{ color:'#15803D', borderColor:'#BBF7D0' }} onClick={() => navigate(`/leads/${leadId}`)}>im CRM öffnen <ExternalLink size={13} /></button>
+                                : <span className="lk-btn lk-btn-ghost" style={{ color:'#15803D', borderColor:'#BBF7D0', cursor:'default' }}><Check size={14} /> im CRM</span>
                             ) : (
-                              <button style={{ ...primaryBtnStyle, opacity: cs === 'busy' ? 0.6 : 1 }} disabled={cs === 'busy'} onClick={() => convertEngager(e)}>
+                              <button className="lk-btn lk-btn-navy" style={{ opacity: cs === 'busy' ? 0.6 : 1 }} disabled={cs === 'busy'} onClick={() => convertEngager(e)}>
                                 {cs === 'busy' ? <Loader2 size={15} className="lk-spin" /> : <UserPlus size={15} />} Als Lead übernehmen
                               </button>
                             )}

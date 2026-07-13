@@ -170,7 +170,7 @@ export default function Ziele() {
           <input type="number" min="0" step="0.01" value={form.target_amount}
                  onChange={(e) => setForm({ ...form, target_amount: e.target.value })} placeholder="0" style={input} />
         </Field>
-        <button type="submit" disabled={busy || !form.season.trim()} style={{ ...primaryBtn, opacity: busy || !form.season.trim() ? 0.6 : 1 }}>
+        <button type="submit" disabled={busy || !form.season.trim()} className="lk-btn lk-btn-navy" style={{ opacity: busy || !form.season.trim() ? 0.6 : 1 }}>
           {busy ? <Loader2 size={14} className="spin" /> : <Plus size={14} />} Anlegen
         </button>
       </form>

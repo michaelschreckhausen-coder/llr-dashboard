@@ -259,7 +259,7 @@ export default function Angebote() {
           {(() => {
             const canSubmit = !busy && (sponsorForm.organization_id || sponsorForm.name.trim())
             return (
-              <button type="submit" disabled={!canSubmit} style={{ ...primaryBtn, marginTop: 10, opacity: canSubmit ? 1 : 0.6 }}>
+              <button type="submit" disabled={!canSubmit} className="lk-btn lk-btn-navy" style={{ marginTop: 10, opacity: canSubmit ? 1 : 0.6 }}>
                 {busy ? <Loader2 size={14} className="spin" /> : <Plus size={14} />} Sponsor anlegen
               </button>
             )
@@ -300,7 +300,7 @@ export default function Angebote() {
             </Field>
           </div>
           <button type="submit" disabled={busy || !offerForm.sponsor_profile_id || !offerForm.package_id}
-                  style={{ ...primaryBtn, marginTop: 12, opacity: busy || !offerForm.sponsor_profile_id || !offerForm.package_id ? 0.6 : 1 }}>
+                  className="lk-btn lk-btn-navy" style={{ marginTop: 12, opacity: busy || !offerForm.sponsor_profile_id || !offerForm.package_id ? 0.6 : 1 }}>
             {busy ? <Loader2 size={14} className="spin" /> : <Plus size={14} />} Angebot erstellen
           </button>
         </form>
@@ -389,7 +389,7 @@ export default function Angebote() {
                                style={{ ...input, padding: '6px 8px' }} />
                       </div>
                       <button type="button" disabled={busy || !draft.right_id} onClick={() => addOfferRight(o.id)}
-                              style={{ ...primaryBtn, padding: '7px 12px', opacity: busy || !draft.right_id ? 0.6 : 1 }}>
+                              className="lk-btn lk-btn-navy" style={{ padding: '7px 12px', opacity: busy || !draft.right_id ? 0.6 : 1 }}>
                         <Plus size={13} /> Hinzufügen
                       </button>
                     </div>

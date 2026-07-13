@@ -88,7 +88,7 @@ export default function Assistent() {
 
       <form onSubmit={(e) => { e.preventDefault(); send() }} style={{ display: 'flex', gap: 10, marginTop: 14 }}>
         <input value={input} onChange={(e) => setInput(e.target.value)} placeholder="Frage stellen…" style={inputStyle} />
-        <button type="submit" disabled={busy || !input.trim()} style={{ ...primaryBtn, opacity: busy || !input.trim() ? 0.6 : 1 }}>
+        <button type="submit" disabled={busy || !input.trim()} className="lk-btn lk-btn-navy" style={{ opacity: busy || !input.trim() ? 0.6 : 1 }}>
           {busy ? <Loader2 size={16} className="spin" /> : <Send size={16} />}
         </button>
       </form>

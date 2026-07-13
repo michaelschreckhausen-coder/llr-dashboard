@@ -79,7 +79,7 @@ export default function LinkedInImport() {
 
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginTop: 12 }}>
         <span style={{ fontSize: 13, color: 'var(--text-muted)' }}>{rows.length} erkannte Zeile(n)</span>
-        <button onClick={importRows} disabled={busy || rows.length === 0} style={{ ...primaryBtn, opacity: busy || rows.length === 0 ? 0.6 : 1 }}>
+        <button onClick={importRows} disabled={busy || rows.length === 0} className="lk-btn lk-btn-navy" style={{ opacity: busy || rows.length === 0 ? 0.6 : 1 }}>
           {busy ? <Loader2 size={14} className="spin" /> : <Upload size={14} />} {rows.length} importieren
         </button>
       </div>

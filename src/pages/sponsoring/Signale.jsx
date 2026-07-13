@@ -88,7 +88,7 @@ export default function Signale() {
                   placeholder="Presse-/News-/LinkedIn-Auszug einfügen…" style={{ ...input, resize: 'vertical' }} />
         <div style={{ marginTop: 10 }}>
           <button onClick={detect} disabled={busy || !selSponsor || !text.trim()}
-                  style={{ ...primaryBtn, opacity: busy || !selSponsor || !text.trim() ? 0.6 : 1 }}>
+                  className="lk-btn lk-btn-navy" style={{ opacity: busy || !selSponsor || !text.trim() ? 0.6 : 1 }}>
             {busy ? <Loader2 size={14} className="spin" /> : <Sparkles size={14} />} Signale erkennen
           </button>
         </div>

@@ -303,7 +303,7 @@ export default function Vertraege() {
             <Field label="Beginn"><input type="date" value={cf.starts_on} onChange={(e) => setCf({ ...cf, starts_on: e.target.value })} style={input} /></Field>
             <Field label="Ende"><input type="date" value={cf.ends_on} onChange={(e) => setCf({ ...cf, ends_on: e.target.value })} style={input} /></Field>
             <Field label="Kündigungsfrist (Tage)"><input type="number" min="0" value={cf.notice_period_days} onChange={(e) => setCf({ ...cf, notice_period_days: e.target.value })} style={input} /></Field>
-            <button type="submit" disabled={busy} style={{ ...primaryBtn, marginTop: 12, justifyContent: 'center', opacity: busy ? 0.6 : 1 }}>
+            <button type="submit" disabled={busy} className="lk-btn lk-btn-navy" style={{ marginTop: 12, justifyContent: 'center', opacity: busy ? 0.6 : 1 }}>
               {busy ? <Loader2 size={14} className="spin" /> : null} Vertrag anlegen &amp; Inventar buchen
             </button>
           </form>
@@ -456,7 +456,7 @@ export default function Vertraege() {
                 placeholder="Interne Notizen zum Vertrag…" />
             </Field>
 
-            <button type="submit" disabled={busy} style={{ ...primaryBtn, marginTop: 14, justifyContent: 'center', opacity: busy ? 0.6 : 1 }}>
+            <button type="submit" disabled={busy} className="lk-btn lk-btn-navy" style={{ marginTop: 14, justifyContent: 'center', opacity: busy ? 0.6 : 1 }}>
               {busy ? <Loader2 size={14} className="spin" /> : null} Speichern
             </button>
           </form>

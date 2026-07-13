@@ -384,7 +384,7 @@ export default function Kampagnen() {
           <input type="number" min="0" step="0.01" value={form.expected_value}
                  onChange={(e) => setForm({ ...form, expected_value: e.target.value })} placeholder="0" style={input} />
         </Field>
-        <button type="submit" disabled={busy || !form.title.trim()} style={{ ...primaryBtn, opacity: busy || !form.title.trim() ? 0.6 : 1 }}>
+        <button type="submit" disabled={busy || !form.title.trim()} className="lk-btn lk-btn-navy" style={{ opacity: busy || !form.title.trim() ? 0.6 : 1 }}>
           {busy ? <Loader2 size={14} className="spin" /> : <Plus size={14} />} Anlegen
         </button>
 
@@ -478,7 +478,7 @@ export default function Kampagnen() {
                     <Meta label="Zielgruppe" value={taName(sel.target_audience_id)} />
                     <Meta label="Status" value={STATUS_LABEL[sel.status] || sel.status} />
                   </div>
-                  <button onClick={() => { setDraft(sel); setEditing(true) }} style={{ ...secondaryBtn, marginTop: 12 }}>Bearbeiten</button>
+                  <button onClick={() => { setDraft(sel); setEditing(true) }} className="lk-btn lk-btn-ghost" style={{ marginTop: 12 }}>Bearbeiten</button>
                 </>
               ) : (
                 <>
@@ -510,7 +510,7 @@ export default function Kampagnen() {
                     </Field>
                   </div>
                   <div style={{ display: 'flex', gap: 8, marginTop: 12 }}>
-                    <button onClick={saveDraft} disabled={busy} style={{ ...primaryBtn, opacity: busy ? 0.6 : 1 }}>
+                    <button onClick={saveDraft} disabled={busy} className="lk-btn lk-btn-navy" style={{ opacity: busy ? 0.6 : 1 }}>
                       {busy ? <Loader2 size={14} className="spin" /> : null} Speichern
                     </button>
                     <button onClick={() => setEditing(false)} disabled={busy} className="lk-btn lk-btn-ghost">Abbrechen</button>
@@ -523,7 +523,7 @@ export default function Kampagnen() {
             <div style={{ marginBottom: 16 }}>
               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 }}>
                 <h3 style={sectionH}>KI-Konzept</h3>
-                <button onClick={generateConcept} disabled={generating} style={{ ...primaryBtn, opacity: generating ? 0.6 : 1 }}>
+                <button onClick={generateConcept} disabled={generating} className="lk-btn lk-btn-navy" style={{ opacity: generating ? 0.6 : 1 }}>
                   {generating ? <Loader2 size={14} className="spin" /> : <Sparkles size={14} />}
                   {generating ? 'Generiere…' : 'KI-Konzept generieren'}
                 </button>
@@ -576,7 +576,7 @@ export default function Kampagnen() {
                     <PillSelect value={pickLead} onChange={setPickLead} neutral options={[{ value: '', label: `— Kontakt wählen —` }, ...allLeads.map((l) => ({ value: l.id, label: `${leadLabel(l.id)}${l.company ? ' · ' + l.company : ''}` }))]} buttonStyle={{ minWidth: 140 }} />
                   </Field>
                 </div>
-                <button onClick={addExistingLead} disabled={!pickLead} style={{ ...primaryBtn, opacity: !pickLead ? 0.6 : 1 }}><Plus size={14} /></button>
+                <button onClick={addExistingLead} disabled={!pickLead} className="lk-btn lk-btn-navy" style={{ opacity: !pickLead ? 0.6 : 1 }}><Plus size={14} /></button>
               </div>
               <div style={{ fontSize: 11, color: 'var(--text-muted)', margin: '0 0 10px' }}>oder externen Namen erfassen (außerhalb CRM):</div>
               <div style={{ display: 'flex', gap: 8, margin: '0 0 12px', alignItems: 'flex-end' }}>
@@ -591,7 +591,7 @@ export default function Kampagnen() {
                   </Field>
                 </div>
                 <button onClick={addManualLead} disabled={savingLead || !leadName.trim()}
-                        style={{ ...primaryBtn, opacity: savingLead || !leadName.trim() ? 0.6 : 1 }}>
+                        className="lk-btn lk-btn-navy" style={{ opacity: savingLead || !leadName.trim() ? 0.6 : 1 }}>
                   {savingLead ? <Loader2 size={14} className="spin" /> : <Plus size={14} />}
                 </button>
               </div>
@@ -626,7 +626,7 @@ export default function Kampagnen() {
                     <PillSelect value={pickOrg} onChange={setPickOrg} neutral options={[{ value: '', label: `— Unternehmen wählen —` }, ...allOrgs.map((o) => ({ value: o.id, label: o.name }))]} buttonStyle={{ minWidth: 140 }} />
                   </Field>
                 </div>
-                <button onClick={addOrg} disabled={!pickOrg} style={{ ...primaryBtn, opacity: !pickOrg ? 0.6 : 1 }}><Plus size={14} /></button>
+                <button onClick={addOrg} disabled={!pickOrg} className="lk-btn lk-btn-navy" style={{ opacity: !pickOrg ? 0.6 : 1 }}><Plus size={14} /></button>
               </div>
               {linkedOrgs.length === 0 ? (
                 <div style={{ fontSize: 13, color: 'var(--text-muted)' }}>Noch keine Unternehmen verknüpft.</div>
@@ -651,7 +651,7 @@ export default function Kampagnen() {
                     <PillSelect value={pickDeal} onChange={setPickDeal} neutral options={[{ value: '', label: `— Deal wählen —` }, ...allDeals.map((d) => ({ value: d.id, label: `${d.title || d.name || 'Deal'}${d.value ? ' · ' + Number(d.value).toLocaleString('de-DE') + ' €' : ''}` }))]} buttonStyle={{ minWidth: 140 }} />
                   </Field>
                 </div>
-                <button onClick={addDeal} disabled={!pickDeal} style={{ ...primaryBtn, opacity: !pickDeal ? 0.6 : 1 }}><Plus size={14} /></button>
+                <button onClick={addDeal} disabled={!pickDeal} className="lk-btn lk-btn-navy" style={{ opacity: !pickDeal ? 0.6 : 1 }}><Plus size={14} /></button>
               </div>
               {linkedDeals.length === 0 ? (
                 <div style={{ fontSize: 13, color: 'var(--text-muted)' }}>Noch keine Deals verknüpft.</div>

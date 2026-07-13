@@ -211,7 +211,7 @@ export default function LinkedInSuche() {
             {flash.type === 'error' ? <AlertCircle size={16} /> : <CheckCircle2 size={16} />}
             <span style={{ flex:1 }}>{flash.text}</span>
             {flash.action && (
-              <button onClick={() => navigate(flash.action.to)} style={{ ...ghostBtnStyle, padding:'5px 10px' }}>
+              <button onClick={() => navigate(flash.action.to)} className="lk-btn lk-btn-ghost" style={{ padding:'5px 10px' }}>
                 {flash.action.label} <ExternalLink size={13} />
               </button>
             )}
@@ -277,7 +277,7 @@ export default function LinkedInSuche() {
             </div>
 
             <div>
-              <button style={{ ...primaryBtnStyle, opacity: saving ? 0.6 : 1 }} disabled={saving} onClick={saveSearch}>
+              <button className="lk-btn lk-btn-navy" style={{ opacity: saving ? 0.6 : 1 }} disabled={saving} onClick={saveSearch}>
                 {saving ? <Loader2 size={15} className="lk-spin" /> : <Save size={15} />} Suche speichern
               </button>
             </div>
@@ -325,13 +325,13 @@ export default function LinkedInSuche() {
                   color:      s.status === 'running' ? '#92400E' : s.status === 'error' ? '#B91C1C' : s.status === 'done' ? '#15803D' : '#6B7280',
                 }}>{s.status || 'idle'}</span>
                 <button
-                  style={{ ...primaryBtnStyle, opacity: runningId === s.id ? 0.6 : 1 }}
+                  className="lk-btn lk-btn-navy" style={{ opacity: runningId === s.id ? 0.6 : 1 }}
                   disabled={runningId === s.id}
                   onClick={() => runSearch(s)}
                 >
                   {runningId === s.id ? <Loader2 size={15} className="lk-spin" /> : <Play size={15} />} Ausführen
                 </button>
-                <button style={{ ...ghostBtnStyle, color:'#B91C1C', borderColor:'#FECACA' }} onClick={() => deleteSearch(s.id)}>
+                <button className="lk-btn lk-btn-ghost" style={{ color:'#B91C1C', borderColor:'#FECACA' }} onClick={() => deleteSearch(s.id)}>
                   <Trash2 size={14} />
                 </button>
               </div>
@@ -381,12 +381,12 @@ export default function LinkedInSuche() {
                         )}
                       </div>
                       {it.linkedin_url && (
-                        <a href={it.linkedin_url} target="_blank" rel="noopener noreferrer" style={{ ...ghostBtnStyle, textDecoration:'none' }}>
+                        <a href={it.linkedin_url} target="_blank" rel="noopener noreferrer" className="lk-btn lk-btn-ghost" style={{ textDecoration:'none' }}>
                           Profil öffnen <ExternalLink size={13} />
                         </a>
                       )}
                       {results.category === 'people' && (
-                        <span style={{ ...ghostBtnStyle, color:'#15803D', borderColor:'#BBF7D0', cursor:'default' }}>
+                        <span className="lk-btn lk-btn-ghost" style={{ color:'#15803D', borderColor:'#BBF7D0', cursor:'default' }}>
                           <InboxIcon size={14} /> in LinkedIn Kontakten
                         </span>
                       )}

@@ -388,7 +388,7 @@ export default function LinkedInAutomationNeu({ session }) {
                     {!seqLocked && (
                       <div style={{ display: 'flex', gap: 8, marginTop: 4 }}>
                         <button style={ghostBtn} onClick={addStep}><Plus size={13} /> Schritt</button>
-                        <button style={{ ...primaryBtn, opacity: stepsDirty ? 1 : 0.5, cursor: stepsDirty ? 'pointer' : 'default' }} disabled={!stepsDirty} onClick={saveSteps}>Sequenz speichern</button>
+                        <button className="lk-btn lk-btn-navy" style={{ opacity: stepsDirty ? 1 : 0.5, cursor: stepsDirty ? 'pointer' : 'default' }} disabled={!stepsDirty} onClick={saveSteps}>Sequenz speichern</button>
                       </div>
                     )}
                   </div>
@@ -475,7 +475,7 @@ export default function LinkedInAutomationNeu({ session }) {
               )}
               <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
                 <button style={ghostBtn} onClick={() => setDeleteModal(null)}>Abbrechen</button>
-                <button className="lk-btn lk-btn-danger" style={{ ...primaryBtn }} onClick={deleteCampaign}><Trash2 size={14} /> Endgültig löschen</button>
+                <button className="lk-btn lk-btn-danger" onClick={deleteCampaign}><Trash2 size={14} /> Endgültig löschen</button>
               </div>
             </div>
           </div>

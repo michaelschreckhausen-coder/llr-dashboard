@@ -143,7 +143,7 @@ export default function Ligen() {
           <input type="number" step="0.01" value={form.adjust_pct}
                  onChange={(e) => setForm({ ...form, adjust_pct: e.target.value })} placeholder="z.B. 15 / -20" style={input} />
         </Field>
-        <button type="submit" disabled={busy || !form.name.trim()} style={{ ...primaryBtn, opacity: busy || !form.name.trim() ? 0.6 : 1 }}>
+        <button type="submit" disabled={busy || !form.name.trim()} className="lk-btn lk-btn-navy" style={{ opacity: busy || !form.name.trim() ? 0.6 : 1 }}>
           {busy ? <Loader2 size={14} className="spin" /> : <Plus size={14} />} Anlegen
         </button>
       </form>

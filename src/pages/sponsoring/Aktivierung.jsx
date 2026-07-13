@@ -243,7 +243,7 @@ export default function Aktivierung() {
         <Field label="Ansprechpartner">
           <PillSelect value={form.contact_id} onChange={__lkv => setForm({ ...form, contact_id: __lkv })} neutral disabled={!formContractOrgId} options={[{ value: '', label: formContractOrgId ? '— keiner —' : '— erst Vertrag wählen —' }, ...contactOptions.map((l) => ({ value: l.id, label: leadName[l.id] }))]} buttonStyle={{ minWidth: 140 }} />
         </Field>
-        <button type="submit" disabled={busy || !form.title.trim()} style={{ ...primaryBtn, gridColumn: '1 / -1', justifySelf: 'end', opacity: busy || !form.title.trim() ? 0.6 : 1 }}>
+        <button type="submit" disabled={busy || !form.title.trim()} className="lk-btn lk-btn-navy" style={{ gridColumn: '1 / -1', justifySelf: 'end', opacity: busy || !form.title.trim() ? 0.6 : 1 }}>
           {busy ? <Loader2 size={14} className="spin" /> : <Plus size={14} />} Anlegen
         </button>
       </form>
@@ -254,7 +254,7 @@ export default function Aktivierung() {
           <PillSelect value={applyContractId} onChange={v => { setApplyContractId(v); setApplyMsg(null) }} neutral options={[{ value: '', label: `— Vertrag wählen —` }, ...contracts.map((c) => ({ value: c.id, label: contractLabel[c.id] }))]} buttonStyle={{ minWidth: 140 }} />
         </Field>
         <button type="button" onClick={applyTemplates} disabled={applyBusy || !applyContractId}
-                style={{ ...primaryBtn, opacity: applyBusy || !applyContractId ? 0.6 : 1 }}>
+                className="lk-btn lk-btn-navy" style={{ opacity: applyBusy || !applyContractId ? 0.6 : 1 }}>
           {applyBusy ? <Loader2 size={14} className="spin" /> : <Wand2 size={14} />} Standardaufgaben anlegen
         </button>
         {applyMsg && <span style={{ fontSize: 13, color: '#059669', fontWeight: 600 }}>{applyMsg}</span>}
@@ -349,7 +349,7 @@ export default function Aktivierung() {
           <PillSelect value={tplForm.right_id} onChange={v => setTplForm({ ...tplForm, right_id: v })} neutral options={[{ value: '', label: `— keins —` }, ...tplRightOptions.map((r) => ({ value: r.id, label: r.name }))]} buttonStyle={{ minWidth: 140 }} />
         </Field>
         <Field label="Reihenfolge"><input type="number" value={tplForm.sort_order} onChange={(e) => setTplForm({ ...tplForm, sort_order: e.target.value })} style={input} /></Field>
-        <button type="submit" disabled={tplBusy || !tplForm.title.trim()} style={{ ...primaryBtn, opacity: tplBusy || !tplForm.title.trim() ? 0.6 : 1 }}>
+        <button type="submit" disabled={tplBusy || !tplForm.title.trim()} className="lk-btn lk-btn-navy" style={{ opacity: tplBusy || !tplForm.title.trim() ? 0.6 : 1 }}>
           {tplBusy ? <Loader2 size={14} className="spin" /> : <Plus size={14} />} Anlegen
         </button>
       </form>

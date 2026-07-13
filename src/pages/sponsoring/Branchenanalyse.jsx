@@ -314,7 +314,7 @@ export default function Branchenanalyse() {
           <input value={sourceUrl} onChange={(e) => setSourceUrl(e.target.value)}
                  placeholder="https://www.example-club.de" style={input} />
         </Field>
-        <button type="submit" disabled={scanBusy || !sourceUrl.trim()} style={{ ...primaryBtn, opacity: scanBusy || !sourceUrl.trim() ? 0.6 : 1 }}>
+        <button type="submit" disabled={scanBusy || !sourceUrl.trim()} className="lk-btn lk-btn-navy" style={{ opacity: scanBusy || !sourceUrl.trim() ? 0.6 : 1 }}>
           {scanBusy ? <Loader2 size={14} className="spin" /> : <Search size={14} />} Analysieren
         </button>
       </form>
@@ -374,7 +374,7 @@ export default function Branchenanalyse() {
                         <button type="button" disabled={adoptBusy}
                           onClick={() => adoptIndustries(labels, note)}
                           title="Alle Branchen dieser Analyse in Akquise-Branchen übernehmen"
-                          style={{ ...primaryBtn, padding: '5px 12px', fontSize: 12, opacity: adoptBusy ? 0.6 : 1 }}>
+                          className="lk-btn lk-btn-navy" style={{ padding: '5px 12px', fontSize: 12, opacity: adoptBusy ? 0.6 : 1 }}>
                           {adoptBusy ? <Loader2 size={12} className="spin" /> : <Plus size={12} />} Alle Branchen übernehmen
                         </button>
                       )}
@@ -431,7 +431,7 @@ export default function Branchenanalyse() {
         </h2>
         <button type="button" onClick={prefillIndustries} disabled={prefillBusy}
           title="Typische Sport- und Boom-Branchen per KI vorschlagen"
-          style={{ ...primaryBtn, padding: '7px 14px', fontSize: 12.5, opacity: prefillBusy ? 0.6 : 1 }}>
+          className="lk-btn lk-btn-navy" style={{ padding: '7px 14px', fontSize: 12.5, opacity: prefillBusy ? 0.6 : 1 }}>
           {prefillBusy ? <Loader2 size={13} className="spin" /> : <Wand2 size={13} />} Typische Branchen vorschlagen
         </button>
       </div>
@@ -463,7 +463,7 @@ export default function Branchenanalyse() {
           <input value={form.note} onChange={(e) => setForm({ ...form, note: e.target.value })}
                  placeholder="optional" style={input} />
         </Field>
-        <button type="submit" disabled={busy || !form.industry.trim()} style={{ ...primaryBtn, opacity: busy || !form.industry.trim() ? 0.6 : 1 }}>
+        <button type="submit" disabled={busy || !form.industry.trim()} className="lk-btn lk-btn-navy" style={{ opacity: busy || !form.industry.trim() ? 0.6 : 1 }}>
           {busy ? <Loader2 size={14} className="spin" /> : <Plus size={14} />} Anlegen
         </button>
       </form>
@@ -559,7 +559,7 @@ export default function Branchenanalyse() {
         <Field label="Region">
           <PillSelect value={tgt.region} onChange={v => setTgt({ ...tgt, region: v })} neutral options={[...REGIONS.map((rg) => ({ value: rg, label: REGION_LABEL[rg] }))]} buttonStyle={{ minWidth: 140 }} />
         </Field>
-        <button type="submit" disabled={tgtBusy || !tgt.industry.trim()} style={{ ...primaryBtn, opacity: tgtBusy || !tgt.industry.trim() ? 0.6 : 1 }}>
+        <button type="submit" disabled={tgtBusy || !tgt.industry.trim()} className="lk-btn lk-btn-navy" style={{ opacity: tgtBusy || !tgt.industry.trim() ? 0.6 : 1 }}>
           {tgtBusy ? <Loader2 size={14} className="spin" /> : <Building2 size={14} />} Vorschläge holen
         </button>
       </form>
@@ -598,7 +598,7 @@ export default function Branchenanalyse() {
                 <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexShrink: 0 }}>
                   {!adopted && (
                     <button type="button" onClick={() => adoptCompany(tc)} disabled={adoptCoBusy === tc.id}
-                            style={{ ...primaryBtn, padding: '6px 12px', fontSize: 12, opacity: adoptCoBusy === tc.id ? 0.6 : 1 }}>
+                            className="lk-btn lk-btn-navy" style={{ padding: '6px 12px', fontSize: 12, opacity: adoptCoBusy === tc.id ? 0.6 : 1 }}>
                       {adoptCoBusy === tc.id ? <Loader2 size={12} className="spin" /> : <Plus size={12} />} Übernehmen
                     </button>
                   )}

@@ -706,7 +706,7 @@ function ExtensionBanner({ connected = false, runningCount = 0, waitingCount = 0
         {connected ? 'Verbunden' : 'Nicht verbunden'}
       </span>
       <button onClick={onManage}
-        style={{ ...ghostBtnStyle, cursor:'pointer', color:PRIMARY_VAR, borderColor:'rgba(10,111,176,0.35)', background:'rgba(10,111,176,0.06)' }}>
+        className="lk-btn lk-btn-ghost" style={{ cursor:'pointer', color:PRIMARY_VAR, borderColor:'rgba(10,111,176,0.35)', background:'rgba(10,111,176,0.06)' }}>
         <ExternalLink size={13} /> Verbindung verwalten
       </button>
     </div>
@@ -1077,12 +1077,12 @@ function NewCampaignWizard({
       ) : step === 'source' ? (
         <span style={{ width:1 }} />
       ) : step === 'list' ? (
-        <button disabled style={{ ...primaryBtnStyle, opacity:0.5, cursor:'not-allowed' }}>
+        <button disabled className="lk-btn lk-btn-navy" style={{ opacity:0.5, cursor:'not-allowed' }}>
           <Zap size={14} /> Kampagne erstellen
         </button>
       ) : (
         <button onClick={nextStep} disabled={step === 'configure' && !canConfigureNext}
-          style={{ ...primaryBtnStyle, opacity:(step === 'configure' && !canConfigureNext) ? 0.5 : 1, cursor:(step === 'configure' && !canConfigureNext) ? 'not-allowed' : 'pointer' }}>
+          className="lk-btn lk-btn-navy" style={{ opacity:(step === 'configure' && !canConfigureNext) ? 0.5 : 1, cursor:(step === 'configure' && !canConfigureNext) ? 'not-allowed' : 'pointer' }}>
           Weiter <ChevronRight size={14} />
         </button>
       )}

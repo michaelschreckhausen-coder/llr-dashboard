@@ -661,7 +661,7 @@ export default function LeadDetail({ lead: leadProp }) {
                 <Archive size={16} /> Wiederherstellen
               </button>
             ) : (
-              <button type="button" style={{ ...secondaryBtnStyle, color:'#B91C1C', borderColor:'#FECACA' }} onClick={handleArchive}
+              <button type="button" className="lk-btn lk-btn-ghost" style={{ color:'#B91C1C', borderColor:'#FECACA' }} onClick={handleArchive}
                 title="Kontakt archivieren">
                 <Archive size={16} /> Archivieren
               </button>
@@ -912,12 +912,12 @@ function RelatedRail({ lead, navigate, refreshKey, analysis, analyzeLoading, onA
             {nextAction && (<><div style={propLabelStyle}>Nächste Aktion</div><div style={propValueStyle}>{nextAction}</div></>)}
             <div style={{ display:'flex', gap:6, marginTop:12 }}>
               <button type="button" onClick={onReanalyze} disabled={analyzeLoading}
-                style={{ ...ghostBtnStyle, flex:1, justifyContent:'center', opacity: analyzeLoading ? 0.6 : 1 }}>
+                className="lk-btn lk-btn-ghost" style={{ flex:1, justifyContent:'center', opacity: analyzeLoading ? 0.6 : 1 }}>
                 <Sparkles size={13} /> {analyzeLoading ? '…' : 'Neu'}
               </button>
               {hasOutreach && onUseOutreach && (
                 <button type="button" onClick={onUseOutreach}
-                  style={{ ...ghostBtnStyle, flex:1, justifyContent:'center' }}>
+                  className="lk-btn lk-btn-ghost" style={{ flex:1, justifyContent:'center' }}>
                   <Send size={13} /> Entwurf
                 </button>
               )}
@@ -925,7 +925,7 @@ function RelatedRail({ lead, navigate, refreshKey, analysis, analyzeLoading, onA
           </>
         ) : (
           <button type="button" onClick={onAnalyze} disabled={analyzeLoading}
-            style={{ ...secondaryBtnStyle, width:'100%', justifyContent:'center', opacity: analyzeLoading ? 0.6 : 1 }}>
+            className="lk-btn lk-btn-ghost" style={{ width:'100%', justifyContent:'center', opacity: analyzeLoading ? 0.6 : 1 }}>
             <Sparkles size={14} /> {analyzeLoading ? 'Analysiere…' : 'Analysieren'}
           </button>
         )}
@@ -952,7 +952,7 @@ function RelatedRail({ lead, navigate, refreshKey, analysis, analyzeLoading, onA
             <span style={{ flex:1 }}>{enrichMsg.text}</span>
             {enrichMsg.action && (
               <button type="button" onClick={() => navigate(enrichMsg.action.to)}
-                style={{ ...ghostBtnStyle, height:24, padding:'0 8px', fontSize:11 }}>
+                className="lk-btn lk-btn-ghost" style={{ height:24, padding:'0 8px', fontSize:11 }}>
                 {enrichMsg.action.label}
               </button>
             )}
@@ -961,7 +961,7 @@ function RelatedRail({ lead, navigate, refreshKey, analysis, analyzeLoading, onA
 
         {canEnrich ? (
           <button type="button" onClick={onEnrich} disabled={enrichLoading}
-            style={{ ...secondaryBtnStyle, width:'100%', justifyContent:'center', opacity: enrichLoading ? 0.6 : 1 }}>
+            className="lk-btn lk-btn-ghost" style={{ width:'100%', justifyContent:'center', opacity: enrichLoading ? 0.6 : 1 }}>
             {enrichLoading ? <Loader2 size={14} className="lk-spin" /> : <IcLinkedin size={14} />}
             {enrichLoading ? 'Reichere an…' : 'Mit LinkedIn anreichern'}
           </button>
@@ -1559,7 +1559,7 @@ function TasksTab({ leadId, leadTeamId, onMutated }) {
           </div>
           <div style={{ flex: 1, minWidth: 12 }} />
           <button type="button"
-            style={{ ...primaryBtnStyle, opacity: (adding || !title.trim()) ? 0.5 : 1, cursor: (adding || !title.trim()) ? 'not-allowed' : 'pointer' }}
+            className="lk-btn lk-btn-navy" style={{ opacity: (adding || !title.trim()) ? 0.5 : 1, cursor: (adding || !title.trim()) ? 'not-allowed' : 'pointer' }}
             onClick={submit} disabled={adding || !title.trim()}>
             <Plus size={15} /> {adding ? 'Speichere…' : 'Aufgabe anlegen'}
           </button>

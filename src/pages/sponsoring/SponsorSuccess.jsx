@@ -88,7 +88,7 @@ export default function SponsorSuccess() {
         title="Sponsor Success"
         subtitle="Health-Score je Vertrag aus Aktivierung, KI-Sichtbarkeit, Signalen und Status. Niedriger Score oder baldiges Vertragsende = Renewal-Risiko."
         action={
-          <button onClick={recompute} disabled={busy} style={{ ...primaryBtn, opacity: busy ? 0.6 : 1 }}>
+          <button onClick={recompute} disabled={busy} className="lk-btn lk-btn-navy" style={{ opacity: busy ? 0.6 : 1 }}>
             {busy ? <Loader2 size={14} className="spin" /> : <RefreshCw size={14} />} Health neu berechnen
           </button>
         }

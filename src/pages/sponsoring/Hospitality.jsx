@@ -155,7 +155,7 @@ export default function Hospitality() {
         <Field label="Spieltag"><input value={aForm.matchday} onChange={(e) => setAForm({ ...aForm, matchday: e.target.value })} placeholder="z.B. Spieltag 12" style={input} /></Field>
         <Field label="Spieltag-Kapazität"><input type="number" min="0" value={aForm.matchday_capacity} onChange={(e) => setAForm({ ...aForm, matchday_capacity: e.target.value })} placeholder="(opt.)" style={input} /></Field>
         <Field label="Zusatz-Kapazität"><input type="number" min="0" value={aForm.extra_capacity} onChange={(e) => setAForm({ ...aForm, extra_capacity: e.target.value })} placeholder="0" style={input} /></Field>
-        <button type="submit" disabled={busy || !aForm.name.trim()} style={{ ...primaryBtn, gridColumn: '1 / -1', justifySelf: 'start', opacity: busy || !aForm.name.trim() ? 0.6 : 1 }}>
+        <button type="submit" disabled={busy || !aForm.name.trim()} className="lk-btn lk-btn-navy" style={{ gridColumn: '1 / -1', justifySelf: 'start', opacity: busy || !aForm.name.trim() ? 0.6 : 1 }}>
           {busy ? <Loader2 size={14} className="spin" /> : <Plus size={14} />} Anlegen
         </button>
       </form>
@@ -205,7 +205,7 @@ export default function Hospitality() {
                         <input type="checkbox" checked={!!a.extra_capacity_approved} onChange={() => toggleApproved(a)} />
                         Zusatzkapazität freigegeben
                       </label>
-                      <label style={{ ...secondaryBtn, cursor: uploadingId === a.id ? 'default' : 'pointer', opacity: uploadingId === a.id ? 0.6 : 1 }}>
+                      <label className="lk-btn lk-btn-ghost" style={{ cursor: uploadingId === a.id ? 'default' : 'pointer', opacity: uploadingId === a.id ? 0.6 : 1 }}>
                         {uploadingId === a.id ? <Loader2 size={14} className="spin" /> : <ImageIcon size={14} />}
                         {a.image_path ? 'Bild ersetzen' : 'Bild hochladen'}
                         <input type="file" accept="image/*" style={{ display: 'none' }} disabled={uploadingId === a.id}

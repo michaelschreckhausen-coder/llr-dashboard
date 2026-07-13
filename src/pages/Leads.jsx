@@ -904,7 +904,7 @@ export default function Leads() {
       </div>
       <button type="button" onClick={toggleDash}
         title={showDash ? 'Dashboard ausblenden' : 'Dashboard einblenden'}
-        style={{ ...ghostBtnStyle, height:34 }}>
+        className="lk-btn lk-btn-ghost" style={{ height:34 }}>
         {showDash ? <ChevronUp size={15}/> : <ChevronDown size={15}/>} Dashboard
       </button>
       <div style={searchWrapStyle}>
@@ -1419,12 +1419,12 @@ export default function Leads() {
                       {pageStartIdx + 1}–{Math.min(pageStartIdx + pageSize, filteredLeads.length)} von {filteredLeads.length}
                     </span>
                     <button type="button" onClick={() => setPage(p => Math.max(1, p - 1))} disabled={pageClamped <= 1}
-                      style={{ ...ghostBtnStyle, padding:'6px 12px', opacity: pageClamped <= 1 ? 0.45 : 1, cursor: pageClamped <= 1 ? 'default' : 'pointer' }}>
+                      className="lk-btn lk-btn-ghost" style={{ padding:'6px 12px', opacity: pageClamped <= 1 ? 0.45 : 1, cursor: pageClamped <= 1 ? 'default' : 'pointer' }}>
                       Zurück
                     </button>
                     <span style={{ fontSize:12, color: COLORS.textSecondary, fontVariantNumeric:'tabular-nums' }}>Seite {pageClamped} / {totalPages}</span>
                     <button type="button" onClick={() => setPage(p => Math.min(totalPages, p + 1))} disabled={pageClamped >= totalPages}
-                      style={{ ...ghostBtnStyle, padding:'6px 12px', opacity: pageClamped >= totalPages ? 0.45 : 1, cursor: pageClamped >= totalPages ? 'default' : 'pointer' }}>
+                      className="lk-btn lk-btn-ghost" style={{ padding:'6px 12px', opacity: pageClamped >= totalPages ? 0.45 : 1, cursor: pageClamped >= totalPages ? 'default' : 'pointer' }}>
                       Weiter
                     </button>
                   </div>

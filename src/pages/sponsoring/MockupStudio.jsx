@@ -196,7 +196,7 @@ export default function MockupStudio() {
           </label>
         </Field>
         <button type="submit" disabled={tplBusy || !tplForm.name.trim() || !tplFile}
-                style={{ ...primaryBtn, opacity: tplBusy || !tplForm.name.trim() || !tplFile ? 0.6 : 1 }}>
+                className="lk-btn lk-btn-navy" style={{ opacity: tplBusy || !tplForm.name.trim() || !tplFile ? 0.6 : 1 }}>
           {tplBusy ? <Loader2 size={14} className="spin" /> : <Plus size={14} />} Werbefläche anlegen
         </button>
       </form>
@@ -253,7 +253,7 @@ export default function MockupStudio() {
           </Field>
         </div>
         <button type="submit" disabled={mockBusy || !mockForm.stadium_template_id || !logoFile}
-                style={{ ...primaryBtn, opacity: mockBusy || !mockForm.stadium_template_id || !logoFile ? 0.6 : 1 }}>
+                className="lk-btn lk-btn-navy" style={{ opacity: mockBusy || !mockForm.stadium_template_id || !logoFile ? 0.6 : 1 }}>
           {mockBusy ? <Loader2 size={14} className="spin" /> : <Wand2 size={14} />}
           {mockBusy ? 'Generiere…' : 'Mockup generieren'}
         </button>

@@ -95,7 +95,7 @@ export default function Pakete() {
       <form onSubmit={createPackage} style={{ display: 'grid', gridTemplateColumns: '2fr 1fr auto', gap: 10, alignItems: 'end', ...card, marginBottom: 22 }}>
         <Field label="Name der Ebene"><input value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} placeholder="z.B. Gold" style={input} /></Field>
         <Field label="Ebene ab Euro (€, optional)"><input type="number" min="0" step="0.01" value={form.price} onChange={(e) => setForm({ ...form, price: e.target.value })} placeholder="leer = Listenwert" style={input} /></Field>
-        <button type="submit" disabled={busy || !form.name.trim()} style={{ ...primaryBtn, opacity: busy || !form.name.trim() ? 0.6 : 1 }}>
+        <button type="submit" disabled={busy || !form.name.trim()} className="lk-btn lk-btn-navy" style={{ opacity: busy || !form.name.trim() ? 0.6 : 1 }}>
           {busy ? <Loader2 size={14} className="spin" /> : <Plus size={14} />} Anlegen
         </button>
       </form>
