@@ -1106,16 +1106,10 @@ function NewCampaignWizard({
         >
           <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fill, minmax(280px, 1fr))', gap:12 }}>
             {quickTemplates.map(t => (
-              <button key={t.id} onClick={() => pickTemplate(t)}
-                onMouseEnter={e => { e.currentTarget.style.borderColor = PRIMARY_VAR; e.currentTarget.style.transform = 'translateY(-1px)'; e.currentTarget.style.boxShadow = '0 4px 16px rgba(10,111,176,0.10)' }}
-                onMouseLeave={e => { e.currentTarget.style.borderColor = 'var(--border, #E5E7EB)'; e.currentTarget.style.transform = 'translateY(0)'; e.currentTarget.style.boxShadow = '0 1px 2px rgba(15,23,42,.04)' }}
-                style={{
-                  textAlign:'left', cursor:'pointer', padding:'16px 18px',
-                  borderRadius:12, border:'1.5px solid var(--border, #E5E7EB)',
-                  background:'var(--surface, #fff)', display:'flex', flexDirection:'column', gap:10,
-                  boxShadow:'0 1px 2px rgba(15,23,42,.04)',
-                  transition:'all .15s ease',
-                }}>
+              <button className="lk-btn lk-btn-ghost" key={t.id} onClick={() => pickTemplate(t)}
+                
+                
+                style={{ textAlign:'left', display:'flex', flexDirection:'column', gap:10 }}>
                 <div style={{ display:'flex', alignItems:'center', gap:10 }}>
                   <span style={{ width:36, height:36, borderRadius:10, background:'rgba(10,111,176,0.10)', display:'inline-flex', alignItems:'center', justifyContent:'center', color:PRIMARY_VAR }}>
                     <t.Icon size={17} />

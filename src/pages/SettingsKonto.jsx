@@ -380,15 +380,10 @@ export default function SettingsKonto() {
             </div>
           </div>
           {isActive && entitlements.plan_managed_by === 'stripe' && (
-            <button
+            <button className="lk-btn lk-btn-ghost"
               onClick={handlePortal}
               disabled={portalLoading}
-              style={{
-                padding: '10px 18px', borderRadius: 10, fontSize: 13, fontWeight: 700,
-                background: '#fff', color: PRIMARY, border: `1.5px solid ${PRIMARY}`,
-                cursor: portalLoading ? 'default' : 'pointer', letterSpacing: '-0.01em',
-                opacity: portalLoading ? 0.6 : 1, whiteSpace: 'nowrap',
-              }}
+              style={{ letterSpacing: '-0.01em', opacity: portalLoading ? 0.6 : 1, whiteSpace: 'nowrap' }}
             >
               {portalLoading ? 'Wird geöffnet…' : 'Abo verwalten →'}
             </button>

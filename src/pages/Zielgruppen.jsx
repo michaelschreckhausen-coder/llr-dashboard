@@ -250,8 +250,8 @@ function QuickSetup({ session, onDone, onSkip, onBack }) {
               style={{ opacity:(prefilling||(!importedText && !importData.linkedin_template_url))?.5:1, display:'inline-flex', alignItems:'center', gap:8, fontFamily:'inherit' }}>
               {prefilling ? <span style={{display:'inline-flex',alignItems:'center',gap:6}}><Loader2 size={14} className="lk-spin"/>Analysiere…</span> : <span style={{display:'inline-flex',alignItems:'center',gap:6}}><Sparkles size={14}/>Automatisch befüllen</span>}
             </button>
-            <button onClick={() => setStep(1)} disabled={prefilling}
-              style={{ padding:'11px 20px', background:'var(--surface)', border:'1.5px solid var(--border)', borderRadius:10, fontSize:13.5, fontWeight:500, cursor:prefilling?'not-allowed':'pointer', color:'var(--text-primary)', fontFamily:'inherit', display:'inline-flex', alignItems:'center', gap:6 }}>
+            <button className="lk-btn lk-btn-ghost" onClick={() => setStep(1)} disabled={prefilling}
+              style={{ fontFamily:'inherit', display:'inline-flex', alignItems:'center', gap:6 }}>
               <span>Manuell ausfüllen</span><span>→</span>
             </button>
           </div>
@@ -552,8 +552,8 @@ export default function Zielgruppen({ session }) {
           <div style={{ fontSize:12, color:'var(--text-muted)', marginTop:2 }}>Definiere dein LinkedIn-Zielpublikum</div>
         </div>
         <div style={{ display:'flex', alignItems:'center', gap:8, flexShrink:0 }}>
-          <button type="button" onClick={()=>setShowVisibilityModal(true)} title="Sichtbarkeit anpassen"
-            style={{ padding:'10px 16px', background:'var(--surface, #fff)', color:'var(--text-primary)', border:'1.5px solid var(--border)', borderRadius:10, fontSize:13, fontWeight:600, cursor:'pointer', display:'inline-flex', alignItems:'center', gap:7, fontFamily:'inherit' }}>
+          <button className="lk-btn lk-btn-ghost" type="button" onClick={()=>setShowVisibilityModal(true)} title="Sichtbarkeit anpassen"
+            style={{ display:'inline-flex', alignItems:'center', gap:7, fontFamily:'inherit' }}>
             <Eye size={15} strokeWidth={1.75}/><span>{edit.is_shared ? 'Geteilt' : 'Sichtbarkeit'}</span>
           </button>
           <button onClick={save} style={{ padding:'11px 22px', background:P, color:'#fff', border:'none', borderRadius:10, fontSize:13.5, fontWeight:600, cursor:'pointer', boxShadow:'0 2px 10px rgba(10,111,176,.25)', display:'inline-flex', alignItems:'center', gap:8, fontFamily:'inherit' }}>

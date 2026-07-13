@@ -453,7 +453,7 @@ export default function LinkedInAutomationNeu({ session }) {
               )}
               <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
                 <button style={ghostBtn} onClick={() => setDeleteModal(null)}>Abbrechen</button>
-                <button style={{ ...primaryBtn, background: '#DC2626' }} onClick={deleteCampaign}><Trash2 size={14} /> Endgültig löschen</button>
+                <button className="lk-btn lk-btn-danger" style={{ ...primaryBtn }} onClick={deleteCampaign}><Trash2 size={14} /> Endgültig löschen</button>
               </div>
             </div>
           </div>

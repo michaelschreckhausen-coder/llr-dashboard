@@ -1481,7 +1481,7 @@ export default function BrandVoice({ session, brandType = 'personal' }) {
                   {(v.brand_background || v.personality) && <div style={{ fontSize:12, color:'#666', lineHeight:1.4 }}>{(v.brand_background || v.personality).slice(0,180)}{(v.brand_background || v.personality).length>180?'…':''}</div>}
                 </div>
                 <div style={{ display:'flex', flexDirection:'column', gap:6, marginLeft:12 }}>
-                  <button onClick={()=>{ setEdit(v); setView('editor'); setTab('marke') }} style={{ padding:'6px 14px', borderRadius:8, border:'1.5px solid #dde3ea', background:'var(--surface)', fontSize:12, cursor:'pointer' }}>Bearbeiten</button>
+                  <button className="lk-btn lk-btn-ghost" onClick={()=>{ setEdit(v); setView('editor'); setTab('marke') }} >Bearbeiten</button>
                   {team && v.user_id === uid && <button onClick={() => setSharingModalFor(v)}
                     style={{ padding:'6px 14px', borderRadius:8, border:'1.5px solid #dde3ea', background:v.is_shared?'rgba(16,185,129,0.08)':'#fff', fontSize:12, cursor:'pointer' }}>
                     {v.is_shared ? `${team.name}` : 'Sichtbarkeit'}
@@ -1569,8 +1569,8 @@ export default function BrandVoice({ session, brandType = 'personal' }) {
           <div style={{ fontSize:12, color:'var(--text-muted)', marginTop:2 }}>{editIsCompany ? 'Markenstimme des Unternehmens — für Page-Content, Profiltexte und Visuals' : 'Persönlicher Kommunikationsstil für alle LinkedIn-Inhalte'}</div>
         </div>
         <div style={{ display:'flex', alignItems:'center', gap:8, flexShrink:0 }}>
-          <button type="button" onClick={()=>setShowVisibilityModal(true)} title="Sichtbarkeit anpassen"
-            style={{ padding:'10px 16px', background:'var(--surface, #fff)', color:'var(--text-primary)', border:'1.5px solid var(--border)', borderRadius:10, fontSize:13, fontWeight:600, cursor:'pointer', display:'inline-flex', alignItems:'center', gap:7, fontFamily:'inherit' }}>
+          <button className="lk-btn lk-btn-ghost" type="button" onClick={()=>setShowVisibilityModal(true)} title="Sichtbarkeit anpassen"
+            style={{ display:'inline-flex', alignItems:'center', gap:7, fontFamily:'inherit' }}>
             <Eye size={15} strokeWidth={1.75}/><span>{edit.is_shared ? 'Geteilt' : 'Sichtbarkeit'}</span>
           </button>
           {!editIsCompany && (
@@ -1771,8 +1771,8 @@ export default function BrandVoice({ session, brandType = 'personal' }) {
                     </div>
                   </div>
                   <div style={{ display:'flex', gap:8 }}>
-                    <button type="button" onClick={connectLinkedIn} disabled={liConnecting}
-                      style={{ padding:'7px 14px', borderRadius:8, border:'1px solid #BBF7D0', background:'#fff', color:'#166534', fontSize:12, fontWeight:600, cursor: liConnecting?'wait':'pointer' }}>
+                    <button className="lk-btn lk-btn-ghost" type="button" onClick={connectLinkedIn} disabled={liConnecting}
+                      >
                       {liConnecting ? <span style={{display:'inline-flex',alignItems:'center',gap:6}}><Loader2 size={12} className="lk-spin"/>Prüfe…</span> : 'Erneut verbinden'}
                     </button>
                     <button className="lk-btn lk-btn-ghost" type="button" onClick={disconnectLinkedIn} >

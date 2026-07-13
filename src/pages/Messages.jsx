@@ -482,8 +482,8 @@ export default function Messages({ session }) {
           </p>
         </div>
         <div style={{ display:'flex', alignItems:'center', gap:8, flexWrap:'wrap' }}>
-          <button onClick={() => setShowHistory(h => !h)}
-            style={{ display:'flex', alignItems:'center', gap:6, padding:'7px 14px', borderRadius:8, border:'1px solid var(--border)', background:'var(--surface)', fontSize:12, fontWeight:600, color:'#475569', cursor:'pointer' }}>
+          <button className="lk-btn lk-btn-ghost" onClick={() => setShowHistory(h => !h)}
+            style={{ display:'flex', alignItems:'center', gap:6 }}>
             <span style={{display:'inline-flex',alignItems:'center',gap:6}}><Clock size={13} strokeWidth={1.75}/>Verlauf ({history.length})</span>
           </button>
         </div>

@@ -591,8 +591,8 @@ export default function LinkedInInbox() {
               </div>
             )}
             <div style={{ display: 'flex', gap: 10, justifyContent: 'flex-end', marginTop: 6 }}>
-              <button onClick={() => setDeleteBulkModal(null)} disabled={busy} style={{ border: `1px solid ${border}`, background: 'var(--surface)', color: muted, borderRadius: 10, padding: '9px 16px', fontSize: 13, fontWeight: 600, cursor: 'pointer' }}>Abbrechen</button>
-              <button onClick={confirmBulkDelete} disabled={busy || deleteBulkModal.checking} style={{ border: 'none', background: '#DC2626', color: '#fff', borderRadius: 10, padding: '9px 18px', fontSize: 13, fontWeight: 700, cursor: (busy || deleteBulkModal.checking) ? 'not-allowed' : 'pointer', opacity: (busy || deleteBulkModal.checking) ? 0.6 : 1, display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+              <button className="lk-btn lk-btn-ghost" onClick={() => setDeleteBulkModal(null)} disabled={busy} >Abbrechen</button>
+              <button className="lk-btn lk-btn-danger" onClick={confirmBulkDelete} disabled={busy || deleteBulkModal.checking} style={{ opacity: (busy || deleteBulkModal.checking) ? 0.6 : 1, display: 'inline-flex', alignItems: 'center', gap: 6 }}>
                 {busy ? <Loader2 size={14} className="spin" /> : <Trash2 size={14} />} Endgültig löschen
               </button>
             </div>
@@ -619,8 +619,8 @@ export default function LinkedInInbox() {
               </div>
             )}
             <div style={{ display: 'flex', gap: 10, justifyContent: 'flex-end', marginTop: 6 }}>
-              <button onClick={() => setDeleteListModal(null)} style={{ border: `1px solid ${border}`, background: 'var(--surface)', color: muted, borderRadius: 10, padding: '9px 16px', fontSize: 13, fontWeight: 600, cursor: 'pointer' }}>Abbrechen</button>
-              <button onClick={confirmDeleteList} disabled={deleteListModal.checking} style={{ border: 'none', background: '#DC2626', color: '#fff', borderRadius: 10, padding: '9px 18px', fontSize: 13, fontWeight: 700, cursor: deleteListModal.checking ? 'not-allowed' : 'pointer', opacity: deleteListModal.checking ? 0.6 : 1, display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+              <button className="lk-btn lk-btn-ghost" onClick={() => setDeleteListModal(null)} >Abbrechen</button>
+              <button className="lk-btn lk-btn-danger" onClick={confirmDeleteList} disabled={deleteListModal.checking} style={{ opacity: deleteListModal.checking ? 0.6 : 1, display: 'inline-flex', alignItems: 'center', gap: 6 }}>
                 <Trash2 size={14} /> Liste löschen
               </button>
             </div>
@@ -672,7 +672,7 @@ function ListModal({ lists, count, busy, onClose, onConfirm }) {
         )}
 
         <div style={{ display: 'flex', gap: 10, marginTop: 20 }}>
-          <button onClick={onClose} style={{ flex: 1, padding: '10px 0', borderRadius: 10, border: `1px solid ${border}`, background: 'var(--surface)', color: muted, fontWeight: 600, fontSize: 13, cursor: 'pointer' }}>Abbrechen</button>
+          <button className="lk-btn lk-btn-ghost" onClick={onClose} style={{ flex: 1 }}>Abbrechen</button>
           <button className="lk-btn lk-btn-cta"
             onClick={() => onConfirm(mode === 'existing' ? { listId } : { newName, color })}
             disabled={busy || (mode === 'existing' ? !listId : !newName.trim())}

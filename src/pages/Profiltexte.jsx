@@ -1187,7 +1187,7 @@ REGELN (hart):
                     />
                     <div style={{display:'flex',justifyContent:'flex-end',marginTop:6}}>
                       {!allRefineHOpen && (
-                        <button onClick={()=>setAllRefineHOpen(true)} style={{padding:'4px 10px',background:'#fff',color:P,border:'1px solid '+P,borderRadius:6,fontSize:11,fontWeight:600,cursor:'pointer'}}>
+                        <button className="lk-btn lk-btn-ghost" onClick={()=>setAllRefineHOpen(true)} >
                           ✎ Nachbessern
                         </button>
                       )}
@@ -1227,7 +1227,7 @@ REGELN (hart):
                     />
                     <div style={{display:'flex',justifyContent:'flex-end',marginTop:6}}>
                       {!allRefineAOpen && (
-                        <button onClick={()=>setAllRefineAOpen(true)} style={{padding:'4px 10px',background:'#fff',color:P,border:'1px solid '+P,borderRadius:6,fontSize:11,fontWeight:600,cursor:'pointer'}}>
+                        <button className="lk-btn lk-btn-ghost" onClick={()=>setAllRefineAOpen(true)} >
                           ✎ Nachbessern
                         </button>
                       )}
@@ -1267,7 +1267,7 @@ REGELN (hart):
                     />
                     <div style={{display:'flex',justifyContent:'flex-end',marginTop:6}}>
                       {!allRefinePOpen && (
-                        <button onClick={()=>setAllRefinePOpen(true)} style={{padding:'4px 10px',background:'#fff',color:P,border:'1px solid '+P,borderRadius:6,fontSize:11,fontWeight:600,cursor:'pointer'}}>
+                        <button className="lk-btn lk-btn-ghost" onClick={()=>setAllRefinePOpen(true)} >
                           ✎ Nachbessern
                         </button>
                       )}
