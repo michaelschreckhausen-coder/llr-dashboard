@@ -64,7 +64,7 @@ export default function AsanaCallback() {
 
   return (
     <div style={{ minHeight:'70vh', display:'flex', alignItems:'center', justifyContent:'center', padding:24 }}>
-      <div style={{ maxWidth:420, width:'100%', textAlign:'center', padding:'32px 28px', background:'var(--surface)', border:'1px solid var(--border)', borderRadius:16, boxShadow:'var(--shadow-card)', boxShadow:'0 4px 20px rgba(0,0,0,.05)' }}>
+      <div style={{ maxWidth:420, width:'100%', textAlign:'center', padding:'32px 28px', background:'var(--surface)', border:'1px solid var(--border)', borderRadius:16, boxShadow:'var(--shadow-card)' }}>
         {status === 'processing' && (
           <>
             <div style={{ fontSize:42, marginBottom:14 }}>🗂️</div>
