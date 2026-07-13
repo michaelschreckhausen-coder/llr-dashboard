@@ -1806,8 +1806,8 @@ Neue Anfrage: "${p}"` },
                 ) : openPicker.type === 'design' ? (
                   <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fill, minmax(120px,1fr))', gap:10 }}>
                     {pickerItems.map(it => (
-                      <button key={it.id} onClick={() => pickerSelectItem(it)} title={it.title || 'Design'}
-                        style={{ display:'flex', flexDirection:'column', gap:5, padding:0, border:'1px solid var(--border,#E9ECF2)', borderRadius:10, background:'#fff', cursor:'pointer', fontFamily:'inherit', overflow:'hidden', textAlign:'left' }}>
+                      <button className="lk-btn lk-btn-ghost" key={it.id} onClick={() => pickerSelectItem(it)} title={it.title || 'Design'}
+                        style={{ display:'flex', flexDirection:'column', gap:5, fontFamily:'inherit', overflow:'hidden', textAlign:'left' }}>
                         <div style={{ width:'100%', aspectRatio:'1 / 1', background:'#f4f6fa center/cover no-repeat' + (it.signed_url ? ` url(${it.signed_url})` : '') }}/>
                         <div style={{ padding:'7px 9px 9px', fontSize:12, fontWeight:600, color:'var(--text-primary)', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{it.title || 'Design'}</div>
                       </button>
@@ -1829,8 +1829,8 @@ Neue Anfrage: "${p}"` },
                 <>
                   {pickerChats.length > 0 && !pickerShowOther && (
                     <>
-                      <button onClick={() => pickerOpenWith(pickerChats[0].id)}
-                        style={{ width:'100%', display:'flex', alignItems:'center', gap:8, padding:'11px 12px', borderRadius:10, border:'none', background:'var(--wl-primary, #0A6FB0)', color:'#fff', fontSize:13, fontWeight:700, cursor:'pointer', fontFamily:'inherit', marginBottom:10 }}>
+                      <button className="lk-btn lk-btn-navy" onClick={() => pickerOpenWith(pickerChats[0].id)}
+                        style={{ width:'100%', display:'flex', alignItems:'center', gap:8, fontFamily:'inherit', marginBottom:10 }}>
                         <MessageSquare size={15} strokeWidth={2}/><span style={{ minWidth:0, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>Letzter Chat · {pickerChats[0].title || 'Chat'}</span>
                       </button>
                       <div style={{ fontSize:10.5, fontWeight:700, color:'var(--text-soft,#98a2b3)', textTransform:'uppercase', letterSpacing:'0.06em', padding:'2px 2px 6px' }}>Zugeordnete Chats</div>
@@ -2357,8 +2357,8 @@ function ModelDropdown({ value, onChange }) {
   }, [open])
   return (
     <div ref={ref} style={{ position:'relative', display:'inline-block' }}>
-      <button type="button" onClick={() => setOpen(o => !o)} title="Bildmodell"
-        style={{ height:34, padding:'0 11px', borderRadius:9, boxSizing:'border-box', border:'1.5px solid var(--border)', background:'#fff', color:'var(--text-primary)', fontSize:12.5, fontWeight:600, lineHeight:1, cursor:'pointer', whiteSpace:'nowrap', display:'inline-flex', alignItems:'center', gap:6, fontFamily:'inherit', flexShrink:0, maxWidth:210 }}>
+      <button className="lk-btn lk-btn-ghost" type="button" onClick={() => setOpen(o => !o)} title="Bildmodell"
+        style={{ boxSizing:'border-box', lineHeight:1, whiteSpace:'nowrap', display:'inline-flex', alignItems:'center', gap:6, fontFamily:'inherit', flexShrink:0, maxWidth:210 }}>
         <span style={{ flex:1, minWidth:0, overflow:'hidden', textOverflow:'ellipsis', textAlign:'left' }}>{imageModelName(value)}</span>
         <ChevronDown size={14} strokeWidth={2} style={{ opacity:0.5, marginLeft:2, flexShrink:0 }}/>
       </button>
@@ -2398,8 +2398,8 @@ function CountDropdown({ value = 'auto', onChange = () => {} }) {
   const cur = IMAGE_COUNT_OPTS.find(o => o.v === value) || IMAGE_COUNT_OPTS[0]
   return (
     <div ref={ref} style={{ position:'relative', display:'inline-block' }}>
-      <Tip label="Anzahl der Bilder"><button type="button" onClick={() => setOpen(o => !o)}
-        style={{ height:34, padding:'0 11px', borderRadius:9, boxSizing:'border-box', border:'1.5px solid var(--border)', background:'#fff', color:'var(--text-primary)', fontSize:12.5, fontWeight:600, lineHeight:1, cursor:'pointer', whiteSpace:'nowrap', display:'inline-flex', alignItems:'center', gap:6, fontFamily:'inherit', flexShrink:0 }}>
+      <Tip label="Anzahl der Bilder"><button className="lk-btn lk-btn-ghost" type="button" onClick={() => setOpen(o => !o)}
+        style={{ boxSizing:'border-box', lineHeight:1, whiteSpace:'nowrap', display:'inline-flex', alignItems:'center', gap:6, fontFamily:'inherit', flexShrink:0 }}>
         <span>{value === 'auto' ? 'Anzahl: Auto' : cur.label}</span>
         <ChevronDown size={14} strokeWidth={2} style={{ opacity:0.5, marginLeft:2, flexShrink:0 }}/>
       </button></Tip>
