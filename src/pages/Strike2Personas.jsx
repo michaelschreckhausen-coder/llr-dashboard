@@ -114,7 +114,7 @@ export default function Strike2Personas() {
           {personas.map((p) => {
             const gen = GEN_STATUS[p.generation_status]
             return (
-              <div key={p.id} style={{ border: '1.5px solid var(--border)', borderRadius: 12, padding: 16, background: 'var(--surface)', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12 }}>
+              <div key={p.id} style={{ border: '1px solid var(--border)', borderRadius: 16, padding: 18, background: 'var(--surface)', boxShadow:'var(--shadow-card)', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12 }}>
                 <div style={{ minWidth: 0 }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4 }}>
                     <span style={{ fontSize: 14, fontWeight: 600 }}>{p.name}</span>

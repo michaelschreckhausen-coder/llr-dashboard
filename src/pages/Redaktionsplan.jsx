@@ -174,8 +174,7 @@ function TagPicker({ tags = [], selTagIds = [], onToggle, onRename, onPersist, o
               </div>
             )
           })}
-          <button type="button" onClick={onAddTag}
-            style={{ width:'100%', marginTop:4, display:'inline-flex', alignItems:'center', justifyContent:'center', gap:6, height:32, borderRadius:8, cursor:'pointer', fontFamily:'inherit', fontSize:12, fontWeight:600, border:'1px dashed var(--border)', background:'#fff', color:'var(--text-secondary,#475467)' }}>
+          <button type="button" onClick={onAddTag} className="lk-btn lk-btn-ghost lk-btn-sm" style={{ width:'100%', marginTop:4 }}>
             <Plus size={14} strokeWidth={2} />Tag hinzufügen
           </button>
         </div>
@@ -1007,8 +1006,7 @@ function PostModal({ post, onClose, onSave, onDelete, session, activeTeamId, mem
                 /* Has-Text: nur Text-verbessern-Button oben rechts im Textfeld */
                 <div style={{ position:'absolute', top:8, right:10, display:'flex', gap:6, zIndex:2 }}>
                   <button type="button" onClick={() => jumpToTextStudio('improve')}
-                    title="Text in der Content-Werkstatt verbessern"
-                    style={{ padding:'5px 10px', borderRadius:7, border:'1.5px solid rgba(10,111,176,0.25)', background:'rgba(10,111,176,0.06)', color:'var(--wl-primary, #0A6FB0)', fontSize:11, fontWeight:700, cursor:'pointer', display:'inline-flex', alignItems:'center', gap:4, whiteSpace:'nowrap' }}>
+                    title="Text in der Content-Werkstatt verbessern" className="lk-btn lk-btn-ghost lk-btn-sm">
                     <span style={{display:'inline-flex',alignItems:'center',gap:6}}><Wand2 size={13}/>Text verbessern</span>
                   </button>
                 </div>

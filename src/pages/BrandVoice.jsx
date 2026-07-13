@@ -1466,7 +1466,7 @@ export default function BrandVoice({ session, brandType = 'personal' }) {
         const myVoices     = voices.filter(v => v.user_id === uid)
         const sharedVoices = voices.filter(v => v.user_id !== uid)
         const renderCard = (v) => (
-            <div key={v.id} style={{ background:'var(--surface)', borderRadius:16, border: v.id === activeBrandVoice?.id ? `2px solid ${P}` : '1px solid var(--border)', padding:18, boxShadow:'var(--shadow-card)' }}>
+            <div key={v.id} style={{ background:'var(--surface)', borderRadius:16, border:'1px solid var(--border)', padding:18, boxShadow:'var(--shadow-card)' }}>
               <div style={{ display:'flex', justifyContent:'space-between', alignItems:'flex-start' }}>
                 <div style={{ flex:1 }}>
                   <div style={{ display:'flex', alignItems:'center', gap:8, marginBottom:4 }}>

@@ -457,7 +457,7 @@ export default function Wissensdatenbank({ session }) {
         const myItems     = filtered.filter(v => v.user_id === session.user.id)
         const sharedItems = filtered.filter(v => v.user_id !== session.user.id)
         const renderRow = (v) => { const cat=catInfo(v.category); return (
-            <div key={v.id} style={{background:'var(--surface)',borderRadius:10,border:'1.5px solid #e8ecf0',padding:'12px 16px',display:'flex',alignItems:'center',gap:12,cursor:'pointer'}} onClick={()=>{setEdit(v);setView('editor')}}>
+            <div key={v.id} style={{background:'var(--surface)',borderRadius:12,border:'1px solid var(--border)',padding:'12px 16px',display:'flex',alignItems:'center',gap:12,cursor:'pointer',boxShadow:'var(--shadow-card)'}} onClick={()=>{setEdit(v);setView('editor')}}>
               <div style={{fontSize:20,width:36,height:36,display:'flex',alignItems:'center',justifyContent:'center',background:'#f8f9fa',borderRadius:8}}>{cat.icon}</div>
               <div style={{flex:1}}>
                 <div style={{display:'flex',alignItems:'center',gap:6}}>
