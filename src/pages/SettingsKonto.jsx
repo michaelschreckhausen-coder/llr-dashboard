@@ -420,7 +420,7 @@ export default function SettingsKonto() {
             {['monthly', 'yearly'].map(p => (
               <button key={p} onClick={() => setBilling(p)} disabled={!!pendingPlan} style={{
                 padding: '6px 14px', border: 'none', borderRadius: 99, fontSize: 12, fontWeight: 700,
-                background: billing === p ? PRIMARY : 'transparent',
+                background: billing === p ? 'var(--primary)' : 'transparent',
                 color: billing === p ? '#fff' : 'var(--text-primary)',
                 cursor: pendingPlan ? 'default' : 'pointer', transition: 'all 0.2s', letterSpacing: '-0.01em',
                 opacity: pendingPlan ? 0.5 : 1,
@@ -477,7 +477,7 @@ export default function SettingsKonto() {
 
               return (
                 <div key={plan.id} style={{
-                  background: highlighted ? PRIMARY : 'var(--surface)',
+                  background: highlighted ? 'var(--primary)' : 'var(--surface)',
                   color: highlighted ? '#fff' : 'var(--text-strong)',
                   border: highlighted ? 'none' : '1.5px solid var(--border)',
                   borderRadius: 14, padding: '20px 18px', position: 'relative',
@@ -540,7 +540,7 @@ export default function SettingsKonto() {
                       href={`mailto:${CONTACT_EMAIL}?subject=${encodeURIComponent(`Plan-Anfrage: ${plan.name}`)}`}
                       style={{
                         padding: '10px 14px', borderRadius: 10, textAlign: 'center', fontSize: 13, fontWeight: 700,
-                        background: highlighted ? '#fff' : PRIMARY,
+                        background: highlighted ? '#fff' : 'var(--primary)',
                         color: highlighted ? PRIMARY : '#fff',
                         border: 'none', letterSpacing: '-0.01em',
                         textDecoration: 'none', display: 'block',

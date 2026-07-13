@@ -85,7 +85,7 @@ const sendBtnStyle = (disabled) => ({
   padding: '9px 14px',
   borderRadius: 10,
   border: 'none',
-  background: disabled ? '#CBD5E1' : PRIMARY,
+  background: disabled ? '#CBD5E1' : 'var(--primary)',
   color: '#fff',
   fontSize: 13, fontWeight: 700,
   cursor: disabled ? 'not-allowed' : 'pointer',
@@ -93,7 +93,7 @@ const sendBtnStyle = (disabled) => ({
 
 const bubbleStyle = (role) => ({
   alignSelf: role === 'user' ? 'flex-end' : 'flex-start',
-  background: role === 'user' ? PRIMARY : '#fff',
+  background: role === 'user' ? 'var(--primary)' : '#fff',
   color: role === 'user' ? '#fff' : 'var(--text-primary, #101828)',
   borderRadius: 12,
   padding: '12px 14px',
@@ -216,7 +216,7 @@ function TypingDots() {
   return (
     <div style={{ alignSelf: 'flex-start', display: 'flex', alignItems: 'center', gap: 6, padding: '12px 14px', background: '#fff', border: '1px solid var(--border, #E4E7EC)', borderRadius: 12, width: 'fit-content' }}>
       {[0, 0.2, 0.4].map((d, i) => (
-        <span key={i} style={{ width: 7, height: 7, borderRadius: '50%', background: PRIMARY, animation: 'tw-blink 1.4s infinite ease-in-out', animationDelay: d + 's' }} />
+        <span key={i} style={{ width: 7, height: 7, borderRadius: '50%', background: 'var(--primary)', animation: 'tw-blink 1.4s infinite ease-in-out', animationDelay: d + 's' }} />
       ))}
       <style>{`@keyframes tw-blink { 0%, 80%, 100% { opacity: 0.2; } 40% { opacity: 1; } }`}</style>
     </div>
@@ -225,7 +225,7 @@ function TypingDots() {
 
 const convItemBase = { width: '100%', textAlign: 'left', border: 'none', cursor: 'pointer', borderRadius: 8, padding: '8px 10px', fontSize: 12.5, fontFamily: 'inherit', display: 'block', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', marginBottom: 2 };
 const convItem = (active) => ({ ...convItemBase, background: active ? '#EFF3FF' : 'transparent', color: active ? PRIMARY : 'var(--text-muted, #475467)', fontWeight: active ? 700 : 500 });
-const convItemNew = { ...convItemBase, background: PRIMARY, color: '#fff', fontWeight: 700, textAlign: 'center' };
+const convItemNew = { ...convItemBase, background: 'var(--primary)', color: '#fff', fontWeight: 700, textAlign: 'center' };
 
 export default function LeadlyPanel({ leadly, onClose, embedded = false, hideHeader = false }) {
   const nav = useNavigate();

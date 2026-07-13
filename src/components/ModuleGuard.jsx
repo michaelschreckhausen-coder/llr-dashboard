@@ -67,7 +67,7 @@ export default function ModuleGuard({ module: moduleKey, children }) {
           style={{
             padding: '10px 24px',
             borderRadius: 999,
-            background: PRIMARY,
+            background: 'var(--primary)',
             color: '#fff',
             fontSize: 14,
             fontWeight: 700,

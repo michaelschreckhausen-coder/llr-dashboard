@@ -217,7 +217,7 @@ function ToggleSwitch({ enabled, onClick, disabled }) {
       aria-label={enabled ? 'Abmelden' : 'Anmelden'}
       style={{
         width: 44, height: 24, borderRadius: 999, border: 'none', padding: 0,
-        background: enabled ? PRIMARY : '#cbd5e1',
+        background: enabled ? 'var(--primary)' : '#cbd5e1',
         position: 'relative', cursor: disabled ? 'wait' : 'pointer',
         transition: 'background 0.15s',
         opacity: disabled ? 0.6 : 1,

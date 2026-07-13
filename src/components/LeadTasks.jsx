@@ -181,7 +181,7 @@ export default function LeadTasks({ leadId, teamId, session, members = [] }) {
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 14 }}>
         <div style={{ fontSize: 13, fontWeight: 700, color: '#374151' }}>
           Aufgaben
-          {open.length > 0 && <span style={{ marginLeft: 6, fontSize: 11, background: PRIMARY, color: '#fff', borderRadius: 99, padding: '1px 7px', fontWeight: 700 }}>{open.length}</span>}
+          {open.length > 0 && <span style={{ marginLeft: 6, fontSize: 11, background: 'var(--primary)', color: '#fff', borderRadius: 99, padding: '1px 7px', fontWeight: 700 }}>{open.length}</span>}
         </div>
         {!showForm && (
           <button className="lk-btn lk-btn-cta" onClick={() => setShowForm(true)}

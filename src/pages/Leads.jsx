@@ -112,7 +112,7 @@ const searchWrapStyle = { position:'relative' };
 const searchInputStyle = { width:200, padding:'7px 12px 7px 32px', fontSize:13, border:'1.5px solid #E4E7EC', borderRadius:10, background:'var(--surface)', outline:'none' };
 const searchIconStyle = { position:'absolute', left:10, top:'50%', transform:'translateY(-50%)', color:'#9CA3AF' };
 const iconBtnStyle = { width:34, height:34, border:'1.5px solid #E4E7EC', background:'var(--surface)', borderRadius:10, display:'flex', alignItems:'center', justifyContent:'center', color:'#6B7280', cursor:'pointer' };
-const primaryBtnStyle = { padding:'9px 18px', background: PRIMARY, color:'#fff', border:'none', borderRadius:10, fontSize:13, fontWeight:700, display:'inline-flex', alignItems:'center', gap:6, cursor:'pointer' };
+const primaryBtnStyle = { padding:'9px 18px', background: 'var(--primary)', color:'#fff', border:'none', borderRadius:10, fontSize:13, fontWeight:700, display:'inline-flex', alignItems:'center', gap:6, cursor:'pointer' };
 const ghostBtnStyle = { padding:'7px 12px', background:'var(--surface)', color:'#374151', border:'1.5px solid #E4E7EC', borderRadius:10, fontSize:12, fontWeight:600, display:'inline-flex', alignItems:'center', gap:6, cursor:'pointer' };
 const kpisRowStyle = { display:'grid', gridTemplateColumns:'repeat(4, 1fr)', gap:12, marginBottom:20 };
 const filtersBarStyle = { display:'flex', alignItems:'center', justifyContent:'space-between', gap:12, flexWrap:'wrap', marginBottom:16 };
@@ -121,7 +121,7 @@ const toggleGroupStyle = { display:'inline-flex', background:'#F3F4F6', borderRa
 const toggleBtnStyle = { height:30, padding:'0 14px', fontSize:13, background:'transparent', border:'none', color:'#6B7280', display:'flex', alignItems:'center', gap:6, borderRadius:8, cursor:'pointer', fontWeight:600 };
 const toggleBtnActiveStyle = { ...toggleBtnStyle, background:'var(--surface)', color:'#111827', boxShadow:'0 1px 2px rgba(0,0,0,0.05)' };
 const filterChipStyle = { padding:'7px 12px', fontSize:12, border:'1.5px solid #E4E7EC', borderRadius:20, background:'var(--surface)', color:'#374151', display:'inline-flex', alignItems:'center', gap:6, cursor:'pointer', fontWeight:600 };
-const filterChipActiveStyle = { ...filterChipStyle, background: PRIMARY, color:'#fff', borderColor: PRIMARY };
+const filterChipActiveStyle = { ...filterChipStyle, background: 'var(--primary)', color:'#fff', borderColor: PRIMARY };
 const contentStyle = { display:'flex', flexDirection:'column', gap:0 };
 const dividerStyle = { width:1, height:20, background:'#E4E7EC', margin:'0 4px' };
 
@@ -1409,7 +1409,7 @@ export default function Leads() {
                           padding:'5px 11px', borderRadius:8, fontSize:12, fontWeight: pageSize===n ? 700 : 500,
                           cursor:'pointer',
                           border:`1.5px solid ${pageSize===n ? PRIMARY : '#E4E7EC'}`,
-                          background: pageSize===n ? PRIMARY : 'var(--surface)',
+                          background: pageSize===n ? 'var(--primary)' : 'var(--surface)',
                           color: pageSize===n ? '#fff' : COLORS.textSecondary,
                         }}>{n}</button>
                     ))}

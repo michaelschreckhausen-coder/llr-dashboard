@@ -70,7 +70,7 @@ export default function SettingsExtension() {
                 display:'inline-flex', alignItems:'center', justifyContent:'center', gap:8,
                 padding:'10px 18px', borderRadius:10, fontSize:13, fontWeight:700,
                 textDecoration:'none',
-                background: status.installed ? 'transparent' : PRIMARY,
+                background: status.installed ? 'transparent' : 'var(--primary)',
                 color: status.installed ? PRIMARY : '#fff',
                 border: '1px solid '+(status.installed ? PRIMARY : 'transparent'),
                 whiteSpace:'nowrap',

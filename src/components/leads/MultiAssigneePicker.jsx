@@ -66,7 +66,7 @@ export default function MultiAssigneePicker({ value = [], onChange, members = []
     }
     const letter = (memberLabel(m)[0] || '?').toUpperCase();
     return (
-      <div style={{ width: 18, height: 18, borderRadius: '50%', background: PRIMARY, color: '#fff', fontSize: 9, fontWeight: 800, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+      <div style={{ width: 18, height: 18, borderRadius: '50%', background: 'var(--primary)', color: '#fff', fontSize: 9, fontWeight: 800, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
         {letter}
       </div>
     );

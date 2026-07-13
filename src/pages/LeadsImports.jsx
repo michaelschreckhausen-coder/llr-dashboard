@@ -154,7 +154,7 @@ export default function LeadsImports() {
               Der Import über die Chrome-Extension funktioniert weiterhin. Für die volle Nutzung in Leadesk
               aktiviere das Addon im Marketplace — kostenfrei bis {addonFreeUntilLabel(ADDON_SLUG)}.
             </p>
-            <Link to="/marketplace" style={{ display: 'inline-block', background: PRIMARY, color: '#fff', textDecoration: 'none', fontWeight: 600, fontSize: 13, padding: '8px 16px', borderRadius: 9 }}>
+            <Link to="/marketplace" style={{ display: 'inline-block', background: 'var(--primary)', color: '#fff', textDecoration: 'none', fontWeight: 600, fontSize: 13, padding: '8px 16px', borderRadius: 9 }}>
               Im Marketplace aktivieren →
             </Link>
           </div>

@@ -259,7 +259,7 @@ export default function Aufgaben({ session }) {
               style={{
                 padding: '6px 12px', borderRadius: 20, border: '1.5px solid',
                 borderColor: statusFilter === f.id ? PRIMARY : '#E5E7EB',
-                background: statusFilter === f.id ? PRIMARY : '#fff',
+                background: statusFilter === f.id ? 'var(--primary)' : '#fff',
                 color: statusFilter === f.id ? '#fff' : '#374151',
                 fontSize: 12, fontWeight: 600, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 5, transition: 'all 0.15s',
               }}>
@@ -365,7 +365,7 @@ export default function Aufgaben({ session }) {
                               onMouseLeave={e => { e.currentTarget.style.borderColor = '#E4E7EC'; e.currentTarget.style.color = '#374151' }}>
                               {task.related.leadAvatar
                                 ? <img src={task.related.leadAvatar} style={{ width: 16, height: 16, borderRadius: '50%', objectFit: 'cover' }} alt=""/>
-                                : <div style={{ width: 16, height: 16, borderRadius: '50%', background: PRIMARY, display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff', fontSize: 8, fontWeight: 800 }}>{(task.related.leadName?.[0] || '?').toUpperCase()}</div>}
+                                : <div style={{ width: 16, height: 16, borderRadius: '50%', background: 'var(--primary)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff', fontSize: 8, fontWeight: 800 }}>{(task.related.leadName?.[0] || '?').toUpperCase()}</div>}
                               {task.related.leadName}
                               {task.related.leadCompany && <span style={{ color: '#9CA3AF', fontWeight: 400 }}>· {task.related.leadCompany}</span>}
                             </button>

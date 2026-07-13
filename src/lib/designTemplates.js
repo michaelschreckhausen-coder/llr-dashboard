@@ -101,7 +101,7 @@ export const DESIGN_TEMPLATES = [
     desc: 'Webinar / Veranstaltung / Launch',
     aspect: '1:1',
     stage: { width: SQ, height: SQ },
-    background: PRIMARY,
+    background: 'var(--primary)',
     objects: [
       { type: 'text', x: 90, y: 150, width: 900, text: 'LIVE-EVENT',
         fontSize: 44, fontFamily: 'Inter', fill: 'rgba(255,255,255,0.8)', fontStyle: 'bold', align: 'left', rotation: 0, scaleX: 1, scaleY: 1 },
@@ -211,7 +211,7 @@ export const DESIGN_TEMPLATES = [
     desc: 'Engagement-Frage an die Community',
     aspect: '1:1',
     stage: { width: SQ, height: SQ },
-    background: PRIMARY,
+    background: 'var(--primary)',
     objects: [
       { type: 'text', x: 90, y: 160, width: 900, text: 'FRAGE DES TAGES',
         fontSize: 42, fontFamily: 'Inter', fill: 'rgba(255,255,255,0.8)', fontStyle: 'bold', align: 'left', rotation: 0, scaleX: 1, scaleY: 1 },

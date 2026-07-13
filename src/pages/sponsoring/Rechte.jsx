@@ -229,7 +229,7 @@ export default function Rechte() {
                     <td style={td}>
                       <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                         <div style={{ width: 90, height: 6, borderRadius: 999, background: 'var(--border)', overflow: 'hidden' }}>
-                          <div style={{ width: `${l?.utilization_pct || 0}%`, height: '100%', background: PRIMARY }} />
+                          <div style={{ width: `${l?.utilization_pct || 0}%`, height: '100%', background: 'var(--primary)' }} />
                         </div>
                         <span style={{ color: 'var(--text-muted)', fontSize: 12 }}>
                           {l ? `${l.sold_slots}/${l.total_slots}` : `0/${r.total_slots}`}
@@ -265,7 +265,7 @@ const input = {
 }
 const primaryBtn = {
   display: 'inline-flex', alignItems: 'center', gap: 6, padding: '9px 16px', borderRadius: 999,
-  border: 'none', background: PRIMARY, color: '#fff', fontSize: 13, fontWeight: 700, cursor: 'pointer', whiteSpace: 'nowrap',
+  border: 'none', background: 'var(--primary)', color: '#fff', fontSize: 13, fontWeight: 700, cursor: 'pointer', whiteSpace: 'nowrap',
 }
 const secondaryBtn = {
   display: 'inline-flex', alignItems: 'center', gap: 6, padding: '7px 14px', borderRadius: 999,

@@ -296,7 +296,7 @@ export default function DealDetail({ session }) {
           <span>Abschluss-Wahrscheinlichkeit</span><span>{deal.probability}%</span>
         </div>
         <div style={{ height: 7, background: '#F1F5F9', borderRadius: 99, overflow: 'hidden' }}>
-          <div style={{ height: '100%', width: `${deal.probability || 0}%`, background: deal.stage === 'gewonnen' ? '#059669' : deal.stage === 'verloren' ? '#DC2626' : PRIMARY, borderRadius: 99 }} />
+          <div style={{ height: '100%', width: `${deal.probability || 0}%`, background: deal.stage === 'gewonnen' ? '#059669' : deal.stage === 'verloren' ? '#DC2626' : 'var(--primary)', borderRadius: 99 }} />
         </div>
       </div>
 

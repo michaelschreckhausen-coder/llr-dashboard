@@ -91,7 +91,7 @@ const confirmBtnStyle = {
   padding: '6px 12px',
   fontSize: 12,
   fontWeight: 600,
-  background: PRIMARY,
+  background: 'var(--primary)',
   color: '#fff',
   border: 'none',
   borderRadius: 6,

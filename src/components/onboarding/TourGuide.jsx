@@ -117,7 +117,7 @@ export default function TourGuide({ onFinish }) {
           {TOUR_STEPS.map((_, i) => (
             <span key={i} style={{
               width: i === index ? 18 : 6, height: 6, borderRadius: 99,
-              background: i === index ? PRIMARY : 'var(--border)',
+              background: i === index ? 'var(--primary)' : 'var(--border)',
               transition: 'all 0.2s ease',
             }} />
           ))}
@@ -146,6 +146,6 @@ const btnBase = {
   borderRadius: 10, cursor: 'pointer', padding: '9px 14px',
   transition: 'all 0.15s ease',
 }
-const btnPrimary = { ...btnBase, border: 'none', background: PRIMARY, color: '#fff' }
+const btnPrimary = { ...btnBase, border: 'none', background: 'var(--primary)', color: '#fff' }
 const btnSecondary = { ...btnBase, border: '1px solid var(--border)', background: 'transparent', color: 'var(--text-primary)' }
 const btnGhost = { ...btnBase, border: 'none', background: 'transparent', color: 'var(--text-muted)', padding: '9px 4px' }

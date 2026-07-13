@@ -145,7 +145,7 @@ function TagPicker({ tags = [], selTagIds = [], onToggle, onRename, onPersist, o
   }
   return (
     <div ref={ref} style={{ position:'relative' }}>
-      <button className="lk-btn lk-btn-ghost" ref={btnRef} type="button" onClick={openMenu}
+      <button className="lk-dd-trigger" ref={btnRef} type="button" onClick={openMenu}
         style={{ width:'100%', minHeight:40, fontFamily:'inherit', display:'flex', alignItems:'center', gap:6, boxSizing:'border-box' }}>
         {selected.length === 0
           ? <span style={{ fontSize:13, color:'var(--text-muted)', flex:1, textAlign:'left' }}>Tags wählen…</span>
@@ -232,7 +232,7 @@ function DateTimePicker({ value = '', onChange = () => {} }) {
   const label = vp ? (vp.toLocaleString('de-DE', { day:'2-digit', month:'short', year:'numeric', hour:'2-digit', minute:'2-digit' }) + ' Uhr') : ''
   return (
     <div ref={ref} style={{ position:'relative' }}>
-      <button className="lk-btn lk-btn-ghost" ref={btnRef} type="button" onClick={openMenu}
+      <button className="lk-dd-trigger" ref={btnRef} type="button" onClick={openMenu}
         style={{ width:'100%', minHeight:40, fontFamily:'inherit', display:'flex', alignItems:'center', gap:8, boxSizing:'border-box' }}>
         <Calendar size={14} strokeWidth={1.9} style={{ color:'var(--text-muted)', flexShrink:0 }}/>
         <span style={{ flex:1, minWidth:0, textAlign:'left', fontSize:13, color: vp ? 'var(--text-primary)' : 'var(--text-muted)', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{label || 'Datum & Uhrzeit'}</span>
@@ -2299,9 +2299,8 @@ Danke für den Austausch! 🤝`,
           )}
 
           {/* Brainstorm Button (Primary CTA) */}
-          <button data-tour-id="rp-brainstorm" onClick={() => setShowBrainstorm(true)}
-            style={{ padding:'8px 14px', borderRadius:10, border:'1.5px solid rgba(10,111,176,0.3)', background:'rgba(10,111,176,0.06)', color:'var(--wl-primary, #0A6FB0)',
-              fontSize:13, fontWeight:600, cursor:'pointer', display:'flex', alignItems:'center', gap:5, whiteSpace:'nowrap' }}>
+          <button data-tour-id="rp-brainstorm" className="lk-btn lk-btn-ghost" onClick={() => setShowBrainstorm(true)}
+            style={{ display:'flex', alignItems:'center', gap:5, whiteSpace:'nowrap' }}>
             <span style={{display:'inline-flex',alignItems:'center',gap:6}}><Brain size={13}/>Brainstormen</span>
           </button>
 

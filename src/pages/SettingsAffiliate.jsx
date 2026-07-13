@@ -11,7 +11,7 @@ const wrap = { width: '100%', maxWidth: 1100, margin: '0 auto', padding: '0 4px'
 const card = { background: 'var(--surface,#fff)', border: '1px solid var(--border,#E5E7EB)', borderRadius: 14, padding: 24 }
 const h1 = { fontSize: 22, fontWeight: 800, color: 'var(--text-strong,#111827)', margin: '0 0 6px' }
 const subline = { fontSize: 14, color: 'var(--text-soft,#6B7280)', margin: '0 0 20px' }
-const btnPrimary = { padding: '11px 22px', background: PRIMARY, color: '#fff', border: 'none', borderRadius: 10, fontSize: 14, fontWeight: 700, cursor: 'pointer' }
+const btnPrimary = { padding: '11px 22px', background: 'var(--primary)', color: '#fff', border: 'none', borderRadius: 10, fontSize: 14, fontWeight: 700, cursor: 'pointer' }
 const kpi = { flex: 1, minWidth: 150, background: 'var(--surface-soft,#F8FAFC)', borderRadius: 12, padding: 16, textAlign: 'center' }
 
 export default function SettingsAffiliate() {

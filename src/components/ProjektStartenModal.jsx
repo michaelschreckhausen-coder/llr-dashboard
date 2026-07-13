@@ -323,7 +323,7 @@ const inpStyle = {
 
 const btnPrimaryStyle = {
   padding:'9px 18px', borderRadius:8, border:'none',
-  background:PRIMARY, color:'#fff',
+  background:'var(--primary)', color:'#fff',
   fontSize:13, fontWeight:700, cursor:'pointer'
 }
 

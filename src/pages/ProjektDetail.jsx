@@ -245,7 +245,7 @@ function TabBoard({ project }) {
       </div>
       <Link to="/projekte" style={{
         display:'inline-block', padding:'10px 20px', borderRadius:8,
-        background:PRIMARY, color:'#fff', textDecoration:'none',
+        background:'var(--primary)', color:'#fff', textDecoration:'none',
         fontSize:13, fontWeight:700
       }}>
         → Zur Board-Übersicht

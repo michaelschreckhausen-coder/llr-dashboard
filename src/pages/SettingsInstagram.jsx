@@ -84,7 +84,7 @@ export default function SettingsInstagram() {
   const card = { background: C.surface, border: `1px solid ${C.border}`, borderRadius: 16, padding: '22px 24px' }
   const btnPrimary = (extra = {}) => ({
     display: 'flex', alignItems: 'center', gap: 7, padding: '10px 18px', borderRadius: 9,
-    border: 'none', background: PRIMARY, color: '#fff', fontSize: 14, fontWeight: 700,
+    border: 'none', background: 'var(--primary)', color: '#fff', fontSize: 14, fontWeight: 700,
     cursor: busy ? 'default' : 'pointer', opacity: busy ? 0.6 : 1, ...extra,
   })
 

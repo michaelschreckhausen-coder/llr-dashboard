@@ -65,12 +65,12 @@ export default function Assistent() {
         {messages.map((m, i) => (
           <div key={i} style={{ display: 'flex', gap: 10, flexDirection: m.role === 'user' ? 'row-reverse' : 'row' }}>
             <div style={{ flexShrink: 0, width: 30, height: 30, borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center',
-              background: m.role === 'user' ? PRIMARY : 'var(--surface-muted, #F1F5F9)', color: m.role === 'user' ? '#fff' : PRIMARY }}>
+              background: m.role === 'user' ? 'var(--primary)' : 'var(--surface-muted, #F1F5F9)', color: m.role === 'user' ? '#fff' : PRIMARY }}>
               {m.role === 'user' ? <User size={16} /> : <Bot size={16} />}
             </div>
             <div style={{
               maxWidth: '78%', padding: '10px 14px', borderRadius: 14, fontSize: 14, lineHeight: 1.6, whiteSpace: 'pre-wrap',
-              background: m.role === 'user' ? PRIMARY : 'var(--surface)', color: m.role === 'user' ? '#fff' : 'var(--text-strong)',
+              background: m.role === 'user' ? 'var(--primary)' : 'var(--surface)', color: m.role === 'user' ? '#fff' : 'var(--text-strong)',
               border: m.role === 'user' ? 'none' : '1px solid var(--border)',
             }}>
               {m.content}
@@ -97,6 +97,6 @@ export default function Assistent() {
 }
 
 const inputStyle = { flex: 1, padding: '11px 14px', borderRadius: 999, border: '1px solid var(--border)', background: 'var(--surface)', color: 'var(--text-strong)', fontSize: 14, boxSizing: 'border-box' }
-const primaryBtn = { display: 'inline-flex', alignItems: 'center', justifyContent: 'center', width: 46, height: 46, borderRadius: '50%', border: 'none', background: PRIMARY, color: '#fff', cursor: 'pointer' }
+const primaryBtn = { display: 'inline-flex', alignItems: 'center', justifyContent: 'center', width: 46, height: 46, borderRadius: '50%', border: 'none', background: 'var(--primary)', color: '#fff', cursor: 'pointer' }
 const chip = { fontSize: 13, fontWeight: 500, color: 'var(--text-strong)', background: 'var(--surface)', border: '1px solid var(--border)', padding: '8px 14px', borderRadius: 999, cursor: 'pointer', textAlign: 'left' }
 const errBox = { padding: '10px 14px', borderRadius: 10, background: '#FEE2E2', color: '#991B1B', fontSize: 13, marginBottom: 12 }

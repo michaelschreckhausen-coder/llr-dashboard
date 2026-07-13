@@ -66,9 +66,9 @@ export default function CompanyMultiSelect({
           background: count ? 'rgba(10,111,176,0.06)' : 'var(--surface, #fff)',
           color: count ? P : 'var(--text-primary)', cursor:'pointer', fontFamily:'inherit', flexShrink:0, position:'relative', ...buttonStyle,
         } : {
-          display:'inline-flex', alignItems:'center', gap:8, padding:'9px 12px', borderRadius:10, minHeight:40, boxSizing:'border-box',
+          display:'inline-flex', alignItems:'center', gap:8, padding:'9px 12px', borderRadius:9, minHeight:40, boxSizing:'border-box',
           border:'1.5px solid var(--border)', background:'var(--surface, #fff)',
-          color:'var(--text-primary)', fontSize:13, fontWeight:600,
+          color: count ? 'var(--text-primary)' : 'var(--text-muted)', fontSize:13, fontWeight:600,
           cursor:'pointer', fontFamily:'inherit', ...buttonStyle,
         }}>
         {iconOnly && <Building2 size={16} strokeWidth={1.75}/>}

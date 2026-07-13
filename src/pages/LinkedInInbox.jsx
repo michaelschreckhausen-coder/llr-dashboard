@@ -394,7 +394,7 @@ export default function LinkedInInbox() {
         <div className="lk-eyebrow" style={{ fontSize:12, fontWeight:700, letterSpacing:'1.6px', textTransform:'uppercase', fontFamily:'Inter, sans-serif', color:'var(--primary, #003060)', marginBottom:6 }}>LinkedIn · Kontakte</div>
         <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
           <h1 style={{ fontSize: 26, fontWeight: 700, margin: 0, letterSpacing: '-0.3px', lineHeight: 1.2, color: 'var(--text-primary, rgb(20,20,43))' }}>Deine LinkedIn Kontakte.</h1>
-          {!loading && <span style={{ background: primary, color: '#fff', borderRadius: 99, padding: '2px 10px', fontSize: 13, fontWeight: 700 }}>{rows.length}</span>}
+          {!loading && <span style={{ background: 'var(--primary)', color: '#fff', borderRadius: 99, padding: '2px 10px', fontSize: 13, fontWeight: 700 }}>{rows.length}</span>}
           <button className="lk-btn lk-btn-cta" onClick={() => { setImportErr(null); setImportOpen(true) }}
             style={{ marginLeft: 'auto', display: 'inline-flex', alignItems: 'center', gap: 6 }}>
             <Plus size={15} /> Sales-Navigator-Suche importieren
@@ -472,16 +472,16 @@ export default function LinkedInInbox() {
             <input type="checkbox" checked={allSelected} onChange={toggleAll} /> Alle auswählen
           </label>
           <div style={{ marginLeft: 'auto', display: 'flex', gap: 8 }}>
-            <button onClick={() => setListOpen(true)} disabled={busy || selected.size === 0}
-              style={{ display: 'inline-flex', alignItems: 'center', gap: 8, background: card, color: selected.size ? primary : muted, border: `1.5px solid ${selected.size ? primary : border}`, borderRadius: 9, padding: '9px 16px', fontWeight: 700, fontSize: 14, cursor: selected.size ? 'pointer' : 'default' }}>
+            <button className="lk-btn lk-btn-ghost" onClick={() => setListOpen(true)} disabled={busy || selected.size === 0}
+              style={{ gap: 8 }}>
               <ListChecks size={15} /> Zu Liste{selected.size ? ` (${selected.size})` : ''}
             </button>
-            <button onClick={promoteSelected} disabled={busy || selected.size === 0}
-              style={{ display: 'inline-flex', alignItems: 'center', gap: 8, background: selected.size ? primary : 'var(--border)', color: '#fff', border: 'none', borderRadius: 9, padding: '9px 16px', fontWeight: 700, fontSize: 14, cursor: selected.size ? 'pointer' : 'default' }}>
+            <button className="lk-btn lk-btn-navy" onClick={promoteSelected} disabled={busy || selected.size === 0}
+              style={{ gap: 8 }}>
               {busy ? <Loader2 size={15} className="spin" /> : <UserPlus size={15} />} In CRM übernehmen{selected.size ? ` (${selected.size})` : ''}
             </button>
-            <button onClick={openBulkDelete} disabled={busy || selected.size === 0}
-              style={{ display: 'inline-flex', alignItems: 'center', gap: 8, background: card, color: selected.size ? '#DC2626' : muted, border: `1.5px solid ${selected.size ? '#FECACA' : border}`, borderRadius: 9, padding: '9px 16px', fontWeight: 700, fontSize: 14, cursor: selected.size ? 'pointer' : 'default' }}>
+            <button className="lk-btn lk-btn-danger" onClick={openBulkDelete} disabled={busy || selected.size === 0}
+              style={{ gap: 8 }}>
               <Trash2 size={15} /> Löschen{selected.size ? ` (${selected.size})` : ''}
             </button>
           </div>
@@ -526,8 +526,8 @@ export default function LinkedInInbox() {
                     <Check size={14} /> {inCrm ? 'Zusammenführen' : 'In CRM übernehmen'}
                   </button>
                 )}
-                <button onClick={() => dismiss(row)} disabled={busy} title="Verwerfen"
-                  style={{ display: 'inline-flex', alignItems: 'center', background: 'none', color: muted, border: `1px solid ${border}`, borderRadius: 8, padding: 8, cursor: 'pointer', flexShrink: 0 }}>
+                <button className="lk-btn lk-btn-ghost" onClick={() => dismiss(row)} disabled={busy} title="Verwerfen"
+                  style={{ padding: 8, flexShrink: 0 }}>
                   <X size={14} />
                 </button>
               </div>

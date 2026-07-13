@@ -41,7 +41,7 @@ const h1Style = { fontSize: 22, fontWeight: 800, color: 'var(--text-strong)', ma
 const subStyle = { fontSize: 13, color: 'var(--text-muted)', marginTop: 4 }
 const labelStyle = { display: 'block', fontSize: 11, fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.07em', marginBottom: 6 }
 const inp = { width: '100%', padding: '10px 12px', border: '1.5px solid var(--border, #E4E7EC)', borderRadius: 9, fontSize: 14, outline: 'none', background: 'var(--surface)', boxSizing: 'border-box' }
-const btnPrimary = (busy) => ({ padding: '10px 20px', borderRadius: 10, border: 'none', background: busy ? '#E4E7EC' : PRIMARY, color: busy ? '#9CA3AF' : '#fff', fontSize: 13, fontWeight: 700, cursor: busy ? 'default' : 'pointer' })
+const btnPrimary = (busy) => ({ padding: '10px 20px', borderRadius: 10, border: 'none', background: busy ? '#E4E7EC' : 'var(--primary)', color: busy ? '#9CA3AF' : '#fff', fontSize: 13, fontWeight: 700, cursor: busy ? 'default' : 'pointer' })
 const btnGhost = (color = PRIMARY) => ({ padding: '8px 14px', borderRadius: 9, border: `1.5px solid ${color}`, background: 'var(--surface)', color, fontSize: 12.5, fontWeight: 700, cursor: 'pointer' })
 
 export default function Auralis() {

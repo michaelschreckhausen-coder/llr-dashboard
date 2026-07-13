@@ -368,7 +368,7 @@ const modalBtnGhostStyle = {
 };
 const modalBtnPrimaryStyle = {
   padding: '8px 16px', fontSize: 13, fontWeight: 600,
-  background: PRIMARY, color: '#fff', border: 'none', borderRadius: 8,
+  background: 'var(--primary)', color: '#fff', border: 'none', borderRadius: 8,
   cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: 5,
   font: 'inherit',
 };
