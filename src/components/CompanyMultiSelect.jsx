@@ -68,7 +68,7 @@ export default function CompanyMultiSelect({
         } : {
           display:'inline-flex', alignItems:'center', gap:8, padding:'9px 12px', borderRadius:10, minHeight:40, boxSizing:'border-box',
           border:'1.5px solid var(--border)', background:'var(--surface, #fff)',
-          color:'var(--text-primary)', fontSize:13, fontWeight:400,
+          color:'var(--text-primary)', fontSize:13, fontWeight:600,
           cursor:'pointer', fontFamily:'inherit', ...buttonStyle,
         }}>
         {iconOnly && <Building2 size={16} strokeWidth={1.75}/>}

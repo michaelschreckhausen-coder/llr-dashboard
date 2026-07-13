@@ -1719,11 +1719,11 @@ function PostModal({ post, onClose, onSave, onDelete, session, activeTeamId, mem
             return (
               <>
                 {!isNew && (
-                  <button onClick={() => { if (window.confirm('Beitrag löschen?')) onDelete(post.id) }} style={ghost}>
+                  <button onClick={() => { if (window.confirm('Beitrag löschen?')) onDelete(post.id) }} className="lk-btn lk-btn-ghost">
                     <Trash2 size={14} strokeWidth={1.75}/>Löschen
                   </button>
                 )}
-                <button onClick={onClose} style={ghost}>
+                <button onClick={onClose} className="lk-btn lk-btn-ghost">
                   <X size={14} strokeWidth={1.75}/>Abbrechen
                 </button>
                 {!isNew && (
@@ -1739,7 +1739,7 @@ function PostModal({ post, onClose, onSave, onDelete, session, activeTeamId, mem
                       scheduled_at: null,
                     }).select().single()
                     if (dup) { onSave(dup); }
-                  }} style={ghost}>
+                  }} className="lk-btn lk-btn-ghost">
                     <Copy size={14} strokeWidth={1.75}/>Duplizieren
                   </button>
                 )}
