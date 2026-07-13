@@ -131,7 +131,8 @@ async function enrichCompany(sb: any, conn: any, identifier: string) {
   const row = {
     identifier,
     name: c?.name ?? null,
-    industry: c?.industry ?? null,
+    // industry kommt teils als Array (["Plastics Manufacturing"]) -> erstes Element als Text.
+    industry: Array.isArray(c?.industry) ? (c.industry[0] ?? null) : (c?.industry ?? null),
     employee_count: c?.employee_count ?? c?.staff_count ?? null,
     website: c?.website ?? null,
     hq_location: c?.headquarters ?? c?.location ?? null,

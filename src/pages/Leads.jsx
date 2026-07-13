@@ -279,6 +279,8 @@ export default function Leads() {
   // F6 Bulk-Anreicherung
   const [enrichBusy,     setEnrichBusy]     = useState(false);
   const [enrichProgress, setEnrichProgress] = useState(null); // { done, total }
+  const [enrichResult,   setEnrichResult]   = useState(null); // { done, capped, rateLimited, skipped:[{name,reason}], failed:[{name,reason}] }
+  const [enrichConfirm,  setEnrichConfirm]  = useState(null); // { candidates:[{id,name}], skipped, capped } — In-App-Bestätigung vor dem Feuern
   // Dashboard-Block (KPIs + Grafiken) ein-/ausblendbar — persistiert in localStorage
   const [showDash, setShowDash] = useState(() => { try { return localStorage.getItem('leadesk_leads_dashboard') !== '0'; } catch { return true; } });
   const toggleDash = () => setShowDash(v => { const n = !v; try { localStorage.setItem('leadesk_leads_dashboard', n ? '1' : '0'); } catch {} return n; });
@@ -636,48 +638,74 @@ export default function Leads() {
   // Nur Leads MIT linkedin_url, Dedup gegen bereits angereicherte (enriched_at),
   // Cap 25/Durchlauf, ~400ms Pause gegen Rate-Limit, Abbruch bei 429.
   const ENRICH_CAP = 25;
-  const bulkEnrich = useCallback(async () => {
+  // Prepare: Filter VOR dem Deckel, Skip-Gründe erfassen, dann In-App-Bestätigung
+  // (statt window.confirm -> blockiert die Browser-Automation nicht).
+  const bulkEnrich = useCallback(() => {
     if (selectedIds.size === 0 || enrichBusy) return;
     const selected = leads.filter(l => selectedIds.has(l.id));
-    // Kandidaten: linkedin_url vorhanden UND noch nicht angereichert.
-    let candidates = selected.filter(l => l.linkedin_url && !l.enriched_at);
+    const leadName = (l) => l.name || `${l.first_name || ''} ${l.last_name || ''}`.trim() || 'Kontakt';
+
+    const skipped = [];
+    let candidates = [];
+    for (const l of selected) {
+      if (!l.linkedin_url) { skipped.push({ name: leadName(l), reason: 'keine LinkedIn-URL' }); continue; }
+      if (l.enriched_at)   { skipped.push({ name: leadName(l), reason: 'bereits angereichert' }); continue; }
+      candidates.push({ id: l.id, name: leadName(l) });
+    }
     if (candidates.length === 0) {
-      alert('Keine anzureichernden Kontakte in der Auswahl (LinkedIn-URL fehlt oder bereits angereichert).');
+      setEnrichResult({ done: 0, capped: 0, rateLimited: false, skipped, failed: [] });
       return;
     }
-    let capNote = '';
-    if (candidates.length > ENRICH_CAP) {
+    let capped = 0;
+    if (candidates.length > ENRICH_CAP) {  // Deckel NACH dem Filter
+      capped = candidates.length - ENRICH_CAP;
       candidates = candidates.slice(0, ENRICH_CAP);
-      capNote = ` Es werden nur die ersten ${ENRICH_CAP} angereichert.`;
     }
-    if (!confirm(`${candidates.length} Kontakt(e) mit LinkedIn anreichern?${capNote}`)) return;
+    setEnrichConfirm({ candidates, skipped, capped });
+  }, [selectedIds, leads, enrichBusy]);
 
+  // Execute: sequenziell mit größerer Pause + einmaligem 429-Backoff-Retry.
+  const runBulkEnrich = useCallback(async ({ candidates, skipped, capped }) => {
+    setEnrichConfirm(null);
+    setEnrichResult(null);
     setEnrichBusy(true);
     setEnrichProgress({ done: 0, total: candidates.length });
-    let done = 0, failed = 0, rateLimited = false;
+    const PAUSE_MS = 1000;    // größere Pause — LinkedIn limitiert Profilabrufe hart
+    const BACKOFF_MS = 4000;  // einmaliger 429-Backoff-Retry vor Abbruch
+    let done = 0, rateLimited = false;
+    const failed = [];
     for (const l of candidates) {
-      const { data, error } = await supabase.functions.invoke('unipile-enrich', { body: { lead_id: l.id } });
-      if (error) {  // Fallstrick #12: error prüfen
-        const status = error.context?.status;
-        let body = null; try { body = await error.context?.json?.(); } catch { /* egal */ }
-        if (status === 429 || body?.rate_limited) { rateLimited = true; break; }  // Rate-Limit → Rest abbrechen
-        failed++;
-      } else if (data?.error) {
-        failed++;
-      } else {
-        done++;
+      let attempt = 0, ok = false, reason = 'Fehler';
+      while (attempt < 2 && !ok) {
+        const { data, error } = await supabase.functions.invoke('unipile-enrich', { body: { lead_id: l.id } });
+        if (error) {  // Fallstrick #12
+          const status = error.context?.status;
+          let body = null; try { body = await error.context?.json?.(); } catch { /* egal */ }
+          if (status === 429 || body?.rate_limited) {
+            if (attempt === 0) { await new Promise(r => setTimeout(r, BACKOFF_MS)); attempt++; continue; }
+            rateLimited = true; reason = 'Rate-Limit'; break;
+          }
+          reason = body?.error
+            || (status === 409 ? 'kein aktiver Unipile-Account'
+              : status === 400 ? 'kein LinkedIn-Identifier ableitbar'
+              : status === 403 ? 'Automatisierung-Addon nicht aktiv'
+              : (error.message || 'Fehler'));
+          break;
+        }
+        if (data?.error) { reason = data.error; break; }
+        ok = true;
       }
-      setEnrichProgress({ done: done + failed, total: candidates.length });
-      await new Promise(r => setTimeout(r, 400));  // kleine Pause gegen Rate-Limit
+      if (ok) done++;
+      else failed.push({ name: l.name, reason });
+      setEnrichProgress({ done: done + failed.length, total: candidates.length });
+      if (rateLimited) break;
+      await new Promise(r => setTimeout(r, PAUSE_MS));
     }
     setEnrichBusy(false);
     setEnrichProgress(null);
     await refetch?.();
-    const msg = rateLimited
-      ? `Rate-Limit erreicht — ${done} angereichert, Rest bitte später.`
-      : `${done} angereichert${failed ? `, ${failed} fehlgeschlagen` : ''}.`;
-    alert(msg);
-  }, [selectedIds, leads, enrichBusy, refetch]);
+    setEnrichResult({ done, capped, rateLimited, skipped, failed });
+  }, [refetch]);
 
   // Sprint C/2 · Generic Bulk-Edit Apply-Handler
   // payload kommt aus BulkEditModal in einer von zwei Formen:
@@ -1267,6 +1295,68 @@ export default function Leads() {
             enrichBusy={enrichBusy}
             enrichProgress={enrichProgress}
           />
+        )}
+
+        {/* F6 · Inline-Ergebnis der Bulk-Anreicherung (ersetzt den blockierenden alert) */}
+        {enrichResult && (
+          <div style={{ margin:'0 0 12px', padding:'12px 16px', borderRadius:10, border:`0.5px solid ${COLORS.borderSubtle}`, background: COLORS.surface, fontSize:13, display:'flex', flexDirection:'column', gap:8 }}>
+            <div style={{ display:'flex', alignItems:'center', gap:10, flexWrap:'wrap' }}>
+              <IcLinkedin size={16} />
+              <strong>Anreicherung abgeschlossen</strong>
+              <span style={{ color:'#15803D' }}>{enrichResult.done} angereichert</span>
+              {enrichResult.skipped.length > 0 && <span style={{ color: COLORS.textTertiary }}>· {enrichResult.skipped.length} übersprungen</span>}
+              {enrichResult.failed.length > 0 && <span style={{ color:'#B91C1C' }}>· {enrichResult.failed.length} fehlgeschlagen</span>}
+              <div style={{ flex:1 }} />
+              <button type="button" onClick={() => setEnrichResult(null)} style={{ background:'none', border:'none', cursor:'pointer', color: COLORS.textTertiary, padding:2 }} aria-label="Schließen"><X size={16} /></button>
+            </div>
+            {enrichResult.rateLimited && (
+              <div style={{ color:'#B45309', background:'#FFFBEB', border:'0.5px solid #FDE68A', borderRadius:8, padding:'6px 10px' }}>
+                LinkedIn-Rate-Limit erreicht — Durchlauf gestoppt. Rest bitte später erneut anreichern.
+              </div>
+            )}
+            {enrichResult.capped > 0 && (
+              <div style={{ color: COLORS.textTertiary }}>{enrichResult.capped} weitere über dem Deckel ({ENRICH_CAP}/Durchlauf) — erneut auswählen für den nächsten Durchlauf.</div>
+            )}
+            {enrichResult.failed.length > 0 && (
+              <div>
+                <div style={{ fontWeight:600, marginBottom:2 }}>Fehlgeschlagen:</div>
+                {enrichResult.failed.slice(0, 12).map((f, i) => (
+                  <div key={i} style={{ color: COLORS.textSecondary }}>· {f.name} — {f.reason}</div>
+                ))}
+                {enrichResult.failed.length > 12 && <div style={{ color: COLORS.textTertiary }}>… und {enrichResult.failed.length - 12} weitere</div>}
+              </div>
+            )}
+            {enrichResult.skipped.length > 0 && (() => {
+              const noUrl = enrichResult.skipped.filter(s => s.reason === 'keine LinkedIn-URL').length;
+              const already = enrichResult.skipped.filter(s => s.reason === 'bereits angereichert').length;
+              return <div style={{ color: COLORS.textTertiary }}>Übersprungen: {noUrl} ohne LinkedIn-URL, {already} bereits angereichert.</div>;
+            })()}
+          </div>
+        )}
+
+        {/* F6 · In-App-Bestätigung vor der Bulk-Anreicherung (ersetzt window.confirm — automatisierbar) */}
+        {enrichConfirm && (
+          <div onClick={() => setEnrichConfirm(null)} style={{ position:'fixed', inset:0, background:'rgba(0,0,0,0.4)', display:'flex', alignItems:'center', justifyContent:'center', zIndex:1000 }}>
+            <div onClick={e => e.stopPropagation()} style={{ background: COLORS.surface, borderRadius:12, padding:'20px 22px', width:'min(420px, 92vw)', boxShadow:'0 8px 30px rgba(0,0,0,0.18)', display:'flex', flexDirection:'column', gap:12 }}>
+              <div style={{ display:'flex', alignItems:'center', gap:10 }}>
+                <IcLinkedin size={18} />
+                <strong style={{ fontSize:15 }}>Kontakte anreichern</strong>
+              </div>
+              <div style={{ fontSize:13, color: COLORS.textSecondary, lineHeight:1.5 }}>
+                <strong>{enrichConfirm.candidates.length}</strong> Kontakt(e) werden mit LinkedIn-Daten angereichert.
+                {enrichConfirm.skipped.length > 0 && <> {enrichConfirm.skipped.length} übersprungen (ohne URL / bereits angereichert).</>}
+                {enrichConfirm.capped > 0 && <> {enrichConfirm.capped} weitere über dem Deckel ({ENRICH_CAP}/Durchlauf).</>}
+              </div>
+              <div style={{ display:'flex', justifyContent:'flex-end', gap:8 }}>
+                <button type="button" onClick={() => setEnrichConfirm(null)}
+                  style={{ height:34, padding:'0 14px', borderRadius:8, border:`0.5px solid ${COLORS.borderSubtle}`, background: COLORS.surface, color: COLORS.textPrimary, fontSize:13, cursor:'pointer' }}>Abbrechen</button>
+                <button type="button" onClick={() => runBulkEnrich(enrichConfirm)}
+                  style={{ height:34, padding:'0 16px', borderRadius:8, border:'none', background:'var(--wl-primary, rgb(49,90,231))', color:'#fff', fontSize:13, fontWeight:700, cursor:'pointer', display:'inline-flex', alignItems:'center', gap:6 }}>
+                  <IcLinkedin size={14} /> Anreichern
+                </button>
+              </div>
+            </div>
+          </div>
         )}
 
         {/* Content */}
