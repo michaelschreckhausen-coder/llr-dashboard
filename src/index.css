@@ -417,14 +417,14 @@ main { padding: 24px !important; }
    ═══════════════════════════════════════════════════════════════ */
 
 .lk-btn{
-  display:inline-flex;align-items:center;justify-content:center;gap:8px;
-  font-family:'Inter',-apple-system,sans-serif;font-size:15px;font-weight:700;
-  letter-spacing:-0.005em;line-height:1.1;padding:10px 18px;border-radius:var(--radius-btn);
+  display:inline-flex;align-items:center;justify-content:center;gap:6px;
+  font-family:'Inter',-apple-system,sans-serif;font-size:13px;font-weight:700;
+  letter-spacing:-0.005em;line-height:1.1;padding:8px 15px;border-radius:var(--radius-btn);
   border:none;cursor:pointer;white-space:nowrap;text-decoration:none;
-  transition:transform .18s ease,box-shadow .18s ease,background .18s ease,border-color .18s ease,color .18s ease,filter .18s ease;
+  transition:transform .16s ease,box-shadow .16s ease,background .16s ease,border-color .16s ease,color .16s ease,filter .16s ease;
 }
-.lk-btn-lg{padding:13px 24px;font-size:16px;}
-.lk-btn-sm{padding:8px 14px;font-size:14px;}
+.lk-btn-lg{padding:11px 22px;font-size:14.5px;}
+.lk-btn-sm{padding:6px 12px;font-size:12px;}
 .lk-btn-block{width:100%;}
 .lk-btn-primary{background:var(--grad);color:#fff;box-shadow:0 8px 22px rgba(0,48,96,.22);}
 .lk-btn-primary:hover{transform:translateY(-2px);box-shadow:0 12px 30px rgba(10,111,176,.40);filter:saturate(1.1);}
