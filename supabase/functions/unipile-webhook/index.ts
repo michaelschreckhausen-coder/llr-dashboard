@@ -10,12 +10,17 @@ const SECRET = Deno.env.get("UNIPILE_WEBHOOK_SECRET")!;
 const UNIPILE_DSN = Deno.env.get("UNIPILE_DSN")!;
 const UNIPILE_KEY = Deno.env.get("UNIPILE_API_KEY")!;
 
-async function fetchPublicId(accountId: string): Promise<string | null> {
+// Account gegen Unipile VALIDIEREN: muss existieren (kein 404/Phantom), type=LINKEDIN, source-status=OK.
+// Gibt {slug, providerId} zurück ODER null (→ nicht persistieren, kein falsches "verbunden").
+async function validateAccount(accountId: string): Promise<{ slug: string | null; providerId: string | null } | null> {
   try {
     const r = await fetch(`https://${UNIPILE_DSN}/api/v1/accounts/${accountId}`, { headers: { "X-API-KEY": UNIPILE_KEY, "accept": "application/json" } });
-    if (!r.ok) return null;
+    if (!r.ok) return null;                         // 404 = Phantom-id
     const a = await r.json();
-    return a?.connection_params?.im?.publicIdentifier ?? null;
+    if (a?.type !== "LINKEDIN") return null;
+    if ((a?.sources?.[0]?.status) !== "OK") return null;
+    const im = a?.connection_params?.im || {};
+    return { slug: im.publicIdentifier ?? null, providerId: im.id ?? null };
   } catch { return null; }
 }
 
@@ -31,11 +36,23 @@ Deno.serve(async (req) => {
   if (evt?.name && evt?.account_id) {
     const { data: tm } = await db.from("team_members").select("team_id").eq("user_id", evt.name).limit(1).maybeSingle();
     if (tm?.team_id) {
-      const pub = await fetchPublicId(evt.account_id);
-      await db.from("unipile_accounts").upsert({
-        team_id: tm.team_id, user_id: evt.name, unipile_account_id: evt.account_id,
-        provider_public_id: pub, status: "OK", last_status_update: new Date().toISOString(),
-      }, { onConflict: "unipile_account_id" });
+      // HÄRTUNG: evt.account_id gegen Unipile validieren — Phantom/404/nicht-LINKEDIN/nicht-OK NICHT persistieren.
+      const v = await validateAccount(evt.account_id);
+      if (!v) {
+        console.warn(`[unipile-webhook] account_id ${evt.account_id} nicht validierbar (Phantom/404/nicht LINKEDIN/nicht OK) — NICHT persistiert`);
+      } else {
+        await db.from("unipile_accounts").upsert({
+          team_id: tm.team_id, user_id: evt.name, unipile_account_id: evt.account_id,
+          provider_public_id: v.slug, status: "OK", last_status_update: new Date().toISOString(),
+        }, { onConflict: "unipile_account_id" });
+        // Connect-Zeit-Sync in la_accounts (V2-Onboarding: Hosted-Auth → Builder sieht Account).
+        const { data: ex } = await db.from("la_accounts").select("id").eq("team_id", tm.team_id).eq("unipile_account_id", evt.account_id).maybeSingle();
+        if (ex) {
+          await db.from("la_accounts").update({ provider_id: v.providerId, public_identifier: v.slug, status: "connected", updated_at: new Date().toISOString() }).eq("id", ex.id);
+        } else {
+          await db.from("la_accounts").insert({ team_id: tm.team_id, unipile_account_id: evt.account_id, provider_id: v.providerId, public_identifier: v.slug, status: "connected", features: {} });
+        }
+      }
     }
   } else if (evt?.account_id && evt?.status) {
     // Status-Update (OK/CREDENTIALS/ERROR) für bestehende Zeile.

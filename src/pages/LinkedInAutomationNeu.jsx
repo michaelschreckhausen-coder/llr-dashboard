@@ -57,7 +57,7 @@ export default function LinkedInAutomationNeu({ session }) {
     if (!activeTeamId) return
     const [c, a, au, h, il] = await Promise.all([
       supabase.from('la_campaigns').select('*').eq('team_id', activeTeamId).order('created_at', { ascending: false }),
-      supabase.from('la_accounts').select('*').eq('team_id', activeTeamId),
+      supabase.from('la_accounts').select('*').eq('team_id', activeTeamId).eq('status', 'connected'),
       supabase.from('la_audiences').select('*').eq('team_id', activeTeamId).order('created_at', { ascending: false }),
       supabase.from('la_runner_health').select('*').maybeSingle(),
       supabase.from('inbox_lists').select('id, name').eq('team_id', activeTeamId).order('created_at', { ascending: true }),
