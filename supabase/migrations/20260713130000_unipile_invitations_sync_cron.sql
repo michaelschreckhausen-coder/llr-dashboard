@@ -1,0 +1,22 @@
+-- ============================================================================
+-- F5 · Invitations-Janitor — pg_cron-Job (Staging zuerst).
+-- ----------------------------------------------------------------------------
+-- Feuert /unipile-invitations-sync periodisch (~alle 6h). Der Worker (Weg A,
+-- reiner Janitor) reconciled accepted Invites -> leads.li_connection_status
+-- ='verbunden' und withdrawt veraltete pending-Invites (mit la_*-Ausschluss).
+-- KEIN Invite-Send (das macht Julians Greenfield-Runner).
+--
+-- GUC-Muster = Repo-Standard: app.supabase_functions_url enthält bereits
+-- .../functions/v1, Service-Key aus app.supabase_service_role_key.
+--
+-- BEWUSST AUSKOMMENTIERT — scharf erst NACH EF-Deploy per "los staging-apply".
+-- cron.schedule upsertet per jobname (idempotent).
+-- ============================================================================
+
+-- select cron.schedule('unipile-invitations-sync', '0 */6 * * *', $$
+--   select net.http_post(
+--     url     := current_setting('app.supabase_functions_url', true) || '/unipile-invitations-sync',
+--     headers := jsonb_build_object('Content-Type','application/json',
+--                  'Authorization','Bearer ' || current_setting('app.supabase_service_role_key', true)),
+--     body    := '{}'::jsonb
+--   ) $$);

@@ -2,7 +2,8 @@ import PillSelect from '../components/PillSelect'
 import React, { useEffect, useState, useCallback } from 'react'
 import {
   Check, Loader2, MessageSquare, Sparkles, Bot, Save, Download,
-  RefreshCw, Zap, Target, AlignLeft, Calendar, Flame, Users, TrendingUp, Clock
+  RefreshCw, Zap, Target, AlignLeft, Calendar, Flame, Users, TrendingUp, Clock,
+  ExternalLink, UserCheck
 } from 'lucide-react'
 import { useTeam } from '../context/TeamContext'
 import { useNavigate } from 'react-router-dom'
@@ -273,6 +274,161 @@ function StatusModal({ lead, onClose, onSaved }) {
 }
 
 /* ── Haupt-Komponente ── */
+/* ── F5 · Offene Vernetzungsanfragen (Unipile-Janitor) ──────────────────────
+   Liest linkedin_invitations (team-scoped, Fallstrick #14). „Jetzt abgleichen"
+   ruft den Janitor (unipile-invitations-sync) — Reconcile accepted + Auto-Withdraw.
+   Einstellung „Automatisch zurückziehen nach X Tagen" persistiert in
+   user_preferences.linkedin_withdraw_after_days (0 = aus). */
+const INV_STATUS = {
+  pending:   { label:'Offen',          color:'#92400E', bg:'#FFFBEB', border:'#FCD34D' },
+  accepted:  { label:'Angenommen',     color:'#065F46', bg:'#ECFDF5', border:'#6EE7B7' },
+  withdrawn: { label:'Zurückgezogen',  color:'#475569', bg:'#F8FAFC', border:'#E5E7EB' },
+  expired:   { label:'Abgelaufen',     color:'#991B1B', bg:'#FEF2F2', border:'#FECACA' },
+  error:     { label:'Fehler',         color:'#991B1B', bg:'#FEF2F2', border:'#FECACA' },
+}
+function inviteAge(sentAt) {
+  if (!sentAt) return '—'
+  const d = Math.floor((Date.now() - new Date(sentAt).getTime()) / 86400000)
+  return d <= 0 ? 'heute' : d === 1 ? 'vor 1 Tag' : `vor ${d} Tagen`
+}
+
+function OffeneAnfragen({ session, activeTeamId }) {
+  const navigate = useNavigate()
+  const uid = session?.user?.id
+  const [invitations, setInvitations] = useState([])
+  const [loading, setLoading]   = useState(true)
+  const [syncing, setSyncing]   = useState(false)
+  const [flash, setFlash]       = useState(null)   // { type:'error'|'success', text, action?:{label,to} }
+  const [withdrawDays, setWithdrawDays] = useState('')  // '' = Default (21)
+
+  const load = useCallback(async () => {
+    if (!activeTeamId) { setInvitations([]); setLoading(false); return }
+    setLoading(true)
+    const { data, error } = await supabase.from('linkedin_invitations')
+      .select('id, invitation_id, invitee_name, invitee_url, lead_id, status, sent_at, responded_at, withdrawn_at')
+      .eq('team_id', activeTeamId)
+      .order('sent_at', { ascending:false, nullsFirst:false })
+    if (error) { setFlash({ type:'error', text:'Anfragen laden fehlgeschlagen: ' + error.message }); setInvitations([]); setLoading(false); return }
+    setInvitations(data || [])
+    setLoading(false)
+    if (uid) {
+      const { data: pref, error: pErr } = await supabase.from('user_preferences')
+        .select('linkedin_withdraw_after_days').eq('user_id', uid).maybeSingle()
+      if (pErr) console.warn('[vernetzungen] user_preferences:', pErr.message)
+      if (pref?.linkedin_withdraw_after_days != null) setWithdrawDays(String(pref.linkedin_withdraw_after_days))
+    }
+  }, [activeTeamId, uid])
+  useEffect(() => { load() }, [load])
+
+  const sync = async () => {
+    setSyncing(true); setFlash(null)
+    const { data, error } = await supabase.functions.invoke('unipile-invitations-sync', { body: { user_id: uid } })
+    if (error) {
+      let body = null
+      try { body = await error.context?.json?.() } catch { /* Body evtl. konsumiert */ }
+      const status = error.context?.status
+      if (status === 409) setFlash({ type:'error', text:'Kein aktiver LinkedIn-Account verbunden.', action:{ label:'LinkedIn verbinden', to:'/settings/linkedin' } })
+      else if (status === 429 || body?.rate_limited) setFlash({ type:'error', text:'Rate-Limit erreicht — bitte später erneut.' })
+      else setFlash({ type:'error', text: body?.error || ('Abgleich fehlgeschlagen: ' + error.message) })
+      setSyncing(false); return
+    }
+    setFlash({ type:'success', text:`Abgeglichen: ${data?.synced ?? 0} gespiegelt · ${data?.accepted ?? 0} angenommen · ${data?.withdrawn ?? 0} zurückgezogen.` })
+    setSyncing(false)
+    load()
+  }
+
+  const saveWithdraw = async (val) => {
+    setWithdrawDays(val)
+    if (!uid) return
+    const n = val === '' ? null : Math.max(0, parseInt(val, 10) || 0)
+    const { error } = await supabase.from('user_preferences')
+      .upsert({ user_id: uid, linkedin_withdraw_after_days: n }, { onConflict: 'user_id' })
+    if (error) setFlash({ type:'error', text:'Einstellung speichern fehlgeschlagen: ' + error.message })
+  }
+
+  const pending  = invitations.filter(i => i.status === 'pending')
+  const accepted = invitations.filter(i => i.status === 'accepted')
+  const denom = pending.length + accepted.length
+  const acceptRate = denom > 0 ? Math.round((accepted.length / denom) * 100) : 0
+
+  const cardStyle = { background:RC.surface, border:`1px solid ${RC.border}`, borderRadius:14, padding:'16px 18px', marginBottom:16 }
+  const btnPrimary = { padding:'8px 14px', background:P, color:'#fff', border:'none', borderRadius:10, fontSize:13, fontWeight:700, display:'inline-flex', alignItems:'center', gap:6, cursor:'pointer' }
+
+  return (
+    <div style={cardStyle}>
+      <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', gap:12, flexWrap:'wrap', marginBottom:12 }}>
+        <div style={{ fontSize:14, fontWeight:800, color:RC.text1, display:'flex', alignItems:'center', gap:8 }}>
+          <UserCheck size={16} color={P}/> Offene Vernetzungsanfragen (Unipile)
+        </div>
+        <button onClick={sync} disabled={syncing} style={{ ...btnPrimary, opacity: syncing ? 0.6 : 1 }}>
+          {syncing ? <Loader2 size={14} className="lk-spin"/> : <RefreshCw size={14}/>} Jetzt abgleichen
+        </button>
+      </div>
+
+      {flash && (
+        <div style={{ display:'flex', alignItems:'center', gap:8, marginBottom:12, padding:'9px 12px', borderRadius:10, fontSize:12.5, fontWeight:600,
+          background: flash.type==='error' ? '#FEF2F2' : '#ECFDF5', border:'1px solid '+(flash.type==='error'?'#FECACA':'#A7F3D0'),
+          color: flash.type==='error' ? '#991B1B' : '#065F46' }}>
+          <span style={{ flex:1 }}>{flash.text}</span>
+          {flash.action && (
+            <button onClick={() => navigate(flash.action.to)} style={{ padding:'4px 10px', background:'#fff', border:`1px solid ${RC.border}`, borderRadius:8, fontSize:12, fontWeight:600, cursor:'pointer', display:'inline-flex', alignItems:'center', gap:4 }}>
+              {flash.action.label} <ExternalLink size={12}/>
+            </button>
+          )}
+        </div>
+      )}
+
+      {/* KPI + Setting */}
+      <div style={{ display:'flex', gap:14, flexWrap:'wrap', alignItems:'center', marginBottom:14 }}>
+        <div><span style={{ fontSize:22, fontWeight:800, color:RC.text1 }}>{pending.length}</span> <span style={{ fontSize:12, color:RC.text3 }}>offen</span></div>
+        <div><span style={{ fontSize:22, fontWeight:800, color:RC.text1 }}>{accepted.length}</span> <span style={{ fontSize:12, color:RC.text3 }}>angenommen</span></div>
+        <div><span style={{ fontSize:22, fontWeight:800, color: acceptRate>=50?'#059669':acceptRate>=25?'#D97706':'#DC2626' }}>{acceptRate}%</span> <span style={{ fontSize:12, color:RC.text3 }}>Akzeptanzrate</span></div>
+        <div style={{ flex:1 }}/>
+        <label style={{ fontSize:12, color:RC.text2, display:'inline-flex', alignItems:'center', gap:6 }}>
+          Automatisch zurückziehen nach
+          <input type="number" min="0" value={withdrawDays} placeholder="21" onChange={e => saveWithdraw(e.target.value)}
+            style={{ width:64, padding:'6px 8px', border:`1px solid ${RC.border}`, borderRadius:8, fontSize:13, textAlign:'center' }}/>
+          Tagen <span style={{ color:RC.text3 }}>(0 = aus)</span>
+        </label>
+      </div>
+
+      {/* Liste offener Anfragen */}
+      {loading ? (
+        <div style={{ textAlign:'center', color:RC.text3, fontSize:13, padding:'16px 0' }}><Loader2 size={16} className="lk-spin"/> Lädt…</div>
+      ) : pending.length === 0 ? (
+        <div style={{ textAlign:'center', color:RC.text3, fontSize:13, padding:'16px 0' }}>Keine offenen Vernetzungsanfragen.</div>
+      ) : (
+        <div style={{ display:'flex', flexDirection:'column', gap:8 }}>
+          {pending.map(inv => {
+            const st = INV_STATUS[inv.status] || INV_STATUS.pending
+            return (
+              <div key={inv.id} style={{ display:'flex', alignItems:'center', gap:12, flexWrap:'wrap', padding:'10px 12px', border:`1px solid ${RC.border}`, borderRadius:10 }}>
+                <div style={{ flex:1, minWidth:180 }}>
+                  <div style={{ fontSize:13.5, fontWeight:700, color:RC.text1 }}>{inv.invitee_name || 'Unbekannt'}</div>
+                  <div style={{ fontSize:11.5, color:RC.text3, marginTop:2, display:'inline-flex', alignItems:'center', gap:4 }}>
+                    <Clock size={11}/> gesendet {inviteAge(inv.sent_at)}
+                  </div>
+                </div>
+                <span style={{ fontSize:11, fontWeight:700, padding:'3px 9px', borderRadius:20, background:st.bg, color:st.color, border:`1px solid ${st.border}` }}>{st.label}</span>
+                {inv.lead_id && (
+                  <button onClick={() => navigate(`/leads/${inv.lead_id}`)} style={{ padding:'6px 10px', background:'#fff', border:`1px solid ${RC.border}`, borderRadius:8, fontSize:12, fontWeight:600, cursor:'pointer', display:'inline-flex', alignItems:'center', gap:4 }}>
+                    im CRM <ExternalLink size={12}/>
+                  </button>
+                )}
+                {inv.invitee_url && (
+                  <a href={inv.invitee_url} target="_blank" rel="noopener noreferrer" style={{ padding:'6px 10px', background:'#fff', border:`1px solid ${RC.border}`, borderRadius:8, fontSize:12, fontWeight:600, textDecoration:'none', color:RC.text2, display:'inline-flex', alignItems:'center', gap:4 }}>
+                    Profil <ExternalLink size={12}/>
+                  </a>
+                )}
+              </div>
+            )
+          })}
+        </div>
+      )}
+    </div>
+  )
+}
+
 export default function Vernetzungen({ session }) {
   const { activeBrandVoice } = useBrandVoice()
   const { team, activeTeamId } = useTeam()
@@ -481,6 +637,9 @@ export default function Vernetzungen({ session }) {
           {Object.entries(replyStats).map(([k, v]) => <BarRow key={k} label={REPLY_CFG[k]?.label || k} count={v} total={stats.verbunden || leads.length} color="#185FA5"/>)}
         </Panel>
       )}
+
+      {/* F5 · Offene Vernetzungsanfragen (Unipile-Janitor) */}
+      <OffeneAnfragen session={session} activeTeamId={activeTeamId} />
 
       {/* Tabs */}
       <TabBar tabs={TABS} active={tab} onChange={setTab} style={{ marginBottom:14 }}/>
