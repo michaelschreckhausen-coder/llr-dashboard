@@ -114,16 +114,28 @@ Deno.serve(async (req) => {
   let laq = db.from("la_accounts").select("id, team_id, unipile_account_id, public_identifier, status");
   if (teamFilter) laq = laq.in("team_id", teamFilter);
   const { data: laRows } = await laq;
-  const seen = new Set<string>();                        // canonical-Identitäten mit bereits vorhandener Row
+  const seen = new Set<string>();                        // Identitäten mit bereits vergebener connected-Row
+  const keyOf = (r: any) => `${r.team_id}|${String((byId.get(r.unipile_account_id)?.slug) || r.public_identifier || "").toLowerCase()}`;
+  // Pass 1: Rows, die die canonical id SCHON halten → connected (gewinnen; kein Repoint einer stale Row nötig).
   for (const r of laRows || []) {
-    const live = byId.get(r.unipile_account_id);
-    const slug = String((live?.slug) || r.public_identifier || "").toLowerCase();
-    const canon = slug ? canonical.get(`${r.team_id}|${slug}`) : null;
+    const key = keyOf(r); const canon = canonical.get(key);
     if (canon && canon.unipileId === r.unipile_account_id) {
       await db.from("la_accounts").update({ provider_id: canon.providerId, public_identifier: canon.slug, status: "connected", updated_at: nowIso() }).eq("id", r.id);
       if (r.status !== "connected") rep.la_fixed.push({ id: r.id, to: "connected" });
-      seen.add(`${r.team_id}|${slug}`);
-    } else if (r.status === "connected") {               // andere/ältere/stale Row derselben Identität → disconnected
+      seen.add(key);
+    }
+  }
+  // Pass 2: übrige Rows. la_fixed: stale Row IN-PLACE auf die canonical id umbiegen (nur wenn die Identität
+  // noch keine connected-Row hat) → gepinnte Kampagnen (la_campaigns.account_id) folgen statt auf eine tote id
+  // zu zeigen. Sonst (canonical schon vergeben, oder keine live Session) → disconnected.
+  for (const r of laRows || []) {
+    const key = keyOf(r); const canon = canonical.get(key);
+    if (canon && canon.unipileId === r.unipile_account_id) continue;   // in Pass 1 erledigt
+    if (canon && !seen.has(key)) {
+      await db.from("la_accounts").update({ unipile_account_id: canon.unipileId, provider_id: canon.providerId, public_identifier: canon.slug, status: "connected", updated_at: nowIso() }).eq("id", r.id);
+      rep.la_fixed.push({ id: r.id, old: r.unipile_account_id, new: canon.unipileId });
+      seen.add(key);
+    } else if (r.status === "connected") {
       await db.from("la_accounts").update({ status: "disconnected", updated_at: nowIso() }).eq("id", r.id);
       rep.la_disconnected.push({ id: r.id, reason: canon ? "superseded_by_newer_session" : "no_live_session" });
     }

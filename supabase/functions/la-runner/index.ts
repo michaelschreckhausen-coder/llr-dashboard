@@ -65,10 +65,25 @@ Deno.serve(async () => {
     }
     const { data: camp } = await db.from("la_campaigns").select("account_id").eq("id", enr.campaign_id).maybeSingle();
     const { data: acct } = camp
-      ? await db.from("la_accounts").select("unipile_account_id, status").eq("id", camp.account_id).maybeSingle()
+      ? await db.from("la_accounts").select("unipile_account_id, public_identifier, team_id").eq("id", camp.account_id).maybeSingle()
       : { data: null } as any;
-    if (!acct?.unipile_account_id) { const r = await fail(job, false, "account_missing"); out.push({ id: job.id, [r]: "account_missing" }); continue; }
-    const accountId: string = acct.unipile_account_id;
+    if (!acct) { const r = await fail(job, false, "account_missing"); out.push({ id: job.id, [r]: "account_missing" }); continue; }
+    // Routing an die OK-unipile_accounts-Authority binden, NICHT blind an la_accounts.unipile_account_id:
+    // die gepinnte id kann tot sein (Reconnect-Drift) → Call auf 404 → dead-letter. Die gepinnte id NUR nutzen,
+    // wenn eine OK-Session sie deckt; sonst Fallback auf die NEUESTE OK-Session DERSELBEN Identität (slug) im Team.
+    let accountId: string | null = null;
+    if (acct.unipile_account_id) {
+      const { data: okPinned } = await db.from("unipile_accounts").select("unipile_account_id").eq("unipile_account_id", acct.unipile_account_id).eq("status", "OK").maybeSingle();
+      if (okPinned) accountId = acct.unipile_account_id;
+    }
+    if (!accountId && acct.public_identifier) {
+      const { data: okId } = await db.from("unipile_accounts").select("unipile_account_id")
+        .eq("team_id", acct.team_id).eq("provider_public_id", acct.public_identifier).eq("status", "OK")
+        .order("last_status_update", { ascending: false }).limit(1).maybeSingle();
+      accountId = okId?.unipile_account_id ?? null;
+    }
+    // Keine gültige Session → retryable (recovered nach Reconnect/Reconcile), NICHT sofort dead.
+    if (!accountId) { const r = await fail(job, true, "account_stale"); out.push({ id: job.id, [r]: "account_stale" }); continue; }
 
     // provider_id auflösen (falls fehlt: getProfile über public_identifier)
     let providerId: string | null = enr.provider_id ?? null;
