@@ -106,7 +106,7 @@ export default function TeamSwitcher({ isCollapsed = false }) {
       >
         <div style={{
           flex: 1, minWidth: 0,
-          fontSize: 13, fontWeight: 600,
+          fontSize: 13, fontWeight: 500,
           color: 'var(--text-primary, #0F172A)',
           textAlign: 'left',
           overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',

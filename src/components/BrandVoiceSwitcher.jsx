@@ -41,7 +41,7 @@ export default function BrandVoiceSwitcher({ session, compact = false }) {
           border:'1px solid var(--border)',
           background:'var(--surface)',
           fontSize: compact ? 12 : 13,
-          fontWeight: 600,
+          fontWeight: 500,
           color:'var(--text-primary)',
           cursor:'pointer',
           maxWidth: 280,

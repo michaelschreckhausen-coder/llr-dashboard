@@ -63,7 +63,7 @@ export default function FormatPicker({ value, onChange, openUp = true, compact =
         style={{
           display: 'inline-flex', alignItems: 'center', gap: 6, height: 34, padding: '0 11px',
           borderRadius: 9, border: '1.5px solid var(--border, #D7DCE5)', background: 'var(--surface, #FFFFFF)',
-          color: 'var(--text-primary, #1B2333)', fontSize: 12.5, fontWeight: 600, cursor: 'pointer', maxWidth: 320,
+          color: 'var(--text-primary, #1B2333)', fontSize: 12.5, fontWeight: 500, cursor: 'pointer', maxWidth: 320,
         }}>
         <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{valLabel}</span>
         <ChevronDown size={14} strokeWidth={2} style={{ opacity: 0.5, marginLeft: 2, flexShrink: 0 }} />
