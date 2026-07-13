@@ -6148,12 +6148,9 @@ function ToolBtn({ children, onClick, title, active }) {
 
 function SmallBtn({ children, onClick, primary, disabled }) {
   return (
-    <button onClick={onClick} title={title}
-      style={{ width: 32, height: 32, flexShrink: 0, display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
-        borderRadius: 8, cursor: 'pointer', fontFamily: 'inherit',
-        border: '1px solid ' + (active ? P : 'var(--border,#E9ECF2)'),
-        background: active ? 'rgba(10,111,176,0.08)' : 'var(--surface,#fff)',
-        color: active ? P : 'var(--text-muted,#475467)' }}>
+    <button onClick={onClick} disabled={disabled}
+      style={{ height: 30, padding: '0 12px', borderRadius: 8, cursor: disabled ? 'wait' : 'pointer', fontSize: 12, fontWeight: 700, fontFamily: 'inherit',
+        border: primary ? 'none' : '1px solid var(--border)', background: primary ? P : '#fff', color: primary ? '#fff' : 'var(--text-primary)' }}>
       {children}
     </button>
   )
