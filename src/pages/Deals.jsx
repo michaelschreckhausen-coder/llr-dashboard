@@ -1,4 +1,5 @@
 // Deals v2 — PDF Blob-Download, expected_close_date, Slide-in Panel
+import PillSelect from '../components/PillSelect'
 import { useTranslation } from 'react-i18next'
 import React, { useState, useEffect } from 'react'
 import { supabase } from '../lib/supabase'
@@ -183,15 +184,10 @@ export function DealModal({ deal, leads, teamMembers = [], teamId, uid, onSave, 
           {/* Lead verknüpfen */}
           <div>
             <label style={lbl}>Lead verknüpfen (optional)</label>
-            <select value={form.lead_id} onChange={e => set('lead_id', e.target.value)} style={inp}>
-              <option value="">— Kein Lead</option>
-              {leads.map(l => (
-                <option key={l.id} value={l.id}>
-                  {[l.first_name, l.last_name].filter(Boolean).join(' ') || l.name || l.company || l.id.slice(0,8)}
-                  {l.company ? ` · ${l.company}` : ''}
-                </option>
-              ))}
-            </select>
+            <PillSelect value={form.lead_id} onChange={v => set('lead_id', v)} neutral options={[{ value: '', label: `— Kein Lead` }, ...leads.map(l => ({ value: l.id, label: `
+                  ${[l.first_name, l.last_name].filter(Boolean).join(' ') || l.name || l.company || l.id.slice(0,8)}
+                  ${l.company ? ` · ${l.company}` : ''}
+                ` }))]} buttonStyle={{ minWidth: 140 }} />
           </div>
 
           {/* Organisation verknüpfen */}
@@ -208,15 +204,10 @@ export function DealModal({ deal, leads, teamMembers = [], teamId, uid, onSave, 
           {/* Owner */}
           <div>
             <label style={lbl}>Owner (optional)</label>
-            <select value={form.owner_id} onChange={e => set('owner_id', e.target.value)} style={inp}>
-              <option value="">— Kein Owner —</option>
-              {teamMembers.map(m => (
-                <option key={m.id} value={m.id}>
-                  {m.full_name || `${m.first_name||''} ${m.last_name||''}`.trim() || m.id.slice(0,8)}
-                  {m.id === uid ? ' (du)' : ''}
-                </option>
-              ))}
-            </select>
+            <PillSelect value={form.owner_id} onChange={v => set('owner_id', v)} neutral options={[{ value: '', label: `— Kein Owner —` }, ...teamMembers.map(m => ({ value: m.id, label: `
+                  ${m.full_name || `${m.first_name||''} ${m.last_name||''}`.trim() || m.id.slice(0,8)}
+                  ${m.id === uid ? ' (du)' : ''}
+                ` }))]} buttonStyle={{ minWidth: 140 }} />
           </div>
 
           {/* Produkt aus Wissensdatenbank */}
