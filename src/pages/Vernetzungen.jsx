@@ -39,7 +39,7 @@ const fmt = new Intl.NumberFormat('de-DE')
 
 function KpiCard({ label, value, sub, color, Icon }) {
   return (
-    <div style={{ background:RC.surface, border:`1px solid ${RC.border}`, borderRadius:14, padding:'14px 16px', display:'flex', flexDirection:'column', gap:4 }}>
+    <div style={{ background:RC.surface, border:`1px solid ${RC.border}`, borderRadius:16, padding:'14px 16px', display:'flex', flexDirection:'column', gap:4, boxShadow:'var(--shadow-card)' }}>
       <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center' }}>
         <span style={{ fontSize:10, fontWeight:700, color, textTransform:'uppercase', letterSpacing:'0.06em' }}>{label}</span>
         {Icon && <Icon size={14} color={color}/>}
@@ -52,7 +52,7 @@ function KpiCard({ label, value, sub, color, Icon }) {
 
 function Panel({ title, action, children }) {
   return (
-    <div style={{ background:RC.surface, border:`1px solid ${RC.border}`, borderRadius:14, padding:18, marginBottom:16 }}>
+    <div style={{ background:RC.surface, border:`1px solid ${RC.border}`, borderRadius:16, padding:'18px 20px', marginBottom:16, boxShadow:'var(--shadow-card)' }}>
       {title && (
         <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:14 }}>
           <h3 style={{ fontSize:14, fontWeight:700, color:RC.text1, margin:0 }}>{title}</h3>{action}
@@ -254,7 +254,7 @@ function StatusModal({ lead, onClose, onSaved }) {
         <div style={{ fontSize:11, fontWeight:700, color:'var(--text-muted)', textTransform:'uppercase', letterSpacing:'0.07em', marginBottom:8 }}>Antwortverhalten</div>
         <div style={{ display:'flex', gap:8, flexWrap:'wrap', marginBottom:20 }}>
           {Object.entries(REPLY_CFG).map(([key,cfg]) => (
-            <button key={key} onClick={()=>setReply(key)} style={{ padding:'6px 12px', borderRadius:8, border:`1.5px solid ${reply===key?'#6366f1':'#E5E7EB'}`, background:reply===key?'#EAF6FC':'#fff', color:reply===key?'#0A6FB0':cfg.color, fontSize:12, fontWeight:reply===key?700:400, cursor:'pointer' }}>
+            <button key={key} onClick={()=>setReply(key)} style={{ padding:'6px 12px', borderRadius:8, border:`1.5px solid ${reply===key?'#0A6FB0':'#E5E7EB'}`, background:reply===key?'#EAF6FC':'#fff', color:reply===key?'#0A6FB0':cfg.color, fontSize:12, fontWeight:reply===key?700:400, cursor:'pointer' }}>
               {cfg.label}
             </button>
           ))}
