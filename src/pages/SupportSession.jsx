@@ -23,7 +23,10 @@ export default function SupportSession() {
       // Token SOFORT aus URL + History entfernen — vor jedem Render/Log.
       try { window.history.replaceState(null, '', '/support-session') } catch { /* noop */ }
       if (!access_token) { setErr('Kein Token übergeben.'); return }
-      const { error } = await supabase.auth.setSession({ access_token, refresh_token: '' })
+      // supabase-js v2 setSession wirft AuthSessionMissingError bei leerem refresh_token → nicht-leerer
+      // Platzhalter. Im Support-Tab ist autoRefreshToken:false → der Platzhalter wird NIE benutzt; die
+      // Session stirbt am access_token-exp (= gewünschtes Zeitlimit, kein echter Refresh).
+      const { error } = await supabase.auth.setSession({ access_token, refresh_token: 'impersonation' })
       if (error) { setErr('Session konnte nicht gesetzt werden: ' + error.message); return }
       try { sessionStorage.setItem('lk-impersonation-meta', JSON.stringify({ session_id, session_expires_at })) } catch { /* noop */ }
       nav('/dashboard', { replace: true })

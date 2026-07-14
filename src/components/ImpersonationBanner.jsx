@@ -56,7 +56,8 @@ export default function ImpersonationBanner({ session }) {
     try {
       const { data, error } = await supabase.functions.invoke('staff-impersonate', { body: { action: 'renew', session_id: info.sessionId } })
       if (!error && data?.access_token) {
-        await supabase.auth.setSession({ access_token: data.access_token, refresh_token: '' })
+        // nicht-leerer Platzhalter-refresh_token (sonst AuthSessionMissingError); autoRefreshToken:false → inert.
+        await supabase.auth.setSession({ access_token: data.access_token, refresh_token: 'impersonation' })
         // setSession → onAuthStateChange → session-Prop ändert sich → exp/Countdown aktualisieren sich.
       }
     } finally { setBusy(false) }
