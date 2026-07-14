@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react'
 import { Routes, Route, Navigate, useParams, useLocation } from 'react-router-dom'
 import { NavigationTimer } from './lib/useTabPersistedState'
 import { supabase } from './lib/supabase'
+import { decodeJwt } from './lib/impersonation'
 import { captureRefFromUrl } from './lib/affiliateTracking'
 import Login         from './pages/Login'
 import MfaChallenge  from './components/MfaChallenge'
@@ -176,6 +177,12 @@ export default function App() {
   // Degradiert sicher: wirft die API (z.B. MFA serverseitig aus) → kein Gate.
   useEffect(function() {
     if (!session) { setMfaRequired(false); return }
+    // BEWUSSTER MFA-Bypass NUR bei Impersonation: die Support-Session (is_impersonation-Claim) ist serverseitig
+    // via Staff-Auth + Grund + Audit autorisiert; ein Kunden-TOTP-Challenge ist für Support strukturell unmöglich
+    // (Support kennt den Kunden-Authenticator nicht). Greift ausschließlich bei is_impersonation===true →
+    // schwächt MFA für echte Kunden-Logins NICHT.
+    var impClaims = decodeJwt(session.access_token || '')
+    if (impClaims && impClaims.app_metadata && impClaims.app_metadata.is_impersonation === true) { setMfaRequired(false); return }
     var cancelled = false
     supabase.auth.mfa.getAuthenticatorAssuranceLevel().then(function(res) {
       if (cancelled) return
