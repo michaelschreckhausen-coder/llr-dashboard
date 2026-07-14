@@ -37,9 +37,10 @@ DROP POLICY IF EXISTS staff_imp_sessions_admin_read ON public.staff_impersonatio
 CREATE POLICY staff_imp_sessions_admin_read ON public.staff_impersonation_sessions
   FOR SELECT USING (COALESCE((auth.jwt() -> 'app_metadata' ->> 'is_leadesk_admin')::boolean, false));
 
--- Self-Host-GRANT-Falle (CLAUDE.md #3/#12): explizit granten + Schreibrechte für authenticated entziehen,
--- damit wirklich nur service_role schreibt (RLS-only-SELECT für Staff).
-REVOKE INSERT, UPDATE, DELETE ON public.staff_impersonation_sessions FROM authenticated;
+-- Self-Host-GRANT-Falle (CLAUDE.md #3/#12): REVOKE ALL (nicht nur INSERT/UPDATE/DELETE) — Prod hatte breitere
+-- Default-Grants (SELECT/TRUNCATE/REFERENCES/TRIGGER) für authenticated; ein schmales REVOKE ließe die übrigen
+-- stehen. Danach nur RLS-gated SELECT zurückgeben. So schreibt wirklich nur service_role.
+REVOKE ALL ON public.staff_impersonation_sessions FROM authenticated;
 GRANT  SELECT ON public.staff_impersonation_sessions TO authenticated;   -- RLS-gated (nur is_leadesk_admin)
 GRANT  ALL    ON public.staff_impersonation_sessions TO service_role;
 
