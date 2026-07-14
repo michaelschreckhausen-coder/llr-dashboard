@@ -38,7 +38,13 @@ export function persistImpersonationSession(access_token) {
       updated_at: '',
     },
   }
-  try { store()?.setItem(STORAGE_KEY, JSON.stringify(session)) } catch { return null }
+  try {
+    store()?.setItem(STORAGE_KEY, JSON.stringify(session))
+    // Read-Back (Diagnostik, beantwortet Coworks (a)): hat der sessionStorage-Write tatsächlich gegriffen?
+    const ok = !!store()?.getItem(STORAGE_KEY)
+    try { console.debug('[imp] persist · wrote sessionStorage · readback=' + (ok ? 'OK' : 'FAIL') + ' · exp=' + c.exp) } catch { /* noop */ }
+    if (!ok) return null
+  } catch { return null }
   return c
 }
 

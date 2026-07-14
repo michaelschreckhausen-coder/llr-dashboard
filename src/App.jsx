@@ -282,6 +282,7 @@ export default function App() {
   // Falls hier (trotz sessionStorage-Isolation) je eine Nicht-Impersonation-Session landet (eigene/fremde),
   // NIEMALS das Konto ohne Banner rendern → Slot räumen, lokal ausloggen, klaren Hinweis zeigen.
   if (IS_SUPPORT_TAB && !decodeJwt(session.access_token || '')?.app_metadata?.is_impersonation) {
+    try { console.debug('[imp] fail-closed guard FIRED · session ohne is_impersonation → Slot räumen + logout') } catch { /* noop */ }
     clearImpersonationSession()
     supabase.auth.signOut({ scope: 'local' }).catch(() => {})
     return (

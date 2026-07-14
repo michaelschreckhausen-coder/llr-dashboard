@@ -62,8 +62,20 @@ export const IS_SUPPORT_TAB = (() => {
   try { return typeof window !== 'undefined' && window.name === 'lk-support' } catch { return false }
 })()
 
+// Migration-Cleanup: die Impersonation-Session lebt seit df10eeb9 in sessionStorage. Ein etwaiger
+// localStorage['lk-impersonation-token'] ist damit IMMER Altlast (durable, aus Vor-sessionStorage-Smokes)
+// und wird von keinem Client mehr gelesen → hart entfernen, damit er keinen fail-closed Guard triggert
+// und den JS-Zustand nicht verwirrt. Läuft in JEDEM Tab (auch Nicht-Support), da localStorage geteilt ist.
+try { if (typeof localStorage !== 'undefined') localStorage.removeItem('lk-impersonation-token') } catch { /* noop */ }
+
 // Der Storage, den der Support-Tab-Client nutzt — genau hierhin schreibt auch persistImpersonationSession().
 export const IMPERSONATION_STORAGE = (IS_SUPPORT_TAB && typeof window !== 'undefined') ? window.sessionStorage : undefined
+
+// Diagnostik (nicht-sensitiv): beim Init im Support-Tab sichtbar machen, ob der sessionStorage-Slot den
+// Handoff-Reload überlebt hat. Beantwortet Coworks (b). Kein Token-Inhalt, nur Präsenz-Boolean.
+if (IS_SUPPORT_TAB) {
+  try { console.debug('[imp] support-tab init · ss_has_token=' + !!window.sessionStorage.getItem('lk-impersonation-token')) } catch { /* noop */ }
+}
 
 export const supabase = createClient(SUPABASE_URL, SUPABASE_ANON, {
   auth: {
