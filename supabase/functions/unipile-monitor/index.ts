@@ -7,6 +7,7 @@
 // =====================================================================
 import { handlePreflight, jsonResponse } from "../_shared/cors.ts";
 import {
+  getAuthenticatedUser,
   getPost,
   getUnipileConnection,
   listPostComments,
@@ -20,20 +21,37 @@ const MIN_RESYNC_HOURS = 4;
 Deno.serve(async (req) => {
   const pre = handlePreflight(req);
   if (pre) return pre;
+  if (req.method !== "POST") return jsonResponse({ error: "method not allowed" }, 405);
 
   try {
     const sb = serviceClient();
+
+    // ── Auth-Gate (Pflicht): kein Token -> 401. service-role (Cron) -> alle;
+    //    JWT -> nur eigene Posts. Scope aus dem Token, NICHT aus dem Body. ──
+    const authHeader = req.headers.get("Authorization") || "";
+    const token = authHeader.startsWith("Bearer ") ? authHeader.slice(7) : "";
+    if (!token) return jsonResponse({ error: "unauthorized" }, 401);
+    const isServiceRole = token === Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
+    let scopeUserId: string | null = null;
+    if (!isServiceRole) {
+      const auth = await getAuthenticatedUser(req);
+      if (!auth) return jsonResponse({ error: "unauthorized" }, 401);
+      scopeUserId = auth.userId;
+    }
+
     const input = await req.json().catch(() => ({}));
     const harvestLeads: boolean = input.harvest_leads ?? true;
 
     const cutoff = new Date(Date.now() - MIN_RESYNC_HOURS * 3600_000).toISOString();
-    const { data: posts, error } = await sb
+    let postQuery = sb
       .from("content_posts")
       .select("id, user_id, linkedin_social_id, published_at, last_metrics_sync_at")
       .not("linkedin_social_id", "is", null)
       .or(`last_metrics_sync_at.is.null,last_metrics_sync_at.lte.${cutoff}`)
       .order("published_at", { ascending: false })
       .limit(POST_BATCH);
+    if (!isServiceRole && scopeUserId) postQuery = postQuery.eq("user_id", scopeUserId);
+    const { data: posts, error } = await postQuery;
     if (error) return jsonResponse({ error: error.message }, 500);
     if (!posts || posts.length === 0) return jsonResponse({ ok: true, processed: 0 });
 
