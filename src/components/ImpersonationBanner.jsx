@@ -1,16 +1,12 @@
 // ImpersonationBanner — nicht wegklickbarer Support-Modus-Banner (Schritt 4). Erkennt die Impersonation
 // am is_impersonation-Claim des aktuellen JWT. Zeigt Ziel-Kunde + Restlaufzeit-Countdown + Beenden + Verlängern.
 // Verlängern/Beenden rufen die staff-impersonate-EF mit dem Impersonation-Token selbst (Support-Tab-Pfad).
+// Verlängern schreibt das neue Token DIREKT in den storageKey (wie der Handoff — kein setSession/_getUser) + reload.
 // Graceful Expiry: abgelaufen → sauber beenden, NICHT in einen verwirrenden Kunden-Login bouncen.
 import { useEffect, useState, useCallback } from 'react'
 import { supabase } from '../lib/supabase'
+import { decodeJwt, persistImpersonationSession } from '../lib/impersonation'
 
-function decodeJwt(t) {
-  try {
-    const b = t.split('.')[1].replace(/-/g, '+').replace(/_/g, '/')
-    return JSON.parse(decodeURIComponent(escape(atob(b))))
-  } catch { return null }
-}
 function fmt(s) { s = Math.max(0, s); const m = Math.floor(s / 60); return `${m}:${String(s % 60).padStart(2, '0')}` }
 
 export default function ImpersonationBanner({ session }) {
@@ -38,8 +34,9 @@ export default function ImpersonationBanner({ session }) {
   }, [info?.exp])
 
   const cleanup = useCallback(async () => {
+    try { localStorage.removeItem('lk-impersonation-token') } catch { /* noop */ }
     try { sessionStorage.removeItem('lk-impersonation-meta') } catch { /* noop */ }
-    try { await supabase.auth.signOut() } catch { /* noop */ }
+    try { await supabase.auth.signOut({ scope: 'local' }) } catch { /* noop */ }   // local: kein GoTrue /logout-Round-Trip
     try { window.close() } catch { /* noop */ }   // Support-Tab schließen, wenn vom Browser erlaubt
     window.location.replace('/login')
   }, [])
@@ -55,12 +52,11 @@ export default function ImpersonationBanner({ session }) {
     setBusy(true)
     try {
       const { data, error } = await supabase.functions.invoke('staff-impersonate', { body: { action: 'renew', session_id: info.sessionId } })
-      if (!error && data?.access_token) {
-        // nicht-leerer Platzhalter-refresh_token (sonst AuthSessionMissingError); autoRefreshToken:false → inert.
-        await supabase.auth.setSession({ access_token: data.access_token, refresh_token: 'impersonation' })
-        // setSession → onAuthStateChange → session-Prop ändert sich → exp/Countdown aktualisieren sich.
-      }
-    } finally { setBusy(false) }
+      if (!error && data?.access_token && persistImpersonationSession(data.access_token)) {
+        // Neues Token direkt im storageKey → Voll-Reload, damit der Client es lädt (kein setSession/_getUser).
+        window.location.reload()
+      } else { setBusy(false) }
+    } catch { setBusy(false) }
   }, [info])
 
   if (!info) return null
