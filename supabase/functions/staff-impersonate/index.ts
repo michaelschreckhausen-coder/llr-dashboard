@@ -140,8 +140,13 @@ Deno.serve(async (req) => {
 
       if (body.action === "renew") {
         if (sess.ended_at) return json({ error: "session_ended" }, 409);
+        // Invariante 4 — HARTER 60-min-Cap: gilt für BEIDE Caller-Pfade (Staff UND Impersonation-Token),
+        // weil dieser Check NACH der Pfad-Verzweigung auf der Session-Row läuft. Nach expires_at → 409.
         const cap = Math.floor(new Date(sess.expires_at).getTime() / 1000);
-        if (nowSec() >= cap) return json({ error: "session_cap_reached" }, 409);   // Invariante 4: 60min-Cap
+        if (nowSec() >= cap) return json({ error: "session_cap_reached" }, 409);
+        // Revocation mid-session: Staff muss noch is_active + can_impersonate sein, sonst kein neues Token.
+        const { data: st } = await db.from("leadesk_staff").select("is_active, can_impersonate").eq("id", staffId).maybeSingle();
+        if (!st || !st.is_active || !st.can_impersonate) return json({ error: "staff_revoked" }, 403);
         const { data: tRes } = await db.auth.admin.getUserById(sess.target_user_id);
         const target = tRes?.user;
         if (!target) return json({ error: "target_not_found" }, 404);
