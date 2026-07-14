@@ -610,6 +610,19 @@ export default function Leads() {
     refetch?.();
     clearSelection();
   };
+  // Hard-Delete (Einzel + Bulk) via delete_leads-RPC. deleteModal steuert Confirm + Ergebnis.
+  const [deleteModal, setDeleteModal] = useState(null); // { ids: uuid[] }
+  const openDeleteSingle = useCallback((leadId) => setDeleteModal({ ids: [leadId] }), []);
+  const openDeleteBulk = useCallback(() => {
+    if (selectedIds.size === 0) return;
+    setDeleteModal({ ids: Array.from(selectedIds) });
+  }, [selectedIds]);
+  const handleDeleteDone = useCallback((rows) => {
+    // Gelöschte aus der Auswahl entfernen; blockierte (offener Deal) markiert lassen.
+    const blockedIds = (rows || []).filter(r => r.status === 'blocked_open_deal').map(r => r.lead_id);
+    setSelectedIds(new Set(blockedIds));
+    refetch?.();
+  }, [refetch]);
   const bulkAddToList = async (listId) => {
     if (selectedIds.size === 0 || !listId) return;
     const ids = Array.from(selectedIds);
@@ -1290,6 +1303,7 @@ export default function Leads() {
             onOwner={(e) => setOwnerPicker({ leadIds: Array.from(selectedIds), anchorRect: e.currentTarget.getBoundingClientRect() })}
             onList={(e) => setBulkListPicker({ anchorRect: e.currentTarget.getBoundingClientRect() })}
             onArchive={bulkArchive}
+            onDelete={openDeleteBulk}
             onExport={bulkExportCsv}
             onClear={clearSelection}
             onEnrich={bulkEnrich}
@@ -1387,6 +1401,7 @@ export default function Leads() {
                 leads={pagedLeads}
                 selectedIds={selectedIds}
                 onToggleSelect={toggleSelected}
+                onMarqueeSelect={setSelectedIds}
                 onLeadClick={handleLeadClick}
                 onOwnerAdd={handleOwnerAdd}
                 onTagAdd={handleTagAdd}
@@ -1483,6 +1498,15 @@ export default function Leads() {
           onStatusChange={handleStatusChange}
           onOpenDetail={(id) => { setActionsMenu(null); handleLeadClick(id); }}
           onRefresh={refetch}
+          onDelete={openDeleteSingle}
+        />
+      )}
+      {deleteModal && (
+        <DeleteLeadsModal
+          ids={deleteModal.ids}
+          leads={leads}
+          onClose={() => setDeleteModal(null)}
+          onDone={handleDeleteDone}
         />
       )}
       {ownerPicker && (
@@ -1619,7 +1643,169 @@ function EmptyStateOnboarding({ onImport, onCreate }) {
 }
 
 // ─── BulkBar ─────────────────────────────────────────────────────────────
-function BulkBar({ count, onStage, onOwner, onList, onArchive, onExport, onEdit, onClear, onEnrich, enrichBusy, enrichProgress }) {
+// ─── Hard-Delete: Schwelle für "LÖSCHEN"-Tippen (Bulk) ───────────────────
+const BULK_DELETE_TYPE_THRESHOLD = 5;
+const BULK_DELETE_CONFIRM_WORD = 'LÖSCHEN';
+
+// ─── useMarquee — Gummiband-Auswahl über die div-Row-Liste ───────────────
+// Ergänzt die bestehende Auswahl (Snapshot bei mousedown). Ignoriert Klicks auf Buttons/Links/Inputs +
+// [data-no-row-click]/[data-no-marquee]. Unterdrückt Text-Select während des Ziehens. Scroll-aware
+// (getBoundingClientRect in Viewport-Koordinaten). Erst ab 5px Bewegung = Drag → normaler Klick bleibt Klick.
+// Der Klick direkt nach dem Drag wird geschluckt (sonst öffnet sich die Detail-Ansicht).
+function useMarquee(containerRef, selectedIds, onSelect) {
+  const selRef = useRef(selectedIds);
+  useEffect(() => { selRef.current = selectedIds; }, [selectedIds]);
+  const [rect, setRect] = useState(null);
+  useEffect(() => {
+    const container = containerRef.current;
+    if (!container) return;
+    const isInteractive = (el) => {
+      let n = el;
+      while (n && n !== container) {
+        const t = n.tagName;
+        if (t === 'BUTTON' || t === 'A' || t === 'INPUT' || t === 'SELECT' || t === 'TEXTAREA' ||
+            n.getAttribute?.('role') === 'button' ||
+            n.dataset?.noMarquee != null || n.dataset?.noRowClick != null) return true;
+        n = n.parentElement;
+      }
+      return false;
+    };
+    const onMouseDown = (e) => {
+      if (e.button !== 0 || isInteractive(e.target)) return;
+      const x0 = e.clientX, y0 = e.clientY;
+      const base = new Set(selRef.current);
+      let active = false;
+      const onMove = (ev) => {
+        if (!active) {
+          if (Math.abs(ev.clientX - x0) < 5 && Math.abs(ev.clientY - y0) < 5) return;
+          active = true;
+          document.body.style.userSelect = 'none';
+        }
+        const minX = Math.min(x0, ev.clientX), maxX = Math.max(x0, ev.clientX);
+        const minY = Math.min(y0, ev.clientY), maxY = Math.max(y0, ev.clientY);
+        setRect({ minX, minY, maxX, maxY });
+        const hit = new Set(base);
+        container.querySelectorAll('[data-lead-id]').forEach((el) => {
+          const b = el.getBoundingClientRect();
+          if (b.left < maxX && b.right > minX && b.top < maxY && b.bottom > minY) hit.add(el.getAttribute('data-lead-id'));
+        });
+        onSelect(hit);
+      };
+      const onUp = () => {
+        document.removeEventListener('mousemove', onMove);
+        document.removeEventListener('mouseup', onUp);
+        document.body.style.userSelect = '';
+        setRect(null);
+        if (active) {
+          const swallow = (ev) => { ev.stopPropagation(); ev.preventDefault(); container.removeEventListener('click', swallow, true); };
+          container.addEventListener('click', swallow, true);
+          setTimeout(() => container.removeEventListener('click', swallow, true), 300);
+        }
+      };
+      document.addEventListener('mousemove', onMove);
+      document.addEventListener('mouseup', onUp);
+    };
+    container.addEventListener('mousedown', onMouseDown);
+    return () => container.removeEventListener('mousedown', onMouseDown);
+  }, [containerRef, onSelect]);
+  return rect;
+}
+
+// ─── DeleteLeadsModal — Hard-Delete-Bestätigung (Einzel + Bulk) + Ergebnis ───
+function DeleteLeadsModal({ ids, leads, onClose, onDone }) {
+  const isBulk = ids.length >= BULK_DELETE_TYPE_THRESHOLD;
+  const [typed, setTyped] = useState('');
+  const [busy, setBusy] = useState(false);
+  const [result, setResult] = useState(null);
+  const nameOf = (id) => {
+    const l = leads.find((x) => x.id === id);
+    if (!l) return 'Kontakt';
+    return `${l.first_name || ''} ${l.last_name || ''}`.trim() || l.company || 'Kontakt';
+  };
+  const canConfirm = !busy && (!isBulk || typed === BULK_DELETE_CONFIRM_WORD);
+  const doDelete = async () => {
+    setBusy(true);
+    const { data, error } = await supabase.rpc('delete_leads', { p_lead_ids: ids });
+    setBusy(false);
+    if (error) { setResult({ deleted: 0, blocked: [], errors: ids.length, fatal: error.message }); return; }
+    const rows = data || [];
+    const deleted = rows.filter((r) => r.status === 'deleted').length;
+    const blocked = rows.filter((r) => r.status === 'blocked_open_deal')
+      .map((r) => ({ id: r.lead_id, name: nameOf(r.lead_id), count: r.open_deal_count }));
+    const errors = rows.filter((r) => r.status === 'error' || r.status === 'not_found').length;
+    setResult({ deleted, blocked, errors });
+    onDone?.(rows);
+  };
+  const overlay = { position:'fixed', inset:0, background:'rgba(15,23,42,0.45)', zIndex:2000, display:'flex', alignItems:'center', justifyContent:'center', padding:20 };
+  const card = { background: COLORS.surface, borderRadius:16, width:460, maxWidth:'95vw', padding:24, boxShadow:'0 20px 60px rgba(0,0,0,0.25)' };
+  const btn = { height:36, padding:'0 16px', borderRadius: RADIUS.md, fontSize:13, fontWeight:600, cursor:'pointer', border:'none' };
+  return (
+    <div style={overlay} onMouseDown={(e) => { if (e.target === e.currentTarget && !busy) onClose(); }}>
+      <div style={card}>
+        {!result ? (
+          <>
+            <div style={{ display:'flex', alignItems:'center', gap:10, marginBottom:12 }}>
+              <Trash2 size={20} color="#B91C1C" />
+              <strong style={{ fontSize:16, color: COLORS.textPrimary }}>
+                {ids.length === 1 ? 'Kontakt endgültig löschen?' : `${ids.length} Kontakte endgültig löschen?`}
+              </strong>
+            </div>
+            <p style={{ fontSize:13, color: COLORS.textSecondary, lineHeight:1.6, margin:'0 0 16px' }}>
+              Wird auch aus der <b>LinkedIn-Inbox</b> entfernt (Aufgaben, Aktivitäten und Notizen inklusive).
+              LinkedIn-Nachrichten und Projekte bleiben erhalten. <b>Nicht umkehrbar.</b>{' '}
+              Kontakte mit einem offenen Deal werden übersprungen (Deal zuerst schließen).
+            </p>
+            {isBulk && (
+              <div style={{ marginBottom:16 }}>
+                <label style={{ fontSize:12, color: COLORS.textSecondary, display:'block', marginBottom:6 }}>
+                  Zum Bestätigen <b>{BULK_DELETE_CONFIRM_WORD}</b> tippen:
+                </label>
+                <input autoFocus value={typed} onChange={(e) => setTyped(e.target.value)} placeholder={BULK_DELETE_CONFIRM_WORD}
+                  style={{ width:'100%', height:36, padding:'0 12px', borderRadius: RADIUS.md, border:`1px solid ${COLORS.borderSubtle}`, fontSize:14, boxSizing:'border-box' }} />
+              </div>
+            )}
+            <div style={{ display:'flex', justifyContent:'flex-end', gap:8 }}>
+              <button type="button" style={{ ...btn, background: COLORS.surfaceMuted, color: COLORS.textPrimary }} onClick={onClose} disabled={busy}>Abbrechen</button>
+              <button type="button" onClick={doDelete} disabled={!canConfirm}
+                style={{ ...btn, background: canConfirm ? '#DC2626' : '#FCA5A5', color:'#fff', cursor: canConfirm ? 'pointer' : 'not-allowed' }}>
+                {busy ? 'Lösche…' : (ids.length === 1 ? 'Löschen' : `${ids.length} löschen`)}
+              </button>
+            </div>
+          </>
+        ) : (
+          <>
+            <strong style={{ fontSize:16, color: COLORS.textPrimary, display:'block', marginBottom:12 }}>Ergebnis</strong>
+            {result.fatal ? (
+              <p style={{ fontSize:13, color:'#B91C1C', margin:'0 0 16px' }}>Fehler: {result.fatal}</p>
+            ) : (
+              <p style={{ fontSize:13, color: COLORS.textSecondary, lineHeight:1.6, margin:'0 0 12px' }}>
+                <b>{result.deleted}</b> gelöscht
+                {result.blocked.length > 0 ? <>, <b>{result.blocked.length}</b> wegen offener Deals übersprungen</> : null}
+                {result.errors > 0 ? `, ${result.errors} nicht möglich` : ''}.
+              </p>
+            )}
+            {result.blocked.length > 0 && (
+              <div style={{ marginBottom:16, maxHeight:180, overflowY:'auto', border:`0.5px solid ${COLORS.borderSubtle}`, borderRadius: RADIUS.md, padding:8 }}>
+                {result.blocked.map((b) => (
+                  <div key={b.id} style={{ fontSize:12, color: COLORS.textPrimary, padding:'4px 6px', display:'flex', justifyContent:'space-between', gap:8 }}>
+                    <span>{b.name}</span>
+                    <span style={{ color:'#B45309', whiteSpace:'nowrap' }}>{b.count} offene(r) Deal(s) — erst schließen</span>
+                  </div>
+                ))}
+              </div>
+            )}
+            <div style={{ display:'flex', justifyContent:'flex-end' }}>
+              <button type="button" style={{ ...btn, background: COLORS.primary, color:'#fff' }} onClick={onClose}>Schließen</button>
+            </div>
+          </>
+        )}
+      </div>
+    </div>
+  );
+}
+
+// ─── BulkBar ─────────────────────────────────────────────────────────────
+function BulkBar({ count, onStage, onOwner, onList, onArchive, onExport, onEdit, onClear, onEnrich, enrichBusy, enrichProgress, onDelete }) {
   const barStyle = {
     padding:'10px 28px', background: COLORS.primarySoft, color: COLORS.primarySoftFg,
     display:'flex', alignItems:'center', gap:12, borderBottom:`0.5px solid ${COLORS.borderSubtle}`,
@@ -1648,6 +1834,9 @@ function BulkBar({ count, onStage, onOwner, onList, onArchive, onExport, onEdit,
       <button type="button" style={{ ...actionBtn, color:'#B91C1C' }} onClick={onArchive}>
         <Archive size={14} /> Archivieren
       </button>
+      <button type="button" style={{ ...actionBtn, color:'#DC2626', borderColor:'#FCA5A5' }} onClick={onDelete}>
+        <Trash2 size={14} /> Löschen
+      </button>
       <button type="button" onClick={onClear}
         style={{ background:'none', border:'none', cursor:'pointer', color: COLORS.primarySoftFg, padding:4 }}
         aria-label="Auswahl aufheben">
@@ -1660,7 +1849,9 @@ function BulkBar({ count, onStage, onOwner, onList, onArchive, onExport, onEdit,
 // ─── SelectableLeadsList — Wrapper um LeadsList mit Checkbox-Spalte ─────
 // Statt LeadsList ändern: wir wrappen die Standard-Komponente und blenden
 // links eine Checkbox-Spalte ein.
-function SelectableLeadsList({ leads, selectedIds, onToggleSelect, onLeadClick, onOwnerAdd, onTagAdd, onMenuClick, onUpdate, onToggleFavorite, ownerById, density = 'comfortable' }) {
+function SelectableLeadsList({ leads, selectedIds, onToggleSelect, onMarqueeSelect, onLeadClick, onOwnerAdd, onTagAdd, onMenuClick, onUpdate, onToggleFavorite, ownerById, density = 'comfortable' }) {
+  const containerRef = useRef(null);
+  const marqueeRect = useMarquee(containerRef, selectedIds, onMarqueeSelect);
   // Group leads by status für visuelle Sektionen (analog zu LeadsList default)
   const groups = useMemo(() => {
     const out = STATUS_ORDER.map(s => ({
@@ -1681,7 +1872,13 @@ function SelectableLeadsList({ leads, selectedIds, onToggleSelect, onLeadClick, 
   // mit der Checkbox-Spalte.
 
   return (
-    <div>
+    <div ref={containerRef} style={{ position:'relative', userSelect: marqueeRect ? 'none' : undefined }}>
+      {marqueeRect && (
+        <div style={{ position:'fixed', left: marqueeRect.minX, top: marqueeRect.minY,
+          width: marqueeRect.maxX - marqueeRect.minX, height: marqueeRect.maxY - marqueeRect.minY,
+          background:'rgba(10,111,176,0.12)', border:`1px solid ${PRIMARY}`, borderRadius:4,
+          pointerEvents:'none', zIndex:900 }} />
+      )}
       {groups.map(group => (
         <div key={group.status} style={{ marginBottom:24 }}>
           <div style={{ display:'flex', alignItems:'center', gap:8, padding:'12px 4px 10px' }}>
@@ -1745,7 +1942,7 @@ function SelectableLeadRow({ lead, selected, onToggle, onLeadClick, onOwnerAdd, 
   const subtitle = [lead.job_title, lead.company].filter(Boolean).join(' · ');
   const cfg = STATUS_CONFIG[lead.status];
   return (
-    <div style={rowStyle} onClick={(e) => {
+    <div data-lead-id={lead.id} style={rowStyle} onClick={(e) => {
       if (e.target.closest('[data-no-row-click]')) return;
       onLeadClick(lead.id, lead);
     }}>
@@ -2009,7 +2206,7 @@ function PopoverMenu({ options, selectedId, selectedIds, onSelect, onToggle, mul
 }
 
 // ─── ActionsMenu (3-Punkt) ───────────────────────────────────────────────
-function ActionsMenu({ leadId, anchorRect, lead, onClose, onStatusChange, onOpenDetail, onRefresh }) {
+function ActionsMenu({ leadId, anchorRect, lead, onClose, onStatusChange, onOpenDetail, onRefresh, onDelete }) {
   const ref = useRef(null);
   useEffect(() => {
     const onDocClick = (e) => { if (!ref.current?.contains(e.target)) onClose(); };
@@ -2056,6 +2253,9 @@ function ActionsMenu({ leadId, anchorRect, lead, onClose, onStatusChange, onOpen
       <div style={{ height:4, borderTop:`0.5px solid ${COLORS.borderSubtle}`, marginTop:4 }} />
       <button type="button" style={{ ...itemStyle, color:'#B91C1C' }} onClick={handleArchive}>
         <Archive size={14} /> Archivieren
+      </button>
+      <button type="button" style={{ ...itemStyle, color:'#DC2626' }} onClick={() => { onClose(); onDelete?.(leadId); }}>
+        <Trash2 size={14} /> Löschen
       </button>
     </div>
   );
