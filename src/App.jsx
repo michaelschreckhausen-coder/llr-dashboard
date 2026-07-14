@@ -4,6 +4,7 @@ import { NavigationTimer } from './lib/useTabPersistedState'
 import { supabase, IS_SUPPORT_TAB } from './lib/supabase'
 import { decodeJwt, clearImpersonationSession } from './lib/impersonation'
 import SupportSession from './pages/SupportSession'
+import ImpersonationBanner from './components/ImpersonationBanner'
 import { captureRefFromUrl } from './lib/affiliateTracking'
 import Login         from './pages/Login'
 import MfaChallenge  from './components/MfaChallenge'
@@ -320,6 +321,7 @@ export default function App() {
     <ThemeProvider session={session}>
     <TenantProvider>
     <NavigationTimer />
+    <ImpersonationBanner session={session} />
     <Routes>
       {/* Onboarding — fullscreen, keine Sidebar */}
       <Route path="/onboarding" element={<Navigate to="/dashboard" replace />} />
