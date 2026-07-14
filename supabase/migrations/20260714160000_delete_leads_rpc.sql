@@ -58,7 +58,9 @@ BEGIN
         AND (promoted_lead_id = v_id OR raw->>'lead_id' = v_id::text);
 
       -- (b) Aktivitäts-Feed explizit löschen (activities.lead_id ist SET NULL → sonst verwaist).
-      DELETE FROM public.activities WHERE lead_id = v_id;
+      --     activities.lead_id QUALIFIZIERT — bare "lead_id" kollidiert sonst mit dem OUT-Param lead_id
+      --     (variable_conflict=error → "column reference lead_id is ambiguous").
+      DELETE FROM public.activities a WHERE a.lead_id = v_id;
 
       -- (c) Lead löschen. CASCADE räumt die lead-eigenen Unterdaten; SET-NULL-FKs entkoppeln automatisch
       --     (LinkedIn-Historie/Projekte/geschlossene Deals bleiben erhalten).
