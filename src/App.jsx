@@ -5,6 +5,8 @@ import { supabase } from './lib/supabase'
 import { captureRefFromUrl } from './lib/affiliateTracking'
 import Login         from './pages/Login'
 import MfaChallenge  from './components/MfaChallenge'
+import SupportSession from './pages/SupportSession'
+import ImpersonationBanner from './components/ImpersonationBanner'
 import LinkedInCallback from './pages/auth/LinkedInCallback'
 import Unsubscribe   from './pages/Unsubscribe'
 import SettingsNotifications from './pages/SettingsNotifications'
@@ -264,6 +266,8 @@ export default function App() {
     return <div style={{ display:'flex', alignItems:'center', justifyContent:'center', height:'100vh', color:'#94A3B8', fontSize:14, gap:10 }}>Laden...</div>
   }
   if (!session) {
+    // Support-Impersonation-Handoff: setzt selbst die (isolierte) Kundensession, muss also ohne Session rendern.
+    if (location.pathname === '/support-session') return <SupportSession />
     if (location.pathname === '/register') return <Register />
     return <Login />
   }
@@ -297,6 +301,7 @@ export default function App() {
     <ThemeProvider session={session}>
     <TenantProvider>
     <NavigationTimer />
+    <ImpersonationBanner session={session} />
     <Routes>
       {/* Onboarding — fullscreen, keine Sidebar */}
       <Route path="/onboarding" element={<Navigate to="/dashboard" replace />} />

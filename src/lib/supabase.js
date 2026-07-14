@@ -41,7 +41,7 @@ try {
   const MIGRATION_FLAG = 'leadesk-storage-migrated-v2'
   if (typeof localStorage !== 'undefined' && !localStorage.getItem(MIGRATION_FLAG)) {
     const stale = Object.keys(localStorage).filter(k =>
-      k.includes('auth-token') && k !== 'leadesk-auth-token'
+      k.includes('auth-token') && k !== 'leadesk-auth-token' && k !== 'lk-impersonation-token'
     )
     stale.forEach(k => {
       console.log('[Leadesk] Removing stale auth-token key:', k)
@@ -51,12 +51,20 @@ try {
   }
 } catch(e) { console.warn('[Leadesk] storage cleanup skipped:', e?.message) }
 
+// Support-Impersonation-Isolation: der Admin öffnet den Support-Tab via window.open(url, 'lk-support').
+// Dieser Tab bekommt einen EIGENEN storageKey → die echte Kundensession ('leadesk-auth-token') bleibt
+// unberührt (kein Cross-Tab-Clobber). Kein Auto-Refresh (Impersonation-Token hat keinen Refresh-Token);
+// detectSessionInUrl aus, weil /support-session das Fragment selbst leak-frei verarbeitet.
+export const IS_SUPPORT_TAB = (() => {
+  try { return typeof window !== 'undefined' && window.name === 'lk-support' } catch { return false }
+})()
+
 export const supabase = createClient(SUPABASE_URL, SUPABASE_ANON, {
   auth: {
-    storageKey: 'leadesk-auth-token',
+    storageKey: IS_SUPPORT_TAB ? 'lk-impersonation-token' : 'leadesk-auth-token',
     persistSession: true,
-    autoRefreshToken: true,
-    detectSessionInUrl: true,
+    autoRefreshToken: !IS_SUPPORT_TAB,
+    detectSessionInUrl: !IS_SUPPORT_TAB,
   },
 })
 

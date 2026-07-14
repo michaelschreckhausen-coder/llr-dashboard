@@ -1,8 +1,12 @@
 // staff-impersonate — Admin-Impersonation (Weg B: self-signed, kurzlebiges HS256-Kunden-Token).
 // Actions: start | renew | end. KEIN Refresh-Token; Session-Leben = Token-exp (15min), harte Obergrenze
 // via Session-Row expires_at (60min-Cap). Sicherheits-Invarianten 1–6 sind inline markiert.
-// MFA-Bypass bewusst: das self-signed aal1-Token umgeht das MFA-Gate des Kunden (bei Impersonation gewollt,
-// im Audit + hier dokumentiert).
+// Auth-Modell:
+//   start        → nur Staff (is_leadesk_admin + is_active + can_impersonate). Das Admin-Frontend ruft es.
+//   renew / end  → Staff ODER das Impersonation-Token DIESER Session (session_id im Token == angefragte).
+//                  Damit kann der Support-Tab (der als Kunde authentifiziert ist) seine eigene Session
+//                  verlängern/beenden, ohne Staff-JWT.
+// MFA-Bypass bewusst: das self-signed aal1-Token umgeht das MFA-Gate des Kunden (bei Impersonation gewollt).
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import * as jose from "https://esm.sh/jose@5.9.6";
 
@@ -22,17 +26,20 @@ const APP_META_ALLOW = ["provider", "providers"];
 const json = (o: unknown, s = 200) => new Response(JSON.stringify(o), { status: s, headers: { "content-type": "application/json" } });
 const nowSec = () => Math.floor(Date.now() / 1000);
 
-// Caller-JWT verifizieren (HS256 gegen JWT_SECRET) → sub/iss/aud/is_leadesk_admin.
+// Caller-JWT verifizieren (HS256 gegen JWT_SECRET) → sub/iss/aud + Staff-/Impersonation-Marker.
 async function verifyCaller(req: Request) {
   const h = req.headers.get("Authorization") || "";
   const token = h.startsWith("Bearer ") ? h.slice(7) : "";
   if (!token) throw { status: 401, msg: "no_token" };
   let payload: jose.JWTPayload;
   try { ({ payload } = await jose.jwtVerify(token, SECRET)); } catch { throw { status: 401, msg: "invalid_token" }; }
+  const am = (payload.app_metadata as Record<string, unknown> | undefined) || {};
   return {
-    authId: String(payload.sub || ""),
-    iss: payload.iss, aud: payload.aud,
-    isAdmin: ((payload.app_metadata as Record<string, unknown> | undefined)?.is_leadesk_admin) === true,
+    authId: String(payload.sub || ""), iss: payload.iss, aud: payload.aud,
+    isAdmin: am.is_leadesk_admin === true,
+    isImpersonation: am.is_impersonation === true,
+    sessionId: payload.session_id ? String(payload.session_id) : null,
+    impersonatorStaffId: am.impersonator_staff_id ? String(am.impersonator_staff_id) : null,
   };
 }
 
@@ -83,12 +90,12 @@ Deno.serve(async (req) => {
   let body: any; try { body = await req.json(); } catch { return json({ error: "bad_json" }, 400); }
   try {
     const caller = await verifyCaller(req);
-    const staff = await requireStaff(caller.authId, caller.isAdmin);
 
+    // ── start: nur Staff ──
     if (body?.action === "start") {
-      // Invariante 1 (Forts.): can_impersonate zwingend.
-      if (!staff.can_impersonate) return json({ error: "no_impersonate_grant" }, 403);
-      // Invariante 2: Fail-closed Hook-Guard — aktiver Custom-Access-Token-Hook ⇒ kein Self-Sign.
+      const staff = await requireStaff(caller.authId, caller.isAdmin);
+      if (!staff.can_impersonate) return json({ error: "no_impersonate_grant" }, 403);   // Invariante 1
+      // Invariante 2: Fail-closed Hook-Guard.
       const { data: hookActive } = await db.rpc("staff_impersonation_hook_active");
       if (hookActive === true) return json({ error: "impersonation_disabled_hook_active" }, 503);
       const targetId = String(body?.target_user_id || "");
@@ -103,7 +110,6 @@ Deno.serve(async (req) => {
       const { data: tStaff } = await db.from("leadesk_staff").select("id").eq("id", targetId).maybeSingle();
       if (tStaff) return json({ error: "target_is_staff" }, 403);
       const { data: pref } = await db.from("user_preferences").select("active_team_id").eq("user_id", targetId).maybeSingle();
-      // Session-Row (Cap 60min).
       const { data: sess, error: sErr } = await db.from("staff_impersonation_sessions").insert({
         staff_id: staff.id, target_user_id: targetId, target_team_id: pref?.active_team_id ?? null, reason,
         expires_at: new Date((nowSec() + CAP_SEC) * 1000).toISOString(),
@@ -111,37 +117,43 @@ Deno.serve(async (req) => {
         user_agent: req.headers.get("user-agent") || null,
       }).select("id, expires_at").single();
       if (sErr || !sess) return json({ error: "session_insert_failed", detail: sErr?.message }, 500);
-      await audit(staff.id, "impersonation.start", targetId, reason);
+      await audit(staff.id, "impersonation.start", targetId, reason);   // Invariante 6
       const exp = Math.min(nowSec() + TOKEN_TTL_SEC, Math.floor(new Date(sess.expires_at).getTime() / 1000));
       const access_token = await signToken(target, staff.id, sess.id, caller.iss, caller.aud, exp);
       return json({ access_token, token_expires_at: exp, session_id: sess.id, session_expires_at: sess.expires_at });
     }
 
-    if (body?.action === "renew") {
+    // ── renew / end: Staff ODER das Impersonation-Token DIESER Session ──
+    if (body?.action === "renew" || body?.action === "end") {
       const sessionId = String(body?.session_id || "");
       if (!sessionId) return json({ error: "session_id_required" }, 400);
-      const { data: sess } = await db.from("staff_impersonation_sessions").select("*").eq("id", sessionId).eq("staff_id", staff.id).maybeSingle();
+      let staffId: string;
+      if (caller.isImpersonation) {
+        // Support-Tab verwaltet die EIGENE Session — session_id im Token muss zur angefragten passen.
+        if (!caller.sessionId || caller.sessionId !== sessionId || !caller.impersonatorStaffId) return json({ error: "forbidden" }, 403);
+        staffId = caller.impersonatorStaffId;
+      } else {
+        staffId = (await requireStaff(caller.authId, caller.isAdmin)).id;
+      }
+      const { data: sess } = await db.from("staff_impersonation_sessions").select("*").eq("id", sessionId).eq("staff_id", staffId).maybeSingle();
       if (!sess) return json({ error: "session_not_found" }, 404);
-      if (sess.ended_at) return json({ error: "session_ended" }, 409);
-      const cap = Math.floor(new Date(sess.expires_at).getTime() / 1000);
-      if (nowSec() >= cap) return json({ error: "session_cap_reached" }, 409);
-      const { data: tRes } = await db.auth.admin.getUserById(sess.target_user_id);
-      const target = tRes?.user;
-      if (!target) return json({ error: "target_not_found" }, 404);
-      await audit(staff.id, "impersonation.renew", sess.target_user_id, sess.reason);
-      const exp = Math.min(nowSec() + TOKEN_TTL_SEC, cap);
-      const access_token = await signToken(target, staff.id, sess.id, caller.iss, caller.aud, exp);
-      return json({ access_token, token_expires_at: exp, session_id: sess.id, session_expires_at: sess.expires_at });
-    }
 
-    if (body?.action === "end") {
-      const sessionId = String(body?.session_id || "");
-      if (!sessionId) return json({ error: "session_id_required" }, 400);
-      const { data: sess } = await db.from("staff_impersonation_sessions").select("id, target_user_id, reason, ended_at").eq("id", sessionId).eq("staff_id", staff.id).maybeSingle();
-      if (!sess) return json({ error: "session_not_found" }, 404);
+      if (body.action === "renew") {
+        if (sess.ended_at) return json({ error: "session_ended" }, 409);
+        const cap = Math.floor(new Date(sess.expires_at).getTime() / 1000);
+        if (nowSec() >= cap) return json({ error: "session_cap_reached" }, 409);   // Invariante 4: 60min-Cap
+        const { data: tRes } = await db.auth.admin.getUserById(sess.target_user_id);
+        const target = tRes?.user;
+        if (!target) return json({ error: "target_not_found" }, 404);
+        await audit(staffId, "impersonation.renew", sess.target_user_id, sess.reason);
+        const exp = Math.min(nowSec() + TOKEN_TTL_SEC, cap);
+        const access_token = await signToken(target, staffId, sess.id, caller.iss, caller.aud, exp);
+        return json({ access_token, token_expires_at: exp, session_id: sess.id, session_expires_at: sess.expires_at });
+      }
+      // end
       if (!sess.ended_at) {
         await db.from("staff_impersonation_sessions").update({ ended_at: new Date().toISOString(), end_reason: "manual" }).eq("id", sessionId);
-        await audit(staff.id, "impersonation.end", sess.target_user_id, sess.reason);
+        await audit(staffId, "impersonation.end", sess.target_user_id, sess.reason);
       }
       return json({ ok: true, session_id: sessionId });
     }
