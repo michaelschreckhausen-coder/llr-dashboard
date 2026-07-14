@@ -1,7 +1,9 @@
 import React, { useEffect, useState } from 'react'
 import { Routes, Route, Navigate, useParams, useLocation } from 'react-router-dom'
 import { NavigationTimer } from './lib/useTabPersistedState'
-import { supabase } from './lib/supabase'
+import { supabase, IS_SUPPORT_TAB } from './lib/supabase'
+import { decodeJwt, clearImpersonationSession } from './lib/impersonation'
+import SupportSession from './pages/SupportSession'
 import { captureRefFromUrl } from './lib/affiliateTracking'
 import Login         from './pages/Login'
 import MfaChallenge  from './components/MfaChallenge'
@@ -160,6 +162,7 @@ export default function App() {
       if (res.data.session) fetchRole()
     })
     var listener = supabase.auth.onAuthStateChange(function(event, s) {
+      if (IS_SUPPORT_TAB) { try { console.debug('[imp] onAuthStateChange · ' + event + ' · has_session=' + !!s + ' · is_imp=' + (!!decodeJwt(s?.access_token || '')?.app_metadata?.is_impersonation)) } catch { /* noop */ } }
       if (event === 'TOKEN_REFRESHED') return
       setSession(s)
       if (s) fetchRole(); else setRole(null)
@@ -171,6 +174,12 @@ export default function App() {
   // Degradiert sicher: wirft die API (z.B. MFA serverseitig aus) → kein Gate.
   useEffect(function() {
     if (!session) { setMfaRequired(false); return }
+    // BEWUSSTER MFA-Bypass NUR bei Impersonation: die Support-Session (is_impersonation-Claim) ist serverseitig
+    // via Staff-Auth + Grund + Audit autorisiert; ein Kunden-TOTP-Challenge ist für Support strukturell unmöglich
+    // (Support kennt den Kunden-Authenticator nicht). Greift ausschließlich bei is_impersonation===true →
+    // schwächt MFA für echte Kunden-Logins NICHT.
+    var impClaims = decodeJwt(session.access_token || '')
+    if (impClaims && impClaims.app_metadata && impClaims.app_metadata.is_impersonation === true) { setMfaRequired(false); return }
     var cancelled = false
     supabase.auth.mfa.getAuthenticatorAssuranceLevel().then(function(res) {
       if (cancelled) return
@@ -261,8 +270,25 @@ export default function App() {
     return <div style={{ display:'flex', alignItems:'center', justifyContent:'center', height:'100vh', color:'#94A3B8', fontSize:14, gap:10 }}>Laden...</div>
   }
   if (!session) {
+    // Support-Impersonation-Handoff: setzt selbst die (isolierte) Kundensession, muss also ohne Session rendern.
+    if (location.pathname === '/support-session') return <SupportSession />
     if (location.pathname === '/register') return <Register />
     return <Login />
+  }
+  // FAIL-CLOSED Support-Tab-Guard: der Support-Tab darf AUSSCHLIESSLICH eine Impersonation-Session halten.
+  // Falls hier (trotz sessionStorage-Isolation) je eine Nicht-Impersonation-Session landet (eigene/fremde),
+  // NIEMALS das Konto ohne Banner rendern → Slot räumen, lokal ausloggen, klaren Hinweis zeigen.
+  if (IS_SUPPORT_TAB && !decodeJwt(session.access_token || '')?.app_metadata?.is_impersonation) {
+    try { console.debug('[imp] fail-closed guard FIRED · session ohne is_impersonation → Slot räumen + logout') } catch { /* noop */ }
+    clearImpersonationSession()
+    supabase.auth.signOut({ scope: 'local' }).catch(() => {})
+    return (
+      <div style={{ display:'flex', alignItems:'center', justifyContent:'center', height:'100vh', flexDirection:'column', gap:12, fontFamily:'system-ui', padding:24, textAlign:'center' }}>
+        <div style={{ fontSize:40 }}>🛟</div>
+        <div style={{ fontWeight:700, color:'#0F172A' }}>Support-Session ungültig oder beendet</div>
+        <div style={{ color:'#64748B', fontSize:14, maxWidth:420 }}>Dieser Support-Tab hält keine gültige Impersonation-Session. Bitte den Support-Modus erneut aus der Admin-App starten.</div>
+      </div>
+    )
   }
   // 2FA-Gate: Session existiert, aber Schritt 2 (TOTP-Code) steht noch aus.
   if (mfaRequired) {

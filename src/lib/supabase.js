@@ -41,7 +41,7 @@ try {
   const MIGRATION_FLAG = 'leadesk-storage-migrated-v2'
   if (typeof localStorage !== 'undefined' && !localStorage.getItem(MIGRATION_FLAG)) {
     const stale = Object.keys(localStorage).filter(k =>
-      k.includes('auth-token') && k !== 'leadesk-auth-token'
+      k.includes('auth-token') && k !== 'leadesk-auth-token' && k !== 'lk-impersonation-token'
     )
     stale.forEach(k => {
       console.log('[Leadesk] Removing stale auth-token key:', k)
@@ -51,14 +51,60 @@ try {
   }
 } catch(e) { console.warn('[Leadesk] storage cleanup skipped:', e?.message) }
 
+// Support-Impersonation-Isolation: der Admin öffnet den Support-Tab via window.open(url, 'lk-support').
+// Dieser Tab bekommt einen EIGENEN storageKey UND per-Tab-sessionStorage → die echte Kundensession
+// ('leadesk-auth-token' in localStorage) bleibt unberührt. sessionStorage ist PHYSISCH pro Tab isoliert:
+// kein paralleler Login desselben Nutzers in einem anderen Tab kann in den Slot schreiben (kein Cross-Tab-
+// Clobber, kein Reinsyncen einer fremden Session via BroadcastChannel/storage-event). Die Impersonation-
+// Session ist damit auch ephemer (Tab zu = weg), was für Support gewünscht ist. Kein Auto-Refresh (Token
+// hat keinen Refresh-Token); detectSessionInUrl aus, weil /support-session das Fragment leak-frei verarbeitet.
+export const IS_SUPPORT_TAB = (() => {
+  try { return typeof window !== 'undefined' && window.name === 'lk-support' } catch { return false }
+})()
+
+// Migration-Cleanup: die Impersonation-Session lebt seit df10eeb9 in sessionStorage. Ein etwaiger
+// localStorage['lk-impersonation-token'] ist damit IMMER Altlast (durable, aus Vor-sessionStorage-Smokes)
+// und wird von keinem Client mehr gelesen → hart entfernen, damit er keinen fail-closed Guard triggert
+// und den JS-Zustand nicht verwirrt. Läuft in JEDEM Tab (auch Nicht-Support), da localStorage geteilt ist.
+try { if (typeof localStorage !== 'undefined') localStorage.removeItem('lk-impersonation-token') } catch { /* noop */ }
+
+// Der Storage, den der Support-Tab-Client nutzt — genau hierhin schreibt auch persistImpersonationSession().
+export const IMPERSONATION_STORAGE = (IS_SUPPORT_TAB && typeof window !== 'undefined') ? window.sessionStorage : undefined
+
+// Diagnostik (nicht-sensitiv): beim Init im Support-Tab sichtbar machen, ob der sessionStorage-Slot den
+// Handoff-Reload überlebt hat. Beantwortet Coworks (b). Kein Token-Inhalt, nur Präsenz-Boolean.
+if (IS_SUPPORT_TAB) {
+  try { console.debug('[imp] support-tab init · ss_has_token=' + !!window.sessionStorage.getItem('lk-impersonation-token')) } catch { /* noop */ }
+}
+
 export const supabase = createClient(SUPABASE_URL, SUPABASE_ANON, {
   auth: {
-    storageKey: 'leadesk-auth-token',
+    storageKey: IS_SUPPORT_TAB ? 'lk-impersonation-token' : 'leadesk-auth-token',
+    storage: IMPERSONATION_STORAGE,   // undefined → supabase-js nutzt localStorage (Normalfall)
     persistSession: true,
-    autoRefreshToken: true,
-    detectSessionInUrl: true,
+    autoRefreshToken: !IS_SUPPORT_TAB,
+    detectSessionInUrl: !IS_SUPPORT_TAB,
   },
 })
+
+// ROOT-FIX Impersonation-Session-Kill: der App-Load ruft an vielen Stellen supabase.auth.getUser()
+// (useLeads, useTagRegistry, whitelabel, uiPrefs, useLeadViews …). getUser() geht gegen GoTrue /auth/v1/user;
+// unser self-signed Weg-B-Token hat KEINE echte auth.sessions-Row → GoTrue wirft AuthSessionMissingError →
+// auth-js ruft in genau diesem Fall _removeSession() → storageKey raus → SIGNED_OUT → Tab fällt auf Login
+// (verifiziert in auth-js GoTrueClient.js Z.2588). Fix: im Support-Tab getUser() NIE gegen GoTrue laufen
+// lassen — der EF-signierte Token IST die User-Autorität. Wir liefern den User aus der aktuellen Session
+// (getSession() ist für non-expired Sessions netzwerkfrei und entfernt nichts). Nur im Support-Tab gepatcht;
+// echte Kunden-Tabs behalten das Original-getUser() unangetastet.
+if (IS_SUPPORT_TAB) {
+  supabase.auth.getUser = async () => {
+    try {
+      const { data } = await supabase.auth.getSession()
+      return { data: { user: data?.session?.user ?? null }, error: null }
+    } catch {
+      return { data: { user: null }, error: null }
+    }
+  }
+}
 
 // Dev-Hilfsmittel: welche DB wird genutzt?
 if (import.meta.env.DEV) {
