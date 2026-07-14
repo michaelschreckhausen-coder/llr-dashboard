@@ -1,9 +1,12 @@
-// Weg-B-Impersonation: Session DIREKT in den (isolierten) storageKey schreiben — umgeht supabase-js
+// Weg-B-Impersonation: Session DIREKT in den (isolierten) Support-Tab-Storage schreiben — umgeht supabase-js
 // setSession(), das intern getUser() gegen GoTrue /auth/v1/user aufruft. Das self-signed Token hat KEINE
 // echte auth.sessions-Row → GoTrue /user lehnt ab ("Auth session missing"). Mit einem ECHTEN user-Objekt
 // (aus den JWT-Claims) lädt der Client die Session beim Init über _recoverAndRefresh OHNE _getUser
 // (der /user-Pfad greift nur bei __isUserNotAvailableProxy). Storage-Format = JSON.stringify(session).
+// Storage = sessionStorage (per-Tab, physisch von anderen Tabs unerreichbar → kein Cross-Tab-Clobber);
+// EXAKT der Storage, den der Support-Tab-Client in lib/supabase.js nutzt (IMPERSONATION_STORAGE).
 const STORAGE_KEY = 'lk-impersonation-token'
+const store = () => (typeof window !== 'undefined' ? window.sessionStorage : null)
 
 export function decodeJwt(token) {
   try {
@@ -35,6 +38,12 @@ export function persistImpersonationSession(access_token) {
       updated_at: '',
     },
   }
-  try { localStorage.setItem(STORAGE_KEY, JSON.stringify(session)) } catch { return null }
+  try { store()?.setItem(STORAGE_KEY, JSON.stringify(session)) } catch { return null }
   return c
+}
+
+// Räumt den Support-Slot (beim Beenden / fail-closed). sessionStorage, damit es exakt den genutzten Slot trifft.
+export function clearImpersonationSession() {
+  try { store()?.removeItem(STORAGE_KEY) } catch { /* noop */ }
+  try { store()?.removeItem('lk-impersonation-meta') } catch { /* noop */ }
 }

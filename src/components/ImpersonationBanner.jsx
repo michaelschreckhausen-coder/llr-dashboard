@@ -5,7 +5,7 @@
 // Graceful Expiry: abgelaufen → sauber beenden, NICHT in einen verwirrenden Kunden-Login bouncen.
 import { useEffect, useState, useCallback } from 'react'
 import { supabase } from '../lib/supabase'
-import { decodeJwt, persistImpersonationSession } from '../lib/impersonation'
+import { decodeJwt, persistImpersonationSession, clearImpersonationSession } from '../lib/impersonation'
 
 function fmt(s) { s = Math.max(0, s); const m = Math.floor(s / 60); return `${m}:${String(s % 60).padStart(2, '0')}` }
 
@@ -34,9 +34,8 @@ export default function ImpersonationBanner({ session }) {
   }, [info?.exp])
 
   const cleanup = useCallback(async () => {
-    try { localStorage.removeItem('lk-impersonation-token') } catch { /* noop */ }
-    try { sessionStorage.removeItem('lk-impersonation-meta') } catch { /* noop */ }
     try { await supabase.auth.signOut({ scope: 'local' }) } catch { /* noop */ }   // local: kein GoTrue /logout-Round-Trip
+    clearImpersonationSession()   // Support-Slot (sessionStorage) sicher räumen, auch falls signOut nichts tat
     try { window.close() } catch { /* noop */ }   // Support-Tab schließen, wenn vom Browser erlaubt
     window.location.replace('/login')
   }, [])

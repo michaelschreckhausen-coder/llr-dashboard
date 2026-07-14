@@ -1,8 +1,8 @@
 import React, { useEffect, useState } from 'react'
 import { Routes, Route, Navigate, useParams, useLocation } from 'react-router-dom'
 import { NavigationTimer } from './lib/useTabPersistedState'
-import { supabase } from './lib/supabase'
-import { decodeJwt } from './lib/impersonation'
+import { supabase, IS_SUPPORT_TAB } from './lib/supabase'
+import { decodeJwt, clearImpersonationSession } from './lib/impersonation'
 import { captureRefFromUrl } from './lib/affiliateTracking'
 import Login         from './pages/Login'
 import MfaChallenge  from './components/MfaChallenge'
@@ -277,6 +277,20 @@ export default function App() {
     if (location.pathname === '/support-session') return <SupportSession />
     if (location.pathname === '/register') return <Register />
     return <Login />
+  }
+  // FAIL-CLOSED Support-Tab-Guard: der Support-Tab darf AUSSCHLIESSLICH eine Impersonation-Session halten.
+  // Falls hier (trotz sessionStorage-Isolation) je eine Nicht-Impersonation-Session landet (eigene/fremde),
+  // NIEMALS das Konto ohne Banner rendern → Slot räumen, lokal ausloggen, klaren Hinweis zeigen.
+  if (IS_SUPPORT_TAB && !decodeJwt(session.access_token || '')?.app_metadata?.is_impersonation) {
+    clearImpersonationSession()
+    supabase.auth.signOut({ scope: 'local' }).catch(() => {})
+    return (
+      <div style={{ display:'flex', alignItems:'center', justifyContent:'center', height:'100vh', flexDirection:'column', gap:12, fontFamily:'system-ui', padding:24, textAlign:'center' }}>
+        <div style={{ fontSize:40 }}>🛟</div>
+        <div style={{ fontWeight:700, color:'#0F172A' }}>Support-Session ungültig oder beendet</div>
+        <div style={{ color:'#64748B', fontSize:14, maxWidth:420 }}>Dieser Support-Tab hält keine gültige Impersonation-Session. Bitte den Support-Modus erneut aus der Admin-App starten.</div>
+      </div>
+    )
   }
   // 2FA-Gate: Session existiert, aber Schritt 2 (TOTP-Code) steht noch aus.
   if (mfaRequired) {

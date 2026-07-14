@@ -52,16 +52,23 @@ try {
 } catch(e) { console.warn('[Leadesk] storage cleanup skipped:', e?.message) }
 
 // Support-Impersonation-Isolation: der Admin öffnet den Support-Tab via window.open(url, 'lk-support').
-// Dieser Tab bekommt einen EIGENEN storageKey → die echte Kundensession ('leadesk-auth-token') bleibt
-// unberührt (kein Cross-Tab-Clobber). Kein Auto-Refresh (Impersonation-Token hat keinen Refresh-Token);
-// detectSessionInUrl aus, weil /support-session das Fragment selbst leak-frei verarbeitet.
+// Dieser Tab bekommt einen EIGENEN storageKey UND per-Tab-sessionStorage → die echte Kundensession
+// ('leadesk-auth-token' in localStorage) bleibt unberührt. sessionStorage ist PHYSISCH pro Tab isoliert:
+// kein paralleler Login desselben Nutzers in einem anderen Tab kann in den Slot schreiben (kein Cross-Tab-
+// Clobber, kein Reinsyncen einer fremden Session via BroadcastChannel/storage-event). Die Impersonation-
+// Session ist damit auch ephemer (Tab zu = weg), was für Support gewünscht ist. Kein Auto-Refresh (Token
+// hat keinen Refresh-Token); detectSessionInUrl aus, weil /support-session das Fragment leak-frei verarbeitet.
 export const IS_SUPPORT_TAB = (() => {
   try { return typeof window !== 'undefined' && window.name === 'lk-support' } catch { return false }
 })()
 
+// Der Storage, den der Support-Tab-Client nutzt — genau hierhin schreibt auch persistImpersonationSession().
+export const IMPERSONATION_STORAGE = (IS_SUPPORT_TAB && typeof window !== 'undefined') ? window.sessionStorage : undefined
+
 export const supabase = createClient(SUPABASE_URL, SUPABASE_ANON, {
   auth: {
     storageKey: IS_SUPPORT_TAB ? 'lk-impersonation-token' : 'leadesk-auth-token',
+    storage: IMPERSONATION_STORAGE,   // undefined → supabase-js nutzt localStorage (Normalfall)
     persistSession: true,
     autoRefreshToken: !IS_SUPPORT_TAB,
     detectSessionInUrl: !IS_SUPPORT_TAB,
