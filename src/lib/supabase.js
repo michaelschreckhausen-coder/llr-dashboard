@@ -87,6 +87,25 @@ export const supabase = createClient(SUPABASE_URL, SUPABASE_ANON, {
   },
 })
 
+// ROOT-FIX Impersonation-Session-Kill: der App-Load ruft an vielen Stellen supabase.auth.getUser()
+// (useLeads, useTagRegistry, whitelabel, uiPrefs, useLeadViews …). getUser() geht gegen GoTrue /auth/v1/user;
+// unser self-signed Weg-B-Token hat KEINE echte auth.sessions-Row → GoTrue wirft AuthSessionMissingError →
+// auth-js ruft in genau diesem Fall _removeSession() → storageKey raus → SIGNED_OUT → Tab fällt auf Login
+// (verifiziert in auth-js GoTrueClient.js Z.2588). Fix: im Support-Tab getUser() NIE gegen GoTrue laufen
+// lassen — der EF-signierte Token IST die User-Autorität. Wir liefern den User aus der aktuellen Session
+// (getSession() ist für non-expired Sessions netzwerkfrei und entfernt nichts). Nur im Support-Tab gepatcht;
+// echte Kunden-Tabs behalten das Original-getUser() unangetastet.
+if (IS_SUPPORT_TAB) {
+  supabase.auth.getUser = async () => {
+    try {
+      const { data } = await supabase.auth.getSession()
+      return { data: { user: data?.session?.user ?? null }, error: null }
+    } catch {
+      return { data: { user: null }, error: null }
+    }
+  }
+}
+
 // Dev-Hilfsmittel: welche DB wird genutzt?
 if (import.meta.env.DEV) {
   console.log('[Leadesk] Supabase:', SUPABASE_URL)

@@ -166,6 +166,7 @@ export default function App() {
       if (res.data.session) fetchRole()
     })
     var listener = supabase.auth.onAuthStateChange(function(event, s) {
+      if (IS_SUPPORT_TAB) { try { console.debug('[imp] onAuthStateChange · ' + event + ' · has_session=' + !!s + ' · is_imp=' + (!!decodeJwt(s?.access_token || '')?.app_metadata?.is_impersonation)) } catch { /* noop */ } }
       if (event === 'TOKEN_REFRESHED') return
       setSession(s)
       if (s) fetchRole(); else setRole(null)
