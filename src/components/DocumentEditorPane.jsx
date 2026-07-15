@@ -162,6 +162,7 @@ const DocumentEditorPane = forwardRef(function DocumentEditorPane({
   const [continuing, setContinuing] = useState(false)
   const [exportOpen, setExportOpen] = useState(false)
   const [postMenuOpen, setPostMenuOpen] = useState(false)
+  const [postMenuPos, setPostMenuPos] = useState(null) // fixed-Koordinaten gegen Clipping
   const [posts, setPosts] = useState(null)
   const [postsLoading, setPostsLoading] = useState(false)
   const [customActions, setCustomActions] = useState([])
@@ -518,7 +519,17 @@ const DocumentEditorPane = forwardRef(function DocumentEditorPane({
                   onClick={async () => {
                     const text = editor ? editor.getText().trim() : ''
                     if (!text) { alert('Das Dokument ist leer.'); return }
-                    const open = !postMenuOpen; setPostMenuOpen(open)
+                    const open = !postMenuOpen
+                    if (open) {
+                      const rect = e.currentTarget.getBoundingClientRect()
+                      const W = 300
+                      let left = rect.right - W
+                      if (left < 8) left = 8
+                      const maxLeft = window.innerWidth - W - 8
+                      if (left > maxLeft) left = Math.max(8, maxLeft)
+                      setPostMenuPos({ top: Math.round(rect.bottom + 6), left: Math.round(left), width: W })
+                    }
+                    setPostMenuOpen(open)
                     if (open && posts === null && loadExistingPosts) { setPostsLoading(true); const r = await loadExistingPosts(); setPosts(r || []); setPostsLoading(false) }
                   }}
                   style={{ display:'inline-flex', alignItems:'center', gap:6, height:30, padding:'0 11px', borderRadius:7, border:'none', background:'transparent', color:'var(--text-muted,#475467)', fontSize:12.5, fontWeight:500, cursor:'pointer', whiteSpace:'nowrap', fontFamily:'inherit' }}
@@ -528,7 +539,7 @@ const DocumentEditorPane = forwardRef(function DocumentEditorPane({
                 {postMenuOpen && (
                   <>
                     <div onClick={() => setPostMenuOpen(false)} style={{ position:'fixed', inset:0, zIndex:80 }}/>
-                    <div style={{ position:'absolute', top:'calc(100% + 6px)', right:0, zIndex:81, background:'#fff', border:'1px solid var(--border)', borderRadius:10, boxShadow:'0 10px 30px rgba(0,0,0,.12)', minWidth:270, maxHeight:340, overflowY:'auto', padding:6 }}>
+                    <div style={{ position:'fixed', top: postMenuPos ? postMenuPos.top : 0, left: postMenuPos ? postMenuPos.left : 0, width: postMenuPos ? postMenuPos.width : 300, zIndex:81, background:'#fff', border:'1px solid var(--border)', borderRadius:10, boxShadow:'0 10px 30px rgba(0,0,0,.12)', maxHeight:340, overflowY:'auto', padding:6, boxSizing:'border-box' }}>
                       <button onClick={() => { const text = editor ? editor.getText().trim() : ''; if (text) onAttachToPost(text, '__new__'); setPostMenuOpen(false) }} style={{ ...MenuItem, color:P, fontWeight:700 }}>+ Als neuen Beitrag anlegen</button>
                       <div style={{ height:1, background:'var(--border)', margin:'4px 0' }}/>
                       <div style={{ padding:'6px 11px', fontSize:10, fontWeight:700, color:'var(--text-muted)', textTransform:'uppercase', letterSpacing:'0.04em' }}>Zu bestehendem Beitrag</div>
