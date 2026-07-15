@@ -329,7 +329,7 @@ function OverviewSection({ data, range }) {
         <CrmFunnel leads={leads} />
       </SectionCard>
 
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14 }}>
+      <div className="col-2" style={{ gap: 14 }}>
         <SectionCard title={`Aktivitäten — letzte 14 Tage`}>
           <MiniBars data={activityBars} color={PRIMARY} />
           <div style={{ fontSize: 11, color: COLORS.text3, marginTop: 6, textAlign: 'right' }}>
@@ -428,7 +428,7 @@ function PipelineSection({ data }) {
         </div>
       )}
 
-      <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: 14, marginBottom: 14 }}>
+      <div className="col-2to1" style={{ gap: 14, marginBottom: 14 }}>
         <SectionCard title={`Deal-Stages (Anzahl + Wert) · ${deals.length} Deals`}
           action={<button type="button" className="lk-btn lk-btn-ghost" onClick={() => {
             const rows = [['Stage', 'Anzahl', 'Pipeline-Wert (EUR)']];
@@ -523,7 +523,7 @@ function LinkedInSection({ data }) {
   const latestSsi = ssiScores.length > 0 ? ssiScores[ssiScores.length - 1] : null;
   return (
     <>
-      <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: 14, marginBottom: 14 }}>
+      <div className="col-2to1" style={{ gap: 14, marginBottom: 14 }}>
         <SectionCard title="Verbindungsstatus"
           action={<button type="button" className="lk-btn lk-btn-ghost" onClick={() => {
             const rows = [['Status', 'Anzahl', 'Prozent']];
@@ -555,7 +555,7 @@ function LinkedInSection({ data }) {
       {ssiScores.length > 0 && (
         <SectionCard title="SSI-Score-Verlauf">
           {latestSsi && (
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 10, marginBottom: 14 }}>
+            <div className="col-4" style={{ gap: 10, marginBottom: 14 }}>
               <SsiMini label="Brand"         value={latestSsi.build_brand} />
               <SsiMini label="People"        value={latestSsi.find_people} />
               <SsiMini label="Insights"      value={latestSsi.engage_insights} />
@@ -636,7 +636,7 @@ function ActivitiesTasksSection({ data, members }) {
 
   return (
     <>
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14, marginBottom: 14 }}>
+      <div className="col-2" style={{ gap: 14, marginBottom: 14 }}>
         <SectionCard title="Aktivitäten nach Typ"
           action={<button type="button" className="lk-btn lk-btn-ghost" onClick={() => {
             const rows = [['Typ', 'Anzahl']];
@@ -649,7 +649,7 @@ function ActivitiesTasksSection({ data, members }) {
         </SectionCard>
 
         <SectionCard title="Aufgaben-Übersicht">
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, marginBottom: 12 }}>
+          <div className="col-2" style={{ gap: 10, marginBottom: 12 }}>
             <MiniStat label="Offen" value={openTasks.length} color={PRIMARY} />
             <MiniStat label="Überfällig" value={overdueTasks.length} color="#DC2626" />
             <MiniStat label="Heute fällig" value={todayTasks.length} color="#D97706" />
@@ -719,7 +719,7 @@ function CrmStatusSection({ data }) {
 
   return (
     <>
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14, marginBottom: 14 }}>
+      <div className="col-2" style={{ gap: 14, marginBottom: 14 }}>
         <SectionCard title="Top 10 Sources"
           action={<button type="button" className="lk-btn lk-btn-ghost" onClick={() => {
             const rows = [['Source', 'Anzahl']];
@@ -811,7 +811,7 @@ function AiSection({ data }) {
     .slice(0, 10);
   return (
     <>
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14, marginBottom: 14 }}>
+      <div className="col-2" style={{ gap: 14, marginBottom: 14 }}>
         <SectionCard title="Buying-Intent-Verteilung"
           action={<button type="button" className="lk-btn lk-btn-ghost" onClick={() => {
             const rows = [['Intent', 'Anzahl']];
@@ -823,7 +823,7 @@ function AiSection({ data }) {
           ))}
         </SectionCard>
         <SectionCard title="KI-Analyse-Status">
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
+          <div className="col-2" style={{ gap: 10 }}>
             <MiniStat label="Mit Analyse" value={analysisLeads} color={PRIMARY} />
             <MiniStat label="Bedarf erkannt" value={needDetected} color="#059669" />
           </div>
@@ -900,7 +900,7 @@ function OrganizationsSection({ data }) {
   const unlinkedLeads = leads.filter(l => l.company && !l.organization_id).length;
   return (
     <>
-      <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: 14, marginBottom: 14 }}>
+      <div className="col-2to1" style={{ gap: 14, marginBottom: 14 }}>
         <SectionCard title="Top 10 Unternehmen (Kontakt-Anzahl)"
           action={<button type="button" className="lk-btn lk-btn-ghost" onClick={() => {
             const rows = [['Unternehmen', 'Stadt', 'Branche', 'Kontakte', 'Deals']];
@@ -943,7 +943,7 @@ function OrganizationsSection({ data }) {
       </div>
 
       <SectionCard title="Daten-Hygiene">
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 10 }}>
+        <div className="col-3" style={{ gap: 10 }}>
           <MiniStat label="Unternehmen gesamt" value={organizations.length} color={PRIMARY} />
           <MiniStat label="Mit Kontakten verlinkt" value={orgsByLead.filter(o => o.leadCount > 0).length} color="#059669" />
           <MiniStat label="Orphan-Kontakte" value={unlinkedLeads} color={unlinkedLeads > 0 ? '#D97706' : '#059669'} />

@@ -521,8 +521,8 @@ export default function LinkedInInbox() {
                     <Check size={14} /> aus CRM
                   </span>
                 ) : (
-                  <button onClick={() => promoteOne(row)} disabled={busy} title={inCrm ? 'Mit bestehendem CRM-Kontakt zusammenführen' : 'Als CRM-Kontakt übernehmen'}
-                    style={{ display: 'inline-flex', alignItems: 'center', gap: 6, background: primary, color: '#fff', border: 'none', borderRadius: 8, padding: '8px 14px', fontWeight: 700, fontSize: 13, cursor: 'pointer', flexShrink: 0 }}>
+                  <button className="lk-btn lk-btn-primary" onClick={() => promoteOne(row)} disabled={busy} title={inCrm ? 'Mit bestehendem CRM-Kontakt zusammenführen' : 'Als CRM-Kontakt übernehmen'}
+                    style={{ display: 'inline-flex', alignItems: 'center', gap: 6, flexShrink: 0 }}>
                     <Check size={14} /> {inCrm ? 'Zusammenführen' : 'In CRM übernehmen'}
                   </button>
                 )}

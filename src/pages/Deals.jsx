@@ -5,6 +5,7 @@ import React, { useState, useEffect } from 'react'
 import { supabase } from '../lib/supabase'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import { useTeam } from '../context/TeamContext'
+import { useResponsive } from '../hooks/useResponsive'
 import OrganizationPicker from '../components/OrganizationPicker'
 import PageHeader from '../components/PageHeader'
 import { ChevronUp, ChevronDown } from 'lucide-react'
@@ -82,6 +83,7 @@ function CurvedArrow() {
 // ── Deal-Formular Modal ────────────────────────────────────────────────────────
 export function DealModal({ deal, leads, teamMembers = [], teamId, uid, onSave, onClose }) {
   const { t } = useTranslation()
+  const { isMobile } = useResponsive()
   const [form, setForm] = useState({
     title:          deal?.title || deal?.name || '',
     description:    deal?.description || '',
@@ -222,7 +224,7 @@ export function DealModal({ deal, leads, teamMembers = [], teamId, uid, onSave, 
           </div>
 
           {/* Wert + Stage */}
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+          <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr', gap: 12 }}>
             <div>
               <label style={lbl}>Deal-Wert (€)</label>
               <input type="number" value={form.value} onChange={e => set('value', e.target.value)} placeholder="z.B. 12000" style={inp} min="0"/>
@@ -234,7 +236,7 @@ export function DealModal({ deal, leads, teamMembers = [], teamId, uid, onSave, 
           </div>
 
           {/* Wahrscheinlichkeit + Abschluss */}
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+          <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr', gap: 12 }}>
             <div>
               <label style={lbl}>Wahrscheinlichkeit: {form.probability}%</label>
               <input type="range" min="0" max="100" step="5" value={form.probability} onChange={e => set('probability', e.target.value)}

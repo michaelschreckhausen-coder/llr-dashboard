@@ -14,6 +14,7 @@ import EmptyOrb from '../components/EmptyOrb'
 import React, { useState, useEffect, useRef } from 'react'
 import { Pencil, Pin, BookOpen, Target, Send, Loader2, Globe, Plus, FileText, ChevronLeft, ChevronRight, ChevronsRight, ChevronDown, X, Mic, Square, Image as ImageIcon, Download, Sparkles, Wand2, FilePlus2, Brush, MessageSquare, CalendarPlus, Maximize2, Minimize2, Paperclip, Trash2, MoreVertical, Unlink, Layers, Images } from 'lucide-react'
 import { useVoiceInput } from '../hooks/useVoiceInput'
+import { useResponsive } from '../hooks/useResponsive'
 import CompanyMultiSelect from '../components/CompanyMultiSelect'
 import AudienceSelect from '../components/AudienceSelect'
 import { useNavigate, useSearchParams } from 'react-router-dom'
@@ -309,9 +310,15 @@ export default function ContentStudio({ session }) {
   const bvId = noBrand ? null : (activeBrandVoice?.id || null)
   const contentReady = noBrand || !!bvId
 
-  // Sidebar State (persistiert)
+  const { isMobile } = useResponsive()
+
+  // Sidebar State (persistiert). Auf Mobile immer eingeklappt starten —
+  // 264px-Aside würde sonst den halben Handy-Screen fressen.
   const [sidebarOpen, setSidebarOpen] = useState(() => {
-    try { return localStorage.getItem('tw_sidebar_open') === '1' } catch { return false }
+    try {
+      if (window.innerWidth < 768) return false
+      return localStorage.getItem('tw_sidebar_open') === '1'
+    } catch { return false }
   })
   useEffect(() => { try { localStorage.setItem('tw_sidebar_open', sidebarOpen ? '1' : '0') } catch {} }, [sidebarOpen])
 
@@ -1376,9 +1383,15 @@ Neue Anfrage: "${p}"` },
   // ─── Render ───────────────────────────────────────────────────────────────
   return (
     <div ref={csRootRef} style={{ display:'flex', position:'relative', height:'100%', minHeight:0, overflow:'hidden', background:'var(--page-bg, #F7F8FA)' }}>
+      {/* Mobile-Backdrop: schließt die Overlay-Sidebar bei Tap daneben */}
+      {sidebarOpen && isMobile && (
+        <div onClick={() => setSidebarOpen(false)}
+          style={{ position:'fixed', inset:0, background:'rgba(0,0,0,0.4)', zIndex:399 }} />
+      )}
       {/* Sidebar */}
       {sidebarOpen && (
-        <aside style={{ width:264, borderRight:'1px solid var(--border,#E9ECF2)', background:'var(--page-bg, #F7F8FA)', display:'flex', flexDirection:'column', flexShrink:0 }}>
+        <aside style={{ width: isMobile ? 280 : 264, borderRight:'1px solid var(--border,#E9ECF2)', background:'var(--page-bg, #F7F8FA)', display:'flex', flexDirection:'column', flexShrink:0,
+          ...(isMobile ? { position:'fixed', top:0, left:0, bottom:0, zIndex:400, boxShadow:'2px 0 16px rgba(16,24,40,0.18)' } : {}) }}>
           <div style={{ padding:'14px 12px 10px', display:'flex', gap:8 }}>
             <button onClick={() => setSidebarOpen(false)} title="Sidebar einklappen"
               style={{ width:36, height:36, display:'inline-flex', alignItems:'center', justifyContent:'center', borderRadius:9, border:'1px solid var(--border)', background:'var(--surface,#fff)', fontSize:14, cursor:'pointer', color:'var(--text-muted,#667085)' }}>☰</button>
@@ -1430,13 +1443,14 @@ Neue Anfrage: "${p}"` },
 
       {/* Main */}
       <main style={{
-          flexGrow: (editorOpen && (paneView === 'suite' || paneView === 'page')) ? 0 : 1,
+          // Auf Mobile: bei offenem Editor Chat-Pane komplett ausblenden (nur eine Pane sichtbar)
+          flexGrow: (editorOpen && (paneView === 'suite' || paneView === 'page' || isMobile)) ? 0 : 1,
           flexShrink: 1,
-          flexBasis: !editorOpen ? '100%' : ((paneView === 'suite' || paneView === 'page') ? '0%' : '48%'),
-          display: (editorOpen && (paneView === 'suite' || paneView === 'page')) ? 'none' : 'flex',
+          flexBasis: !editorOpen ? '100%' : ((paneView === 'suite' || paneView === 'page' || isMobile) ? '0%' : '48%'),
+          display: (editorOpen && (paneView === 'suite' || paneView === 'page' || isMobile)) ? 'none' : 'flex',
           minWidth:0, overflow:'hidden',
-          opacity: (editorOpen && (paneView === 'suite' || paneView === 'page')) ? 0 : 1,
-          pointerEvents: (editorOpen && (paneView === 'suite' || paneView === 'page')) ? 'none' : 'auto',
+          opacity: (editorOpen && (paneView === 'suite' || paneView === 'page' || isMobile)) ? 0 : 1,
+          pointerEvents: (editorOpen && (paneView === 'suite' || paneView === 'page' || isMobile)) ? 'none' : 'auto',
           flexDirection:'column', position:'relative',
           transition:'opacity 0.2s ease' }}>
         {/* Floating Sidebar-Toggle wenn zu */}
@@ -1559,7 +1573,8 @@ Neue Anfrage: "${p}"` },
 
       {/* RECHTS: Suite (Dokument-Editor ⇄ Designer) — animiert via flex-basis */}
       {(() => {
-        const page = editorOpen && paneView === 'page'
+        // Auf Mobile immer Vollbild (fixed inset:0), damit die Pane nicht in 52% gequetscht wird
+        const page = editorOpen && (paneView === 'page' || isMobile)
         const basis = !editorOpen ? '0%' : ((paneView === 'suite' || page) ? '100%' : '52%')
         return (
       <section data-tour-id="cs-doc-pane" style={{ display:'flex', flexDirection:'column', flexGrow:0, flexShrink:1, flexBasis: basis, minWidth:0, overflow:'hidden',

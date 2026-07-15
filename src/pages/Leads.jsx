@@ -29,7 +29,9 @@ import {
   Inbox, Users as UsersIcon, FolderPlus, Folder, Download, Upload,
   CheckSquare, Square, Archive, Trash2, MoreHorizontal,
   Rows3, Rows2, FileUp, Puzzle, Pencil, ChevronUp, ChevronDown,
+  Loader2,
 } from 'lucide-react';
+import { IcLinkedin } from '../components/leads/IcLinkedin';
 import { EXTENSION_WEBSTORE_URL } from '../lib/leadeskExtension';
 import { LeadsList } from '../components/leads/LeadsList';
 import { LeadsBoard } from '../components/leads/LeadsBoard';
@@ -42,6 +44,7 @@ import OrganizationPicker from '../components/OrganizationPicker';
 import PageHeader from '../components/PageHeader';
 import { tagColor } from '../lib/tagColors';
 import { useTagRegistry } from '../hooks/useTagRegistry';
+import { useResponsive } from '../hooks/useResponsive';
 import { TagManagerModal } from '../components/leads/TagManagerModal';
 import { COLORS, RADIUS, STATUS_ORDER, STATUS_CONFIG } from '../lib/leadStyleTokens';
 import { useLeads } from '../hooks/useLeads';
@@ -200,6 +203,7 @@ function filterJsonEqual(a, b) {
 
 export default function Leads() {
   const navigate = useNavigate();
+  const { isMobile } = useResponsive();
   const { activeTeamId } = useTeam() || {};
   const [searchParams, setSearchParams] = useSearchParams();
   const showArchived = searchParams.get('archived') === '1';
@@ -273,6 +277,11 @@ export default function Leads() {
   const [bulkStagePicker, setBulkStagePicker] = useState(null);
   const [bulkListPicker,  setBulkListPicker]  = useState(null);
   const [bulkEditOpen,    setBulkEditOpen]    = useState(false);
+  // F6 Bulk-Anreicherung
+  const [enrichBusy,     setEnrichBusy]     = useState(false);
+  const [enrichProgress, setEnrichProgress] = useState(null); // { done, total }
+  const [enrichResult,   setEnrichResult]   = useState(null); // { done, capped, rateLimited, skipped:[{name,reason}], failed:[{name,reason}] }
+  const [enrichConfirm,  setEnrichConfirm]  = useState(null); // { candidates:[{id,name}], skipped, capped } — In-App-Bestätigung vor dem Feuern
   // Dashboard-Block (KPIs + Grafiken) ein-/ausblendbar — persistiert in localStorage
   const [showDash, setShowDash] = useState(() => { try { return localStorage.getItem('leadesk_leads_dashboard') !== '0'; } catch { return true; } });
   const toggleDash = () => setShowDash(v => { const n = !v; try { localStorage.setItem('leadesk_leads_dashboard', n ? '1' : '0'); } catch {} return n; });
@@ -601,6 +610,19 @@ export default function Leads() {
     refetch?.();
     clearSelection();
   };
+  // Hard-Delete (Einzel + Bulk) via delete_leads-RPC. deleteModal steuert Confirm + Ergebnis.
+  const [deleteModal, setDeleteModal] = useState(null); // { ids: uuid[] }
+  const openDeleteSingle = useCallback((leadId) => setDeleteModal({ ids: [leadId] }), []);
+  const openDeleteBulk = useCallback(() => {
+    if (selectedIds.size === 0) return;
+    setDeleteModal({ ids: Array.from(selectedIds) });
+  }, [selectedIds]);
+  const handleDeleteDone = useCallback((rows) => {
+    // Gelöschte aus der Auswahl entfernen; blockierte (offener Deal) markiert lassen.
+    const blockedIds = (rows || []).filter(r => r.status === 'blocked_open_deal').map(r => r.lead_id);
+    setSelectedIds(new Set(blockedIds));
+    refetch?.();
+  }, [refetch]);
   const bulkAddToList = async (listId) => {
     if (selectedIds.size === 0 || !listId) return;
     const ids = Array.from(selectedIds);
@@ -625,6 +647,79 @@ export default function Leads() {
     const subset = leads.filter(l => selectedIds.has(l.id));
     downloadFile(`leads-export-${new Date().toISOString().slice(0,10)}.csv`, leadsToCsv(subset));
   };
+
+  // F6 · Bulk-Anreicherung — sequenziell (NICHT parallel) gegen unipile-enrich.
+  // Nur Leads MIT linkedin_url, Dedup gegen bereits angereicherte (enriched_at),
+  // Cap 25/Durchlauf, ~400ms Pause gegen Rate-Limit, Abbruch bei 429.
+  const ENRICH_CAP = 25;
+  // Prepare: Filter VOR dem Deckel, Skip-Gründe erfassen, dann In-App-Bestätigung
+  // (statt window.confirm -> blockiert die Browser-Automation nicht).
+  const bulkEnrich = useCallback(() => {
+    if (selectedIds.size === 0 || enrichBusy) return;
+    const selected = leads.filter(l => selectedIds.has(l.id));
+    const leadName = (l) => l.name || `${l.first_name || ''} ${l.last_name || ''}`.trim() || 'Kontakt';
+
+    const skipped = [];
+    let candidates = [];
+    for (const l of selected) {
+      if (!l.linkedin_url) { skipped.push({ name: leadName(l), reason: 'keine LinkedIn-URL' }); continue; }
+      if (l.enriched_at)   { skipped.push({ name: leadName(l), reason: 'bereits angereichert' }); continue; }
+      candidates.push({ id: l.id, name: leadName(l) });
+    }
+    if (candidates.length === 0) {
+      setEnrichResult({ done: 0, capped: 0, rateLimited: false, skipped, failed: [] });
+      return;
+    }
+    let capped = 0;
+    if (candidates.length > ENRICH_CAP) {  // Deckel NACH dem Filter
+      capped = candidates.length - ENRICH_CAP;
+      candidates = candidates.slice(0, ENRICH_CAP);
+    }
+    setEnrichConfirm({ candidates, skipped, capped });
+  }, [selectedIds, leads, enrichBusy]);
+
+  // Execute: sequenziell mit größerer Pause + einmaligem 429-Backoff-Retry.
+  const runBulkEnrich = useCallback(async ({ candidates, skipped, capped }) => {
+    setEnrichConfirm(null);
+    setEnrichResult(null);
+    setEnrichBusy(true);
+    setEnrichProgress({ done: 0, total: candidates.length });
+    const PAUSE_MS = 1000;    // größere Pause — LinkedIn limitiert Profilabrufe hart
+    const BACKOFF_MS = 4000;  // einmaliger 429-Backoff-Retry vor Abbruch
+    let done = 0, rateLimited = false;
+    const failed = [];
+    for (const l of candidates) {
+      let attempt = 0, ok = false, reason = 'Fehler';
+      while (attempt < 2 && !ok) {
+        const { data, error } = await supabase.functions.invoke('unipile-enrich', { body: { lead_id: l.id } });
+        if (error) {  // Fallstrick #12
+          const status = error.context?.status;
+          let body = null; try { body = await error.context?.json?.(); } catch { /* egal */ }
+          if (status === 429 || body?.rate_limited) {
+            if (attempt === 0) { await new Promise(r => setTimeout(r, BACKOFF_MS)); attempt++; continue; }
+            rateLimited = true; reason = 'Rate-Limit'; break;
+          }
+          reason = body?.error
+            || (status === 409 ? 'kein aktiver Unipile-Account'
+              : status === 400 ? 'kein LinkedIn-Identifier ableitbar'
+              : status === 403 ? 'Automatisierung-Addon nicht aktiv'
+              : (error.message || 'Fehler'));
+          break;
+        }
+        if (data?.error) { reason = data.error; break; }
+        ok = true;
+      }
+      if (ok) done++;
+      else failed.push({ name: l.name, reason });
+      setEnrichProgress({ done: done + failed.length, total: candidates.length });
+      if (rateLimited) break;
+      await new Promise(r => setTimeout(r, PAUSE_MS));
+    }
+    setEnrichBusy(false);
+    setEnrichProgress(null);
+    await refetch?.();
+    setEnrichResult({ done, capped, rateLimited, skipped, failed });
+  }, [refetch]);
 
   // Sprint C/2 · Generic Bulk-Edit Apply-Handler
   // payload kommt aus BulkEditModal in einer von zwei Formen:
@@ -882,7 +977,7 @@ export default function Leads() {
         </div>
 
         {/* Diagramme (Reports-Stil) — Stage breit + Score daneben, Quellen darunter */}
-        <div style={{ display:'grid', gridTemplateColumns:'2fr 1fr', gap:14 }}>
+        <div style={{ display:'grid', gridTemplateColumns: isMobile ? '1fr' : '2fr 1fr', gap:14 }}>
           <Panel title="Verteilung nach Stage">
             {stageDist.length > 0
               ? stageDist.map(s => <BarRow key={s.label} label={s.label} count={s.count} total={leads.length} color={s.color}/>)
@@ -1208,9 +1303,73 @@ export default function Leads() {
             onOwner={(e) => setOwnerPicker({ leadIds: Array.from(selectedIds), anchorRect: e.currentTarget.getBoundingClientRect() })}
             onList={(e) => setBulkListPicker({ anchorRect: e.currentTarget.getBoundingClientRect() })}
             onArchive={bulkArchive}
+            onDelete={openDeleteBulk}
             onExport={bulkExportCsv}
             onClear={clearSelection}
+            onEnrich={bulkEnrich}
+            enrichBusy={enrichBusy}
+            enrichProgress={enrichProgress}
           />
+        )}
+
+        {/* F6 · Inline-Ergebnis der Bulk-Anreicherung (ersetzt den blockierenden alert) */}
+        {enrichResult && (
+          <div style={{ margin:'0 0 12px', padding:'12px 16px', borderRadius:10, border:`0.5px solid ${COLORS.borderSubtle}`, background: COLORS.surface, fontSize:13, display:'flex', flexDirection:'column', gap:8 }}>
+            <div style={{ display:'flex', alignItems:'center', gap:10, flexWrap:'wrap' }}>
+              <IcLinkedin size={16} />
+              <strong>Anreicherung abgeschlossen</strong>
+              <span style={{ color:'#15803D' }}>{enrichResult.done} angereichert</span>
+              {enrichResult.skipped.length > 0 && <span style={{ color: COLORS.textTertiary }}>· {enrichResult.skipped.length} übersprungen</span>}
+              {enrichResult.failed.length > 0 && <span style={{ color:'#B91C1C' }}>· {enrichResult.failed.length} fehlgeschlagen</span>}
+              <div style={{ flex:1 }} />
+              <button type="button" onClick={() => setEnrichResult(null)} style={{ background:'none', border:'none', cursor:'pointer', color: COLORS.textTertiary, padding:2 }} aria-label="Schließen"><X size={16} /></button>
+            </div>
+            {enrichResult.rateLimited && (
+              <div style={{ color:'#B45309', background:'#FFFBEB', border:'0.5px solid #FDE68A', borderRadius:8, padding:'6px 10px' }}>
+                LinkedIn-Rate-Limit erreicht — Durchlauf gestoppt. Rest bitte später erneut anreichern.
+              </div>
+            )}
+            {enrichResult.capped > 0 && (
+              <div style={{ color: COLORS.textTertiary }}>{enrichResult.capped} weitere über dem Deckel ({ENRICH_CAP}/Durchlauf) — erneut auswählen für den nächsten Durchlauf.</div>
+            )}
+            {enrichResult.failed.length > 0 && (
+              <div>
+                <div style={{ fontWeight:600, marginBottom:2 }}>Fehlgeschlagen:</div>
+                {enrichResult.failed.slice(0, 12).map((f, i) => (
+                  <div key={i} style={{ color: COLORS.textSecondary }}>· {f.name} — {f.reason}</div>
+                ))}
+                {enrichResult.failed.length > 12 && <div style={{ color: COLORS.textTertiary }}>… und {enrichResult.failed.length - 12} weitere</div>}
+              </div>
+            )}
+            {enrichResult.skipped.length > 0 && (() => {
+              const noUrl = enrichResult.skipped.filter(s => s.reason === 'keine LinkedIn-URL').length;
+              const already = enrichResult.skipped.filter(s => s.reason === 'bereits angereichert').length;
+              return <div style={{ color: COLORS.textTertiary }}>Übersprungen: {noUrl} ohne LinkedIn-URL, {already} bereits angereichert.</div>;
+            })()}
+          </div>
+        )}
+
+        {/* F6 · In-App-Bestätigung vor der Bulk-Anreicherung (ersetzt window.confirm — automatisierbar) */}
+        {enrichConfirm && (
+          <div onClick={() => setEnrichConfirm(null)} style={{ position:'fixed', inset:0, background:'rgba(0,0,0,0.4)', display:'flex', alignItems:'center', justifyContent:'center', zIndex:1000 }}>
+            <div onClick={e => e.stopPropagation()} style={{ background: COLORS.surface, borderRadius:12, padding:'20px 22px', width:'min(420px, 92vw)', boxShadow:'0 8px 30px rgba(0,0,0,0.18)', display:'flex', flexDirection:'column', gap:12 }}>
+              <div style={{ display:'flex', alignItems:'center', gap:10 }}>
+                <IcLinkedin size={18} />
+                <strong style={{ fontSize:15 }}>Kontakte anreichern</strong>
+              </div>
+              <div style={{ fontSize:13, color: COLORS.textSecondary, lineHeight:1.5 }}>
+                <strong>{enrichConfirm.candidates.length}</strong> Kontakt(e) werden mit LinkedIn-Daten angereichert.
+                {enrichConfirm.skipped.length > 0 && <> {enrichConfirm.skipped.length} übersprungen (ohne URL / bereits angereichert).</>}
+                {enrichConfirm.capped > 0 && <> {enrichConfirm.capped} weitere über dem Deckel ({ENRICH_CAP}/Durchlauf).</>}
+              </div>
+              <div style={{ display:'flex', justifyContent:'flex-end', gap:8 }}>
+                <button type="button" onClick={() => setEnrichConfirm(null)} className="lk-btn lk-btn-ghost">Abbrechen</button>
+                <button type="button" onClick={() => runBulkEnrich(enrichConfirm)} className="lk-btn lk-btn-cta">
+                  <IcLinkedin size={14} /> Anreichern
+                </button>
+              </div>
+            </div>
+          </div>
         )}
 
         {/* Content */}
@@ -1242,6 +1401,7 @@ export default function Leads() {
                 leads={pagedLeads}
                 selectedIds={selectedIds}
                 onToggleSelect={toggleSelected}
+                onMarqueeSelect={setSelectedIds}
                 onLeadClick={handleLeadClick}
                 onOwnerAdd={handleOwnerAdd}
                 onTagAdd={handleTagAdd}
@@ -1338,6 +1498,15 @@ export default function Leads() {
           onStatusChange={handleStatusChange}
           onOpenDetail={(id) => { setActionsMenu(null); handleLeadClick(id); }}
           onRefresh={refetch}
+          onDelete={openDeleteSingle}
+        />
+      )}
+      {deleteModal && (
+        <DeleteLeadsModal
+          ids={deleteModal.ids}
+          leads={leads}
+          onClose={() => setDeleteModal(null)}
+          onDone={handleDeleteDone}
         />
       )}
       {ownerPicker && (
@@ -1474,7 +1643,169 @@ function EmptyStateOnboarding({ onImport, onCreate }) {
 }
 
 // ─── BulkBar ─────────────────────────────────────────────────────────────
-function BulkBar({ count, onStage, onOwner, onList, onArchive, onExport, onEdit, onClear }) {
+// ─── Hard-Delete: Schwelle für "LÖSCHEN"-Tippen (Bulk) ───────────────────
+const BULK_DELETE_TYPE_THRESHOLD = 5;
+const BULK_DELETE_CONFIRM_WORD = 'LÖSCHEN';
+
+// ─── useMarquee — Gummiband-Auswahl über die div-Row-Liste ───────────────
+// Ergänzt die bestehende Auswahl (Snapshot bei mousedown). Ignoriert Klicks auf Buttons/Links/Inputs +
+// [data-no-row-click]/[data-no-marquee]. Unterdrückt Text-Select während des Ziehens. Scroll-aware
+// (getBoundingClientRect in Viewport-Koordinaten). Erst ab 5px Bewegung = Drag → normaler Klick bleibt Klick.
+// Der Klick direkt nach dem Drag wird geschluckt (sonst öffnet sich die Detail-Ansicht).
+function useMarquee(containerRef, selectedIds, onSelect) {
+  const selRef = useRef(selectedIds);
+  useEffect(() => { selRef.current = selectedIds; }, [selectedIds]);
+  const [rect, setRect] = useState(null);
+  useEffect(() => {
+    const container = containerRef.current;
+    if (!container) return;
+    const isInteractive = (el) => {
+      let n = el;
+      while (n && n !== container) {
+        const t = n.tagName;
+        if (t === 'BUTTON' || t === 'A' || t === 'INPUT' || t === 'SELECT' || t === 'TEXTAREA' ||
+            n.getAttribute?.('role') === 'button' ||
+            n.dataset?.noMarquee != null || n.dataset?.noRowClick != null) return true;
+        n = n.parentElement;
+      }
+      return false;
+    };
+    const onMouseDown = (e) => {
+      if (e.button !== 0 || isInteractive(e.target)) return;
+      const x0 = e.clientX, y0 = e.clientY;
+      const base = new Set(selRef.current);
+      let active = false;
+      const onMove = (ev) => {
+        if (!active) {
+          if (Math.abs(ev.clientX - x0) < 5 && Math.abs(ev.clientY - y0) < 5) return;
+          active = true;
+          document.body.style.userSelect = 'none';
+        }
+        const minX = Math.min(x0, ev.clientX), maxX = Math.max(x0, ev.clientX);
+        const minY = Math.min(y0, ev.clientY), maxY = Math.max(y0, ev.clientY);
+        setRect({ minX, minY, maxX, maxY });
+        const hit = new Set(base);
+        container.querySelectorAll('[data-lead-id]').forEach((el) => {
+          const b = el.getBoundingClientRect();
+          if (b.left < maxX && b.right > minX && b.top < maxY && b.bottom > minY) hit.add(el.getAttribute('data-lead-id'));
+        });
+        onSelect(hit);
+      };
+      const onUp = () => {
+        document.removeEventListener('mousemove', onMove);
+        document.removeEventListener('mouseup', onUp);
+        document.body.style.userSelect = '';
+        setRect(null);
+        if (active) {
+          const swallow = (ev) => { ev.stopPropagation(); ev.preventDefault(); container.removeEventListener('click', swallow, true); };
+          container.addEventListener('click', swallow, true);
+          setTimeout(() => container.removeEventListener('click', swallow, true), 300);
+        }
+      };
+      document.addEventListener('mousemove', onMove);
+      document.addEventListener('mouseup', onUp);
+    };
+    container.addEventListener('mousedown', onMouseDown);
+    return () => container.removeEventListener('mousedown', onMouseDown);
+  }, [containerRef, onSelect]);
+  return rect;
+}
+
+// ─── DeleteLeadsModal — Hard-Delete-Bestätigung (Einzel + Bulk) + Ergebnis ───
+function DeleteLeadsModal({ ids, leads, onClose, onDone }) {
+  const isBulk = ids.length >= BULK_DELETE_TYPE_THRESHOLD;
+  const [typed, setTyped] = useState('');
+  const [busy, setBusy] = useState(false);
+  const [result, setResult] = useState(null);
+  const nameOf = (id) => {
+    const l = leads.find((x) => x.id === id);
+    if (!l) return 'Kontakt';
+    return `${l.first_name || ''} ${l.last_name || ''}`.trim() || l.company || 'Kontakt';
+  };
+  const canConfirm = !busy && (!isBulk || typed === BULK_DELETE_CONFIRM_WORD);
+  const doDelete = async () => {
+    setBusy(true);
+    const { data, error } = await supabase.rpc('delete_leads', { p_lead_ids: ids });
+    setBusy(false);
+    if (error) { setResult({ deleted: 0, blocked: [], errors: ids.length, fatal: error.message }); return; }
+    const rows = data || [];
+    const deleted = rows.filter((r) => r.status === 'deleted').length;
+    const blocked = rows.filter((r) => r.status === 'blocked_open_deal')
+      .map((r) => ({ id: r.lead_id, name: nameOf(r.lead_id), count: r.open_deal_count }));
+    const errors = rows.filter((r) => r.status === 'error' || r.status === 'not_found').length;
+    setResult({ deleted, blocked, errors });
+    onDone?.(rows);
+  };
+  const overlay = { position:'fixed', inset:0, background:'rgba(15,23,42,0.45)', zIndex:2000, display:'flex', alignItems:'center', justifyContent:'center', padding:20 };
+  const card = { background: COLORS.surface, borderRadius:16, width:460, maxWidth:'95vw', padding:24, boxShadow:'0 20px 60px rgba(0,0,0,0.25)' };
+  const btn = { height:36, padding:'0 16px', borderRadius: RADIUS.md, fontSize:13, fontWeight:600, cursor:'pointer', border:'none' };
+  return (
+    <div style={overlay} onMouseDown={(e) => { if (e.target === e.currentTarget && !busy) onClose(); }}>
+      <div style={card}>
+        {!result ? (
+          <>
+            <div style={{ display:'flex', alignItems:'center', gap:10, marginBottom:12 }}>
+              <Trash2 size={20} color="#B91C1C" />
+              <strong style={{ fontSize:16, color: COLORS.textPrimary }}>
+                {ids.length === 1 ? 'Kontakt endgültig löschen?' : `${ids.length} Kontakte endgültig löschen?`}
+              </strong>
+            </div>
+            <p style={{ fontSize:13, color: COLORS.textSecondary, lineHeight:1.6, margin:'0 0 16px' }}>
+              Wird auch aus der <b>LinkedIn-Inbox</b> entfernt (Aufgaben, Aktivitäten und Notizen inklusive).
+              LinkedIn-Nachrichten und Projekte bleiben erhalten. <b>Nicht umkehrbar.</b>{' '}
+              Kontakte mit einem offenen Deal werden übersprungen (Deal zuerst schließen).
+            </p>
+            {isBulk && (
+              <div style={{ marginBottom:16 }}>
+                <label style={{ fontSize:12, color: COLORS.textSecondary, display:'block', marginBottom:6 }}>
+                  Zum Bestätigen <b>{BULK_DELETE_CONFIRM_WORD}</b> tippen:
+                </label>
+                <input autoFocus value={typed} onChange={(e) => setTyped(e.target.value)} placeholder={BULK_DELETE_CONFIRM_WORD}
+                  style={{ width:'100%', height:36, padding:'0 12px', borderRadius: RADIUS.md, border:`1px solid ${COLORS.borderSubtle}`, fontSize:14, boxSizing:'border-box' }} />
+              </div>
+            )}
+            <div style={{ display:'flex', justifyContent:'flex-end', gap:8 }}>
+              <button type="button" style={{ ...btn, background: COLORS.surfaceMuted, color: COLORS.textPrimary }} onClick={onClose} disabled={busy}>Abbrechen</button>
+              <button type="button" onClick={doDelete} disabled={!canConfirm}
+                style={{ ...btn, background: canConfirm ? '#DC2626' : '#FCA5A5', color:'#fff', cursor: canConfirm ? 'pointer' : 'not-allowed' }}>
+                {busy ? 'Lösche…' : (ids.length === 1 ? 'Löschen' : `${ids.length} löschen`)}
+              </button>
+            </div>
+          </>
+        ) : (
+          <>
+            <strong style={{ fontSize:16, color: COLORS.textPrimary, display:'block', marginBottom:12 }}>Ergebnis</strong>
+            {result.fatal ? (
+              <p style={{ fontSize:13, color:'#B91C1C', margin:'0 0 16px' }}>Fehler: {result.fatal}</p>
+            ) : (
+              <p style={{ fontSize:13, color: COLORS.textSecondary, lineHeight:1.6, margin:'0 0 12px' }}>
+                <b>{result.deleted}</b> gelöscht
+                {result.blocked.length > 0 ? <>, <b>{result.blocked.length}</b> wegen offener Deals übersprungen</> : null}
+                {result.errors > 0 ? `, ${result.errors} nicht möglich` : ''}.
+              </p>
+            )}
+            {result.blocked.length > 0 && (
+              <div style={{ marginBottom:16, maxHeight:180, overflowY:'auto', border:`0.5px solid ${COLORS.borderSubtle}`, borderRadius: RADIUS.md, padding:8 }}>
+                {result.blocked.map((b) => (
+                  <div key={b.id} style={{ fontSize:12, color: COLORS.textPrimary, padding:'4px 6px', display:'flex', justifyContent:'space-between', gap:8 }}>
+                    <span>{b.name}</span>
+                    <span style={{ color:'#B45309', whiteSpace:'nowrap' }}>{b.count} offene(r) Deal(s) — erst schließen</span>
+                  </div>
+                ))}
+              </div>
+            )}
+            <div style={{ display:'flex', justifyContent:'flex-end' }}>
+              <button type="button" style={{ ...btn, background: COLORS.primary, color:'#fff' }} onClick={onClose}>Schließen</button>
+            </div>
+          </>
+        )}
+      </div>
+    </div>
+  );
+}
+
+// ─── BulkBar ─────────────────────────────────────────────────────────────
+function BulkBar({ count, onStage, onOwner, onList, onArchive, onExport, onEdit, onClear, onEnrich, enrichBusy, enrichProgress, onDelete }) {
   const barStyle = {
     padding:'10px 28px', background: COLORS.primarySoft, color: COLORS.primarySoftFg,
     display:'flex', alignItems:'center', gap:12, borderBottom:`0.5px solid ${COLORS.borderSubtle}`,
@@ -1493,9 +1824,18 @@ function BulkBar({ count, onStage, onOwner, onList, onArchive, onExport, onEdit,
       <button type="button" style={actionBtn} onClick={onStage}>Stage ändern</button>
       <button type="button" style={actionBtn} onClick={onOwner}>Owner setzen</button>
       <button type="button" style={actionBtn} onClick={onList}>In Liste</button>
+      <button type="button" style={{ ...actionBtn, opacity: enrichBusy ? 0.6 : 1 }} onClick={onEnrich} disabled={enrichBusy}
+        title="Ausgewählte Kontakte mit LinkedIn-Daten anreichern (max. 25 pro Durchlauf)">
+        {enrichBusy
+          ? <><Loader2 size={14} className="lk-spin" /> Reichere an{enrichProgress ? ` ${enrichProgress.done}/${enrichProgress.total}` : ''}…</>
+          : <><IcLinkedin size={14} /> Anreichern</>}
+      </button>
       <button type="button" style={actionBtn} onClick={onExport}><Download size={14} /> Export</button>
       <button type="button" style={{ ...actionBtn, color:'#B91C1C' }} onClick={onArchive}>
         <Archive size={14} /> Archivieren
+      </button>
+      <button type="button" style={{ ...actionBtn, color:'#DC2626', borderColor:'#FCA5A5' }} onClick={onDelete}>
+        <Trash2 size={14} /> Löschen
       </button>
       <button type="button" onClick={onClear}
         style={{ background:'none', border:'none', cursor:'pointer', color: COLORS.primarySoftFg, padding:4 }}
@@ -1509,7 +1849,9 @@ function BulkBar({ count, onStage, onOwner, onList, onArchive, onExport, onEdit,
 // ─── SelectableLeadsList — Wrapper um LeadsList mit Checkbox-Spalte ─────
 // Statt LeadsList ändern: wir wrappen die Standard-Komponente und blenden
 // links eine Checkbox-Spalte ein.
-function SelectableLeadsList({ leads, selectedIds, onToggleSelect, onLeadClick, onOwnerAdd, onTagAdd, onMenuClick, onUpdate, onToggleFavorite, ownerById, density = 'comfortable' }) {
+function SelectableLeadsList({ leads, selectedIds, onToggleSelect, onMarqueeSelect, onLeadClick, onOwnerAdd, onTagAdd, onMenuClick, onUpdate, onToggleFavorite, ownerById, density = 'comfortable' }) {
+  const containerRef = useRef(null);
+  const marqueeRect = useMarquee(containerRef, selectedIds, onMarqueeSelect);
   // Group leads by status für visuelle Sektionen (analog zu LeadsList default)
   const groups = useMemo(() => {
     const out = STATUS_ORDER.map(s => ({
@@ -1530,7 +1872,13 @@ function SelectableLeadsList({ leads, selectedIds, onToggleSelect, onLeadClick, 
   // mit der Checkbox-Spalte.
 
   return (
-    <div>
+    <div ref={containerRef} style={{ position:'relative', userSelect: marqueeRect ? 'none' : undefined }}>
+      {marqueeRect && (
+        <div style={{ position:'fixed', left: marqueeRect.minX, top: marqueeRect.minY,
+          width: marqueeRect.maxX - marqueeRect.minX, height: marqueeRect.maxY - marqueeRect.minY,
+          background:'rgba(10,111,176,0.12)', border:`1px solid ${PRIMARY}`, borderRadius:4,
+          pointerEvents:'none', zIndex:900 }} />
+      )}
       {groups.map(group => (
         <div key={group.status} style={{ marginBottom:24 }}>
           <div style={{ display:'flex', alignItems:'center', gap:8, padding:'12px 4px 10px' }}>
@@ -1566,6 +1914,7 @@ function SelectableLeadsList({ leads, selectedIds, onToggleSelect, onLeadClick, 
 }
 
 function SelectableLeadRow({ lead, selected, onToggle, onLeadClick, onOwnerAdd, ownerById, onTagAdd, onMenuClick, onUpdate, onToggleFavorite, density = 'comfortable' }) {
+  const { isMobile } = useResponsive();
   const isCompact = density === 'compact';
   // Inline-Edit-Handler — wenn kein onUpdate-Prop, kein Inline-Edit, sondern read-only.
   const handleUpdate = (field, value) =>
@@ -1593,7 +1942,7 @@ function SelectableLeadRow({ lead, selected, onToggle, onLeadClick, onOwnerAdd, 
   const subtitle = [lead.job_title, lead.company].filter(Boolean).join(' · ');
   const cfg = STATUS_CONFIG[lead.status];
   return (
-    <div style={rowStyle} onClick={(e) => {
+    <div data-lead-id={lead.id} style={rowStyle} onClick={(e) => {
       if (e.target.closest('[data-no-row-click]')) return;
       onLeadClick(lead.id, lead);
     }}>
@@ -1705,7 +2054,7 @@ function SelectableLeadRow({ lead, selected, onToggle, onLeadClick, onOwnerAdd, 
             </strong>
           </div>
         )}
-        {onTagAdd && (
+        {!isMobile && onTagAdd && (
           <div data-no-row-click
             onClick={(e) => { e.stopPropagation(); onTagAdd(lead.id, e.currentTarget); }}
             style={{
@@ -1716,7 +2065,7 @@ function SelectableLeadRow({ lead, selected, onToggle, onLeadClick, onOwnerAdd, 
             <Tag size={13} />
           </div>
         )}
-        {(() => {
+        {!isMobile && (() => {
           const owner = lead.owner_id ? (ownerById?.get?.(lead.owner_id)) : null;
           const initials = owner
             ? `${(owner.first_name || '')[0] || ''}${(owner.last_name || '')[0] || ''}`.toUpperCase() || (owner.full_name || '?')[0]?.toUpperCase()
@@ -1857,7 +2206,7 @@ function PopoverMenu({ options, selectedId, selectedIds, onSelect, onToggle, mul
 }
 
 // ─── ActionsMenu (3-Punkt) ───────────────────────────────────────────────
-function ActionsMenu({ leadId, anchorRect, lead, onClose, onStatusChange, onOpenDetail, onRefresh }) {
+function ActionsMenu({ leadId, anchorRect, lead, onClose, onStatusChange, onOpenDetail, onRefresh, onDelete }) {
   const ref = useRef(null);
   useEffect(() => {
     const onDocClick = (e) => { if (!ref.current?.contains(e.target)) onClose(); };
@@ -1904,6 +2253,9 @@ function ActionsMenu({ leadId, anchorRect, lead, onClose, onStatusChange, onOpen
       <div style={{ height:4, borderTop:`0.5px solid ${COLORS.borderSubtle}`, marginTop:4 }} />
       <button type="button" style={{ ...itemStyle, color:'#B91C1C' }} onClick={handleArchive}>
         <Archive size={14} /> Archivieren
+      </button>
+      <button type="button" style={{ ...itemStyle, color:'#DC2626' }} onClick={() => { onClose(); onDelete?.(leadId); }}>
+        <Trash2 size={14} /> Löschen
       </button>
     </div>
   );

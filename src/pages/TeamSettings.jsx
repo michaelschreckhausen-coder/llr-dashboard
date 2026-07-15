@@ -423,7 +423,7 @@ export default function TeamSettings({ session }) {
       </div>
 
       {/* Stats */}
-      <div style={{ display:'grid', gridTemplateColumns:'repeat(3,1fr)', gap:12, marginBottom:24 }}>
+      <div className="col-3" style={{ gap:12, marginBottom:24 }}>
         {[
           { l:'Mitglieder',          v:members.length,                                                   c:'var(--wl-primary, #0A6FB0)' },
           { l:'Geteilte Leads',      v:(sharedLeads||[]).length,                                               c:'#10b981' },

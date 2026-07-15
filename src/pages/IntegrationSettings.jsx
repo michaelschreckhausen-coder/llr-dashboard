@@ -346,6 +346,9 @@ export default function IntegrationSettings({ session }) {
         </div>
       )}
 
+      {/* Asana wird jetzt über den Marketplace (⋮ → Einstellungen) verbunden —
+          die frühere Asana-Karte wurde dorthin überführt. */}
+
       {/* Weitere Integrationen (Platzhalter) */}
       <div style={{ ...card, opacity:0.6 }}>
         <div style={{ display:'flex', alignItems:'center', gap:16 }}>

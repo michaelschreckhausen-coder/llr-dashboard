@@ -52,6 +52,7 @@ export const LEADS_SELECT = `
   owner_id,
   is_favorite,
   archived,
+  enriched_at,
   created_at,
   updated_at
 `;

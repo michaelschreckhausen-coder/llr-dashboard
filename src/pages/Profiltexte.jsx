@@ -770,7 +770,7 @@ REGELN (hart):
       {/* Grundlage — kollabierbar mit Summary */}
       <Collapsible title="Grundlage" summary={baseSummary} defaultOpen={false}>
         <div style={{fontSize:11,color:'var(--text-muted)',marginBottom:14}}>Wird als Kontext in jeden generierten Text injiziert.</div>
-        <div style={{display:'grid',gridTemplateColumns:'1fr 1fr 1fr',gap:18}}>
+        <div className="col-3" style={{gap:18}}>
 
           {/* Brand Voice — info-only, gesteuert vom globalen Switcher oben rechts */}
           <div>
@@ -1034,7 +1034,7 @@ REGELN (hart):
       {activeTab === 'position' && (
         <Card>
           <CardBody>
-            <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:12,marginBottom:14}}>
+            <div className="col-2" style={{gap:12,marginBottom:14}}>
               <div>
                 <Label>Position / Titel</Label>
                 <input

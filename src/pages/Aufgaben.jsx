@@ -18,6 +18,7 @@ import { useNavigate } from 'react-router-dom'
 import { useTeam } from '../context/TeamContext'
 import { useAllTasks } from '../hooks/useAllTasks'
 import { TASK_SOURCES } from '../lib/taskSources'
+import { PageContainer, PageHeader } from '../components/PageLayout'
 import NewTaskModal from '../components/NewTaskModal'
 import TaskEditModal from '../components/aufgaben/TaskEditModal'
 import { supabase } from '../lib/supabase'
@@ -188,26 +189,19 @@ export default function Aufgaben({ session }) {
   }, [filtered, statusFilter, today])
 
   return (
-    <div style={{ width: '100%', maxWidth: 1100, margin: '0 auto', padding: '24px 16px 40px' }}>
+    <PageContainer>
 
-      {/* Header */}
-      <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: 24, gap: 16, flexWrap: 'wrap' }}>
-        <div>
-          <div style={{ fontSize: 20, color: '#30A0D0', fontFamily: '"Caveat", cursive', fontWeight: 600, marginBottom: 2 }}>Deine Aufgaben</div>
-          <h1 style={{ fontSize: 26, fontWeight: 700, color: '#111827', margin: 0, letterSpacing: '-0.3px', lineHeight: 1.2 }}>Alles an einem Ort.</h1>
-          <div style={{ fontSize: 13, color: '#6B7280', marginTop: 6 }}>
-            <span style={{display:'inline-flex',alignItems:'center',gap:4,flexWrap:'wrap'}}>{team ? `Team: ${team.name}` : 'Meine Aufgaben'} · {counts.all} offen{counts.overdue > 0 && <> · <AlertTriangle size={12} strokeWidth={1.75}/> {counts.overdue} überfällig</>}</span>
-          </div>
-        </div>
-        <button type="button" onClick={() => setNewTaskOpen(true)}
-          style={{
-            padding: '9px 18px', background: 'var(--wl-primary, ' + PRIMARY + ')', color: '#fff',
-            border: 'none', borderRadius: 10, fontSize: 13, fontWeight: 700,
-            display: 'inline-flex', alignItems: 'center', gap: 6, cursor: 'pointer',
-          }}>
-          + Neue Aufgabe
-        </button>
-      </div>
+      <PageHeader
+        eyebrow="Deine Aufgaben"
+        title="Alles an einem Ort."
+        subtitle={<span style={{display:'inline-flex',alignItems:'center',gap:4,flexWrap:'wrap'}}>{team ? `Team: ${team.name}` : 'Meine Aufgaben'} · {counts.all} offen{counts.overdue > 0 && <> · <AlertTriangle size={12} strokeWidth={1.75}/> {counts.overdue} überfällig</>}</span>}
+        actions={
+          <button className="lk-btn lk-btn-cta" type="button" onClick={() => setNewTaskOpen(true)}
+            style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+            + Neue Aufgabe
+          </button>
+        }
+      />
 
       {/* Quell-Filter — als Dropdown (kompakt statt langer Pill-Reihe) */}
       <div style={{ position: 'relative', marginBottom: 14, display: 'inline-block' }} data-source-menu>
@@ -489,6 +483,6 @@ export default function Aufgaben({ session }) {
           onDeleted={() => { refetch() }}
         />
       )}
-    </div>
+    </PageContainer>
   )
 }

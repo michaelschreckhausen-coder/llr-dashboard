@@ -8,6 +8,7 @@ import { Building2, Users, BarChart3, Layers, Download, ChevronUp, ChevronDown }
 import { supabase } from '../lib/supabase'
 import { useNavigate } from 'react-router-dom'
 import { useTeam } from '../context/TeamContext'
+import { useResponsive } from '../hooks/useResponsive'
 import { useEntitlements } from '../hooks/useEntitlements'
 import SponsorPipelineList from '../components/SponsorPipelineList'
 import PageHeader from '../components/PageHeader'
@@ -79,6 +80,7 @@ function CurvedArrow() {
 
 // ── Modal "Neue / Bearbeiten" ──────────────────────────────────────────────────
 function OrganizationModal({ org, industries, teamId, uid, onSave, onClose }) {
+  const { isMobile } = useResponsive()
   const [form, setForm] = useState({
     name: org?.name || '',
     // Bei Neuanlage Ersteller als Owner vorbelegen; beim Bearbeiten den
@@ -211,7 +213,7 @@ function OrganizationModal({ org, industries, teamId, uid, onSave, onClose }) {
                   ${m.full_name || m.id.slice(0, 8)}${m.id === uid ? ' (du)' : ''}
                 ` }))]} buttonStyle={{ minWidth: 140 }} />
           </div>
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
+          <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr', gap: 10 }}>
             <div>
               <div style={labelS}>Website</div>
               <input value={form.website} onChange={e => upd({ website: e.target.value })} style={inputS} placeholder="https://…"/>
@@ -221,7 +223,7 @@ function OrganizationModal({ org, industries, teamId, uid, onSave, onClose }) {
               <input value={form.linkedin_company_url} onChange={e => upd({ linkedin_company_url: e.target.value })} style={inputS} placeholder="https://linkedin.com/company/…"/>
             </div>
           </div>
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
+          <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr', gap: 10 }}>
             <div>
               <div style={labelS}>E-Mail Zentrale</div>
               <input value={form.email_central} onChange={e => upd({ email_central: e.target.value })} style={inputS} placeholder="info@…"/>
@@ -231,7 +233,7 @@ function OrganizationModal({ org, industries, teamId, uid, onSave, onClose }) {
               <input value={form.phone_central} onChange={e => upd({ phone_central: e.target.value })} style={inputS} placeholder="+49 …"/>
             </div>
           </div>
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
+          <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr', gap: 10 }}>
             <div>
               <div style={labelS}>USt-ID / UID</div>
               <input value={form.vat_id} onChange={e => upd({ vat_id: e.target.value })} style={inputS} placeholder="DE123456789"/>
@@ -248,7 +250,7 @@ function OrganizationModal({ org, industries, teamId, uid, onSave, onClose }) {
             <div style={labelS}>Straße & Hausnr.</div>
             <input value={form.street} onChange={e => upd({ street: e.target.value })} style={inputS}/>
           </div>
-          <div style={{ display: 'grid', gridTemplateColumns: '120px 1fr 1fr', gap: 10 }}>
+          <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr 1fr' : '120px 1fr 1fr', gap: 10 }}>
             <div>
               <div style={labelS}>PLZ</div>
               <input value={form.zip} onChange={e => upd({ zip: e.target.value })} style={inputS}/>
@@ -276,7 +278,7 @@ function OrganizationModal({ org, industries, teamId, uid, onSave, onClose }) {
                 <div style={labelS}>Rechnung — Straße & Hausnr.</div>
                 <input value={form.billing_street} onChange={e => upd({ billing_street: e.target.value })} style={inputS}/>
               </div>
-              <div style={{ display: 'grid', gridTemplateColumns: '120px 1fr 1fr', gap: 10 }}>
+              <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr 1fr' : '120px 1fr 1fr', gap: 10 }}>
                 <div>
                   <div style={labelS}>PLZ</div>
                   <input value={form.billing_zip} onChange={e => upd({ billing_zip: e.target.value })} style={inputS}/>
@@ -295,7 +297,7 @@ function OrganizationModal({ org, industries, teamId, uid, onSave, onClose }) {
 
           {/* Kategorisierung */}
           <div style={{ marginTop: 6, fontSize: 12, fontWeight: 800, color: '#111827', textTransform: 'uppercase', letterSpacing: '0.04em' }}>Kategorisierung</div>
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
+          <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr', gap: 10 }}>
             <div>
               <div style={labelS}>Mitarbeiteranzahl</div>
               <PillSelect value={form.employee_range} onChange={v => upd({ employee_range: v })} neutral options={[{ value: '', label: `— keine Angabe —` }, ...EMPLOYEE_RANGES.map((r) => ({ value: r.id, label: r.label }))]} buttonStyle={{ minWidth: 140 }} />
@@ -334,6 +336,7 @@ function OrganizationModal({ org, industries, teamId, uid, onSave, onClose }) {
 // ── Hauptseite ───────────────────────────────────────────────────────────────────
 export default function Organizations({ session }) {
   const navigate = useNavigate()
+  const { isMobile } = useResponsive()
   const { team, activeTeamId } = useTeam()
   const { hasModule } = useEntitlements()
   const sponsoringActive = hasModule('sponsoring')
@@ -513,7 +516,7 @@ export default function Organizations({ session }) {
           </div>
 
           {/* Diagramme (Reports-Stil) — Branche groß + Größe daneben, Umsatz darunter */}
-          <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: 14 }}>
+          <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '2fr 1fr', gap: 14 }}>
             <Panel title="Verteilung nach Branche">
               {industryStats.length > 0
                 ? industryStats.map(s => <BarRow key={s.label} label={s.label} count={s.count} total={totalOrgs} color="#0C447C"/>)
