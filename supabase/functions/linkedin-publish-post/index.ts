@@ -16,6 +16,7 @@
 
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { createClient } from "npm:@supabase/supabase-js@2";
+import { buildNativeCommentary } from "../_shared/mentions.ts";
 
 const CORS = {
   "Access-Control-Allow-Origin": "*",
@@ -242,7 +243,7 @@ Deno.serve(async (req) => {
   // 1) Post laden
   const { data: post, error: postErr } = await admin
     .from("content_posts")
-    .select("id, user_id, team_id, title, content, brand_voice_id, visual_id, status, scheduled_at")
+    .select("id, user_id, team_id, title, content, brand_voice_id, visual_id, status, scheduled_at, linkedin_mentions")
     .eq("id", postId)
     .maybeSingle();
 
@@ -326,7 +327,7 @@ Deno.serve(async (req) => {
   // 4b) Posts-API-Body bauen (Text + optional Bild)
   const postBody: Record<string, unknown> = {
     author:         connection.member_urn,
-    commentary:     post.content,
+    commentary:     buildNativeCommentary(post.content, (post as any).linkedin_mentions),
     visibility:     "PUBLIC",
     distribution:   { feedDistribution: "MAIN_FEED", targetEntities: [], thirdPartyDistributionChannels: [] },
     lifecycleState: "PUBLISHED",

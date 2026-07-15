@@ -249,6 +249,8 @@ export async function resolveSearchParameter(
 export interface CreatePostExtra {
   /** Bilder/Files als multipart-`attachments` (aus dem visuals-Storage-Bucket). */
   attachments?: Blob[];
+  /** @-Mentions: Text nutzt {{index}}, hier die zugehörigen Profile. */
+  mentions?: { name: string; profile_id: string }[];
   // as_organization?: string;  // Phase 2b — Company-Page-Targeting (hier bewusst NICHT verdrahtet)
 }
 export async function createPost(
@@ -265,6 +267,8 @@ export async function createPost(
     const name = (file as unknown as { name?: string }).name ?? `attachment_${i}`;
     fd.append("attachments", file, name);
   }
+  const mentions = extra.mentions ?? [];
+  if (mentions.length > 0) fd.append("mentions", JSON.stringify(mentions));
   return await call("POST", "/api/v1/posts", {
     dsn: conn.dsn,
     query: { account_id: conn.accountId }, // Query-Fallback (Unipile akzeptiert account_id auch als Query)

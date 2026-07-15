@@ -13,6 +13,7 @@
 // Fallstrick #12: error-Feld nach jedem Call prüfen.
 // =====================================================================
 import { handlePreflight, jsonResponse } from "../_shared/cors.ts";
+import { buildUnipileText } from "../_shared/mentions.ts";
 import {
   createPost,
   getAuthenticatedUser,
@@ -59,7 +60,7 @@ Deno.serve(async (req) => {
 
     // ── Post laden ──
     const { data: post, error: postErr } = await sb.from("content_posts")
-      .select("id, user_id, team_id, content, visual_id, status")
+      .select("id, user_id, team_id, content, visual_id, status, linkedin_mentions")
       .eq("id", postId)
       .maybeSingle();
     if (postErr) { await failQueue(postErr.message); return jsonResponse({ error: postErr.message }, 500); }
@@ -114,7 +115,8 @@ Deno.serve(async (req) => {
     // ── Publish (multipart) ──
     let resp: any;
     try {
-      resp = await createPost(conn, post.content, { attachments });
+      const { text: postText, mentions: uniMentions } = buildUnipileText(post.content, (post as any).linkedin_mentions);
+      resp = await createPost(conn, postText, { attachments, mentions: uniMentions });
     } catch (e) {
       const rl = e instanceof UnipileError && e.isRateLimited;
       const msg = String(e).slice(0, 500);
