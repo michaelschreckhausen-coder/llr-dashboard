@@ -161,6 +161,7 @@ const DocumentEditorPane = forwardRef(function DocumentEditorPane({
   const [wordCount, setWordCount] = useState(0)
   const [continuing, setContinuing] = useState(false)
   const [exportOpen, setExportOpen] = useState(false)
+  const [exportPos, setExportPos] = useState(null) // fixed-Koordinaten gegen Clipping
   const [postMenuOpen, setPostMenuOpen] = useState(false)
   const [postMenuPos, setPostMenuPos] = useState(null) // fixed-Koordinaten gegen Clipping
   const [posts, setPosts] = useState(null)
@@ -516,7 +517,7 @@ const DocumentEditorPane = forwardRef(function DocumentEditorPane({
             {onAttachToPost && (
               <div style={{ position:'relative' }}>
                 <button title="Inhalt als LinkedIn-Beitrag übernehmen"
-                  onClick={async () => {
+                  onClick={async (e) => {
                     const text = editor ? editor.getText().trim() : ''
                     if (!text) { alert('Das Dokument ist leer.'); return }
                     const open = !postMenuOpen
@@ -557,7 +558,19 @@ const DocumentEditorPane = forwardRef(function DocumentEditorPane({
             )}
             <span style={{ width:1, height:18, background:'var(--border,#E9ECF2)', margin:'0 4px' }}/>
             <div style={{ position:'relative' }}>
-              <button type="button" onClick={() => setExportOpen(o => !o)} title="Exportieren / Kopieren"
+              <button type="button" onClick={(e) => {
+                  const open = !exportOpen
+                  if (open) {
+                    const rect = e.currentTarget.getBoundingClientRect()
+                    const W = 220
+                    let left = rect.right - W
+                    if (left < 8) left = 8
+                    const maxLeft = window.innerWidth - W - 8
+                    if (left > maxLeft) left = Math.max(8, maxLeft)
+                    setExportPos({ top: Math.round(rect.bottom + 6), left: Math.round(left), width: W })
+                  }
+                  setExportOpen(open)
+                }} title="Exportieren / Kopieren"
                 style={{ display:'inline-flex', alignItems:'center', justifyContent:'center', width:30, height:30, border:'none', borderRadius:7, background:'transparent', color:'var(--text-muted,#475467)', cursor:'pointer' }}
                 onMouseEnter={e=>{ e.currentTarget.style.background='#EEF1F6' }} onMouseLeave={e=>{ e.currentTarget.style.background='transparent' }}>
                 <Download size={16} strokeWidth={1.75}/>
@@ -565,7 +578,7 @@ const DocumentEditorPane = forwardRef(function DocumentEditorPane({
               {exportOpen && (
                 <>
                   <div onClick={() => setExportOpen(false)} style={{ position:'fixed', inset:0, zIndex:80 }}/>
-                  <div style={{ position:'absolute', top:'calc(100% + 6px)', right:0, zIndex:81, background:'#fff', border:'1px solid var(--border)', borderRadius:10, boxShadow:'0 10px 30px rgba(0,0,0,.12)', minWidth:212, padding:6 }}>
+                  <div style={{ position:'fixed', top: exportPos ? exportPos.top : 0, left: exportPos ? exportPos.left : 0, width: exportPos ? exportPos.width : 220, zIndex:81, background:'#fff', border:'1px solid var(--border)', borderRadius:10, boxShadow:'0 10px 30px rgba(0,0,0,.12)', padding:6, boxSizing:'border-box' }}>
                   <button onClick={copyToClipboard} style={MenuItem}><Copy size={15} strokeWidth={1.75}/><span>Text kopieren</span></button>
                   <button onClick={downloadPdf} style={MenuItem}><FileText size={15} strokeWidth={1.75}/><span>Als PDF herunterladen</span></button>
                   <button onClick={downloadWord} style={MenuItem}><FileText size={15} strokeWidth={1.75}/><span>Als Word (.doc)</span></button>
