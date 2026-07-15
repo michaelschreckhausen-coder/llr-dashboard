@@ -2,6 +2,8 @@
 
 > Diese Datei wird automatisch in jeder Claude-Code-Session als Kontext geladen.
 > Single Source of Truth für aktuellen Stand: `app.leadesk.de/admin-docs` (Schema/Routen) und `admin.leadesk.de/changelog` (Release-Notes). `app.leadesk.de/admin-logs` ist eine Read-View innerhalb der Customer-App, keine Pflege-Surface.
+>
+> **➤ Kanonischer Einstieg ist jetzt [`AGENTS.md`](AGENTS.md)** — die lesen beide Seiten (Claude Code UND Cowork). Diese CLAUDE.md ist der Detail-Anhang (Hard Rules + Fallstricke + Historie) und wird schrittweise verschlankt (Release-Historie wandert ins Changelog). Bei Widerspruch gilt AGENTS.md + `docs/STATUS.md` + `app.leadesk.de/admin-docs`.
 
 ## Projekt
 
@@ -10,9 +12,10 @@
 ## Tech-Stack
 
 - **Frontend:** React 18 + Vite (JSX, **kein TypeScript**, **ausschließlich Inline-Styles**)
-- **Backend:** Supabase (Postgres, Auth, Edge Functions, Storage, Realtime)
-  - **Production:** Supabase Cloud, Projekt-ID `jdhajqpgfrsuoluaesjn` → `app.leadesk.de`
-  - **Staging:** Self-Hosted auf Hetzner → `staging.leadesk.de` / `supabase-staging.leadesk.de`
+- **Backend:** Supabase (Postgres, Auth, Edge Functions, Storage, Realtime) — **komplett self-hosted auf Hetzner** (Prod UND Staging)
+  - **Production:** Hetzner `prod-db-01` (`128.140.123.163`), API `supabase.leadesk.de` → `app.leadesk.de`
+  - **Staging:** Hetzner `staging-db-01` (`178.104.210.216`), API `supabase-staging.leadesk.de` → `staging.leadesk.de`
+  - ⚠️ Die alte Supabase-**Cloud** (`jdhajqpgfrsuoluaesjn`) ist **seit Mai 2026 abgeschaltet** — NICHT mehr verwenden (weder SQL noch Migrationen).
 - **Hosting:** Vercel (`fra1`-Region), ein Projekt mit zwei Environments (`main` → Prod, `develop` → Preview)
 - **Repo:** `github.com/michaelschreckhausen-coder/llr-dashboard`
 
@@ -407,9 +410,13 @@ User soll vom eigenen Mac aus laufen lassen — Claude hat keinen SSH-Outbound:
 ssh root@178.104.210.216 'docker exec -i supabase-db psql -U postgres -d postgres' < supabase/migrations/XYZ.sql
 ```
 
-### Migration auf Prod anwenden (Cloud)
+### Migration auf Prod anwenden (Hetzner)
 
-User auf `https://supabase.com/dashboard/project/jdhajqpgfrsuoluaesjn/sql` hinweisen → Migration kopieren und ausführen.
+Prod-DB ist self-hosted auf Hetzner `prod-db-01`. **Erst nach expliziter Freigabe**, Staging zuerst:
+
+    ssh root@128.140.123.163 'docker exec -i supabase-db psql -U postgres -d postgres' < supabase/migrations/XYZ.sql
+
+(Cowork-Sandbox hat dafür den dedizierten Claude-Session-Key; aus Claude Code am Mac direkt per SSH.)
 
 ### Rollen & RLS-Patterns
 
