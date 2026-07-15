@@ -78,23 +78,37 @@ Deno.serve(async (req) => {
       return jsonResponse({ error: "Kein aktiver Unipile-LinkedIn-Account verbunden." }, 409);
     }
 
-    // ── Optional: Bild aus visuals-Storage-Bucket laden (wie linkedin-publish-post) ──
+    // ── Medien laden: ALLE content_post_visuals in Reihenfolge (Carousel/Video/Doc),
+    //    Fallback auf Einzel-Cover (post.visual_id). Unipile createPost akzeptiert
+    //    mehrere multipart-attachments -> mehrere Bilder = Carousel. ──
     const attachments: Blob[] = [];
-    if (post.visual_id) {
+    let mediaSlides: { storage_path: string; media_type: string | null }[] = [];
+    const { data: cpvRows } = await sb
+      .from("content_post_visuals")
+      .select("position, visuals(storage_path, prompt, media_type)")
+      .eq("post_id", post.id)
+      .order("position", { ascending: true });
+    if (cpvRows && cpvRows.length > 0) {
+      mediaSlides = cpvRows
+        .map((r: any) => r.visuals)
+        .filter((v: any) => v && v.storage_path)
+        .map((v: any) => ({ storage_path: v.storage_path, media_type: v.media_type ?? null }));
+    } else if (post.visual_id) {
       const { data: visual, error: vErr } = await sb.from("visuals")
-        .select("storage_path, prompt")
+        .select("storage_path, prompt, media_type")
         .eq("id", post.visual_id)
         .maybeSingle();
       if (vErr) console.warn(`[unipile-post-publish] visual lookup: ${vErr.message}`);
-      if (visual?.storage_path) {
-        const { data: blob, error: dlErr } = await sb.storage.from("visuals").download(visual.storage_path);
-        if (dlErr || !blob) {
-          await failQueue("Visual-Download: " + (dlErr?.message || "kein Blob"));
-          return jsonResponse({ error: "Visual-Download fehlgeschlagen" }, 502);
-        }
-        const fname = String(visual.storage_path).split("/").pop() || "image";
-        attachments.push(new File([blob], fname, { type: blob.type || "image/png" }));
+      if (visual?.storage_path) mediaSlides = [{ storage_path: visual.storage_path, media_type: visual.media_type ?? null }];
+    }
+    for (const slide of mediaSlides) {
+      const { data: blob, error: dlErr } = await sb.storage.from("visuals").download(slide.storage_path);
+      if (dlErr || !blob) {
+        await failQueue("Visual-Download: " + (dlErr?.message || "kein Blob"));
+        return jsonResponse({ error: "Visual-Download fehlgeschlagen" }, 502);
       }
+      const fname = String(slide.storage_path).split("/").pop() || "attachment";
+      attachments.push(new File([blob], fname, { type: blob.type || "image/png" }));
     }
 
     // ── Publish (multipart) ──
