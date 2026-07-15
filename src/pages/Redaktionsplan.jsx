@@ -718,6 +718,51 @@ function PostModal({ post, onClose, onSave, onDelete, session, activeTeamId, mem
   const [saving, setSaving] = useState(false)
   const [improving, setImproving] = useState(false)
   const [charCount, setCharCount] = useState(form.content?.length || 0)
+
+  // ── @-Mentions: externe LinkedIn-Kontakte im Beitragstext taggen ──
+  const [ldMentions, setLdMentions] = useState(Array.isArray(post?.linkedin_mentions) ? post.linkedin_mentions : [])
+  const [mentionMenu, setMentionMenu] = useState(null) // { query, results, loading }
+  const contentRef = useRef(null)
+  const mentionReqRef = useRef(0)
+  async function searchMentions(query) {
+    const reqId = ++mentionReqRef.current
+    setMentionMenu({ query, results: [], loading: true })
+    let q = supabase.from('linkedin_inbox')
+      .select('provider_id, name, first_name, last_name, linkedin_url')
+      .not('provider_id', 'is', null)
+      .ilike('name', `%${query}%`)
+      .limit(6)
+    if (activeTeamId) q = q.eq('team_id', activeTeamId)
+    const { data } = await q
+    if (mentionReqRef.current !== reqId) return
+    setMentionMenu(m => (m && m.query === query ? { query, results: data || [], loading: false } : m))
+  }
+  function handleContentChange(e) {
+    const val = e.target.value
+    upd('content', val); setCharCount(val.length)
+    const caret = e.target.selectionStart ?? val.length
+    const before = val.slice(0, caret)
+    // Query darf Leerzeichen enthalten (Vor- + Nachname); beendet erst bei Zeilenumbruch/neuem @.
+    const m = before.match(/(?:^|\s)@([^\n@]{0,60})$/u)
+    if (m) {
+      const query = (m[1] || '').trim()
+      if (query.length >= 1) searchMentions(query)
+      else setMentionMenu({ query: '', results: [], loading: false })
+    } else setMentionMenu(null)
+  }
+  function pickMention(person) {
+    const el = contentRef.current
+    const val = form.content || ''
+    const caret = el ? (el.selectionStart ?? val.length) : val.length
+    const before = val.slice(0, caret)
+    const after = val.slice(caret)
+    const replaced = before.replace(/@([^\n@]{0,60})$/u, '@' + person.name + ' ')
+    const newVal = replaced + after
+    upd('content', newVal); setCharCount(newVal.length)
+    setLdMentions(prev => prev.some(x => x.provider_id === person.provider_id) ? prev : [...prev, { name: person.name, provider_id: person.provider_id, entity_type: 'person' }])
+    setMentionMenu(null)
+    setTimeout(() => { if (el) { el.focus(); const pos = replaced.length; try { el.setSelectionRange(pos, pos) } catch (_) {} } }, 0)
+  }
   // LinkedIn-Vorschau hinter Toggle + BV-Daten (kein hardcoded "Michael Schreck")
   const [showPreview, setShowPreview] = useState(false)
   const [previewBV, setPreviewBV] = useState(null)
@@ -924,6 +969,7 @@ function PostModal({ post, onClose, onSave, onDelete, session, activeTeamId, mem
     })
     payload.company_voice_ids = Array.isArray(form.company_voice_ids) ? form.company_voice_ids : []
     payload.company_voice_id  = payload.company_voice_ids[0] || null
+    payload.linkedin_mentions = (Array.isArray(ldMentions) ? ldMentions : []).filter(m => m && m.provider_id && (form.content || '').includes('@' + m.name))
 
     // Hard-Stopps (FK NOT NULL)
     if (!payload.brand_voice_id) {
@@ -980,15 +1026,34 @@ function PostModal({ post, onClose, onSave, onDelete, session, activeTeamId, mem
           {/* Left — Content */}
           <div>
             <div style={{ position:'relative' }}>
-              <textarea value={form.content}
-                onChange={e => { upd('content', e.target.value); setCharCount(e.target.value.length) }}
-                placeholder={(form.content?.trim() ? '' : `Schreibe deinen ${plt.label}-Beitrag hier…\n\nTipps:\n• Starte mit einem starken Hook\n• Nutze Zeilenumbrüche für Lesbarkeit\n• Füge einen Call-to-Action ein`)}
+              <div style={{ position:'relative' }}>
+              <textarea ref={contentRef} value={form.content}
+                onChange={handleContentChange}
+                placeholder={(form.content?.trim() ? '' : `Schreibe deinen ${plt.label}-Beitrag hier…\n\nTipps:\n• Starte mit einem starken Hook\n• Nutze Zeilenumbrüche für Lesbarkeit\n• Füge einen Call-to-Action ein\n• Tippe @ um einen LinkedIn-Kontakt zu taggen`)}
                 rows={12}
                 style={{ width:'100%', padding:'14px', paddingTop: form.content?.trim() ? 48 : 14, borderRadius:12, border:'1.5px solid #E5E7EB',
                   fontSize:14, lineHeight:1.7, resize:'vertical', outline:'none', boxSizing:'border-box',
                   fontFamily:'inherit', color:'rgb(20,20,43)', transition:'border 0.15s' }}
                 onFocus={e => e.target.style.borderColor = plt.color}
-                onBlur={e => e.target.style.borderColor = '#E5E7EB'}/>
+                onBlur={e => { e.target.style.borderColor = '#E5E7EB'; setTimeout(() => setMentionMenu(null), 150) }}
+                onKeyDown={e => { if (mentionMenu && e.key === 'Escape') { e.preventDefault(); setMentionMenu(null) } }}/>
+              {mentionMenu && (
+                <div style={{ position:'absolute', left:0, right:0, top:'100%', marginTop:4, zIndex:60, background:'#fff', border:'1px solid #E5E7EB', borderRadius:10, boxShadow:'0 10px 30px rgba(14,22,51,.12)', overflow:'hidden', maxHeight:250, overflowY:'auto' }}>
+                  <div style={{ padding:'7px 12px', fontSize:10, fontWeight:700, letterSpacing:'0.06em', textTransform:'uppercase', color:'#6B7280', borderBottom:'1px solid #EEF0F4' }}>LinkedIn-Kontakt taggen</div>
+                  {mentionMenu.loading && <div style={{ padding:'10px 12px', fontSize:12, color:'#6B7280' }}>Suche…</div>}
+                  {!mentionMenu.loading && mentionMenu.results.length === 0 && (
+                    <div style={{ padding:'10px 12px', fontSize:12, color:'#6B7280' }}>{mentionMenu.query ? `Kein Kontakt für \u201E${mentionMenu.query}\u201C.` : 'Tippe einen Namen, um einen LinkedIn-Kontakt zu taggen.'}</div>
+                  )}
+                  {mentionMenu.results.map(r => (
+                    <button key={r.provider_id} type="button" onMouseDown={e => { e.preventDefault(); pickMention(r) }}
+                      style={{ display:'flex', flexDirection:'column', alignItems:'flex-start', gap:2, width:'100%', textAlign:'left', padding:'8px 12px', background:'#fff', border:'none', borderTop:'1px solid #F1F3F7', cursor:'pointer' }}>
+                      <span style={{ fontSize:13, fontWeight:600, color:'rgb(20,20,43)' }}>{r.name}</span>
+                      {r.linkedin_url && <span style={{ fontSize:11, color:'#6B7280' }}>{String(r.linkedin_url).replace(/^https?:\/\/(www\.)?linkedin\.com\//,'').replace(/\/$/,'')}</span>}
+                    </button>
+                  ))}
+                </div>
+              )}
+              </div>
 
               {/* Inline Textwerkstatt-Buttons */}
               {!form.content?.trim() ? (
