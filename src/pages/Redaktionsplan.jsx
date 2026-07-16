@@ -188,6 +188,17 @@ const _DTP_WD = ['Mo','Di','Mi','Do','Fr','Sa','So']
 const _DTP_MONTHS = ['Januar','Februar','März','April','Mai','Juni','Juli','August','September','Oktober','November','Dezember']
 const _dtpNav = { width:30, height:30, borderRadius:8, border:'1px solid var(--border)', background:'#fff', cursor:'pointer', display:'inline-flex', alignItems:'center', justifyContent:'center', color:'var(--text-secondary,#475467)' }
 const _dtpLink = { background:'transparent', border:'none', cursor:'pointer', fontFamily:'inherit', fontSize:12.5, fontWeight:600, padding:'4px 6px' }
+// Wandelt einen gespeicherten (UTC-)Timestamp in lokale Wandzeit 'YYYY-MM-DDTHH:mm'
+// für Formular/Datepicker. NIE per .slice(0,16) auf einen UTC-ISO-String — das
+// interpretiert UTC als Lokalzeit (Zeitzonen-Versatz, z.B. -2h in CEST).
+function _toLocalDTInput(iso) {
+  if (!iso) return ''
+  const d = new Date(iso)
+  if (isNaN(d)) return ''
+  const p = (n) => String(n).padStart(2, '0')
+  return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}T${p(d.getHours())}:${p(d.getMinutes())}`
+}
+
 function DateTimePicker({ value = '', onChange = () => {} }) {
   const P = 'var(--wl-primary, #0A6FB0)'
   const [open, setOpen] = useState(false)
@@ -394,7 +405,7 @@ function PostModal({ post, onClose, onSave, onDelete, session, activeTeamId, mem
     team_id: activeTeamId,
     ...post,
     tags: Array.isArray(post?.tags) ? post.tags.join(', ') : (post?.tags || ''),
-    scheduled_at: post?.scheduled_at ? post.scheduled_at.slice(0,16) : '',
+    scheduled_at: _toLocalDTInput(post?.scheduled_at),
   })
   const [comments, setComments] = useState([])
   const [newComment, setNewComment] = useState('')
