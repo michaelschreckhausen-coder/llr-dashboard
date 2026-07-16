@@ -2655,7 +2655,7 @@ Danke für den Austausch! 🤝`,
                     border: isToday ? '2px solid #0A6FB0' : (()=>{ const d=day.date.getDay(); return (d===2||d===3||d===4)?'1px solid #A7F3D0':'1px solid #E5E7EB' })(),
                     padding:'6px', overflow:'hidden', cursor:'pointer', minHeight:80,
                     opacity: !day.current ? 0.5 : 1 }}
-                  onClick={() => openNew({ scheduled_at: day.date.toISOString().slice(0,16) })}>
+                  onClick={() => openNew({ scheduled_at: _toLocalDTInput(day.date) })}>
                   <div style={{ fontSize:11, fontWeight: isToday ? 800 : 600,
                     color: isToday ? 'var(--wl-primary, #0A6FB0)' : isPast ? '#94A3B8' : 'rgb(20,20,43)',
                     marginBottom:4, display:'flex', alignItems:'center', gap:4 }}>
