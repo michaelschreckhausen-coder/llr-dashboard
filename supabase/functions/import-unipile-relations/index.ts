@@ -1,8 +1,17 @@
-// import-unipile-relations — Unipile-Kontakte-Import (1st-degree Relations) → linkedin_inbox.
+// import-unipile-relations — Unipile-Kontakte-Import (1st-degree Relations) → linkedin_network.
 // Paginiert GET /users/relations: liefert member_id (=provider_id ACoAA…) + public_profile_url
-// (=linkedin_url) INLINE → sales_nav_upsert_inbox(source='unipile_relations'). Idempotent (Dedup provider_id).
+// (=linkedin_url) INLINE → network_upsert(source='unipile_relations'). Idempotent (Dedup provider_id).
 // Import ist FREI (kein Addon-Gate) — nur der Automatisierungs-Runner ist gated (Entscheidung 2026-07-07).
 // Input: { unipile_account_id, max_pages? }. Aufruf: pg_cron (gestaffelt) ODER On-Demand-Button.
+//
+// ⚠️ 2026-07-16 — Ziel-Tabelle gewechselt: linkedin_inbox → linkedin_network.
+// Grund: das eigene Netzwerk ist kein Triage-Material. Der Schreibpfad in die
+// Inbox hat bei ALLEN Unipile-Teams die Triage-Queue mit hunderten ungefragten
+// Rows geflutet (Cron lief 07./08.07. ungegatet). Netzwerk hat jetzt eine eigene
+// Tabelle + einen eigenen Menüpunkt „Netzwerk".
+// Ripple bei Deploy: Top-Fallstrick #11 — strukturelle Änderung (anderer RPC,
+// andere Signatur) → Deno-Isolate-Cache hält sonst die alte Version:
+//   ssh root@<host> "docker restart supabase-edge-functions"
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
 const UNIPILE_DSN = Deno.env.get("UNIPILE_DSN")!;
@@ -56,18 +65,22 @@ Deno.serve(async (req) => {
         || (public_id ? `https://www.linkedin.com/in/${public_id}` : null);
       if (!provider_id && !linkedin_url) { failed++; continue; } // ohne Handle nicht automatisierbar
 
-      const lead = {
+      const contact = {
         provider_id, linkedin_url,
+        public_id,
         name: [it.first_name, it.last_name].filter(Boolean).join(" ") || null,
         first_name: it.first_name ?? null,
         last_name: it.last_name ?? null,
         headline: it.headline ?? null,
         source: "unipile_relations",
       };
-      const { data: ins, error: uerr } = await db.rpc("sales_nav_upsert_inbox", {
-        p_team_id: acct.team_id, p_user_id: acct.user_id, p_lead: lead,
+      const { data: ins, error: uerr } = await db.rpc("network_upsert", {
+        p_team_id: acct.team_id, p_user_id: acct.user_id, p_contact: contact,
+        p_unipile_account_id: unipile_account_id,
       });
-      if (uerr) { failed++; continue; }
+      // Fehler nicht schlucken — Top-Fallstrick #12: stille permission-denies
+      // sehen sonst aus wie "lief durch, 0 Kontakte".
+      if (uerr) { failed++; console.warn(`[relations] network_upsert: ${uerr.message}`); continue; }
       (ins as any)?.inserted ? inserted++ : updated++; // RPC gibt jetzt jsonb {id, inserted}
     }
   } while (cursor && pages < maxPages);

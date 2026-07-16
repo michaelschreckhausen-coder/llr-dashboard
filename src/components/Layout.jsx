@@ -118,6 +118,7 @@ function getNav(t) {
   { divider: true, label: 'LinkedIn', tourId: 'nav-linkedin' },
   { to: '/linkedin-suche',  icon: IcSearch,   label: 'Suche' },
   { to: '/linkedin-inbox',  icon: IcInbox,    label: 'LinkedIn Kontakte' },
+  { to: '/linkedin-netzwerk', icon: IcUsers,  label: 'Netzwerk' },
   { to: '/vernetzungen',    icon: IcHeart,    label: 'Vernetzung' },
   // Ein Eintrag „Automatisierung": V2 (la_*) ist Default für alle (3c-Flip).
   // Not-Aus per User: localStorage lk_features.linkedinAutomationV2Disabled=true → Alt-Seite.
