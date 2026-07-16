@@ -499,3 +499,10 @@ button:not(.lk-btn):not(.lk-dd-trigger):not(.lk-dd-opt):not([aria-pressed]):not(
 .lk-dd-trigger:hover{border-color:var(--accent) !important;}
 .lk-dd-opt{transition:background .12s ease;}
 .lk-dd-opt:hover{background:var(--tint-cyan, #EAF8FE) !important;}
+
+/* Scan-Feedback während KI-Objekterkennung (Magic-Klick) */
+@keyframes lk-scan { 0% { transform: translateY(-120%); } 100% { transform: translateY(120%); } }
+.lk-scan-wrap { position:absolute; overflow:hidden; pointer-events:none; z-index:41; border-radius:3px; box-shadow: inset 0 0 0 2px color-mix(in srgb, var(--wl-primary,#0A6FB0) 55%, transparent); }
+.lk-scan-wrap::before { content:''; position:absolute; inset:0; background: color-mix(in srgb, var(--wl-primary,#0A6FB0) 9%, transparent); }
+.lk-scan-bar { position:absolute; left:0; right:0; height:40%; background: linear-gradient(to bottom, transparent, color-mix(in srgb, var(--wl-primary,#0A6FB0) 40%, transparent), transparent); animation: lk-scan 1.15s ease-in-out infinite; }
+@media (prefers-reduced-motion: reduce){ .lk-scan-bar{ animation:none; } }

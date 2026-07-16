@@ -2938,8 +2938,13 @@ Antworte AUSSCHLIESSLICH mit JSON: {"ok":<bool>,"issues":["..."],"operations":[.
     const offY = baseCrop ? baseCrop.y : 0
     ctx.globalAlpha = 0.45
     try {
-      // Nur den sichtbaren (gecroppten) Ausschnitt der Maske ins Overlay zeichnen
-      ctx.drawImage(mask, offX, offY, cw, ch, 0, 0, dw, dh)
+      // Maske an der aktuellen Objekt-Box (Position + Skalierung) zeichnen, damit sie
+      // dem verschobenen/skalierten Bild folgt. Über die Stage hinausragende Teile
+      // werden vom Overlay-Canvas ohnehin abgeschnitten.
+      const { ox, oy, sx, sy } = activeXf()
+      ctx.drawImage(mask, 0, 0, mask.width, mask.height,
+        (ox - offX) * effScale, (oy - offY) * effScale,
+        mask.width * sx * effScale, mask.height * sy * effScale)
     } catch (_e) {}
     // einfärben
     ctx.globalCompositeOperation = 'source-in'
@@ -2955,10 +2960,11 @@ Antworte AUSSCHLIESSLICH mit JSON: {"ok":<bool>,"issues":["..."],"operations":[.
       ctx.setLineDash([6, 4])
       ctx.beginPath()
       const p0 = lassoPtsRef.current[0]
-      ctx.moveTo((p0.x - offX) * effScale, (p0.y - offY) * effScale)
+      const { ox: lox, oy: loy, sx: lsx, sy: lsy } = activeXf()
+      ctx.moveTo((lox + p0.x * lsx - offX) * effScale, (loy + p0.y * lsy - offY) * effScale)
       for (let i = 1; i < lassoPtsRef.current.length; i++) {
         const p = lassoPtsRef.current[i]
-        ctx.lineTo((p.x - offX) * effScale, (p.y - offY) * effScale)
+        ctx.lineTo((lox + p.x * lsx - offX) * effScale, (loy + p.y * lsy - offY) * effScale)
       }
       ctx.stroke()
       ctx.restore()
@@ -2968,6 +2974,12 @@ Antworte AUSSCHLIESSLICH mit JSON: {"ok":<bool>,"issues":["..."],"operations":[.
   useEffect(() => { redrawOverlay() // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [aiMode, scale, viewScale, baseCrop, stageSize, maskTool])
 
+  // Transform des aktiven Bild-Objekts (Position/Skalierung auf der Leinwand).
+  // Damit Klick-Auswahl + Masken-Overlay dem verschobenen/skalierten Bild folgen.
+  function activeXf() {
+    const t = activeImageObj() || {}
+    return { ox: t.x || 0, oy: t.y || 0, sx: (t.scaleX || 1) || 1, sy: (t.scaleY || 1) || 1 }
+  }
   // Overlay-Pointer → Bild-Pixel-Koordinaten
   function overlayPoint(e) {
     const ov = overlayRef.current
@@ -2975,9 +2987,10 @@ Antworte AUSSCHLIESSLICH mit JSON: {"ok":<bool>,"issues":["..."],"operations":[.
     const rect = ov.getBoundingClientRect()
     const clientX = e.touches ? e.touches[0].clientX : e.clientX
     const clientY = e.touches ? e.touches[0].clientY : e.clientY
-    const px = (clientX - rect.left) / effScale + (baseCrop ? baseCrop.x : 0)
-    const py = (clientY - rect.top) / effScale + (baseCrop ? baseCrop.y : 0)
-    return { x: px, y: py }
+    const { ox, oy, sx, sy } = activeXf()
+    const stageX = (clientX - rect.left) / effScale + (baseCrop ? baseCrop.x : 0)
+    const stageY = (clientY - rect.top) / effScale + (baseCrop ? baseCrop.y : 0)
+    return { x: (stageX - ox) / sx, y: (stageY - oy) / sy }
   }
   // ─── Magic-Select: Klick auf ein Objekt → SlimSAM erkennt es und maskiert es ──
   // Läuft lokal im Browser. Erste Nutzung pro Bild rechnet Embeddings (paar Sek.),
@@ -2997,10 +3010,16 @@ Antworte AUSSCHLIESSLICH mit JSON: {"ok":<bool>,"issues":["..."],"operations":[.
       // 1) Server-SAM (SAM-HQ, höchste Qualität) — selbst-gehostet.
       try {
         setSegMsg('Objekt wird erkannt …')
-        const ic = document.createElement('canvas'); ic.width = W; ic.height = H
-        ic.getContext('2d').drawImage(origEl, 0, 0, W, H)
-        const px = Math.round(nx * W), py = Math.round(ny * H)
-        const { data, error } = await supabase.functions.invoke('image-ai', { body: { op: 'segment', image: ic.toDataURL('image/png'), points: [[px, py]] } })
+        // Für die Erkennung reicht eine reduzierte Auflösung — das beschleunigt
+        // Encoding + Transfer + SAM-Inferenz spürbar, die Maske wird ohnehin auf die
+        // volle Bildgröße hochskaliert (kein sichtbarer Qualitätsverlust).
+        const SEG_MAX = 1024
+        const segScale = Math.min(1, SEG_MAX / Math.max(W, H))
+        const sw = Math.max(1, Math.round(W * segScale)), sh = Math.max(1, Math.round(H * segScale))
+        const ic = document.createElement('canvas'); ic.width = sw; ic.height = sh
+        ic.getContext('2d').drawImage(origEl, 0, 0, sw, sh)
+        const px = Math.round(nx * sw), py = Math.round(ny * sh)
+        const { data, error } = await supabase.functions.invoke('image-ai', { body: { op: 'segment', image: ic.toDataURL('image/jpeg', 0.9), points: [[px, py]] } })
         if (!error && !data?.error && data?.mask) {
           const im = await loadHtmlImage(data.mask)
           // Graustufen-Maske → weiß+Alpha (maskCanvas nutzt Alpha als Auswahl).
@@ -3105,10 +3124,13 @@ Antworte AUSSCHLIESSLICH mit JSON: {"ok":<bool>,"issues":["..."],"operations":[.
     const offX = baseCrop ? baseCrop.x : 0
     const offY = baseCrop ? baseCrop.y : 0
     ctx.save()
+    const { ox, oy, sx, sy } = activeXf()
+    const rx = (ox + x * sx - offX) * effScale, ry = (oy + y * sy - offY) * effScale
+    const rw = w * sx * effScale, rh = h * sy * effScale
     ctx.strokeStyle = PRGB; ctx.lineWidth = 2; ctx.setLineDash([6, 4])
-    ctx.strokeRect((x - offX) * effScale, (y - offY) * effScale, w * effScale, h * effScale)
+    ctx.strokeRect(rx, ry, rw, rh)
     ctx.fillStyle = 'rgba(10,111,176,0.25)'
-    ctx.fillRect((x - offX) * effScale, (y - offY) * effScale, w * effScale, h * effScale)
+    ctx.fillRect(rx, ry, rw, rh)
     ctx.restore()
   }
 
@@ -5927,6 +5949,13 @@ Ignoriere reine Deko/Muster ohne Text. Antworte AUSSCHLIESSLICH mit JSON, ohne E
               onTouchMove={onMaskMove}
               onTouchEnd={onMaskUp}
             />
+
+            {/* Scan-Feedback über der Leinwand während der KI-Objekterkennung */}
+            {segBusy && (
+              <div className="lk-scan-wrap" style={{ top: CANVAS_PAD, left: CANVAS_PAD, width: dispW, height: dispH }}>
+                <div className="lk-scan-bar" />
+              </div>
+            )}
 
             {/* KI-Busy-Overlay */}
             {aiBusy && (
