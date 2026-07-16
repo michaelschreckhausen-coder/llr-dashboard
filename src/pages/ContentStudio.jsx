@@ -1222,9 +1222,16 @@ ${transcript || '(noch leer)'}${extra.length ? '\n\n=== ZUSATZKONTEXT ===\n' + e
     }
     // Beim Bearbeiten des letzten Bildes: gezielte Edit-Anweisung (Delta) statt Neu-Prompt,
     // damit Nano Banana das vorhandene Bild bearbeitet statt ein neues zu rendern.
+    // Format-Wechsel erkennen: hat der Nutzer im Format-Picker ein ANDERES Seitenverhältnis
+    // gewählt als das des Ausgangsbilds, wird umgerahmt statt das alte Format zu behalten.
+    const _selRatio = imageFormat?.ratio || '1:1'
+    const _reformat = !!prevVisual && !!imageFormat?.ratio && _selRatio !== (prevVisual.aspect_ratio || _selRatio)
+    const _outRatio = prevVisual ? (_reformat ? _selRatio : (prevVisual.aspect_ratio || _selRatio)) : _selRatio
     if (prevVisual) {
       const delta = (editInstr || prompt || '').trim()
-      prompts = [`Bearbeite das beigefügte Bild. Ändere ausschließlich Folgendes: ${delta}. Motiv, Bildaufbau, Perspektive, Stil, Farben, Beleuchtung und alle übrigen Bildinhalte bleiben unverändert, sofern sie oben nicht ausdrücklich geändert werden. Gib das bearbeitete Bild im gleichen Stil und Seitenverhältnis zurück.`]
+      prompts = _reformat
+        ? [`Bearbeite das beigefügte Bild und gib es im Seitenverhältnis ${_selRatio} zurück.${delta ? ` Änderung: ${delta}.` : ''} Behalte Motiv, Stil, Farben und Bildaussage bei und passe den Bildausschnitt sinnvoll an das neue Format an (erweitern oder beschneiden), ohne wichtige Bildinhalte zu verlieren.`]
+        : [`Bearbeite das beigefügte Bild. Ändere ausschließlich Folgendes: ${delta}. Motiv, Bildaufbau, Perspektive, Stil, Farben, Beleuchtung und alle übrigen Bildinhalte bleiben unverändert, sofern sie oben nicht ausdrücklich geändert werden. Gib das bearbeitete Bild im gleichen Stil und Seitenverhältnis zurück.`]
     }
 
     const { model, quality } = splitModelValue(imageModel)
@@ -1234,8 +1241,8 @@ ${transcript || '(noch leer)'}${extra.length ? '\n\n=== ZUSATZKONTEXT ===\n' + e
         body: {
           prompt: pr,
           model, quality,
-          aspectRatio: prevVisual?.aspect_ratio || imageFormat?.ratio || '1:1',
-          ...(prevVisual ? {} : { targetWidth: imageFormat?.w || undefined, targetHeight: imageFormat?.h || undefined }),
+          aspectRatio: _outRatio,
+          ...((!prevVisual || _reformat) ? { targetWidth: imageFormat?.w || undefined, targetHeight: imageFormat?.h || undefined } : {}),
           variants: 1,
           brandVoiceId: activeBrandVoice?.id || null,
           noBrand: noBrand,
