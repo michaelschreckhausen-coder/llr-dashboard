@@ -50,6 +50,7 @@ import SettingsExtension from './pages/SettingsExtension'
 import SettingsAffiliate from './pages/SettingsAffiliate'
 import SettingsInstagram from './pages/SettingsInstagram'
 import Instagram         from './pages/Instagram'
+import InstagramInbox    from './pages/InstagramInbox'
 import Pipeline      from './pages/Pipeline'
 import Vernetzungen  from './pages/Vernetzungen'
 import ProfilChecker from './pages/ProfilChecker'
@@ -470,6 +471,7 @@ export default function App() {
 
             {/* Instagram — Addon-Modul, gated über account_addons → modules[]='instagram' */}
             <Route path="/instagram" element={<ModuleGuard module="instagram"><Instagram /></ModuleGuard>} />
+            <Route path="/instagram/inbox" element={<ModuleGuard module="instagram"><InstagramInbox /></ModuleGuard>} />
 
             {/* Sponsoring OS — Addon-Modul, gated über account_addons → modules[]='sponsoring' */}
             <Route path="/sponsoring"               element={<ModuleGuard module="sponsoring"><SponsoringHome /></ModuleGuard>} />

@@ -54,8 +54,8 @@ export const MODULES = {
   instagram: {
     key:   'instagram',
     label: 'Instagram',
-    description: 'Instagram-Analysen und Veröffentlichung aus dem Redaktionsplan',
-    routes: ['/instagram'],
+    description: 'Instagram-Analysen, DM-Postfach und Veröffentlichung aus dem Redaktionsplan',
+    routes: ['/instagram', '/instagram/inbox'],
     color: '#E1306C',
   },
   // Addon-Modul (kein Plan-Modul) — freigeschaltet via account_addons → get_my_entitlements().modules

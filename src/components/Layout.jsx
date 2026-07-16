@@ -133,6 +133,7 @@ function getNav(t) {
 
   { divider: true, label: 'Instagram', tourId: 'nav-instagram' },
   { to: '/instagram',       icon: IcInstagram, label: 'Analysen' },
+  { to: '/instagram/inbox', icon: IcInstagram, label: 'Postfach' },
 
   { divider: true, label: 'Sponsoring', tourId: 'nav-sponsoring' },
   { to: '/sponsoring',                 icon: IcRocket,        label: 'Übersicht' },
