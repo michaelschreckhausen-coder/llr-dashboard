@@ -20,6 +20,7 @@ const SUPABASE_SERVICE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
 // Isolate-Wall-Clock-Limit (Sonnet riss es bei Call 4-5). Reicht für Ideen-
 // Brainstorm + liefert sauberere JSON für das simple Schema.
 const MODEL = "claude-haiku-4-5";
+import { resolveModel, callText } from "../_shared/llm.ts";
 const IDEAS_PER_PHASE = 10;
 
 const PHASE_ORDER = ["PER", "INF", "BEF", "EVA", "BEW", "KEN-ABS", "IMP-RUC"];
@@ -96,28 +97,19 @@ function priorIdeasSummary(persona: any, phaseTag: string): string {
   return titles.length ? titles.map((t: string) => `- ${t}`).join("\n").slice(0, 900) : "";
 }
 
-async function callAnthropic(system: string, user: string): Promise<string> {
-  const ctl = new AbortController();
-  const timer = setTimeout(() => ctl.abort(), 45000); // 45s Hard-Timeout → sauberer Fehler statt Isolate-Kill
-  try {
-    const res = await fetch("https://api.anthropic.com/v1/messages", {
-      method: "POST", signal: ctl.signal,
-      headers: { "x-api-key": ANTHROPIC_API_KEY, "anthropic-version": "2023-06-01", "Content-Type": "application/json" },
-      body: JSON.stringify({ model: MODEL, max_tokens: 3000, system, messages: [{ role: "user", content: user }] }),
-    });
-    if (!res.ok) throw new Error("anthropic " + res.status + ": " + (await res.text().catch(() => "")).slice(0, 300));
-    const data = await res.json();
-    return (data?.content?.[0]?.text || "").trim();
-  } finally { clearTimeout(timer); }
+// Providerübergreifend + gewähltes Modell (ISO 27001).
+async function callAnthropic(model: string, system: string, user: string): Promise<string> {
+  const r = await callText({ model, system, user, maxTokens: 3000, jsonMode: true });
+  return (r.text || "").trim();
 }
 
 // 1 Retry bei transientem Fehler (429/5xx/Timeout/Netz) mit Backoff
-async function callAnthropicRetry(system: string, user: string): Promise<string> {
-  try { return await callAnthropic(system, user); }
+async function callAnthropicRetry(model: string, system: string, user: string): Promise<string> {
+  try { return await callAnthropic(model, system, user); }
   catch (e) {
     console.warn("[strike2] anthropic 1st-try failed, retry:", (e as Error).message);
     await new Promise((r) => setTimeout(r, 2500));
-    return await callAnthropic(system, user);
+    return await callAnthropic(model, system, user);
   }
 }
 
@@ -173,7 +165,8 @@ serve(async (req: Request) => {
     const t0 = Date.now();
     const system = buildSystemPrompt(phaseTag);
     const user = buildUserPrompt(persona, phaseTag, priorIdeasSummary(persona, phaseTag));
-    const raw = await callAnthropicRetry(system, user);
+    const useModel = await resolveModel(admin, [ctx.user_id], MODEL);
+    const raw = await callAnthropicRetry(useModel, system, user);
     console.log("[strike2] anthropic ok phase=" + phaseTag + " ms=" + (Date.now() - t0) + " len=" + raw.length);
     let ideas: any[];
     try { ideas = parseIdeas(raw, phaseTag); }

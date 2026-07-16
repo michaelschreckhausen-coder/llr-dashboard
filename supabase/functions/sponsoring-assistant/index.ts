@@ -10,6 +10,7 @@ import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
 const ANTHROPIC_API_KEY = Deno.env.get("ANTHROPIC_API_KEY")!;
+import { resolveModel, callText } from "../_shared/llm.ts";
 const SUPABASE_URL      = Deno.env.get("SUPABASE_URL")!;
 const SUPABASE_ANON_KEY = Deno.env.get("SUPABASE_ANON_KEY")!;
 const DEFAULT_MODEL = "claude-sonnet-4-6";
@@ -75,20 +76,18 @@ serve(async (req) => {
       content: `Daten-Snapshot (JSON):\n${JSON.stringify(snapshot)}\n\nFrage: ${question}`,
     });
 
-    const res = await fetch("https://api.anthropic.com/v1/messages", {
-      method: "POST",
-      headers: { "Content-Type": "application/json", "x-api-key": ANTHROPIC_API_KEY, "anthropic-version": "2023-06-01" },
-      body: JSON.stringify({
-        model: typeof model === "string" && model ? model : DEFAULT_MODEL,
-        max_tokens: 1200,
-        system: SYSTEM,
-        messages,
-      }),
-    });
-    const d = await res.json();
-    if (!res.ok) return json({ error: d.error?.message || "anthropic " + res.status }, 502);
-
-    return json({ ok: true, answer: d.content?.[0]?.text || "" });
+    // Providerübergreifend + gewähltes Modell (ISO 27001). History in den User-Text gefaltet.
+    const { data: { user: _actUser } } = await userClient.auth.getUser();
+    const useModel = (typeof model === "string" && model) ? model : await resolveModel(userClient, [_actUser?.id], DEFAULT_MODEL);
+    const _userText = messages.map((m) => (m.role === "user" ? "Nutzer: " : "Assistent: ") + m.content).join("\n\n");
+    let _answer = "";
+    try {
+      const r = await callText({ model: useModel, system: SYSTEM, user: _userText, maxTokens: 1200 });
+      _answer = r.text;
+    } catch (e) {
+      return json({ error: String((e as Error).message || e) }, 502);
+    }
+    return json({ ok: true, answer: _answer });
   } catch (e) {
     return json({ error: String((e as Error).message || e) }, 500);
   }

@@ -23,6 +23,7 @@ const CORS = {
   "Access-Control-Allow-Methods": "POST, OPTIONS",
 };
 
+import { resolveModel, callText } from "../_shared/llm.ts";
 const supabaseAdmin = createClient(SUPABASE_URL, SUPABASE_SERVICE_KEY);
 
 function json(data: unknown, status = 200) {
@@ -31,19 +32,10 @@ function json(data: unknown, status = 200) {
   });
 }
 
+// Providerübergreifend (ISO 27001: gewähltes Modell entscheidet den Anbieter).
 async function callAnthropic(model: string, system: string, user: string) {
-  const res = await fetch("https://api.anthropic.com/v1/messages", {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      "x-api-key": ANTHROPIC_API_KEY,
-      "anthropic-version": "2023-06-01",
-    },
-    body: JSON.stringify({ model, max_tokens: 2000, system, messages: [{ role: "user", content: user }] }),
-  });
-  const d = await res.json();
-  if (!res.ok) throw new Error(d.error?.message || "Anthropic error " + res.status);
-  return d.content?.[0]?.text || "";
+  const r = await callText({ model, system, user, maxTokens: 2000, jsonMode: true });
+  return r.text;
 }
 
 function extractJson(text: string): Record<string, unknown> | null {
@@ -96,7 +88,8 @@ serve(async (req) => {
       (voice ? `\nClub-Voice:\n${voice}\n` : "") +
       (audience ? `\nZielgruppe:\n${audience}\n` : "");
 
-    const useModel = typeof model === "string" && model ? model : DEFAULT_MODEL;
+    const { data: { user: _actUser } } = await userClient.auth.getUser();
+    const useModel = (typeof model === "string" && model) ? model : await resolveModel(supabaseAdmin, [_actUser?.id], DEFAULT_MODEL);
     const text = await callAnthropic(useModel, SYSTEM, userPrompt);
     const concept = extractJson(text);
     if (!concept) return json({ error: "could not parse model output", raw: text }, 502);
