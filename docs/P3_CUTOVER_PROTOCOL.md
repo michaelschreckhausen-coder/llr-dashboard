@@ -63,6 +63,28 @@ sie werden erst in Schritt 3 server-seitig gelesen.
 verifizieren (Trial-Seite auf Staging bestätigt; Health Angels + Sales beim
 Prod-Cutover, da diese Slugs/Accounts auf Staging fehlen).
 
+## Prod-Enforce-Reihenfolge (GELOCKT) — Enforcement beißt erst nach Abnahme
+
+1. **Prod-Apply Permissions** (`20260716140000`). Additiv; die 2 bekannten FE-Kanten erscheinen (s.o.).
+2. **Prod-Apply Resolver + `gate_config` + `team_has_permission` + Kill-Switch** (`20260716150000` + `20260716160000`). `gates_enforced=true` (Default), aber **noch importiert KEINE EF die Helfer** → nichts gatet, null Verhaltensänderung.
+3. **9-Account-Impersonation-Abnahme mit ECHTER enforced-Logik** (gefahrlos, weil noch keine EF die Resolver liest): pro Account `i_have_permission == true` für jede heute genutzte Fähigkeit + Tier-Spot-Check. Alle grün.
+4. **Deploy der 8 EF-Gates** → Enforcement greift ab hier sofort, die 9 bewiesen grün. Kill-Switch griffbereit.
+5. **Monitoring-Fenster.** Jeder Fehlblock → `UPDATE gate_config SET gates_enforced=false` (bzw. `admin_set_gate(false)`) in Sekunden, kein Redeploy.
+
+> Wichtig: Die Abnahme (3) läuft VOR dem Gate-Deploy (4) mit `enforced=true` — nur so ist sie aussagekräftig (bei `enforced=false` gibt jeder Resolver trivial `true` zurück). Kein Fenster, in dem Gates greifen, bevor die 9 ab sind.
+
+## Kill-Switch `gate_config` — Sicherheit
+
+- **RLS default-deny**, `REVOKE ALL FROM authenticated, anon`, `GRANT SELECT,UPDATE TO service_role`. Ein Kunde kann die Zeile **nie** lesen/ändern → kann sein eigenes Gate nicht öffnen.
+- Resolver lesen `gate_config` als **SECURITY DEFINER** (via `gate_open()`) → RLS umgangen, kein Kunden-Direktzugriff nötig.
+- Flip: `admin_set_gate(p_enforced, p_bypass_keys)` (is_leadesk_admin-Guard) fürs Admin-UI, oder direktes `UPDATE` als service_role.
+- `bypass_keys[]` = chirurgisch (nur einen Key öffnen), `gates_enforced=false` = Master-Aus.
+
+## Parität-Re-Run nach Kill-Switch-Einbau (vor jedem scharfen Gate)
+
+Die 20-Fälle-Matrix (USER `i_have_permission` vs CRON `team_has_permission`) **zweimal**:
+`gates_enforced=true` (muss Tier-Semantik zeigen) UND `=false` (muss überall `true/true` zeigen). Beide 0 Mismatches.
+
 ## EF-Gate-Mapping (Schritt 3, Vorschau)
 
 | EF | Kontext | Guard |
