@@ -322,22 +322,6 @@ Deno.serve(async (req) => {
 
   // Team-id ermitteln — MANDANTEN-TRENNUNG: bei Multi-Team-Usern nicht
   // willkürlich das erste Team nehmen, sondern (Priorität) das der gewählten
-  // Brand, sonst body.team_id (wenn Mitglied), sonst erstes Team.
-  let teamId: string | null = null;
-  const bodyTeamId = (body?.team_id as string) || null;
-  if (bodyTeamId && callerTeamIds.includes(bodyTeamId)) {
-    teamId = bodyTeamId;
-  } else {
-    teamId = callerTeamIds[0] || null;
-  }
-  // Wenn eine Brand gewählt ist, gehört das Visual in deren Team (nach
-  // Ownership-Check oben ist die Brand zugreifbar).
-  if (brandVoiceId && brandVoice && (brandVoice as { team_id?: string }).team_id
-      && callerTeamIds.includes((brandVoice as { team_id: string }).team_id)) {
-    teamId = (brandVoice as { team_id: string }).team_id;
-  }
-  if (!teamId) return json({ error: "Kein Team gefunden" }, 400);
-
   // Brand Voice + Hero/CI-Images laden (falls gewählt)
   // useBrandVoiceRefs steuert, ob die BV-Refs überhaupt mitgesendet werden.
   // Default = true (Rückwärtskompatibilität für alte Clients).
@@ -356,6 +340,23 @@ Deno.serve(async (req) => {
       bvCIImagePaths   = Array.isArray(bv?.ci_image_paths)   ? bv.ci_image_paths   : [];
     }
   }
+
+  // Brand, sonst body.team_id (wenn Mitglied), sonst erstes Team.
+  let teamId: string | null = null;
+  const bodyTeamId = (body?.team_id as string) || null;
+  if (bodyTeamId && callerTeamIds.includes(bodyTeamId)) {
+    teamId = bodyTeamId;
+  } else {
+    teamId = callerTeamIds[0] || null;
+  }
+  // Wenn eine Brand gewählt ist, gehört das Visual in deren Team (nach
+  // Ownership-Check oben ist die Brand zugreifbar).
+  if (brandVoiceId && brandVoice && (brandVoice as { team_id?: string }).team_id
+      && callerTeamIds.includes((brandVoice as { team_id: string }).team_id)) {
+    teamId = (brandVoice as { team_id: string }).team_id;
+  }
+  if (!teamId) return json({ error: "Kein Team gefunden" }, 400);
+
 
   // Ambassador: Company Brand laden — CI (Logos, Farben, Stil) fließt zusätzlich ein
   let companyVoices: any[] = [];
