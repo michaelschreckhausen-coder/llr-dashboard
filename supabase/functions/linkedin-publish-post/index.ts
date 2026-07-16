@@ -17,6 +17,7 @@
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { createClient } from "npm:@supabase/supabase-js@2";
 import { buildNativeCommentary } from "../_shared/mentions.ts";
+import { teamHasPermission } from "../_shared/permissions.ts";
 
 const CORS = {
   "Access-Control-Allow-Origin": "*",
@@ -252,6 +253,12 @@ Deno.serve(async (req) => {
   if (!post.content?.trim())         return json({ error: "Post hat keinen Content" }, 400);
   if (!isServiceRole && invokingUserId && post.user_id !== invokingUserId) {
     return json({ error: "Keine Berechtigung" }, 403);
+  }
+
+  // P3 #2: content.calendar-Gate auf post.team_id (Ressource, nicht aktives Account). Split nur in der Antwort. Kill-Switch im Resolver.
+  if (!(await teamHasPermission(admin, post.team_id, "content.calendar"))) {
+    if (isServiceRole) { await markPostFailed(admin, postId, queueId, "Keine Berechtigung (content.calendar)"); return json({ skipped: "no_permission" }, 200); }
+    return json({ error: "need_permission", key: "content.calendar" }, 403);
   }
 
   // 2) Connection laden

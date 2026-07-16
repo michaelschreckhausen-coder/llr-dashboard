@@ -14,6 +14,7 @@
 // =====================================================================
 import { handlePreflight, jsonResponse } from "../_shared/cors.ts";
 import { buildUnipileText } from "../_shared/mentions.ts";
+import { teamHasPermission } from "../_shared/permissions.ts";
 import {
   createPost,
   getAuthenticatedUser,
@@ -70,6 +71,12 @@ Deno.serve(async (req) => {
     // Ownership-Check nur für JWT-Aufrufe.
     if (!isServiceRole && invokingUserId && post.user_id !== invokingUserId) {
       return jsonResponse({ error: "Keine Berechtigung" }, 403);
+    }
+
+    // P3 #2: content.calendar-Gate auf post.team_id (Ressource, nicht aktives Account). Split nur in der Antwort. Kill-Switch im Resolver.
+    if (!(await teamHasPermission(sb, post.team_id, "content.calendar"))) {
+      if (isServiceRole) { await failQueue("Keine Berechtigung (content.calendar)"); return jsonResponse({ skipped: "no_permission" }, 200); }
+      return jsonResponse({ error: "need_permission", key: "content.calendar" }, 403);
     }
 
     // ── Unipile-Verbindung (status='OK') ──
