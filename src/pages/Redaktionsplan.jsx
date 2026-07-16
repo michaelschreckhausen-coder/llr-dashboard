@@ -264,7 +264,13 @@ function DateTimePicker({ value = '', onChange = () => {} }) {
           </div>
           <div style={{ display:'flex', justifyContent:'space-between', marginTop:10 }}>
             <button type="button" onClick={() => { onChange(''); setOpen(false) }} style={{ ..._dtpLink, color:'#b91c1c' }}>Löschen</button>
-            <button type="button" onClick={() => setOpen(false)} style={{ ..._dtpLink, color:P, fontWeight:700 }}>Übernehmen</button>
+            <button type="button" onClick={() => {
+              const d = (vp && vp.getFullYear() === view.y && vp.getMonth() === view.m) ? vp.getDate()
+                      : (today.getFullYear() === view.y && today.getMonth() === view.m) ? today.getDate()
+                      : 1
+              emit(view.y, view.m, d, time)
+              setOpen(false)
+            }} style={{ ..._dtpLink, color:P, fontWeight:700 }}>Übernehmen</button>
           </div>
         </div>
       )}
