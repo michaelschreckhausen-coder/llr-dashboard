@@ -342,34 +342,55 @@ const TOOLS = [
 // OpenAI Embedding-API: text-embedding-3-small, 1536 dims, sehr günstig
 // (~$0.02 / 1M tokens). Cosine-Distance via pgvector ANN-Index.
 
-function rowVector(row: { embedding_json?: unknown; embedding?: unknown }): number[] | null {
+// Embedding-Map je Notiz: { "openai": [...], "mistral": [...], ... }.
+function embMap(row: { embedding_json?: unknown }): Record<string, number[]> {
   const j = (row as { embedding_json?: unknown }).embedding_json;
-  if (Array.isArray(j)) return j as number[];
-  const e = (row as { embedding?: unknown }).embedding;
-  if (Array.isArray(e)) return e as number[];
-  if (typeof e === 'string') { try { const parsed = JSON.parse(e); return Array.isArray(parsed) ? parsed as number[] : null; } catch { return null; } }
-  return null;
+  if (j && typeof j === 'object' && !Array.isArray(j)) return j as Record<string, number[]>;
+  return {};
+}
+function vecFor(row: { embedding_json?: unknown }, provider: string | null): number[] | null {
+  if (!provider) return null;
+  const v = embMap(row)[provider];
+  return Array.isArray(v) ? v as number[] : null;
 }
 
-function rowProvider(row: { embed_provider?: unknown; embedding?: unknown; embedding_json?: unknown }): string | null {
-  const p = (row as { embed_provider?: unknown }).embed_provider;
-  if (typeof p === 'string' && p) return p;
-  // Altbestand ohne embed_provider, aber mit Legacy-Vektor = OpenAI-Raum.
-  if ((row as { embedding?: unknown }).embedding) return 'openai';
-  return null;
+// Hintergrund-Re-Embedding (Self-Healing): Notizen, denen der Vektor im aktuellen
+// Anbieter-Raum fehlt, werden mit dem gewaehlten Modell nachgeembedded und in die
+// Map gemerged (bestehende Raeume bleiben erhalten -> sicher fuer geteiltes Memory).
+// Fire-and-forget, gedeckelt, damit keine Last-/Latenzspitzen entstehen.
+async function reembedRows(
+  table: 'leadly_memory' | 'leadly_account_memory',
+  rows: Array<{ id: string; summary?: string; embedding_json?: unknown }>,
+  model: string,
+  provider: string,
+  cap = 12,
+) {
+  const admin = createClient(SUPABASE_URL, SUPABASE_SERVICE_KEY);
+  let n = 0;
+  for (const row of rows) {
+    if (n >= cap) break;
+    if (vecFor(row, provider)) continue;
+    if (!row.summary || row.summary.length < 8) continue;
+    const { vector, provider: p } = await embedText(model, row.summary);
+    if (!vector || !p) continue;
+    const merged = { ...embMap(row), [p]: vector };
+    await admin.from(table).update({ embedding_json: merged, embed_provider: p }).eq('id', row.id).then(() => {}, () => {});
+    n++;
+  }
 }
 
-// ⚠️ ISO 27001: Suche NUR im selben Vektorraum (embed_provider == queryProvider).
+// ⚠️ ISO 27001: Suche NUR im selben Vektorraum (Map-Slot des gewaehlten Anbieters).
 // Kein Query-Vektor (Claude = kein Embedding-Anbieter) → Recency-Fallback.
 async function retrieveMemories(
   userId: string,
   queryVector: number[] | null,
   queryProvider: string | null,
+  model: string,
 ): Promise<{ summary: string; importance: number; similarity: number; id: string }[]> {
   const admin = createClient(SUPABASE_URL, SUPABASE_SERVICE_KEY);
   const { data, error } = await admin
     .from('leadly_memory')
-    .select('id, summary, importance, embed_provider, embedding_json, embedding, created_at')
+    .select('id, summary, importance, embedding_json, created_at')
     .eq('user_id', userId)
     .order('created_at', { ascending: false })
     .limit(100);
@@ -385,8 +406,7 @@ async function retrieveMemories(
   }
   const scored: { id: string; summary: string; importance: number; similarity: number }[] = [];
   for (const row of data) {
-    if (rowProvider(row) !== queryProvider) continue;
-    const emb = rowVector(row);
+    const emb = vecFor(row, queryProvider);
     if (!emb || emb.length !== queryVector.length) continue;
     const sim = cosineSim(queryVector, emb);
     if (sim >= MEMORY_MIN_SIMILARITY) {
@@ -394,6 +414,9 @@ async function retrieveMemories(
     }
   }
   scored.sort((a, b) => b.similarity - a.similarity);
+  // Self-Healing: Notizen ohne aktuellen Provider-Slot im Hintergrund nachembedden.
+  const missing = data.filter(r => !vecFor(r, queryProvider));
+  if (missing.length) reembedRows('leadly_memory', missing, model, queryProvider).catch(() => {});
   return scored.slice(0, MEMORY_TOP_K);
 }
 
@@ -482,12 +505,13 @@ async function retrieveAccountMemories(
   accountId: string,
   queryVector: number[] | null,
   queryProvider: string | null,
+  model: string,
 ): Promise<{ summary: string; similarity: number; id: string }[]> {
   const admin = createClient(SUPABASE_URL, SUPABASE_SERVICE_KEY);
   // k-anonymity: nur Patterns mit >= 3 Beitraegern
   const { data } = await admin
     .from('leadly_account_memory')
-    .select('id, summary, embed_provider, embedding_json, embedding, contributing_user_count, importance, last_seen_at')
+    .select('id, summary, embedding_json, contributing_user_count, importance, last_seen_at')
     .eq('account_id', accountId)
     .gte('contributing_user_count', ACCOUNT_K_ANONYMITY_THRESHOLD)
     .order('last_seen_at', { ascending: false })
@@ -501,8 +525,7 @@ async function retrieveAccountMemories(
   }
   const scored: { id: string; summary: string; similarity: number }[] = [];
   for (const row of data) {
-    if (rowProvider(row) !== queryProvider) continue;
-    const emb = rowVector(row);
+    const emb = vecFor(row, queryProvider);
     if (!emb || emb.length !== queryVector.length) continue;
     const sim = cosineSim(queryVector, emb);
     if (sim >= ACCOUNT_MEMORY_MIN_SIMILARITY) {
@@ -510,6 +533,8 @@ async function retrieveAccountMemories(
     }
   }
   scored.sort((a, b) => b.similarity - a.similarity);
+  const missing = data.filter(r => !vecFor(r, queryProvider));
+  if (missing.length) reembedRows('leadly_account_memory', missing, model, queryProvider).catch(() => {});
   return scored.slice(0, ACCOUNT_MEMORY_TOP_K);
 }
 
@@ -526,19 +551,18 @@ async function saveAccountMemory(opts: {
   // Dedup nur moeglich, wenn ein Vektor vorliegt UND im selben Raum verglichen wird.
   let matchId: string | null = null;
   let bestSim = 0;
-  let existing: Array<{ id: string; contributing_user_count?: number; importance?: number }> = [];
+  let existing: Array<{ id: string; contributing_user_count?: number; importance?: number; embedding_json?: unknown }> = [];
   if (opts.embedding && opts.embedProvider) {
     const { data } = await admin
       .from('leadly_account_memory')
-      .select('id, embed_provider, embedding_json, embedding, contributing_user_count, importance, summary')
+      .select('id, embedding_json, contributing_user_count, importance, summary')
       .eq('account_id', opts.accountId)
       .eq('kind', opts.kind || 'turn')
       .order('last_seen_at', { ascending: false })
       .limit(50);
     existing = (data || []) as typeof existing;
     for (const row of data || []) {
-      if (rowProvider(row) !== opts.embedProvider) continue;
-      const emb = rowVector(row);
+      const emb = vecFor(row, opts.embedProvider);
       if (!emb || emb.length !== opts.embedding.length) continue;
       const sim = cosineSim(opts.embedding, emb);
       if (sim > bestSim) { bestSim = sim; matchId = row.id; }
@@ -560,7 +584,7 @@ async function saveAccountMemory(opts: {
       account_id: opts.accountId,
       kind: opts.kind || 'turn',
       summary: opts.summary.slice(0, 1000),
-      embedding_json: opts.embedding,
+      embedding_json: (opts.embedding && opts.embedProvider) ? { [opts.embedProvider]: opts.embedding } : null,
       embed_provider: opts.embedProvider,
       contributing_user_count: 1,
       importance: opts.importance,
@@ -625,7 +649,7 @@ async function saveMemory(opts: {
     summary: opts.summary.slice(0, 1000),
     kind: opts.kind || 'turn',
     importance,
-    embedding_json: vector,
+    embedding_json: (vector && provider) ? { [provider]: vector } : null,
     embed_provider: provider,
   });
   if (error) console.warn('[leadly] saveMemory failed:', error.message);
@@ -1558,13 +1582,13 @@ ${JSON.stringify(context, null, 2)}`;
     }
 
     // 3) User-Memory + Preferences (immer, auch bei privat)
-    const userMemoryPromise = retrieveMemories(userId, queryVector, queryProvider);
+    const userMemoryPromise = retrieveMemories(userId, queryVector, queryProvider, MODEL);
     const userPrefsPromise  = loadPreferences(userId);
 
     // 4) Account-Memory + Account-Preferences nur wenn scope='account' oder 'global'
     const includeAccount = (learningScope === 'account' || learningScope === 'global') && !!accountId;
     const accountMemoryPromise = includeAccount
-      ? retrieveAccountMemories(accountId!, queryVector, queryProvider)
+      ? retrieveAccountMemories(accountId!, queryVector, queryProvider, MODEL)
       : Promise.resolve([]);
     const accountPrefsPromise = includeAccount
       ? loadAccountPreferences(accountId!)
