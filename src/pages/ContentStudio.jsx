@@ -1109,7 +1109,11 @@ export default function ContentStudio({ session }) {
     // Referenz mitläuft. Der Bildgenerator sieht den Chat NICHT — nur diesen Prompt.
     const lastVisual = lastChatVisual()
     let prevVisual = null
+    let editInstr = ''
     let prompts = [prompt]
+    // Heuristik für Feinschliff-Anfragen (Sicherheitsnetz, falls der Direktor patzt)
+    const REFINE_CUES = /(\b(mach|ändere|änder|wärmer|kälter|heller|dunkler|mehr|weniger|ohne|entferne|entfern|füge|hinzu|statt|ersetze|tausche|hintergrund|näher|weiter\s+weg|perspektive|blickwinkel|winkel|kontrast|sättigung|schärfer|weicher|größer|kleiner|zentrier|zuschneid|crop|beleuchtung|licht|verbessere|optimiere|korrigiere|dasselbe|gleiche|nochmal|nochmals)\b|\bfarbe\b|das\s+bild|dieses\s+bild|ein\s+bisschen|etwas\s+|leicht\s+|passe\b)/i
+    const looksLikeRefine = !!(lastVisual && lastVisual.storage_path) && atts.length === 0 && REFINE_CUES.test(prompt)
 
     // ── Anzahl der Bilder bestimmen: fester Wert aus dem Dropdown oder „automatisch" ──
     const fixedCount = imageCount === 'auto' ? null : Math.max(1, Math.min(4, parseInt(imageCount, 10) || 1))
@@ -1153,11 +1157,11 @@ Regeln:
 - Wurde im Chat ein Beitrag geschrieben und der Nutzer will "ein Bild dazu", leite das Bildmotiv inhaltlich aus dem Beitrag ab.
 ${countInstr}
 - Mehrere Bilder als „Versionen/Varianten" desselben Motivs → beschreibe jeden Prompt eigenständig mit leichten Variationen. Als „Carousel / verschiedene Bilder" → unterschiedliche, aber thematisch zusammenhängende Motive (z. B. Schritte oder Aspekte einer Story). Entscheide anhand der Anfrage.
-${lastVisual ? '- Es gibt bereits ein zuletzt erzeugtes Bild (siehe Verlauf, letzte "[Bild erzeugt]"-Zeile) — dessen Motiv ist der Bezugspunkt für Perspektiv-/Änderungswünsche.' : '- Es gibt noch kein vorheriges Bild → reference_last_image = false.'}
+${lastVisual ? '- Das zuletzt erzeugte Bild ist dir als ANHANG beigefügt. Beurteile ANHAND DES BILDES, ob die neue Anfrage nur eine Änderung/Verfeinerung daran ist (Farbe, Licht, Detail, Hintergrund, Perspektive, Ausschnitt, etwas hinzufügen oder entfernen) → dann reference_last_image=true UND fülle "edit_instruction" mit exakt der gewünschten Änderung (knapp, nur das Delta). Nur wenn ein thematisch KOMPLETT anderes, unabhängiges Motiv gewünscht ist → reference_last_image=false. Im Zweifel bei einer kleinen, auf das Bild bezogenen Anfrage: reference_last_image=true.' : '- Es gibt noch kein vorheriges Bild → reference_last_image = false.'}
 ${atts.length ? '- Der Nutzer hat eigene Referenzbilder angehängt → reference_last_image = false.' : ''}
 
 Antworte AUSSCHLIESSLICH mit JSON, ohne Erklärung, in genau diesem Format:
-{"reference_last_image": true|false, "prompts": ["<detaillierter Bild-Prompt auf Deutsch>", "..."]}
+{"reference_last_image": true|false, "edit_instruction": "<NUR bei reference_last_image=true: knappe, präzise Beschreibung ausschließlich der gewünschten Änderung(en) am vorhandenen Bild, z.B. \\"Hintergrund in warmes Sonnenuntergangslicht, Person und Bildaufbau unverändert\\". Sonst leerer String>", "prompts": ["<detaillierter Bild-Prompt auf Deutsch>", "..."]}
 
 === CHAT-VERLAUF ===
 ${transcript || '(noch leer)'}${extra.length ? '\n\n=== ZUSATZKONTEXT ===\n' + extra.join('\n\n') : ''}
@@ -1166,7 +1170,7 @@ ${transcript || '(noch leer)'}${extra.length ? '\n\n=== ZUSATZKONTEXT ===\n' + e
 "${prompt}"`
       try {
         const { data: dir } = await supabase.functions.invoke('generate', {
-          body: { type:'raw', prompt: directorInstr },
+          body: { type:'raw', prompt: directorInstr, ...(lastVisual?.storage_path ? { referenceMediaPaths: [lastVisual.storage_path] } : {}) },
         })
         const raw = String(dir?.text || '')
         const a = raw.indexOf('{'); const b = raw.lastIndexOf('}')
@@ -1174,14 +1178,22 @@ ${transcript || '(noch leer)'}${extra.length ? '\n\n=== ZUSATZKONTEXT ===\n' + e
         let arr = Array.isArray(parsed?.prompts) ? parsed.prompts : (parsed?.prompt ? [parsed.prompt] : [])
         arr = arr.map(x => String(x || '').trim()).filter(Boolean).slice(0, 4)
         if (arr.length) prompts = arr
-        if (parsed?.reference_last_image === true && lastVisual && atts.length === 0) prevVisual = lastVisual
+        let refLast = parsed?.reference_last_image === true
+        // Sanftes Sicherheitsnetz: eindeutige Feinschliff-Anfrage auf frisches Bild → editieren
+        if (!refLast && looksLikeRefine) refLast = true
+        if (refLast && lastVisual && atts.length === 0) { prevVisual = lastVisual; editInstr = String(parsed?.edit_instruction || '').trim() }
       } catch (_e) {
-        if (linkedPost?.content?.trim()) prompts = [`Erstelle ein Bild, das visuell zu diesem LinkedIn-Beitrag passt.\nBeitrag-Titel: "${linkedPost.title || ''}"\nBeitrag-Text:\n${linkedPost.content.trim()}\n\nKonkreter Bildwunsch: ${prompt}`]
+        if (looksLikeRefine) { prevVisual = lastVisual; editInstr = prompt }
+        else if (linkedPost?.content?.trim()) prompts = [`Erstelle ein Bild, das visuell zu diesem LinkedIn-Beitrag passt.\nBeitrag-Titel: "${linkedPost.title || ''}"\nBeitrag-Text:\n${linkedPost.content.trim()}\n\nKonkreter Bildwunsch: ${prompt}`]
         else if (refDoc?.content_text?.trim()) prompts = [`Erstelle ein Bild, das visuell zum Inhalt dieses Dokuments passt.\nDokument-Titel: "${refDoc.title || ''}"\nDokument-Inhalt:\n${refDoc.content_text.trim().slice(0, 2000)}\n\nKonkreter Bildwunsch: ${prompt}`]
       }
     }
-    // Beim Bearbeiten des letzten Bildes immer nur EIN Bild
-    if (prevVisual) prompts = [prompts[0]]
+    // Beim Bearbeiten des letzten Bildes: gezielte Edit-Anweisung (Delta) statt Neu-Prompt,
+    // damit Nano Banana das vorhandene Bild bearbeitet statt ein neues zu rendern.
+    if (prevVisual) {
+      const delta = (editInstr || prompt || '').trim()
+      prompts = [`Bearbeite das beigefügte Bild. Ändere ausschließlich Folgendes: ${delta}. Motiv, Bildaufbau, Perspektive, Stil, Farben, Beleuchtung und alle übrigen Bildinhalte bleiben unverändert, sofern sie oben nicht ausdrücklich geändert werden. Gib das bearbeitete Bild im gleichen Stil und Seitenverhältnis zurück.`]
+    }
 
     const { model, quality } = splitModelValue(imageModel)
 
