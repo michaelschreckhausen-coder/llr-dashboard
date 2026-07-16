@@ -6,6 +6,7 @@
 //   auf → unipile-webhook legt die Zeile an. GET /accounts.name = Profilname (NICHT user_id!).
 // user_id kommt aus dem JWT (Härtung).
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { requireSeat } from "../_shared/permissions.ts";
 
 const UNIPILE_DSN = Deno.env.get("UNIPILE_DSN")!;
 const UNIPILE_KEY = Deno.env.get("UNIPILE_API_KEY")!;
@@ -29,6 +30,10 @@ Deno.serve(async (req) => {
   const { data: { user } } = await userClient.auth.getUser();
   if (!user) return json({ error: "unauthorized" }, 401);
   const userId = user.id;
+
+  // P3 #1: Connect = Seat-Besitz (member-basiert, B1). GANZ OBEN → deckt auch den reconcile-Branch. Kill-Switch via gate_open('connect').
+  const seatDenied = await requireSeat(userClient);
+  if (seatDenied) return seatDenied;
 
   const body = await req.json().catch(() => ({} as any));
   const db = createClient(SB_URL, SB_SERVICE, { auth: { persistSession: false } });
@@ -62,10 +67,6 @@ Deno.serve(async (req) => {
     if (error) return json({ error: error.message }, 500);
     return json({ connected: true, unipile_account_id: acct.id, public: pub, status }, 200);
   }
-
-  // ── Onboarding-Gate: LinkedIn verbinden nur mit aktivem 'automation'-Addon ──
-  const { data: hasAddon } = await userClient.rpc("i_have_addon", { p_slug: "automation" });
-  if (!hasAddon) return json({ error: "no_addon", message: "Automatisierung-Addon nicht aktiv" }, 403);
 
   // ── Default: Hosted-Auth-Link erzeugen (mit notify_url = Canonical-Mapping) ──
   const appBase = (typeof body?.app_base === "string" && body.app_base) || "https://staging.leadesk.de";

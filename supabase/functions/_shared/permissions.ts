@@ -90,6 +90,8 @@ export async function teamHasPermission(
 export async function requireSeat(
   userClient: { rpc: (fn: string, args?: Record<string, unknown>) => PromiseLike<{ data: unknown; error: unknown }> },
 ): Promise<Response | null> {
+  const { data: open } = await userClient.rpc("gate_open", { p_key: "connect" });  // Kill-Switch deckt Connect mit
+  if (open === true) return null;
   const { data, error } = await userClient.rpc("get_my_entitlements", {});
   if (error || !data) {
     console.warn(`[require_seat] entitlements error:`, error);
