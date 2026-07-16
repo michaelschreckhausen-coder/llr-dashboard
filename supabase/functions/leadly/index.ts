@@ -21,6 +21,7 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { getCallerContext, checkCredits, recordUsage, estimateCredits } from "../_shared/credits.ts";
 import { resolveModel, getProvider } from "../_shared/llm.ts";
 import { agentStep, agentText } from "../_shared/agent.ts";
+import { embedText, cosineSim } from "../_shared/embed.ts";
 
 const ANTHROPIC_API_KEY    = Deno.env.get("ANTHROPIC_API_KEY")!;
 const OPENAI_API_KEY       = Deno.env.get("OPENAI_API_KEY") || '';
@@ -70,7 +71,6 @@ function summarizeAction(name: string, input: Record<string, unknown>): string {
     default: return `Aktion: ${name}`;
   }
 }
-const EMBEDDING_MODEL = "text-embedding-3-small";  // 1536 dims, OpenAI
 const MAX_ITERATIONS = 6;
 const MEMORY_TOP_K = 4;            // User-Memory Top-K
 const MEMORY_MIN_SIMILARITY = 0.7; // Cosine-Cutoff für User-Memory
@@ -342,56 +342,34 @@ const TOOLS = [
 // OpenAI Embedding-API: text-embedding-3-small, 1536 dims, sehr günstig
 // (~$0.02 / 1M tokens). Cosine-Distance via pgvector ANN-Index.
 
-async function generateEmbedding(text: string): Promise<number[] | null> {
-  if (!OPENAI_API_KEY || !text || text.length < 4) return null;
-  try {
-    const res = await fetch('https://api.openai.com/v1/embeddings', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${OPENAI_API_KEY}`,
-      },
-      body: JSON.stringify({
-        model: EMBEDDING_MODEL,
-        input: text.slice(0, 8000), // Safety-Cutoff, model erlaubt mehr
-      }),
-    });
-    if (!res.ok) {
-      const err = await res.text();
-      console.warn('[leadly] embedding failed:', res.status, err.slice(0, 200));
-      return null;
-    }
-    const data = await res.json();
-    return data.data?.[0]?.embedding || null;
-  } catch (e) {
-    console.warn('[leadly] embedding exception:', e instanceof Error ? e.message : e);
-    return null;
-  }
+function rowVector(row: { embedding_json?: unknown; embedding?: unknown }): number[] | null {
+  const j = (row as { embedding_json?: unknown }).embedding_json;
+  if (Array.isArray(j)) return j as number[];
+  const e = (row as { embedding?: unknown }).embedding;
+  if (Array.isArray(e)) return e as number[];
+  if (typeof e === 'string') { try { const parsed = JSON.parse(e); return Array.isArray(parsed) ? parsed as number[] : null; } catch { return null; } }
+  return null;
 }
 
-// Cosine-Search in leadly_memory via RPC oder direct SQL. Wir nutzen den
-// `<=>`-Operator (cosine distance) — kleiner = ähnlicher. similarity = 1 - distance.
+function rowProvider(row: { embed_provider?: unknown; embedding?: unknown; embedding_json?: unknown }): string | null {
+  const p = (row as { embed_provider?: unknown }).embed_provider;
+  if (typeof p === 'string' && p) return p;
+  // Altbestand ohne embed_provider, aber mit Legacy-Vektor = OpenAI-Raum.
+  if ((row as { embedding?: unknown }).embedding) return 'openai';
+  return null;
+}
+
+// ⚠️ ISO 27001: Suche NUR im selben Vektorraum (embed_provider == queryProvider).
+// Kein Query-Vektor (Claude = kein Embedding-Anbieter) → Recency-Fallback.
 async function retrieveMemories(
   userId: string,
-  queryEmbedding: number[] | null,
+  queryVector: number[] | null,
+  queryProvider: string | null,
 ): Promise<{ summary: string; importance: number; similarity: number; id: string }[]> {
-  if (!queryEmbedding) return [];
   const admin = createClient(SUPABASE_URL, SUPABASE_SERVICE_KEY);
-  // Inline-SQL via .rpc() wäre besser, aber wir nutzen die einfachere Variante:
-  // pgvector erlaubt `embedding <=> '[...]'::vector` als ORDER-Klausel direkt.
-  // PostgREST kann das nicht über .select() ausdrücken — also via .rpc auf
-  // eine inline-Funktion oder mit raw query. Simpel: nutze admin.from() + select
-  // mit Sort über raw-vector — aber das geht nicht in PostgREST.
-  //
-  // Workaround: SQL-Query via supabase.rpc Custom-Function. Wir bauen die
-  // Function gleich hier dynamisch via execute-sql — aber das ist auch
-  // limited. Pragmatisch: wir laden die letzten 100 Memories vom User und
-  // rechnen Cosine-Similarity in TS. Für <500 Memories pro User OK.
-  // (Echter pgvector-ANN-Index wird benutzt sobald wir die RPC-Func haben —
-  // siehe Migration Folge-Sprint.)
   const { data, error } = await admin
     .from('leadly_memory')
-    .select('id, summary, importance, embedding')
+    .select('id, summary, importance, embed_provider, embedding_json, embedding, created_at')
     .eq('user_id', userId)
     .order('created_at', { ascending: false })
     .limit(100);
@@ -399,20 +377,18 @@ async function retrieveMemories(
     console.warn('[leadly] retrieveMemories error:', error?.message);
     return [];
   }
-
+  if (!queryVector || !queryProvider) {
+    return [...data]
+      .sort((a, b) => (b.importance || 0) - (a.importance || 0))
+      .slice(0, MEMORY_TOP_K)
+      .map(r => ({ id: r.id, summary: r.summary, importance: r.importance, similarity: 0 }));
+  }
   const scored: { id: string; summary: string; importance: number; similarity: number }[] = [];
   for (const row of data) {
-    const emb = row.embedding;
-    if (!emb || !Array.isArray(emb)) continue;
-    // Cosine-Similarity = dot(a,b) / (|a|*|b|). pgvector liefert das Array
-    // direkt aus dem JSON, dimensions sollten 1536 sein.
-    let dot = 0, magA = 0, magB = 0;
-    for (let i = 0; i < emb.length; i++) {
-      dot  += queryEmbedding[i] * emb[i];
-      magA += queryEmbedding[i] * queryEmbedding[i];
-      magB += emb[i] * emb[i];
-    }
-    const sim = magA && magB ? dot / (Math.sqrt(magA) * Math.sqrt(magB)) : 0;
+    if (rowProvider(row) !== queryProvider) continue;
+    const emb = rowVector(row);
+    if (!emb || emb.length !== queryVector.length) continue;
+    const sim = cosineSim(queryVector, emb);
     if (sim >= MEMORY_MIN_SIMILARITY) {
       scored.push({ id: row.id, summary: row.summary, importance: row.importance, similarity: sim });
     }
@@ -504,31 +480,31 @@ async function loadAccountPreferences(accountId: string): Promise<{ key: string;
 
 async function retrieveAccountMemories(
   accountId: string,
-  queryEmbedding: number[] | null,
+  queryVector: number[] | null,
+  queryProvider: string | null,
 ): Promise<{ summary: string; similarity: number; id: string }[]> {
-  if (!queryEmbedding) return [];
   const admin = createClient(SUPABASE_URL, SUPABASE_SERVICE_KEY);
-  // k-anonymity: nur Patterns mit ≥3 Beiträgern
+  // k-anonymity: nur Patterns mit >= 3 Beitraegern
   const { data } = await admin
     .from('leadly_account_memory')
-    .select('id, summary, embedding, contributing_user_count, importance')
+    .select('id, summary, embed_provider, embedding_json, embedding, contributing_user_count, importance, last_seen_at')
     .eq('account_id', accountId)
     .gte('contributing_user_count', ACCOUNT_K_ANONYMITY_THRESHOLD)
     .order('last_seen_at', { ascending: false })
     .limit(100);
   if (!data) return [];
-
+  if (!queryVector || !queryProvider) {
+    return [...data]
+      .sort((a, b) => (b.importance || 0) - (a.importance || 0))
+      .slice(0, ACCOUNT_MEMORY_TOP_K)
+      .map(r => ({ id: r.id, summary: r.summary, similarity: 0 }));
+  }
   const scored: { id: string; summary: string; similarity: number }[] = [];
   for (const row of data) {
-    const emb = row.embedding;
-    if (!emb || !Array.isArray(emb)) continue;
-    let dot = 0, magA = 0, magB = 0;
-    for (let i = 0; i < emb.length; i++) {
-      dot  += queryEmbedding[i] * emb[i];
-      magA += queryEmbedding[i] * queryEmbedding[i];
-      magB += emb[i] * emb[i];
-    }
-    const sim = magA && magB ? dot / (Math.sqrt(magA) * Math.sqrt(magB)) : 0;
+    if (rowProvider(row) !== queryProvider) continue;
+    const emb = rowVector(row);
+    if (!emb || emb.length !== queryVector.length) continue;
+    const sim = cosineSim(queryVector, emb);
     if (sim >= ACCOUNT_MEMORY_MIN_SIMILARITY) {
       scored.push({ id: row.id, summary: row.summary, similarity: sim });
     }
@@ -541,57 +517,51 @@ async function saveAccountMemory(opts: {
   accountId: string;
   userId: string;
   summary: string;
-  embedding: number[];
+  embedding: number[] | null;
+  embedProvider: string | null;
   importance: number;
   kind?: 'turn' | 'fact' | 'tool_pattern';
 }) {
   const admin = createClient(SUPABASE_URL, SUPABASE_SERVICE_KEY);
-  // Check ob ähnliches Pattern schon existiert (Cosine ≥0.85)
-  // Pragmatisch: lade letzte 50 Account-Memories der gleichen kind und vergleiche.
-  const { data: existing } = await admin
-    .from('leadly_account_memory')
-    .select('id, embedding, contributing_user_count, importance, summary')
-    .eq('account_id', opts.accountId)
-    .eq('kind', opts.kind || 'turn')
-    .order('last_seen_at', { ascending: false })
-    .limit(50);
-
+  // Dedup nur moeglich, wenn ein Vektor vorliegt UND im selben Raum verglichen wird.
   let matchId: string | null = null;
   let bestSim = 0;
-  for (const row of existing || []) {
-    const emb = row.embedding;
-    if (!emb || !Array.isArray(emb)) continue;
-    let dot = 0, magA = 0, magB = 0;
-    for (let i = 0; i < emb.length; i++) {
-      dot  += opts.embedding[i] * emb[i];
-      magA += opts.embedding[i] * opts.embedding[i];
-      magB += emb[i] * emb[i];
+  let existing: Array<{ id: string; contributing_user_count?: number; importance?: number }> = [];
+  if (opts.embedding && opts.embedProvider) {
+    const { data } = await admin
+      .from('leadly_account_memory')
+      .select('id, embed_provider, embedding_json, embedding, contributing_user_count, importance, summary')
+      .eq('account_id', opts.accountId)
+      .eq('kind', opts.kind || 'turn')
+      .order('last_seen_at', { ascending: false })
+      .limit(50);
+    existing = (data || []) as typeof existing;
+    for (const row of data || []) {
+      if (rowProvider(row) !== opts.embedProvider) continue;
+      const emb = rowVector(row);
+      if (!emb || emb.length !== opts.embedding.length) continue;
+      const sim = cosineSim(opts.embedding, emb);
+      if (sim > bestSim) { bestSim = sim; matchId = row.id; }
     }
-    const sim = magA && magB ? dot / (Math.sqrt(magA) * Math.sqrt(magB)) : 0;
-    if (sim > bestSim) { bestSim = sim; matchId = row.id; }
   }
 
   if (matchId && bestSim >= ACCOUNT_SIMILAR_PATTERN_CUTOFF) {
-    // Existing Pattern: contributing_user_count++ wenn dieser User noch nicht beigetragen hat.
-    // Pragmatisch: wir tracken nicht WER beigetragen hat (nur count) — daher
-    // einfach ein increment. Edge-Case: gleicher User triggert oft ähnliches
-    // Pattern → count steigt unfair. Akzeptabel für MVP, k-anon-Threshold
-    // ist ≥3 also leicht overcounted.
+    const m = existing.find(r => r.id === matchId)!;
     await admin
       .from('leadly_account_memory')
       .update({
-        contributing_user_count: (existing!.find(r => r.id === matchId)!.contributing_user_count || 0) + 1,
+        contributing_user_count: (m.contributing_user_count || 0) + 1,
         last_seen_at: new Date().toISOString(),
-        importance: Math.max(existing!.find(r => r.id === matchId)!.importance || 50, opts.importance),
+        importance: Math.max(m.importance || 50, opts.importance),
       })
       .eq('id', matchId);
   } else {
-    // Neues Pattern
     await admin.from('leadly_account_memory').insert({
       account_id: opts.accountId,
       kind: opts.kind || 'turn',
       summary: opts.summary.slice(0, 1000),
-      embedding: opts.embedding,
+      embedding_json: opts.embedding,
+      embed_provider: opts.embedProvider,
       contributing_user_count: 1,
       importance: opts.importance,
     });
@@ -637,35 +607,38 @@ async function saveMemory(opts: {
   teamId: string | null;
   accountId: string | null;
   learningScope: 'privat' | 'account' | 'global';
+  model: string;
   summary: string;
   importance?: number;
   kind?: 'turn' | 'fact';
 }) {
   if (!opts.summary || opts.summary.length < 8) return;
-  const embedding = await generateEmbedding(opts.summary);
-  if (!embedding) return; // Kein Embedding-Service → kein Memory-Save (graceful)
+  // Embedding folgt dem gewaehlten Modell (Claude -> null -> Recency-only Memory).
+  const { vector, provider } = await embedText(opts.model, opts.summary);
   const admin = createClient(SUPABASE_URL, SUPABASE_SERVICE_KEY);
   const importance = typeof opts.importance === 'number' ? Math.max(0, Math.min(100, opts.importance)) : 50;
 
-  // 1) User-Memory immer (auch bei scope='privat')
+  // 1) User-Memory immer speichern (auch ohne Embedding -> per Recency abrufbar)
   const { error } = await admin.from('leadly_memory').insert({
     user_id: opts.userId,
     team_id: opts.teamId,
     summary: opts.summary.slice(0, 1000),
     kind: opts.kind || 'turn',
     importance,
-    embedding,
+    embedding_json: vector,
+    embed_provider: provider,
   });
   if (error) console.warn('[leadly] saveMemory failed:', error.message);
 
-  // 2) Account-Memory nur bei scope='account' oder 'global' + accountId vorhanden
+  // 2) Account-Memory nur bei scope='account'/'global' + accountId
   if (opts.accountId && (opts.learningScope === 'account' || opts.learningScope === 'global')) {
     try {
       await saveAccountMemory({
         accountId: opts.accountId,
         userId: opts.userId,
         summary: opts.summary,
-        embedding,
+        embedding: vector,
+        embedProvider: provider,
         importance,
         kind: opts.kind || 'turn',
       });
@@ -1555,7 +1528,9 @@ ${JSON.stringify(context, null, 2)}`;
     // 2) Letzte User-Message als Query
     const lastUserMsg = [...anthropicMessages].reverse().find(m => m.role === 'user');
     const queryText = typeof lastUserMsg?.content === 'string' ? lastUserMsg.content : '';
-    const queryEmbedding = queryText ? await generateEmbedding(queryText) : null;
+    const _embQ = queryText ? await embedText(MODEL, queryText) : { vector: null, provider: null };
+    const queryVector = _embQ.vector;
+    const queryProvider = _embQ.provider;
 
     // ─── Datei-/Bild-Anhänge → an die letzte User-Message als multimodale
     //     Content-Blocks hängen (Anthropic base64). Bilder + PDFs liest das
@@ -1583,13 +1558,13 @@ ${JSON.stringify(context, null, 2)}`;
     }
 
     // 3) User-Memory + Preferences (immer, auch bei privat)
-    const userMemoryPromise = retrieveMemories(userId, queryEmbedding);
+    const userMemoryPromise = retrieveMemories(userId, queryVector, queryProvider);
     const userPrefsPromise  = loadPreferences(userId);
 
     // 4) Account-Memory + Account-Preferences nur wenn scope='account' oder 'global'
     const includeAccount = (learningScope === 'account' || learningScope === 'global') && !!accountId;
     const accountMemoryPromise = includeAccount
-      ? retrieveAccountMemories(accountId!, queryEmbedding)
+      ? retrieveAccountMemories(accountId!, queryVector, queryProvider)
       : Promise.resolve([]);
     const accountPrefsPromise = includeAccount
       ? loadAccountPreferences(accountId!)
@@ -1766,6 +1741,7 @@ ${JSON.stringify(context, null, 2)}`;
       // Fire-and-forget — kein await
       saveMemory({
         userId, teamId, accountId, learningScope,
+        model: MODEL,
         summary, importance, kind: 'turn',
       }).catch(() => {});
 
