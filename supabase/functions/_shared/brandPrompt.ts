@@ -34,7 +34,8 @@ function emojiDirective(v: any): string {
   else if (t.includes("reichlich") || t.includes("viel")) lvl = "Setze GROSSZÜGIG viele Emojis ein: mehrere über den Beitrag verteilt, gern an Zeilen-/Absatzanfängen, in Aufzählungen und zur Betonung. Der Beitrag soll sichtbar emoji-reich wirken (thematisch passend, nicht wahllos).";
   else if (t.includes("gelegentlich") || t.includes("moderat")) lvl = "Setze mehrere Emojis ein, etwa 3-6 über den Beitrag verteilt, zur Auflockerung und visuellen Struktur.";
   else if (t.includes("minimal")) lvl = "Setze nur 1-2 gezielte Emojis im gesamten Beitrag ein, nicht mehr.";
-  return `Emoji-Nutzung (VERBINDLICH, genau diese Menge umsetzen): ${raw}${lvl ? " → " + lvl : ""}`;
+  const quality = t.includes("keine") ? "" : " Unabhängig von der Menge: KEINE typischen KI-Signal-Emojis (🚀 ✨ ⭐ 🌟 🎯 💡 🔥 💪 🙌 ✅ 📈 📊 🔑 🧠 ⚡ 🎉 👇 👉), NICHT ans Post-Ende/an den letzten Satz kleben, Platzierung variieren, nur thematisch wirklich passende Emojis. Pfeile (→) oder passende Emojis als Aufzählungszeichen sind ok.";
+  return `Emoji-Nutzung (VERBINDLICH, genau diese Menge umsetzen): ${raw}${lvl ? " → " + lvl : ""}${quality}`;
 }
 
 function linkedinStyleLines(ls: any): string[] {
@@ -258,11 +259,13 @@ export async function buildBrandCorpus(admin: any, brandVoiceId: string, opts: {
 
 export const HUMAN_STYLE_GUIDE = `## Grundregeln gegen KI-Klang (die Brand Voice oben hat IMMER Vorrang)
 Diese Regeln sind nur Leitplanken. Wenn die Brand Voice etwas anderes vorgibt (Tonalität, Satzbau, Emojis, Formatierung), gilt IMMER die Brand Voice.
-- Keine Gedankenstriche (— oder –) als Satzzeichen. Stattdessen Punkt, Komma, Doppelpunkt oder Klammern. Ausnahmslos.
+- Keine Gedankenstriche (— oder –) als Satzzeichen. Stattdessen Punkt, Komma oder Klammern. Ausnahmslos.
+- Doppelpunkte sparsam einsetzen. Sie wirken schnell nach KI- oder Werbetext, vor allem als Hook-Einleitung, als Aufzählungs-Ansage oder als "Ergebnis:"/"Merke:"-Formel. Bevorzuge Punkt und Komma, das ist am natürlichsten. Setze einen Doppelpunkt nur, wo er wirklich zwingend und natürlich ist, nicht als Stilmittel.
 - Keine typischen KI-Floskeln/-Wörter: nahtlos, eintauchen, beleuchten, navigieren, revolutionieren, transformativ, befähigen, freischalten, ganzheitlich, Reise, Landschaft, Ökosystem, Leuchtturm, Game-Changer, "in der heutigen schnelllebigen Welt", "es ist wichtig zu beachten", "zusammenfassend". Keine steifen Übergänge (darüber hinaus, des Weiteren, folglich).
 - Kein aufgeblasenes Pathos, keine Metaphern-Spielereien, keine großen Töne und keine wohlklingenden Allgemeinplätze, wenn die Brand Voice nüchtern, sachlich oder knapp ist. Trage nicht dicker auf, als die Brand Voice es vorgibt. Eine konkrete Beobachtung schlägt jede schöne Phrase.
 - Schreibe so trocken/sachlich oder so emotional, wie die Brand Voice es definiert, nicht generisch "LinkedIn-mitreißend".
 - Variiere Satzlängen natürlich, aber im Rahmen der Brand Voice. Kein künstliches Stakkato (nicht jeder Satz ein eigener Absatz), außer die Brand Voice will genau das.
+- Emojis menschlich, nicht nach KI-Schema (die konkrete Menge gibt die Brand Voice bzw. ihre Emoji-Nutzung vor). Vermeide die typischen KI-Signal-Emojis, die echte Menschen kaum in dieser Dichte verwenden: 🚀 ✨ ⭐ 🌟 🎯 💡 🔥 💪 🙌 ✅ ✔️ 📈 📊 🔑 🤝 🧠 ⚡ 🎉 💯 🚨 👇 👉. Klebe NICHT standardmäßig ein Emoji an den letzten Satz oder ans Post-Ende, das ist ein klares KI-Muster. Variiere die Platzierung (auch mitten im Satz oder am Absatzanfang) und nutze nur Emojis, die inhaltlich wirklich passen und die reale Menschen so verwenden. Als Aufzählungszeichen eignen sich zum jeweiligen Punkt passende Emojis oder schlichte Pfeile (→).
 - Aktiv und konkret. Verkörpere die Brand Voice, statt sie zu beschreiben. Keine Zusammenfassung/kein "Fazit:" am Ende, außer es passt zur Brand.`;
 
 export const LINKEDIN_POST_GUIDE = `## LinkedIn-Grundgerüst (nur Fallback — die Brand Voice und ihr LinkedIn-Format haben Vorrang)
