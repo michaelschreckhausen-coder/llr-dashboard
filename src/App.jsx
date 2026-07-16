@@ -24,6 +24,7 @@ import Strike2Personas  from './pages/Strike2Personas'
 import Strike2PersonaWizard from './pages/Strike2PersonaWizard'
 import Strike2PersonaIdeas from './pages/Strike2PersonaIdeas'
 import Wissensdatenbank          from './pages/Wissensdatenbank'
+import BrandMemory             from './pages/BrandMemory'
 import Automatisierung  from './pages/Automatisierung'
 import AdminUsers    from './pages/AdminUsers'
 import WhiteLabel    from './pages/WhiteLabel'
@@ -384,6 +385,7 @@ export default function App() {
             <Route path="/branding/strike2-personas/:id/ideen" element={<Strike2PersonaIdeas session={session} />} />
             <Route path="/branding/strike2-personas/:id" element={<Strike2PersonaWizard session={session} />} />
             <Route path="/wissensdatenbank" element={<Wissensdatenbank session={session} />} />
+            <Route path="/brand-memory" element={<BrandMemory session={session} />} />
             <Route path="/ki-sichtbarkeit" element={
               <ModuleGuard module="branding">
                 <Auralis session={session} />
