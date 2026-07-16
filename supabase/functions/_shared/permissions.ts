@@ -27,7 +27,7 @@ function deny(status: number, body: Record<string, unknown>): Response {
  *          zum direkten `return`. Das FE zeigt daran den Upgrade-CTA.
  */
 export async function requirePermission(
-  userClient: { rpc: (fn: string, args: Record<string, unknown>) => Promise<{ data: unknown; error: unknown }> },
+  userClient: { rpc: (fn: string, args?: Record<string, unknown>) => PromiseLike<{ data: unknown; error: unknown }> },
   key: string,
 ): Promise<Response | null> {
   const { data, error } = await userClient.rpc("i_have_permission", { p_key: key });
@@ -45,7 +45,7 @@ export async function requirePermission(
  *          false (kein 403 — Server-Kontext).
  */
 export async function accountHasPermission(
-  serviceClient: { rpc: (fn: string, args: Record<string, unknown>) => Promise<{ data: unknown; error: unknown }> },
+  serviceClient: { rpc: (fn: string, args?: Record<string, unknown>) => PromiseLike<{ data: unknown; error: unknown }> },
   accountId: string,
   key: string,
 ): Promise<boolean> {
@@ -67,7 +67,7 @@ export async function accountHasPermission(
  * @returns true wenn der Account des Teams den Key hat. Cron SKIPPT bei false.
  */
 export async function teamHasPermission(
-  serviceClient: { rpc: (fn: string, args: Record<string, unknown>) => Promise<{ data: unknown; error: unknown }> },
+  serviceClient: { rpc: (fn: string, args?: Record<string, unknown>) => PromiseLike<{ data: unknown; error: unknown }> },
   teamId: string,
   key: string,
 ): Promise<boolean> {
@@ -88,7 +88,7 @@ export async function teamHasPermission(
  * @returns null wenn erlaubt; sonst 403 need_active_plan.
  */
 export async function requireSeat(
-  userClient: { rpc: (fn: string, args: Record<string, unknown>) => Promise<{ data: unknown; error: unknown }> },
+  userClient: { rpc: (fn: string, args?: Record<string, unknown>) => PromiseLike<{ data: unknown; error: unknown }> },
 ): Promise<Response | null> {
   const { data, error } = await userClient.rpc("get_my_entitlements", {});
   if (error || !data) {
