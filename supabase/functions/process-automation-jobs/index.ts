@@ -3,6 +3,7 @@
 // Claim (single-flight) → Unipile-API → writeback running→done/error.
 // Welle 1: connect + visit. message-Handler ist im Code, wird aber NICHT geclaimt (dormant).
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { teamHasPermission } from "../_shared/permissions.ts";
 
 const UNIPILE_DSN = Deno.env.get("UNIPILE_DSN")!;
 const UNIPILE_KEY = Deno.env.get("UNIPILE_API_KEY")!;
@@ -89,10 +90,10 @@ Deno.serve(async () => {
       .select("unipile_account_id, team_id").eq("user_id", job.user_id).eq("status", "OK").limit(1).maybeSingle();
     if (!acct) { await finish(job.id, "error", { error: "Kein verbundener LinkedIn-Account (Unipile) für diesen User" }); continue; }
 
-    // GATING (member-aware): Team→Account braucht AKTIVES 'automation'-Addon — account-weit ODER member-grant für job.user_id.
-    // Ohne Addon: Job NICHT ausführen (pending lassen), sonst zahlen wir Unipile für Nicht-Zahler.
-    const { data: paid } = await db.rpc("team_member_has_addon", { p_team_id: acct.team_id, p_user_id: job.user_id, p_slug: "automation" });
-    if (!paid) { out.push({ id: job.id, skipped: "no_automation_addon" }); continue; }
+    // GATING (plan-basiert, account-weit): Team→Account-Plan braucht linkedin.automation.
+    // Member-Granularität des alten Addons fällt bewusst (Plan gilt account-weit, B1).
+    // Ohne Berechtigung: Job NICHT ausführen (pending lassen), sonst zahlen wir Unipile für Nicht-Zahler. Kill-Switch steckt im Resolver.
+    if (!(await teamHasPermission(db, acct.team_id, "linkedin.automation"))) { out.push({ id: job.id, skipped: "no_permission" }); continue; }
 
     const accountId = acct.unipile_account_id;
 

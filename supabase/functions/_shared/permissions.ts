@@ -61,6 +61,28 @@ export async function accountHasPermission(
 }
 
 /**
+ * CRON/SERVICE, team-keyed — der ergonomische Cron-Guard: alle EF-Tabellen tragen
+ * team_id (nicht account_id); team_has_permission macht den teams->accounts->plans-
+ * Join + Kill-Switch server-seitig.
+ * @returns true wenn der Account des Teams den Key hat. Cron SKIPPT bei false.
+ */
+export async function teamHasPermission(
+  serviceClient: { rpc: (fn: string, args: Record<string, unknown>) => Promise<{ data: unknown; error: unknown }> },
+  teamId: string,
+  key: string,
+): Promise<boolean> {
+  const { data, error } = await serviceClient.rpc("team_has_permission", {
+    p_team_id: teamId,
+    p_key: key,
+  });
+  if (error) {
+    console.warn(`[team_has_permission] rpc error team=${teamId} key=${key}:`, error);
+    return false; // fail-closed im Cron
+  }
+  return data === true;
+}
+
+/**
  * Connect (#1) — member-basiert (B1): der User muss aktives Mitglied eines
  * nutzbaren Accounts sein (get_my_entitlements.is_active). KEIN Seat-Zwang.
  * @returns null wenn erlaubt; sonst 403 need_active_plan.

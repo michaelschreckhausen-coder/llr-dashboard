@@ -11,12 +11,12 @@ import {
   getCompany,
   getProfile,
   getUnipileConnection,
-  hasAddon,
   identifierFromUrl,
   serviceClient,
   UnipileError,
   userClientFromReq,
 } from "../_shared/unipile.ts";
+import { requirePermission } from "../_shared/permissions.ts";
 
 const COMPANY_CACHE_TTL_DAYS = 30;
 
@@ -28,12 +28,10 @@ Deno.serve(async (req) => {
     const auth = await getAuthenticatedUser(req);
     if (!auth) return jsonResponse({ error: "unauthorized" }, 401);
 
-    // Addon-Gate 'automation' (gleiche Autorität wie unipile-connect-link).
+    // Permission-Gate linkedin.automation (Kill-Switch im Resolver).
     const uc = userClientFromReq(req);
     if (!uc) return jsonResponse({ error: "unauthorized" }, 401);
-    if (!(await hasAddon(uc, "automation"))) {
-      return jsonResponse({ error: "no_addon", message: "Automatisierung-Addon nicht aktiv" }, 403);
-    }
+    { const denied = await requirePermission(uc, "linkedin.automation"); if (denied) return denied; }
 
     const sb = serviceClient();
     const conn = await getUnipileConnection(sb, auth.userId);

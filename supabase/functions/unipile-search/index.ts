@@ -13,7 +13,6 @@ import { handlePreflight, jsonResponse } from "../_shared/cors.ts";
 import {
   getAuthenticatedUser,
   getUnipileConnection,
-  hasAddon,
   identifierFromUrl,
   linkedinSearch,
   resolveSearchParameter,
@@ -21,6 +20,7 @@ import {
   UnipileError,
   userClientFromReq,
 } from "../_shared/unipile.ts";
+import { requirePermission } from "../_shared/permissions.ts";
 
 const MAX_PAGES = 5;      // Schutz gegen Endlos-Pagination pro Aufruf
 const PREVIEW_CAP = 100;  // max. Treffer, die als Vorschau (items) zurückgegeben werden
@@ -33,12 +33,10 @@ Deno.serve(async (req) => {
     const auth = await getAuthenticatedUser(req);
     if (!auth) return jsonResponse({ error: "unauthorized" }, 401);
 
-    // Addon-Gate 'automation' (gleiche Autorität wie unipile-connect-link).
+    // Permission-Gate linkedin.automation (Kill-Switch im Resolver).
     const uc = userClientFromReq(req);
     if (!uc) return jsonResponse({ error: "unauthorized" }, 401);
-    if (!(await hasAddon(uc, "automation"))) {
-      return jsonResponse({ error: "no_addon", message: "Automatisierung-Addon nicht aktiv" }, 403);
-    }
+    { const denied = await requirePermission(uc, "linkedin.automation"); if (denied) return denied; }
 
     const sb = serviceClient();
     const conn = await getUnipileConnection(sb, auth.userId);

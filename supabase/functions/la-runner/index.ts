@@ -7,6 +7,7 @@ import {
   getProfile, sendInvitation, sendMessage,
   cancelInvitationSent, sendPostReaction, sendPostComment, getAllPosts, followProfile, sendInMail,
 } from "../_shared/unipile-client.ts";
+import { teamHasPermission } from "../_shared/permissions.ts";
 
 const SB_URL = Deno.env.get("SUPABASE_URL")!;
 const SB_SERVICE = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
@@ -47,9 +48,8 @@ Deno.serve(async () => {
 
   const out: unknown[] = [];
   for (const job of jobs) {
-    // 3a) Addon-Gate gegen das JOB-Team (la_jobs.team_id), NICHT active_team_id. Ohne Addon: zurück auf pending (idle).
-    const { data: paid } = await db.rpc("team_has_addon", { p_team_id: job.team_id, p_slug: "automation" });
-    if (!paid) { await patch(job.id, { state: "pending", error: "no_automation_addon" }); out.push({ id: job.id, skipped: "no_addon" }); continue; }
+    // 3a) Permission-Gate gegen das JOB-Team (la_jobs.team_id), NICHT active_team_id. Ohne Berechtigung: zurück auf pending (idle). Kill-Switch steckt im Resolver.
+    if (!(await teamHasPermission(db, job.team_id, "linkedin.automation"))) { await patch(job.id, { state: "pending", error: "no_automation_permission" }); out.push({ id: job.id, skipped: "no_permission" }); continue; }
 
     // 3b) running
     await patch(job.id, { state: "running" });
