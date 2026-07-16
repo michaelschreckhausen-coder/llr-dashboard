@@ -17,6 +17,7 @@ import {
   UnipileError,
   withdrawInvitation,
 } from "../_shared/unipile.ts";
+import { teamHasPermission } from "../_shared/permissions.ts";
 
 // Janitor (Weg A): KEIN Invite-Send. Nur Reconcile (accepted -> li_connection_status='verbunden')
 // + Auto-Withdraw veralteter pending-Invites mit la_*-Ausschluss. Send macht Julians Greenfield.
@@ -62,6 +63,8 @@ Deno.serve(async (req) => {
     let synced = 0, accepted = 0, withdrawn = 0;
 
     for (const c of filtered) {
+      // P3 #5: Vernetzungen-Gate (c.team_id direkt). Skip, kein 403. Kill-Switch im Resolver.
+      if (!c.team_id || !(await teamHasPermission(sb, c.team_id, "linkedin.connections"))) continue;
       const conn: UnipileConn = {
         accountId: c.unipile_account_id,
         dsn: null,                       // globales UNIPILE_DSN-Env

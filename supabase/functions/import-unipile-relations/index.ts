@@ -13,6 +13,7 @@
 // andere Signatur) → Deno-Isolate-Cache hält sonst die alte Version:
 //   ssh root@<host> "docker restart supabase-edge-functions"
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { teamHasPermission } from "../_shared/permissions.ts";
 
 const UNIPILE_DSN = Deno.env.get("UNIPILE_DSN")!;
 const UNIPILE_KEY = Deno.env.get("UNIPILE_API_KEY")!;
@@ -42,6 +43,9 @@ Deno.serve(async (req) => {
   if (!acct) return json({ error: "unipile_account not found" }, 404);
   if (acct.status !== "OK") return json({ skipped: "account_status:" + acct.status });
   if (!acct.team_id) return json({ skipped: "no_team" });
+  // P3 #8: Relations-Sync-Gate (acct.team_id direkt, ein early-return für die ganze Runde).
+  // Kehrt die "Import ist FREI"-Entscheidung 2026-07-07 um (Tier-Modell: Sales+). Kill-Switch im Resolver.
+  if (!(await teamHasPermission(db, acct.team_id, "linkedin.connections"))) return json({ skipped: "no_permission" });
 
   let cursor: string | null = null;
   let pages = 0, inserted = 0, updated = 0, failed = 0, seen = 0;

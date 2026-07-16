@@ -14,6 +14,7 @@ import {
   serviceClient,
   UnipileError,
 } from "../_shared/unipile.ts";
+import { teamHasPermission } from "../_shared/permissions.ts";
 
 const POST_BATCH = 15;
 const MIN_RESYNC_HOURS = 4;
@@ -60,6 +61,8 @@ Deno.serve(async (req) => {
     for (const post of posts) {
       const conn = await getUnipileConnection(sb, post.user_id);
       if (!conn) continue;
+      // P3 #3: Post-Analytics-Gate (account-Plan des Post-Teams). Skip, kein 403. Kill-Switch im Resolver.
+      if (!conn.teamId || !(await teamHasPermission(sb, conn.teamId, "linkedin.post_analytics"))) continue;
       // Defensive ID-Normalisierung: Metriken UND Kommentare brauchen die activity-URN
       // (listPostComments 400 bei numerischer ID). Falls doch mal numerisch gespeichert.
       const rawId = post.linkedin_social_id as string;

@@ -16,6 +16,7 @@ import {
   serviceClient,
   UnipileError,
 } from "../_shared/unipile.ts";
+import { teamHasPermission } from "../_shared/permissions.ts";
 
 const BATCH = 10;                    // kleine Batches (Engagement ist hart limitiert)
 const PAUSE_MS = 500;                // Pause zwischen Real-Calls (Rate-Limit-Schonung)
@@ -76,10 +77,6 @@ Deno.serve(async (req) => {
     let done = 0, failed = 0, skipped = 0;
 
     for (const job of jobs) {
-      await sb.from("linkedin_engagement_jobs")
-        .update({ status: "processing", attempts: (job.attempts ?? 0) + 1, executed_at: nowIso })
-        .eq("id", job.id);
-
       const conn = await getUnipileConnection(sb, job.user_id);
       if (!conn) {
         await sb.from("linkedin_engagement_jobs")
@@ -87,6 +84,13 @@ Deno.serve(async (req) => {
         failed++;
         continue;
       }
+
+      // P3 #4: Engagement-Gate VOR dem processing-Claim → unentitled bleibt pending (läuft nach Upgrade). Kill-Switch im Resolver.
+      if (!conn.teamId || !(await teamHasPermission(sb, conn.teamId, "linkedin.engagement"))) { skipped++; continue; }
+
+      await sb.from("linkedin_engagement_jobs")
+        .update({ status: "processing", attempts: (job.attempts ?? 0) + 1, executed_at: nowIso })
+        .eq("id", job.id);
 
       // Rate-Guard PRO kind (Kommentare/Reaktionen teilen sich NICHT mehr den Zähler).
       const usedToday = await dailyKindCount(sb, job.user_id, job.kind);
