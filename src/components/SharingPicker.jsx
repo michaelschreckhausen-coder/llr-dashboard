@@ -201,7 +201,7 @@ export default function SharingPicker({
                   onMouseEnter={e => { if (!checked) e.currentTarget.style.background = 'var(--tint-cyan, #EAF8FE)' }}
                   onMouseLeave={e => { if (!checked) e.currentTarget.style.background = 'transparent' }}>
                   <input type="checkbox" checked={checked} onChange={() => toggleUser(m.user_id)}
-                    style={{ width:14, height:14, cursor:'pointer', accentColor: '#0A6FB0' }}/>
+                    style={{ width:14, height:14, cursor:'pointer', accentColor: P }}/>
                   {avatar
                     ? <img src={avatar} alt="" style={{ width:24, height:24, borderRadius:'50%', objectFit:'cover' }}/>
                     : <div style={{ width:24, height:24, borderRadius:'50%', background:'#E5E7EB', display:'flex', alignItems:'center', justifyContent:'center', fontSize:11, fontWeight:700, color:'#6B7280' }}>{memberLabel(m).charAt(0).toUpperCase()}</div>}
@@ -231,8 +231,8 @@ export default function SharingPicker({
                   onMouseEnter={e => { if (!checked) e.currentTarget.style.background = 'var(--tint-cyan, #EAF8FE)' }}
                   onMouseLeave={e => { if (!checked) e.currentTarget.style.background = 'transparent' }}>
                   <input type="checkbox" checked={checked} onChange={() => toggleTeam(t.id)}
-                    style={{ width:14, height:14, cursor:'pointer', accentColor: '#0A6FB0' }}/>
-                  <div style={{ width:24, height:24, borderRadius:7, background:'#EAF6FC', display:'flex', alignItems:'center', justifyContent:'center', fontSize:11, fontWeight:700, color: '#0A6FB0' }}>{(t.name||'T').charAt(0).toUpperCase()}</div>
+                    style={{ width:14, height:14, cursor:'pointer', accentColor: P }}/>
+                  <div style={{ width:24, height:24, borderRadius:7, background:'#EAF6FC', display:'flex', alignItems:'center', justifyContent:'center', fontSize:11, fontWeight:700, color: P }}>{(t.name||'T').charAt(0).toUpperCase()}</div>
                   <span style={{ fontSize:13, color:'var(--text-primary)' }}>{t.name || t.id.slice(0,8)}</span>
                 </label>
               )
@@ -258,18 +258,18 @@ function OptionRow({ active, onClick, icon, title, subtitle }) {
         display:'flex', alignItems:'flex-start', gap:10,
         padding:'10px 12px', borderRadius:9, cursor:'pointer',
         background: active ? 'rgba(10,111,176,0.06)' : '#fff',
-        border: '1.5px solid ' + (active ? '#0A6FB0' : 'var(--border)'),
+        border: '1.5px solid ' + (active ? P : 'var(--border)'),
         textAlign:'left', fontFamily:'inherit',
       }}>
       <div style={{ fontSize:18, lineHeight:1, marginTop:2 }}>{icon}</div>
       <div style={{ flex:1 }}>
-        <div style={{ fontSize:13, fontWeight:700, color: active ? '#0A6FB0' : 'var(--text-primary)' }}>{title}</div>
+        <div style={{ fontSize:13, fontWeight:700, color: active ? P : 'var(--text-primary)' }}>{title}</div>
         <div style={{ fontSize:11, color:'var(--text-muted)', marginTop:2, lineHeight:1.5 }}>{subtitle}</div>
       </div>
       <div style={{
         width:18, height:18, borderRadius:'50%', flexShrink:0,
-        border: '2px solid ' + (active ? 'var(--primary)' : 'var(--border)'),
-        background: active ? 'var(--primary)' : '#fff',
+        border: '2px solid ' + (active ? P : 'var(--border)'),
+        background: active ? P : '#fff',
         display:'flex', alignItems:'center', justifyContent:'center', marginTop:2,
       }}>
         {active && <div style={{ width:6, height:6, borderRadius:'50%', background:'#fff' }}/>}
