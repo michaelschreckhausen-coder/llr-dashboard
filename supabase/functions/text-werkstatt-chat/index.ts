@@ -333,21 +333,14 @@ function extractBeitragstext(content: string): string | null {
 
 // Erzeugt einen kurzen, prägnanten Chat-Titel aus dem Thema (Haiku, billig & schnell).
 // Fällt bei Fehler/leerer Antwort auf null zurück → Caller nutzt dann autoTitleFromMessage.
-async function generateChatTitle(apiKey: string, userMessage: string, beitragstext: string | null): Promise<string | null> {
+async function generateChatTitle(keys: LLMKeys, model: string, userMessage: string, beitragstext: string | null): Promise<string | null> {
   try {
-    const res = await fetch("https://api.anthropic.com/v1/messages", {
-      method: "POST",
-      headers: { "x-api-key": apiKey, "anthropic-version": "2023-06-01", "Content-Type": "application/json" },
-      body: JSON.stringify({
-        model: "claude-haiku-4-5",
-        max_tokens: 24,
-        system: "Du erzeugst einen kurzen, prägnanten Titel für einen Chat in einem LinkedIn-Content-Tool. Antworte mit NUR dem Titel: 2 bis 5 Wörter, Deutsch, das inhaltliche Thema benennend (kein ganzer Satz), KEIN abschließendes Satzzeichen, keine Anführungszeichen, keine Emojis.",
-        messages: [{ role: "user", content: `Leite das Thema dieses Chats ab und gib einen Titel zurück.\n\nNutzer-Anfrage: ${userMessage}` + (beitragstext ? `\n\nErzeugter Beitrag (Auszug):\n${beitragstext.slice(0, 500)}` : "") }],
-      }),
-    });
-    if (!res.ok) return null;
-    const d = await res.json();
-    let t = (d?.content?.[0]?.text || "").replace(/\s+/g, " ").trim();
+    // WICHTIG (ISO 27001 / Datenresidenz): Titel über das VOM USER GEWÄHLTE Modell,
+    // niemals ein fest verdrahtetes — sonst gehen Nutzerdaten an einen nicht gewählten Anbieter.
+    const system = "Du erzeugst einen kurzen, prägnanten Titel für einen Chat in einem LinkedIn-Content-Tool. Antworte mit NUR dem Titel: 2 bis 5 Wörter, Deutsch, das inhaltliche Thema benennend (kein ganzer Satz), KEIN abschließendes Satzzeichen, keine Anführungszeichen, keine Emojis.";
+    const userText = `Leite das Thema dieses Chats ab und gib einen Titel zurück.\n\nNutzer-Anfrage: ${userMessage}` + (beitragstext ? `\n\nErzeugter Beitrag (Auszug):\n${beitragstext.slice(0, 500)}` : "");
+    const r = await callProvider({ keys, model, systemPrompt: system, history: [], userText, media: [], withWeb: false });
+    let t = (r?.content || "").replace(/\s+/g, " ").trim();
     t = t.replace(/^["'«»„“]+|["'«»„“.]+$/g, "").trim();
     if (!t) return null;
     if (t.length > 60) t = t.slice(0, 57).replace(/\s+\S*$/, "") + "…";
@@ -614,7 +607,7 @@ Deno.serve(async (req) => {
     // Chat-updated_at bumpen + ggf. title aktualisieren wenn er noch Default ist
     const updates: any = { updated_at: new Date().toISOString() };
     if (chat.title === "Neuer Chat") {
-      const smartTitle = await generateChatTitle(anthropicKey, userMessage, beitragstext);
+      const smartTitle = await generateChatTitle(llmKeys, model, userMessage, beitragstext);
       updates.title = smartTitle || autoTitleFromMessage(userMessage);
     }
     if (targetAudienceId && targetAudienceId !== chat.target_audience_id) updates.target_audience_id = targetAudienceId;
