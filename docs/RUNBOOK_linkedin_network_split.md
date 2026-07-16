@@ -34,8 +34,22 @@ AND (abs(hashtext(ua.unipile_account_id)) % 24) = extract(hour FROM now())::int
 ```
 
 Das braucht einen **stündlichen** Cron. Geplant war weiter täglich 04:10. Effekt: Die Bedingung
-ist nur für Accounts mit Hash-Stunde 4 erfüllt — **~23 von 24 Accounts syncen nie**. Die
-Staffelung, die Last verteilen sollte, wurde zum Filter. `20260716133000` korrigiert das.
+ist nur für Accounts mit Hash-Stunde 4 erfüllt. Die Staffelung, die Last verteilen sollte, wurde
+zum Filter. `20260716133000` korrigiert das.
+
+**Verifiziert auf Prod 2026-07-16 — es war schlimmer als „1 von 24":** Die sieben OK-Accounts
+haben die Hash-Stunden **5, 7, 15, 6, 21, 14, 7**. Hash-Stunde 4 hat **keiner**. Mit dem
+`'10 4 * * *'`-Cron synkte also **kein einziger Account** — nicht einer von 24. Der
+Relations-Import war seit dem 08.07. vollständig tot. Das erklärt, warum nach dem einen
+ungegateten Lauf am 07.07. nichts mehr nachfloss: Die 10.765 Zeilen in den Inboxen stammen
+sämtlich aus diesem einen Lauf.
+
+**Folge für die Dringlichkeit:** Es fließt aktuell nichts nach. Der Rollout ist nicht eilig.
+
+**Folge für den Prod-Effekt:** Nach dem Fix syncen **5 von 7** Accounts (zwei sind durch das
+`automation`-Addon-Gate zu). Das ist ein Sprung von 0 auf 5 — der erste Lauf nach dem
+Re-Enable zieht pro Account bis zu 5000 Relations. Verteilt über die Hash-Stunden 5, 6, 7, 14, 15
+(zwei Accounts teilen sich Stunde 7). Kein DB-Problem, aber ein realer Unipile-API-Burst.
 
 ---
 
@@ -136,6 +150,20 @@ gecachte alte.
 ssh leadesk-staging 'docker exec -i supabase-db psql -U supabase_admin -d postgres -v ON_ERROR_STOP=1' \
   < supabase/migrations/20260716133000_relations_cron_hourly_reenable.sql
 ```
+
+> ⚠️ **Auf Staging danach wieder abschalten.** Der Staging-Unipile-Account
+> (`NyMclY_XRz-Nh2FvYwTM8g`, Hash-Stunde 14) ist **dieselbe reale LinkedIn-Identität** wie ein
+> Prod-Account — verifiziert 2026-07-16. Bleibt der Staging-Cron scharf, ziehen nach dem
+> Prod-Re-Enable **zwei Umgebungen täglich dieselbe LinkedIn-Identität** über dieselbe
+> Unipile-account_id. Doppelter API-Verbrauch, und LinkedIn sieht den Traffic als eine Identität.
+>
+> Für den Test reicht:
+> ```sql
+> -- Schedule prüfen, Lauf abwarten (Hash-Stunde 14 UTC), Ergebnis prüfen, dann:
+> SELECT cron.unschedule('import-unipile-relations');
+> ```
+> Der Verifikationswert von Schritt 6 auf Staging ist ohnehin gering — er beweist nur, dass die
+> Schedule-Zeile korrekt steht. Den echten Beweis liefert Schritt 5.
 
 ### 7 — Frontend
 
