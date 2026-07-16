@@ -3,8 +3,9 @@
 // (=linkedin_url) INLINE → sales_nav_upsert_inbox(source='unipile_salesnav'). Löst die Sales-Nav-URL-Lücke
 // am Ursprung (der Auslöser des Sprints). provider_id (ACoAA) kommt hier NICHT mit — Runner löst über die
 // URL auf (getProfile), Fix A; die URL reicht für Filter-Match + Automatisierung.
-// Import ist FREI (kein Addon-Gate). Input: { unipile_account_id, search, max_pages? }.
+// Import gegatet auf linkedin.sales_nav (P3; war frei bis 2026-07-07). Input: { unipile_account_id, search, max_pages? }.
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { teamHasPermission } from "../_shared/permissions.ts";
 
 const UNIPILE_DSN = Deno.env.get("UNIPILE_DSN")!;
 const UNIPILE_KEY = Deno.env.get("UNIPILE_API_KEY")!;
@@ -63,6 +64,12 @@ Deno.serve(async (req) => {
   // Fallback acct nur wenn kein Caller/kein aktives Team (z.B. service-role-Aufruf ohne Kontext).
   const teamId = targetTeamId ?? acct.team_id;
   const userId = callerId ?? acct.user_id;
+
+  // P3 #6: Sales-Nav-Gate auf das Ziel-Team. Split: JWT-Caller → 403 need_permission; Service/Cron → skip 200. Kill-Switch im Resolver.
+  if (!(await teamHasPermission(db, teamId, "linkedin.sales_nav"))) {
+    return callerId ? json({ error: "need_permission", key: "linkedin.sales_nav" }, 403)
+                    : json({ skipped: "no_permission" }, 200);
+  }
 
   const searchBody = { ...search, api: "sales_navigator" };
   let cursor: string | null = null;
