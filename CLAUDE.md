@@ -10,9 +10,17 @@
 ## Tech-Stack
 
 - **Frontend:** React 18 + Vite (JSX, **kein TypeScript**, **ausschließlich Inline-Styles**)
-- **Backend:** Supabase (Postgres, Auth, Edge Functions, Storage, Realtime)
-  - **Production:** Supabase Cloud, Projekt-ID `jdhajqpgfrsuoluaesjn` → `app.leadesk.de`
-  - **Staging:** Self-Hosted auf Hetzner → `staging.leadesk.de` / `supabase-staging.leadesk.de`
+- **Backend:** Supabase **Self-Hosted**, Docker-Compose, auf **Hetzner Cloud** (Standort FSN1,
+  Falkenstein). Beide Envs liegen auf Hetzner — es gibt kein Cloud-Supabase mehr.
+  - **Production:** `128.140.123.163` → `app.leadesk.de` / `supabase.leadesk.de`
+  - **Staging:** `178.104.210.216` → `staging.leadesk.de` / `supabase-staging.leadesk.de`
+  - ⚠️ **Supabase Cloud ist Geschichte.** Das alte Prod-Projekt `jdhajqpgfrsuoluaesjn` wurde beim
+    Cutover am **2026-04-30** stillgelegt und taucht in `list_projects` nicht mehr auf. Wer dort
+    eine Migration ausführt, ändert nichts an der laufenden App — läuft sauber durch, ohne Effekt.
+    (Diese Zeile behauptete bis 2026-07-16 „Production: Supabase Cloud" — 2,5 Monate lang falsch.)
+  - **Server-Produkt: Hetzner _Cloud_, nicht Dedicated.** Verifiziert 2026-07-16 per IP-Lookup
+    (`CLOUD-FSN1`). Für Firewall-Regeln ist also die **Cloud-Console** das richtige Menü; die
+    Robot-Firewall greift hier nicht. Die Projektbeschreibung sagt noch „Dedicated" — die ist falsch.
 - **Hosting:** Vercel (`fra1`-Region), ein Projekt mit zwei Environments (`main` → Prod, `develop` → Preview)
 - **Repo:** `github.com/michaelschreckhausen-coder/llr-dashboard`
 
@@ -30,7 +38,17 @@
 ### Code
 
 - **Inline-Styles only:** `style={{...}}` — kein Tailwind, kein CSS, keine externen Stylesheets
-- Primary-Color **immer** als CSS-Variable: `var(--wl-primary, rgb(49,90,231))`
+- Primary-Color **immer** als CSS-Variable: `var(--wl-primary, #0A6FB0)` — nie ein bares Hex.
+  Der Fallback ist **nicht** kosmetisch: `src/lib/whitelabel.js` setzt `--wl-primary` nur, wenn der
+  Tenant eine vom Default abweichende Farbe hat. Für jeden Standard-Kunden ist die Variable
+  ungesetzt, der Fallback ist also die real gerenderte Farbe. `#0A6FB0` ist „CI Blau"
+  (`index.css:33`), steht so an 204 Stellen und ist `DEFAULT_WL.primary_color`. Ein anderer
+  Fallback macht die Komponente sichtbar inkonsistent zum Rest der App.
+  (Verifiziert 2026-07-16. Diese Zeile nannte bis dahin `rgb(49,90,231)` — der Wert existiert im
+  Code fast nirgends.)
+  Viele Dateien haben oben schon ein `const PRIMARY`/`const P` mit genau diesem Wert — benutzen,
+  statt neu zu schreiben. Achtung: `var(--primary)` aus `index.css` ist etwas anderes (theme-abhängig,
+  Navy hell / Sky dunkel) — kein Ersatz.
 - **UI-Texte auf Deutsch** — alle User-facing Strings
 - React Hooks **immer** am Anfang, nie nach `if`/`return`
 - **Niemals `useTranslation()` o.ä. innerhalb von `useState()`-Initializer** (build-breaking ReferenceError)
@@ -56,7 +74,7 @@ const { activeTeamId, team, members } = useTeam()
 - Migrationen müssen **idempotent** sein: `CREATE TABLE IF NOT EXISTS`, `DROP POLICY IF EXISTS`, `ADD COLUMN IF NOT EXISTS`
 - Trigger die in RLS-Tabellen schreiben → `SECURITY DEFINER`
 - **Niemals** Tabellen oder Spalten löschen ohne explizite User-Rücksprache
-- Schema-Änderungen **erst auf Staging-DB** (Hetzner via SSH), dann nach Freigabe auf Prod (Supabase Dashboard SQL Editor)
+- Schema-Änderungen **erst auf Staging-DB** (Hetzner via SSH), dann nach Freigabe auf Prod (Hetzner via SSH — **nicht** Supabase-Cloud-Dashboard, das ist seit 2026-04-30 stillgelegt)
 
 ### Edge Functions
 
@@ -399,17 +417,40 @@ Andere Operationen (Commits, Pushes, File-Edits, lokale Builds, Read-only-Diagno
 
 ## Datenbank-Workflows
 
-### Migration auf Staging anwenden (Hetzner)
+Beide Envs sind Hetzner-Self-Host. Migrationen laufen per SSH + `docker exec` gegen die
+jeweilige DB. Claude kann das selbst fahren (`Bash` mit `dangerouslyDisableSandbox: true` —
+SSH braucht Netz + ssh-agent); mutierende Ops aber nur nach `los staging-apply` /
+`los prod-apply` (siehe „los X-Y"-Workflow oben). Read-only-Diagnose braucht kein Scope-Wort.
 
-User soll vom eigenen Mac aus laufen lassen — Claude hat keinen SSH-Outbound:
+Drei Konventionen, die alle drei schon mal Zeit gekostet haben:
+
+- **Staging über den Alias `leadesk-staging`**, nicht über die rohe IP. Der `~/.ssh/config`-Block
+  bindet den richtigen Key (`~/.ssh/leadesk_hetzner`); bei `ssh root@178.104.210.216` matcht der
+  Block nicht → Default-Key → `Permission denied`. Bei `leadesk-prod` steht die IP mit in der
+  Host-Zeile, dort geht die IP direkt.
+- **`-U supabase_admin`**, nicht `postgres` — auf Hetzner ist `postgres.is_superuser = off`.
+- **`-v ON_ERROR_STOP=1`**, damit ein SQL-Fehler den Apply hart abbricht statt weiterzulaufen.
+
+### Migration auf Staging anwenden
 
 ```bash
-ssh root@178.104.210.216 'docker exec -i supabase-db psql -U postgres -d postgres' < supabase/migrations/XYZ.sql
+ssh leadesk-staging 'docker exec -i supabase-db psql -U supabase_admin -d postgres -v ON_ERROR_STOP=1' \
+  < supabase/migrations/XYZ.sql
 ```
 
-### Migration auf Prod anwenden (Cloud)
+### Migration auf Prod anwenden
 
-User auf `https://supabase.com/dashboard/project/jdhajqpgfrsuoluaesjn/sql` hinweisen → Migration kopieren und ausführen.
+⚠️ **Nicht über das Supabase-Cloud-Dashboard.** Das alte Projekt `jdhajqpgfrsuoluaesjn` ist seit
+dem Cutover 2026-04-30 stillgelegt — ein Apply dort läuft sauber durch und ändert an der
+laufenden App **nichts**. Prod ist Hetzner (`128.140.123.163`):
+
+```bash
+ssh root@128.140.123.163 'docker exec -i supabase-db psql -U supabase_admin -d postgres -v ON_ERROR_STOP=1' \
+  < supabase/migrations/XYZ.sql
+```
+
+Bei destruktiven Migrationen (DELETE/DROP) vorher Backup und den Schritt interaktiv fahren —
+`BEGIN;` → Ops → Verifikations-SELECTs → Zahlen prüfen → `COMMIT;` bzw. `ROLLBACK;`.
 
 ### Rollen & RLS-Patterns
 
