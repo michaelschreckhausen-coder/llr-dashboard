@@ -933,6 +933,36 @@ export default function ContentStudio({ session }) {
   }
 
   // ─── Senden ───────────────────────────────────────────────────────────────
+  // ── Brand-Memory-Verankerung: destilliert dauerhafte Marken-Erkenntnisse aus einer
+  //    Nutzer-Nachricht und legt sie (dedupliziert) in brand_memory ab. Best-effort,
+  //    Hintergrund (nie awaiten). Nur bei echter Brand + aktiviertem Memory.
+  async function anchorBrandLearnings(userText) {
+    try {
+      const bvId = activeBrandVoice?.id
+      if (activeBrandVoice?.noBrand || !bvId || !activeTeamId) return
+      const txt = String(userText || '').trim()
+      if (txt.length < 8) return
+      const instr = `Du pflegst das Langzeit-Gedächtnis einer Marke für künftige Content-Erstellung. Extrahiere aus der folgenden Nutzer-Anweisung NUR dauerhafte, wiederverwendbare Erkenntnisse über die Marke, ihren Stil, ihre Sprache, ihre Zielgruppe, ihre Vorlieben oder feste Regeln. NICHT aufnehmen: einmalige Themen- oder Post-Wünsche, Tagesaufträge, konkrete Einzelinhalte, einmalige Bildänderungen, Höflichkeitsfloskeln. Wenn nichts dauerhaft Verwertbares enthalten ist, gib ein leeres Array zurück. Maximal 2 Einträge, je ein knapper, allgemein gültiger Satz auf Deutsch.
+
+Nutzer-Anweisung:
+"${txt.slice(0, 800)}"
+
+Antworte AUSSCHLIESSLICH mit JSON: {"learnings": ["..."]}`
+      const { data } = await supabase.functions.invoke('generate', { body: { type: 'raw', model: 'claude-haiku-4-5', prompt: instr } })
+      const raw = String(data?.text || '')
+      const a = raw.indexOf('{'); const b = raw.lastIndexOf('}')
+      const parsed = (a >= 0 && b > a) ? JSON.parse(raw.slice(a, b + 1)) : null
+      const learnings = Array.isArray(parsed?.learnings) ? parsed.learnings.map(x => String(x || '').trim()).filter(Boolean).slice(0, 2) : []
+      if (!learnings.length) return
+      const { data: existing } = await supabase.from('brand_memory').select('content').eq('brand_voice_id', bvId).eq('team_id', activeTeamId).limit(300)
+      const have = (existing || []).map(e => String(e.content || '').toLowerCase())
+      const rows = learnings
+        .filter(l => { const ll = l.toLowerCase(); return ll.length > 6 && !have.some(h => h.includes(ll) || ll.includes(h)) })
+        .map(l => ({ brand_voice_id: bvId, team_id: activeTeamId, user_id: session?.user?.id || null, content: l, source: 'chat', no_brand: false }))
+      if (rows.length) await supabase.from('brand_memory').insert(rows)
+    } catch (_e) { /* best-effort, nie den Chat stören */ }
+  }
+
   async function sendMessage(answerFormatArg) {
     if (!input.trim()) return
     if (activeChatId && pendingGens.has(activeChatId)) return
@@ -1025,6 +1055,7 @@ export default function ContentStudio({ session }) {
       if (data?.error) throw new Error(data.error)
 
       loadChats()
+      anchorBrandLearnings(userMsgText)
     } catch (e) {
       if (chatIdForSend === activeChatIdRef.current) setError('Fehler: ' + (e?.message || String(e)))
     } finally {
@@ -1107,6 +1138,7 @@ export default function ContentStudio({ session }) {
     // (inkl. geschriebener Beiträge + vorheriger Bilder) und formuliert daraus einen
     // eigenständigen, kontextbewussten Bild-Prompt + entscheidet, ob das letzte Bild als
     // Referenz mitläuft. Der Bildgenerator sieht den Chat NICHT — nur diesen Prompt.
+    anchorBrandLearnings(prompt)
     const lastVisual = lastChatVisual()
     let prevVisual = null
     let editInstr = ''

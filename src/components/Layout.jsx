@@ -155,6 +155,7 @@ function getNav(t) {
 
   { divider: true, label: 'Wissen', tourId: 'nav-wissen', setup: true },
   { to: '/wissensdatenbank',       icon: IcCloud,  label: t('nav.wissensdatenbank'), module: 'branding' },
+  { to: '/brand-memory',           icon: IcBrain,  label: 'Brand Memory',            module: 'branding' },
   { to: '/sponsoring/ligen',       icon: IcShield, label: 'Ligen',             module: 'sponsoring' },
   { to: '/sponsoring/pakete',      icon: IcPuzzle, label: 'Pakete',            module: 'sponsoring' },
   { to: '/sponsoring/rechte',      icon: IcGrid,   label: 'Rechte & Inventar', module: 'sponsoring' },
