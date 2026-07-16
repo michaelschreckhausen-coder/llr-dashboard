@@ -7,6 +7,12 @@ import SettingsTabs from '../components/SettingsTabs'
 
 const IND = 'var(--wl-primary, #0A6FB0)'
 
+// P1 (Seat-Fundament): kundenseitiges Seat/Lizenzen-Panel bleibt verborgen bis
+// das Seat-Modell announced/enforced ist (P3-Launch). Backfill befüllt die
+// Tabellen bereits verhaltensneutral; das interne AdminPanel zeigt sie sichtbar.
+// Zum Freischalten bei P3: auf true setzen.
+const SHOW_SEAT_UI = false
+
 const TrashIcon = () => <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/></svg>
 
 const CRM_TABLES = [
@@ -438,7 +444,7 @@ export default function TeamSettings({ session }) {
 
       {/* Tabs */}
       <div style={{ display:'flex', gap:8, marginBottom:18 }}>
-        {[['members','Mitglieder'], ['shared','Geteilt'], ['invites','Einladungen'], ['licenses','Lizenzen']].map(([k, l]) => (
+        {[['members','Mitglieder'], ['shared','Geteilt'], ['invites','Einladungen'], ...(SHOW_SEAT_UI ? [['licenses','Lizenzen']] : [])].map(([k, l]) => (
           <button key={k} className={'ts-tab'+(tab===k?' on':'')} onClick={e => { e.preventDefault(); e.stopPropagation(); setTab(k) }}>{l}</button>
         ))}
       </div>
@@ -611,7 +617,7 @@ export default function TeamSettings({ session }) {
       )}
 
       {/* Lizenzen Tab */}
-      {tab === 'licenses' && (
+      {SHOW_SEAT_UI && tab === 'licenses' && (
         <div>
           {(licenses||[]).map(lic => (
             <div key={lic.id} style={{ background:'var(--surface)', borderRadius:16, border:'1px solid var(--border)', overflow:'hidden', marginBottom:16 }}>
