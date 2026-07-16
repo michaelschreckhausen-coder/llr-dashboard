@@ -20,6 +20,7 @@
 
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { resolveModel, callText } from "../_shared/llm.ts";
 
 const ANTHROPIC_API_KEY = Deno.env.get("ANTHROPIC_API_KEY")!;
 const SUPABASE_URL      = Deno.env.get("SUPABASE_URL")!;
@@ -41,19 +42,10 @@ function json(data: unknown, status = 200) {
   });
 }
 
+// Providerübergreifend (ISO 27001: gewähltes Modell entscheidet den Anbieter).
 async function callAnthropic(model: string, system: string, user: string) {
-  const res = await fetch("https://api.anthropic.com/v1/messages", {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      "x-api-key": ANTHROPIC_API_KEY,
-      "anthropic-version": "2023-06-01",
-    },
-    body: JSON.stringify({ model, max_tokens: 4096, system, messages: [{ role: "user", content: user }] }),
-  });
-  const d = await res.json();
-  if (!res.ok) throw new Error(d.error?.message || "Anthropic error " + res.status);
-  return { text: d.content?.[0]?.text || "", stop_reason: d.stop_reason as string | undefined };
+  const r = await callText({ model, system, user, maxTokens: 4096, jsonMode: true });
+  return { text: r.text, stop_reason: undefined as string | undefined };
 }
 
 // JSON aus Modell-Output ziehen — robust gegen ```json-Fences und (best effort)
@@ -159,7 +151,8 @@ serve(async (req) => {
       return await persist([], [], "Keine verlinkten Sponsoren im statischen HTML gefunden — die Seite ist evtl. JS-gerendert. Bitte eine Seite mit direkt verlinkten Sponsor-Logos/-Namen angeben.");
     }
 
-    const useModel = typeof model === "string" && model ? model : DEFAULT_MODEL;
+    const { data: { user: _actUser } } = await userClient.auth.getUser();
+    const useModel = (typeof model === "string" && model) ? model : await resolveModel(userClient, [_actUser?.id], DEFAULT_MODEL);
     let llm: { text: string; stop_reason?: string };
     try {
       llm = await callAnthropic(useModel, SYSTEM, "Quelle: " + source_url + "\n\n" + reduced);

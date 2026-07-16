@@ -61,6 +61,8 @@ function json(data: unknown, status = 200) {
   });
 }
 
+import { resolveModel as _resolveModel } from "../_shared/llm.ts";
+
 function getProvider(model: string): 'anthropic' | 'openai' | 'google' | 'mistral' {
   if (model.startsWith('claude'))  return 'anthropic';
   if (model.startsWith('gpt') || model.startsWith('o1') || model.startsWith('o3')) return 'openai';
@@ -364,9 +366,9 @@ serve(async (req) => {
       .order('occurred_at', { ascending: false })
       .limit(5);
 
-    // 5) Modell: hardcoded auf Claude Sonnet 4.6 für Cost-Predictability.
-    //    User-Default in profiles.default_ai_model wird absichtlich ignoriert.
-    const model = 'claude-sonnet-4-6';
+    // 5) Modell: das vom handelnden Nutzer GEWÄHLTE Modell (ISO 27001 / Datenresidenz) —
+    //    nie hardcoden. Fallback nur wenn kein default gesetzt ist.
+    const model = await _resolveModel(supabaseAdmin, [userId], 'claude-sonnet-4-6');
 
     // 6) team/account-Kontext aus credits-Helper (für ai_usage_log + record_usage)
     const accountId: string | null = ctx.account_id;

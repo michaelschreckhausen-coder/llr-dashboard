@@ -8,6 +8,7 @@
 
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { resolveModel, callText } from "../_shared/llm.ts";
 
 const ANTHROPIC_API_KEY    = Deno.env.get("ANTHROPIC_API_KEY")!;
 const SUPABASE_URL         = Deno.env.get("SUPABASE_URL")!;
@@ -35,15 +36,10 @@ Antworte AUSSCHLIESSLICH mit JSON:
 {"signals":[{"signal_type":"...","summary":"<kurzer Satz, Deutsch>","score_delta":<int>}]}
 Wenn keine relevanten Signale: {"signals":[]}.`;
 
+// Providerübergreifend (ISO 27001: gewähltes Modell entscheidet den Anbieter).
 async function callAnthropic(model: string, system: string, user: string) {
-  const res = await fetch("https://api.anthropic.com/v1/messages", {
-    method: "POST",
-    headers: { "Content-Type": "application/json", "x-api-key": ANTHROPIC_API_KEY, "anthropic-version": "2023-06-01" },
-    body: JSON.stringify({ model, max_tokens: 900, system, messages: [{ role: "user", content: user }] }),
-  });
-  const d = await res.json();
-  if (!res.ok) throw new Error(d.error?.message || "Anthropic error " + res.status);
-  return d.content?.[0]?.text || "";
+  const r = await callText({ model, system, user, maxTokens: 900, jsonMode: true });
+  return r.text;
 }
 
 function extractSignals(text: string): Array<{ signal_type: string; summary: string; score_delta: number }> {
@@ -84,8 +80,10 @@ serve(async (req) => {
     if (readErr) return json({ error: readErr.message }, 400);
     if (!sponsor) return json({ error: "not found or not authorized" }, 403);
 
+    const { data: { user: _actUser } } = await userClient.auth.getUser();
+    const useModel = (typeof model === "string" && model) ? model : await resolveModel(supabaseAdmin, [_actUser?.id], DEFAULT_MODEL);
     const raw = await callAnthropic(
-      typeof model === "string" && model ? model : DEFAULT_MODEL,
+      useModel,
       SYSTEM,
       `Unternehmen: ${sponsor.name}\n\nText:\n${String(text).slice(0, 6000)}`,
     );
