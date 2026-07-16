@@ -19,6 +19,8 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { getCallerContext, checkCredits, recordUsage, estimateCredits } from "../_shared/credits.ts";
+import { resolveModel, getProvider } from "../_shared/llm.ts";
+import { agentStep, agentText } from "../_shared/agent.ts";
 
 const ANTHROPIC_API_KEY    = Deno.env.get("ANTHROPIC_API_KEY")!;
 const OPENAI_API_KEY       = Deno.env.get("OPENAI_API_KEY") || '';
@@ -1361,6 +1363,12 @@ serve(async (req) => {
     const teamId = body.team_id || caller.team_id || null;
     const ctx = { userId, teamId, accountId: caller.account_id };
 
+    // ⚠️ ISO 27001: Leadly nutzt AUSSCHLIESSLICH das vom Nutzer gewaehlte Modell
+    // (profiles.default_ai_model). NIE ein hardcodiertes. Alle LLM-Calls (Briefing,
+    // Essenz, Chat-Tool-Loop) laufen ueber den provider-uebergreifenden Agent-Layer.
+    const MODEL = await resolveModel(adminForCredits, [userId], DEFAULT_MODEL);
+    const PROVIDER = getProvider(MODEL);
+
     // ─── Mode: briefing ──────────────────────────────────────────────
     if (mode === 'briefing') {
       const today = new Date().toISOString().split('T')[0];
@@ -1419,7 +1427,7 @@ Daten:
 ${JSON.stringify(context, null, 2)}`;
 
       // Pre-Call Credits-Gate für Briefing-LLM-Call
-      const estBrief = await estimateCredits('anthropic', DEFAULT_MODEL, 'text_generate', {
+      const estBrief = await estimateCredits(PROVIDER, MODEL, 'text_generate', {
         input_chars: briefingPrompt.length, max_output_tokens: 600,
       }, adminForCredits);
       const checkBrief = await checkCredits(caller.account_id, estBrief, adminForCredits);
@@ -1431,53 +1439,42 @@ ${JSON.stringify(context, null, 2)}`;
         }, 402);
       }
 
-      const res = await fetch('https://api.anthropic.com/v1/messages', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'x-api-key': ANTHROPIC_API_KEY,
-          'anthropic-version': '2023-06-01',
-        },
-        body: JSON.stringify({
-          model: DEFAULT_MODEL,
-          max_tokens: 600,
+      let brief;
+      try {
+        brief = await agentText({
+          model: MODEL,
           system: 'Du bist Leadly, der KI-Sales-Assistent. Antworte auf Deutsch, kurz und konkret.',
-          messages: [{ role: 'user', content: briefingPrompt }],
-        }),
-      });
-      const aj = await res.json();
-      if (!res.ok) return json({ error: aj.error?.message || 'Briefing-Generierung fehlgeschlagen' }, 500);
+          user: briefingPrompt,
+          maxTokens: 600,
+        });
+      } catch (e) {
+        return json({ error: (e as Error).message || 'Briefing-Generierung fehlgeschlagen' }, 500);
+      }
 
-      // Post-Call: record_usage mit echten Token-Counts aus aj.usage
+      // Post-Call: record_usage mit echten Token-Counts aus brief.usage
       await recordUsage(caller, {
         edge_function: 'leadly',
         operation: 'text_generate',
-        provider: 'anthropic',
-        model: DEFAULT_MODEL,
-        input_tokens: aj.usage?.input_tokens,
-        output_tokens: aj.usage?.output_tokens,
+        provider: PROVIDER,
+        model: MODEL,
+        input_tokens: brief.usage.input_tokens,
+        output_tokens: brief.usage.output_tokens,
         status: 'success',
         extra_metadata: { mode: 'briefing' },
       }, adminForCredits).catch(() => null);
 
-      const text = (aj.content || []).filter((c: { type: string }) => c.type === 'text').map((c: { text: string }) => c.text).join('\n').trim();
+      const text = brief.text;
 
       // Essenz: EIN handlungsorientierter Satz für den Startseiten-Hero
       // (destilliert per Haiku — billig; Fallback: Client-Heuristik).
       try {
-        const eres = await fetch('https://api.anthropic.com/v1/messages', {
-          method: 'POST',
-          headers: { 'x-api-key': ANTHROPIC_API_KEY!, 'anthropic-version': '2023-06-01', 'content-type': 'application/json' },
-          body: JSON.stringify({
-            model: 'claude-haiku-4-5', max_tokens: 120,
-            messages: [{ role: 'user', content: 'Destilliere aus diesem Tages-Briefing EINEN vollständigen Satz (max. 160 Zeichen), der das Wichtigste des Tages nennt und zum Handeln motiviert. Sprich direkt an (du). Keine Begrüßung, keine Anführungszeichen, keine Emojis, kein Markdown. Antworte NUR mit dem Satz.\n\n' + text }],
-          }),
+        const essR = await agentText({
+          model: MODEL, maxTokens: 120,
+          system: 'Du destillierst praegnante Kurzsaetze. Antworte NUR mit dem Satz, ohne Anfuehrungszeichen, Emojis oder Markdown.',
+          user: 'Destilliere aus diesem Tages-Briefing EINEN vollstaendigen Satz (max. 160 Zeichen), der das Wichtigste des Tages nennt und zum Handeln motiviert. Sprich direkt an (du). Keine Begruessung, keine Anfuehrungszeichen, keine Emojis, kein Markdown. Antworte NUR mit dem Satz.\n\n' + text,
         });
-        if (eres.ok) {
-          const ej = await eres.json();
-          const ess = (ej.content || []).filter((c: { type: string }) => c.type === 'text').map((c: { text: string }) => c.text).join(' ').trim();
+        const ess = (essR.text || '').trim();
           if (ess && ess.length <= 260) (context as Record<string, unknown>).essence = ess.replace(/^["„'»]+|["'"«]+$/g, '');
-        }
       } catch (e) { console.warn('[briefing] essence distill failed:', (e as Error).message); }
 
       await persistBriefing(text);
@@ -1529,7 +1526,7 @@ ${JSON.stringify(context, null, 2)}`;
         executed: true,
         audit_id: auditId,
         revertible,
-        model: DEFAULT_MODEL,
+        model: MODEL,
         finish_reason: 'confirmed',
         iterations: 0,
       });
@@ -1637,7 +1634,7 @@ ${JSON.stringify(context, null, 2)}`;
     // Estimate: input wächst mit jeder Iteration (tool_results+system_prompt akkumulieren).
     // Konservative Schätzung: max 3 Iterationen × ~(systemPrompt + messages).
     const conversationChars = anthropicMessages.reduce((s, m) => s + String(m.content || '').length, 0);
-    const estChat = await estimateCredits('anthropic', DEFAULT_MODEL, 'text_generate', {
+    const estChat = await estimateCredits(PROVIDER, MODEL, 'text_generate', {
       input_chars: (dynamicSystemPrompt.length + conversationChars) * 3,
       max_output_tokens: 2048 * 3,
     }, adminForCredits);
@@ -1658,38 +1655,33 @@ ${JSON.stringify(context, null, 2)}`;
 
     while (iter < MAX_ITERATIONS) {
       iter++;
-      const res = await fetch('https://api.anthropic.com/v1/messages', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'x-api-key': ANTHROPIC_API_KEY,
-          'anthropic-version': '2023-06-01',
-        },
-        body: JSON.stringify({
-          model: DEFAULT_MODEL,
-          max_tokens: 2048,
+      let step;
+      try {
+        step = await agentStep({
+          model: MODEL,
           system: dynamicSystemPrompt,
           tools: TOOLS,
-          messages: anthropicMessages,
-        }),
-      });
-      const aj = await res.json();
-      if (!res.ok) return json({ error: aj.error?.message || 'LLM call failed', detail: aj }, 500);
+          messages: anthropicMessages as any,
+          maxTokens: 2048,
+        });
+      } catch (e) {
+        return json({ error: (e as Error).message || 'LLM call failed' }, 500);
+      }
 
       // Post-Call: record_usage pro Iteration mit echten Token-Counts
       await recordUsage(caller, {
         edge_function: 'leadly',
         operation: 'text_generate',
-        provider: 'anthropic',
-        model: DEFAULT_MODEL,
-        input_tokens: aj.usage?.input_tokens,
-        output_tokens: aj.usage?.output_tokens,
+        provider: PROVIDER,
+        model: MODEL,
+        input_tokens: step.usage.input_tokens,
+        output_tokens: step.usage.output_tokens,
         status: 'success',
         extra_metadata: { mode: 'chat', iteration: iter, has_tools: true },
       }, adminForCredits).catch(() => null);
 
-      lastAssistantBlocks = aj.content || [];
-      lastFinish = aj.stop_reason || 'unknown';
+      lastAssistantBlocks = step.blocks;
+      lastFinish = step.finish;
 
       // Tool-Use erkennen
       const toolUses = lastAssistantBlocks.filter((b: { type: string }) => b.type === 'tool_use') as Array<{ id: string; name: string; input: Record<string, unknown> }>;
@@ -1717,7 +1709,7 @@ ${JSON.stringify(context, null, 2)}`;
           })),
           requires_confirmation: true,
           tool_results: [],
-          model: DEFAULT_MODEL,
+          model: MODEL,
           finish_reason: 'pending_confirmation',
           iterations: iter,
           learning_scope: learningScope,
@@ -1804,7 +1796,7 @@ ${JSON.stringify(context, null, 2)}`;
         tool_calls: toolCallsFromLast.length > 0 ? toolCallsFromLast : null,
       },
       tool_results: toolResults,
-      model: DEFAULT_MODEL,
+      model: MODEL,
       finish_reason: lastFinish,
       iterations: iter,
       memory_used: retrievedMemories.length,
