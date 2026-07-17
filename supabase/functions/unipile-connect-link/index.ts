@@ -51,11 +51,25 @@ Deno.serve(async (req) => {
     const accounts = (await r.json()).items || [];
     const { data: mapped } = await db.from("unipile_accounts").select("unipile_account_id");
     const mappedIds = new Set((mapped || []).map((m: any) => m.unipile_account_id));
-    const unmapped = accounts.filter((a: any) => !mappedIds.has(a.id))
-      .sort((a: any, b: any) => String(b.created_at).localeCompare(String(a.created_at)));
-    if (!unmapped.length) return json({ connected: false, reason: "kein neuer Account" }, 200);
+    // SECURITY (Cross-Customer-Mapping-Fix): fail-closed. Der alte "nimm den neuesten
+    // global-ungemappten Account"-Pfad konnte einen FREMDEN Orphan (andere Person, andere
+    // Kunde) an den Aufrufer mappen — Live-Isolationsloch. Wir übernehmen nur EINEN
+    // ungemappten Account, der EINDEUTIG in dieser Session frisch verbunden wurde.
+    // created_at-Frische ist ein Proxy, kein Beweis → bei 0 ODER >1 frischen Kandidaten
+    // NICHT mappen (im Zweifel: erneut verbinden). Enges Fenster, weil der Webhook-Retry
+    // (Race-Fix) den Persist ohnehin fast immer canonical erledigt.
+    const FRESH_MS = 2 * 60 * 1000;   // 2 Minuten
+    const nowMs = Date.now();
+    const freshUnmapped = accounts.filter((a: any) => {
+      if (mappedIds.has(a.id)) return false;
+      const t = Date.parse(a.created_at);
+      return Number.isFinite(t) && (nowMs - t) >= 0 && (nowMs - t) <= FRESH_MS;   // frisch, keine Zukunft
+    });
+    if (freshUnmapped.length !== 1) {
+      return json({ connected: false, reason: "reconnect_needed", message: "Verbindung konnte nicht eindeutig zugeordnet werden — bitte erneut verbinden." }, 200);
+    }
 
-    const acct = unmapped[0];
+    const acct = freshUnmapped[0];
     const { data: tm } = await db.from("team_members").select("team_id").eq("user_id", userId).limit(1).maybeSingle();
     if (!tm?.team_id) return json({ error: "kein Team für User" }, 400);
     const pub = acct?.connection_params?.im?.publicIdentifier ?? null;

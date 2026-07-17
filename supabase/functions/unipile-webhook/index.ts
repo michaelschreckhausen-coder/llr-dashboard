@@ -26,20 +26,31 @@ const UNIPILE_KEY = Deno.env.get("UNIPILE_API_KEY")!;
 async function validateAccount(accountId: string): Promise<
   { type: string | null; slug: string | null; providerId: string | null; username: string | null; raw: any } | null
 > {
-  try {
-    const r = await fetch(`https://${UNIPILE_DSN}/api/v1/accounts/${accountId}`, { headers: { "X-API-KEY": UNIPILE_KEY, "accept": "application/json" } });
-    if (!r.ok) return null;                         // 404 = Phantom-id
-    const a = await r.json();
-    if ((a?.sources?.[0]?.status) !== "OK") return null;
-    const im = a?.connection_params?.im || {};
-    return {
-      type: a?.type ?? null,
-      slug: im.publicIdentifier ?? null,
-      providerId: im.id ?? null,
-      username: im.username ?? null,
-      raw: a,
-    };
-  } catch { return null; }
+  // Race-Absorption: bei CREATION_SUCCESS ist der frische Account kurz 404 / source
+  // noch nicht OK. 2 Retries mit 1s/2s Backoff (max ~3s, unter Unipile-Webhook-Timeout),
+  // erst dann null (echtes Phantom/404). Bindung bleibt am Initiator (evt.name) — Retry
+  // ändert NICHTS an der Zuordnung, nur an der Timing-Robustheit.
+  const RETRIES = 2;
+  for (let attempt = 0; ; attempt++) {
+    try {
+      const r = await fetch(`https://${UNIPILE_DSN}/api/v1/accounts/${accountId}`, { headers: { "X-API-KEY": UNIPILE_KEY, "accept": "application/json" } });
+      if (r.ok) {
+        const a = await r.json();
+        if ((a?.sources?.[0]?.status) === "OK") {
+          const im = a?.connection_params?.im || {};
+          return {
+            type: a?.type ?? null,
+            slug: im.publicIdentifier ?? null,
+            providerId: im.id ?? null,
+            username: im.username ?? null,
+            raw: a,
+          };
+        }
+      }
+    } catch { /* transient (Netz) → Retry */ }
+    if (attempt >= RETRIES) return null;                 // dauerhaft 404/nicht-OK → aufgeben, NICHT persistieren
+    await new Promise((res) => setTimeout(res, 1000 * (attempt + 1)));  // 1s, dann 2s
+  }
 }
 
 // Unipile-Status → CHECK-Constraint von instagram_unipile_accounts.
