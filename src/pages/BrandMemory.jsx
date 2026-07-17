@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react'
+import React, { useEffect, useState, useRef } from 'react'
 import { Brain, Plus, Trash2, Pencil, Check, X, Sparkles, MessageSquare, User as UserIcon, Bot } from 'lucide-react'
 import { supabase } from '../lib/supabase'
 import { useTeam } from '../context/TeamContext'
@@ -35,19 +35,33 @@ export default function BrandMemory({ session }) {
   const [saving, setSaving] = useState(false)
   const [editId, setEditId] = useState(null)
   const [editText, setEditText] = useState('')
-  async function load() {
-    if (!activeTeamId || !hasBrand) { setItems([]); setLoading(false); return }
-    setLoading(true)
-    // Brand-scoped (NICHT team-scoped): dieselbe Marke = dieselbe Memory, teamübergreifend.
-    // RLS (brand_memory_access) sichert den Zugriff über die Marke ab. Nur „Ohne Marke" ist team-scoped.
-    // Kein Auto-Seeding aus dem Profil — hier stehen nur ERGÄNZENDE, aus der Nutzung
-    // gelernte Erkenntnisse (Chat/Korrekturen, künftig Post-Analysen), keine Profil-Dopplungen.
+  const [learning, setLearning] = useState(false)
+  const learnedRef = useRef(new Set())
+  async function fetchItems() {
     let q = supabase.from('brand_memory')
       .select('id, content, source, created_at, user_id')
       .order('created_at', { ascending: false })
+    // Brand-scoped (NICHT team-scoped). RLS sichert Zugriff über die Marke. Nur „Ohne Marke" ist team-scoped.
     q = isNoBrand ? q.is('brand_voice_id', null).eq('no_brand', true).eq('team_id', activeTeamId) : q.eq('brand_voice_id', bv.id)
     const { data } = await q
-    setItems(Array.isArray(data) ? data : [])
+    return Array.isArray(data) ? data : []
+  }
+  async function load() {
+    if (!activeTeamId || !hasBrand) { setItems([]); setLoading(false); return }
+    setLoading(true)
+    let data = await fetchItems()
+    // Beim ersten Öffnen einer echten (leeren) Marke: aus der bisherigen NUTZUNG
+    // (Chats/Anweisungen/Korrekturen) net-neue Erkenntnisse lernen — KEINE Profil-Dopplung
+    // (die EF schließt das bekannte Profil aus). Einmal pro Marke pro Seiten-Session;
+    // laufend lernt der Content-Chat live dazu.
+    if (data.length === 0 && !isNoBrand && bv?.id && !learnedRef.current.has(bv.id)) {
+      learnedRef.current.add(bv.id)
+      setLoading(false); setLearning(true)
+      try { await supabase.functions.invoke('brand-memory-learn', { body: { brand_voice_id: bv.id, team_id: activeTeamId } }) } catch (_e) {}
+      data = await fetchItems()
+      setLearning(false)
+    }
+    setItems(data)
     setLoading(false)
   }
   useEffect(() => { load() /* eslint-disable-next-line */ }, [activeTeamId, bv?.id, isNoBrand])
@@ -121,6 +135,10 @@ export default function BrandMemory({ session }) {
           {/* Liste */}
           {loading ? (
             <div style={{ color: 'var(--text-muted,#6A6D7A)', fontSize: 13, padding: 20, textAlign: 'center' }}>Lädt…</div>
+          ) : learning ? (
+            <div style={{ ...cardStyle, padding: 20, display: 'flex', alignItems: 'center', gap: 12, color: 'var(--text-muted,#6A6D7A)', fontSize: 13.5 }}>
+              <Sparkles size={16} style={{ color: P }} className="lk-spin" /> Leadesk wertet gerade deine bisherige Nutzung aus, um über die Marke zu lernen …
+            </div>
           ) : items.length === 0 ? (
             <EmptyHero title="Noch keine Einträge" subtitle="Hier sammeln sich mit der Zeit neue Erkenntnisse über deine Marke — aus deinen Chats und Korrekturen, künftig aus Post-Analysen. Was schon im Markenprofil steht, wird bewusst nicht wiederholt. Du kannst auch selbst Erkenntnisse ergänzen." />
           ) : (
