@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react'
+import React, { useEffect, useState, useRef } from 'react'
 import { Brain, Plus, Trash2, Pencil, Check, X, Sparkles, MessageSquare, User as UserIcon, Bot } from 'lucide-react'
 import { supabase } from '../lib/supabase'
 import { useTeam } from '../context/TeamContext'
@@ -35,17 +35,39 @@ export default function BrandMemory({ session }) {
   const [saving, setSaving] = useState(false)
   const [editId, setEditId] = useState(null)
   const [editText, setEditText] = useState('')
+  const [learning, setLearning] = useState(false)
+  const learnedRef = useRef(new Set())
 
-  async function load() {
-    if (!activeTeamId || !hasBrand) { setItems([]); setLoading(false); return }
-    setLoading(true)
+  async function fetchItems() {
     let q = supabase.from('brand_memory')
       .select('id, content, source, created_at, user_id')
       .eq('team_id', activeTeamId)
       .order('created_at', { ascending: false })
     q = isNoBrand ? q.is('brand_voice_id', null).eq('no_brand', true) : q.eq('brand_voice_id', bv.id)
     const { data } = await q
-    setItems(Array.isArray(data) ? data : [])
+    return Array.isArray(data) ? data : []
+  }
+  async function runLearn() {
+    if (!bv?.id || isNoBrand) return
+    setLearning(true)
+    try { await supabase.functions.invoke('brand-memory-learn', { body: { brand_voice_id: bv.id } }) } catch (_e) {}
+    setItems(await fetchItems())
+    setLearning(false)
+  }
+  async function load() {
+    if (!activeTeamId || !hasBrand) { setItems([]); setLoading(false); return }
+    setLoading(true)
+    let data = await fetchItems()
+    // ChatGPT-Stil: leere Memory einer echten Marke automatisch aus vorhandenem
+    // Wissen (Profil + Beiträge) befüllen — einmal pro Marke pro Seiten-Session.
+    if (data.length === 0 && !isNoBrand && bv?.id && !learnedRef.current.has(bv.id)) {
+      learnedRef.current.add(bv.id)
+      setLoading(false); setLearning(true)
+      try { await supabase.functions.invoke('brand-memory-learn', { body: { brand_voice_id: bv.id } }) } catch (_e) {}
+      data = await fetchItems()
+      setLearning(false)
+    }
+    setItems(data)
     setLoading(false)
   }
   useEffect(() => { load() /* eslint-disable-next-line */ }, [activeTeamId, bv?.id, isNoBrand])
@@ -119,6 +141,10 @@ export default function BrandMemory({ session }) {
           {/* Liste */}
           {loading ? (
             <div style={{ color: 'var(--text-muted,#6A6D7A)', fontSize: 13, padding: 20, textAlign: 'center' }}>Lädt…</div>
+          ) : learning ? (
+            <div style={{ ...cardStyle, padding: 20, display: 'flex', alignItems: 'center', gap: 12, color: 'var(--text-muted,#6A6D7A)', fontSize: 13.5 }}>
+              <Sparkles size={16} style={{ color: P }} className="lk-spin" /> Leadesk lernt gerade deine Marke aus dem vorhandenen Content und Profil …
+            </div>
           ) : items.length === 0 ? (
             <EmptyHero title="Noch keine Einträge" subtitle="Sobald du eigene Notizen hinzufügst oder mit der KI arbeitest, sammelt sich hier das Wissen über deine Marke." />
           ) : (
