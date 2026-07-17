@@ -85,6 +85,18 @@ Prod-Cutover, da diese Slugs/Accounts auf Staging fehlen).
 Die 20-Fälle-Matrix (USER `i_have_permission` vs CRON `team_has_permission`) **zweimal**:
 `gates_enforced=true` (muss Tier-Semantik zeigen) UND `=false` (muss überall `true/true` zeigen). Beide 0 Mismatches.
 
+## ⚠️ Bewusst-akzeptierte Verhaltensänderung — Schritt 4 Gruppe 3 (Publish)
+
+Die Publish-Affordance im Redaktionsplan ist jetzt auf **Eigen-Team gegatet**
+(`post.team_id === activeTeamId`), damit FE und EF-Gate (`teamHasPermission(post.team_id)`)
+für geteilte-BV-Fremdposts übereinstimmen (schließt „FE zeigt Veröffentlichen, EF verweigert").
+**Nebeneffekt (bekannt/beabsichtigt):** einen geteilten-BV-Post eines *anderen* Teams aus dem
+eigenen Board zu veröffentlichen geht künftig **nicht mehr** — er wird aus dem Team des Posts
+veröffentlicht (semantisch sauberer: „auf wessen LinkedIn?"). Die FE ist hier bewusst **strikter
+als der EF** (versteckt Publish auch, wenn das Fremdteam berechtigt wäre). Falls Cross-Team-Publish
+je erhalten bleiben soll, bräuchte die FE zusätzlich einen `teamHasPermission`-Check gegen das
+Fremdteam statt pauschalem Verstecken — bewusst nicht gemacht (Ist ist sauberer).
+
 ## EF-Gate-Mapping (Schritt 3, Vorschau)
 
 | EF | Kontext | Guard |

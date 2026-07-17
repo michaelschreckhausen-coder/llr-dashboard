@@ -16,6 +16,7 @@ import {
 } from 'lucide-react'
 import { supabase } from '../lib/supabase'
 import { useTeam } from '../context/TeamContext'
+import { mapEfError } from '../lib/efError'
 
 const PRIMARY = 'rgb(49,90,231)'
 const PRIMARY_VAR = `var(--wl-primary, ${PRIMARY})`
@@ -151,14 +152,8 @@ export default function LinkedInEngagement() {
     setRunning(true); setFlash(null)
     const { data, error } = await supabase.functions.invoke('unipile-engagement', { body: {} })
     if (error) {
-      let body = null
-      try { body = await error.context?.json?.() } catch { /* Body evtl. konsumiert */ }
-      const status = error.context?.status
-      if (status === 401) setFlash({ type:'error', text:'Nicht autorisiert — bitte neu anmelden.' })
-      else if (status === 403 || body?.error === 'no_addon') setFlash({ type:'error', text:'Das Automatisierung-Addon ist nicht aktiv.', action:{ label:'Addon aktivieren', to:'/marketplace' } })
-      else if (status === 409) setFlash({ type:'error', text:'Kein aktiver LinkedIn-Account verbunden.', action:{ label:'LinkedIn verbinden', to:'/settings/linkedin' } })
-      else if (status === 429 || body?.rate_limited) setFlash({ type:'error', text:'Rate-Limit erreicht — bitte später erneut.' })
-      else setFlash({ type:'error', text: body?.error || ('Ausführen fehlgeschlagen: ' + error.message) })
+      const m = await mapEfError(error)   // P3 Schritt 4: zentraler Mapper (403→Upgrade, 401→Sitzung, 409/429/…)
+      setFlash({ type:'error', text: m.text, action: m.action })
       setRunning(false); return
     }
     setFlash({ type:'success', text:`Verarbeitet: ${data?.done ?? 0} erledigt · ${data?.skipped ?? 0} übersprungen · ${data?.failed ?? 0} Fehler.` })
