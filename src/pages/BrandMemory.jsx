@@ -13,6 +13,7 @@ const SOURCE_META = {
   chat:   { label: 'Aus Chat gelernt',   icon: MessageSquare,  color: '#12B886', bg: '#EBFAF3' },
   auto:   { label: 'Automatisch gelernt',icon: Sparkles,       color: '#7A5AF8', bg: '#F2F1FE' },
   leadly: { label: 'Von Leadly',         icon: Bot,            color: '#E07B39', bg: '#FFF7F2' },
+  assistant: { label: 'Von Leadly',      icon: Bot,            color: '#E07B39', bg: '#FFF7F2' },
 }
 const sourceMeta = (s) => SOURCE_META[s] || SOURCE_META.manual
 
@@ -85,7 +86,7 @@ export default function BrandMemory({ session }) {
   const cardStyle = { background: 'var(--surface,#fff)', border: '1px solid var(--border,#E6E8EF)', borderRadius: 16, boxShadow: 'var(--shadow-card, 0 10px 30px rgba(14,22,51,.06))' }
 
   return (
-    <div style={{ maxWidth: 860, margin: '0 auto', padding: '28px 24px 80px' }}>
+    <div style={{ width: '100%', maxWidth: 1100, margin: '0 auto', padding: '24px 16px 40px', boxSizing: 'border-box' }}>
       {/* Header */}
       <div className="lk-eyebrow" style={{ marginBottom: 8 }}>Wissen</div>
       <h1 style={{ fontFamily: 'Inter, sans-serif', fontWeight: 800, fontSize: 'clamp(1.6rem,3vw,2rem)', color: 'var(--text-primary, #0E1633)', margin: '0 0 6px' }}>
