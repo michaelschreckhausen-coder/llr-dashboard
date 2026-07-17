@@ -57,6 +57,8 @@ const ROUTE_PERMISSIONS = {
   '/linkedin-connect': 'linkedin.connections',
   '/messages':         'linkedin.messages',
   '/automatisierung':  'linkedin.automation',
+  '/linkedin-engagement': 'linkedin.engagement',      // P3 Schritt 4: Marketing lacks → Upsell
+  '/linkedin-analytics':  'linkedin.post_analytics',  // P3 Schritt 4: Sales lacks → Upsell (Marketing/All-in hat's)
   '/profil-checker':   'linkedin.profil_checker',
   '/content-studio':   'content.studio',
   '/redaktionsplan':   'content.calendar',

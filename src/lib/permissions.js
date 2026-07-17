@@ -49,6 +49,9 @@ export const PERMISSIONS_REGISTRY = {
       messages:      { label: 'Nachrichten',     description: 'LinkedIn-Messaging' },
       automation:    { label: 'Automatisierung', description: 'Automatisierte Sequenzen (Premium)' },
       cloud:         { label: 'LinkedIn-Cloud',  description: 'Cloud-Sync der LinkedIn-Daten' },
+      engagement:    { label: 'Engagement',      description: 'Auto-Kommentare/-Reaktionen (Sales+)' },
+      sales_nav:     { label: 'Sales-Navigator-Sync', description: 'Sales-Navigator-Import (Sales+)' },
+      post_analytics:{ label: 'Post-Analytics',  description: 'LinkedIn-Post-Metriken (Marketing+)' },
     },
   },
   content: {
@@ -114,11 +117,12 @@ export const PERMISSION_MODULES_ORDER = [
 // Sanity-Check: total = 25 (Initial-Matrix-Soll).
 // Wirft beim Modul-Import wenn die Konstanten nicht zur Migration matchen.
 if (typeof process === 'undefined' || process.env?.NODE_ENV !== 'test') {
-  if (ALL_PERMISSION_KEYS.length !== 26) {
+  if (ALL_PERMISSION_KEYS.length !== 29) {
     // eslint-disable-next-line no-console
     console.warn(
-      `[permissions.js] expected 26 keys, got ${ALL_PERMISSION_KEYS.length}. ` +
-      `If intentional, update Migration 20260504201508 + this assertion.`
+      `[permissions.js] expected 29 keys, got ${ALL_PERMISSION_KEYS.length}. ` +
+      `If intentional, update Migration 20260504201508 + this assertion. ` +
+      `(29 = 26 + P3 linkedin.engagement/sales_nav/post_analytics)`
     )
   }
 }
