@@ -954,7 +954,7 @@ Antworte AUSSCHLIESSLICH mit JSON: {"learnings": ["..."]}`
       const parsed = (a >= 0 && b > a) ? JSON.parse(raw.slice(a, b + 1)) : null
       const learnings = Array.isArray(parsed?.learnings) ? parsed.learnings.map(x => String(x || '').trim()).filter(Boolean).slice(0, 2) : []
       if (!learnings.length) return
-      const { data: existing } = await supabase.from('brand_memory').select('content').eq('brand_voice_id', bvId).eq('team_id', activeTeamId).limit(300)
+      const { data: existing } = await supabase.from('brand_memory').select('content').eq('brand_voice_id', bvId).limit(300)
       const have = (existing || []).map(e => String(e.content || '').toLowerCase())
       const rows = learnings
         .filter(l => { const ll = l.toLowerCase(); return ll.length > 6 && !have.some(h => h.includes(ll) || ll.includes(h)) })

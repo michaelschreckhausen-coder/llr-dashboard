@@ -41,9 +41,10 @@ export default function BrandMemory({ session }) {
   async function fetchItems() {
     let q = supabase.from('brand_memory')
       .select('id, content, source, created_at, user_id')
-      .eq('team_id', activeTeamId)
       .order('created_at', { ascending: false })
-    q = isNoBrand ? q.is('brand_voice_id', null).eq('no_brand', true) : q.eq('brand_voice_id', bv.id)
+    // Brand-scoped (NICHT team-scoped): dieselbe Marke = dieselbe Memory, teamübergreifend.
+    // RLS (brand_memory_access) sichert den Zugriff über die Marke ab. Nur „Ohne Marke" ist team-scoped.
+    q = isNoBrand ? q.is('brand_voice_id', null).eq('no_brand', true).eq('team_id', activeTeamId) : q.eq('brand_voice_id', bv.id)
     const { data } = await q
     return Array.isArray(data) ? data : []
   }

@@ -97,7 +97,7 @@ serve(async (req: Request) => {
     if (!facts.length) return json({ ok: true, inserted: 0, facts: [] });
 
     // Dedupe gegen Bestand
-    const { data: existing } = await userClient.from("brand_memory").select("content").eq("brand_voice_id", brand_voice_id).eq("team_id", teamId).limit(500);
+    const { data: existing } = await userClient.from("brand_memory").select("content").eq("brand_voice_id", brand_voice_id).limit(500);
     const have = (existing || []).map((e: Record<string, unknown>) => String(e.content || "").toLowerCase());
     const fresh = facts.filter((f) => { const l = f.toLowerCase(); return !have.some((h) => h.includes(l) || l.includes(h)); });
     if (!fresh.length) return json({ ok: true, inserted: 0, facts: [] });
