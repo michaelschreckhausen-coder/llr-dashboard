@@ -116,20 +116,21 @@ function getNav(t) {
   { to: '/bibliothek',      icon: IcImage,    label: 'Bibliothek' },
 
   { divider: true, label: 'LinkedIn', tourId: 'nav-linkedin' },
-  { to: '/linkedin-suche',  icon: IcSearch,   label: 'Suche' },
-  { to: '/linkedin-inbox',  icon: IcInbox,    label: 'LinkedIn Kontakte' },
-  { to: '/linkedin-netzwerk', icon: IcUsers,  label: 'Netzwerk' },
-  { to: '/vernetzungen',    icon: IcHeart,    label: 'Vernetzung' },
-  // Ein Eintrag „Automatisierung": V2 (la_*) ist Default für alle (3c-Flip).
-  // Not-Aus per User: localStorage lk_features.linkedinAutomationV2Disabled=true → Alt-Seite.
-  // Alt-Route /automatisierung + automation_* bleiben per Deep-Link erreichbar.
-  { to: (!isFlagEnabled('linkedinAutomationV2Disabled')) ? '/automatisierung-neu' : '/automatisierung', icon: IcZap, label: 'Automatisierung' },
-  { to: '/messages',        icon: IcMail,     label: 'Nachrichten' },
-  { to: '/ssi',             icon: IcTarget,   label: t('nav.ssiTracker') },
-  { to: '/linkedin-analytics', icon: IcBarChart, label: 'Post-Analytics' },
-  { to: '/linkedin-engagement', icon: IcZap, label: 'Engagement' },
-  { to: '/profil-checker',  icon: IcLinkedIn, label: 'Profil-Checker' },
-  { to: '/profiltexte',     icon: IcLinkedIn, label: t('nav.profiltexte') },
+  { subSection: true, label: 'Meine Präsenz', icon: IcLinkedIn, items: [
+    { to: '/linkedin-analytics', icon: IcBarChart, label: 'Post-Analytics' },
+    { to: '/ssi',             icon: IcTarget,   label: t('nav.ssiTracker') },
+    { to: '/profil-checker',  icon: IcLinkedIn, label: 'Profil-Checker' },
+    { to: '/profiltexte',     icon: IcLinkedIn, label: t('nav.profiltexte') },
+  ] },
+  { subSection: true, label: 'Akquise', icon: IcSearch, items: [
+    { to: '/linkedin-suche',  icon: IcSearch,   label: 'Suche' },
+    { to: '/linkedin-inbox',  icon: IcInbox,    label: 'LinkedIn Kontakte' },
+    { to: '/linkedin-netzwerk', icon: IcUsers,  label: 'Netzwerk' },
+    { to: '/vernetzungen',    icon: IcHeart,    label: 'Vernetzung' },
+    { to: (!isFlagEnabled('linkedinAutomationV2Disabled')) ? '/automatisierung-neu' : '/automatisierung', icon: IcZap, label: 'Automatisierung' },
+    { to: '/messages',        icon: IcMail,     label: 'Nachrichten' },
+    { to: '/linkedin-engagement', icon: IcZap,  label: 'Engagement' },
+  ] },
 
   { divider: true, label: 'Instagram', tourId: 'nav-instagram' },
   { to: '/instagram',       icon: IcInstagram, label: 'Analysen' },
@@ -918,9 +919,18 @@ export default function Layout({ session, role, onLogout, children }) {
             const renderSection = (sec, i) => {
               const moduleKey = SIDEBAR_DIVIDER_TO_MODULE[sec.label]
               let visibleItems = sec.items.filter(isItemVisible)
+              // Unterbereiche (subSection): Kinder ebenfalls per Gating filtern, leere entfernen.
+              visibleItems = visibleItems
+                .map(it => it.subSection ? { ...it, items: it.items.filter(isItemVisible) } : it)
+                .filter(it => !it.subSection || it.items.length > 0)
               if (moduleKey && !isAdmin && !entitlementsLoading && !hasModule(moduleKey)) {
                 if (sec.label === 'LinkedIn' && hasPermission('linkedin.profile_texts')) {
-                  visibleItems = sec.items.filter(it => it.to === '/profiltexte')
+                  const pt = []
+                  sec.items.forEach(it => {
+                    if (it.to === '/profiltexte') pt.push(it)
+                    else if (it.subSection) { const c = (it.items||[]).find(s2 => s2.to === '/profiltexte'); if (c) pt.push({ ...it, items: [c] }) }
+                  })
+                  visibleItems = pt
                 } else if (canUpsell && visibleItems.length > 0) {
                   // P3 Schritt 4: Modul fehlt, aber Section hat Upsell-Items (z.B. Sales → Content)
                   // → Section sichtbar mit den per isItemVisible bereits gefilterten Upsell-Items.
