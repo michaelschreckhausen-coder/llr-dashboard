@@ -210,6 +210,7 @@ function NavItem({ item, indent, inSection, collapsed }) {
           color: isActive ? T.primary : T.navText,
           transition: 'all 0.18s ease',
           cursor: 'pointer',
+          opacity: item._locked ? 0.6 : 1,   // P3 Schritt 4: Upsell-Item gedimmt
           fontWeight: isActive ? 500 : 400,
           fontSize: (indent || inSection) ? 13 : 14,
           letterSpacing: '-0.005em',
@@ -223,9 +224,12 @@ function NavItem({ item, indent, inSection, collapsed }) {
             <item.icon />
           </span>
           {!collapsed && (
-            <span style={{ whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis' }}>
+            <span style={{ whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis', flex: 1 }}>
               {item.label}
             </span>
+          )}
+          {!collapsed && item._locked && (
+            <span title="Upgrade nötig" style={{ fontSize: 11, flexShrink: 0, opacity: 0.7 }}>🔒</span>
           )}
         </div>
       )}
@@ -872,6 +876,16 @@ export default function Layout({ session, role, onLogout, children }) {
             //   - getRequiredPermission(item.to)===null → always-on, gerendert
             //   - hasPermission(perm)===true → gerendert
             //   - sonst → herausgefiltert
+            // P3 Schritt 4: Upsell-Zustand (Item sichtbar + Lock statt versteckt) NUR für
+            // LinkedIn-Suite-Tiers (Marketing/Sales/All-in/Trial), NICHT free/none. Sauberes
+            // Signal (Free hat alle Module, aber keine linkedin.*/content.*-Permission):
+            const _perms = entData?.permissions || []
+            const canUpsell = entData?.is_active === true &&
+              _perms.some(p => p.startsWith('linkedin.') || p.startsWith('content.'))
+            const UPSELL_KEYS = new Set([
+              'linkedin.connections', 'linkedin.messages', 'linkedin.automation', 'linkedin.engagement',
+              'linkedin.sales_nav', 'linkedin.post_analytics', 'content.calendar', 'content.studio',
+            ])
             const isItemVisible = (item) => {
               if (!item) return false
               if (item.adminOnly && !isAdmin) return false
@@ -889,7 +903,16 @@ export default function Layout({ session, role, onLogout, children }) {
               if (item.addonSlug && !(subscribedSlugs?.has?.(item.addonSlug))) return false
               const perm = getRequiredPermission(item.to)
               if (perm === null) return true       // always-on
-              return hasPermission(perm)
+              if (hasPermission(perm)) return true
+              // Fehlt die Permission: P3-Upsell-Keys für Suite-Tiers sichtbar (Lock via NavItem),
+              // sonst wie bisher versteckt.
+              return canUpsell && UPSELL_KEYS.has(perm)
+            }
+            // sichtbar-aber-ohne-Permission ⟹ Upsell/Lock (proaktiv, hasPermission weiß es vorab, kein 403 nötig)
+            const isItemLocked = (item) => {
+              if (!item?.to || isAdmin || entitlementsLoading) return false
+              const perm = getRequiredPermission(item.to)
+              return perm !== null && !hasPermission(perm)
             }
 
             const renderSection = (sec, i) => {
@@ -898,11 +921,15 @@ export default function Layout({ session, role, onLogout, children }) {
               if (moduleKey && !isAdmin && !entitlementsLoading && !hasModule(moduleKey)) {
                 if (sec.label === 'LinkedIn' && hasPermission('linkedin.profile_texts')) {
                   visibleItems = sec.items.filter(it => it.to === '/profiltexte')
+                } else if (canUpsell && visibleItems.length > 0) {
+                  // P3 Schritt 4: Modul fehlt, aber Section hat Upsell-Items (z.B. Sales → Content)
+                  // → Section sichtbar mit den per isItemVisible bereits gefilterten Upsell-Items.
+                  // (free/none: canUpsell=false → weiter komplett versteckt.)
                 } else { return null }
               }
               if (visibleItems.length === 0 && !entitlementsLoading) return null
               return (
-                <NavSection key={sec.label + '-' + i} label={sec.label} tourId={sec.tourId} items={visibleItems}
+                <NavSection key={sec.label + '-' + i} label={sec.label} tourId={sec.tourId} items={visibleItems.map(it => ({ ...it, _locked: isItemLocked(it) }))}
                   isAdmin={isAdmin} location={location} collapsed={isCollapsed}
                   autoActive={activeSecLabel === sec.label}
                   isOpen={openSection === sec.label}
