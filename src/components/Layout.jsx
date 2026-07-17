@@ -116,13 +116,13 @@ function getNav(t) {
   { to: '/bibliothek',      icon: IcImage,    label: 'Bibliothek' },
 
   { divider: true, label: 'LinkedIn', tourId: 'nav-linkedin' },
-  { subSection: true, label: 'Meine Präsenz', icon: IcLinkedIn, items: [
+  { subSection: true, label: 'Meine Präsenz', items: [
     { to: '/linkedin-analytics', icon: IcBarChart, label: 'Post-Analytics' },
     { to: '/ssi',             icon: IcTarget,   label: t('nav.ssiTracker') },
     { to: '/profil-checker',  icon: IcLinkedIn, label: 'Profil-Checker' },
     { to: '/profiltexte',     icon: IcLinkedIn, label: t('nav.profiltexte') },
   ] },
-  { subSection: true, label: 'Akquise', icon: IcSearch, items: [
+  { subSection: true, label: 'Akquise', items: [
     { to: '/linkedin-suche',  icon: IcSearch,   label: 'Suche' },
     { to: '/linkedin-inbox',  icon: IcInbox,    label: 'LinkedIn Kontakte' },
     { to: '/linkedin-netzwerk', icon: IcUsers,  label: 'Netzwerk' },
@@ -252,16 +252,17 @@ function SubSection({ item, location }) {
         color: open ? T.primary : T.navText, fontSize:13, fontWeight: open ? 600 : 400,
         transition:'all 0.15s',
       }}>
+        {item.icon && (
         <span style={{ display:'flex', alignItems:'center', justifyContent:'center', width:28, height:28, borderRadius:8, background:'transparent', color: open ? T.primary : T.navText, flexShrink:0 }}>
           <item.icon />
-        </span>
+        </span>)}
         <span style={{ flex:1, textAlign:'left' }}>{item.label}</span>
         <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"
           style={{ transform: open ? 'rotate(0deg)' : 'rotate(-90deg)', transition:'transform 0.2s', flexShrink:0 }}>
           <polyline points="6 9 12 15 18 9"/>
         </svg>
       </button>
-      <div style={{ overflow:'hidden', maxHeight: open ? '200px' : '0px', transition:'max-height 0.3s ease', marginLeft: 13 }}>
+      <div style={{ overflow:'hidden', maxHeight: open ? (item.items.length * 46 + 20) + 'px' : '0px', transition:'max-height 0.3s ease', marginLeft: 13 }}>
         {item.items.map((sub, i) => <NavItem key={i} item={sub} indent />)}
       </div>
     </div>
@@ -332,7 +333,7 @@ function NavSection({ label, items, isAdmin, location, collapsed, isOpen, onOpen
       <div style={{
         overflow: 'hidden',
         marginLeft: 16,
-        maxHeight: open ? visibleItems.length * 60 + 200 + 'px' : '0px',
+        maxHeight: open ? (visibleItems.reduce((n, it) => n + (it.subSection ? 1 + (it.items?.length || 0) : 1), 0) * 52 + 260) + 'px' : '0px',
         transition: 'max-height 0.25s ease',
       }}>
         {visibleItems.map((item, i) => {
