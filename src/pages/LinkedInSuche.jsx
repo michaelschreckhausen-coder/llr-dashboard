@@ -22,6 +22,7 @@ import {
 } from 'lucide-react'
 import { supabase } from '../lib/supabase'
 import { useTeam } from '../context/TeamContext'
+import { mapEfError } from '../lib/efError'
 
 // Avatar mit Initialen-Fallback (Muster wie LinkedInInbox.jsx).
 const initials = n => (n || '?').trim().split(/\s+/).map(w => w[0]).join('').toUpperCase().substring(0, 2)
@@ -150,19 +151,10 @@ export default function LinkedInSuche() {
     setFlash(null)
     const { data, error } = await supabase.functions.invoke('unipile-search', { body: { search_id: search.id } })
     if (error) {
-      // functions.invoke legt den non-2xx-Body in error.context (Response) ab (Muster wie LinkedInInbox.jsx).
-      let body = null
-      try { body = await error.context?.json?.() } catch { /* Body evtl. schon konsumiert / kein JSON */ }
-      const status = error.context?.status
-      if (status === 403 || body?.error === 'no_addon') {
-        setFlash({ type:'error', text:'Das Automatisierung-Addon ist nicht aktiv.', action:{ label:'Addon aktivieren', to:'/marketplace' } })
-      } else if (status === 409) {
-        setFlash({ type:'error', text:'Kein aktiver LinkedIn-Account verbunden.', action:{ label:'LinkedIn verbinden', to:'/settings/linkedin' } })
-      } else if (status === 429 || body?.rate_limited) {
-        setFlash({ type:'error', text:'LinkedIn-Rate-Limit erreicht — bitte später erneut versuchen.' })
-      } else {
-        setFlash({ type:'error', text: body?.error || ('Suche fehlgeschlagen: ' + error.message) })
-      }
+      // P3 Schritt 4: zentraler EF-Status→Mensch-Mapper (403→Upgrade, 401→Sitzung, 409→keine
+      // Verbindung, 429→Rate-Limit, sonst lesbar) — eine Stelle statt pro-Seite-Blöcke.
+      const m = await mapEfError(error)
+      setFlash({ type:'error', text: m.text, action: m.action })
       setRunningId(null)
       return
     }

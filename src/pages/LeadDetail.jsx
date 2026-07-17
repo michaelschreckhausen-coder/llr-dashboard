@@ -38,6 +38,7 @@ import { useLeadActivities } from '../hooks/useLeadActivities';
 import { useTeam } from '../context/TeamContext';
 import { useResponsive } from '../hooks/useResponsive';
 import { supabase } from '../lib/supabase';
+import { mapEfError } from '../lib/efError';
 
 const TABS = [
   { id: 'activity', label: 'Aktivitäten & Nachrichten', countKey: 'activity_count' },
@@ -453,20 +454,13 @@ export default function LeadDetail({ lead: leadProp }) {
         body: { lead_id: lead.id },
       });
       if (invokeErr) {
-        // functions.invoke legt den non-2xx-Body in error.context ab (Muster wie LinkedInSuche.jsx).
-        let body = null;
-        try { body = await invokeErr.context?.json?.(); } catch { /* Body evtl. schon konsumiert */ }
-        const status = invokeErr.context?.status;
-        if (status === 403 || body?.error === 'no_addon') {
-          setEnrichMsg({ type:'error', text:'Das Automatisierung-Addon ist nicht aktiv.', action:{ label:'Addon aktivieren', to:'/marketplace' } });
-        } else if (status === 409) {
-          setEnrichMsg({ type:'error', text:'Kein aktiver LinkedIn-Account verbunden.', action:{ label:'LinkedIn verbinden', to:'/settings/linkedin' } });
-        } else if (status === 400) {
+        // P3 Schritt 4: zentraler EF-Status→Mensch-Mapper (403→Upgrade, 401→Sitzung, 409→keine
+        // Verbindung, 429→Rate-Limit). Nur der enrich-spezifische 400 bleibt lokal.
+        if (invokeErr.context?.status === 400) {
           setEnrichMsg({ type:'error', text:'Kein LinkedIn-Identifier aus der URL ableitbar.' });
-        } else if (status === 429 || body?.rate_limited) {
-          setEnrichMsg({ type:'error', text:'Rate-Limit erreicht — bitte später erneut versuchen.' });
         } else {
-          setEnrichMsg({ type:'error', text: body?.error || ('Anreicherung fehlgeschlagen: ' + invokeErr.message) });
+          const m = await mapEfError(invokeErr);
+          setEnrichMsg({ type:'error', text: m.text, action: m.action });
         }
         return;
       }

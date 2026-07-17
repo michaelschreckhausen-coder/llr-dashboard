@@ -4,6 +4,8 @@ import { useNavigate } from 'react-router-dom'
 import { Check, X, Loader2, UserPlus, Building2, Inbox as InboxIcon, Plus, ListChecks, Pencil, Trash2, AlertTriangle } from 'lucide-react'
 import { supabase } from '../lib/supabase'
 import { useTeam } from '../context/TeamContext'
+import { useEntitlements } from '../hooks/useEntitlements'
+import { mapEfError } from '../lib/efError'
 import { useInboxLists } from '../hooks/useInboxLists'
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -42,6 +44,8 @@ function Avatar({ name, avatar_url, size = 44 }) {
 
 export default function LinkedInInbox() {
   const { activeTeamId } = useTeam()
+  const { hasPermission, loading: entLoading } = useEntitlements()
+  const canSalesNav = entLoading || hasPermission('linkedin.sales_nav')   // P3: proaktives Disable (loading→nicht sperren)
   const navigate = useNavigate()
 
   const [rows, setRows]         = useState([])
@@ -118,6 +122,10 @@ export default function LinkedInInbox() {
         if (createdListId) { await supabase.from('inbox_lists').delete().eq('id', createdListId) } // leere Liste zurückrollen
         let body = data?.error ? data : null
         if (!body && error) { try { body = await error.context?.json?.() } catch { /* konsumiert / kein JSON */ } }
+        // P3: Permission-/Session-Gate über den zentralen Mapper (reaktives Netz zum proaktiven Disable).
+        if (error && (error.context?.status === 401 || error.context?.status === 403 || body?.error === 'need_permission')) {
+          const m = await mapEfError(error); setImportErr(m.text); setImporting(false); return
+        }
         setImportErr(friendlyImportError(body, error)); setImporting(false); return
       }
       const n = (data?.inserted || 0) + (data?.updated || 0)
@@ -395,9 +403,11 @@ export default function LinkedInInbox() {
         <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
           <h1 style={{ fontSize: 26, fontWeight: 700, margin: 0, letterSpacing: '-0.3px', lineHeight: 1.2, color: 'var(--text-primary, rgb(20,20,43))' }}>Deine LinkedIn Kontakte.</h1>
           {!loading && <span style={{ background: 'var(--primary)', color: '#fff', borderRadius: 99, padding: '2px 10px', fontSize: 13, fontWeight: 700 }}>{rows.length}</span>}
-          <button className="lk-btn lk-btn-cta" onClick={() => { setImportErr(null); setImportOpen(true) }}
-            style={{ marginLeft: 'auto', display: 'inline-flex', alignItems: 'center', gap: 6 }}>
-            <Plus size={15} /> Sales-Navigator-Suche importieren
+          <button className="lk-btn lk-btn-cta"
+            onClick={() => { if (!canSalesNav) { navigate('/settings/konto'); return } setImportErr(null); setImportOpen(true) }}
+            title={canSalesNav ? undefined : 'Sales-Navigator-Sync ist in Sales oder All-in enthalten — Upgrade nötig'}
+            style={{ marginLeft: 'auto', display: 'inline-flex', alignItems: 'center', gap: 6, opacity: canSalesNav ? 1 : 0.55 }}>
+            <Plus size={15} /> Sales-Navigator-Suche importieren{!canSalesNav && ' 🔒'}
           </button>
         </div>
         <p style={{ fontSize: 13, color: muted, margin: '8px 0 0', lineHeight: 1.6, maxWidth: 600 }}>

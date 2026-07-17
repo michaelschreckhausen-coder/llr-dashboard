@@ -15,6 +15,7 @@ import React, { useEffect, useState, useCallback } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
 import { authRedirect } from '../lib/authRedirect'
+import { mapEfError } from '../lib/efError'
 import SettingsTabs from '../components/SettingsTabs'
 
 const P = 'var(--wl-primary, #0A6FB0)'
@@ -126,7 +127,7 @@ export default function SettingsLinkedIn({ session }) {
         if (error) throw error
         if (data?.connected) { flash('LinkedIn-Automatisierung verbunden!'); load() }
         else flash('Verbindung noch nicht bestätigt — kurz warten und Seite neu laden.', 'error')
-      } catch (e) { flash('Verbindung konnte nicht bestätigt werden: ' + (e?.message || String(e)), 'error') }
+      } catch (e) { const m = await mapEfError(e); flash(m.text, 'error') }   // 401→Sitzung, 403→Upgrade, sonst lesbar
       setUniBusy(false)
     })()
   }, [load])
@@ -178,7 +179,7 @@ export default function SettingsLinkedIn({ session }) {
       if (error) throw error
       if (data?.url) window.location.href = data.url
       else throw new Error(data?.error || 'Keine Auth-URL erhalten')
-    } catch (e) { flash('Verbinden fehlgeschlagen: ' + (e?.message || String(e)), 'error'); setUniBusy(false) }
+    } catch (e) { const m = await mapEfError(e); flash(m.text, 'error'); setUniBusy(false) }   // Schenk-Fall: 401→"Sitzung abgelaufen"
   }
 
   const loginConnected = identities.length > 0
