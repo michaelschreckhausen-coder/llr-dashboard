@@ -942,7 +942,18 @@ export default function ContentStudio({ session }) {
       if (activeBrandVoice?.noBrand || !bvId || !activeTeamId) return
       const txt = String(userText || '').trim()
       if (txt.length < 8) return
-      const instr = `Du pflegst das Langzeit-Gedächtnis einer Marke für künftige Content-Erstellung. Extrahiere aus der folgenden Nutzer-Anweisung NUR dauerhafte, wiederverwendbare Erkenntnisse über die Marke, ihren Stil, ihre Sprache, ihre Zielgruppe, ihre Vorlieben oder feste Regeln. NICHT aufnehmen: einmalige Themen- oder Post-Wünsche, Tagesaufträge, konkrete Einzelinhalte, einmalige Bildänderungen, Höflichkeitsfloskeln. Wenn nichts dauerhaft Verwertbares enthalten ist, gib ein leeres Array zurück. Maximal 2 Einträge, je ein knapper, allgemein gültiger Satz auf Deutsch.
+      // Bekanntes Markenprofil als "nicht wiederholen"-Kontext → nur NET-NEUES lernen,
+      // keine Dopplung mit Profil/Wissensressourcen.
+      const _known = [
+        activeBrandVoice?.ai_summary, activeBrandVoice?.brand_voice_summary, activeBrandVoice?.summary,
+        activeBrandVoice?.tonality, activeBrandVoice?.personality, activeBrandVoice?.sentence_style,
+        activeBrandVoice?.voice_style, activeBrandVoice?.grammar_style, activeBrandVoice?.dos,
+        activeBrandVoice?.linkedin_style, activeBrandVoice?.example_texts,
+      ].filter(Boolean).map(x => (typeof x === 'string' ? x : JSON.stringify(x))).join(' | ').slice(0, 2500)
+      const instr = `Du pflegst ein ERGÄNZENDES Marken-Gedächtnis. Extrahiere aus der folgenden Nutzer-Anweisung NUR dauerhafte, wiederverwendbare Erkenntnisse über die Marke (Stil, Sprache, Zielgruppe, Vorlieben, feste Regeln), die NEU sind und NICHT bereits im bekannten Markenprofil unten stehen oder daraus ableitbar sind. NICHT aufnehmen: alles was im Profil schon bekannt ist, einmalige Themen-/Post-Wünsche, Tagesaufträge, konkrete Einzelinhalte, einmalige Bildänderungen, Höflichkeitsfloskeln. Wenn nichts NEUES dauerhaft Verwertbares enthalten ist, gib ein leeres Array zurück. Maximal 2 Einträge, je ein knapper, allgemein gültiger Satz auf Deutsch.
+
+BEREITS BEKANNT (Markenprofil — NICHT wiederholen):
+${_known || '(kein Profil geladen)'}
 
 Nutzer-Anweisung:
 "${txt.slice(0, 800)}"
