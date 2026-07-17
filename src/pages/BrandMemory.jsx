@@ -86,7 +86,7 @@ export default function BrandMemory({ session }) {
   const cardStyle = { background: 'var(--surface,#fff)', border: '1px solid var(--border,#E6E8EF)', borderRadius: 16, boxShadow: 'var(--shadow-card, 0 10px 30px rgba(14,22,51,.06))' }
 
   return (
-    <div style={{ padding: '28px 32px 80px' }}>
+    <div style={{ maxWidth: 1100, margin: '0 auto', padding: '24px 16px 40px' }}>
       {/* Header */}
       <div className="lk-eyebrow" style={{ marginBottom: 8 }}>Wissen</div>
       <h1 style={{ fontFamily: 'Inter, sans-serif', fontWeight: 800, fontSize: 'clamp(1.6rem,3vw,2rem)', color: 'var(--text-primary, #0E1633)', margin: '0 0 6px' }}>
