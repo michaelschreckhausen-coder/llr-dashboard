@@ -9,6 +9,7 @@ import { handlePreflight, jsonResponse } from "../_shared/cors.ts";
 import {
   getPost,
   getUnipileConnection,
+  resolveUnipileConn,
   listPostComments,
   serviceClient,
   UnipileError,
@@ -29,7 +30,7 @@ Deno.serve(async (req) => {
     const cutoff = new Date(Date.now() - MIN_RESYNC_HOURS * 3600_000).toISOString();
     const { data: posts, error } = await sb
       .from("content_posts")
-      .select("id, user_id, linkedin_social_id, published_at, last_metrics_sync_at")
+      .select("id, user_id, brand_voice_id, linkedin_social_id, published_at, last_metrics_sync_at")
       .not("linkedin_social_id", "is", null)
       .or(`last_metrics_sync_at.is.null,last_metrics_sync_at.lte.${cutoff}`)
       .order("published_at", { ascending: false })
@@ -40,7 +41,7 @@ Deno.serve(async (req) => {
     let metricsWritten = 0, engagersWritten = 0, leadsCreated = 0;
 
     for (const post of posts) {
-      const conn = await getUnipileConnection(sb, post.user_id);
+      const conn = await resolveUnipileConn(sb, { brandVoiceId: post.brand_voice_id, userId: post.user_id });
       if (!conn) continue;
       const socialId = post.linkedin_social_id as string;
 

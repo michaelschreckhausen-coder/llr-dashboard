@@ -127,6 +127,47 @@ export async function getUnipileConnection(
   };
 }
 
+export async function getUnipileConnectionForBrand(
+  sb: SupabaseClient,
+  brandVoiceId: string,
+): Promise<UnipileConn | null> {
+  const { data, error } = await sb
+    .from("unipile_accounts")
+    .select("id, unipile_account_id, team_id, user_id, status")
+    .eq("brand_voice_id", brandVoiceId)
+    .eq("status", "OK")
+    .not("unipile_account_id", "is", null)
+    .order("last_status_update", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+  if (error) {
+    console.warn(`[unipile] getUnipileConnectionForBrand: ${error.message}`);
+    return null;
+  }
+  if (!data?.unipile_account_id) return null;
+  return {
+    accountId: data.unipile_account_id as string,
+    dsn: null,
+    connectionId: data.id as string,
+    teamId: data.team_id as string,
+    userId: data.user_id as string,
+  };
+}
+
+// Übergangs-Resolver: bevorzugt Brand-Scoping, fällt auf user_id zurück,
+// solange Backfill/UI-Zuordnung noch nicht vollständig sind (non-breaking).
+export async function resolveUnipileConn(
+  sb: SupabaseClient,
+  opts: { brandVoiceId?: string | null; userId?: string | null },
+): Promise<UnipileConn | null> {
+  if (opts.brandVoiceId) {
+    const c = await getUnipileConnectionForBrand(sb, opts.brandVoiceId);
+    if (c) return c;
+  }
+  if (opts.userId) return await getUnipileConnection(sb, opts.userId);
+  return null;
+}
+
 // ---------------------------------------------------------------------
 // Low-level Request-Helfer
 // ---------------------------------------------------------------------

@@ -32,50 +32,57 @@ Deno.serve(async (req) => {
   let evt: any;
   try { evt = await req.json(); } catch { return new Response("ok", { status: 200 }); }
 
-  // First-Connect (Hosted-Auth notify_url): name = unsere user_id → Zeile anlegen.
+  // First-Connect (Hosted-Auth notify_url): name = brand_voice_id (neu) ODER user_id (legacy).
   if (evt?.name && evt?.account_id) {
-    const { data: tm } = await db.from("team_members").select("team_id").eq("user_id", evt.name).limit(1).maybeSingle();
-    if (tm?.team_id) {
+    // Auflösung: zuerst als Brand versuchen, sonst als (legacy) User-Onboarding.
+    let teamId: string | null = null;
+    let ownerUserId: string | null = null;
+    let brandVoiceId: string | null = null;
+    const { data: bv } = await db.from("brand_voices").select("id, team_id, user_id").eq("id", evt.name).maybeSingle();
+    if (bv?.team_id) {
+      brandVoiceId = bv.id; teamId = bv.team_id; ownerUserId = bv.user_id;
+    } else {
+      const { data: tm } = await db.from("team_members").select("team_id").eq("user_id", evt.name).limit(1).maybeSingle();
+      if (tm?.team_id) { teamId = tm.team_id; ownerUserId = evt.name; }
+    }
+    if (teamId) {
       // HÄRTUNG: evt.account_id gegen Unipile validieren — Phantom/404/nicht-LINKEDIN/nicht-OK NICHT persistieren.
       const v = await validateAccount(evt.account_id);
       if (!v) {
-        console.warn(`[unipile-webhook] account_id ${evt.account_id} nicht validierbar (Phantom/404/nicht LINKEDIN/nicht OK) — NICHT persistiert`);
+        console.warn(`[unipile-webhook] account_id ${evt.account_id} nicht validierbar — NICHT persistiert`);
       } else {
         await db.from("unipile_accounts").upsert({
-          team_id: tm.team_id, user_id: evt.name, unipile_account_id: evt.account_id,
+          team_id: teamId, user_id: ownerUserId, brand_voice_id: brandVoiceId, unipile_account_id: evt.account_id,
           provider_public_id: v.slug, status: "OK", last_status_update: new Date().toISOString(),
         }, { onConflict: "unipile_account_id" });
-        // DURABLE ACCOUNT-HYGIENE: Reconnect legt eine neue unipile_account_id an, die alte OK-Zeile bleibt
-        // sonst stale-OK → getUnipileConnection greift eine tote id (404/409) → alle Unipile-Worker liegen lahm.
-        // Fix: ältere OK-Sessions DERSELBEN Identität (slug, andere id) → DISCONNECTED (superseded).
-        // Scope user_id+provider_public_id (nicht nur user_id) → ein legitimer 2. LinkedIn-Account bleibt OK.
-        // Ergebnis: nach jedem Reconnect genau 1 OK-Zeile je Identität, deterministisch, ohne manuellen Sync.
-        if (v.slug) {
+        // IDENTITY-COLLAPSE: genau 1 OK-Zeile je Brand (falls brand-scoped) bzw. je User+Identität (legacy).
+        if (brandVoiceId) {
           await db.from("unipile_accounts")
             .update({ status: "DISCONNECTED", last_status_update: new Date().toISOString() })
-            .eq("user_id", evt.name).eq("provider_public_id", v.slug)
+            .eq("brand_voice_id", brandVoiceId)
+            .neq("unipile_account_id", evt.account_id).eq("status", "OK");
+        } else if (v.slug) {
+          await db.from("unipile_accounts")
+            .update({ status: "DISCONNECTED", last_status_update: new Date().toISOString() })
+            .eq("user_id", ownerUserId).eq("provider_public_id", v.slug)
             .neq("unipile_account_id", evt.account_id).eq("status", "OK");
         }
-        // Connect-Zeit-Sync in la_accounts (V2-Onboarding: Hosted-Auth → Builder sieht Account).
-        // IDENTITY-COLLAPSE: der eben verbundene Account ist die NEUESTE Session dieser LinkedIn-Identität.
-        // Andere connected-Rows derselben Identität (gleicher public_identifier, andere id) → disconnected,
-        // sonst legt "Neu verbinden" (neue Unipile-id für dieselbe Person) eine zweite connected-Row an
-        // → Dublette im Builder-Dropdown. Ziel: genau EINE connected-Row je Identität.
+        // la_accounts-Projektion (inkl. brand_voice_id), Identity-Collapse je Team+Identität.
         if (v.slug) {
           await db.from("la_accounts")
             .update({ status: "disconnected", updated_at: new Date().toISOString() })
-            .eq("team_id", tm.team_id).eq("public_identifier", v.slug)
+            .eq("team_id", teamId).eq("public_identifier", v.slug)
             .neq("unipile_account_id", evt.account_id).eq("status", "connected");
         }
-        const { data: ex } = await db.from("la_accounts").select("id").eq("team_id", tm.team_id).eq("unipile_account_id", evt.account_id).maybeSingle();
+        const { data: ex } = await db.from("la_accounts").select("id").eq("team_id", teamId).eq("unipile_account_id", evt.account_id).maybeSingle();
         if (ex) {
-          await db.from("la_accounts").update({ provider_id: v.providerId, public_identifier: v.slug, status: "connected", updated_at: new Date().toISOString() }).eq("id", ex.id);
+          await db.from("la_accounts").update({ provider_id: v.providerId, public_identifier: v.slug, brand_voice_id: brandVoiceId, status: "connected", updated_at: new Date().toISOString() }).eq("id", ex.id);
         } else {
-          await db.from("la_accounts").insert({ team_id: tm.team_id, unipile_account_id: evt.account_id, provider_id: v.providerId, public_identifier: v.slug, status: "connected", features: {} });
+          await db.from("la_accounts").insert({ team_id: teamId, unipile_account_id: evt.account_id, provider_id: v.providerId, public_identifier: v.slug, brand_voice_id: brandVoiceId, status: "connected", features: {} });
         }
       }
     }
-  } else if (evt?.account_id && evt?.status) {
+    } else if (evt?.account_id && evt?.status) {
     // Status-Update (OK/CREDENTIALS/ERROR) für bestehende Zeile.
     await db.from("unipile_accounts")
       .update({ status: evt.status, last_status_update: new Date().toISOString() })

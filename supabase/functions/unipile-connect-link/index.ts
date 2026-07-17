@@ -33,6 +33,11 @@ Deno.serve(async (req) => {
   const body = await req.json().catch(() => ({} as any));
   const db = createClient(SB_URL, SB_SERVICE, { auth: { persistSession: false } });
 
+  // Brand-Scoping: Connect erfolgt AUS einer Brand heraus. brand_voice_id ist Pflicht
+  // für den neuen Flow; Zugriff wird über die RLS des userClient geprüft (sieht der User
+  // die Brand nicht, existiert sie für ihn nicht -> 403). name im Hosted-Auth = brand_voice_id.
+  const brandVoiceId: string | null = (typeof body?.brand_voice_id === "string" && body.brand_voice_id) || null;
+
   // ── Reconcile-Fallback (Webhook ist der Canonical-Pfad; das hier fängt Verzögerung/Verpasst) ──
   if (body?.reconcile) {
     // schon gemappt?
@@ -63,6 +68,12 @@ Deno.serve(async (req) => {
     return json({ connected: true, unipile_account_id: acct.id, public: pub, status }, 200);
   }
 
+  // ── Brand-Pflicht + Zugriffsprüfung (RLS): ohne Brand kein brand-scoped Connect ──
+  if (!brandVoiceId) return json({ error: "brand_required", message: "brand_voice_id fehlt" }, 400);
+  const { data: bvRow, error: bvErr } = await userClient
+    .from("brand_voices").select("id, team_id").eq("id", brandVoiceId).maybeSingle();
+  if (bvErr || !bvRow) return json({ error: "brand_forbidden", message: "Kein Zugriff auf diese Brand" }, 403);
+
   // ── Onboarding-Gate: LinkedIn verbinden nur mit aktivem 'automation'-Addon ──
   const { data: hasAddon } = await userClient.rpc("i_have_addon", { p_slug: "automation" });
   if (!hasAddon) return json({ error: "no_addon", message: "Automatisierung-Addon nicht aktiv" }, 403);
@@ -78,7 +89,7 @@ Deno.serve(async (req) => {
       providers: ["LINKEDIN"],
       api_url: `https://${UNIPILE_DSN}`,
       expiresOn: new Date(Date.now() + 3600_000).toISOString(),
-      name: userId,                 // kommt via notify_url zurück → Mapping
+      name: brandVoiceId,           // kommt via notify_url zurück → Brand-Mapping
       notify_url: notifyUrl,        // Canonical: Unipile ruft das bei CREATION_SUCCESS
       success_redirect_url: `${appBase}/settings/linkedin?unipile=connected`,
     }),

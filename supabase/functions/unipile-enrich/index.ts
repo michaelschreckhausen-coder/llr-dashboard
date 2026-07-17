@@ -11,6 +11,7 @@ import {
   getCompany,
   getProfile,
   getUnipileConnection,
+  resolveUnipileConn,
   hasAddon,
   identifierFromUrl,
   serviceClient,
@@ -36,10 +37,9 @@ Deno.serve(async (req) => {
     }
 
     const sb = serviceClient();
-    const conn = await getUnipileConnection(sb, auth.userId);
-    if (!conn) return jsonResponse({ error: "Kein aktiver Unipile-LinkedIn-Account." }, 409);
-
     const input = await req.json().catch(() => ({}));
+    const conn = await resolveUnipileConn(sb, { brandVoiceId: input.brand_voice_id ?? null, userId: auth.userId });
+    if (!conn) return jsonResponse({ error: "Kein aktiver Unipile-LinkedIn-Account." }, 409);
 
     // --- Nur-Firma-Anreicherung ---
     if (input.company_identifier && !input.lead_id) {

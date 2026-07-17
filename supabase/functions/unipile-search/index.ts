@@ -13,6 +13,7 @@ import { handlePreflight, jsonResponse } from "../_shared/cors.ts";
 import {
   getAuthenticatedUser,
   getUnipileConnection,
+  resolveUnipileConn,
   hasAddon,
   identifierFromUrl,
   linkedinSearch,
@@ -41,12 +42,12 @@ Deno.serve(async (req) => {
     }
 
     const sb = serviceClient();
-    const conn = await getUnipileConnection(sb, auth.userId);
+    const input = await req.json().catch(() => ({}));
+    // "Agiert als": Outreach läuft aus dem gewählten Brand-Profil (Fallback: User).
+    const conn = await resolveUnipileConn(sb, { brandVoiceId: input.brand_voice_id ?? null, userId: auth.userId });
     if (!conn) {
       return jsonResponse({ error: "Kein aktiver Unipile-LinkedIn-Account verbunden." }, 409);
     }
-
-    const input = await req.json().catch(() => ({}));
     let search: any = null;
 
     if (input.search_id) {
