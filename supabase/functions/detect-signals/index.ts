@@ -76,16 +76,23 @@ serve(async (req) => {
     });
     const { data: sponsor, error: readErr } = await userClient
       .schema("sponsoring").from("sponsor_profiles")
-      .select("id, team_id, name, organization_id").eq("id", sponsor_profile_id).maybeSingle();
+      .select("id, team_id, organization_id").eq("id", sponsor_profile_id).maybeSingle();
     if (readErr) return json({ error: readErr.message }, 400);
     if (!sponsor) return json({ error: "not found or not authorized" }, 403);
+
+    // Name kommt aus der verknuepften Organisation (sponsor_profiles hat keine name-Spalte).
+    let sponsorName = "das Unternehmen";
+    if (sponsor.organization_id) {
+      const { data: org } = await userClient.from("organizations").select("name").eq("id", sponsor.organization_id).maybeSingle();
+      if (org?.name) sponsorName = org.name;
+    }
 
     const { data: { user: _actUser } } = await userClient.auth.getUser();
     const useModel = (typeof model === "string" && model) ? model : await resolveModel(supabaseAdmin, [_actUser?.id], DEFAULT_MODEL);
     const raw = await callAnthropic(
       useModel,
       SYSTEM,
-      `Unternehmen: ${sponsor.name}\n\nText:\n${String(text).slice(0, 6000)}`,
+      `Unternehmen: ${sponsorName}\n\nText:\n${String(text).slice(0, 6000)}`,
     );
     const signals = extractSignals(raw);
     if (signals.length === 0) return json({ ok: true, inserted: 0, signals: [] });

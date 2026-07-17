@@ -117,13 +117,26 @@ function parseIdeas(raw: string, phaseTag: string): any[] {
   let s = raw.trim();
   // Code-Fences strippen
   s = s.replace(/^```(?:json)?\s*/i, "").replace(/\s*```$/i, "").trim();
-  // erstes [ ... ] greifen falls Wrapper-Text
-  const a = s.indexOf("["); const b = s.lastIndexOf("]");
-  if (a >= 0 && b > a) s = s.slice(a, b + 1);
-  // Trailing-Commas vor ] oder } entfernen (häufigster LLM-JSON-Fail)
-  s = s.replace(/,(\s*[}\]])/g, "$1");
-  let arr: any;
-  try { arr = JSON.parse(s); } catch (_) { throw new Error("idea JSON parse failed"); }
+  let arr: any = null;
+  // 1) Ganzes JSON parsen. jsonMode liefert bei OpenAI/Mistral ein OBJEKT
+  //    (z.B. {"ideas":[...]}), bei Anthropic ein bares Array — beides abfangen.
+  try {
+    const parsed = JSON.parse(s);
+    if (Array.isArray(parsed)) arr = parsed;
+    else if (parsed && typeof parsed === "object") {
+      const k = Object.keys(parsed).find((key) => Array.isArray(parsed[key]));
+      if (k) arr = parsed[k];
+      else if (parsed.title || parsed.hook) arr = [parsed]; // einzelnes Idee-Objekt
+    }
+  } catch (_) { /* Fallback unten */ }
+  // 2) Fallback: erstes [ ... ] aus evtl. Wrapper-Text greifen
+  if (!Array.isArray(arr)) {
+    const a = s.indexOf("["); const b = s.lastIndexOf("]");
+    if (a >= 0 && b > a) {
+      const t = s.slice(a, b + 1).replace(/,(\s*[}\]])/g, "$1");
+      try { const p = JSON.parse(t); if (Array.isArray(p)) arr = p; } catch (_) { /* unten werfen */ }
+    }
+  }
   if (!Array.isArray(arr)) throw new Error("idea output not an array");
   return arr.slice(0, IDEAS_PER_PHASE).map((i: any) => ({
     phase_tag: phaseTag,
