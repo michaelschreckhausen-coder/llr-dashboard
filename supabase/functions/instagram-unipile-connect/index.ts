@@ -141,22 +141,47 @@ Deno.serve(async (req) => {
 
     // NUR Instagram-Accounts — ein LinkedIn-Account darf hier niemals landen.
     const igAccounts = accounts.filter((a) => a?.type === "INSTAGRAM");
-    if (!igAccounts.length) return json({ connected: false, reason: "kein Instagram-Account bei Unipile" });
+    // message mitgeben: das Frontend liest r.message (nicht r.reason) — ohne message
+    // faellt dieser Pfad sonst in den generischen Fallback-Text.
+    if (!igAccounts.length) {
+      return json({
+        connected: false,
+        reason: "kein Instagram-Account bei Unipile",
+        message: "Bei Unipile ist kein Instagram-Konto hinterlegt.",
+      });
+    }
 
     const { data: mapped, error: mErr } = await db.from("instagram_unipile_accounts").select("unipile_account_id");
     if (mErr) return json({ error: mErr.message }, 500);
     const mappedIds = new Set((mapped ?? []).map((m: any) => m.unipile_account_id));
 
-    const unmapped = igAccounts
-      .filter((a) => !mappedIds.has(a.id))
-      .sort((a, b) => String(b.created_at).localeCompare(String(a.created_at)));
-    if (!unmapped.length) return json({ connected: false, reason: "kein neuer Account" });
-
-    const acct = unmapped[0];
-    const srcStatus = acct?.sources?.[0]?.status ?? "OK";
-    if (srcStatus !== "OK") {
-      return json({ connected: false, reason: `Unipile-Status ${srcStatus}` });
+    // SECURITY (Cross-Customer-Mapping) — fail-closed. Spiegelt 5462a129, wo derselbe
+    // Fehler im LinkedIn-Pfad (unipile-connect-link) gefunden wurde: der Pfad "nimm den
+    // neuesten global-ungemappten Account" kann einen FREMDEN Orphan (anderer Kunde) an
+    // den Aufrufer mappen — Isolationsloch. Der type==='INSTAGRAM'-Filter oben verkleinert
+    // nur den Blast-Radius, er schließt die Lücke NICHT.
+    // Übernommen wird deshalb nur EIN Account, der eindeutig in DIESER Session frisch
+    // verbunden wurde. created_at-Frische ist ein Proxy, kein Beweis → bei 0 ODER >1
+    // Kandidaten NICHT mappen (im Zweifel: erneut verbinden). Das Fenster darf eng sein,
+    // weil der Webhook-Retry (ebenfalls 5462a129) den Persist ohnehin fast immer canonical
+    // erledigt und dieser Pfad nur der Fallback ist.
+    const FRESH_MS = 2 * 60 * 1000; // 2 Minuten
+    const nowMs = Date.now();
+    const freshUnmapped = igAccounts.filter((a) => {
+      if (mappedIds.has(a.id)) return false;
+      const t = Date.parse(a?.created_at);
+      if (!Number.isFinite(t) || nowMs - t < 0 || nowMs - t > FRESH_MS) return false; // frisch, keine Zukunft
+      return (a?.sources?.[0]?.status ?? "OK") === "OK";
+    });
+    if (freshUnmapped.length !== 1) {
+      return json({
+        connected: false,
+        reason: "reconnect_needed",
+        message: "Verbindung konnte nicht eindeutig zugeordnet werden — bitte erneut verbinden.",
+      });
     }
+
+    const acct = freshUnmapped[0];
 
     // Profil best-effort nachziehen (username/provider_id für Outreach + Inbox).
     let profile: any = null;

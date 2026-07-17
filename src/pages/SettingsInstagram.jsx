@@ -96,7 +96,9 @@ export default function SettingsInstagram() {
     try {
       const r = await reconcileUnipileConnection()
       if (r?.connection) setUconn(r.connection)
-      else setUerr(r?.reason ? `Noch nicht verbunden (${r.reason}).` : 'Noch kein verbundenes Konto gefunden. Schließe das Verbinden im geöffneten Tab ab und prüfe erneut.')
+      // message hat Vorrang: der fail-closed-Pfad (reconnect_needed) liefert einen
+      // fertigen Klartext-Hinweis, reason ist nur ein Code.
+      else setUerr(r?.message || 'Noch kein verbundenes Konto gefunden. Schließe das Verbinden im geöffneten Tab ab und prüfe erneut.')
     } catch (e) { setUerr(e.message || 'Prüfen fehlgeschlagen') }
     finally { setUbusy(false) }
   }
