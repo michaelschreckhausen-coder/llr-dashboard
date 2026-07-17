@@ -1334,7 +1334,11 @@ export default function Layout({ session, role, onLogout, children }) {
 function isBrandVoiceContext(pathname) {
   // BV-Switcher sichtbar in LinkedIn-Bereich + Content-Bereich
   const bvRoutes = [
-    '/profiltexte', '/vernetzungen', '/messages', '/automatisierung',
+    // Meine Präsenz (brand-scoped)
+    '/profiltexte', '/linkedin-analytics', '/ssi', '/profil-checker',
+    // Akquise (nutzt Brand-Kontext für KI/Absender)
+    '/vernetzungen', '/messages', '/automatisierung',
+    // Content (brand-scoped)
     '/redaktionsplan', '/content-studio', '/bibliothek', '/visuals', '/dokumente', '/media', '/content-reporting',
     '/brand-memory',
   ]
