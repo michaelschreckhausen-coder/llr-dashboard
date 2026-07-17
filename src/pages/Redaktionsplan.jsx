@@ -785,6 +785,11 @@ function PostModal({ post, onClose, onSave, onDelete, session, activeTeamId, mem
   const [previewBV, setPreviewBV] = useState(null)
   // Scheduling/Publishing + Company-Auswahl nur bei Personal Brands (Company-Posting technisch noch nicht)
   const isPersonalPost = (previewBV ? previewBV.account_type !== 'company_page' : activeBrandVoice?.account_type !== 'company_page')
+  // P3 Schritt 4: Publish-Affordance NUR für Eigen-Team-Posts. Fremdposts (geteilte Brand
+  // Voice, post.team_id !== activeTeamId) sind auf dem Board sichtbar, aber NICHT publishbar —
+  // deckt sich mit dem EF-Gate auf post.team_id (schließt die "FE zeigt, EF verweigert"-Kante).
+  // Neuer Post (noch kein team_id) → wird beim Save Eigen-Team, daher publishbar.
+  const isOwnTeamPost = !form.team_id || form.team_id === activeTeamId
   // BV-Profil laden basierend auf form.brand_voice_id (für LinkedIn-Vorschau)
   useEffect(() => {
     if (!form.brand_voice_id) { setPreviewBV(null); return }
@@ -1845,8 +1850,14 @@ function PostModal({ post, onClose, onSave, onDelete, session, activeTeamId, mem
             style={{ opacity: saving ? 0.7 : 1, display:'inline-flex', alignItems:'center', gap:5 }}>
             {saving ? <span style={{display:'inline-flex',alignItems:'center',gap:6}}><Loader2 size={12} className='lk-spin'/>Speichere…</span> : isNew ? <span style={{display:'inline-flex',alignItems:'center',gap:6}}><Plus size={12}/>Erstellen</span> : <span style={{display:'inline-flex',alignItems:'center',gap:6}}><Save size={12}/>Speichern</span>}
           </button>
+          {/* P3 Schritt 4: Fremdteam-Post (geteilte Brand Voice) — Publish nur im Eigen-Team */}
+          {isPersonalPost && !isOwnTeamPost && form.platform !== 'instagram' && form.content && form.status !== 'published' && (
+            <div style={{ fontSize:12, color:'var(--text-muted, #6B7280)', display:'inline-flex', alignItems:'center', gap:6 }}>
+              ℹ️ Dieser Beitrag gehört einem anderen Team (geteilte Brand Voice) — Veröffentlichen nur im Eigen-Team.
+            </div>
+          )}
           {/* Phase 2a: Unipile-Route-Schalter (nur Person-Posts) — schaltet Monitoring frei */}
-          {isPersonalPost && form.platform !== 'instagram' && form.content && form.status !== 'published' && (
+          {isPersonalPost && isOwnTeamPost && form.platform !== 'instagram' && form.content && form.status !== 'published' && (
             <label
               title="Veröffentlicht über die Unipile-Server-Automation statt der nativen LinkedIn-API — ermöglicht Reichweiten-Monitoring (Impressions, Reaktionen, Kommentare). Erfordert einen verbundenen Unipile-LinkedIn-Account."
               style={{ display:'inline-flex', alignItems:'center', gap:6, fontSize:12, fontWeight:600, color:'var(--text-muted, #6B7280)', cursor:'pointer', userSelect:'none' }}>
@@ -1855,7 +1866,7 @@ function PostModal({ post, onClose, onSave, onDelete, session, activeTeamId, mem
               Über Unipile posten (Monitoring)
             </label>
           )}
-          {isPersonalPost && form.platform !== 'instagram' && form.content && form.status !== 'published' && (() => {
+          {isPersonalPost && isOwnTeamPost && form.platform !== 'instagram' && form.content && form.status !== 'published' && (() => {
             const hasSchedule = !!form.scheduled_at
             const future = hasSchedule && new Date(form.scheduled_at) > new Date()
             return (
