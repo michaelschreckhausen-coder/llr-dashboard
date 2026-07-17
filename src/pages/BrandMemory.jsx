@@ -50,7 +50,7 @@ export default function BrandMemory({ session }) {
   async function runLearn() {
     if (!bv?.id || isNoBrand) return
     setLearning(true)
-    try { await supabase.functions.invoke('brand-memory-learn', { body: { brand_voice_id: bv.id } }) } catch (_e) {}
+    try { await supabase.functions.invoke('brand-memory-learn', { body: { brand_voice_id: bv.id, team_id: activeTeamId } }) } catch (_e) {}
     setItems(await fetchItems())
     setLearning(false)
   }
@@ -63,7 +63,7 @@ export default function BrandMemory({ session }) {
     if (data.length === 0 && !isNoBrand && bv?.id && !learnedRef.current.has(bv.id)) {
       learnedRef.current.add(bv.id)
       setLoading(false); setLearning(true)
-      try { await supabase.functions.invoke('brand-memory-learn', { body: { brand_voice_id: bv.id } }) } catch (_e) {}
+      try { await supabase.functions.invoke('brand-memory-learn', { body: { brand_voice_id: bv.id, team_id: activeTeamId } }) } catch (_e) {}
       data = await fetchItems()
       setLearning(false)
     }

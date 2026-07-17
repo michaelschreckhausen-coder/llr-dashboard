@@ -44,7 +44,7 @@ serve(async (req: Request) => {
   try {
     const authHeader = req.headers.get("Authorization") || "";
     if (!authHeader) return json({ error: "unauthorized" }, 401);
-    const { brand_voice_id, model, limit } = await req.json().catch(() => ({}));
+    const { brand_voice_id, model, team_id: bodyTeam } = await req.json().catch(() => ({}));
     if (!brand_voice_id) return json({ error: "brand_voice_id required" }, 400);
 
     // RLS-scoped Read: nur wenn der Aufrufer Zugriff auf die Marke hat, kommt die Row.
@@ -56,6 +56,7 @@ serve(async (req: Request) => {
     if (bvErr) return json({ error: bvErr.message }, 400);
     if (!bv) return json({ error: "not found or not authorized" }, 403);
 
+    const teamId = bodyTeam || bv.team_id;
     const { data: { user: actUser } } = await userClient.auth.getUser();
     const useModel = (typeof model === "string" && model) ? model : await resolveModel(admin, [actUser?.id], DEFAULT_MODEL);
 
@@ -96,12 +97,12 @@ serve(async (req: Request) => {
     if (!facts.length) return json({ ok: true, inserted: 0, facts: [] });
 
     // Dedupe gegen Bestand
-    const { data: existing } = await userClient.from("brand_memory").select("content").eq("brand_voice_id", brand_voice_id).eq("team_id", bv.team_id).limit(500);
+    const { data: existing } = await userClient.from("brand_memory").select("content").eq("brand_voice_id", brand_voice_id).eq("team_id", teamId).limit(500);
     const have = (existing || []).map((e: Record<string, unknown>) => String(e.content || "").toLowerCase());
     const fresh = facts.filter((f) => { const l = f.toLowerCase(); return !have.some((h) => h.includes(l) || l.includes(h)); });
     if (!fresh.length) return json({ ok: true, inserted: 0, facts: [] });
 
-    const rows = fresh.map((content) => ({ brand_voice_id, team_id: bv.team_id, user_id: actUser?.id || null, content, source: "auto", no_brand: false }));
+    const rows = fresh.map((content) => ({ brand_voice_id, team_id: teamId, user_id: actUser?.id || null, content, source: "auto", no_brand: false }));
     const { error: insErr } = await userClient.from("brand_memory").insert(rows);
     if (insErr) return json({ error: insErr.message }, 400);
     return json({ ok: true, inserted: rows.length, facts: fresh });
