@@ -29,9 +29,10 @@
 //   - Bekannte Routes ohne Permission → Navigate to /billing replace
 //     (fail-closed mit Upgrade-CTA-Target).
 
-import { Navigate, useLocation } from 'react-router-dom'
+import { useLocation } from 'react-router-dom'
 import { useEntitlements } from '../hooks/useEntitlements'
 import { getRequiredPermission } from '../lib/routePermissions'
+import UpgradeRequired from './UpgradeRequired'
 
 export default function PermissionGuard({ children }) {
   const location = useLocation()
@@ -48,7 +49,7 @@ export default function PermissionGuard({ children }) {
   // hasPermission greift jetzt definitiv (loading=false).
   if (hasPermission(required)) return children
 
-  // Denied: Navigate-Redirect zu /billing als Upgrade-Target (D-C=η).
-  // replace=true verhindert History-Spam beim wiederholten Direct-Access.
-  return <Navigate to="/settings/konto" replace />
+  // Denied: Schritt 4 — Upgrade-nötig-Zustand statt bare Redirect (Upsell-Hebel,
+  // kein "wo ist das hin?"-Support). Ein Baustein, überall wiederverwendet.
+  return <UpgradeRequired permissionKey={required} />
 }
