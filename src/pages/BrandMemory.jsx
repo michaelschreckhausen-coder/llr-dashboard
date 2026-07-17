@@ -1,5 +1,5 @@
 import React, { useEffect, useState, useRef } from 'react'
-import { Brain, Plus, Trash2, Pencil, Check, X, Sparkles, MessageSquare, User as UserIcon, Bot } from 'lucide-react'
+import { Brain, Plus, Trash2, Pencil, Check, X, Sparkles, MessageSquare, User as UserIcon, Bot, TrendingUp } from 'lucide-react'
 import { supabase } from '../lib/supabase'
 import { useTeam } from '../context/TeamContext'
 import { useBrandVoice } from '../context/BrandVoiceContext'
@@ -14,6 +14,7 @@ const SOURCE_META = {
   auto:   { label: 'Automatisch gelernt',icon: Sparkles,       color: '#7A5AF8', bg: '#F2F1FE' },
   leadly: { label: 'Von Leadly',         icon: Bot,            color: '#E07B39', bg: '#FFF7F2' },
   assistant: { label: 'Von Leadly',      icon: Bot,            color: '#E07B39', bg: '#FFF7F2' },
+  analytics: { label: 'Aus Analytics',    icon: TrendingUp,     color: '#0A6FB0', bg: '#EAF3FB' },
 }
 const sourceMeta = (s) => SOURCE_META[s] || SOURCE_META.manual
 
@@ -37,6 +38,7 @@ export default function BrandMemory({ session }) {
   const [editText, setEditText] = useState('')
   const [learning, setLearning] = useState(false)
   const learnedRef = useRef(new Set())
+  const analyzedRef = useRef(new Set())
   async function fetchItems() {
     let q = supabase.from('brand_memory')
       .select('id, content, source, created_at, user_id')
@@ -58,6 +60,15 @@ export default function BrandMemory({ session }) {
       learnedRef.current.add(bv.id)
       setLoading(false); setLearning(true)
       try { await supabase.functions.invoke('brand-memory-learn', { body: { brand_voice_id: bv.id, team_id: activeTeamId } }) } catch (_e) {}
+      data = await fetchItems()
+      setLearning(false)
+    }
+    // Zusätzlich: aus der Posting-Performance dazulernen (source='analytics'), 1× pro Marke/Session.
+    // Läuft auch bei nicht-leerer Memory; die EF überspringt bei zu wenig Metrik-Daten.
+    if (!isNoBrand && bv?.id && !analyzedRef.current.has(bv.id)) {
+      analyzedRef.current.add(bv.id)
+      setLearning(true)
+      try { await supabase.functions.invoke('brand-analytics-learn', { body: { brand_voice_id: bv.id, team_id: activeTeamId } }) } catch (_e) {}
       data = await fetchItems()
       setLearning(false)
     }
