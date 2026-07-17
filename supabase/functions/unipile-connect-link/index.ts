@@ -68,11 +68,14 @@ Deno.serve(async (req) => {
     return json({ connected: true, unipile_account_id: acct.id, public: pub, status }, 200);
   }
 
-  // ── Brand-Pflicht + Zugriffsprüfung (RLS): ohne Brand kein brand-scoped Connect ──
-  if (!brandVoiceId) return json({ error: "brand_required", message: "brand_voice_id fehlt" }, 400);
-  const { data: bvRow, error: bvErr } = await userClient
-    .from("brand_voices").select("id, team_id").eq("id", brandVoiceId).maybeSingle();
-  if (bvErr || !bvRow) return json({ error: "brand_forbidden", message: "Kein Zugriff auf diese Brand" }, 403);
+  // ── Brand-Scoping (bevorzugt): falls brand_voice_id gesetzt, Zugriff via RLS prüfen.
+  //    Ohne brand_voice_id: Legacy-Pfad (name=user_id) — hält staging.leadesk.de am Leben,
+  //    bis das Frontend die Brand mitschickt. Webhook versteht beide.
+  if (brandVoiceId) {
+    const { data: bvRow, error: bvErr } = await userClient
+      .from("brand_voices").select("id, team_id").eq("id", brandVoiceId).maybeSingle();
+    if (bvErr || !bvRow) return json({ error: "brand_forbidden", message: "Kein Zugriff auf diese Brand" }, 403);
+  }
 
   // ── Mengen-Gate: 1 Profil je Lizenz inklusive; jedes weitere nur mit aktivem automation-Addon ──
   const { data: allow } = await userClient.rpc("unipile_allowance");
@@ -93,7 +96,7 @@ Deno.serve(async (req) => {
       providers: ["LINKEDIN"],
       api_url: `https://${UNIPILE_DSN}`,
       expiresOn: new Date(Date.now() + 3600_000).toISOString(),
-      name: brandVoiceId,           // kommt via notify_url zurück → Brand-Mapping
+      name: brandVoiceId || userId, // brand_voice_id (neu) ODER user_id (legacy) → Webhook mappt beide
       notify_url: notifyUrl,        // Canonical: Unipile ruft das bei CREATION_SUCCESS
       success_redirect_url: `${appBase}/settings/linkedin?unipile=connected`,
     }),
