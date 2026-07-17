@@ -1325,6 +1325,7 @@ function isBrandVoiceContext(pathname) {
   const bvRoutes = [
     '/profiltexte', '/vernetzungen', '/messages', '/automatisierung',
     '/redaktionsplan', '/content-studio', '/bibliothek', '/visuals', '/dokumente', '/media', '/content-reporting',
+    '/brand-memory',
   ]
   return bvRoutes.some(r => pathname === r || pathname.startsWith(r + '/'))
 }
