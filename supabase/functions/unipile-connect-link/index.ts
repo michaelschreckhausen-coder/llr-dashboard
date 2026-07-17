@@ -74,9 +74,13 @@ Deno.serve(async (req) => {
     .from("brand_voices").select("id, team_id").eq("id", brandVoiceId).maybeSingle();
   if (bvErr || !bvRow) return json({ error: "brand_forbidden", message: "Kein Zugriff auf diese Brand" }, 403);
 
-  // ── Onboarding-Gate: LinkedIn verbinden nur mit aktivem 'automation'-Addon ──
-  const { data: hasAddon } = await userClient.rpc("i_have_addon", { p_slug: "automation" });
-  if (!hasAddon) return json({ error: "no_addon", message: "Automatisierung-Addon nicht aktiv" }, 403);
+  // ── Mengen-Gate: 1 Profil je Lizenz inklusive; jedes weitere nur mit aktivem automation-Addon ──
+  const { data: allow } = await userClient.rpc("unipile_allowance");
+  if (allow && allow.can_add === false) {
+    return json({ error: "limit_reached",
+      message: "Profil-Limit erreicht — zusätzliches Profil im Marketplace buchen (5€/Monat).",
+      allowance: allow }, 402);
+  }
 
   // ── Default: Hosted-Auth-Link erzeugen (mit notify_url = Canonical-Mapping) ──
   const appBase = (typeof body?.app_base === "string" && body.app_base) || "https://staging.leadesk.de";
