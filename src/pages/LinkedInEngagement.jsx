@@ -46,8 +46,8 @@ const MAX_REACTIONS_PER_DAY = 80
 
 const STATUS_CFG = {
   pending:    { label:'Geplant',      color:'#92400E', bg:'#FFFBEB', border:'#FCD34D' },
-  processing: { label:'Läuft',        color:'#1D4ED8', bg:'#EFF6FF', border:'#BFDBFE' },
-  done:       { label:'Erledigt',     color:'#065F46', bg:'#ECFDF5', border:'#6EE7B7' },
+  processing: { label:'Läuft',        color:'#003060', bg:'#EEF4FE', border:'#CFE0F5' },
+  done:       { label:'Erledigt',     color:'#039855', bg:'#EBFAF3', border:'#12B886' },
   error:      { label:'Fehler',       color:'#991B1B', bg:'#FEF2F2', border:'#FECACA' },
   skipped:    { label:'Übersprungen', color:'#475569', bg:'#F8FAFC', border:'#E5E7EB' },
 }
@@ -199,9 +199,9 @@ export default function LinkedInEngagement() {
         {flash && (
           <div style={{
             display:'flex', alignItems:'center', gap:10, marginBottom:16, padding:'10px 14px', borderRadius:10, fontSize:13, fontWeight:600,
-            background: flash.type === 'error' ? '#FEF2F2' : '#F0FDF4',
-            color:      flash.type === 'error' ? '#B91C1C' : '#15803D',
-            border: `1px solid ${flash.type === 'error' ? '#FECACA' : '#BBF7D0'}`,
+            background: flash.type === 'error' ? '#FEF2F2' : '#EBFAF3',
+            color:      flash.type === 'error' ? '#B91C1C' : '#039855',
+            border: `1px solid ${flash.type === 'error' ? '#FECACA' : '#C7EFDC'}`,
           }}>
             {flash.type === 'error' ? <AlertCircle size={16} /> : <CheckCircle2 size={16} />}
             <span style={{ flex:1 }}>{flash.text}</span>
@@ -230,7 +230,7 @@ export default function LinkedInEngagement() {
               const target = j.post_social_id || j.post_url || '—'
               return (
                 <div key={j.id} style={{ ...cardStyle, padding:'12px 16px', display:'flex', alignItems:'center', gap:14, flexWrap:'wrap' }}>
-                  <div style={{ width:34, height:34, borderRadius:9, background:'#EFF6FF', display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0 }}>
+                  <div style={{ width:34, height:34, borderRadius:9, background:'#EEF4FE', display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0 }}>
                     {j.kind === 'comment' ? <MessageSquare size={16} color={PRIMARY_VAR} /> : <Heart size={16} color={PRIMARY_VAR} />}
                   </div>
                   <div style={{ flex:1, minWidth:200 }}>

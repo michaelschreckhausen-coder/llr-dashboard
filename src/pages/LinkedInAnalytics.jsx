@@ -186,9 +186,9 @@ export default function LinkedInAnalytics() {
         {flash && (
           <div style={{
             display:'flex', alignItems:'center', gap:10, marginBottom:16, padding:'10px 14px', borderRadius:10, fontSize:13, fontWeight:600,
-            background: flash.type === 'error' ? '#FEF2F2' : '#F0FDF4',
-            color:      flash.type === 'error' ? '#B91C1C' : '#15803D',
-            border: `1px solid ${flash.type === 'error' ? '#FECACA' : '#BBF7D0'}`,
+            background: flash.type === 'error' ? '#FEF2F2' : '#EBFAF3',
+            color:      flash.type === 'error' ? '#B91C1C' : '#039855',
+            border: `1px solid ${flash.type === 'error' ? '#FECACA' : '#C7EFDC'}`,
           }}>
             {flash.type === 'error' ? <AlertCircle size={16} /> : <CheckCircle2 size={16} />}
             <span style={{ flex:1 }}>{flash.text}</span>
@@ -287,9 +287,9 @@ export default function LinkedInAnalytics() {
                           <Tooltip />
                           <Legend wrapperStyle={{ fontSize:12 }} />
                           <Line yAxisId="left" type="monotone" dataKey="impressions" name="Impressions" stroke={PRIMARY} strokeWidth={2} dot={false} />
-                          <Line yAxisId="left" type="monotone" dataKey="likes" name="Reaktionen" stroke="#10B981" strokeWidth={2} dot={false} />
-                          <Line yAxisId="left" type="monotone" dataKey="comments" name="Kommentare" stroke="#F59E0B" strokeWidth={2} dot={false} />
-                          <Line yAxisId="right" type="monotone" dataKey="rate" name="Engagement %" stroke="#EC4899" strokeWidth={2} strokeDasharray="4 3" dot={false} />
+                          <Line yAxisId="left" type="monotone" dataKey="likes" name="Reaktionen" stroke="#039855" strokeWidth={2} dot={false} />
+                          <Line yAxisId="left" type="monotone" dataKey="comments" name="Kommentare" stroke="#D97706" strokeWidth={2} dot={false} />
+                          <Line yAxisId="right" type="monotone" dataKey="rate" name="Engagement %" stroke="#DD2A7B" strokeWidth={2} strokeDasharray="4 3" dot={false} />
                         </LineChart>
                       </ResponsiveContainer>
                     </div>
@@ -323,8 +323,8 @@ export default function LinkedInAnalytics() {
                             )}
                             {converted ? (
                               leadId
-                                ? <button className="lk-btn lk-btn-ghost" style={{ color:'#15803D', borderColor:'#BBF7D0' }} onClick={() => navigate(`/leads/${leadId}`)}>im CRM öffnen <ExternalLink size={13} /></button>
-                                : <span className="lk-btn lk-btn-ghost" style={{ color:'#15803D', borderColor:'#BBF7D0', cursor:'default' }}><Check size={14} /> im CRM</span>
+                                ? <button className="lk-btn lk-btn-ghost" style={{ color:'#039855', borderColor:'#C7EFDC' }} onClick={() => navigate(`/leads/${leadId}`)}>im CRM öffnen <ExternalLink size={13} /></button>
+                                : <span className="lk-btn lk-btn-ghost" style={{ color:'#039855', borderColor:'#C7EFDC', cursor:'default' }}><Check size={14} /> im CRM</span>
                             ) : (
                               <button className="lk-btn lk-btn-navy" style={{ opacity: cs === 'busy' ? 0.6 : 1 }} disabled={cs === 'busy'} onClick={() => convertEngager(e)}>
                                 {cs === 'busy' ? <Loader2 size={15} className="lk-spin" /> : <UserPlus size={15} />} Als Lead übernehmen

@@ -20,7 +20,7 @@ const primaryBtn = { padding: '9px 18px', background: 'var(--primary)', color: '
 const ghostBtn = { padding: '7px 12px', background: 'var(--surface)', color: '#374151', border: '1.5px solid #E4E7EC', borderRadius: 10, fontSize: 12, fontWeight: 600, display: 'inline-flex', alignItems: 'center', gap: 6, cursor: 'pointer' }
 const inputStyle = { padding: '8px 12px', borderRadius: 8, border: '1.5px solid #E4E7EC', fontSize: 13, outline: 'none', width: '100%', boxSizing: 'border-box', fontFamily: 'inherit', background: 'var(--surface)' }
 const labelStyle = { display: 'block', fontSize: 10, fontWeight: 700, color: 'var(--text-muted, #6B7280)', textTransform: 'uppercase', letterSpacing: '0.07em', marginBottom: 5 }
-const statusColor = { draft: '#94A3B8', active: '#22c55e', paused: '#f59e0b', completed: '#2563eb' }
+const statusColor = { draft: '#94A3B8', active: '#039855', paused: '#D97706', completed: '#0A6FB0' }
 const statusLabel = { draft: 'Entwurf', active: 'Laufend', paused: 'Pausiert', completed: 'Gestoppt' }
 
 const ACTIONS = ['visit', 'invite', 'message', 'follow_up', 'withdraw', 'follow', 'react', 'comment', 'inmail']
@@ -236,10 +236,10 @@ export default function LinkedInAutomationNeu({ session }) {
       {/* Runner-Health-Leiste */}
       {health && (
         <div style={{ ...cardStyle, marginBottom: 16, display: 'flex', gap: 20, alignItems: 'center', flexWrap: 'wrap', fontSize: 12.5 }}>
-          <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontWeight: 700 }}><Activity size={15} color={health.heartbeat_age_s > 180 ? '#ef4444' : '#22c55e'} /> Runner</span>
-          <span>Heartbeat: <b style={{ color: health.heartbeat_age_s > 180 ? '#ef4444' : 'inherit' }}>{health.heartbeat_age_s}s</b></span>
+          <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontWeight: 700 }}><Activity size={15} color={health.heartbeat_age_s > 180 ? '#DC2626' : '#039855'} /> Runner</span>
+          <span>Heartbeat: <b style={{ color: health.heartbeat_age_s > 180 ? '#DC2626' : 'inherit' }}>{health.heartbeat_age_s}s</b></span>
           <span>pending fällig: <b>{health.pending_due}</b> / gesamt {health.pending_total}</span>
-          <span>Dead-Letter: <b style={{ color: health.dead_total > 0 ? '#ef4444' : 'inherit' }}>{health.dead_total}</b></span>
+          <span>Dead-Letter: <b style={{ color: health.dead_total > 0 ? '#DC2626' : 'inherit' }}>{health.dead_total}</b></span>
           <button style={{ ...ghostBtn, marginLeft: 'auto' }} onClick={() => { load(); loadDetail(sel?.id) }}><RefreshCw size={13} /> Aktualisieren</button>
         </div>
       )}
