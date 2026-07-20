@@ -125,7 +125,11 @@ function getNav(t) {
   { subSection: true, label: 'Netzwerk', items: [
     { to: '/linkedin-suche',  icon: IcSearch,   label: 'Suche' },
     { to: '/linkedin-inbox',  icon: IcInbox,    label: 'LinkedIn Kontakte' },
-    { to: '/linkedin-netzwerk', icon: IcUsers,  label: 'Netzwerk' },
+    // AUSGEBLENDET 17.07.2026 (Julian): Michaels Netzwerk-Feature (Commit 54c9811c) ist
+    // develop-only, auf Staging noch nicht lauffähig (Migration linkedin_network fehlt) und
+    // Michael arbeitet vorerst nicht weiter daran. NUR Menüpunkt versteckt — Route/Seite/EF/
+    // Migrationen bleiben erhalten. Zum Zurückholen einfach diese Zeile wieder aktivieren:
+    // { to: '/linkedin-netzwerk', icon: IcUsers,  label: 'Netzwerk' },
     { to: '/vernetzungen',    icon: IcHeart,    label: 'Vernetzung' },
     { to: (!isFlagEnabled('linkedinAutomationV2Disabled')) ? '/automatisierung-neu' : '/automatisierung', icon: IcZap, label: 'Automatisierung' },
     { to: '/messages',        icon: IcMail,     label: 'Nachrichten' },
