@@ -83,9 +83,14 @@ export async function teamHasPermission(
 }
 
 /**
- * Connect (#1) — member-basiert (B1): der User muss aktives Mitglied eines
- * nutzbaren Accounts sein (get_my_entitlements.is_active). KEIN Seat-Zwang.
- * @returns null wenn erlaubt; sonst 403 need_active_plan.
+ * Connect (#1) — P4b SEAT-STRIKT: der User muss (a) aktives Mitglied eines
+ * nutzbaren Accounts sein (get_my_entitlements.is_active) UND (b) einen aktiven
+ * Seat halten (has_license). Der Seat trägt die Unipile-Verbindung. Kill-Switch
+ * gate_open('connect') ganz vorne → der scharfe Pfad liegt dahinter (<1s-Rollback
+ * via admin_set_gate(true, ARRAY['connect'])). has_license ist SECURITY DEFINER
+ * (RLS-unabhängig, EF-only). P1+P4a+P4b-Auto-Provision halten die Menge seat-loser
+ * aktiver Member auf 0 → heute verhaltensneutral, beißt nur bei revoked Seat.
+ * @returns null wenn erlaubt; sonst 403 need_active_plan / need_seat.
  */
 export async function requireSeat(
   userClient: { rpc: (fn: string, args?: Record<string, unknown>) => PromiseLike<{ data: unknown; error: unknown }> },
@@ -97,6 +102,12 @@ export async function requireSeat(
     console.warn(`[require_seat] entitlements error:`, error);
     return deny(403, { error: "need_active_plan" });
   }
-  const isActive = (data as { is_active?: boolean }).is_active === true;
-  return isActive ? null : deny(403, { error: "need_active_plan" });
+  if ((data as { is_active?: boolean }).is_active !== true) return deny(403, { error: "need_active_plan" });
+  // P4b: Seat-Beweis. has_license = aktives license_assignment (SECURITY DEFINER).
+  const { data: hasSeat, error: seatErr } = await userClient.rpc("has_license", {});
+  if (seatErr) {
+    console.warn(`[require_seat] has_license error:`, seatErr);
+    return deny(403, { error: "need_seat" });
+  }
+  return hasSeat === true ? null : deny(403, { error: "need_seat" });
 }
