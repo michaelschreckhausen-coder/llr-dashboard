@@ -5,17 +5,18 @@
 import PillSelect from '../components/PillSelect'
 import { useEffect, useState, useCallback, useRef } from 'react'
 import { supabase } from '../lib/supabase'
+import PageHeader from '../components/PageHeader'
 import { useTeam } from '../context/TeamContext'
 import { Plus, Zap, Play, Pause, Square, RefreshCw, Users, AlertTriangle, Activity, Archive, RotateCcw, Trash2, X } from 'lucide-react'
 
 const PRIMARY = '#0A6FB0'
 const PRIMARY_VAR = `var(--wl-primary, ${PRIMARY})`
-const pageOuterStyle = { background: 'var(--surface-canvas, #F8FAFC)', minHeight: '100vh', padding: '24px 24px 60px' }
+const pageOuterStyle = { background: 'transparent', minHeight: '100vh', padding: '24px 24px 60px' }
 const pageStyle = { width: '100%', maxWidth: 1180, margin: '0 auto' }
 const headerRowStyle = { display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 20, gap: 12, flexWrap: 'wrap' }
 const titleStyle = { fontSize: 22, fontWeight: 800, margin: 0, color: 'var(--text-strong, #111827)' }
 const subtitleStyle = { fontSize: 13, color: 'var(--text-muted, #6B7280)', marginTop: 4 }
-const cardStyle = { background: 'var(--surface)', borderRadius: 12, border: '1px solid var(--border, #E4E7EC)', padding: '16px 18px' }
+const cardStyle = { background: 'var(--surface)', borderRadius: 16, border: '1px solid var(--border, #E4E7EC)', boxShadow: 'var(--shadow-card)', padding: '18px 20px' }
 const primaryBtn = { padding: '9px 18px', background: 'var(--primary)', color: '#fff', border: 'none', borderRadius: 10, fontSize: 13, fontWeight: 700, display: 'inline-flex', alignItems: 'center', gap: 6, cursor: 'pointer' }
 const ghostBtn = { padding: '7px 12px', background: 'var(--surface)', color: '#374151', border: '1.5px solid #E4E7EC', borderRadius: 10, fontSize: 12, fontWeight: 600, display: 'inline-flex', alignItems: 'center', gap: 6, cursor: 'pointer' }
 const inputStyle = { padding: '8px 12px', borderRadius: 8, border: '1.5px solid #E4E7EC', fontSize: 13, outline: 'none', width: '100%', boxSizing: 'border-box', fontFamily: 'inherit', background: 'var(--surface)' }
@@ -225,13 +226,12 @@ export default function LinkedInAutomationNeu({ session }) {
 
   return (
     <div style={pageOuterStyle}><div style={pageStyle}>
-      <div style={headerRowStyle}>
-        <div>
-          <h1 style={titleStyle}>Automatisierung</h1>
-          <p style={subtitleStyle}>Kampagnen-Builder + Funnel-Monitor.</p>
-        </div>
-        <button className="lk-btn lk-btn-navy" onClick={createCampaign} disabled={creating}><Plus size={16} /> Neue Kampagne</button>
-      </div>
+      <PageHeader
+        overline="LinkedIn · Automatisierung"
+        title="Automatisierung"
+        subtitle="Kampagnen-Builder + Funnel-Monitor."
+        action={<button className="lk-btn lk-btn-navy" onClick={createCampaign} disabled={creating}><Plus size={16} /> Neue Kampagne</button>}
+      />
 
       {/* Runner-Health-Leiste */}
       {health && (

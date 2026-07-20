@@ -18,22 +18,23 @@ import {
 } from 'recharts'
 import { supabase } from '../lib/supabase'
 import { useTeam } from '../context/TeamContext'
+import PageHeader from '../components/PageHeader'
 
 const PRIMARY = 'rgb(49,90,231)'
 const PRIMARY_VAR = `var(--wl-primary, ${PRIMARY})`
 
-const pageOuterStyle  = { background:'var(--surface-canvas, #F8FAFC)', minHeight:'100vh', padding:'24px 24px 60px' }
+const pageOuterStyle  = { background:'transparent', minHeight:'100vh', padding:'24px 24px 60px' }
 const pageStyle       = { width:'100%', maxWidth:1100, margin:'0 auto', display:'flex', flexDirection:'column' }
 const headerRowStyle  = { display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:20, gap:12, flexWrap:'wrap' }
 const titleStyle      = { fontSize:22, fontWeight:800, margin:0, color:'var(--text-strong, #111827)', display:'flex', alignItems:'center', gap:10 }
 const subtitleStyle   = { fontSize:13, color:'var(--text-muted, #6B7280)', marginTop:4 }
-const cardStyle       = { background:'var(--surface)', borderRadius:12, border:'1px solid var(--border, #E4E7EC)', padding:'16px 18px' }
+const cardStyle       = { background:'var(--surface)', borderRadius:16, border:'1px solid var(--border, #E4E7EC)', boxShadow:'var(--shadow-card)', padding:'18px 20px' }
 const primaryBtnStyle = { padding:'9px 18px', background:'var(--primary)', color:'#fff', border:'none', borderRadius:10, fontSize:13, fontWeight:700, display:'inline-flex', alignItems:'center', gap:6, cursor:'pointer' }
 const ghostBtnStyle   = { padding:'7px 12px', background:'var(--surface)', color:'#374151', border:'1.5px solid #E4E7EC', borderRadius:10, fontSize:12, fontWeight:600, display:'inline-flex', alignItems:'center', gap:6, cursor:'pointer' }
 const sectionTitle    = { fontSize:12, fontWeight:700, color:'var(--text-strong, #111827)', marginBottom:10, display:'flex', alignItems:'center', gap:6 }
-const kpiTile         = { flex:1, minWidth:90, background:'var(--surface)', border:'1px solid var(--border, #E4E7EC)', borderRadius:10, padding:'10px 12px' }
+const kpiTile         = { flex:1, minWidth:120, background:'var(--surface)', border:'1px solid var(--border, #E4E7EC)', borderRadius:16, boxShadow:'var(--shadow-card)', padding:'14px 16px' }
 const kpiLabel        = { fontSize:10, fontWeight:700, color:'var(--text-muted, #6B7280)', textTransform:'uppercase', letterSpacing:'0.06em', display:'flex', alignItems:'center', gap:4 }
-const kpiValue        = { fontSize:20, fontWeight:800, color:'var(--text-strong, #111827)', marginTop:2, fontVariantNumeric:'tabular-nums' }
+const kpiValue        = { fontSize:22, fontWeight:800, color:'var(--text-strong, #111827)', marginTop:2, fontVariantNumeric:'tabular-nums' }
 
 const fmt = n => (n == null ? '–' : Number(n).toLocaleString('de-DE'))
 const postTitle = p => (p.title?.trim() || (p.content ? p.content.slice(0, 60) + (p.content.length > 60 ? '…' : '') : 'Beitrag'))
@@ -170,18 +171,16 @@ export default function LinkedInAnalytics() {
   return (
     <div style={pageOuterStyle}>
       <div style={pageStyle}>
-        <div style={headerRowStyle}>
-          <div>
-            <h1 style={titleStyle}><BarChart3 size={22} color={PRIMARY_VAR} /> Post-Analytics</h1>
-            <div style={subtitleStyle}>
-              Reichweite und Engagement deiner über Unipile veröffentlichten LinkedIn-Posts.
-              {lastSync > 0 && ` · Zuletzt aktualisiert: ${new Date(lastSync).toLocaleString('de-DE')}`}
-            </div>
-          </div>
-          <button className="lk-btn lk-btn-navy" style={{ opacity: syncing ? 0.6 : 1 }} disabled={syncing} onClick={syncMetrics}>
-            {syncing ? <Loader2 size={15} className="lk-spin" /> : <RefreshCw size={15} />} Metriken aktualisieren
-          </button>
-        </div>
+        <PageHeader
+          overline="LinkedIn · Post-Analytics"
+          title="Post-Analytics"
+          subtitle={`Reichweite und Engagement deiner über Unipile veröffentlichten LinkedIn-Posts.${lastSync > 0 ? ` · Zuletzt aktualisiert: ${new Date(lastSync).toLocaleString('de-DE')}` : ''}`}
+          action={(
+            <button className="lk-btn lk-btn-navy" style={{ opacity: syncing ? 0.6 : 1 }} disabled={syncing} onClick={syncMetrics}>
+              {syncing ? <Loader2 size={15} className="lk-spin" /> : <RefreshCw size={15} />} Metriken aktualisieren
+            </button>
+          )}
+        />
 
         {flash && (
           <div style={{
@@ -214,7 +213,7 @@ export default function LinkedInAnalytics() {
           <div style={{ display:'flex', flexDirection:'column', gap:20 }}>
             {/* Post-Auswahl */}
             <div>
-              <div style={sectionTitle}><TrendingUp size={14} /> Top-Posts</div>
+              <div className="lk-eyebrow">Top-Posts</div>
               <div style={{ display:'flex', flexDirection:'column', gap:8 }}>
                 {posts.map(p => {
                   const m = latestByPost[p.id]
@@ -271,7 +270,7 @@ export default function LinkedInAnalytics() {
 
                 {/* Metrik-Verlauf über days_since_publish */}
                 <div style={cardStyle}>
-                  <div style={sectionTitle}><TrendingUp size={14} /> Verlauf nach Veröffentlichung</div>
+                  <div className="lk-eyebrow">Verlauf nach Veröffentlichung</div>
                   {selSeries.length === 0 ? (
                     <div style={{ fontSize:13, color:'var(--text-muted, #6B7280)', padding:'20px 0', textAlign:'center' }}>
                       Noch kein Metrik-Verlauf — klicke „Metriken aktualisieren".
@@ -298,7 +297,7 @@ export default function LinkedInAnalytics() {
 
                 {/* Engager-Liste */}
                 <div>
-                  <div style={sectionTitle}><Users size={14} /> Kommentierende{selEngagers.length ? ` (${selEngagers.length})` : ''}</div>
+                  <div className="lk-eyebrow">Kommentierende{selEngagers.length ? ` (${selEngagers.length})` : ''}</div>
                   {selEngagers.length === 0 ? (
                     <div style={{ ...cardStyle, textAlign:'center', color:'var(--text-muted, #6B7280)', fontSize:13 }}>
                       Noch keine erfassten Kommentierenden für diesen Post.

@@ -15,18 +15,19 @@ import {
   ExternalLink, AlertCircle, CheckCircle2, Loader2, X, Info,
 } from 'lucide-react'
 import { supabase } from '../lib/supabase'
+import PageHeader from '../components/PageHeader'
 import { useTeam } from '../context/TeamContext'
 import { mapEfError } from '../lib/efError'
 
 const PRIMARY = 'rgb(49,90,231)'
 const PRIMARY_VAR = `var(--wl-primary, ${PRIMARY})`
 
-const pageOuterStyle  = { background:'var(--surface-canvas, #F8FAFC)', minHeight:'100vh', padding:'24px 24px 60px' }
+const pageOuterStyle  = { background:'transparent', minHeight:'100vh', padding:'24px 24px 60px' }
 const pageStyle       = { width:'100%', maxWidth:1000, margin:'0 auto', display:'flex', flexDirection:'column' }
 const headerRowStyle  = { display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:20, gap:12, flexWrap:'wrap' }
 const titleStyle      = { fontSize:22, fontWeight:800, margin:0, color:'var(--text-strong, #111827)', display:'flex', alignItems:'center', gap:10 }
 const subtitleStyle   = { fontSize:13, color:'var(--text-muted, #6B7280)', marginTop:4 }
-const cardStyle       = { background:'var(--surface)', borderRadius:12, border:'1px solid var(--border, #E4E7EC)', padding:'16px 18px' }
+const cardStyle       = { background:'var(--surface)', borderRadius:16, border:'1px solid var(--border, #E4E7EC)', boxShadow:'var(--shadow-card)', padding:'18px 20px' }
 const inputStyle      = { padding:'8px 12px', borderRadius:8, border:'1.5px solid #E4E7EC', fontSize:13, outline:'none', width:'100%', boxSizing:'border-box', fontFamily:'inherit', background:'var(--surface)' }
 const labelStyle      = { display:'block', fontSize:10, fontWeight:700, color:'var(--text-muted, #6B7280)', textTransform:'uppercase', letterSpacing:'0.07em', marginBottom:5 }
 const primaryBtnStyle = { padding:'9px 18px', background:PRIMARY_VAR, color:'#fff', border:'none', borderRadius:10, fontSize:13, fontWeight:700, display:'inline-flex', alignItems:'center', gap:6, cursor:'pointer' }
@@ -170,20 +171,21 @@ export default function LinkedInEngagement() {
   return (
     <div style={pageOuterStyle}>
       <div style={pageStyle}>
-        <div style={headerRowStyle}>
-          <div>
-            <h1 style={titleStyle}><Zap size={22} color={PRIMARY_VAR} /> Engagement</h1>
-            <div style={subtitleStyle}>Kommentare und Reaktionen auf konkrete LinkedIn-Posts planen — serverseitig ausgeführt.</div>
-          </div>
-          <div style={{ display:'flex', gap:10, flexWrap:'wrap' }}>
-            <button style={{ ...ghostBtnStyle, opacity: running ? 0.6 : 1 }} disabled={running} onClick={runNow}>
-              {running ? <Loader2 size={15} className="lk-spin" /> : <Play size={15} />} Jetzt ausführen
-            </button>
-            <button style={primaryBtnStyle} onClick={() => { setForm(EMPTY_FORM); setShowDialog(true) }}>
-              <Plus size={15} /> Neuer Job
-            </button>
-          </div>
-        </div>
+        <PageHeader
+          overline="LinkedIn · Engagement"
+          title="Engagement"
+          subtitle="Kommentare und Reaktionen auf konkrete LinkedIn-Posts planen — serverseitig ausgeführt."
+          action={(
+            <div style={{ display:'flex', gap:10, flexWrap:'wrap' }}>
+              <button className="lk-btn lk-btn-ghost" style={{ opacity: running ? 0.6 : 1 }} disabled={running} onClick={runNow}>
+                {running ? <Loader2 size={15} className="lk-spin" /> : <Play size={15} />} Jetzt ausführen
+              </button>
+              <button className="lk-btn lk-btn-navy" onClick={() => { setForm(EMPTY_FORM); setShowDialog(true) }}>
+                <Plus size={15} /> Neuer Job
+              </button>
+            </div>
+          )}
+        />
 
         {/* Compliance-Hinweis + Tageslimits */}
         <div style={{ display:'flex', alignItems:'flex-start', gap:8, marginBottom:16, padding:'10px 14px', borderRadius:10, fontSize:12.5,
@@ -214,7 +216,7 @@ export default function LinkedInEngagement() {
         )}
 
         {/* Job-Liste */}
-        <div style={sectionTitle}><Zap size={14} /> Geplante & ausgeführte Jobs</div>
+        <div className="lk-eyebrow">Geplante & ausgeführte Jobs</div>
         {loading ? (
           <div style={{ ...cardStyle, textAlign:'center', color:'var(--text-muted, #6B7280)' }}>
             <Loader2 size={18} className="lk-spin" /> Lädt…
