@@ -116,13 +116,13 @@ function getNav(t) {
   { to: '/bibliothek',      icon: IcImage,    label: 'Bibliothek' },
 
   { divider: true, label: 'LinkedIn', tourId: 'nav-linkedin' },
-  { subSection: true, label: 'Meine Präsenz', items: [
+  { subSection: true, label: 'Profil', items: [
     { to: '/linkedin-analytics', icon: IcBarChart, label: 'Post-Analytics' },
     { to: '/ssi',             icon: IcTarget,   label: t('nav.ssiTracker') },
     { to: '/profil-checker',  icon: IcLinkedIn, label: 'Profil-Checker' },
     { to: '/profiltexte',     icon: IcLinkedIn, label: t('nav.profiltexte') },
   ] },
-  { subSection: true, label: 'Akquise', items: [
+  { subSection: true, label: 'Netzwerk', items: [
     { to: '/linkedin-suche',  icon: IcSearch,   label: 'Suche' },
     { to: '/linkedin-inbox',  icon: IcInbox,    label: 'LinkedIn Kontakte' },
     { to: '/linkedin-netzwerk', icon: IcUsers,  label: 'Netzwerk' },
