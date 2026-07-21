@@ -18,6 +18,7 @@ import {
 } from 'recharts'
 import { supabase } from '../lib/supabase'
 import { useTeam } from '../context/TeamContext'
+import { useBrandVoice } from '../context/BrandVoiceContext'
 import PageHeader from '../components/PageHeader'
 
 const PRIMARY = 'rgb(49,90,231)'
@@ -41,6 +42,7 @@ const postTitle = p => (p.title?.trim() || (p.content ? p.content.slice(0, 60) +
 
 export default function LinkedInAnalytics() {
   const { activeTeamId } = useTeam()
+  const { activeBrandVoice, noBrand } = useBrandVoice()
   const navigate = useNavigate()
 
   const [uid, setUid]                 = useState(null)
@@ -57,15 +59,17 @@ export default function LinkedInAnalytics() {
   useEffect(() => { supabase.auth.getUser().then(({ data }) => setUid(data?.user?.id || null)) }, [])
 
   const load = useCallback(async () => {
-    if (!activeTeamId) { setPosts([]); setLoading(false); return }
+    if (!activeTeamId || (!noBrand && !activeBrandVoice?.id)) { setPosts([]); setLoading(false); return }
+    const bvId = noBrand ? null : (activeBrandVoice?.id || null)
     setLoading(true)
     // 1) Veröffentlichte Posts mit social_id (team-scoped, Fallstrick #14 expliziter Filter).
-    const { data: postRows, error: pErr } = await supabase
+    let _pq = supabase
       .from('content_posts')
       .select('id, title, content, linkedin_post_url, linkedin_social_id, published_at, last_metrics_sync_at')
       .eq('team_id', activeTeamId)
       .not('linkedin_social_id', 'is', null)
-      .order('published_at', { ascending: false })
+    _pq = bvId ? _pq.eq('brand_voice_id', bvId) : _pq.is('brand_voice_id', null)
+    const { data: postRows, error: pErr } = await _pq.order('published_at', { ascending: false })
     if (pErr) { setFlash({ type:'error', text:'Posts laden fehlgeschlagen: ' + pErr.message }); setPosts([]); setLoading(false); return }
     const pList = postRows || []
     setPosts(pList)
@@ -102,7 +106,7 @@ export default function LinkedInAnalytics() {
 
     setMetrics(series); setLatest(latest); setEngagers(engMap)
     setLoading(false)
-  }, [activeTeamId])
+  }, [activeTeamId, activeBrandVoice?.id, noBrand])
 
   useEffect(() => { load() }, [load])
 

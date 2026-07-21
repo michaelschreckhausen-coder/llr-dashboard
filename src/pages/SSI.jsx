@@ -115,7 +115,7 @@ const SUBSCORES = [
 ]
 
 export default function SSI({ session }) {
-  const { activeBrandVoice } = useBrandVoice()
+  const { activeBrandVoice, noBrand } = useBrandVoice()
   const [entries,  setEntries]  = useState([])
   const { t } = useTranslation()
   const [loading,  setLoading]  = useState(true)
@@ -131,15 +131,15 @@ export default function SSI({ session }) {
 
   const load = useCallback(async () => {
     setLoading(true)
-    // SSI ist account-weit (eine LinkedIn-Kennzahl pro Account), NICHT pro
-    // Brand Voice — daher kein brand_voice_id-Filter. (Vorher: beim Mount alle
-    // geladen, dann nach BV-Resolve gefiltert -> Score verschwand wieder.)
-    const { data } = await supabase.from('ssi_scores').select('*')
-      .eq('user_id', session.user.id)
-      .order('recorded_at', { ascending: false }).limit(90)
+    // SSI ist brand-scoped (Kennzahl des Marken-Profils). Erst laden wenn Marke aufgelöst.
+    if (!noBrand && !activeBrandVoice?.id) { setEntries([]); setLoading(false); return }
+    const bvId = noBrand ? null : (activeBrandVoice?.id || null)
+    let _q = supabase.from('ssi_scores').select('*').eq('user_id', session.user.id)
+    _q = bvId ? _q.eq('brand_voice_id', bvId) : _q.is('brand_voice_id', null)
+    const { data } = await _q.order('recorded_at', { ascending: false }).limit(90)
     setEntries(data || [])
     setLoading(false)
-  }, [session])
+  }, [session, activeBrandVoice?.id, noBrand])
 
   useEffect(() => { load() }, [load])
 

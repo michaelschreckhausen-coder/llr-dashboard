@@ -3,6 +3,7 @@ import { Check, X, Loader2, RefreshCw, Sparkles, Clock } from 'lucide-react'
 import PageHeader from '../components/PageHeader'
 import { supabase } from '../lib/supabase'
 import { useTeam } from '../context/TeamContext'
+import { useBrandVoice } from '../context/BrandVoiceContext'
 import { checkOwnLinkedInProfile } from '../lib/leadeskExtension'
 
 const P = 'var(--wl-primary, #0A6FB0)'
@@ -61,6 +62,7 @@ const scoreColor = s => s >= 85 ? '#059669' : s >= 65 ? '#2563eb' : s >= 40 ? '#
 
 export default function ProfilChecker({ session }) {
   const { activeTeamId } = useTeam() || {}
+  const { activeBrandVoice, noBrand } = useBrandVoice() || {}
   const userId = session?.user?.id
   const [loading, setLoading] = useState(false)
   const [error, setError]     = useState(null)
@@ -78,12 +80,14 @@ export default function ProfilChecker({ session }) {
         .select('id,profile_name,score,passed,total,results,created_at')
         .eq('user_id', userId)
       q = activeTeamId ? q.eq('team_id', activeTeamId) : q.is('team_id', null)
+      const bvId = noBrand ? null : (activeBrandVoice?.id || null)
+      q = bvId ? q.eq('brand_voice_id', bvId) : q.is('brand_voice_id', null)
       const { data } = await q
         .order('created_at', { ascending: false })
         .limit(20)
       setHistory(data || [])
     } catch (_) { /* Tabelle evtl. noch nicht migriert — Verlauf bleibt leer */ }
-  }, [activeTeamId, userId])
+  }, [activeTeamId, userId, activeBrandVoice?.id, noBrand])
 
   useEffect(() => { loadHistory() }, [loadHistory])
 
@@ -100,6 +104,7 @@ export default function ProfilChecker({ session }) {
       try {
         await supabase.from('profile_checks').insert({
           team_id: activeTeamId || null,
+          brand_voice_id: (noBrand ? null : (activeBrandVoice?.id || null)),
           profile_name: r.name, score: r.score, passed: r.passed, total: r.total,
           results: r.checks.map(c => ({ label: c.label, ok: c.ok })),
         })
