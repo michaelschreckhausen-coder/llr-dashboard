@@ -1303,7 +1303,7 @@ export default function BrandVoice({ session, brandType = 'personal' }) {
     setLiConnecting(true); setLiError('')
     try {
       if (!edit?.id) { setLiError('Bitte zuerst die Brand Voice speichern, dann LinkedIn verbinden.'); setLiConnecting(false); return }
-      const { data, error } = await supabase.functions.invoke('unipile-connect-link', { body: { brand_voice_id: edit.id, app_base: window.location.origin } })
+      const { data, error } = await supabase.functions.invoke('unipile-connect-link', { body: { brand_voice_id: edit.id, app_base: window.location.origin, success_path: window.location.pathname + '?li_unipile=connected' } })
       if (error) throw error
       if (data?.error) throw new Error(data.message || data.error)
       if (!data?.url) throw new Error('Connect-URL fehlt in Antwort')
