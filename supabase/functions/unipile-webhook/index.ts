@@ -51,17 +51,20 @@ Deno.serve(async (req) => {
       if (!v) {
         console.warn(`[unipile-webhook] account_id ${evt.account_id} nicht validierbar — NICHT persistiert`);
       } else {
-        await db.from("unipile_accounts").upsert({
-          team_id: teamId, user_id: ownerUserId, brand_voice_id: brandVoiceId, unipile_account_id: evt.account_id,
-          provider_public_id: v.slug, status: "OK", last_status_update: new Date().toISOString(),
-        }, { onConflict: "unipile_account_id" });
-        // IDENTITY-COLLAPSE: genau 1 OK-Zeile je Brand (falls brand-scoped) bzw. je User+Identität (legacy).
+        // COLLAPSE-FIRST (brand): bestehende OK-Accounts DIESER Brand deaktivieren BEVOR der neue geschrieben
+        // wird — sonst verletzt der Unique-Index (max. 1 OK je Brand) beim Reconnect mit neuer account_id.
         if (brandVoiceId) {
           await db.from("unipile_accounts")
             .update({ status: "DISCONNECTED", last_status_update: new Date().toISOString() })
             .eq("brand_voice_id", brandVoiceId)
             .neq("unipile_account_id", evt.account_id).eq("status", "OK");
-        } else if (v.slug) {
+        }
+        await db.from("unipile_accounts").upsert({
+          team_id: teamId, user_id: ownerUserId, brand_voice_id: brandVoiceId, unipile_account_id: evt.account_id,
+          provider_public_id: v.slug, status: "OK", last_status_update: new Date().toISOString(),
+        }, { onConflict: "unipile_account_id" });
+        // Legacy-Collapse (nicht-brand) NACH upsert: je User+Identität.
+        if (!brandVoiceId && v.slug) {
           await db.from("unipile_accounts")
             .update({ status: "DISCONNECTED", last_status_update: new Date().toISOString() })
             .eq("user_id", ownerUserId).eq("provider_public_id", v.slug)
