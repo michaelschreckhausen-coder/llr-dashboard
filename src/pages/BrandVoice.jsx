@@ -1297,6 +1297,14 @@ export default function BrandVoice({ session, brandType = 'personal' }) {
   const [liError, setLiError] = useState('')
   // Popups für Personal-Brand-Header-Buttons (Sichtbarkeit / LinkedIn verbinden)
   const [showLiModal, setShowLiModal] = useState(false)
+  // ── Company-Page-Verbindung (nur company_page-Brands) ──────────────
+  const [showCpModal, setShowCpModal] = useState(false)   // Company-Page-Modal offen
+  const [cpLogins, setCpLogins] = useState([])            // verbundene Team-Logins (unipile_accounts)
+  const [cpAccountId, setCpAccountId] = useState('')      // gewählter Admin-Login (unipile_account_id)
+  const [cpOrgs, setCpOrgs] = useState([])                // Pages, die der Login administriert
+  const [cpLoadingOrgs, setCpLoadingOrgs] = useState(false)
+  const [cpSaving, setCpSaving] = useState(false)
+  const [cpError, setCpError] = useState('')
   const [showVisibilityModal, setShowVisibilityModal] = useState(false)
   // Unipile-Connect (brand-scoped): übergibt brand_voice_id → Webhook mappt den Account an DIESE Brand.
   async function connectLinkedInUnipile() {
@@ -1309,6 +1317,71 @@ export default function BrandVoice({ session, brandType = 'personal' }) {
       if (!data?.url) throw new Error('Connect-URL fehlt in Antwort')
       window.location.href = data.url
     } catch (e) { setLiError(e?.message || 'Fehler beim Verbinden'); setLiConnecting(false) }
+  }
+
+  // ── Company-Page-Verbindung: über einen verbundenen Admin-Login eine
+  //    LinkedIn Company Page auswählen und an der Company Brand speichern.
+  async function openCompanyPageModal() {
+    setCpError(''); setShowCpModal(true)
+    // verbundene Logins des Teams laden (1 Zeile je Login)
+    try {
+      let q = supabase.from('unipile_accounts')
+        .select('unipile_account_id, provider_public_id, brand_voice_id')
+        .eq('status', 'OK').not('unipile_account_id', 'is', null)
+      q = activeTeamId ? q.eq('team_id', activeTeamId) : q.eq('user_id', uid)
+      const { data } = await q
+      const seen = new Set(); const logins = []
+      for (const r of (data || [])) {
+        if (!r.unipile_account_id || seen.has(r.unipile_account_id)) continue
+        seen.add(r.unipile_account_id)
+        logins.push({ account_id: r.unipile_account_id, label: r.provider_public_id || r.unipile_account_id })
+      }
+      setCpLogins(logins)
+      // Vorauswahl: bereits gespeicherter Login, sonst erster
+      const pre = edit?.linkedin_acting_account_id || (logins[0]?.account_id || '')
+      setCpAccountId(pre)
+      if (pre) loadCompanyPages(pre)
+    } catch (e) { setCpError('Konnte verbundene Logins nicht laden.') }
+  }
+  async function loadCompanyPages(accountId) {
+    if (!accountId) { setCpOrgs([]); return }
+    setCpLoadingOrgs(true); setCpError('')
+    try {
+      const { data, error } = await supabase.functions.invoke('unipile-list-organizations', { body: { unipile_account_id: accountId } })
+      if (error) throw error
+      if (data?.error) throw new Error(data.message || data.error)
+      setCpOrgs(Array.isArray(data?.organizations) ? data.organizations : [])
+    } catch (e) { setCpOrgs([]); setCpError('Konnte Company Pages dieses Logins nicht laden. Verwaltet dieser Login Pages?') }
+    finally { setCpLoadingOrgs(false) }
+  }
+  async function saveCompanyPage(org) {
+    if (!edit?.id || !org?.org_id || !cpAccountId) return
+    setCpSaving(true); setCpError('')
+    try {
+      const patch = {
+        linkedin_org_id: String(org.org_id),
+        linkedin_org_urn: org.organization_urn || null,
+        linkedin_org_name: org.name || null,
+        linkedin_acting_account_id: cpAccountId,
+        linkedin_org_verified_at: new Date().toISOString(),
+      }
+      const { error } = await supabase.from('brand_voices').update(patch).eq('id', edit.id)
+      if (error) throw error
+      setEdit(prev => ({ ...(prev || {}), ...patch }))
+      setVoices(p => p.map(v => v.id === edit.id ? { ...v, ...patch } : v))
+      setShowCpModal(false)
+    } catch (e) { setCpError('Speichern fehlgeschlagen: ' + (e?.message || 'Unbekannt')) }
+    finally { setCpSaving(false) }
+  }
+  async function disconnectCompanyPage() {
+    if (!edit?.id) return
+    if (!window.confirm('Company-Page-Verbindung trennen? Geplante Page-Posts schlagen dann fehl.')) return
+    const patch = { linkedin_org_id: null, linkedin_org_urn: null, linkedin_org_name: null, linkedin_org_logo_url: null, linkedin_acting_account_id: null, linkedin_org_verified_at: null }
+    try {
+      await supabase.from('brand_voices').update(patch).eq('id', edit.id)
+      setEdit(prev => ({ ...(prev || {}), ...patch }))
+      setVoices(p => p.map(v => v.id === edit.id ? { ...v, ...patch } : v))
+    } catch (e) { setCpError('Trennen fehlgeschlagen.') }
   }
 
   async function connectLinkedIn() {
@@ -1635,6 +1708,12 @@ export default function BrandVoice({ session, brandType = 'personal' }) {
               <LinkedinIcon size={15}/><span>{(edit.linkedin_member_id || uniAccount) ? 'LinkedIn verbunden' : 'LinkedIn verbinden'}</span>
             </button>
           )}
+          {editIsCompany && (
+            <button type="button" onClick={openCompanyPageModal} title="LinkedIn Company Page verbinden"
+              style={{ padding:'10px 16px', background: edit.linkedin_org_id ? '#F0FDF4' : 'var(--surface, #fff)', color: edit.linkedin_org_id ? '#166534' : 'var(--text-primary)', border:'1.5px solid '+(edit.linkedin_org_id ? '#BBF7D0' : 'var(--border)'), borderRadius:10, fontSize:13, fontWeight:600, cursor:'pointer', display:'inline-flex', alignItems:'center', gap:7, fontFamily:'inherit' }}>
+              <LinkedinIcon size={15}/><span>{edit.linkedin_org_id ? 'Page verbunden' : 'Company Page verbinden'}</span>
+            </button>
+          )}
           <button onClick={saveVoice} style={{ padding:'11px 22px', background:'var(--primary)', color:'#fff', border:'none', borderRadius:10, fontSize:13.5, fontWeight:600, cursor:'pointer', boxShadow:'0 2px 10px rgba(10,111,176,.25)', display:'inline-flex', alignItems:'center', gap:8, fontFamily:'inherit', flexShrink:0 }}>
             <span style={{display:'inline-flex'}}><Save size={14}/></span><span>{editIsCompany ? 'Company Brand speichern' : 'Personal Brand speichern'}</span>
           </button>
@@ -1656,6 +1735,18 @@ export default function BrandVoice({ session, brandType = 'personal' }) {
             <button className="lk-btn lk-btn-primary" onClick={connectLinkedInUnipile} disabled={liConnecting}
               >
               {liConnecting ? <span style={{display:'inline-flex',alignItems:'center',gap:6}}><Loader2 size={14} className="lk-spin"/>…</span> : <span style={{display:'inline-flex',alignItems:'center',gap:6}}><LinkedinIcon size={14}/>Mit LinkedIn verbinden</span>}
+            </button>
+          </div>
+        )}
+        {editIsCompany && edit.id && !edit.linkedin_org_id && (
+          <div style={{ marginBottom:16, padding:'14px 18px', background:'linear-gradient(90deg, rgba(10,111,176,0.10) 0%, rgba(48,160,208,0.08) 100%)', border:'1.5px solid rgba(10,111,176,0.25)', borderRadius:12, display:'flex', alignItems:'center', gap:14, flexWrap:'wrap' }}>
+            <Building2 size={22} strokeWidth={1.75} style={{ color:'#0A6FB0' }}/>
+            <div style={{ flex:1, minWidth:240 }}>
+              <div style={{ fontSize:14, fontWeight:700, color:'var(--text-primary)', marginBottom:2 }}>Company Brand erstellt — jetzt Company Page verbinden</div>
+              <div style={{ fontSize:12, color:'var(--text-muted)', lineHeight:1.4 }}>Verknüpfe die LinkedIn Company Page über einen Admin-Login — Voraussetzung für Posten als Page und Page-Analytics.</div>
+            </div>
+            <button className="lk-btn lk-btn-primary" onClick={openCompanyPageModal}>
+              <span style={{display:'inline-flex',alignItems:'center',gap:6}}><LinkedinIcon size={14}/>Company Page verbinden</span>
             </button>
           </div>
         )}
@@ -1848,6 +1939,83 @@ export default function BrandVoice({ session, brandType = 'personal' }) {
               {liError && <div style={{ marginTop:10, padding:'8px 12px', background:'#FEF2F2', border:'1px solid #FCA5A5', borderRadius:8, fontSize:12, color:'#991B1B' }}>{liError}</div>}
               {!edit.id && <div style={{ marginTop:10, fontSize:11, color:'#92400E' }}>Bitte speichere die Personal Brand zuerst, dann kannst du LinkedIn verbinden.</div>}
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* ── Popup: Company Page verbinden ──────────────── */}
+      {showCpModal && editIsCompany && (
+        <div onClick={()=>setShowCpModal(false)}
+          style={{ position:'fixed', inset:0, background:'rgba(0,0,0,0.5)', display:'flex', alignItems:'center', justifyContent:'center', zIndex:1000, padding:20 }}>
+          <div onClick={e=>e.stopPropagation()}
+            style={{ background:'#fff', borderRadius:14, width:'100%', maxWidth:560, padding:24, boxShadow:'0 20px 60px rgba(0,0,0,.25)', maxHeight:'85vh', overflowY:'auto' }}>
+            <div style={{ display:'flex', justifyContent:'space-between', alignItems:'flex-start', marginBottom:14 }}>
+              <div>
+                <div style={{ fontSize:11, fontWeight:700, color:'var(--text-muted)', textTransform:'uppercase', letterSpacing:'0.05em' }}>LinkedIn Company Page</div>
+                <h3 style={{ fontSize:18, fontWeight:700, margin:'4px 0 0', color:'var(--text-primary)' }}>Company Page verbinden</h3>
+              </div>
+              <button onClick={()=>setShowCpModal(false)} style={{ background:'none', border:'none', cursor:'pointer', color:'var(--text-muted)', padding:0, lineHeight:1 }}><X size={20} strokeWidth={1.75}/></button>
+            </div>
+
+            {!edit.id ? (
+              <div style={{ fontSize:12, color:'#92400E', padding:'10px 12px', background:'#FFFBEB', border:'1px solid #FDE68A', borderRadius:8 }}>Bitte speichere die Company Brand zuerst.</div>
+            ) : (<>
+              {/* Aktueller Status */}
+              {edit.linkedin_org_id && (
+                <div style={{ marginBottom:14, padding:'12px 14px', background:'#F0FDF4', border:'1.5px solid #BBF7D0', borderRadius:10, display:'flex', alignItems:'center', gap:12, justifyContent:'space-between', flexWrap:'wrap' }}>
+                  <div style={{ display:'flex', alignItems:'center', gap:10, minWidth:0 }}>
+                    <Building2 size={26} strokeWidth={1.75} style={{ color:'#166534' }}/>
+                    <div style={{ minWidth:0 }}>
+                      <div style={{ fontSize:13, fontWeight:700, color:'#166534', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{edit.linkedin_org_name || 'Company Page verbunden'}</div>
+                      <div style={{ fontSize:11, color:'#059669' }}>Postet als Page{edit.linkedin_org_verified_at ? ' · verbunden '+new Date(edit.linkedin_org_verified_at).toLocaleDateString('de-DE') : ''}</div>
+                    </div>
+                  </div>
+                  <button className="lk-btn lk-btn-ghost" type="button" onClick={disconnectCompanyPage}>Trennen</button>
+                </div>
+              )}
+
+              {/* Schritt 1: Admin-Login wählen */}
+              <div style={{ fontSize:12, fontWeight:700, color:'var(--text-primary)', marginBottom:6 }}>1 · Über welchen LinkedIn-Login?</div>
+              {cpLogins.length === 0 ? (
+                <div style={{ fontSize:12, color:'var(--text-muted)', padding:'10px 12px', background:'#F8FAFC', border:'1px solid var(--border)', borderRadius:8, marginBottom:14 }}>
+                  Noch kein LinkedIn-Login verbunden. Verbinde zuerst ein Profil (z.B. deine Personal Brand), das diese Company Page administriert.
+                </div>
+              ) : (
+                <select value={cpAccountId} onChange={e=>{ setCpAccountId(e.target.value); loadCompanyPages(e.target.value) }}
+                  style={{ width:'100%', padding:'10px 12px', border:'1.5px solid var(--border)', borderRadius:8, fontSize:13, marginBottom:14, background:'#fff' }}>
+                  {cpLogins.map(l => <option key={l.account_id} value={l.account_id}>{l.label}</option>)}
+                </select>
+              )}
+
+              {/* Schritt 2: Page wählen */}
+              {cpAccountId && (<>
+                <div style={{ fontSize:12, fontWeight:700, color:'var(--text-primary)', marginBottom:6 }}>2 · Welche Company Page?</div>
+                {cpLoadingOrgs ? (
+                  <div style={{ display:'flex', alignItems:'center', gap:8, fontSize:13, color:'var(--text-muted)', padding:'10px 0' }}><Loader2 size={14} className="lk-spin"/>Lade Pages…</div>
+                ) : cpOrgs.length === 0 ? (
+                  <div style={{ fontSize:12, color:'var(--text-muted)', padding:'10px 12px', background:'#F8FAFC', border:'1px solid var(--border)', borderRadius:8 }}>Dieser Login administriert keine Company Pages.</div>
+                ) : (
+                  <div style={{ display:'flex', flexDirection:'column', gap:8 }}>
+                    {cpOrgs.map(o => {
+                      const active = String(o.org_id) === String(edit.linkedin_org_id)
+                      return (
+                        <button key={o.org_id} type="button" disabled={cpSaving} onClick={()=>saveCompanyPage(o)}
+                          style={{ display:'flex', alignItems:'center', justifyContent:'space-between', gap:10, padding:'11px 14px', border:'1.5px solid '+(active?'#BBF7D0':'var(--border)'), background: active?'#F0FDF4':'#fff', borderRadius:10, cursor:'pointer', textAlign:'left' }}>
+                          <span style={{ display:'inline-flex', alignItems:'center', gap:10, minWidth:0 }}>
+                            <Building2 size={18} strokeWidth={1.75} style={{ color: active?'#166534':'var(--text-muted)', flexShrink:0 }}/>
+                            <span style={{ fontSize:13, fontWeight:600, color:'var(--text-primary)', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{o.name || o.org_id}</span>
+                          </span>
+                          <span style={{ fontSize:12, fontWeight:700, color: active?'#166534':'var(--primary)', flexShrink:0 }}>{active ? '✓ Verbunden' : 'Auswählen'}</span>
+                        </button>
+                      )
+                    })}
+                  </div>
+                )}
+              </>)}
+
+              {cpError && <div style={{ marginTop:12, padding:'8px 12px', background:'#FEF2F2', border:'1px solid #FCA5A5', borderRadius:8, fontSize:12, color:'#991B1B' }}>{cpError}</div>}
+              <div style={{ marginTop:14, fontSize:11, color:'var(--text-muted)', lineHeight:1.5 }}>Company Pages können auf LinkedIn keine Vernetzungsanfragen/Nachrichten senden — für Pages sind Posten und Analytics verfügbar.</div>
+            </>)}
           </div>
         </div>
       )}
