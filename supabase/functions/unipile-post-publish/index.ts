@@ -81,11 +81,12 @@ Deno.serve(async (req) => {
   }
 
   const socialId = res?.post_id || res?.id || res?.social_id || null;
+  const publishedUrl = res?.share_url || res?.post_url || res?.url || (socialId ? `https://www.linkedin.com/feed/update/${socialId}/` : null);
   const now = new Date().toISOString();
   await admin.from("content_posts").update({
     status: "published", published_at: now, publish_channel: "unipile",
-    linkedin_social_id: socialId, linkedin_account_id: conn.accountId,
+    linkedin_social_id: socialId, linkedin_account_id: conn.accountId, linkedin_post_url: publishedUrl,
   }).eq("id", postId);
   if (queueId) await admin.from("post_publish_queue").update({ status: "published" }).eq("id", queueId);
-  return json({ ok: true, social_id: socialId, account: conn.accountId });
+  return json({ ok: true, success: true, social_id: socialId, published_url: publishedUrl, account: conn.accountId });
 });
