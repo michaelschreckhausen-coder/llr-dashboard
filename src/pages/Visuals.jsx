@@ -96,7 +96,7 @@ export default function Visuals({ session, kindFilter = null, embedded = false, 
       .order('is_favorite', { ascending: false })
       .order('created_at',  { ascending: false })
       .limit(100)
-    if (noBrand) q = q.eq('no_brand', true)
+    if (noBrand) q = q.eq('no_brand', true).eq('user_id', session?.user?.id)
     else if (activeBrandVoice?.id && !libraryShowAllBVs) q = q.eq('brand_voice_id', activeBrandVoice.id)
     if (libraryFavOnly) q = q.eq('is_favorite', true)
     if (librarySearch.trim()) q = q.ilike('prompt', '%' + librarySearch.trim() + '%')

@@ -80,7 +80,11 @@ export async function getDocument(id) {
 
 export async function listDocuments(teamId, brandVoiceId = null, opts = {}) {
   let q = supabase.from('content_documents').select(LIST_COLS).eq('team_id', teamId)
-  if (opts.noBrand) q = q.eq('no_brand', true)
+  if (opts.noBrand) {
+    q = q.eq('no_brand', true)
+    const { data: { user } } = await supabase.auth.getUser()
+    if (user?.id) q = q.eq('user_id', user.id)
+  }
   else if (brandVoiceId) q = q.eq('brand_voice_id', brandVoiceId)
   return q.order('updated_at', { ascending: false })
 }

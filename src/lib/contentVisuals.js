@@ -75,7 +75,11 @@ export async function listTeamVisuals({ teamId, brandVoiceId, kind = null, limit
     .order('created_at', { ascending: false })
     .limit(limit)
   if (kind) q = q.eq('kind', kind)
-  if (noBrand) q = q.eq('no_brand', true).eq('team_id', teamId)
+  if (noBrand) {
+    q = q.eq('no_brand', true).eq('team_id', teamId)
+    const { data: { user } } = await supabase.auth.getUser()
+    if (user?.id) q = q.eq('user_id', user.id)
+  }
   else if (brandVoiceId) q = q.eq('brand_voice_id', brandVoiceId)
   else if (teamId) q = q.eq('team_id', teamId)
   const { data, error } = await q

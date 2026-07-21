@@ -564,7 +564,7 @@ export default function ContentStudio({ session }) {
     if (!contentReady) { setChats([]); setChatsLoading(false); return }
     setChatsLoading(true)
     let _q = supabase.from('content_chats').select('id, title, post_id, updated_at')
-    _q = noBrand ? _q.eq('no_brand', true).eq('created_by', session.user.id) : _q.eq('brand_voice_id', bvId)
+    _q = noBrand ? _q.eq('team_id', activeTeamId).eq('no_brand', true).eq('created_by', session.user.id) : _q.eq('brand_voice_id', bvId)
     const { data } = await _q.order('updated_at', { ascending: false }).limit(100)
     setChats(data || [])
     setChatsLoading(false)
@@ -1348,7 +1348,7 @@ Neue Anfrage: "${p}"` },
   async function loadExistingPosts() {
     if (!contentReady) return []
     let _q = supabase.from('content_posts').select('id, title, status, updated_at')
-    _q = noBrand ? _q.eq('no_brand', true).eq('user_id', session.user.id) : _q.eq('brand_voice_id', bvId)
+    _q = noBrand ? _q.eq('team_id', activeTeamId).eq('no_brand', true).eq('user_id', session.user.id) : _q.eq('brand_voice_id', bvId)
     const { data } = await _q.order('updated_at', { ascending: false }).limit(50)
     return data || []
   }
