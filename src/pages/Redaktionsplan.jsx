@@ -413,7 +413,7 @@ function PostModal({ post, onClose, onSave, onDelete, session, activeTeamId, mem
   const [showAdvanced, setShowAdvanced] = useState(false)
   // Phase 2a: Person-Posts optional über Unipile veröffentlichen (statt Julians nativer
   // LinkedIn-OAuth-Route) — schaltet Reichweiten-Monitoring frei. Default AUS.
-  const [viaUnipile, setViaUnipile] = useState(false)
+  const [viaUnipile] = useState(true) // A4: Unipile ist Standard-Postingweg (offizielle API nur via publish_channel='official')
   const [generatingVisual, setGeneratingVisual] = useState(false)
   // Multi-Visual: Array statt Singular. Jedes Element: { id (visual_id), signed_url, prompt, position }
   const [postVisuals, setPostVisuals] = useState([])
@@ -807,7 +807,7 @@ function PostModal({ post, onClose, onSave, onDelete, session, activeTeamId, mem
   useEffect(() => {
     if (!form.brand_voice_id) { setLiConnected(false); return }
     let cancelled = false
-    supabase.rpc('bv_linkedin_connected', { bv_id: form.brand_voice_id })
+    supabase.from('unipile_accounts').select('unipile_account_id').eq('brand_voice_id', form.brand_voice_id).eq('status', 'OK').limit(1).maybeSingle()
       .then(({ data }) => { if (!cancelled) setLiConnected(!!data) })
       .catch(() => { if (!cancelled) setLiConnected(false) })
     return () => { cancelled = true }
@@ -1856,16 +1856,6 @@ function PostModal({ post, onClose, onSave, onDelete, session, activeTeamId, mem
               ℹ️ Dieser Beitrag gehört einem anderen Team (geteilte Brand Voice) — Veröffentlichen nur im Eigen-Team.
             </div>
           )}
-          {/* Phase 2a: Unipile-Route-Schalter (nur Person-Posts) — schaltet Monitoring frei */}
-          {isPersonalPost && isOwnTeamPost && form.platform !== 'instagram' && form.content && form.status !== 'published' && (
-            <label
-              title="Veröffentlicht über die Unipile-Server-Automation statt der nativen LinkedIn-API — ermöglicht Reichweiten-Monitoring (Impressions, Reaktionen, Kommentare). Erfordert einen verbundenen Unipile-LinkedIn-Account."
-              style={{ display:'inline-flex', alignItems:'center', gap:6, fontSize:12, fontWeight:600, color:'var(--text-muted, #6B7280)', cursor:'pointer', userSelect:'none' }}>
-              <input type="checkbox" checked={viaUnipile} onChange={e => setViaUnipile(e.target.checked)}
-                style={{ accentColor:'var(--wl-primary, #0A6FB0)', cursor:'pointer' }} />
-              Über Unipile posten (Monitoring)
-            </label>
-          )}
           {isPersonalPost && isOwnTeamPost && form.platform !== 'instagram' && form.content && form.status !== 'published' && (() => {
             const hasSchedule = !!form.scheduled_at
             const future = hasSchedule && new Date(form.scheduled_at) > new Date()
@@ -1873,6 +1863,12 @@ function PostModal({ post, onClose, onSave, onDelete, session, activeTeamId, mem
               <button className="lk-btn lk-btn-cta" onClick={async () => {
                 // ── Phase 2a: Unipile-Route (mit Monitoring) ──
                 if (viaUnipile) {
+                  if (!liConnected) {
+                    alert(activeBrandVoice?.noBrand || !form.brand_voice_id
+                      ? 'Posten geht nur im Redaktionsplan einer Marke. Wechsle oben zu einer Marke mit verbundenem LinkedIn-Profil.'
+                      : 'Für diese Marke ist kein LinkedIn-Profil verbunden — erst in der Brand verbinden (Branding → Personal Brand → LinkedIn verbinden).')
+                    return
+                  }
                   if (!post?.id) { alert('Bitte zuerst speichern.'); return }
                   setSaving(true)
                   try {
@@ -1977,10 +1973,10 @@ function PostModal({ post, onClose, onSave, onDelete, session, activeTeamId, mem
                 } catch (e) {
                   alert('Posten fehlgeschlagen: ' + (e.message || 'Unbekannt'))
                 } finally { setSaving(false) }
-              }} disabled={saving} title={(!liConnected && !viaUnipile) ? ((activeBrandVoice?.noBrand || !form.brand_voice_id) ? 'Nur im Redaktionsplan einer Marke möglich' : 'Kein LinkedIn-Profil mit dieser Brand verknüpft — erst verbinden') : undefined} style={{ display:'flex', alignItems:'center', gap:5, opacity: (!liConnected && !viaUnipile) ? 0.9 : 1 }}>
+              }} disabled={saving} title={!liConnected ? ((activeBrandVoice?.noBrand || !form.brand_voice_id) ? 'Nur im Redaktionsplan einer Marke möglich' : 'Kein LinkedIn-Profil mit dieser Brand verknüpft — erst verbinden') : undefined} style={{ display:'flex', alignItems:'center', gap:5, opacity: !liConnected ? 0.9 : 1 }}>
                 {future
-                  ? <span style={{display:'inline-flex',alignItems:'center',gap:6}}><Calendar size={13}/>{viaUnipile ? 'Über Unipile einplanen' : 'Auto-Publish einplanen'}</span>
-                  : <span style={{display:'inline-flex',alignItems:'center',gap:6}}><Rocket size={13}/>{viaUnipile ? 'Jetzt über Unipile posten' : 'Jetzt auf LinkedIn posten'}</span>}
+                  ? <span style={{display:'inline-flex',alignItems:'center',gap:6}}><Calendar size={13}/>Auto-Publish einplanen</span>
+                  : <span style={{display:'inline-flex',alignItems:'center',gap:6}}><Rocket size={13}/>Jetzt auf LinkedIn posten</span>}
               </button>
             )
           })()}
