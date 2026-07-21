@@ -43,7 +43,6 @@ import LinkedInConnect  from './pages/LinkedInConnect'
 import AdminPanel      from './pages/AdminPanel'
 import TeamSettings    from './pages/TeamSettings'
 import SettingsKonto   from './pages/SettingsKonto'
-import SettingsLinkedIn from './pages/SettingsLinkedIn'
 import { BrandVoiceProvider } from './context/BrandVoiceContext'
 import SettingsMemory  from './pages/SettingsMemory'
 import SettingsExtension from './pages/SettingsExtension'
@@ -436,7 +435,6 @@ export default function App() {
             } />
             <Route path="/settings" element={<Navigate to="/settings/profil" replace />} />
             <Route path="/settings/profil" element={<Settings session={session} />} />
-            <Route path="/settings/linkedin" element={<SettingsLinkedIn session={session} />} />
             <Route path="/settings/konto" element={<SettingsKonto session={session} />} />
             <Route path="/settings/memory" element={<SettingsMemory session={session} />} />
             <Route path="/settings/extension" element={<SettingsExtension session={session} />} />

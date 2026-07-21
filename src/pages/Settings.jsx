@@ -428,26 +428,6 @@ export default function Settings({ session }) {
         </div>
       </div>
 
-      {/* ── LinkedIn → zentraler Hub (Phase 2: aus Profil ausgelagert) ── */}
-      <div style={box}>
-        <div style={hdr}>
-          <div style={{ display:'flex', alignItems:'center', gap:8 }}>
-            <LinkedInIcon size={17} color={LI_BLUE} />
-            LinkedIn-Verbindungen
-          </div>
-        </div>
-        <div style={bdy}>
-          <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', gap:12, flexWrap:'wrap' }}>
-            <div style={{ fontSize:13, color:'#555', lineHeight:1.6 }}>
-              Anmelden, Veröffentlichen und Automatisieren sind jetzt im eigenen Tab <strong>„LinkedIn"</strong> gebündelt — dort entscheidest du je Funktion, was du verbinden möchtest.
-            </div>
-            <button onClick={() => navigate('/settings/linkedin')}
-              style={{ padding:'9px 16px', borderRadius:10, border:'none', background: LI_BLUE, color:'#fff', fontSize:13, fontWeight:700, cursor:'pointer', whiteSpace:'nowrap' }}>
-              Zu den LinkedIn-Verbindungen →
-            </button>
-          </div>
-        </div>
-      </div>
 
       {/* ── E-Mail-Benachrichtigungen ── */}
       <div style={box}>

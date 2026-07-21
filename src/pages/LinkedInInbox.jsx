@@ -370,7 +370,7 @@ export default function LinkedInInbox() {
             ) : okAccount === null ? (
               <div style={{ background: 'var(--primary-soft)', border: `1px solid ${border}`, borderRadius: 10, padding: 16, fontSize: 14, color: text, lineHeight: 1.5 }}>
                 Kein verbundener LinkedIn-Account.{' '}
-                <button onClick={() => navigate('/settings/linkedin')} style={{ background: 'none', border: 'none', color: primary, fontWeight: 700, cursor: 'pointer', fontSize: 14, padding: 0 }}>LinkedIn zuerst verbinden →</button>
+                <button onClick={() => navigate('/personal-brand')} style={{ background: 'none', border: 'none', color: primary, fontWeight: 700, cursor: 'pointer', fontSize: 14, padding: 0 }}>LinkedIn zuerst verbinden →</button>
               </div>
             ) : (
               <>

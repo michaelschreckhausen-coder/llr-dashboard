@@ -520,7 +520,7 @@ export default function Automatisierung({ session }) {
           connected={uniConnected}
           runningCount={jobs.filter(j => j.status === 'running').length}
           waitingCount={jobs.filter(j => j.status !== 'running').length}
-          onManage={() => navigate('/settings/linkedin')}
+          onManage={() => navigate('/personal-brand')}
         />
 
         {/* Nachrichten-Freigabe — message-Entwürfe warten auf menschliches OK vor dem Versand */}

@@ -117,7 +117,7 @@ export default function LinkedInAnalytics() {
       let body = null
       try { body = await error.context?.json?.() } catch { /* Body evtl. konsumiert */ }
       const status = error.context?.status
-      if (status === 409) setFlash({ type:'error', text:'Kein aktiver LinkedIn-Account verbunden.', action:{ label:'LinkedIn verbinden', to:'/settings/linkedin' } })
+      if (status === 409) setFlash({ type:'error', text:'Kein aktiver LinkedIn-Account verbunden.', action:{ label:'LinkedIn verbinden', to:'/personal-brand' } })
       else if (status === 429 || body?.rate_limited) setFlash({ type:'error', text:'Rate-Limit erreicht — bitte später erneut.' })
       else setFlash({ type:'error', text: body?.error || ('Aktualisieren fehlgeschlagen: ' + error.message) })
       setSyncing(false); return

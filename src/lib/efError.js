@@ -35,7 +35,7 @@ export async function mapEfError(error) {
     return {
       kind: 'no_connection', type: 'error',
       text: 'Kein aktiver LinkedIn-Account verbunden.',
-      action: { label: 'LinkedIn verbinden', to: '/settings/linkedin' },
+      action: { label: 'LinkedIn verbinden', to: '/personal-brand' },
     }
   }
   // 429 → Rate-Limit.
