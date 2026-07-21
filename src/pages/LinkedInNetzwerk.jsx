@@ -2,6 +2,7 @@ import React, { useEffect, useState, useCallback } from 'react'
 import { Loader2, Search, Users, RefreshCw, ExternalLink, AlertTriangle } from 'lucide-react'
 import { supabase } from '../lib/supabase'
 import { useTeam } from '../context/TeamContext'
+import { useBrandVoice } from '../context/BrandVoiceContext'
 
 // ─────────────────────────────────────────────────────────────────────────────
 // LinkedIn-Netzwerk — das eigene 1st-degree-Netzwerk als Nachschlagewerk.
@@ -31,6 +32,7 @@ function Avatar({ name, avatar_url, size = 40 }) {
 
 export default function LinkedInNetzwerk() {
   const { activeTeamId } = useTeam()
+  const { activeBrandVoice } = useBrandVoice()
 
   const [rows, setRows]       = useState([])
   const [total, setTotal]     = useState(0)
@@ -49,16 +51,15 @@ export default function LinkedInNetzwerk() {
     return () => clearTimeout(t)
   }, [q])
 
+  // Handelnder Unipile-Account = der der AKTIVEN MARKE (brand-scoped, „Agiert als").
   useEffect(() => {
     let cancelled = false
-    supabase.auth.getUser().then(({ data }) => {
-      const uid = data?.user?.id
-      if (!uid || cancelled) return
-      supabase.from('unipile_accounts').select('unipile_account_id').eq('user_id', uid).eq('status', 'OK').limit(1)
-        .then(({ data: a }) => { if (!cancelled) setOkAccount(a?.[0]?.unipile_account_id || null) })
-    })
+    const bvId = activeBrandVoice?.id
+    if (!bvId) { setOkAccount(null); return () => { cancelled = true } }
+    supabase.from('unipile_accounts').select('unipile_account_id').eq('brand_voice_id', bvId).eq('status', 'OK').limit(1)
+      .then(({ data: a }) => { if (!cancelled) setOkAccount(a?.[0]?.unipile_account_id || null) })
     return () => { cancelled = true }
-  }, [])
+  }, [activeBrandVoice?.id])
 
   const load = useCallback(async () => {
     if (!activeTeamId) { setRows([]); setTotal(0); setLoading(false); return }

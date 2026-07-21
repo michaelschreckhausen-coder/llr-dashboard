@@ -1342,8 +1342,8 @@ function isBrandVoiceContext(pathname) {
   const bvRoutes = [
     // Meine Präsenz (brand-scoped)
     '/profiltexte', '/linkedin-analytics', '/ssi', '/profil-checker',
-    // Akquise (nutzt Brand-Kontext für KI/Absender)
-    '/vernetzungen', '/messages', '/automatisierung',
+    // Akquise (agiert aus dem Profil der aktiven Marke — „Agiert als")
+    '/vernetzungen', '/messages', '/automatisierung', '/linkedin-inbox', '/linkedin-netzwerk',
     // Content (brand-scoped)
     '/redaktionsplan', '/content-studio', '/bibliothek', '/visuals', '/dokumente', '/media', '/content-reporting',
     '/brand-memory',

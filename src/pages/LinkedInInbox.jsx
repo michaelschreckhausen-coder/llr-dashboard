@@ -4,6 +4,7 @@ import { useNavigate } from 'react-router-dom'
 import { Check, X, Loader2, UserPlus, Building2, Inbox as InboxIcon, Plus, ListChecks, Pencil, Trash2, AlertTriangle } from 'lucide-react'
 import { supabase } from '../lib/supabase'
 import { useTeam } from '../context/TeamContext'
+import { useBrandVoice } from '../context/BrandVoiceContext'
 import { useEntitlements } from '../hooks/useEntitlements'
 import { mapEfError } from '../lib/efError'
 import { useInboxLists } from '../hooks/useInboxLists'
@@ -44,6 +45,7 @@ function Avatar({ name, avatar_url, size = 44 }) {
 
 export default function LinkedInInbox() {
   const { activeTeamId } = useTeam()
+  const { activeBrandVoice } = useBrandVoice()
   const { hasPermission, loading: entLoading } = useEntitlements()
   const canSalesNav = entLoading || hasPermission('linkedin.sales_nav')   // P3: proaktives Disable (loading→nicht sperren)
   const navigate = useNavigate()
@@ -85,16 +87,18 @@ export default function LinkedInInbox() {
 
   useEffect(() => { supabase.auth.getUser().then(({ data }) => setUid(data?.user?.id || null)) }, [])
 
-  // Verbundenen Unipile-Account des Users laden (Status OK) — für den Sales-Nav-Import.
+  // Handelnder Unipile-Account = der der AKTIVEN MARKE (brand-scoped, „Agiert als").
+  // Import läuft aus dem LinkedIn-Profil der oben gewählten Marke.
   useEffect(() => {
-    if (!uid) return
-    supabase.from('unipile_accounts').select('unipile_account_id').eq('user_id', uid).eq('status', 'OK').limit(1)
+    const bvId = activeBrandVoice?.id
+    if (!bvId) { setOkAccount(null); return }
+    supabase.from('unipile_accounts').select('unipile_account_id').eq('brand_voice_id', bvId).eq('status', 'OK').limit(1)
       .then(({ data }) => setOkAccount(data?.[0]?.unipile_account_id || null))
-  }, [uid])
+  }, [activeBrandVoice?.id])
 
   const runSalesNavImport = async () => {
     setImportErr(null)
-    if (!okAccount) { setImportErr('Kein verbundener LinkedIn-Account.'); return }
+    if (!okAccount) { setImportErr('Für die aktive Marke ist kein LinkedIn-Profil verbunden — oben Marke wählen bzw. verbinden.'); return }
     if (!impUrl.trim()) { setImportErr('Bitte eine Sales-Navigator-Such-URL eingeben.'); return }
     setImporting(true)
     let listId = null
