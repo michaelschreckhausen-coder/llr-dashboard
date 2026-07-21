@@ -98,7 +98,7 @@ function IconFromName(name, color) {
   return <Icon size={22} color={color} />
 }
 
-export function MarketplaceCard({ addon, isSubscribed, isWaitlisted, manageViaStripe, onJoinWaitlist, onSubscribe, onActivateFree, onCancel, onManageBilling, settingsRoute, hasSettings, onOpenSettings }) {
+export function MarketplaceCard({ addon, isSubscribed, isWaitlisted, manageViaStripe, onJoinWaitlist, onSubscribe, onActivateFree, onCancel, onManageBilling, settingsRoute, hasSettings, onOpenSettings, allowance }) {
   const [busy, setBusy] = useState(false)
   const [hover, setHover] = useState(false)
   const [menuOpen, setMenuOpen] = useState(false)
@@ -230,6 +230,12 @@ export function MarketplaceCard({ addon, isSubscribed, isWaitlisted, manageViaSt
       </div>
 
       {addon.short_description && <p style={descStyle}>{addon.short_description}</p>}
+      {addon.slug === 'automation' && allowance && (
+        <div style={{ marginTop: 8, fontSize: 12, color: 'var(--text-muted, #6B7280)', background: '#EEF4FE', border: '1px solid #CFE0F5', borderRadius: 8, padding: '8px 10px', lineHeight: 1.5 }}>
+          <b style={{ color: 'var(--text-primary, #0E1633)' }}>1 LinkedIn-Profil inklusive</b> pro Lizenz — jedes weitere {formatPriceMonthly(addon.price_monthly_cents, addon.currency)}/Monat.
+          <br />Aktuell {allowance.connected} von {allowance.included} inklusive genutzt{allowance.can_add ? '' : ' — Limit erreicht'}.
+        </div>
+      )}
 
       {features.length > 0 && (
         <ul style={featuresUlStyle}>

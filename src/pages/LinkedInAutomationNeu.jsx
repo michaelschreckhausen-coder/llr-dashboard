@@ -7,6 +7,7 @@ import { useEffect, useState, useCallback, useRef } from 'react'
 import { supabase } from '../lib/supabase'
 import PageHeader from '../components/PageHeader'
 import { useTeam } from '../context/TeamContext'
+import { useBrandVoice } from '../context/BrandVoiceContext'
 import { Plus, Zap, Play, Pause, Square, RefreshCw, Users, AlertTriangle, Activity, Archive, RotateCcw, Trash2, X } from 'lucide-react'
 
 const PRIMARY = '#0A6FB0'
@@ -35,6 +36,7 @@ function Pill({ status }) {
 
 export default function LinkedInAutomationNeu({ session }) {
   const { activeTeamId } = useTeam() || {}
+  const { brandVoices } = useBrandVoice() || {}
   const uid = session?.user?.id
   const [campaigns, setCampaigns] = useState([])
   const [accounts, setAccounts] = useState([])
@@ -326,7 +328,7 @@ export default function LinkedInAutomationNeu({ session }) {
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginTop: 12 }}>
                 <div><label style={labelStyle}>Name</label><input style={inputStyle} defaultValue={sel.name} onBlur={e => e.target.value !== sel.name && saveCampaign({ name: e.target.value })} /></div>
                 <div><label style={labelStyle}>Account</label>
-                  <PillSelect value={sel.account_id} onChange={v => saveCampaign({ account_id: v })} neutral options={[...accounts.map((a) => ({ value: a.id, label: `${a.public_identifier || a.unipile_account_id} (${a.status})` }))]} buttonStyle={{ minWidth: 140 }} />
+                  <PillSelect value={sel.account_id} onChange={v => saveCampaign({ account_id: v })} neutral options={[...accounts.map((a) => { const _bv = (brandVoices || []).find(b => b.id === a.brand_voice_id); const _bn = _bv ? (_bv.brand_name || _bv.name) : null; return { value: a.id, label: `${_bn ? _bn + ' · ' : ''}${a.public_identifier || a.unipile_account_id} (${a.status})` } })]} buttonStyle={{ minWidth: 140 }} />
                 </div>
               </div>
 

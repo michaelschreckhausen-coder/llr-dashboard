@@ -89,6 +89,8 @@ const flashStyle = (type) => ({
 export default function Marketplace() {
   const navigate = useNavigate()
   const { catalog, subscribedSlugs, waitlistedSlugs, stripeManagedSlugs, isLoading, error, joinWaitlist, activateAddon, cancelAddon, reload } = useAddons()
+  const [uniAllowance, setUniAllowance] = useState(null)
+  useEffect(() => { supabase.rpc('unipile_allowance').then(({ data }) => setUniAllowance(data || null)).catch(() => setUniAllowance(null)) }, [])
   const { refresh: refreshEntitlements } = useEntitlements()
   const [category, setCategory] = useState('all')
   const [search, setSearch]     = useState('')
@@ -372,6 +374,7 @@ export default function Marketplace() {
                 onManageBilling={onManageBilling}
                 settingsRoute={POST_SUBSCRIBE_REDIRECTS[addon.slug]}
                 hasSettings={!!getAddonSettingsComponent(addon.slug)}
+                allowance={addon.slug === 'automation' ? uniAllowance : undefined}
                 onOpenSettings={(a) => {
                   if (getAddonSettingsComponent(a.slug)) setSettingsAddon(a)
                   else navigate(POST_SUBSCRIBE_REDIRECTS[a.slug] || '/integrations')
