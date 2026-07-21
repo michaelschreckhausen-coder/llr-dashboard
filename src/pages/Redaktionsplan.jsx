@@ -807,9 +807,21 @@ function PostModal({ post, onClose, onSave, onDelete, session, activeTeamId, mem
   useEffect(() => {
     if (!form.brand_voice_id) { setLiConnected(false); return }
     let cancelled = false
-    supabase.from('unipile_accounts').select('unipile_account_id').eq('brand_voice_id', form.brand_voice_id).eq('status', 'OK').limit(1).maybeSingle()
-      .then(({ data }) => { if (!cancelled) setLiConnected(!!data) })
-      .catch(() => { if (!cancelled) setLiConnected(false) })
+    ;(async () => {
+      // Company Page: verbunden, wenn Org + Admin-Login an der Brand hinterlegt sind (postet als Page).
+      const { data: bv } = await supabase.from('brand_voices')
+        .select('account_type, linkedin_org_id, linkedin_acting_account_id')
+        .eq('id', form.brand_voice_id).maybeSingle()
+      if (cancelled) return
+      if (bv?.account_type === 'company_page') {
+        setLiConnected(!!(bv.linkedin_org_id && bv.linkedin_acting_account_id))
+        return
+      }
+      // Personal Brand: eigener Unipile-Account (brand-scoped)
+      const { data } = await supabase.from('unipile_accounts')
+        .select('unipile_account_id').eq('brand_voice_id', form.brand_voice_id).eq('status', 'OK').limit(1).maybeSingle()
+      if (!cancelled) setLiConnected(!!data)
+    })().catch(() => { if (!cancelled) setLiConnected(false) })
     return () => { cancelled = true }
   }, [form.brand_voice_id])
 
