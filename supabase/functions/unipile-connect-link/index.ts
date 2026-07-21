@@ -87,6 +87,7 @@ Deno.serve(async (req) => {
 
   // ── Default: Hosted-Auth-Link erzeugen (mit notify_url = Canonical-Mapping) ──
   const appBase = (typeof body?.app_base === "string" && body.app_base) || "https://staging.leadesk.de";
+  const successPath = (typeof body?.success_path === "string" && body.success_path) || "/settings/linkedin?unipile=connected";
   const notifyUrl = `${SB_PUBLIC}/functions/v1/unipile-webhook?secret=${encodeURIComponent(WEBHOOK_SECRET)}`;
   const r = await fetch(`${U}/hosted/accounts/link`, {
     method: "POST",
@@ -98,7 +99,7 @@ Deno.serve(async (req) => {
       expiresOn: new Date(Date.now() + 3600_000).toISOString(),
       name: brandVoiceId || userId, // brand_voice_id (neu) ODER user_id (legacy) → Webhook mappt beide
       notify_url: notifyUrl,        // Canonical: Unipile ruft das bei CREATION_SUCCESS
-      success_redirect_url: `${appBase}/settings/linkedin?unipile=connected`,
+      success_redirect_url: `${appBase}${successPath}`,
     }),
   });
   const data = await r.json().catch(() => ({}));
