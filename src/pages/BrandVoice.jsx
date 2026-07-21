@@ -1292,11 +1292,25 @@ export default function BrandVoice({ session, brandType = 'personal' }) {
   function uLinkedIn(field, val) { setEdit(prev => ({...prev, linkedin_style: {...(prev.linkedin_style||{}), [field]:val}})) }
 
   const [liConnecting, setLiConnecting] = useState(false)
+  const [uniAccount, setUniAccount] = useState(null) // verbundener Unipile-Account DIESER Brand (brand-scoped)
   const [freshlyCreated, setFreshlyCreated] = useState(false)
   const [liError, setLiError] = useState('')
   // Popups für Personal-Brand-Header-Buttons (Sichtbarkeit / LinkedIn verbinden)
   const [showLiModal, setShowLiModal] = useState(false)
   const [showVisibilityModal, setShowVisibilityModal] = useState(false)
+  // Unipile-Connect (brand-scoped): übergibt brand_voice_id → Webhook mappt den Account an DIESE Brand.
+  async function connectLinkedInUnipile() {
+    setLiConnecting(true); setLiError('')
+    try {
+      if (!edit?.id) { setLiError('Bitte zuerst die Brand Voice speichern, dann LinkedIn verbinden.'); setLiConnecting(false); return }
+      const { data, error } = await supabase.functions.invoke('unipile-connect-link', { body: { brand_voice_id: edit.id, app_base: window.location.origin } })
+      if (error) throw error
+      if (data?.error) throw new Error(data.message || data.error)
+      if (!data?.url) throw new Error('Connect-URL fehlt in Antwort')
+      window.location.href = data.url
+    } catch (e) { setLiError(e?.message || 'Fehler beim Verbinden'); setLiConnecting(false) }
+  }
+
   async function connectLinkedIn() {
     // Phase 1a OAuth-Flow: Init-Edge-Function ruft uns die LinkedIn-Authorize-URL,
     // wir redirecten den User dorthin. Callback landet auf /auth/linkedin/callback.
@@ -1355,6 +1369,14 @@ export default function BrandVoice({ session, brandType = 'personal' }) {
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
+
+  // Unipile-Verbindungsstatus DIESER Brand laden (brand-scoped).
+  useEffect(() => {
+    const bvId = edit?.id
+    if (!bvId) { setUniAccount(null); return }
+    supabase.from('unipile_accounts').select('unipile_account_id, provider_public_id').eq('brand_voice_id', bvId).eq('status', 'OK').limit(1).maybeSingle()
+      .then(({ data }) => setUniAccount(data || null))
+  }, [edit?.id])
 
   // Disconnect: revoked_at setzen + BV-Identity-Felder leeren
   async function disconnectLinkedIn() {
@@ -1576,8 +1598,8 @@ export default function BrandVoice({ session, brandType = 'personal' }) {
           </button>
           {!editIsCompany && (
             <button type="button" onClick={()=>setShowLiModal(true)} title="LinkedIn-Profil verbinden"
-              style={{ padding:'10px 16px', background: edit.linkedin_member_id ? '#F0FDF4' : 'var(--surface, #fff)', color: edit.linkedin_member_id ? '#166534' : 'var(--text-primary)', border:'1.5px solid '+(edit.linkedin_member_id ? '#BBF7D0' : 'var(--border)'), borderRadius:10, fontSize:13, fontWeight:600, cursor:'pointer', display:'inline-flex', alignItems:'center', gap:7, fontFamily:'inherit' }}>
-              <LinkedinIcon size={15}/><span>{edit.linkedin_member_id ? 'LinkedIn verbunden' : 'LinkedIn verbinden'}</span>
+              style={{ padding:'10px 16px', background: (edit.linkedin_member_id || uniAccount) ? '#F0FDF4' : 'var(--surface, #fff)', color: (edit.linkedin_member_id || uniAccount) ? '#166534' : 'var(--text-primary)', border:'1.5px solid '+((edit.linkedin_member_id || uniAccount) ? '#BBF7D0' : 'var(--border)'), borderRadius:10, fontSize:13, fontWeight:600, cursor:'pointer', display:'inline-flex', alignItems:'center', gap:7, fontFamily:'inherit' }}>
+              <LinkedinIcon size={15}/><span>{(edit.linkedin_member_id || uniAccount) ? 'LinkedIn verbunden' : 'LinkedIn verbinden'}</span>
             </button>
           )}
           <button onClick={saveVoice} style={{ padding:'11px 22px', background:'var(--primary)', color:'#fff', border:'none', borderRadius:10, fontSize:13.5, fontWeight:600, cursor:'pointer', boxShadow:'0 2px 10px rgba(10,111,176,.25)', display:'inline-flex', alignItems:'center', gap:8, fontFamily:'inherit', flexShrink:0 }}>
@@ -1591,14 +1613,14 @@ export default function BrandVoice({ session, brandType = 'personal' }) {
           style={{ flex:1, padding:'10px 14px', border:'1.5px solid #dde3ea', borderRadius:8, fontSize:15, fontWeight:600 }}/>
       </div>
 
-        {!editIsCompany && edit.id && !edit.linkedin_member_id && (
+        {!editIsCompany && edit.id && !(edit.linkedin_member_id || uniAccount) && (
           <div style={{ marginBottom:16, padding:'14px 18px', background:'linear-gradient(90deg, rgba(10,111,176,0.10) 0%, rgba(48,160,208,0.08) 100%)', border:'1.5px solid rgba(10,111,176,0.25)', borderRadius:12, display:'flex', alignItems:'center', gap:14, flexWrap:'wrap' }}>
             <PartyPopper size={22} strokeWidth={1.75} style={{ color:'#16A34A' }}/>
             <div style={{ flex:1, minWidth:240 }}>
               <div style={{ fontSize:14, fontWeight:700, color:'var(--text-primary)', marginBottom:2 }}>Brand Voice erstellt — jetzt LinkedIn verbinden</div>
               <div style={{ fontSize:12, color:'var(--text-muted)', lineHeight:1.4 }}>Verknüpfe das passende LinkedIn-Profil mit dieser Brand Voice — Voraussetzung für Auto-Publishing, Vernetzungen und Nachrichten.</div>
             </div>
-            <button className="lk-btn lk-btn-primary" onClick={connectLinkedIn} disabled={liConnecting}
+            <button className="lk-btn lk-btn-primary" onClick={connectLinkedInUnipile} disabled={liConnecting}
               >
               {liConnecting ? <span style={{display:'inline-flex',alignItems:'center',gap:6}}><Loader2 size={14} className="lk-spin"/>…</span> : <span style={{display:'inline-flex',alignItems:'center',gap:6}}><LinkedinIcon size={14}/>Mit LinkedIn verbinden</span>}
             </button>
@@ -1758,18 +1780,18 @@ export default function BrandVoice({ session, brandType = 'personal' }) {
               <button onClick={()=>setShowLiModal(false)} style={{ background:'none', border:'none', cursor:'pointer', color:'var(--text-muted)', padding:0, lineHeight:1 }}><X size={20} strokeWidth={1.75}/></button>
             </div>
 
-            <div style={{ marginTop:14, padding:'12px 14px', background: edit.linkedin_member_id ? '#F0FDF4' : '#F8FAFC', border:'1.5px solid '+(edit.linkedin_member_id?'#BBF7D0':'var(--border)'), borderRadius:10 }}>
-              {edit.linkedin_member_id ? (
+            <div style={{ marginTop:14, padding:'12px 14px', background: (edit.linkedin_member_id || uniAccount) ? '#F0FDF4' : '#F8FAFC', border:'1.5px solid '+((edit.linkedin_member_id || uniAccount)?'#BBF7D0':'var(--border)'), borderRadius:10 }}>
+              {(edit.linkedin_member_id || uniAccount) ? (
                 <div style={{ display:'flex', alignItems:'center', gap:12, justifyContent:'space-between', flexWrap:'wrap' }}>
                   <div style={{ display:'flex', alignItems:'center', gap:10, minWidth:0 }}>
                     {edit.linkedin_avatar_url ? <img src={edit.linkedin_avatar_url} alt="" style={{ width:36, height:36, borderRadius:'50%', objectFit:'cover', flexShrink:0 }}/> : <Briefcase size={28} strokeWidth={1.75} style={{ color:'var(--text-muted)' }}/>}
                     <div style={{ minWidth:0 }}>
-                      <div style={{ fontSize:13, fontWeight:700, color:'#166534', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{edit.linkedin_display_name || 'LinkedIn-Profil verbunden'}</div>
-                      <div style={{ fontSize:11, color:'#059669' }}>linkedin.com/in/{edit.linkedin_member_id}{edit.linkedin_verified_at ? ' · zuletzt geprüft '+new Date(edit.linkedin_verified_at).toLocaleDateString('de-DE') : ''}</div>
+                      <div style={{ fontSize:13, fontWeight:700, color:'#166534', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{edit.linkedin_display_name || uniAccount?.provider_public_id || 'LinkedIn-Profil verbunden'}</div>
+                      <div style={{ fontSize:11, color:'#059669' }}>linkedin.com/in/{edit.linkedin_member_id || uniAccount?.provider_public_id}{edit.linkedin_verified_at ? ' · zuletzt geprüft '+new Date(edit.linkedin_verified_at).toLocaleDateString('de-DE') : ''}</div>
                     </div>
                   </div>
                   <div style={{ display:'flex', gap:8 }}>
-                    <button className="lk-btn lk-btn-ghost" type="button" onClick={connectLinkedIn} disabled={liConnecting}
+                    <button className="lk-btn lk-btn-ghost" type="button" onClick={connectLinkedInUnipile} disabled={liConnecting}
                       >
                       {liConnecting ? <span style={{display:'inline-flex',alignItems:'center',gap:6}}><Loader2 size={12} className="lk-spin"/>Prüfe…</span> : 'Erneut verbinden'}
                     </button>
@@ -1784,7 +1806,7 @@ export default function BrandVoice({ session, brandType = 'personal' }) {
                     <div style={{ fontSize:13, fontWeight:700, color:'var(--text-primary)' }}>Noch nicht verbunden</div>
                     <div style={{ fontSize:11, color:'var(--text-muted)', marginTop:2 }}>Voraussetzung für Posting, Vernetzungen und Nachrichten aus diesem Auftritt. Du musst auf linkedin.com eingeloggt sein.</div>
                   </div>
-                  <button className="lk-btn lk-btn-primary" type="button" onClick={connectLinkedIn} disabled={liConnecting}
+                  <button className="lk-btn lk-btn-primary" type="button" onClick={connectLinkedInUnipile} disabled={liConnecting}
                     style={{ flexShrink:0 }}>
                     {liConnecting ? <span style={{display:'inline-flex',alignItems:'center',gap:6}}><Loader2 size={14} className="lk-spin"/>Lese Session…</span> : <span style={{display:'inline-flex',alignItems:'center',gap:6}}><LinkedinIcon size={14}/>Mit LinkedIn verbinden</span>}
                   </button>
