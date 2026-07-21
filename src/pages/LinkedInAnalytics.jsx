@@ -11,7 +11,7 @@ import React, { useState, useEffect, useCallback } from 'react'
 import { useNavigate } from 'react-router-dom'
 import {
   BarChart3, RefreshCw, ExternalLink, Users, MessageSquare, Eye, Heart,
-  Repeat2, TrendingUp, AlertCircle, CheckCircle2, Loader2, UserPlus, Check,
+  Repeat2, TrendingUp, AlertCircle, CheckCircle2, Loader2, UserPlus, Check, Building2,
 } from 'lucide-react'
 import {
   ResponsiveContainer, LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend,
@@ -55,6 +55,9 @@ export default function LinkedInAnalytics() {
   const [syncing, setSyncing]         = useState(false)
   const [flash, setFlash]             = useState(null) // { type, text, action?:{label,to} }
   const [convertState, setConvertState] = useState({}) // engagerId -> { state, leadId }
+  const [cpStats, setCpStats] = useState(null)          // Company-Page-KPIs (nur company_page-Brands)
+  const [cpStatsLoading, setCpStatsLoading] = useState(false)
+  const isCompanyBrand = activeBrandVoice?.account_type === 'company_page'
 
   useEffect(() => { supabase.auth.getUser().then(({ data }) => setUid(data?.user?.id || null)) }, [])
 
@@ -109,6 +112,18 @@ export default function LinkedInAnalytics() {
   }, [activeTeamId, activeBrandVoice?.id, noBrand])
 
   useEffect(() => { load() }, [load])
+
+  // Company-Page-KPIs laden (Follower/Mitarbeiter/Wachstum) — nur für Company Brands
+  useEffect(() => {
+    if (!isCompanyBrand || !activeBrandVoice?.id) { setCpStats(null); return }
+    let cancelled = false
+    setCpStatsLoading(true)
+    supabase.functions.invoke('unipile-company-stats', { body: { brand_voice_id: activeBrandVoice.id } })
+      .then(({ data }) => { if (!cancelled) setCpStats(data && data.ok ? data : null) })
+      .catch(() => { if (!cancelled) setCpStats(null) })
+      .finally(() => { if (!cancelled) setCpStatsLoading(false) })
+    return () => { cancelled = true }
+  }, [isCompanyBrand, activeBrandVoice?.id])
 
   const syncMetrics = async () => {
     setSyncing(true); setFlash(null)
@@ -185,6 +200,43 @@ export default function LinkedInAnalytics() {
             </button>
           )}
         />
+
+        {isCompanyBrand && (
+          (() => {
+            const hist = cpStats?.history || []
+            const firstF = hist.find(h => h.followers_count != null)?.followers_count ?? null
+            const growth = (cpStats?.followers_count != null && firstF != null) ? (cpStats.followers_count - firstF) : null
+            const Kpi = ({ label, value, sub }) => (
+              <div style={{ flex:1, minWidth:150, padding:'14px 16px', background:'var(--surface,#fff)', border:'1px solid var(--border,#E5E7EB)', borderRadius:12 }}>
+                <div style={{ fontSize:12, color:'var(--text-muted,#6B7280)', fontWeight:600 }}>{label}</div>
+                <div style={{ fontSize:24, fontWeight:800, color:'var(--text-strong,#111827)', marginTop:2, lineHeight:1.1 }}>{value}</div>
+                {sub && <div style={{ fontSize:11, color:'var(--text-muted,#6B7280)', marginTop:2 }}>{sub}</div>}
+              </div>
+            )
+            return (
+              <div className="lk-card" style={{ marginBottom:16, padding:16 }}>
+                <div style={{ display:'flex', alignItems:'center', gap:12, marginBottom:12 }}>
+                  {cpStats?.logo ? <img src={cpStats.logo} alt="" style={{ width:40, height:40, borderRadius:8, objectFit:'cover' }}/> : <Building2 size={26} style={{ color:'var(--primary)' }}/>}
+                  <div style={{ minWidth:0 }}>
+                    <div style={{ fontSize:15, fontWeight:800, color:'var(--text-strong,#111827)' }}>{cpStats?.name || activeBrandVoice?.linkedin_org_name || 'Company Page'}</div>
+                    {cpStats?.profile_url && <a href={cpStats.profile_url} target="_blank" rel="noreferrer" style={{ fontSize:12, color:'var(--primary)', textDecoration:'none' }}>Zur LinkedIn-Seite ↗</a>}
+                  </div>
+                  {cpStatsLoading && <Loader2 size={15} className="lk-spin" style={{ marginLeft:'auto', color:'var(--text-muted)' }}/>}
+                </div>
+                {cpStats ? (
+                  <div style={{ display:'flex', gap:12, flexWrap:'wrap' }}>
+                    <Kpi label="Follower" value={cpStats.followers_count != null ? cpStats.followers_count.toLocaleString('de-DE') : '—'} sub={growth != null ? (growth >= 0 ? '+' : '') + growth + ' seit Beginn der Messung' : 'Wachstum ab jetzt gemessen'} />
+                    <Kpi label="Mitarbeitende" value={cpStats.employee_count != null ? cpStats.employee_count.toLocaleString('de-DE') : '—'} sub={cpStats?.insights?.employeesCount?.averageTenure ? 'Ø Zugehörigkeit ' + cpStats.insights.employeesCount.averageTenure : null} />
+                    <Kpi label="Snapshots" value={hist.length} sub="Tägliche Follower-Messpunkte" />
+                  </div>
+                ) : !cpStatsLoading ? (
+                  <div style={{ fontSize:13, color:'var(--text-muted,#6B7280)' }}>Noch keine Page-KPIs — verbinde die Company Page im Branding.</div>
+                ) : null}
+                <div style={{ fontSize:11, color:'var(--text-muted,#9CA3AF)', marginTop:10 }}>Hinweis: LinkedIn/Unipile liefert für Pages keine Impressions-Statistik — Follower & Mitarbeiter kommen live vom Page-Profil, das Follower-Wachstum bauen wir über tägliche Snapshots auf.</div>
+              </div>
+            )
+          })()
+        )}
 
         {flash && (
           <div style={{
