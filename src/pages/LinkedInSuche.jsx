@@ -22,6 +22,7 @@ import {
 } from 'lucide-react'
 import { supabase } from '../lib/supabase'
 import { useTeam } from '../context/TeamContext'
+import { useBrandVoice } from '../context/BrandVoiceContext'
 import { mapEfError } from '../lib/efError'
 
 // Avatar mit Initialen-Fallback (Muster wie LinkedInInbox.jsx).
@@ -70,6 +71,7 @@ const EMPTY_FORM = {
 
 export default function LinkedInSuche() {
   const { activeTeamId } = useTeam()
+  const { activeBrandVoice } = useBrandVoice()
   const navigate = useNavigate()
 
   const [uid, setUid]             = useState(null)
@@ -149,7 +151,7 @@ export default function LinkedInSuche() {
     setLastResult(null)
     setResults(null)
     setFlash(null)
-    const { data, error } = await supabase.functions.invoke('unipile-search', { body: { search_id: search.id } })
+    const { data, error } = await supabase.functions.invoke('unipile-search', { body: { search_id: search.id, brand_voice_id: activeBrandVoice?.id || null } })
     if (error) {
       // P3 Schritt 4: zentraler EF-Status→Mensch-Mapper (403→Upgrade, 401→Sitzung, 409→keine
       // Verbindung, 429→Rate-Limit, sonst lesbar) — eine Stelle statt pro-Seite-Blöcke.
