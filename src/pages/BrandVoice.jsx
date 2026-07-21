@@ -1303,7 +1303,7 @@ export default function BrandVoice({ session, brandType = 'personal' }) {
     setLiConnecting(true); setLiError('')
     try {
       if (!edit?.id) { setLiError('Bitte zuerst die Brand Voice speichern, dann LinkedIn verbinden.'); setLiConnecting(false); return }
-      const { data, error } = await supabase.functions.invoke('unipile-connect-link', { body: { brand_voice_id: edit.id, app_base: window.location.origin, success_path: window.location.pathname + '?li_unipile=connected' } })
+      const { data, error } = await supabase.functions.invoke('unipile-connect-link', { body: { brand_voice_id: edit.id, app_base: window.location.origin, success_path: window.location.pathname + '?li_unipile=' + edit.id } })
       if (error) throw error
       if (data?.error) throw new Error(data.message || data.error)
       if (!data?.url) throw new Error('Connect-URL fehlt in Antwort')
@@ -1361,6 +1361,23 @@ export default function BrandVoice({ session, brandType = 'personal' }) {
       url.searchParams.delete('li_connected')
       window.history.replaceState({}, '', url.toString())
     }
+    const liUnipile = q.get('li_unipile')
+    if (liUnipile && liUnipile !== 'connected') {
+      // Unipile-Return: zurück in den Editor der GERADE verbundenen Brand
+      // (analog OAuth-li_connected). Der uniAccount-Status-Effect (keyed auf
+      // edit.id) lädt den frischen „verbunden"-Zustand automatisch nach.
+      ;(async () => {
+        const { data: bv } = await supabase.from('brand_voices').select('*').eq('id', liUnipile).maybeSingle()
+        if (bv) {
+          setEdit(prev => ({ ...(prev || {}), ...bv }))
+          setView('editor')
+          setTab('marke')
+        }
+      })()
+      const url = new URL(window.location.href)
+      url.searchParams.delete('li_unipile')
+      window.history.replaceState({}, '', url.toString())
+    }
     if (liErrorParam) {
       setLiError(decodeURIComponent(liErrorParam))
       const url = new URL(window.location.href)
@@ -1371,11 +1388,27 @@ export default function BrandVoice({ session, brandType = 'personal' }) {
   }, [])
 
   // Unipile-Verbindungsstatus DIESER Brand laden (brand-scoped).
+  // Kurzes Retry, weil der Unipile-Webhook direkt nach dem Connect-Redirect
+  // minimal verzögert eintreffen kann — so erscheint „verbunden" ohne Reload.
   useEffect(() => {
     const bvId = edit?.id
     if (!bvId) { setUniAccount(null); return }
-    supabase.from('unipile_accounts').select('unipile_account_id, provider_public_id').eq('brand_voice_id', bvId).eq('status', 'OK').limit(1).maybeSingle()
-      .then(({ data }) => setUniAccount(data || null))
+    let cancelled = false
+    const justConnected = new URLSearchParams(window.location.search).get('li_unipile')
+    const tries = justConnected ? [0, 1500, 3000, 5000] : [0]
+    const timers = []
+    tries.forEach((delay, i) => {
+      timers.push(setTimeout(async () => {
+        if (cancelled) return
+        const { data } = await supabase.from('unipile_accounts')
+          .select('unipile_account_id, provider_public_id')
+          .eq('brand_voice_id', bvId).eq('status', 'OK').limit(1).maybeSingle()
+        if (cancelled) return
+        if (data) { setUniAccount(data); timers.forEach(clearTimeout) }
+        else if (i === 0) setUniAccount(null)
+      }, delay))
+    })
+    return () => { cancelled = true; timers.forEach(clearTimeout) }
   }, [edit?.id])
 
   // Disconnect: revoked_at setzen + BV-Identity-Felder leeren
