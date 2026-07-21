@@ -97,6 +97,7 @@ export interface UnipileConn {
   connectionId: string;     // unipile_accounts.id
   teamId: string;           // unipile_accounts.team_id (für team_id in allen Inserts)
   userId: string;           // Besitzer des LinkedIn-Accounts
+  asOrganization?: string | null; // Company-Page: numerische Org-ID -> Posten/Handeln als Organisation
 }
 
 export async function getUnipileConnection(
@@ -154,13 +155,52 @@ export async function getUnipileConnectionForBrand(
   };
 }
 
-// Übergangs-Resolver: bevorzugt Brand-Scoping, fällt auf user_id zurück,
-// solange Backfill/UI-Zuordnung noch nicht vollständig sind (non-breaking).
+// Company-Page-Auflösung: eine company_page-Brand postet/handelt als LinkedIn-Organisation
+// über einen bereits verbundenen Admin-Login (linkedin_acting_account_id). Es gibt KEINE
+// eigene unipile_accounts-Zeile für die Page; wir laden den Login-Account und hängen
+// asOrganization (numerische Org-ID) an die Connection.
+export async function getUnipileConnectionForCompanyPage(
+  sb: SupabaseClient,
+  brandVoiceId: string,
+): Promise<UnipileConn | null> {
+  const { data: bv, error: bvErr } = await sb
+    .from("brand_voices")
+    .select("id, account_type, linkedin_org_id, linkedin_acting_account_id")
+    .eq("id", brandVoiceId)
+    .maybeSingle();
+  if (bvErr) { console.warn(`[unipile] company-page brand lookup: ${bvErr.message}`); return null; }
+  if (!bv || bv.account_type !== "company_page") return null;
+  if (!bv.linkedin_acting_account_id || !bv.linkedin_org_id) return null;
+  const { data: acc, error } = await sb
+    .from("unipile_accounts")
+    .select("id, unipile_account_id, team_id, user_id, status")
+    .eq("unipile_account_id", bv.linkedin_acting_account_id)
+    .eq("status", "OK")
+    .not("unipile_account_id", "is", null)
+    .order("last_status_update", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+  if (error) { console.warn(`[unipile] company-page acting login: ${error.message}`); return null; }
+  if (!acc?.unipile_account_id) return null;
+  return {
+    accountId: acc.unipile_account_id as string,
+    dsn: null,
+    connectionId: acc.id as string,
+    teamId: acc.team_id as string,
+    userId: acc.user_id as string,
+    asOrganization: String(bv.linkedin_org_id),
+  };
+}
+
+// Übergangs-Resolver: Company-Page zuerst (postet als Organisation), dann Brand-Scoping,
+// dann user_id-Fallback (non-breaking, solange Backfill/UI-Zuordnung nicht vollständig).
 export async function resolveUnipileConn(
   sb: SupabaseClient,
   opts: { brandVoiceId?: string | null; userId?: string | null },
 ): Promise<UnipileConn | null> {
   if (opts.brandVoiceId) {
+    const cp = await getUnipileConnectionForCompanyPage(sb, opts.brandVoiceId);
+    if (cp) return cp;
     const c = await getUnipileConnectionForBrand(sb, opts.brandVoiceId);
     if (c) return c;
   }
@@ -270,7 +310,9 @@ export async function resolveSearchParameter(
 export interface CreatePostExtra {
   /** Bilder/Files als multipart-`attachments` (aus dem visuals-Storage-Bucket). */
   attachments?: Blob[];
-  // as_organization?: string;  // Phase 2b — Company-Page-Targeting (hier bewusst NICHT verdrahtet)
+  /** Company-Page-Targeting: numerische Org-ID -> Post erscheint als Organisation.
+   *  Fällt auf conn.asOrganization zurück, wenn nicht explizit gesetzt. */
+  asOrganization?: string | null;
 }
 export async function createPost(
   conn: UnipileConn,
@@ -280,6 +322,8 @@ export async function createPost(
   const fd = new FormData();
   fd.append("account_id", conn.accountId); // Default: account_id als Form-Feld
   fd.append("text", text);
+  const asOrg = extra.asOrganization ?? conn.asOrganization ?? null;
+  if (asOrg) fd.append("as_organization", String(asOrg)); // als Company Page posten
   const attachments = extra.attachments ?? [];
   for (let i = 0; i < attachments.length; i++) {
     const file = attachments[i];
