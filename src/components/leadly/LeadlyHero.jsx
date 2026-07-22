@@ -291,14 +291,17 @@ export default function LeadlyHero({ firstName, leadly, stats = {}, onOpenTasks,
       border: `1px solid ${colors.border}`,
       borderRadius: 18,
       boxShadow: '0 1px 3px rgba(15,23,42,.05)',
-      padding: isCockpit ? 'clamp(40px, 3vw, 44px) clamp(16px, 2.5vw, 26px) clamp(16px, 2.5vw, 26px)' : 'clamp(16px, 2.5vw, 26px)',
-      marginTop: isCockpit ? 36 : 0,
+      padding: isCockpit ? 'clamp(46px, 3vw, 52px) clamp(16px, 2.5vw, 26px) clamp(16px, 2.5vw, 26px)' : 'clamp(16px, 2.5vw, 26px)',
+      marginTop: isCockpit ? 62 : 0,
       marginBottom: space[8],
     }}>
       {isCockpit && (
-        <div style={{ position: 'absolute', top: -34, left: '50%', transform: 'translateX(-50%)', zIndex: 2 }}>
-          <LeadlyOrb state={orbState} size={68} />
-        </div>
+        <>
+          <div style={{ position: 'absolute', top: -77, left: '50%', transform: 'translateX(-50%)', width: 158, height: 79, background: colors.white, borderTop: `1px solid ${colors.border}`, borderLeft: `1px solid ${colors.border}`, borderRight: `1px solid ${colors.border}`, borderRadius: '80px 80px 0 0', zIndex: 1 }} />
+          <div style={{ position: 'absolute', top: -66, left: '50%', transform: 'translateX(-50%)', zIndex: 2 }}>
+            <LeadlyOrb state={orbState} size={104} />
+          </div>
+        </>
       )}
       <style>{`
         @keyframes leadly-hero-pulse {
