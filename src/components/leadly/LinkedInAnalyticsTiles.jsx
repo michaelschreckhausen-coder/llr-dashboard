@@ -69,8 +69,6 @@ export default function LinkedInAnalyticsTiles({ mode = 'handlung' }) {
           for (const m of (mets || [])) if (!latest || new Date(m.measured_at) > new Date(latest.measured_at)) latest = m
           if (latest) { out.lastImpr = latest.impressions; out.lastLikes = latest.likes }
         }
-        const { data: nm } = await supabase.from('linkedin_network_metrics').select('invites_pending_in, captured_on').eq('brand_voice_id', bvId).order('captured_on', { ascending: false }).limit(1)
-        if (nm && nm.length) out.invitesIn = nm[0].invites_pending_in
       }
       const [{ data: mm }, { data: cc }] = await Promise.all([
         supabase.from('linkedin_messaging_metrics').select('unipile_account_id, unread_threads, captured_on').eq('team_id', activeTeamId).order('captured_on', { ascending: false }).limit(20),
@@ -80,7 +78,7 @@ export default function LinkedInAnalyticsTiles({ mode = 'handlung' }) {
       for (const r of (mm || [])) if (!(r.unipile_account_id in byAcct)) byAcct[r.unipile_account_id] = r.unread_threads
       out.unread = Object.values(byAcct).reduce((a, b) => a + (Number(b) || 0), 0)
       out.campaigns = (cc || []).filter(c => c.status === 'active').length
-      if (out.invitesIn == null) {
+      {
         const { data: nmt } = await supabase.from('linkedin_network_metrics').select('unipile_account_id, invites_pending_in, captured_on').eq('team_id', activeTeamId).order('captured_on', { ascending: false }).limit(20)
         const byA = {}
         for (const r of (nmt || [])) if (!(r.unipile_account_id in byA)) byA[r.unipile_account_id] = r.invites_pending_in
