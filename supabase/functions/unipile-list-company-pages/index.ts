@@ -47,11 +47,31 @@ Deno.serve(async (req) => {
       .eq("user_id", auth.userId).eq("team_id", teamId).maybeSingle();
     if (!member) return jsonResponse({ error: "forbidden" }, 403);
 
-    // Alle verbundenen Logins des Teams
-    const { data: logins } = await sb.from("unipile_accounts")
-      .select("unipile_account_id, provider_public_id")
-      .eq("team_id", teamId).eq("status", "OK").not("unipile_account_id", "is", null);
-    const loginList = logins || [];
+    // SCOPING (leak-sicher): nur Personal Brands, die in DIESEM Team erstellt
+    // wurden ODER via brand_voice_team_shares ins Team geteilt sind. Deren Logins
+    // liefern die Pages. So tauchen NIE Pages fremder Teams auf.
+    const { data: ownBrands } = await sb.from("brand_voices")
+      .select("id").eq("team_id", teamId).neq("account_type", "company_page");
+    const { data: sharedIn } = await sb.from("brand_voice_team_shares")
+      .select("brand_voice_id").eq("team_id", teamId);
+    const brandIds = new Set<string>();
+    for (const b of (ownBrands || [])) if (b?.id) brandIds.add(b.id);
+    for (const sst of (sharedIn || [])) if (sst?.brand_voice_id) brandIds.add(sst.brand_voice_id);
+
+    let loginList: any[] = [];
+    if (brandIds.size > 0) {
+      const { data: logins } = await sb.from("unipile_accounts")
+        .select("unipile_account_id, provider_public_id, brand_voice_id")
+        .in("brand_voice_id", Array.from(brandIds))
+        .eq("status", "OK").not("unipile_account_id", "is", null);
+      // je unipile_account_id nur einmal
+      const seen = new Set<string>();
+      for (const l of (logins || [])) {
+        if (!l.unipile_account_id || seen.has(l.unipile_account_id)) continue;
+        seen.add(l.unipile_account_id);
+        loginList.push(l);
+      }
+    }
 
     // Pages je Login sammeln + dedupen (erster Login, der die Page hat, gewinnt)
     const byOrg = new Map<string, any>();
