@@ -11,6 +11,7 @@ import {
   getUnipileConnection,
   resolveUnipileConn,
   listPostComments,
+  listPostReactions,
   serviceClient,
   UnipileError,
 } from "../_shared/unipile.ts";
@@ -126,6 +127,34 @@ Deno.serve(async (req) => {
             }
           }
         }
+
+        // c2) Reaktionen -> Engager (+ Lead)
+        try {
+          const reactions = await listPostReactions(conn, workingId);
+          const rItems: any[] = reactions?.items ?? reactions?.data ?? [];
+          for (const rx of rItems) {
+            const a = rx.author ?? {};
+            const url = a.profile_url ?? a.public_profile_url ?? null;
+            const name = a.name ?? "Unbekannt";
+            if (!url) continue;
+            const { error: rErr } = await sb.from("linkedin_post_engagers").upsert({
+              user_id: post.user_id, team_id: teamId, post_id: post.id, post_social_id: socialId,
+              engagement_type: "reaction", actor_name: name, actor_headline: a.headline ?? null,
+              actor_profile_url: url, actor_provider_id: a.id ?? null, comment_text: rx.value ?? null,
+            }, { onConflict: "post_id,actor_profile_url,engagement_type", ignoreDuplicates: true });
+            if (!rErr) engagersWritten++;
+            if (harvestLeads) {
+              const { data: ex } = await sb.from("leads").select("id").eq("user_id", post.user_id).eq("linkedin_url", url).maybeSingle();
+              if (!ex?.id) {
+                const { error: lErr } = await sb.from("leads").insert({
+                  user_id: post.user_id, team_id: teamId, name, headline: a.headline ?? null,
+                  linkedin_url: url, profile_url: url, status: "Lead", source: "post_engagement", lead_source: "linkedin",
+                });
+                if (!lErr) leadsCreated++;
+              }
+            }
+          }
+        } catch (_e) { /* Reaktionen best-effort */ }
 
         await sb.from("content_posts")
           .update({ last_metrics_sync_at: new Date().toISOString() })

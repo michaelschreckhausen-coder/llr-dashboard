@@ -381,6 +381,17 @@ export async function listPostComments(
   });
 }
 
+export async function listPostReactions(
+  conn: UnipileConn,
+  socialId: string,
+  cursor?: string,
+): Promise<any> {
+  return await call("GET", `/api/v1/posts/${encodeURIComponent(socialId)}/reactions`, {
+    dsn: conn.dsn,
+    query: { account_id: conn.accountId, cursor },
+  });
+}
+
 // -- Feature 5: Invitations ------------------------------------------
 // GET /api/v1/users/invite/sent?account_id=...   (pending invitations)
 export async function listSentInvitations(
