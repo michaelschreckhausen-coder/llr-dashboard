@@ -137,6 +137,7 @@ function getNav(t) {
     { to: '/vernetzungen',    icon: IcHeart,    label: 'Vernetzung' },
     { to: (!isFlagEnabled('linkedinAutomationV2Disabled')) ? '/automatisierung-neu' : '/automatisierung', icon: IcCog, label: 'Automatisierung' },
     { to: '/messages',        icon: IcMail,     label: 'Nachrichten' },
+    { to: '/nachrichten-analytics', icon: IcBarChart, label: 'Nachrichten-Analytics' },
     { to: '/linkedin-engagement', icon: IcZap,  label: 'Engagement' },
   ] },
 
