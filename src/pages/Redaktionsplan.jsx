@@ -785,6 +785,7 @@ function PostModal({ post, onClose, onSave, onDelete, session, activeTeamId, mem
   const [previewBV, setPreviewBV] = useState(null)
   // Scheduling/Publishing + Company-Auswahl nur bei Personal Brands (Company-Posting technisch noch nicht)
   const isPersonalPost = (previewBV ? previewBV.account_type !== 'company_page' : activeBrandVoice?.account_type !== 'company_page')
+  const isCompanyPost = (previewBV ? previewBV.account_type === 'company_page' : activeBrandVoice?.account_type === 'company_page') // Company Page: postet als Organisation via Unipile
   // P3 Schritt 4: Publish-Affordance NUR für Eigen-Team-Posts. Fremdposts (geteilte Brand
   // Voice, post.team_id !== activeTeamId) sind auf dem Board sichtbar, aber NICHT publishbar —
   // deckt sich mit dem EF-Gate auf post.team_id (schließt die "FE zeigt, EF verweigert"-Kante).
@@ -1863,12 +1864,12 @@ function PostModal({ post, onClose, onSave, onDelete, session, activeTeamId, mem
             {saving ? <span style={{display:'inline-flex',alignItems:'center',gap:6}}><Loader2 size={12} className='lk-spin'/>Speichere…</span> : isNew ? <span style={{display:'inline-flex',alignItems:'center',gap:6}}><Plus size={12}/>Erstellen</span> : <span style={{display:'inline-flex',alignItems:'center',gap:6}}><Save size={12}/>Speichern</span>}
           </button>
           {/* P3 Schritt 4: Fremdteam-Post (geteilte Brand Voice) — Publish nur im Eigen-Team */}
-          {isPersonalPost && !isOwnTeamPost && form.platform !== 'instagram' && form.content && form.status !== 'published' && (
+          {(isPersonalPost || isCompanyPost) && !isOwnTeamPost && form.platform !== 'instagram' && form.content && form.status !== 'published' && (
             <div style={{ fontSize:12, color:'var(--text-muted, #6B7280)', display:'inline-flex', alignItems:'center', gap:6 }}>
               ℹ️ Dieser Beitrag gehört einem anderen Team (geteilte Brand Voice) — Veröffentlichen nur im Eigen-Team.
             </div>
           )}
-          {isPersonalPost && isOwnTeamPost && form.platform !== 'instagram' && form.content && form.status !== 'published' && (() => {
+          {(isPersonalPost || isCompanyPost) && isOwnTeamPost && form.platform !== 'instagram' && form.content && form.status !== 'published' && (() => {
             const hasSchedule = !!form.scheduled_at
             const future = hasSchedule && new Date(form.scheduled_at) > new Date()
             return (
