@@ -1305,6 +1305,7 @@ export default function BrandVoice({ session, brandType = 'personal' }) {
   const [cpLoadingOrgs, setCpLoadingOrgs] = useState(false)
   const [cpSaving, setCpSaving] = useState(false)
   const [cpError, setCpError] = useState('')
+  const [cpSearch, setCpSearch] = useState('')
   const [showVisibilityModal, setShowVisibilityModal] = useState(false)
   // Unipile-Connect (brand-scoped): übergibt brand_voice_id → Webhook mappt den Account an DIESE Brand.
   async function connectLinkedInUnipile() {
@@ -1981,22 +1982,31 @@ export default function BrandVoice({ session, brandType = 'personal' }) {
                   Noch kein LinkedIn-Login verbunden. Verbinde zuerst ein Profil (z.B. deine Personal Brand), das diese Company Page administriert.
                 </div>
               ) : (
-                <select value={cpAccountId} onChange={e=>{ setCpAccountId(e.target.value); loadCompanyPages(e.target.value) }}
-                  style={{ width:'100%', padding:'10px 12px', border:'1.5px solid var(--border)', borderRadius:8, fontSize:13, marginBottom:14, background:'#fff' }}>
+                <select value={cpAccountId} onChange={e=>{ setCpAccountId(e.target.value); setCpSearch(''); loadCompanyPages(e.target.value) }}
+                  style={{ width:'100%', padding:'10px 12px', border:'1.5px solid var(--border)', borderRadius:8, fontSize:13, marginBottom:8, background:'#fff' }}>
                   {cpLogins.map(l => <option key={l.account_id} value={l.account_id}>{l.label}</option>)}
                 </select>
+              )}
+              {cpAccountId && cpLogins.length > 0 && (
+                <div style={{ fontSize:11, color:'var(--text-muted)', marginBottom:14, lineHeight:1.5 }}>
+                  Gepostet wird <b>als Page über diesen Login</b> — deshalb kein separater LinkedIn-Login für die Page nötig. Es erscheinen nur Pages, die dieser Login administriert.
+                </div>
               )}
 
               {/* Schritt 2: Page wählen */}
               {cpAccountId && (<>
-                <div style={{ fontSize:12, fontWeight:700, color:'var(--text-primary)', marginBottom:6 }}>2 · Welche Company Page?</div>
+                <div style={{ fontSize:12, fontWeight:700, color:'var(--text-primary)', marginBottom:6 }}>2 · Welche Company Page? {cpOrgs.length > 0 && <span style={{ fontWeight:500, color:'var(--text-muted)' }}>({cpOrgs.length})</span>}</div>
                 {cpLoadingOrgs ? (
                   <div style={{ display:'flex', alignItems:'center', gap:8, fontSize:13, color:'var(--text-muted)', padding:'10px 0' }}><Loader2 size={14} className="lk-spin"/>Lade Pages…</div>
                 ) : cpOrgs.length === 0 ? (
                   <div style={{ fontSize:12, color:'var(--text-muted)', padding:'10px 12px', background:'#F8FAFC', border:'1px solid var(--border)', borderRadius:8 }}>Dieser Login administriert keine Company Pages.</div>
                 ) : (
                   <div style={{ display:'flex', flexDirection:'column', gap:8 }}>
-                    {cpOrgs.map(o => {
+                    {cpOrgs.length > 6 && (
+                      <input value={cpSearch} onChange={e=>setCpSearch(e.target.value)} placeholder="Page suchen…"
+                        style={{ width:'100%', padding:'9px 12px', border:'1.5px solid var(--border)', borderRadius:8, fontSize:13, marginBottom:2 }}/>
+                    )}
+                    {cpOrgs.filter(o => !cpSearch || (o.name||'').toLowerCase().includes(cpSearch.toLowerCase())).map(o => {
                       const active = String(o.org_id) === String(edit.linkedin_org_id)
                       return (
                         <button key={o.org_id} type="button" disabled={cpSaving} onClick={()=>saveCompanyPage(o)}
