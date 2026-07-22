@@ -116,6 +116,7 @@ export default function LinkedInAnalyticsTiles({ mode = 'handlung' }) {
   // ── Kacheln je Modus ──
   let tiles = []
   let emptyHint = null
+  let note = null
   if (mode === 'trend') {
     if (!bvId || noBrand) emptyHint = 'Wähle eine Marke, um Wachstum & Engagement zu sehen.'
     else {
@@ -189,6 +190,9 @@ export default function LinkedInAnalyticsTiles({ mode = 'handlung' }) {
             </div>
           ))}
         </div>
+      )}
+      {note && !emptyHint && (
+        <div style={{ fontSize: 11, color: 'var(--text-muted, #9CA3AF)', marginTop: 10, lineHeight: 1.5 }}>{note}</div>
       )}
     </div>
   )
