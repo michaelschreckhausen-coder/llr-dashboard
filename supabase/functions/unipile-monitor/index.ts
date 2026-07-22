@@ -16,6 +16,12 @@ import {
 } from "../_shared/unipile.ts";
 
 const POST_BATCH = 15;
+// getPost akzeptiert urn:li:ugcPost:<n> ODER die Activity-id, NICHT die nackte Nummer.
+function postIdVariants(sid) {
+  if (!sid) return [];
+  if (String(sid).startsWith('urn:')) return [sid];
+  return [`urn:li:ugcPost:${sid}`, `urn:li:activity:${sid}`, sid];
+}
 const MIN_RESYNC_HOURS = 4;
 
 Deno.serve(async (req) => {
@@ -50,8 +56,12 @@ Deno.serve(async (req) => {
       const teamId: string | null = conn.teamId ?? null;
 
       try {
-        // a) Metriken (nur wenn team_id auflösbar)
-        const p = await getPost(conn, socialId);
+        // a) Metriken (nur wenn team_id auflösbar) — ID-Format-robust
+        let p = null;
+        let workingId = `urn:li:ugcPost:${socialId}`;
+        for (const v of postIdVariants(socialId)) {
+          try { p = await getPost(conn, v); if (p) { workingId = v; break; } } catch (_e) { /* nächste Variante */ }
+        }
         const daysSince = post.published_at
           ? Math.max(0, Math.floor((Date.now() - new Date(post.published_at).getTime()) / 86400_000))
           : 0;
@@ -60,22 +70,28 @@ Deno.serve(async (req) => {
           team_id: teamId,
           measured_at: new Date().toISOString(),
           days_since_publish: daysSince,
-          impressions: p?.impressions ?? p?.stats?.impressions ?? null,
-          likes: p?.reaction_count ?? p?.stats?.likes ?? null,
-          comments_count: p?.comment_count ?? p?.stats?.comments ?? null,
-          reshares: p?.share_count ?? p?.stats?.reshares ?? null,
+          impressions: p?.impressions_counter ?? p?.impressions ?? null,
+          likes: p?.reaction_counter ?? p?.reaction_count ?? null,
+          comments_count: p?.comment_counter ?? p?.comment_count ?? null,
+          reshares: p?.repost_counter ?? p?.share_count ?? null,
           clicks: p?.stats?.clicks ?? null,
+          engagement_rate: (() => {
+            const impr = p?.impressions_counter ?? p?.impressions;
+            const eng = (p?.reaction_counter ?? 0) + (p?.comment_counter ?? 0) + (p?.repost_counter ?? 0);
+            return impr && impr > 0 ? Number((eng / impr).toFixed(4)) : null;
+          })(),
           raw_data: p ?? null,
         });
         if (teamId) metricsWritten++;
 
         // b) Kommentare -> Engager (+ Lead)
-        const comments = await listPostComments(conn, socialId);
+        const comments = await listPostComments(conn, workingId);
         const items: any[] = comments?.items ?? comments?.data ?? [];
         for (const c of items) {
-          const author = c.author ?? c.commenter ?? {};
-          const url = author.public_profile_url ?? author.profile_url ?? c.author_url ?? null;
-          const name = author.name ?? c.author_name ?? "Unbekannt";
+          const ad = c.author_details ?? (typeof c.author === "object" ? c.author : {}) ?? {};
+          const url = ad.public_profile_url ?? ad.profile_url ?? c.author_url ?? null;
+          const name = (typeof c.author === "string" ? c.author : ad.name) ?? c.author_name ?? "Unbekannt";
+          const author = ad;
           const { error: insErr } = await sb.from("linkedin_post_engagers").upsert({
             user_id: post.user_id,
             team_id: teamId,           // team_id von Anfang an (aus unipile_accounts)
