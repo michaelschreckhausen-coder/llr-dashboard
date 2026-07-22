@@ -44,7 +44,7 @@ export default function NetzwerkAnalytics() {
             .select('unipile_account_id, brand_voice_id, connections_total, followers_total, invites_pending_out, invites_pending_in, captured_on')
             .eq('team_id', activeTeamId).order('captured_on', { ascending: true }),
           supabase.from('brand_voices').select('id, name, brand_name'),
-          supabase.from('la_campaigns').select('id, name, status').eq('team_id', activeTeamId).is('archived_at', null),
+          supabase.from('la_campaigns').select('id, name, status').eq('team_id', activeTeamId),
           supabase.from('la_enrollments').select('campaign_id, state, relation_status').eq('team_id', activeTeamId),
         ])
         if (cancelled) return
