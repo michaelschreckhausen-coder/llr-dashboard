@@ -78,42 +78,41 @@ export default function LinkedInAnalyticsTiles({ arc = false, view = 'linkedin' 
     return () => { cancelled = true }
   }, [activeTeamId, bvId, isCompany])
 
-  const Tile = ({ icon, label, value, delta, warn, to }) => (
-    <button type="button" onClick={() => nav(to)} className="lk-tile-in"
-      style={{ textAlign: 'left', cursor: 'pointer', background: 'var(--surface, #fff)', border: '1px solid var(--border, #E4E7EC)', borderRadius: 12, padding: '9px 11px', display: 'flex', alignItems: 'center', gap: 8, width: '100%' }}>
-      <span style={{ color: warn ? '#B45309' : 'var(--primary, rgb(49,90,231))', display: 'inline-flex' }}>{icon}</span>
-      <span style={{ flex: 1, minWidth: 0, fontSize: 12, color: 'var(--text-muted, #6B7280)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{label}</span>
-      <span style={{ fontSize: 15, fontWeight: 700, color: warn ? '#B45309' : 'var(--text-strong, #111827)', fontVariantNumeric: 'tabular-nums' }}>{value}</span>
-      {delta != null && delta !== 0 && (
-        <span style={{ fontSize: 11, fontWeight: 700, color: delta > 0 ? '#059669' : '#DC2626' }}>{delta > 0 ? '▲' : '▼'}{Math.abs(delta)}</span>
-      )}
-    </button>
-  )
 
-  const Label = ({ text, tone }) => (
-    <span style={{
-      fontSize: 9.5, fontWeight: 700, letterSpacing: '0.05em', textTransform: 'uppercase',
-      color: tone === 'team' ? '#0F766E' : 'var(--wl-primary, rgb(49,90,231))',
-      background: tone === 'team' ? '#E7F6F2' : 'var(--wl-primary-tint, #EAF0FF)',
-      padding: '3px 9px', borderRadius: 999, whiteSpace: 'nowrap', display: 'inline-block',
-    }}>{text}</span>
-  )
-
-  const brandTiles = []
-  if (bvId && !noBrand) {
-    if (show.includes('follower')) brandTiles.push(<Tile key="fol" icon={<Users size={16} />} label="Follower" value={fmt(d?.follower)} delta={d?.followerDelta} to="/wachstum" />)
-    if (show.includes('second')) brandTiles.push(isCompany
-      ? <Tile key="sec" icon={<Building2 size={16} />} label="Mitarbeitende" value={fmt(d?.second)} to="/wachstum" />
-      : <Tile key="sec" icon={<UserPlus size={16} />} label="Verbindungen" value={fmt(d?.second)} delta={d?.secondDelta} to="/netzwerk-analytics" />)
-    if (show.includes('engagement')) brandTiles.push(<Tile key="eng" icon={<Flame size={16} />} label="Ø Engagement" value={d?.engagement != null ? (d.engagement * 100).toFixed(1).replace('.', ',') + ' %' : '–'} to="/linkedin-analytics" />)
+  const Tile = ({ icon, label, value, delta, warn, to, tone }) => {
+    const accent = tone === 'team' ? '#0F766E' : 'var(--wl-primary, rgb(49,90,231))'
+    return (
+      <button type="button" onClick={() => nav(to)} className="lk-tile-in"
+        style={{ textAlign: 'left', cursor: 'pointer', background: 'var(--surface, #fff)', border: '1px solid var(--border, #E4E7EC)', borderRadius: 12, padding: '10px 12px', display: 'flex', flexDirection: 'column', gap: 5, width: '100%', position: 'relative', overflow: 'hidden' }}>
+        <span style={{ position: 'absolute', left: 0, top: 0, bottom: 0, width: 3, background: accent }} />
+        <span style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 11.5, color: 'var(--text-muted, #6B7280)' }}>
+          <span style={{ color: warn ? '#B45309' : accent, display: 'inline-flex' }}>{icon}</span>
+          <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{label}</span>
+        </span>
+        <span style={{ display: 'flex', alignItems: 'baseline', gap: 6 }}>
+          <span style={{ fontSize: 19, fontWeight: 800, letterSpacing: '-0.02em', color: warn ? '#B45309' : 'var(--text-strong, #111827)', fontVariantNumeric: 'tabular-nums', lineHeight: 1 }}>{value}</span>
+          {delta != null && delta !== 0 && (
+            <span style={{ fontSize: 11, fontWeight: 700, color: delta > 0 ? '#059669' : '#DC2626' }}>{delta > 0 ? '▲' : '▼'}{Math.abs(delta)}</span>
+          )}
+        </span>
+      </button>
+    )
   }
-  const teamTiles = []
-  if (show.includes('unread')) teamTiles.push(<Tile key="unr" icon={<Mail size={16} />} label="Ungelesen" value={fmt(d?.unread)} warn={(d?.unread || 0) > 0} to="/nachrichten-analytics" />)
-  if (show.includes('campaigns')) teamTiles.push(<Tile key="cmp" icon={<Rocket size={16} />} label="Kampagnen aktiv" value={fmt(d?.campaigns)} to="/netzwerk-analytics" />)
 
-  const groups = []
-  if (brandTiles.length) groups.push({ label: `Marke · ${brandName}`, tone: 'brand', tiles: brandTiles })
-  if (teamTiles.length) groups.push({ label: 'Team', tone: 'team', tiles: teamTiles })
+  // ── Kacheln (flach, mit Ebenen-Ton) ──
+  const tiles = []
+  if (bvId && !noBrand) {
+    if (show.includes('follower')) tiles.push({ tone: 'brand', el: <Tile icon={<Users size={15} />} label="Follower" value={fmt(d?.follower)} delta={d?.followerDelta} tone="brand" to="/wachstum" /> })
+    if (show.includes('second')) tiles.push({ tone: 'brand', el: isCompany
+      ? <Tile icon={<Building2 size={15} />} label="Mitarbeitende" value={fmt(d?.second)} tone="brand" to="/wachstum" />
+      : <Tile icon={<UserPlus size={15} />} label="Verbindungen" value={fmt(d?.second)} delta={d?.secondDelta} tone="brand" to="/netzwerk-analytics" /> })
+    if (show.includes('engagement')) tiles.push({ tone: 'brand', el: <Tile icon={<Flame size={15} />} label="Ø Engagement" value={d?.engagement != null ? (d.engagement * 100).toFixed(1).replace('.', ',') + ' %' : '–'} tone="brand" to="/linkedin-analytics" /> })
+  }
+  if (show.includes('unread')) tiles.push({ tone: 'team', el: <Tile icon={<Mail size={15} />} label="Ungelesen" value={fmt(d?.unread)} warn={(d?.unread || 0) > 0} tone="team" to="/nachrichten-analytics" /> })
+  if (show.includes('campaigns')) tiles.push({ tone: 'team', el: <Tile icon={<Rocket size={15} />} label="Kampagnen" value={fmt(d?.campaigns)} tone="team" to="/netzwerk-analytics" /> })
+
+  const hasBrand = tiles.some(t => t.tone === 'brand')
+  const hasTeam = tiles.some(t => t.tone === 'team')
 
   return (
     <div>
@@ -121,22 +120,28 @@ export default function LinkedInAnalyticsTiles({ arc = false, view = 'linkedin' 
         @keyframes lk-tile-pop { 0% { opacity:0; transform: translateY(6px) scale(.98) } 100% { opacity:1; transform:none } }
         .lk-tile-in { animation: lk-tile-pop .34s ease both; }
       `}</style>
-      <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 12, color: 'var(--text-muted, #6B7280)', fontWeight: 600, marginBottom: 10 }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 12, color: 'var(--text-muted, #6B7280)', fontWeight: 600, marginBottom: 8 }}>
         <Flame size={13} /> Deine Analysen
       </div>
+
       {(noBrand || !bvId) && (
         <div style={{ fontSize: 12, color: 'var(--text-muted, #9CA3AF)', padding: '2px 2px 10px', lineHeight: 1.5 }}>
           Wähle oben eine Marke, um Follower & Engagement zu sehen.
         </div>
       )}
+
+      {activeTeamId && (hasBrand || hasTeam) && (
+        <div style={{ display: 'flex', flexWrap: 'wrap', gap: '4px 14px', marginBottom: 9, fontSize: 10.5, fontWeight: 600, color: 'var(--text-muted, #6B7280)' }}>
+          {hasBrand && <span style={{ display: 'inline-flex', alignItems: 'center', gap: 5 }}><span style={{ width: 7, height: 7, borderRadius: 999, background: 'var(--wl-primary, rgb(49,90,231))' }} />Marke · {brandName}</span>}
+          {hasTeam && <span style={{ display: 'inline-flex', alignItems: 'center', gap: 5 }}><span style={{ width: 7, height: 7, borderRadius: 999, background: '#0F766E' }} />Team</span>}
+        </div>
+      )}
+
       {activeTeamId && (
-        <div key={tick} style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-          {groups.map((g, gi) => (
-            <div key={gi}>
-              <div style={{ marginBottom: 7 }}><Label text={g.label} tone={g.tone} /></div>
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, minmax(0, 1fr))', gap: 8 }}>
-                {g.tiles}
-              </div>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, minmax(0, 1fr))', gap: 9, alignItems: 'start' }}>
+          {tiles.map((t, i) => (
+            <div key={i} style={{ transform: `translateY(${i % 2 === 1 ? 22 : 0}px)`, transition: 'transform .3s ease' }}>
+              {t.el}
             </div>
           ))}
         </div>

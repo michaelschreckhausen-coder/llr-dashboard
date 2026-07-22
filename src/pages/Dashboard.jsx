@@ -355,9 +355,10 @@ export default function Dashboard({ session }) {
           {planScopeText && (
             <span style={{ alignSelf: 'flex-start', fontSize: 9.5, fontWeight: 700, letterSpacing: '0.05em', textTransform: 'uppercase', color: '#003060', background: '#EEF0FA', padding: '3px 9px', borderRadius: 999, whiteSpace: 'nowrap' }}>{planScopeText}</span>
           )}
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, minmax(0, 1fr))', gap: 8 }}>
-            {planShown.slice(0, 4).map((s) => (
-              <div key={s.id} className="lk-tile-in" style={{ background: colors.white, border: `1px solid ${colors.border}`, borderRadius: 12, padding: '10px 11px' }}>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, minmax(0, 1fr))', gap: 9, alignItems: 'start' }}>
+            {planShown.slice(0, 4).map((s, i) => (
+              <div key={s.id} style={{ transform: `translateY(${!cockpitNarrow && i % 2 === 0 ? 22 : 0}px)`, transition: 'transform .3s ease' }}>
+              <div className="lk-tile-in" style={{ background: colors.white, border: `1px solid ${colors.border}`, borderRadius: 12, padding: '10px 11px' }}>
                 <span style={{ fontSize: 10, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.04em', color: s.area.color, background: s.area.bg, padding: '2px 7px', borderRadius: 999 }}>{s.area.label}</span>
                 <div style={{ fontSize: 12.5, fontWeight: 600, color: colors.ink, lineHeight: 1.35, margin: '6px 0 8px' }}>{s.title}</div>
                 <div style={{ display: 'flex', gap: 6 }}>
@@ -365,6 +366,7 @@ export default function Dashboard({ session }) {
                     onClick={() => (s.action ? takeAction(s.action) : askLeadly(s.prompt))}>{s.action ? 'Erledigen' : 'Angehen'}</button>
                   {s.href && <button className="lk-btn lk-btn-ghost lk-btn-sm" style={{ fontSize: 11 }} onClick={() => nav(s.href)}>Öffnen</button>}
                 </div>
+              </div>
               </div>
             ))}
           </div>
