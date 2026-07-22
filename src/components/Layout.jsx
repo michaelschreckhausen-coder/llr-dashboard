@@ -120,6 +120,7 @@ function getNav(t) {
 
   { divider: true, label: 'LinkedIn', tourId: 'nav-linkedin' },
   { subSection: true, label: 'Profil', items: [
+    { to: '/wachstum',        icon: IcBarChart, label: 'Wachstum' },
     { to: '/ssi',             icon: IcTarget,   label: t('nav.ssiTracker') },
     { to: '/profil-checker',  icon: IcCheckCircle, label: 'Profil-Checker' },
     { to: '/profiltexte',     icon: IcLinkedIn, label: t('nav.profiltexte') },
@@ -1341,7 +1342,7 @@ function isBrandVoiceContext(pathname) {
   // BV-Switcher sichtbar in LinkedIn-Bereich + Content-Bereich
   const bvRoutes = [
     // Meine Präsenz (brand-scoped)
-    '/profiltexte', '/linkedin-analytics', '/ssi', '/profil-checker',
+    '/profiltexte', '/linkedin-analytics', '/wachstum', '/ssi', '/profil-checker',
     // Akquise (agiert aus dem Profil der aktiven Marke — „Agiert als")
     '/vernetzungen', '/messages', '/automatisierung', '/linkedin-inbox', '/linkedin-netzwerk', '/linkedin-suche',
     // Content (brand-scoped)

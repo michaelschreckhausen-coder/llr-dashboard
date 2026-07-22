@@ -58,6 +58,7 @@ import LinkedInNetzwerk from './pages/LinkedInNetzwerk'
 import LinkedInAutomationNeu from './pages/LinkedInAutomationNeu'
 import LinkedInSuche from './pages/LinkedInSuche'
 import LinkedInAnalytics from './pages/LinkedInAnalytics'
+import Wachstum from './pages/Wachstum'
 import LinkedInEngagement from './pages/LinkedInEngagement'
 import Reports       from './pages/Reports'
 import ICP           from './pages/ICP'
@@ -365,6 +366,7 @@ export default function App() {
             <Route path="/linkedin-netzwerk" element={<ModuleGuard module="linkedin"><LinkedInNetzwerk session={session} /></ModuleGuard>} />
             <Route path="/linkedin-suche" element={<ModuleGuard module="linkedin"><LinkedInSuche session={session} /></ModuleGuard>} />
             <Route path="/linkedin-analytics" element={<ModuleGuard module="linkedin"><LinkedInAnalytics session={session} /></ModuleGuard>} />
+            <Route path="/wachstum" element={<ModuleGuard module="linkedin"><Wachstum /></ModuleGuard>} />
             <Route path="/linkedin-engagement" element={<ModuleGuard module="linkedin"><LinkedInEngagement session={session} /></ModuleGuard>} />
             {/* 3c-Flip: V2 (la_*) ist Default für alle. Not-Aus per User: localStorage lk_features.linkedinAutomationV2Disabled=true */}
             {(!isFlagEnabled('linkedinAutomationV2Disabled')) && (
