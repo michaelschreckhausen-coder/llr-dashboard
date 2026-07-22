@@ -322,15 +322,22 @@ export default function LeadlyHero({ firstName, leadly, stats = {}, onOpenTasks,
         if (isCockpit && !isNarrow) {
           return (
             <>
-              <div style={{ display: 'grid', gridTemplateColumns: 'minmax(200px,1fr) auto minmax(200px,1fr)', gap: 18, alignItems: 'start' }}>
-                <div>{analyticsSlot}</div>
-                <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 6, paddingTop: 2 }}>
-                  <LeadlyOrb state={orbState} size={104} />
-                  <div style={{ fontSize: 13, color: colors.inkMuted, fontWeight: 600 }}>{dateLabel}</div>
+              <div style={{ position: 'relative' }}>
+                <svg style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', zIndex: 0, pointerEvents: 'none' }} viewBox="0 0 100 100" preserveAspectRatio="none" aria-hidden="true">
+                  <line x1="50" y1="52" x2="18" y2="15" stroke={colors.border} strokeWidth="1" vectorEffect="non-scaling-stroke" />
+                  <line x1="50" y1="52" x2="82" y2="15" stroke={colors.border} strokeWidth="1" vectorEffect="non-scaling-stroke" />
+                  <line x1="50" y1="60" x2="50" y2="100" stroke={colors.border} strokeWidth="1" vectorEffect="non-scaling-stroke" />
+                </svg>
+                <div style={{ position: 'relative', zIndex: 1, display: 'grid', gridTemplateColumns: 'minmax(188px,1fr) auto minmax(188px,1fr)', gap: 26, alignItems: 'center' }}>
+                  <div>{analyticsSlot}</div>
+                  <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 6 }}>
+                    <LeadlyOrb state={orbState} size={128} />
+                    <div style={{ fontSize: 13, color: colors.inkMuted, fontWeight: 600 }}>{dateLabel}</div>
+                  </div>
+                  <div>{planSlot}</div>
                 </div>
-                <div>{planSlot}</div>
               </div>
-              <div style={{ textAlign: 'center', maxWidth: 560, margin: '14px auto 0' }}>{greetingCore}</div>
+              <div style={{ textAlign: 'center', maxWidth: 520, margin: '10px auto 0' }}>{greetingCore}</div>
             </>
           );
         }
