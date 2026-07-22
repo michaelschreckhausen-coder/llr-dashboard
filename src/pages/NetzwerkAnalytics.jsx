@@ -6,7 +6,7 @@
 // Team-scoped über activeTeamId + RLS. Kein Brand-Umschalter.
 
 import React, { useState, useEffect } from 'react'
-import { Users, UserPlus, Send, Inbox, Loader2, BarChart3 } from 'lucide-react'
+import { Users, UserPlus, Send, Inbox, Loader2, BarChart3, Rocket, UserCheck, Clock } from 'lucide-react'
 import {
   ResponsiveContainer, LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend,
 } from 'recharts'
@@ -29,6 +29,8 @@ export default function NetzwerkAnalytics() {
   const { activeTeamId } = useTeam()
   const [rows, setRows] = useState([])
   const [brandMap, setBrandMap] = useState({})
+  const [camps, setCamps] = useState([])
+  const [enr, setEnr] = useState([])
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
@@ -37,14 +39,18 @@ export default function NetzwerkAnalytics() {
     setLoading(true)
     ;(async () => {
       try {
-        const [{ data: nm }, { data: bv }] = await Promise.all([
+        const [{ data: nm }, { data: bv }, { data: cc }, { data: ee }] = await Promise.all([
           supabase.from('linkedin_network_metrics')
             .select('unipile_account_id, brand_voice_id, connections_total, followers_total, invites_pending_out, invites_pending_in, captured_on')
             .eq('team_id', activeTeamId).order('captured_on', { ascending: true }),
           supabase.from('brand_voices').select('id, name, brand_name'),
+          supabase.from('la_campaigns').select('id, name, status').eq('team_id', activeTeamId).is('archived_at', null),
+          supabase.from('la_enrollments').select('campaign_id, state, relation_status').eq('team_id', activeTeamId),
         ])
         if (cancelled) return
         setRows(nm || [])
+        setCamps(cc || [])
+        setEnr(ee || [])
         const map = {}
         for (const b of (bv || [])) map[b.id] = b.name || b.brand_name || null
         setBrandMap(map)
@@ -148,8 +154,57 @@ export default function NetzwerkAnalytics() {
               </div>
             </div>
 
+            {/* ── Automatisierung (Kampagnen-Reporting) ── */}
+            {camps.length > 0 && (() => {
+              const byCampaign = {}
+              for (const e of enr) { (byCampaign[e.campaign_id] ||= []).push(e) }
+              const activeCamps = camps.filter(c => c.status === 'active').length
+              const totalTargets = enr.length
+              const connected = enr.filter(e => e.relation_status === 'connected').length
+              const pending = enr.filter(e => e.relation_status === 'pending').length
+              const A = ({ icon, label, value }) => (
+                <div style={kpiTile}><div style={kpiLabel}>{icon}{label}</div><div style={kpiValue}>{fmt(value)}</div></div>
+              )
+              return (
+                <>
+                  <div style={{ display:'flex', gap:10, flexWrap:'wrap', marginTop:4 }}>
+                    <A icon={<Rocket size={11}/>} label="Aktive Kampagnen" value={activeCamps} />
+                    <A icon={<Users size={11}/>} label="Ziele gesamt" value={totalTargets} />
+                    <A icon={<UserCheck size={11}/>} label="Angenommen" value={connected} />
+                    <A icon={<Clock size={11}/>} label="Ausstehend" value={pending} />
+                  </div>
+                  <div style={cardStyle}>
+                    <div className="lk-eyebrow">Automatisierung · Kampagnen</div>
+                    <div style={{ display:'flex', flexDirection:'column', gap:8 }}>
+                      <div style={{ display:'flex', fontSize:11, fontWeight:700, color:'var(--text-muted,#6B7280)', textTransform:'uppercase', letterSpacing:'0.05em', padding:'0 4px' }}>
+                        <span style={{ flex:2, minWidth:140 }}>Kampagne</span>
+                        <span style={{ flex:1, textAlign:'right' }}>Status</span>
+                        <span style={{ flex:1, textAlign:'right' }}>Ziele</span>
+                        <span style={{ flex:1, textAlign:'right' }}>Angenommen</span>
+                        <span style={{ flex:1, textAlign:'right' }}>Ausstehend</span>
+                      </div>
+                      {camps.slice().sort((a,b)=>(byCampaign[b.id]?.length||0)-(byCampaign[a.id]?.length||0)).map(c => {
+                        const list = byCampaign[c.id] || []
+                        const conn = list.filter(e => e.relation_status === 'connected').length
+                        const pend = list.filter(e => e.relation_status === 'pending').length
+                        return (
+                          <div key={c.id} style={{ display:'flex', alignItems:'center', fontSize:13, padding:'8px 4px', borderTop:'1px solid var(--border-soft,#F1F5F9)' }}>
+                            <span style={{ flex:2, minWidth:140, fontWeight:600, color:'var(--text-strong,#111827)', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{c.name || 'Kampagne'}</span>
+                            <span style={{ flex:1, textAlign:'right', color:'var(--text-muted,#6B7280)', fontSize:12 }}>{c.status}</span>
+                            <span style={{ flex:1, textAlign:'right', fontVariantNumeric:'tabular-nums' }}>{fmt(list.length)}</span>
+                            <span style={{ flex:1, textAlign:'right', fontVariantNumeric:'tabular-nums' }}>{fmt(conn)}</span>
+                            <span style={{ flex:1, textAlign:'right', fontVariantNumeric:'tabular-nums' }}>{fmt(pend)}</span>
+                          </div>
+                        )
+                      })}
+                    </div>
+                  </div>
+                </>
+              )
+            })()}
+
             <div style={{ fontSize:11, color:'var(--text-muted,#9CA3AF)', lineHeight:1.5 }}>
-              Hinweis: LinkedIn liefert nur aktuelle Werte — den Verlauf bauen wir über tägliche Snapshots auf. „Anfragen offen" = ausstehende gesendete/erhaltene Vernetzungsanfragen.
+              Hinweis: LinkedIn liefert nur aktuelle Werte — den Verlauf bauen wir über tägliche Snapshots auf. „Anfragen offen" = ausstehende gesendete/erhaltene Vernetzungsanfragen. „Angenommen/Ausstehend" bei Kampagnen wird durch den Automatisierungs-Runner aktualisiert.
             </div>
           </div>
         )}
