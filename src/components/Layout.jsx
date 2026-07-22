@@ -116,10 +116,10 @@ function getNav(t) {
   { to: '/redaktionsplan',  icon: IcCalPen,   label: t('nav.redaktionsplan') },
   { to: '/content-studio',  icon: IcStar,     label: 'Content-Werkstatt' },
   { to: '/bibliothek',      icon: IcImage,    label: 'Bibliothek' },
+  { to: '/linkedin-analytics', icon: IcBarChart, label: 'Content-Analytics' },
 
   { divider: true, label: 'LinkedIn', tourId: 'nav-linkedin' },
   { subSection: true, label: 'Profil', items: [
-    { to: '/linkedin-analytics', icon: IcBarChart, label: 'Post-Analytics' },
     { to: '/ssi',             icon: IcTarget,   label: t('nav.ssiTracker') },
     { to: '/profil-checker',  icon: IcCheckCircle, label: 'Profil-Checker' },
     { to: '/profiltexte',     icon: IcLinkedIn, label: t('nav.profiltexte') },

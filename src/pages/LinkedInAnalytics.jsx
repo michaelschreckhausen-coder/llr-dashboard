@@ -15,6 +15,7 @@ import {
 } from 'lucide-react'
 import {
   ResponsiveContainer, LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend,
+  ComposedChart, Bar,
 } from 'recharts'
 import { supabase } from '../lib/supabase'
 import { useTeam } from '../context/TeamContext'
@@ -191,8 +192,8 @@ export default function LinkedInAnalytics() {
     <div style={pageOuterStyle}>
       <div style={pageStyle}>
         <PageHeader
-          overline="LinkedIn · Post-Analytics"
-          title="Post-Analytics"
+          overline="Content · Analytics"
+          title="Content-Analytics"
           subtitle={`Reichweite und Engagement deiner über Unipile veröffentlichten LinkedIn-Posts.${lastSync > 0 ? ` · Zuletzt aktualisiert: ${new Date(lastSync).toLocaleString('de-DE')}` : ''}`}
           action={(
             <button className="lk-btn lk-btn-navy" style={{ opacity: syncing ? 0.6 : 1 }} disabled={syncing} onClick={syncMetrics}>
@@ -267,6 +268,60 @@ export default function LinkedInAnalytics() {
           </div>
         ) : (
           <div style={{ display:'flex', flexDirection:'column', gap:20 }}>
+            {/* ── Portfolio-Überblick (alle Posts der Marke) ── */}
+            {(() => {
+              const withM = posts.map(p => ({ p, m: latestByPost[p.id] })).filter(x => x.m)
+              const sum = (f) => withM.reduce((a, x) => a + (Number(x.m[f]) || 0), 0)
+              const totalImpr = sum('impressions'), totalReact = sum('likes'), totalComm = sum('comments_count'), totalRe = sum('reshares')
+              const rates = withM.map(x => x.m.engagement_rate).filter(v => v != null)
+              const avgRate = rates.length ? (rates.reduce((a, b) => a + b, 0) / rates.length) : null
+              const chartData = withM
+                .filter(x => x.p.published_at)
+                .sort((a, b) => new Date(a.p.published_at) - new Date(b.p.published_at))
+                .map(x => ({
+                  name: new Date(x.p.published_at).toLocaleDateString('de-DE', { day:'2-digit', month:'2-digit' }),
+                  Impressions: Number(x.m.impressions) || 0,
+                  'Engagement %': x.m.engagement_rate != null ? Number((x.m.engagement_rate * 100).toFixed(2)) : null,
+                }))
+              const Kpi = ({ icon, label, value }) => (
+                <div style={{ flex:1, minWidth:130, ...cardStyle, padding:'12px 14px' }}>
+                  <div style={{ fontSize:11, color:'var(--text-muted,#6B7280)', fontWeight:600, display:'inline-flex', alignItems:'center', gap:5 }}>{icon}{label}</div>
+                  <div style={{ fontSize:22, fontWeight:800, color:'var(--text-strong,#111827)', marginTop:2, lineHeight:1.1 }}>{value}</div>
+                </div>
+              )
+              return (
+                <div style={{ display:'flex', flexDirection:'column', gap:16 }}>
+                  <div style={{ display:'flex', gap:10, flexWrap:'wrap' }}>
+                    <Kpi icon={<BarChart3 size={11}/>} label="Posts" value={fmt(withM.length)} />
+                    <Kpi icon={<Eye size={11}/>} label="Impressions gesamt" value={fmt(totalImpr)} />
+                    <Kpi icon={<Heart size={11}/>} label="Reaktionen" value={fmt(totalReact)} />
+                    <Kpi icon={<MessageSquare size={11}/>} label="Kommentare" value={fmt(totalComm)} />
+                    <Kpi icon={<Repeat2 size={11}/>} label="Reposts" value={fmt(totalRe)} />
+                    <Kpi icon={<TrendingUp size={11}/>} label="Ø Engagement" value={avgRate != null ? (avgRate * 100).toFixed(2) + ' %' : '–'} />
+                  </div>
+                  {chartData.length > 1 && (
+                    <div style={cardStyle}>
+                      <div className="lk-eyebrow">Reichweite & Engagement je Post</div>
+                      <div style={{ width:'100%', height:280 }}>
+                        <ResponsiveContainer width="100%" height="100%">
+                          <ComposedChart data={chartData} margin={{ top:8, right:16, bottom:8, left:0 }}>
+                            <CartesianGrid strokeDasharray="3 3" stroke="#E4E7EC" />
+                            <XAxis dataKey="name" tick={{ fontSize:11 }} />
+                            <YAxis yAxisId="left" tick={{ fontSize:11 }} />
+                            <YAxis yAxisId="right" orientation="right" tick={{ fontSize:11 }} unit="%" />
+                            <Tooltip />
+                            <Legend wrapperStyle={{ fontSize:12 }} />
+                            <Bar yAxisId="left" dataKey="Impressions" fill={PRIMARY} radius={[4,4,0,0]} maxBarSize={38} />
+                            <Line yAxisId="right" type="monotone" dataKey="Engagement %" stroke="#DD2A7B" strokeWidth={2} dot={{ r:2 }} />
+                          </ComposedChart>
+                        </ResponsiveContainer>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )
+            })()}
+
             {/* Post-Auswahl */}
             <div>
               <div className="lk-eyebrow">Top-Posts</div>
