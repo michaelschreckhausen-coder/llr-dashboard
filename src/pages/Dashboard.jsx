@@ -296,7 +296,7 @@ export default function Dashboard({ session }) {
   const [cockpitNarrow, setCockpitNarrow] = React.useState(false);
   const [wide2col, setWide2col] = React.useState(true);
   const [planCat, setPlanCat] = React.useState('all');
-  const [analyticsView, setAnalyticsView] = React.useState('linkedin');
+  const [analyticsView, setAnalyticsView] = React.useState('handlung');
   useEffect(() => {
     const c = () => { const w = window.innerWidth || document.documentElement.clientWidth || 0; setCockpitNarrow(w > 0 && w < 900); setWide2col(!(w > 0 && w < 1180)); };
     c(); const t = setTimeout(c, 300); window.addEventListener('resize', c);
@@ -331,10 +331,9 @@ export default function Dashboard({ session }) {
   for (const sg of planShown.slice(0, 4)) if (sg.area) planCounts[sg.area.label] = (planCounts[sg.area.label] || 0) + 1;
   const planScopeText = Object.entries(planCounts).map(([k, v]) => `${v} ${v > 1 ? (PLAN_PLURAL[k] || k) : k}`).join(' · ');
   const analyticsViews = [
-    { value: 'linkedin', label: 'LinkedIn-Überblick' },
-    { value: 'wachstum', label: 'Wachstum' },
-    { value: 'content', label: 'Content-Leistung' },
-    { value: 'netzwerk', label: 'Netzwerk & Inbox' },
+    { value: 'handlung', label: 'Handlungsbedarf' },
+    { value: 'trend', label: 'Wochen-Trend' },
+    { value: 'content', label: 'Content-Wirkung' },
   ];
 
   const planNode = (
@@ -438,7 +437,7 @@ export default function Dashboard({ session }) {
             rightControl={rightControl}
           />
         );
-        const analytics = <LinkedInAnalyticsTiles view={analyticsView} />;
+        const analytics = <LinkedInAnalyticsTiles mode={analyticsView} />;
         if (cockpitNarrow) {
           return (
             <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
