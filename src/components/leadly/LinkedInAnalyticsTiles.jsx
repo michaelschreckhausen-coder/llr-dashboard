@@ -99,6 +99,18 @@ export default function LinkedInAnalyticsTiles({ arc = false, view = 'linkedin' 
     }}>{text}</span>
   )
 
+  const brandTiles = []
+  if (bvId && !noBrand) {
+    if (show.includes('follower')) brandTiles.push(<Tile key="fol" icon={<Users size={16} />} label="Follower" value={fmt(d?.follower)} delta={d?.followerDelta} to="/wachstum" />)
+    if (show.includes('second')) brandTiles.push(isCompany
+      ? <Tile key="sec" icon={<Building2 size={16} />} label="Mitarbeitende" value={fmt(d?.second)} to="/wachstum" />
+      : <Tile key="sec" icon={<UserPlus size={16} />} label="Verbindungen" value={fmt(d?.second)} delta={d?.secondDelta} to="/netzwerk-analytics" />)
+    if (show.includes('engagement')) brandTiles.push(<Tile key="eng" icon={<Flame size={16} />} label="Ø Engagement" value={d?.engagement != null ? (d.engagement * 100).toFixed(1).replace('.', ',') + ' %' : '–'} to="/linkedin-analytics" />)
+  }
+  const teamTiles = []
+  if (show.includes('unread')) teamTiles.push(<Tile key="unr" icon={<Mail size={16} />} label="Ungelesen" value={fmt(d?.unread)} warn={(d?.unread || 0) > 0} to="/nachrichten-analytics" />)
+  if (show.includes('campaigns')) teamTiles.push(<Tile key="cmp" icon={<Rocket size={16} />} label="Kampagnen aktiv" value={fmt(d?.campaigns)} to="/netzwerk-analytics" />)
+
   const groups = []
   if (brandTiles.length) groups.push({ label: `Marke · ${brandName}`, tone: 'brand', tiles: brandTiles })
   if (teamTiles.length) groups.push({ label: 'Team', tone: 'team', tiles: teamTiles })
