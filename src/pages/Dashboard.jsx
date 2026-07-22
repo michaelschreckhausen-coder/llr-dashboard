@@ -326,6 +326,9 @@ export default function Dashboard({ session }) {
   }
   const planCats = [{ value: 'all', label: 'Alle Aufgaben' }, ...planCatSet];
   const planShown = planCat === 'all' ? displayedSuggestions : displayedSuggestions.filter(sg => sg.area?.key === planCat);
+  const planCounts = {};
+  for (const sg of planShown.slice(0, 4)) if (sg.area) planCounts[sg.area.label] = (planCounts[sg.area.label] || 0) + 1;
+  const planScopeText = Object.entries(planCounts).map(([k, v]) => `${v} ${k}${v > 1 ? 's' : ''}`).join(' · ');
   const analyticsViews = [
     { value: 'linkedin', label: 'LinkedIn-Überblick' },
     { value: 'wachstum', label: 'Wachstum' },
@@ -347,15 +350,22 @@ export default function Dashboard({ session }) {
         )}
       </div>
       {planShown.length > 0 ? (
-        <div style={{ display: 'grid', gridTemplateColumns: wide2col ? '1fr 1fr' : '1fr', gap: 8 }}>
-          {planShown.slice(0, 4).map((s) => (
-            <div key={s.id} style={{ background: colors.white, border: `1px solid ${colors.border}`, borderRadius: 12, padding: '10px 11px' }}>
-              <span style={{ fontSize: 10, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.04em', color: s.area.color, background: s.area.bg, padding: '2px 7px', borderRadius: 999 }}>{s.area.label}</span>
-              <div style={{ fontSize: 12.5, fontWeight: 600, color: colors.ink, lineHeight: 1.35, margin: '6px 0 8px' }}>{s.title}</div>
-              <div style={{ display: 'flex', gap: 6 }}>
-                <button className="lk-btn lk-btn-primary lk-btn-sm" style={{ flex: 1, fontSize: 11 }}
-                  onClick={() => (s.action ? takeAction(s.action) : askLeadly(s.prompt))}>{s.action ? 'Erledigen' : 'Angehen'}</button>
-                {s.href && <button className="lk-btn lk-btn-ghost lk-btn-sm" style={{ fontSize: 11 }} onClick={() => nav(s.href)}>Öffnen</button>}
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 8, alignItems: cockpitNarrow ? 'stretch' : 'flex-end' }}>
+          {planScopeText && (
+            <div style={{ transform: `translateX(${cockpitNarrow ? 0 : -0}px)`, transition: 'transform .25s ease' }}>
+              <span style={{ fontSize: 9.5, fontWeight: 700, letterSpacing: '0.05em', textTransform: 'uppercase', color: '#003060', background: '#EEF0FA', padding: '3px 9px', borderRadius: 999, whiteSpace: 'nowrap' }}>{planScopeText}</span>
+            </div>
+          )}
+          {planShown.slice(0, 4).map((s, i) => (
+            <div key={s.id} className="lk-tile-in" style={{ transform: `translateX(${cockpitNarrow ? 0 : -Math.min((i + 1) * 15, 58)}px)`, width: cockpitNarrow ? '100%' : 232, maxWidth: '100%', transition: 'transform .25s ease' }}>
+              <div style={{ background: colors.white, border: `1px solid ${colors.border}`, borderRadius: 12, padding: '10px 11px' }}>
+                <span style={{ fontSize: 10, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.04em', color: s.area.color, background: s.area.bg, padding: '2px 7px', borderRadius: 999 }}>{s.area.label}</span>
+                <div style={{ fontSize: 12.5, fontWeight: 600, color: colors.ink, lineHeight: 1.35, margin: '6px 0 8px' }}>{s.title}</div>
+                <div style={{ display: 'flex', gap: 6 }}>
+                  <button className="lk-btn lk-btn-primary lk-btn-sm" style={{ flex: 1, fontSize: 11 }}
+                    onClick={() => (s.action ? takeAction(s.action) : askLeadly(s.prompt))}>{s.action ? 'Erledigen' : 'Angehen'}</button>
+                  {s.href && <button className="lk-btn lk-btn-ghost lk-btn-sm" style={{ fontSize: 11 }} onClick={() => nav(s.href)}>Öffnen</button>}
+                </div>
               </div>
             </div>
           ))}
@@ -427,7 +437,7 @@ export default function Dashboard({ session }) {
             rightControl={rightControl}
           />
         );
-        const analytics = <LinkedInAnalyticsTiles cols={wide2col ? 2 : 1} view={analyticsView} />;
+        const analytics = <LinkedInAnalyticsTiles arc={!cockpitNarrow} view={analyticsView} />;
         if (cockpitNarrow) {
           return (
             <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>

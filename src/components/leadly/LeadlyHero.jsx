@@ -302,10 +302,10 @@ export default function LeadlyHero({ firstName, leadly, stats = {}, onOpenTasks,
             <LeadlyOrb state={orbState} size={124} />
           </div>
           {leftControl && (
-            <div style={{ position: 'absolute', top: 13, right: 'calc(50% + 82px)', zIndex: 5 }}>{leftControl}</div>
+            <div style={{ position: 'absolute', top: -34, right: 'calc(50% + 80px)', zIndex: 6 }}>{leftControl}</div>
           )}
           {rightControl && (
-            <div style={{ position: 'absolute', top: 13, left: 'calc(50% + 82px)', zIndex: 5 }}>{rightControl}</div>
+            <div style={{ position: 'absolute', top: -34, left: 'calc(50% + 80px)', zIndex: 6 }}>{rightControl}</div>
           )}
         </>
       )}
