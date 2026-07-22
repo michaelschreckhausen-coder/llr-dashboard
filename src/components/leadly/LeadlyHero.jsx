@@ -258,9 +258,15 @@ export default function LeadlyHero({ firstName, leadly, stats = {}, onOpenTasks,
   const isCockpit = layout === 'cockpit';
   const [isNarrow, setIsNarrow] = useState(false);
   useEffect(() => {
-    const check = () => setIsNarrow(window.innerWidth < 900);
-    check(); window.addEventListener('resize', check);
-    return () => window.removeEventListener('resize', check);
+    // Desktop-Default (Wide): nur bei ECHT gemessener kleiner Breite auf Schmal wechseln.
+    const check = () => {
+      const w = window.innerWidth || document.documentElement.clientWidth || 0;
+      setIsNarrow(w > 0 && w < 900);
+    };
+    check();
+    const t = setTimeout(check, 300);
+    window.addEventListener('resize', check);
+    return () => { clearTimeout(t); window.removeEventListener('resize', check); };
   }, []);
 
   const essenceShown = essence ? essence.slice(0, typedChars) : '';
