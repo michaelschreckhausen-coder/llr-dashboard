@@ -1306,6 +1306,7 @@ export default function BrandVoice({ session, brandType = 'personal' }) {
   const [cpSaving, setCpSaving] = useState(false)
   const [cpError, setCpError] = useState('')
   const [cpSearch, setCpSearch] = useState('')
+  const [cpLoginsCount, setCpLoginsCount] = useState(null) // Anzahl verbundener Team-Logins
   const [showVisibilityModal, setShowVisibilityModal] = useState(false)
   // Unipile-Connect (brand-scoped): übergibt brand_voice_id → Webhook mappt den Account an DIESE Brand.
   async function connectLinkedInUnipile() {
@@ -1323,47 +1324,29 @@ export default function BrandVoice({ session, brandType = 'personal' }) {
   // ── Company-Page-Verbindung: über einen verbundenen Admin-Login eine
   //    LinkedIn Company Page auswählen und an der Company Brand speichern.
   async function openCompanyPageModal() {
-    setCpError(''); setShowCpModal(true)
-    // verbundene Logins des Teams laden (1 Zeile je Login)
+    setCpError(''); setCpSearch(''); setShowCpModal(true)
+    if (!edit?.id) { setCpOrgs([]); setCpLoginsCount(0); return }
+    // ALLE administrierten Pages über alle verbundenen Team-Logins aggregieren
+    // (acting login wird pro Page automatisch mitgeliefert — User wählt keinen Login).
+    setCpLoadingOrgs(true); setCpOrgs([]); setCpLoginsCount(null)
     try {
-      let q = supabase.from('unipile_accounts')
-        .select('unipile_account_id, provider_public_id, brand_voice_id')
-        .eq('status', 'OK').not('unipile_account_id', 'is', null)
-      q = activeTeamId ? q.eq('team_id', activeTeamId) : q.eq('user_id', uid)
-      const { data } = await q
-      const seen = new Set(); const logins = []
-      for (const r of (data || [])) {
-        if (!r.unipile_account_id || seen.has(r.unipile_account_id)) continue
-        seen.add(r.unipile_account_id)
-        logins.push({ account_id: r.unipile_account_id, label: r.provider_public_id || r.unipile_account_id })
-      }
-      setCpLogins(logins)
-      // Vorauswahl: bereits gespeicherter Login, sonst erster
-      const pre = edit?.linkedin_acting_account_id || (logins[0]?.account_id || '')
-      setCpAccountId(pre)
-      if (pre) loadCompanyPages(pre)
-    } catch (e) { setCpError('Konnte verbundene Logins nicht laden.') }
-  }
-  async function loadCompanyPages(accountId) {
-    if (!accountId) { setCpOrgs([]); return }
-    setCpLoadingOrgs(true); setCpError('')
-    try {
-      const { data, error } = await supabase.functions.invoke('unipile-list-organizations', { body: { unipile_account_id: accountId } })
+      const { data, error } = await supabase.functions.invoke('unipile-list-company-pages', { body: { brand_voice_id: edit.id } })
       if (error) throw error
       if (data?.error) throw new Error(data.message || data.error)
+      setCpLoginsCount(typeof data?.logins_count === 'number' ? data.logins_count : 0)
       setCpOrgs(Array.isArray(data?.organizations) ? data.organizations : [])
-    } catch (e) { setCpOrgs([]); setCpError('Konnte Company Pages dieses Logins nicht laden. Verwaltet dieser Login Pages?') }
+    } catch (e) { setCpOrgs([]); setCpLoginsCount(0); setCpError('Konnte verwaltbare Company Pages nicht laden.') }
     finally { setCpLoadingOrgs(false) }
   }
   async function saveCompanyPage(org) {
-    if (!edit?.id || !org?.org_id || !cpAccountId) return
+    if (!edit?.id || !org?.org_id || !org?.acting_account_id) return
     setCpSaving(true); setCpError('')
     try {
       const patch = {
         linkedin_org_id: String(org.org_id),
         linkedin_org_urn: org.organization_urn || null,
         linkedin_org_name: org.name || null,
-        linkedin_acting_account_id: cpAccountId,
+        linkedin_acting_account_id: org.acting_account_id,
         linkedin_org_verified_at: new Date().toISOString(),
       }
       const { error } = await supabase.from('brand_voices').update(patch).eq('id', edit.id)
@@ -1975,37 +1958,33 @@ export default function BrandVoice({ session, brandType = 'personal' }) {
                 </div>
               )}
 
-              {/* Schritt 1: Admin-Login wählen */}
-              <div style={{ fontSize:12, fontWeight:700, color:'var(--text-primary)', marginBottom:6 }}>1 · Über welchen LinkedIn-Login?</div>
-              {cpLogins.length === 0 ? (
-                <div style={{ fontSize:12, color:'var(--text-muted)', padding:'10px 12px', background:'#F8FAFC', border:'1px solid var(--border)', borderRadius:8, marginBottom:14 }}>
-                  Noch kein LinkedIn-Login verbunden. Verbinde zuerst ein Profil (z.B. deine Personal Brand), das diese Company Page administriert.
+              {/* Erklärung des Modells */}
+              <div style={{ fontSize:12, color:'var(--text-muted)', marginBottom:14, lineHeight:1.55, padding:'10px 12px', background:'#F8FAFC', border:'1px solid var(--border)', borderRadius:8 }}>
+                Wähle die LinkedIn-Seite deines Unternehmens. Sie wird <b>über ein verbundenes LinkedIn-Profil</b> verknüpft, das sie administriert — kein separater Login, keine Zusatzkosten. Es erscheinen alle Seiten, die deine verbundenen Profile verwalten.
+              </div>
+
+              {cpLoadingOrgs ? (
+                <div style={{ display:'flex', alignItems:'center', gap:8, fontSize:13, color:'var(--text-muted)', padding:'14px 0' }}><Loader2 size={14} className="lk-spin"/>Suche deine Company Pages…</div>
+              ) : cpLoginsCount === 0 ? (
+                <div style={{ fontSize:13, color:'var(--text-primary)', padding:'14px 16px', background:'#FFFBEB', border:'1px solid #FDE68A', borderRadius:10, lineHeight:1.55 }}>
+                  <div style={{ fontWeight:700, marginBottom:4 }}>Noch kein LinkedIn-Profil verbunden</div>
+                  Verbinde zuerst ein persönliches LinkedIn-Profil, das diese Company Page administriert — z.B. in einer <b>Personal Brand</b>. Danach erscheint die Seite hier automatisch.
+                  <div style={{ marginTop:10 }}>
+                    <a href="/personal-brand" className="lk-btn lk-btn-ghost" style={{ textDecoration:'none', display:'inline-flex', alignItems:'center', gap:6 }}><LinkedinIcon size={14}/>Zu den Personal Brands</a>
+                  </div>
+                </div>
+              ) : cpOrgs.length === 0 ? (
+                <div style={{ fontSize:12, color:'var(--text-muted)', padding:'12px 14px', background:'#F8FAFC', border:'1px solid var(--border)', borderRadius:8, lineHeight:1.5 }}>
+                  Deine verbundenen LinkedIn-Profile administrieren keine Company Pages. Nur Seiten, für die dein Profil Admin-Rechte hat, können verknüpft werden.
                 </div>
               ) : (
-                <select value={cpAccountId} onChange={e=>{ setCpAccountId(e.target.value); setCpSearch(''); loadCompanyPages(e.target.value) }}
-                  style={{ width:'100%', padding:'10px 12px', border:'1.5px solid var(--border)', borderRadius:8, fontSize:13, marginBottom:8, background:'#fff' }}>
-                  {cpLogins.map(l => <option key={l.account_id} value={l.account_id}>{l.label}</option>)}
-                </select>
-              )}
-              {cpAccountId && cpLogins.length > 0 && (
-                <div style={{ fontSize:11, color:'var(--text-muted)', marginBottom:14, lineHeight:1.5 }}>
-                  Gepostet wird <b>als Page über diesen Login</b> — deshalb kein separater LinkedIn-Login für die Page nötig. Es erscheinen nur Pages, die dieser Login administriert.
-                </div>
-              )}
-
-              {/* Schritt 2: Page wählen */}
-              {cpAccountId && (<>
-                <div style={{ fontSize:12, fontWeight:700, color:'var(--text-primary)', marginBottom:6 }}>2 · Welche Company Page? {cpOrgs.length > 0 && <span style={{ fontWeight:500, color:'var(--text-muted)' }}>({cpOrgs.length})</span>}</div>
-                {cpLoadingOrgs ? (
-                  <div style={{ display:'flex', alignItems:'center', gap:8, fontSize:13, color:'var(--text-muted)', padding:'10px 0' }}><Loader2 size={14} className="lk-spin"/>Lade Pages…</div>
-                ) : cpOrgs.length === 0 ? (
-                  <div style={{ fontSize:12, color:'var(--text-muted)', padding:'10px 12px', background:'#F8FAFC', border:'1px solid var(--border)', borderRadius:8 }}>Dieser Login administriert keine Company Pages.</div>
-                ) : (
-                  <div style={{ display:'flex', flexDirection:'column', gap:8 }}>
-                    {cpOrgs.length > 6 && (
-                      <input value={cpSearch} onChange={e=>setCpSearch(e.target.value)} placeholder="Page suchen…"
-                        style={{ width:'100%', padding:'9px 12px', border:'1.5px solid var(--border)', borderRadius:8, fontSize:13, marginBottom:2 }}/>
-                    )}
+                <>
+                  <div style={{ fontSize:12, fontWeight:700, color:'var(--text-primary)', marginBottom:8 }}>Deine Company Pages <span style={{ fontWeight:500, color:'var(--text-muted)' }}>({cpOrgs.length})</span></div>
+                  {cpOrgs.length > 6 && (
+                    <input value={cpSearch} onChange={e=>setCpSearch(e.target.value)} placeholder="Page suchen…"
+                      style={{ width:'100%', padding:'9px 12px', border:'1.5px solid var(--border)', borderRadius:8, fontSize:13, marginBottom:8 }}/>
+                  )}
+                  <div style={{ display:'flex', flexDirection:'column', gap:8, maxHeight:340, overflowY:'auto' }}>
                     {cpOrgs.filter(o => !cpSearch || (o.name||'').toLowerCase().includes(cpSearch.toLowerCase())).map(o => {
                       const active = String(o.org_id) === String(edit.linkedin_org_id)
                       return (
@@ -2013,15 +1992,18 @@ export default function BrandVoice({ session, brandType = 'personal' }) {
                           style={{ display:'flex', alignItems:'center', justifyContent:'space-between', gap:10, padding:'11px 14px', border:'1.5px solid '+(active?'#BBF7D0':'var(--border)'), background: active?'#F0FDF4':'#fff', borderRadius:10, cursor:'pointer', textAlign:'left' }}>
                           <span style={{ display:'inline-flex', alignItems:'center', gap:10, minWidth:0 }}>
                             <Building2 size={18} strokeWidth={1.75} style={{ color: active?'#166534':'var(--text-muted)', flexShrink:0 }}/>
-                            <span style={{ fontSize:13, fontWeight:600, color:'var(--text-primary)', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{o.name || o.org_id}</span>
+                            <span style={{ minWidth:0 }}>
+                              <span style={{ display:'block', fontSize:13, fontWeight:600, color:'var(--text-primary)', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{o.name || o.org_id}</span>
+                              <span style={{ display:'block', fontSize:11, color:'var(--text-muted)' }}>über {o.login_label}</span>
+                            </span>
                           </span>
                           <span style={{ fontSize:12, fontWeight:700, color: active?'#166534':'var(--primary)', flexShrink:0 }}>{active ? '✓ Verbunden' : 'Auswählen'}</span>
                         </button>
                       )
                     })}
                   </div>
-                )}
-              </>)}
+                </>
+              )}
 
               {cpError && <div style={{ marginTop:12, padding:'8px 12px', background:'#FEF2F2', border:'1px solid #FCA5A5', borderRadius:8, fontSize:12, color:'#991B1B' }}>{cpError}</div>}
               <div style={{ marginTop:14, fontSize:11, color:'var(--text-muted)', lineHeight:1.5 }}>Company Pages können auf LinkedIn keine Vernetzungsanfragen/Nachrichten senden — für Pages sind Posten und Analytics verfügbar.</div>
