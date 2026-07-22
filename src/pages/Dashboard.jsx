@@ -260,8 +260,9 @@ export default function Dashboard({ session }) {
     : suggestions;
 
   const [cockpitNarrow, setCockpitNarrow] = React.useState(false);
+  const [wide2col, setWide2col] = React.useState(true);
   useEffect(() => {
-    const c = () => { const w = window.innerWidth || document.documentElement.clientWidth || 0; setCockpitNarrow(w > 0 && w < 900); };
+    const c = () => { const w = window.innerWidth || document.documentElement.clientWidth || 0; setCockpitNarrow(w > 0 && w < 900); setWide2col(!(w > 0 && w < 1180)); };
     c(); const t = setTimeout(c, 300); window.addEventListener('resize', c);
     return () => { clearTimeout(t); window.removeEventListener('resize', c); };
   }, []);
@@ -296,7 +297,7 @@ export default function Dashboard({ session }) {
         )}
       </div>
       {displayedSuggestions.length > 0 ? (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+        <div style={{ display: 'grid', gridTemplateColumns: wide2col ? '1fr 1fr' : '1fr', gap: 8 }}>
           {displayedSuggestions.slice(0, 4).map((s) => (
             <div key={s.id} style={{ background: colors.white, border: `1px solid ${colors.border}`, borderRadius: 12, padding: '10px 11px' }}>
               <span style={{ fontSize: 10, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.04em', color: s.area.color, background: s.area.bg, padding: '2px 7px', borderRadius: 999 }}>{s.area.label}</span>
@@ -368,7 +369,7 @@ export default function Dashboard({ session }) {
             layout="cockpit"
           />
         );
-        const analytics = <LinkedInAnalyticsTiles />;
+        const analytics = <LinkedInAnalyticsTiles cols={wide2col ? 2 : 1} />;
         if (cockpitNarrow) {
           return (
             <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>

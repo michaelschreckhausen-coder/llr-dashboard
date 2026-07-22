@@ -15,7 +15,7 @@ import { useBrandVoice } from '../../context/BrandVoiceContext'
 
 const fmt = n => (n == null ? '–' : Number(n).toLocaleString('de-DE'))
 
-export default function LinkedInAnalyticsTiles() {
+export default function LinkedInAnalyticsTiles({ cols = 1 }) {
   const nav = useNavigate()
   const { activeTeamId } = useTeam()
   const { activeBrandVoice, noBrand } = useBrandVoice()
@@ -93,25 +93,24 @@ export default function LinkedInAnalyticsTiles() {
       <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 12, color: 'var(--text-muted, #6B7280)', fontWeight: 600, marginBottom: 8 }}>
         <Flame size={13} /> Deine Analysen
       </div>
-      {!activeTeamId ? null : noBrand || !bvId ? (
-        <div style={{ fontSize: 12, color: 'var(--text-muted, #9CA3AF)', padding: '8px 2px', lineHeight: 1.5 }}>
+      {noBrand || !bvId ? (
+        <div style={{ fontSize: 12, color: 'var(--text-muted, #9CA3AF)', padding: '4px 2px 8px', lineHeight: 1.5 }}>
           Wähle oben eine Marke, um Follower & Engagement zu sehen.
         </div>
-      ) : (
-        <div key={tick} style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-          <Tile icon={<Users size={16} />} label="Follower" value={fmt(d?.follower)} delta={d?.followerDelta} to="/wachstum" />
-          {isCompany
+      ) : null}
+      {activeTeamId && (
+        <div key={tick} style={{ display: 'grid', gridTemplateColumns: cols === 2 ? '1fr 1fr' : '1fr', gap: 8 }}>
+          {bvId && !noBrand && <Tile icon={<Users size={16} />} label="Follower" value={fmt(d?.follower)} delta={d?.followerDelta} to="/wachstum" />}
+          {bvId && !noBrand && (isCompany
             ? <Tile icon={<Building2 size={16} />} label="Mitarbeitende" value={fmt(d?.second)} to="/wachstum" />
-            : <Tile icon={<UserPlus size={16} />} label="Verbindungen" value={fmt(d?.second)} delta={d?.secondDelta} to="/netzwerk-analytics" />}
-          {d?.engagement != null && (
+            : <Tile icon={<UserPlus size={16} />} label="Verbindungen" value={fmt(d?.second)} delta={d?.secondDelta} to="/netzwerk-analytics" />)}
+          {bvId && !noBrand && d?.engagement != null && (
             <Tile icon={<Flame size={16} />} label="Ø Engagement" value={(d.engagement * 100).toFixed(1).replace('.', ',') + ' %'} to="/linkedin-analytics" />
           )}
+          <Tile icon={<Mail size={16} />} label="Ungelesen" value={fmt(d?.unread)} warn={(d?.unread || 0) > 0} to="/nachrichten-analytics" />
+          <Tile icon={<Rocket size={16} />} label="Kampagnen aktiv" value={fmt(d?.campaigns)} to="/netzwerk-analytics" />
         </div>
       )}
-      <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginTop: 8 }}>
-        <Tile icon={<Mail size={16} />} label="Ungelesen" value={fmt(d?.unread)} warn={(d?.unread || 0) > 0} to="/nachrichten-analytics" />
-        <Tile icon={<Rocket size={16} />} label="Kampagnen aktiv" value={fmt(d?.campaigns)} to="/netzwerk-analytics" />
-      </div>
     </div>
   )
 }
