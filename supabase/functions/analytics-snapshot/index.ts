@@ -22,12 +22,33 @@ async function uget(path: string): Promise<any | null> {
   } catch { return null; }
 }
 
+// Chats gedeckelt scannen (Cursor-Pagination, max. 3 Seiten à 100) → Inbox-KPIs.
+async function scanChats(accountId: string) {
+  const now = Date.now();
+  let scanned = 0, unreadThreads = 0, unreadMessages = 0, active7d = 0, cursor: string | null = null;
+  for (let page = 0; page < 3; page++) {
+    const q = `/api/v1/chats?account_id=${encodeURIComponent(accountId)}&limit=100${cursor ? `&cursor=${encodeURIComponent(cursor)}` : ""}`;
+    const d = await uget(q);
+    const items: any[] = d?.items ?? [];
+    for (const c of items) {
+      scanned++;
+      const uc = Number(c?.unread_count ?? 0) || 0;
+      if (uc > 0) { unreadThreads++; unreadMessages += uc; }
+      const ts = c?.timestamp ? new Date(c.timestamp).getTime() : 0;
+      if (ts && now - ts < 7 * 86400_000) active7d++;
+    }
+    cursor = d?.cursor ?? null;
+    if (!cursor || items.length === 0) break;
+  }
+  return { scanned, unreadThreads, unreadMessages, active7d };
+}
+
 Deno.serve(async (req) => {
   if (req.headers.get("Authorization") !== `Bearer ${SB_SERVICE}`) {
     return new Response(JSON.stringify({ error: "unauthorized" }), { status: 401, headers: { "Content-Type": "application/json" } });
   }
   const today = new Date().toISOString().slice(0, 10);
-  let profiles = 0, networks = 0, pages = 0;
+  let profiles = 0, networks = 0, pages = 0, messaging = 0;
   const errors: string[] = [];
 
   // Brand-Map (account_type, org-Felder)
@@ -63,6 +84,17 @@ Deno.serve(async (req) => {
       }, { onConflict: "unipile_account_id,captured_on" });
       networks++;
 
+      // Messaging/Inbox (gedeckelt gescannt)
+      try {
+        const ch = await scanChats(l.unipile_account_id);
+        await admin.from("linkedin_messaging_metrics").upsert({
+          team_id: l.team_id, unipile_account_id: l.unipile_account_id, brand_voice_id: l.brand_voice_id,
+          chats_scanned: ch.scanned, unread_threads: ch.unreadThreads,
+          unread_messages: ch.unreadMessages, active_7d: ch.active7d, captured_on: today,
+        }, { onConflict: "unipile_account_id,captured_on" });
+        messaging++;
+      } catch (_e) { /* Messaging best-effort */ }
+
       const b: any = l.brand_voice_id ? brandById.get(l.brand_voice_id) : null;
       if (b && b.account_type !== "company_page") {
         await admin.from("linkedin_profile_metrics").upsert({
@@ -88,7 +120,7 @@ Deno.serve(async (req) => {
     } catch (e) { errors.push(`page ${b.id}: ${String((e as Error)?.message || e).slice(0, 80)}`); }
   }
 
-  return new Response(JSON.stringify({ ok: true, profiles, networks, pages, errors }), {
+  return new Response(JSON.stringify({ ok: true, profiles, networks, pages, messaging, errors }), {
     headers: { "Content-Type": "application/json" },
   });
 });
