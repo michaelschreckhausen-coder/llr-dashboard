@@ -138,7 +138,7 @@ export default function LinkedInAnalyticsTiles({ arc = false, view = 'linkedin' 
       )}
 
       {activeTeamId && (
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, minmax(0, 1fr))', gap: 9, alignItems: 'start' }}>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, minmax(0, 188px))', justifyContent: 'start', gap: 10, alignItems: 'start' }}>
           {tiles.map((t, i) => (
             <div key={i} style={{ transform: `translateY(${i % 2 === 1 ? 22 : 0}px)`, transition: 'transform .3s ease' }}>
               {t.el}
