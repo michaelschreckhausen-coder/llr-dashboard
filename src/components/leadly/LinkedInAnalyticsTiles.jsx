@@ -15,11 +15,18 @@ import { useBrandVoice } from '../../context/BrandVoiceContext'
 
 const fmt = n => (n == null ? '–' : Number(n).toLocaleString('de-DE'))
 
-export default function LinkedInAnalyticsTiles({ cols = 1 }) {
+export default function LinkedInAnalyticsTiles({ cols = 1, view = 'linkedin' }) {
   const nav = useNavigate()
   const { activeTeamId } = useTeam()
   const { activeBrandVoice, noBrand } = useBrandVoice()
   const isCompany = activeBrandVoice?.account_type === 'company_page'
+  const VIEWS = {
+    linkedin: ['follower', 'second', 'unread', 'campaigns'],
+    wachstum: ['follower', 'second'],
+    content: ['engagement', 'follower'],
+    netzwerk: ['second', 'unread', 'campaigns'],
+  }
+  const show = VIEWS[view] || VIEWS.linkedin
   const bvId = noBrand ? null : (activeBrandVoice?.id || null)
 
   const [d, setD] = useState(null)
@@ -100,15 +107,15 @@ export default function LinkedInAnalyticsTiles({ cols = 1 }) {
       ) : null}
       {activeTeamId && (
         <div key={tick} style={{ display: 'grid', gridTemplateColumns: cols === 2 ? '1fr 1fr' : '1fr', gap: 8 }}>
-          {bvId && !noBrand && <Tile icon={<Users size={16} />} label="Follower" value={fmt(d?.follower)} delta={d?.followerDelta} to="/wachstum" />}
-          {bvId && !noBrand && (isCompany
+          {show.includes('follower') && bvId && !noBrand && <Tile icon={<Users size={16} />} label="Follower" value={fmt(d?.follower)} delta={d?.followerDelta} to="/wachstum" />}
+          {show.includes('second') && bvId && !noBrand && (isCompany
             ? <Tile icon={<Building2 size={16} />} label="Mitarbeitende" value={fmt(d?.second)} to="/wachstum" />
             : <Tile icon={<UserPlus size={16} />} label="Verbindungen" value={fmt(d?.second)} delta={d?.secondDelta} to="/netzwerk-analytics" />)}
-          {bvId && !noBrand && d?.engagement != null && (
-            <Tile icon={<Flame size={16} />} label="Ø Engagement" value={(d.engagement * 100).toFixed(1).replace('.', ',') + ' %'} to="/linkedin-analytics" />
+          {show.includes('engagement') && bvId && !noBrand && (
+            <Tile icon={<Flame size={16} />} label="Ø Engagement" value={d?.engagement != null ? (d.engagement * 100).toFixed(1).replace('.', ',') + ' %' : '–'} to="/linkedin-analytics" />
           )}
-          <Tile icon={<Mail size={16} />} label="Ungelesen" value={fmt(d?.unread)} warn={(d?.unread || 0) > 0} to="/nachrichten-analytics" />
-          <Tile icon={<Rocket size={16} />} label="Kampagnen aktiv" value={fmt(d?.campaigns)} to="/netzwerk-analytics" />
+          {show.includes('unread') && <Tile icon={<Mail size={16} />} label="Ungelesen" value={fmt(d?.unread)} warn={(d?.unread || 0) > 0} to="/nachrichten-analytics" />}
+          {show.includes('campaigns') && <Tile icon={<Rocket size={16} />} label="Kampagnen aktiv" value={fmt(d?.campaigns)} to="/netzwerk-analytics" />}
         </div>
       )}
     </div>
