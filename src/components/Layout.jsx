@@ -126,6 +126,7 @@ function getNav(t) {
     { to: '/profiltexte',     icon: IcLinkedIn, label: t('nav.profiltexte') },
   ] },
   { subSection: true, label: 'Netzwerk', items: [
+    { to: '/netzwerk-analytics', icon: IcBarChart, label: 'Netzwerk-Analytics' },
     { to: '/linkedin-suche',  icon: IcSearch,   label: 'Suche' },
     { to: '/linkedin-inbox',  icon: IcInbox,    label: 'LinkedIn Kontakte' },
     // AUSGEBLENDET 17.07.2026 (Julian): Michaels Netzwerk-Feature (Commit 54c9811c) ist
