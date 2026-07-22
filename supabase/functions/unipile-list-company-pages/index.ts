@@ -7,7 +7,7 @@
 // Auth: eingeloggter User; Team muss eins seiner Teams sein.
 // =====================================================================
 import { handlePreflight, jsonResponse } from "../_shared/cors.ts";
-import { getAuthenticatedUser, serviceClient } from "../_shared/unipile.ts";
+import { getAuthenticatedUser, serviceClient, userClientFromReq } from "../_shared/unipile.ts";
 
 const UNIPILE_DSN = Deno.env.get("UNIPILE_DSN")!;
 const UNIPILE_KEY = Deno.env.get("UNIPILE_API_KEY")!;
@@ -47,16 +47,24 @@ Deno.serve(async (req) => {
       .eq("user_id", auth.userId).eq("team_id", teamId).maybeSingle();
     if (!member) return jsonResponse({ error: "forbidden" }, 403);
 
-    // SCOPING (leak-sicher): nur Personal Brands, die in DIESEM Team erstellt
-    // wurden ODER via brand_voice_team_shares ins Team geteilt sind. Deren Logins
-    // liefern die Pages. So tauchen NIE Pages fremder Teams auf.
-    const { data: ownBrands } = await sb.from("brand_voices")
-      .select("id").eq("team_id", teamId).neq("account_type", "company_page");
+    // SCOPING (leak-sicher + intra-team privat): Personal Brands über den
+    // CALLER-Client laden -> RLS 'brand_voices_visibility' greift exakt
+    // (Owner ODER team-weit geteilt ODER user-individuell geteilt ODER team-geteilt).
+    // Ein privater, ungeteilter Brand eines Kollegen ist damit NICHT sichtbar.
+    // Danach auf den Team-Kontext dieser Company Brand einschränken:
+    //   team_id === teamId (eigene) ODER via brand_voice_team_shares ins Team geteilt.
+    const uc = userClientFromReq(req);
+    if (!uc) return jsonResponse({ error: "unauthorized" }, 401);
+    const { data: accBrands } = await uc.from("brand_voices")
+      .select("id, team_id").neq("account_type", "company_page");
     const { data: sharedIn } = await sb.from("brand_voice_team_shares")
       .select("brand_voice_id").eq("team_id", teamId);
+    const sharedSet = new Set<string>((sharedIn || []).map((r: any) => r.brand_voice_id).filter(Boolean));
     const brandIds = new Set<string>();
-    for (const b of (ownBrands || [])) if (b?.id) brandIds.add(b.id);
-    for (const sst of (sharedIn || [])) if (sst?.brand_voice_id) brandIds.add(sst.brand_voice_id);
+    for (const b of (accBrands || [])) {
+      if (!b?.id) continue;
+      if (b.team_id === teamId || sharedSet.has(b.id)) brandIds.add(b.id);
+    }
 
     let loginList: any[] = [];
     if (brandIds.size > 0) {
