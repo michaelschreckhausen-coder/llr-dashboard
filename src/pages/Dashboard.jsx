@@ -18,6 +18,7 @@ import { useDashboardData } from '../hooks/useDashboardData';
 import { useLeadly } from '../hooks/useLeadly';
 import { detectLeadeskExtension } from '../lib/leadeskExtension';
 import LeadlyHero from '../components/leadly/LeadlyHero';
+import LinkedInAnalyticsTiles from '../components/leadly/LinkedInAnalyticsTiles';
 
 // ─── Helpers ─────────────────────────────────────────────────────────────
 const leadName = (l) => (`${l.first_name || ''} ${l.last_name || ''}`.trim() || l.name || '—');
@@ -274,6 +275,41 @@ export default function Dashboard({ session }) {
   const now = new Date();
   const totalOverdue = _overdue.length;
 
+  const planNode = (
+    <div>
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8, marginBottom: 8 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 12, color: colors.inkMuted, fontWeight: 600 }}>
+          <span aria-hidden="true">✓</span> Dein Plan heute
+        </div>
+        {suggestions.length >= 3 && (
+          <button type="button" className="lk-btn lk-btn-ghost lk-btn-sm"
+            onClick={() => askLeadly(`Hier ist mein heutiger Plan:\n${displayedSuggestions.map((s, i) => `${i + 1}. [${s.area.label}] ${s.title}`).join('\n')}\nGeh ihn mit mir durch: Womit starte ich, und was kannst du direkt vorbereiten?`)}>
+            Alle
+          </button>
+        )}
+      </div>
+      {displayedSuggestions.length > 0 ? (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+          {displayedSuggestions.slice(0, 4).map((s) => (
+            <div key={s.id} style={{ background: colors.white, border: `1px solid ${colors.border}`, borderRadius: 12, padding: '10px 11px' }}>
+              <span style={{ fontSize: 10, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.04em', color: s.area.color, background: s.area.bg, padding: '2px 7px', borderRadius: 999 }}>{s.area.label}</span>
+              <div style={{ fontSize: 12.5, fontWeight: 600, color: colors.ink, lineHeight: 1.35, margin: '6px 0 8px' }}>{s.title}</div>
+              <div style={{ display: 'flex', gap: 6 }}>
+                <button className="lk-btn lk-btn-primary lk-btn-sm" style={{ flex: 1, fontSize: 11 }}
+                  onClick={() => (s.action ? takeAction(s.action) : askLeadly(s.prompt))}>{s.action ? 'Erledigen' : 'Angehen'}</button>
+                {s.href && <button className="lk-btn lk-btn-ghost lk-btn-sm" style={{ fontSize: 11 }} onClick={() => nav(s.href)}>Öffnen</button>}
+              </div>
+            </div>
+          ))}
+        </div>
+      ) : (
+        <div style={{ fontSize: 12, color: colors.inkMuted, lineHeight: 1.5, padding: '8px 2px' }}>
+          Aktuell nichts Offenes — frag Leadly, was heute sinnvoll ist.
+        </div>
+      )}
+    </div>
+  );
+
   return (
     <div>
       {extBanner && (
@@ -308,7 +344,7 @@ export default function Dashboard({ session }) {
             style={{ marginLeft: 'auto', border: 'none', background: 'transparent', color: '#92400E', cursor: 'pointer', fontSize: 15, fontWeight: 700 }} aria-label="Ausblenden">✕</button>
         </div>
       )}
-      {/* Leadly-Hero — Gesicht + Essenz + Eingabe + Inline-Antworten */}
+      {/* Leadly-Cockpit: Orb zentral · Analysen links · Plan rechts · Chat vollbreit */}
       <LeadlyHero
         firstName={firstName}
         leadly={leadly}
@@ -319,66 +355,10 @@ export default function Dashboard({ session }) {
           today: _today.length,
         }}
         onOpenTasks={() => nav('/aufgaben')}
+        layout="cockpit"
+        analyticsSlot={<LinkedInAnalyticsTiles />}
+        planSlot={planNode}
       />
-      <div>
-
-        {/* Leadlys Plan für heute — priorisierte, übernehmbare Aktionen */}
-        <div style={{ marginTop: space[5] }}>
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 8, marginBottom: space[3] }}>
-            <div className="lk-eyebrow" style={{ marginBottom: 0 }}>
-              Leadlys Plan für heute
-            </div>
-            {suggestions.length >= 3 && (
-              <button type="button"
-                onClick={() => askLeadly(
-                  `Hier ist mein heutiger Plan:\n${displayedSuggestions.map((s, i) => `${i + 1}. [${s.area.label}] ${s.title}${s.reason ? ` (${s.reason})` : ''}`).join('\n')}\nGeh ihn mit mir durch: Womit starte ich am besten, und welche Schritte kannst du direkt für mich vorbereiten?`
-                )}
-                className="lk-btn lk-btn-ghost lk-btn-sm">
-                Alle mit Leadly durchgehen
-              </button>
-            )}
-          </div>
-          {suggestions.length > 0 ? (
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: space[3] }}>
-              {displayedSuggestions.map((s, idx) => (
-                <div key={s.id} style={{ background: colors.white, border: `1px solid ${colors.border}`, borderRadius: radii.lg, padding: '14px 16px', display: 'flex', flexDirection: 'column', gap: 8 }}>
-                  <span style={{ alignSelf: 'flex-start', fontSize: 10, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.04em', color: s.area.color, background: s.area.bg, padding: '2px 8px', borderRadius: radii.pill }}>{idx + 1} · {s.area.label}</span>
-                  <div style={{ fontSize: 14, fontWeight: 600, color: colors.ink, lineHeight: 1.35 }}>{s.title}</div>
-                  {s.reason && <div style={{ fontSize: 12, color: colors.inkMuted }}>{s.reason}</div>}
-                  <div style={{ display: 'flex', gap: 8, marginTop: 'auto', paddingTop: 4 }}>
-                    <button className="lk-btn lk-btn-primary" onClick={() => (s.action ? takeAction(s.action) : askLeadly(s.prompt))}
-                      >
-                      {s.action ? 'Erledigen' : 'Mit Leadly angehen'}
-                    </button>
-                    {s.href && (
-                      <button onClick={() => nav(s.href)} className="lk-btn lk-btn-ghost">
-                        Öffnen
-                      </button>
-                    )}
-                  </div>
-                </div>
-              ))}
-            </div>
-          ) : (
-            <div style={{
-              background: colors.white, border: `1px solid ${colors.border}`,
-              borderRadius: radii.lg, padding: '20px 22px',
-              display: 'flex', flexDirection: 'column', gap: 8,
-            }}>
-              <div style={{ fontSize: 14, fontWeight: 600, color: colors.ink, display: 'flex', alignItems: 'center', gap: 8 }}>
-                <span aria-hidden="true">✨</span> Leadly hat gerade nichts vorzuschlagen
-              </div>
-              <div style={{ fontSize: 13, color: colors.inkMuted, lineHeight: 1.5, maxWidth: '60ch' }}>
-                Aktuell stehen keine offenen Follow-ups, heißen Kontakte, aktiven Deals oder überfälligen Aufgaben an. Sobald sich etwas ergibt, erscheinen hier konkrete Vorschläge.
-              </div>
-              <button onClick={() => askLeadly('Was kann ich heute im Vertrieb sinnvoll angehen?')}
-                className="lk-btn lk-btn-ghost lk-btn-sm" style={{ alignSelf: 'flex-start', marginTop: 4 }}>
-                Leadly fragen
-              </button>
-            </div>
-          )}
-        </div>
-      </div>
 
     </div>
   );
