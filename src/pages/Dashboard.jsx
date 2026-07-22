@@ -372,17 +372,20 @@ export default function Dashboard({ session }) {
         if (cockpitNarrow) {
           return (
             <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-              {hero}
               {analytics}
               {planNode}
+              {hero}
             </div>
           );
         }
+        // Desktop: oben Analyse (links) + Todos (rechts), darunter Chat auf VOLLER Breite.
         return (
-          <div style={{ display: 'grid', gridTemplateColumns: 'minmax(190px, 240px) minmax(0, 1fr) minmax(190px, 240px)', gap: 16, alignItems: 'start' }}>
-            <div>{analytics}</div>
+          <div>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 20, alignItems: 'start', marginBottom: 6 }}>
+              <div>{analytics}</div>
+              <div>{planNode}</div>
+            </div>
             {hero}
-            <div>{planNode}</div>
           </div>
         );
       })()}
