@@ -351,15 +351,13 @@ export default function Dashboard({ session }) {
         )}
       </div>
       {planShown.length > 0 ? (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 8, alignItems: cockpitNarrow ? 'stretch' : 'flex-end' }}>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
           {planScopeText && (
-            <div style={{ transform: `translateX(${cockpitNarrow ? 0 : -0}px)`, transition: 'transform .25s ease' }}>
-              <span style={{ fontSize: 9.5, fontWeight: 700, letterSpacing: '0.05em', textTransform: 'uppercase', color: '#003060', background: '#EEF0FA', padding: '3px 9px', borderRadius: 999, whiteSpace: 'nowrap' }}>{planScopeText}</span>
-            </div>
+            <span style={{ alignSelf: 'flex-start', fontSize: 9.5, fontWeight: 700, letterSpacing: '0.05em', textTransform: 'uppercase', color: '#003060', background: '#EEF0FA', padding: '3px 9px', borderRadius: 999, whiteSpace: 'nowrap' }}>{planScopeText}</span>
           )}
-          {planShown.slice(0, 4).map((s, i) => (
-            <div key={s.id} className="lk-tile-in" style={{ transform: `translateX(${cockpitNarrow ? 0 : -Math.min((i + 1) * 15, 58)}px)`, width: cockpitNarrow ? '100%' : 232, maxWidth: '100%', transition: 'transform .25s ease' }}>
-              <div style={{ background: colors.white, border: `1px solid ${colors.border}`, borderRadius: 12, padding: '10px 11px' }}>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, minmax(0, 1fr))', gap: 8 }}>
+            {planShown.slice(0, 4).map((s) => (
+              <div key={s.id} className="lk-tile-in" style={{ background: colors.white, border: `1px solid ${colors.border}`, borderRadius: 12, padding: '10px 11px' }}>
                 <span style={{ fontSize: 10, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.04em', color: s.area.color, background: s.area.bg, padding: '2px 7px', borderRadius: 999 }}>{s.area.label}</span>
                 <div style={{ fontSize: 12.5, fontWeight: 600, color: colors.ink, lineHeight: 1.35, margin: '6px 0 8px' }}>{s.title}</div>
                 <div style={{ display: 'flex', gap: 6 }}>
@@ -368,8 +366,8 @@ export default function Dashboard({ session }) {
                   {s.href && <button className="lk-btn lk-btn-ghost lk-btn-sm" style={{ fontSize: 11 }} onClick={() => nav(s.href)}>Öffnen</button>}
                 </div>
               </div>
-            </div>
-          ))}
+            ))}
+          </div>
         </div>
       ) : (
         <div style={{ fontSize: 12, color: colors.inkMuted, lineHeight: 1.5, padding: '8px 2px' }}>
@@ -438,7 +436,7 @@ export default function Dashboard({ session }) {
             rightControl={rightControl}
           />
         );
-        const analytics = <LinkedInAnalyticsTiles arc={!cockpitNarrow} view={analyticsView} />;
+        const analytics = <LinkedInAnalyticsTiles view={analyticsView} />;
         if (cockpitNarrow) {
           return (
             <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>

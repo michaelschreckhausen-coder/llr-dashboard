@@ -99,24 +99,9 @@ export default function LinkedInAnalyticsTiles({ arc = false, view = 'linkedin' 
     }}>{text}</span>
   )
 
-  // Zeilen aufbauen (Label + Kacheln je Ebene), dann im Bogen staffeln
-  const rows = []
-  const brandTiles = []
-  if (bvId && !noBrand) {
-    if (show.includes('follower')) brandTiles.push(<Tile key="fol" icon={<Users size={16} />} label="Follower" value={fmt(d?.follower)} delta={d?.followerDelta} to="/wachstum" />)
-    if (show.includes('second')) brandTiles.push(isCompany
-      ? <Tile key="sec" icon={<Building2 size={16} />} label="Mitarbeitende" value={fmt(d?.second)} to="/wachstum" />
-      : <Tile key="sec" icon={<UserPlus size={16} />} label="Verbindungen" value={fmt(d?.second)} delta={d?.secondDelta} to="/netzwerk-analytics" />)
-    if (show.includes('engagement')) brandTiles.push(<Tile key="eng" icon={<Flame size={16} />} label="Ø Engagement" value={d?.engagement != null ? (d.engagement * 100).toFixed(1).replace('.', ',') + ' %' : '–'} to="/linkedin-analytics" />)
-  }
-  const teamTiles = []
-  if (show.includes('unread')) teamTiles.push(<Tile key="unr" icon={<Mail size={16} />} label="Ungelesen" value={fmt(d?.unread)} warn={(d?.unread || 0) > 0} to="/nachrichten-analytics" />)
-  if (show.includes('campaigns')) teamTiles.push(<Tile key="cmp" icon={<Rocket size={16} />} label="Kampagnen aktiv" value={fmt(d?.campaigns)} to="/netzwerk-analytics" />)
-
-  if (brandTiles.length) { rows.push({ label: `Marke · ${brandName}`, tone: 'brand' }); brandTiles.forEach(t => rows.push({ tile: t })) }
-  if (teamTiles.length) { rows.push({ label: 'Team', tone: 'team' }); teamTiles.forEach(t => rows.push({ tile: t })) }
-
-  const off = (i) => (arc ? Math.min(i * 15, 58) : 0)
+  const groups = []
+  if (brandTiles.length) groups.push({ label: `Marke · ${brandName}`, tone: 'brand', tiles: brandTiles })
+  if (teamTiles.length) groups.push({ label: 'Team', tone: 'team', tiles: teamTiles })
 
   return (
     <div>
@@ -133,14 +118,13 @@ export default function LinkedInAnalyticsTiles({ arc = false, view = 'linkedin' 
         </div>
       )}
       {activeTeamId && (
-        <div key={tick} style={{ display: 'flex', flexDirection: 'column', gap: 8, alignItems: 'flex-start' }}>
-          {rows.map((r, i) => r.label ? (
-            <div key={`l${i}`} style={{ transform: `translateX(${off(i)}px)`, marginTop: i === 0 ? 0 : 4, transition: 'transform .25s ease' }}>
-              <Label text={r.label} tone={r.tone} />
-            </div>
-          ) : (
-            <div key={`t${i}`} style={{ transform: `translateX(${off(i)}px)`, width: arc ? 232 : '100%', maxWidth: '100%', transition: 'transform .25s ease' }}>
-              {r.tile}
+        <div key={tick} style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+          {groups.map((g, gi) => (
+            <div key={gi}>
+              <div style={{ marginBottom: 7 }}><Label text={g.label} tone={g.tone} /></div>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, minmax(0, 1fr))', gap: 8 }}>
+                {g.tiles}
+              </div>
             </div>
           ))}
         </div>
