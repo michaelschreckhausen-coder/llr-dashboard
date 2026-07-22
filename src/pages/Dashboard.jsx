@@ -326,9 +326,10 @@ export default function Dashboard({ session }) {
   }
   const planCats = [{ value: 'all', label: 'Alle Aufgaben' }, ...planCatSet];
   const planShown = planCat === 'all' ? displayedSuggestions : displayedSuggestions.filter(sg => sg.area?.key === planCat);
+  const PLAN_PLURAL = { 'Deal': 'Deals', 'Kontakt': 'Kontakte', 'Aufgabe': 'Aufgaben', 'Follow-up': 'Follow-ups', 'Content': 'Content' };
   const planCounts = {};
   for (const sg of planShown.slice(0, 4)) if (sg.area) planCounts[sg.area.label] = (planCounts[sg.area.label] || 0) + 1;
-  const planScopeText = Object.entries(planCounts).map(([k, v]) => `${v} ${k}${v > 1 ? 's' : ''}`).join(' · ');
+  const planScopeText = Object.entries(planCounts).map(([k, v]) => `${v} ${v > 1 ? (PLAN_PLURAL[k] || k) : k}`).join(' · ');
   const analyticsViews = [
     { value: 'linkedin', label: 'LinkedIn-Überblick' },
     { value: 'wachstum', label: 'Wachstum' },
