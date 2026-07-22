@@ -259,6 +259,13 @@ export default function Dashboard({ session }) {
         .sort((a, b) => a._prio - b._prio)
     : suggestions;
 
+  const [cockpitNarrow, setCockpitNarrow] = React.useState(false);
+  useEffect(() => {
+    const c = () => { const w = window.innerWidth || document.documentElement.clientWidth || 0; setCockpitNarrow(w > 0 && w < 900); };
+    c(); const t = setTimeout(c, 300); window.addEventListener('resize', c);
+    return () => { clearTimeout(t); window.removeEventListener('resize', c); };
+  }, []);
+
   // ── Ab hier early-return erlaubt (keine Hooks mehr darunter) ──
   // Loading-Screen NUR beim Erstload: useDashboardData refetcht alle 60s und
   // setzt isLoading erneut — ein early-return würde dann den kompletten Baum
@@ -344,21 +351,41 @@ export default function Dashboard({ session }) {
             style={{ marginLeft: 'auto', border: 'none', background: 'transparent', color: '#92400E', cursor: 'pointer', fontSize: 15, fontWeight: 700 }} aria-label="Ausblenden">✕</button>
         </div>
       )}
-      {/* Leadly-Cockpit: Orb zentral · Analysen links · Plan rechts · Chat vollbreit */}
-      <LeadlyHero
-        firstName={firstName}
-        leadly={leadly}
-        stats={{
-          leads: (leads || []).length,
-          activeDeals: _deals.length,
-          overdue: totalOverdue,
-          today: _today.length,
-        }}
-        onOpenTasks={() => nav('/aufgaben')}
-        layout="cockpit"
-        analyticsSlot={<LinkedInAnalyticsTiles />}
-        planSlot={planNode}
-      />
+      {/* Leadly-Cockpit: 3 Kästchen auf dem Standard-Hintergrund —
+          Analysen (links) · weißes Chat-Kästchen mit Orb-Beule (Mitte) · Plan (rechts) */}
+      {(() => {
+        const hero = (
+          <LeadlyHero
+            firstName={firstName}
+            leadly={leadly}
+            stats={{
+              leads: (leads || []).length,
+              activeDeals: _deals.length,
+              overdue: totalOverdue,
+              today: _today.length,
+            }}
+            onOpenTasks={() => nav('/aufgaben')}
+            layout="cockpit"
+          />
+        );
+        const analytics = <LinkedInAnalyticsTiles />;
+        if (cockpitNarrow) {
+          return (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+              {hero}
+              {analytics}
+              {planNode}
+            </div>
+          );
+        }
+        return (
+          <div style={{ display: 'grid', gridTemplateColumns: 'minmax(190px, 240px) minmax(0, 1fr) minmax(190px, 240px)', gap: 16, alignItems: 'start' }}>
+            <div>{analytics}</div>
+            {hero}
+            <div>{planNode}</div>
+          </div>
+        );
+      })()}
 
     </div>
   );

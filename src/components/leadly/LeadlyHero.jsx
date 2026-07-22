@@ -286,13 +286,20 @@ export default function LeadlyHero({ firstName, leadly, stats = {}, onOpenTasks,
 
   return (
     <div ref={containerRef} style={{
+      position: 'relative',
       background: colors.white,
       border: `1px solid ${colors.border}`,
       borderRadius: 18,
       boxShadow: '0 1px 3px rgba(15,23,42,.05)',
-      padding: 'clamp(16px, 2.5vw, 26px)',
+      padding: isCockpit ? 'clamp(40px, 3vw, 44px) clamp(16px, 2.5vw, 26px) clamp(16px, 2.5vw, 26px)' : 'clamp(16px, 2.5vw, 26px)',
+      marginTop: isCockpit ? 36 : 0,
       marginBottom: space[8],
     }}>
+      {isCockpit && (
+        <div style={{ position: 'absolute', top: -34, left: '50%', transform: 'translateX(-50%)', zIndex: 2 }}>
+          <LeadlyOrb state={orbState} size={68} />
+        </div>
+      )}
       <style>{`
         @keyframes leadly-hero-pulse {
           0%, 100% { box-shadow: 0 0 0 0 rgba(239,68,68,0.45); }
@@ -319,34 +326,11 @@ export default function LeadlyHero({ firstName, leadly, stats = {}, onOpenTasks,
             </div>
           </>
         );
-        if (isCockpit && !isNarrow) {
+        if (isCockpit) {
           return (
-            <>
-              <div style={{ position: 'relative' }}>
-                <svg style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', zIndex: 0, pointerEvents: 'none' }} viewBox="0 0 100 100" preserveAspectRatio="none" aria-hidden="true">
-                  <line x1="50" y1="52" x2="18" y2="15" stroke={colors.border} strokeWidth="1" vectorEffect="non-scaling-stroke" />
-                  <line x1="50" y1="52" x2="82" y2="15" stroke={colors.border} strokeWidth="1" vectorEffect="non-scaling-stroke" />
-                  <line x1="50" y1="60" x2="50" y2="100" stroke={colors.border} strokeWidth="1" vectorEffect="non-scaling-stroke" />
-                </svg>
-                <div style={{ position: 'relative', zIndex: 1, display: 'grid', gridTemplateColumns: 'minmax(188px,1fr) auto minmax(188px,1fr)', gap: 26, alignItems: 'center' }}>
-                  <div>{analyticsSlot}</div>
-                  <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 6 }}>
-                    <LeadlyOrb state={orbState} size={128} />
-                    <div style={{ fontSize: 13, color: colors.inkMuted, fontWeight: 600 }}>{dateLabel}</div>
-                  </div>
-                  <div>{planSlot}</div>
-                </div>
-              </div>
-              <div style={{ textAlign: 'center', maxWidth: 520, margin: '10px auto 0' }}>{greetingCore}</div>
-            </>
-          );
-        }
-        if (isCockpit && isNarrow) {
-          return (
-            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 8, textAlign: 'center' }}>
-              <LeadlyOrb state={orbState} size={92} />
+            <div style={{ textAlign: 'center' }}>
               <div style={{ fontSize: 12.5, color: colors.inkMuted, fontWeight: 500 }}>{dateLabel}</div>
-              <div>{greetingCore}</div>
+              <div style={{ maxWidth: 520, margin: '4px auto 0' }}>{greetingCore}</div>
             </div>
           );
         }
@@ -481,12 +465,6 @@ export default function LeadlyHero({ firstName, leadly, stats = {}, onOpenTasks,
         <div style={{ marginTop: 6, fontSize: 12, color: colors.danger }}>{voice.error}</div>
       )}
 
-      {isCockpit && isNarrow && (
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: 14, marginTop: space[4] }}>
-          <div>{analyticsSlot}</div>
-          <div>{planSlot}</div>
-        </div>
-      )}
 
       {/* ── Quick-Chips (bis zur ersten Interaktion) ── */}
       {!engaged && (
