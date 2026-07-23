@@ -20,6 +20,14 @@ import { useInboxLists } from '../hooks/useInboxLists'
 const fullName = r => ((r.first_name || '') + ' ' + (r.last_name || '')).trim() || r.name || 'Unbekannt'
 const initials = n => (n || '?').trim().split(/\s+/).map(w => w[0]).join('').toUpperCase().substring(0, 2)
 
+// Quell-Diskriminator für den Tab-Split: der tägliche Unipile-Relations-Import
+// (source='unipile_relations') = „LinkedIn Netzwerk" (deine bestehenden 1.-Grad-
+// Verbindungen). ALLE übrigen Quellen (sales_nav, unipile_salesnav, linkedin_search,
+// manual, extension_import, linkedin_scrape) = „LinkedIn Kontakte" (Prospecting).
+// Kein Daten-Move: die Trennung ist ein reiner Lese-Filter auf der bereits pro Zeile
+// gesetzten source-Spalte.
+const NETWORK_SOURCE = 'unipile_relations'
+
 // Freundliche Sales-Nav-Import-Fehler aus dem EF-Error-Body (functions.invoke legt ihn in error.context ab).
 function friendlyImportError(body, raw) {
   const t = body?.unipile_type || ''
@@ -57,6 +65,11 @@ export default function LinkedInInbox() {
   const [busy, setBusy]         = useState(false)
   const [msg, setMsg]           = useState(null)             // { text, leadId? }
   const [uid, setUid]           = useState(null)
+
+  // Quell-Tab: 'kontakte' (Prospecting-Quellen) vs 'netzwerk' (unipile_relations).
+  // counts = Gesamtzahl offener (new) Zeilen je Tab, unabhängig vom 500er-Ladefenster.
+  const [sourceTab, setSourceTab] = useState('kontakte')
+  const [counts, setCounts]       = useState({ kontakte: 0, netzwerk: 0 })
 
   // Kampagnen-Gruppierung
   // Inbox-Listen (reine Auswahl-Sammlungen — die einzige Gruppierung auf dieser Seite)
@@ -140,15 +153,26 @@ export default function LinkedInInbox() {
   }
 
   const load = useCallback(async () => {
-    if (!activeTeamId) { setRows([]); setLoading(false); return }
+    if (!activeTeamId) { setRows([]); setCounts({ kontakte: 0, netzwerk: 0 }); setLoading(false); return }
     setLoading(true)
-    const { data, error } = await supabase
+
+    // Aktiver Tab quellen-gefiltert laden — so verdrängt die Netzwerk-Flut die
+    // Prospecting-Kontakte NICHT aus dem 500er-Fenster (jeder Tab hat sein eigenes).
+    let q = supabase
       .from('linkedin_inbox')
       .select('id, source, sales_nav_id, linkedin_url, name, first_name, last_name, headline, job_title, company, location, avatar_url, imported_at, promoted_lead_id')
       .eq('team_id', activeTeamId)
       .eq('review_status', 'new')
-      .order('imported_at', { ascending: false })
-      .limit(500)
+    q = sourceTab === 'netzwerk' ? q.eq('source', NETWORK_SOURCE) : q.neq('source', NETWORK_SOURCE)
+    const { data, error } = await q.order('imported_at', { ascending: false }).limit(500)
+
+    // Tab-Badges: Gesamtzahl je Quelle (head-only, kein Row-Transfer).
+    const countBase = () => supabase.from('linkedin_inbox')
+      .select('id', { count: 'exact', head: true }).eq('team_id', activeTeamId).eq('review_status', 'new')
+    Promise.all([
+      countBase().eq('source', NETWORK_SOURCE),
+      countBase().neq('source', NETWORK_SOURCE),
+    ]).then(([net, kon]) => setCounts({ kontakte: kon.count || 0, netzwerk: net.count || 0 }))
 
     if (error) { setMsg({ text: 'Laden fehlgeschlagen: ' + error.message }); setRows([]); setLoading(false); return }
     const list = data || []
@@ -166,7 +190,7 @@ export default function LinkedInInbox() {
     }
     setExisting(hit)
     setLoading(false)
-  }, [activeTeamId])
+  }, [activeTeamId, sourceTab])
 
   useEffect(() => { load() }, [load])
 
@@ -180,8 +204,8 @@ export default function LinkedInInbox() {
   const visible = displayed.slice(0, visibleCount)
   const hasMore = visibleCount < displayed.length
 
-  // Beim Filter-/Team-Wechsel wieder auf die erste Seite zurücksetzen.
-  useEffect(() => { setVisibleCount(PAGE_SIZE) }, [listFilter, activeTeamId])
+  // Beim Filter-/Team-/Tab-Wechsel wieder auf die erste Seite zurücksetzen.
+  useEffect(() => { setVisibleCount(PAGE_SIZE) }, [listFilter, activeTeamId, sourceTab])
 
   // Infinite-Scroll: sobald der Sentinel in den Viewport kommt, 25 weitere anhängen.
   useEffect(() => {
@@ -203,7 +227,11 @@ export default function LinkedInInbox() {
 
   const removeRows = ids => {
     const drop = new Set(ids)
-    setRows(prev => prev.filter(r => !drop.has(r.id)))
+    setRows(prev => {
+      const removed = prev.filter(r => drop.has(r.id)).length
+      if (removed) setCounts(c => ({ ...c, [sourceTab]: Math.max(0, c[sourceTab] - removed) }))
+      return prev.filter(r => !drop.has(r.id))
+    })
     setSelected(prev => { const n = new Set(prev); ids.forEach(i => n.delete(i)); return n })
   }
 
@@ -402,21 +430,40 @@ export default function LinkedInInbox() {
         </div>
       )}
       {/* Journal-Header (analog /messages, /automatisierung) */}
-      <div style={{ marginBottom: 22 }}>
-        <div className="lk-eyebrow" style={{ fontSize:12, fontWeight:700, letterSpacing:'1.6px', textTransform:'uppercase', fontFamily:'Inter, sans-serif', color:'var(--primary, #003060)', marginBottom:6 }}>LinkedIn · Kontakte</div>
+      <div style={{ marginBottom: 16 }}>
+        <div className="lk-eyebrow" style={{ fontSize:12, fontWeight:700, letterSpacing:'1.6px', textTransform:'uppercase', fontFamily:'Inter, sans-serif', color:'var(--primary, #003060)', marginBottom:6 }}>LinkedIn · {sourceTab === 'netzwerk' ? 'Netzwerk' : 'Kontakte'}</div>
         <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-          <h1 style={{ fontSize: 26, fontWeight: 700, margin: 0, letterSpacing: '-0.3px', lineHeight: 1.2, color: 'var(--text-primary, rgb(20,20,43))' }}>Deine LinkedIn Kontakte.</h1>
-          {!loading && <span style={{ background: 'var(--primary)', color: '#fff', borderRadius: 99, padding: '2px 10px', fontSize: 13, fontWeight: 700 }}>{rows.length}</span>}
-          <button className="lk-btn lk-btn-cta"
-            onClick={() => { if (!canSalesNav) { navigate('/settings/konto'); return } setImportErr(null); setImportOpen(true) }}
-            title={canSalesNav ? undefined : 'Sales-Navigator-Sync ist in Sales oder All-in enthalten — Upgrade nötig'}
-            style={{ marginLeft: 'auto', display: 'inline-flex', alignItems: 'center', gap: 6, opacity: canSalesNav ? 1 : 0.55 }}>
-            <Plus size={15} /> Sales-Navigator-Suche importieren{!canSalesNav && ' 🔒'}
-          </button>
+          <h1 style={{ fontSize: 26, fontWeight: 700, margin: 0, letterSpacing: '-0.3px', lineHeight: 1.2, color: 'var(--text-primary, rgb(20,20,43))' }}>{sourceTab === 'netzwerk' ? 'Dein LinkedIn Netzwerk.' : 'Deine LinkedIn Kontakte.'}</h1>
+          {!loading && <span style={{ background: 'var(--primary)', color: '#fff', borderRadius: 99, padding: '2px 10px', fontSize: 13, fontWeight: 700 }}>{counts[sourceTab]}</span>}
+          {sourceTab === 'kontakte' && (
+            <button className="lk-btn lk-btn-cta"
+              onClick={() => { if (!canSalesNav) { navigate('/settings/konto'); return } setImportErr(null); setImportOpen(true) }}
+              title={canSalesNav ? undefined : 'Sales-Navigator-Sync ist in Sales oder All-in enthalten — Upgrade nötig'}
+              style={{ marginLeft: 'auto', display: 'inline-flex', alignItems: 'center', gap: 6, opacity: canSalesNav ? 1 : 0.55 }}>
+              <Plus size={15} /> Sales-Navigator-Suche importieren{!canSalesNav && ' 🔒'}
+            </button>
+          )}
         </div>
         <p style={{ fontSize: 13, color: muted, margin: '8px 0 0', lineHeight: 1.6, maxWidth: 600 }}>
-          Aus LinkedIn importierte Kontakte — noch keine CRM-Kontakte. Nach Listen sichten und per Klick ins CRM übernehmen.
+          {sourceTab === 'netzwerk'
+            ? 'Deine bestehenden LinkedIn-Verbindungen (1. Grad), automatisch importiert. Ansehen und bei Bedarf ins CRM übernehmen.'
+            : 'Aus LinkedIn importierte Kontakte — noch keine CRM-Kontakte. Nach Listen sichten und per Klick ins CRM übernehmen.'}
         </p>
+      </div>
+
+      {/* Quell-Tabs: Kontakte (Prospecting) vs Netzwerk (unipile_relations, 1.-Grad-Verbindungen) */}
+      <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 18, borderBottom: `1px solid ${border}` }}>
+        {[{ key: 'kontakte', label: 'LinkedIn Kontakte' }, { key: 'netzwerk', label: 'LinkedIn Netzwerk' }].map(t => {
+          const active = sourceTab === t.key
+          return (
+            <button key={t.key}
+              onClick={() => { if (!active) { setSourceTab(t.key); setListFilter('all'); setSelected(new Set()) } }}
+              style={{ display: 'inline-flex', alignItems: 'center', gap: 7, background: 'none', border: 'none', borderBottom: `2px solid ${active ? primary : 'transparent'}`, padding: '8px 4px', marginBottom: -1, fontSize: 14, fontWeight: 700, color: active ? primary : muted, cursor: 'pointer' }}>
+              {t.label}
+              <span style={{ background: active ? 'var(--primary-soft)' : 'var(--border)', color: active ? primary : muted, borderRadius: 99, padding: '1px 8px', fontSize: 12, fontWeight: 700 }}>{counts[t.key]}</span>
+            </button>
+          )
+        })}
       </div>
 
       {/* Listen-Filterleiste (reine Auswahl-Sammlungen) — inkl. „+ Neue Liste" */}
@@ -507,8 +554,8 @@ export default function LinkedInInbox() {
       ) : rows.length === 0 ? (
         <div style={{ textAlign: 'center', padding: '60px 20px', color: muted }}>
           <InboxIcon size={40} style={{ opacity: 0.4 }} />
-          <div style={{ fontSize: 16, fontWeight: 700, color: text, marginTop: 12 }}>Inbox ist leer</div>
-          <div style={{ fontSize: 14, marginTop: 4 }}>Neue LinkedIn-Importe landen hier zur Sichtung.</div>
+          <div style={{ fontSize: 16, fontWeight: 700, color: text, marginTop: 12 }}>{sourceTab === 'netzwerk' ? 'Noch keine Netzwerk-Verbindungen' : 'Inbox ist leer'}</div>
+          <div style={{ fontSize: 14, marginTop: 4 }}>{sourceTab === 'netzwerk' ? 'Importierte LinkedIn-Verbindungen (1. Grad) erscheinen hier.' : 'Neue LinkedIn-Importe landen hier zur Sichtung.'}</div>
         </div>
       ) : (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
