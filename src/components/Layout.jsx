@@ -1356,7 +1356,7 @@ function isBrandVoiceContext(pathname) {
     // Meine PrÃ¤senz (brand-scoped)
     '/profiltexte', '/linkedin-analytics', '/wachstum', '/ssi', '/profil-checker',
     // Analyse (brand-scoped)
-    '/netzwerk-analytics', '/nachrichten-analytics', '/linkedin-engagement',
+    '/netzwerk-analytics', '/nachrichten-analytics', '/linkedin-engagement', '/profil-analyse',
     // Akquise (agiert aus dem Profil der aktiven Marke)
     '/vernetzungen', '/messages', '/automatisierung', '/automatisierung-neu', '/linkedin-inbox', '/linkedin-netzwerk', '/linkedin-suche',
     // Content (brand-scoped)
