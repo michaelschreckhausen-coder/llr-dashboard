@@ -495,3 +495,35 @@ export async function getSocialSellingIndex(
     active_seat: !!d?.activeSeat,
   };
 }
+
+// ---------------------------------------------------------------------
+// Profilbesucher (WVMP — "Who Viewed My Profile") über die Magic-Route.
+// Freie Accounts: bis zu 3 benannte Besucher (Rest anonymisiert); Premium/Sales-Nav: volle Liste.
+// ---------------------------------------------------------------------
+export interface ProfileViewer {
+  name: string | null; headline: string | null;
+  profile_url: string | null; urn: string | null;
+  caption: string | null; anonymized: boolean;
+}
+export async function getProfileViewers(accountId: string, dsn?: string | null): Promise<ProfileViewer[]> {
+  const url = "https://www.linkedin.com/voyager/api/graphql?variables=(start:0,query:(),analyticsEntityUrn:(activityUrn:urn%3Ali%3Adummy%3A-1),surfaceType:WVMP)&queryId=voyagerPremiumDashAnalyticsObject.c31102e906e7098910f44e0cecaa5b5c";
+  const res = await call("POST", "/api/v1/linkedin", {
+    dsn, query: { account_id: accountId },
+    body: { account_id: accountId, method: "GET", request_url: url, encoding: false },
+  });
+  const els: any[] = res?.data?.data?.premiumDashAnalyticsObjectByAnalyticsEntity?.elements ?? [];
+  const tx = (o: any) => (o && typeof o.text === "string" ? o.text : null);
+  return els.map((e: any) => {
+    const lk = e?.content?.analyticsEntityLockup?.entityLockup ?? {};
+    const nav = typeof lk?.navigationUrl === "string" ? lk.navigationUrl : null;
+    const named = !!nav && nav.includes("/in/");
+    return {
+      name: named ? ((tx(lk?.title) || "").trim() || null) : null,
+      headline: tx(lk?.subtitle),
+      profile_url: named ? nav : null,
+      urn: lk?.image?.attributes?.[0]?.detailData?.profilePicture?.entityUrn ?? null,
+      caption: tx(lk?.caption),
+      anonymized: !named,
+    };
+  });
+}
