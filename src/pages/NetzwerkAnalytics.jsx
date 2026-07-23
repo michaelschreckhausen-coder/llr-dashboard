@@ -35,6 +35,7 @@ export default function NetzwerkAnalytics() {
   const [camps, setCamps] = useState([])
   const [enr, setEnr] = useState([])
   const [invites, setInvites] = useState([])
+  const [msg, setMsg] = useState([])
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
@@ -45,7 +46,7 @@ export default function NetzwerkAnalytics() {
     ;(async () => {
       try {
         // Brand-scoped: Netzwerk-Analyse zeigt das Profil der aktiven Marke.
-        const [{ data: nm }, { data: bv }, { data: cc }, { data: ee }, { data: iv }] = await Promise.all([
+        const [{ data: nm }, { data: bv }, { data: cc }, { data: ee }, { data: iv }, { data: mm }] = await Promise.all([
           supabase.from('linkedin_network_metrics')
             .select('unipile_account_id, brand_voice_id, connections_total, followers_total, invites_pending_out, invites_pending_in, captured_on')
             .eq('brand_voice_id', bvId).order('captured_on', { ascending: true }),
@@ -53,12 +54,14 @@ export default function NetzwerkAnalytics() {
           supabase.from('la_campaigns').select('id, name, status').eq('brand_voice_id', bvId),
           supabase.from('la_enrollments').select('campaign_id, state, relation_status').eq('brand_voice_id', bvId),
           supabase.from('linkedin_invitations').select('status, sent_at, responded_at').eq('brand_voice_id', bvId),
+          supabase.from('linkedin_messaging_metrics').select('unipile_account_id, unread_threads, unread_messages, active_7d, chats_scanned, captured_on').eq('brand_voice_id', bvId).order('captured_on', { ascending: true }),
         ])
         if (cancelled) return
         setRows(nm || [])
         setCamps(cc || [])
         setEnr(ee || [])
         setInvites(iv || [])
+        setMsg(mm || [])
         const map = {}
         for (const b of (bv || [])) map[b.id] = b.name || b.brand_name || null
         setBrandMap(map)
@@ -106,15 +109,29 @@ export default function NetzwerkAnalytics() {
   }
   const invWeeks = Object.keys(invByWeek).sort().map(k => { const r = invByWeek[k]; return { ...r, Quote: r.Gesendet>0 ? Math.round((r.Angenommen/r.Gesendet)*100) : 0 } })
 
+  // ── Postfach (aus linkedin_messaging_metrics) ──
+  const msgLatest = {}
+  for (const r of msg) msgLatest[r.unipile_account_id] = r
+  const msgLogins = Object.values(msgLatest)
+  const msgSum = (f) => msgLogins.reduce((a, r) => a + (Number(r[f]) || 0), 0)
+  const msgByDay = {}
+  for (const r of msg) {
+    const d = r.captured_on
+    msgByDay[d] ||= { name: dDE(d), 'Ungelesene Threads': 0, 'Aktiv (7T)': 0 }
+    msgByDay[d]['Ungelesene Threads'] += Number(r.unread_threads) || 0
+    msgByDay[d]['Aktiv (7T)'] += Number(r.active_7d) || 0
+  }
+  const msgSeries = Object.keys(msgByDay).sort().map(d => msgByDay[d])
+
   const label = (r) => brandMap[r.brand_voice_id] || r.unipile_account_id?.slice(0, 8) || 'Login'
 
   return (
     <div style={pageOuterStyle}>
       <div style={pageStyle}>
         <PageHeader
-          overline="LinkedIn · Netzwerk"
-          title="Netzwerk-Analytics"
-          subtitle="Verbindungen, Follower und offene Einladungen des Profils der aktiven Marke."
+          overline="LinkedIn · Analyse"
+          title="Netzwerk & Dialog"
+          subtitle="Vernetzung, Automatisierung und Postfach des Profils der aktiven Marke."
         />
 
         {loading ? (
@@ -192,6 +209,32 @@ export default function NetzwerkAnalytics() {
                 <div style={{ fontSize:11, color:'var(--text-muted,#9CA3AF)', marginTop:8 }}>
                   Anteil angenommener Vernetzungsanfragen (angenommen ÷ (angenommen + offen)). Wochenbalken nach Sende-Woche, Linie = Quote je Woche.
                 </div>
+              </div>
+            )}
+
+            {/* ── Postfach (Dialog) ── */}
+            {msg.length > 0 && (
+              <div style={cardStyle}>
+                <div className="lk-eyebrow">Postfach · Dialog</div>
+                <div style={{ display:'flex', gap:10, flexWrap:'wrap', margin:'6px 0 4px' }}>
+                  <div style={kpiTile}><div style={kpiLabel}>Ungelesene Threads</div><div style={{ ...kpiValue, color: msgSum('unread_threads')>0 ? '#B45309' : undefined }}>{fmt(msgSum('unread_threads'))}</div></div>
+                  <div style={kpiTile}><div style={kpiLabel}>Ungelesene Nachrichten</div><div style={kpiValue}>{fmt(msgSum('unread_messages'))}</div></div>
+                  <div style={kpiTile}><div style={kpiLabel}>Aktive Gespräche (7T)</div><div style={kpiValue}>{fmt(msgSum('active_7d'))}</div></div>
+                  <div style={kpiTile}><div style={kpiLabel}>Gescannte Chats</div><div style={kpiValue}>{fmt(msgSum('chats_scanned'))}</div></div>
+                </div>
+                {msgSeries.length >= 2 && (
+                  <div style={{ width:'100%', height:200, marginTop:8 }}>
+                    <ResponsiveContainer width="100%" height="100%">
+                      <LineChart data={msgSeries} margin={{ top:8, right:16, bottom:8, left:0 }}>
+                        <CartesianGrid strokeDasharray="3 3" stroke="#E4E7EC" />
+                        <XAxis dataKey="name" tick={{ fontSize:11 }} /><YAxis tick={{ fontSize:11 }} /><Tooltip /><Legend wrapperStyle={{ fontSize:12 }} />
+                        <Line type="monotone" dataKey="Ungelesene Threads" stroke="#D97706" strokeWidth={2} dot={{ r:2 }} />
+                        <Line type="monotone" dataKey="Aktiv (7T)" stroke={PRIMARY} strokeWidth={2} dot={{ r:2 }} />
+                      </LineChart>
+                    </ResponsiveContainer>
+                  </div>
+                )}
+                <div style={{ fontSize:11, color:'var(--text-muted,#9CA3AF)', marginTop:8 }}>Gescannt werden die zuletzt aktiven Konversationen (gedeckelt). „Ungelesen" = Threads mit ungelesenen Nachrichten, „Aktiv 7T" = Gespräche mit Aktivität in den letzten 7 Tagen.</div>
               </div>
             )}
 
