@@ -296,7 +296,6 @@ export default function Dashboard({ session }) {
   const [cockpitNarrow, setCockpitNarrow] = React.useState(false);
   const [wide2col, setWide2col] = React.useState(true);
   const [planCat, setPlanCat] = React.useState('all');
-  const [analyticsView, setAnalyticsView] = React.useState('handlung');
   useEffect(() => {
     const c = () => { const w = window.innerWidth || document.documentElement.clientWidth || 0; setCockpitNarrow(w > 0 && w < 900); setWide2col(!(w > 0 && w < 1180)); };
     c(); const t = setTimeout(c, 300); window.addEventListener('resize', c);
@@ -330,12 +329,6 @@ export default function Dashboard({ session }) {
   const planCounts = {};
   for (const sg of planShown.slice(0, 4)) if (sg.area) planCounts[sg.area.label] = (planCounts[sg.area.label] || 0) + 1;
   const planScopeText = Object.entries(planCounts).map(([k, v]) => `${v} ${v > 1 ? (PLAN_PLURAL[k] || k) : k}`).join(' · ');
-  const analyticsViews = [
-    { value: 'handlung', label: 'Handlungsbedarf' },
-    { value: 'netzwerk', label: 'Netzwerk' },
-    { value: 'content', label: 'Content' },
-    { value: 'roi', label: 'ROI · LinkedIn→CRM' },
-  ];
 
   const planNode = (
     <div>
@@ -419,9 +412,6 @@ export default function Dashboard({ session }) {
       {/* Leadly-Cockpit: 3 Kästchen auf dem Standard-Hintergrund —
           Analysen (links) · weißes Chat-Kästchen mit Orb-Beule (Mitte) · Plan (rechts) */}
       {(() => {
-        const leftControl = cockpitNarrow ? null : (
-          <CockpitDropdown icon={<BarChart3 size={13} />} value={analyticsView} options={analyticsViews} onSelect={setAnalyticsView} align="right" />
-        );
         const hero = (
           <LeadlyHero
             firstName={firstName}
@@ -436,7 +426,7 @@ export default function Dashboard({ session }) {
             layout="cockpit"
           />
         );
-        const analytics = <LinkedInAnalyticsTiles mode={analyticsView} control={leftControl} />;
+        const analytics = <LinkedInAnalyticsTiles />;
         if (cockpitNarrow) {
           return (
             <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
@@ -463,7 +453,7 @@ export default function Dashboard({ session }) {
               </div>
             )}
             {hero}
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 20, alignItems: 'start', marginTop: 18 }}>
+            <div style={{ marginTop: 18, display: 'flex', flexDirection: 'column', gap: 18 }}>
               <div>{analytics}</div>
               <div>{planNode}</div>
             </div>
