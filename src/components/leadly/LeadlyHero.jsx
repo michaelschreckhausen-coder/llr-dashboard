@@ -81,7 +81,7 @@ const QUICK_CHIPS = [
   'Was sollte ich diese Woche posten?',
 ];
 
-export default function LeadlyHero({ firstName, leadly, stats = {}, onOpenTasks, layout = 'classic', analyticsSlot = null, planSlot = null, leftControl = null, rightControl = null }) {
+export default function LeadlyHero({ firstName, leadly, stats = {}, onOpenTasks, layout = 'classic', analyticsSlot = null, planSlot = null, leftControl = null, rightControl = null, affiliateSlot = null }) {
   const [text, setText] = useState('');
   const [engaged, setEngaged] = useState(false);
   const [showTranscript, setShowTranscript] = useState(false);
@@ -306,6 +306,9 @@ export default function LeadlyHero({ firstName, leadly, stats = {}, onOpenTasks,
           )}
           {rightControl && (
             <div style={{ position: 'absolute', top: -34, left: 'calc(50% + 80px)', zIndex: 6 }}>{rightControl}</div>
+          )}
+          {affiliateSlot && (
+            <div style={{ position: 'absolute', bottom: 'calc(100% + 12px)', left: 0, right: 'calc(50% + 92px)', zIndex: 6 }}>{affiliateSlot}</div>
           )}
         </>
       )}
