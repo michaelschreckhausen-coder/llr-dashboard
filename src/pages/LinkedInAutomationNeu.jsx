@@ -36,7 +36,7 @@ function Pill({ status }) {
 
 export default function LinkedInAutomationNeu({ session }) {
   const { activeTeamId } = useTeam() || {}
-  const { brandVoices } = useBrandVoice() || {}
+  const { brandVoices, activeBrandVoice } = useBrandVoice() || {}
   const uid = session?.user?.id
   const [campaigns, setCampaigns] = useState([])
   const [accounts, setAccounts] = useState([])
@@ -58,17 +58,19 @@ export default function LinkedInAutomationNeu({ session }) {
   const show = (msg, err) => { setFlash({ msg, err }); setTimeout(() => setFlash(null), 3500) }
 
   const load = useCallback(async () => {
-    if (!activeTeamId) return
+    // Brand-scoped: Automatisierung läuft strikt pro Marke (= verbundenes Profil).
+    const bvId = activeBrandVoice?.id || null
+    if (!activeTeamId || !bvId) { setCampaigns([]); setAccounts([]); setAudiences([]); setHealth(null); setInboxLists([]); return }
     const [c, a, au, h, il] = await Promise.all([
-      supabase.from('la_campaigns').select('*').eq('team_id', activeTeamId).order('created_at', { ascending: false }),
-      supabase.from('la_accounts').select('*').eq('team_id', activeTeamId).eq('status', 'connected'),
-      supabase.from('la_audiences').select('*').eq('team_id', activeTeamId).order('created_at', { ascending: false }),
+      supabase.from('la_campaigns').select('*').eq('brand_voice_id', bvId).order('created_at', { ascending: false }),
+      supabase.from('la_accounts').select('*').eq('brand_voice_id', bvId).eq('status', 'connected'),
+      supabase.from('la_audiences').select('*').eq('brand_voice_id', bvId).order('created_at', { ascending: false }),
       supabase.from('la_runner_health').select('*').maybeSingle(),
       supabase.from('inbox_lists').select('id, name').eq('team_id', activeTeamId).order('created_at', { ascending: true }),
     ])
     setCampaigns(c.data || []); setAccounts(a.data || []); setAudiences(au.data || []); setHealth(h.data || null)
     setInboxLists(il.data || [])
-  }, [activeTeamId])
+  }, [activeTeamId, activeBrandVoice?.id])
   useEffect(() => { load() }, [load])
 
   // Detail (Steps + Funnel) für die ausgewählte Kampagne, mit Polling.
@@ -93,7 +95,7 @@ export default function LinkedInAutomationNeu({ session }) {
     if (accounts.length === 0) { show('Kein verbundener Unipile-Account — bitte zuerst verbinden', true); return }
     setCreating(true)
     const { data, error } = await supabase.from('la_campaigns').insert({
-      team_id: activeTeamId, account_id: accounts[0].id, name: 'Neue Kampagne', status: 'draft',
+      team_id: activeTeamId, brand_voice_id: activeBrandVoice?.id || null, account_id: accounts[0].id, name: 'Neue Kampagne', status: 'draft',
       caps: { invite: { per_day: 20 }, message: { per_day: 30 } }, schedule: {},
     }).select().single()
     setCreating(false)
@@ -166,7 +168,7 @@ export default function LinkedInAutomationNeu({ session }) {
 
   async function createAudience(kind) {
     const initialQuery = kind === 'list' ? { list_id: null } : kind.startsWith('search') ? { keywords: '' } : null
-    const { data, error } = await supabase.from('la_audiences').insert({ team_id: activeTeamId, kind, query: initialQuery }).select().single()
+    const { data, error } = await supabase.from('la_audiences').insert({ team_id: activeTeamId, brand_voice_id: activeBrandVoice?.id || null, kind, query: initialQuery }).select().single()
     if (error) { show(error.message, true); return }
     await supabase.from('la_campaigns').update({ audience_id: data.id }).eq('id', sel.id)
     setSel({ ...sel, audience_id: data.id }); load()
