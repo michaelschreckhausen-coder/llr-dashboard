@@ -442,7 +442,7 @@ export default function Dashboard({ session }) {
           <div style={{ position: 'relative' }}>
             {affBanner && (
               <div onClick={() => nav('/settings/affiliate')} style={{
-                position: 'absolute', top: 6, left: 0, right: 'calc(50% + 104px)', zIndex: 6,
+                position: 'absolute', top: -48, left: 0, right: 'calc(50% + 104px)', zIndex: 6,
                 display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer',
                 background: '#FFFBEB', border: '1px solid #FDE68A', borderRadius: 10,
                 padding: '7px 12px', fontSize: 12, color: '#92400E', lineHeight: 1.3,
