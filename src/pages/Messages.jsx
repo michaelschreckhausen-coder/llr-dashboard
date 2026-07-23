@@ -272,15 +272,16 @@ export default function Messages({ session }) {
   // Verlauf laden — strict team_id + brand_voice_id (Hardening 2026-06-11)
   // Vorher: nur team-Filter -> Nachrichten anderer BVs im Team waren sichtbar
   const loadHistory = useCallback(async () => {
-    if (!activeTeamId) { setHistory([]); return }
+    const bvId = activeBrandVoice?.id || null
+    if (!activeTeamId && !bvId) { setHistory([]); return }
     let q = supabase
       .from('linkedin_messages')
       .select('id, content, message_type, direction, lead_id, brand_voice_id, sent_at, created_at')
       .eq('direction', 'outbound')
-      .eq('team_id', activeTeamId)
       .order('created_at', { ascending: false })
       .limit(20)
-    if (activeBrandVoice?.id) q = q.eq('brand_voice_id', activeBrandVoice.id)
+    // Brand-scoped: bei aktiver Marke NUR nach Marke filtern (RLS = Marken-Zugriff), sonst team.
+    q = bvId ? q.eq('brand_voice_id', bvId) : q.eq('team_id', activeTeamId)
     const { data } = await q
     setHistory(data || [])
   }, [activeTeamId, activeBrandVoice?.id])

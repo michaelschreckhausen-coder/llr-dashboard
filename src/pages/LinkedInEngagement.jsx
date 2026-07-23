@@ -17,6 +17,7 @@ import {
 import { supabase } from '../lib/supabase'
 import PageHeader from '../components/PageHeader'
 import { useTeam } from '../context/TeamContext'
+import { useBrandVoice } from '../context/BrandVoiceContext'
 import { mapEfError } from '../lib/efError'
 
 const PRIMARY = 'rgb(49,90,231)'
@@ -57,6 +58,7 @@ const EMPTY_FORM = { kind:'comment', post:'', comment_text:'', saved_comment_id:
 
 export default function LinkedInEngagement() {
   const { activeTeamId } = useTeam()
+  const { activeBrandVoice } = useBrandVoice()
   const navigate = useNavigate()
 
   const [uid, setUid]                 = useState(null)
@@ -73,18 +75,19 @@ export default function LinkedInEngagement() {
   useEffect(() => { supabase.auth.getUser().then(({ data }) => setUid(data?.user?.id || null)) }, [])
 
   const load = useCallback(async () => {
-    if (!activeTeamId) { setJobs([]); setLoading(false); return }
+    // Brand-scoped: Engagement läuft aus dem Profil der aktiven Marke.
+    const bvId = activeBrandVoice?.id || null
+    if (!activeTeamId || !bvId) { setJobs([]); setLoading(false); return }
     setLoading(true)
-    // Team-scoped (Fallstrick #14). RLS ist Owner-scoped; team_id-Filter zusätzlich.
     const { data, error } = await supabase
       .from('linkedin_engagement_jobs')
       .select('id, kind, post_social_id, post_url, comment_text, reaction_type, status, scheduled_at, executed_at, error, created_at')
-      .eq('team_id', activeTeamId)
+      .eq('brand_voice_id', bvId)
       .order('created_at', { ascending:false })
     if (error) { setFlash({ type:'error', text:'Jobs laden fehlgeschlagen: ' + error.message }); setJobs([]); setLoading(false); return }
     setJobs(data || [])
     setLoading(false)
-  }, [activeTeamId])
+  }, [activeTeamId, activeBrandVoice?.id])
 
   const loadSaved = useCallback(async () => {
     if (!uid) { setSaved([]); return }
@@ -100,17 +103,18 @@ export default function LinkedInEngagement() {
 
   // Eigene veröffentlichte Posts (mit social_id) — team-scoped (Fallstrick #14).
   const loadOwnPosts = useCallback(async () => {
-    if (!activeTeamId) { setOwnPosts([]); return }
+    const bvId = activeBrandVoice?.id || null
+    if (!activeTeamId || !bvId) { setOwnPosts([]); return }
     const { data, error } = await supabase
       .from('content_posts')
       .select('id, title, content, linkedin_social_id, published_at')
-      .eq('team_id', activeTeamId)
+      .eq('brand_voice_id', bvId)
       .not('linkedin_social_id', 'is', null)
       .order('published_at', { ascending:false })
       .limit(50)
     if (error) { console.warn('[engagement] own posts:', error.message); setOwnPosts([]); return }
     setOwnPosts(data || [])
-  }, [activeTeamId])
+  }, [activeTeamId, activeBrandVoice?.id])
 
   useEffect(() => { load() }, [load])
   useEffect(() => { loadSaved() }, [loadSaved])
@@ -128,6 +132,7 @@ export default function LinkedInEngagement() {
     const row = {
       user_id: uid,
       team_id: activeTeamId,               // Multi-Tenant: team_id bei jedem Insert
+      brand_voice_id: activeBrandVoice?.id || null,   // Brand-scoped (Trigger füllt sonst nach)
       kind: form.kind,
       post_social_id: isUrn ? form.post.trim() : null,
       post_url: isUrn ? null : form.post.trim(),
