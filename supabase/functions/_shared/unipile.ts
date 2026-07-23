@@ -439,3 +439,59 @@ export async function dailyCount(
   }
   return count ?? 0;
 }
+
+// ---------------------------------------------------------------------
+// Social Selling Index (SSI) — via Unipile "Get Raw Data" (Magic) Route.
+// LinkedIn liefert SSI nur point-in-time; wir holen es serverseitig (kein
+// Extension-Scrape mehr) und bauen den Verlauf über tägliche Snapshots.
+// Endpoint (laut Unipile-Doku): GET https://www.linkedin.com/sales-api/salesApiSsi
+// Antwort: memberScore.overall + subScores[PROFESSIONAL_BRAND/FIND_RIGHT_PEOPLE/
+// INSIGHT_ENGAGEMENT/STRONG_RELATIONSHIP], groupScore[INDUSTRY|NETWORK].rank.
+// ---------------------------------------------------------------------
+export interface SsiResult {
+  total: number | null;
+  build_brand: number | null;
+  find_people: number | null;
+  engage_insights: number | null;
+  build_relationships: number | null;
+  industry_rank: number | null;
+  network_rank: number | null;
+  active_seat: boolean;
+}
+
+export async function getSocialSellingIndex(
+  accountId: string,
+  dsn?: string | null,
+): Promise<SsiResult> {
+  const res = await call("POST", "/api/v1/linkedin", {
+    dsn,
+    query: { account_id: accountId },
+    body: {
+      account_id: accountId,
+      request_url: "https://www.linkedin.com/sales-api/salesApiSsi",
+      force_api: true,
+      method: "GET",
+    },
+  });
+  const d: any = res?.data ?? res ?? {};
+  const sub: any[] = d?.memberScore?.subScores ?? [];
+  const grp: any[] = d?.groupScore ?? [];
+  const pillar = (name: string): number | null => {
+    const p = sub.find((x) => x?.pillar === name);
+    return p && p.score != null ? Number(p.score) : null;
+  };
+  const rankOf = (t: string): number | null => {
+    const g = grp.find((x) => x?.groupType === t);
+    return g && g.rank != null ? Number(g.rank) : null;
+  };
+  return {
+    total: d?.memberScore?.overall != null ? Number(d.memberScore.overall) : null,
+    build_brand: pillar("PROFESSIONAL_BRAND"),
+    find_people: pillar("FIND_RIGHT_PEOPLE"),
+    engage_insights: pillar("INSIGHT_ENGAGEMENT"),
+    build_relationships: pillar("STRONG_RELATIONSHIP"),
+    industry_rank: rankOf("INDUSTRY"),
+    network_rank: rankOf("NETWORK"),
+    active_seat: !!d?.activeSeat,
+  };
+}
