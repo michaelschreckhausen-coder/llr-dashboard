@@ -122,6 +122,7 @@ export default function NachrichtenAnalytics() {
               )}
             </div>
 
+            {logins.length > 1 && (
             <div style={cardStyle}>
               <div className="lk-eyebrow">Je Profil</div>
               <div style={{ display:'flex', flexDirection:'column', gap:8 }}>
@@ -141,6 +142,7 @@ export default function NachrichtenAnalytics() {
                 ))}
               </div>
             </div>
+            )}
 
             <div style={{ fontSize:11, color:'var(--text-muted,#9CA3AF)', lineHeight:1.5 }}>
               Hinweis: Gescannt werden die zuletzt aktiven Konversationen (gedeckelt). „Ungelesen" = Threads mit ungelesenen Nachrichten, „Aktiv (7 T)" = Konversationen mit Aktivität in den letzten 7 Tagen.

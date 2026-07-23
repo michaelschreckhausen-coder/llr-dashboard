@@ -195,7 +195,8 @@ export default function NetzwerkAnalytics() {
               </div>
             )}
 
-            {/* Per-Login-Aufschlüsselung */}
+            {/* Per-Login-Aufschlüsselung — nur wenn eine Marke ausnahmsweise mehrere Profile hat (brand-scoped = i.d.R. 1) */}
+            {logins.length > 1 && (
             <div style={cardStyle}>
               <div className="lk-eyebrow">Je Profil</div>
               <div style={{ display:'flex', flexDirection:'column', gap:8 }}>
@@ -217,6 +218,7 @@ export default function NetzwerkAnalytics() {
                 ))}
               </div>
             </div>
+            )}
 
             {/* ── Automatisierung (Kampagnen-Reporting) ── */}
             {camps.length > 0 && (() => {
