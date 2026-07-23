@@ -139,11 +139,9 @@ function getNav(t) {
   ] },
 
   { subSection: true, label: 'Analyse', items: [
-    { to: '/linkedin-analytics',    icon: IcBarChart, label: 'Content-Performance' },
-    { to: '/wachstum',              icon: IcTrendUp,  label: 'Wachstum' },
-    { to: '/netzwerk-analytics',    icon: IcUsers,    label: 'Netzwerk-Analyse' },
-    { to: '/nachrichten-analytics', icon: IcMail,     label: 'Nachrichten-Analyse' },
-    { to: '/ssi',                   icon: IcTarget,   label: 'SSI-Verlauf' },
+    { to: '/linkedin-analytics',    icon: IcBarChart, label: 'Content' },
+    { to: '/profil-analyse',        icon: IcTarget,   label: 'Profil & SSI' },
+    { to: '/netzwerk-analytics',    icon: IcUsers,    label: 'Netzwerk & Dialog' },
   ] },
 
   // Instagram + Sponsoring: nur Staging (auf Prod noch nicht fertig â 22.07.2026 Julian)

@@ -161,7 +161,7 @@ export default function LinkedInAnalyticsTiles() {
   const AMBER = '#B45309', TEAL = '#0F766E', BLUE = '#315AE7', GREEN = '#059669'
   const sections = [
     { label: 'Handlungsbedarf', color: AMBER, tiles: [
-      <Tile key="u"  icon={<Mail size={15} />}   label="Ungelesen"          value={fmt(d?.unread)}     warn={(d?.unread || 0) > 0}    sub={(d?.unread || 0) > 0 ? 'warten auf Antwort' : null}    to="/nachrichten-analytics" />,
+      <Tile key="u"  icon={<Mail size={15} />}   label="Ungelesen"          value={fmt(d?.unread)}     warn={(d?.unread || 0) > 0}    sub={(d?.unread || 0) > 0 ? 'warten auf Antwort' : null}    to="/netzwerk-analytics" />,
       <Tile key="in" icon={<Inbox size={15} />}  label="Offene Einladungen" value={fmt(d?.invitesIn)}   warn={(d?.invitesIn || 0) > 0} sub={(d?.invitesIn || 0) > 0 ? 'noch nicht angenommen' : null} to="/netzwerk-analytics" />,
       <Tile key="k"  icon={<Rocket size={15} />} label="Aktive Kampagnen"   value={fmt(d?.campaigns)}   to="/netzwerk-analytics" />,
     ] },
