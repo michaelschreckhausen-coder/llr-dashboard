@@ -9,6 +9,7 @@ import React, { useState, useEffect } from 'react'
 import { Users, UserPlus, Send, Inbox, Loader2, BarChart3, Rocket, UserCheck, Clock } from 'lucide-react'
 import {
   ResponsiveContainer, LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend,
+  ComposedChart, Bar,
 } from 'recharts'
 import { supabase } from '../lib/supabase'
 import { useTeam } from '../context/TeamContext'
@@ -33,6 +34,7 @@ export default function NetzwerkAnalytics() {
   const [brandMap, setBrandMap] = useState({})
   const [camps, setCamps] = useState([])
   const [enr, setEnr] = useState([])
+  const [invites, setInvites] = useState([])
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
@@ -43,18 +45,20 @@ export default function NetzwerkAnalytics() {
     ;(async () => {
       try {
         // Brand-scoped: Netzwerk-Analyse zeigt das Profil der aktiven Marke.
-        const [{ data: nm }, { data: bv }, { data: cc }, { data: ee }] = await Promise.all([
+        const [{ data: nm }, { data: bv }, { data: cc }, { data: ee }, { data: iv }] = await Promise.all([
           supabase.from('linkedin_network_metrics')
             .select('unipile_account_id, brand_voice_id, connections_total, followers_total, invites_pending_out, invites_pending_in, captured_on')
             .eq('brand_voice_id', bvId).order('captured_on', { ascending: true }),
           supabase.from('brand_voices').select('id, name, brand_name'),
           supabase.from('la_campaigns').select('id, name, status').eq('brand_voice_id', bvId),
           supabase.from('la_enrollments').select('campaign_id, state, relation_status').eq('brand_voice_id', bvId),
+          supabase.from('linkedin_invitations').select('status, sent_at, responded_at').eq('brand_voice_id', bvId),
         ])
         if (cancelled) return
         setRows(nm || [])
         setCamps(cc || [])
         setEnr(ee || [])
+        setInvites(iv || [])
         const map = {}
         for (const b of (bv || [])) map[b.id] = b.name || b.brand_name || null
         setBrandMap(map)
@@ -78,6 +82,29 @@ export default function NetzwerkAnalytics() {
     byDay[d].Follower += Number(r.followers_total) || 0
   }
   const series = Object.keys(byDay).sort().map(d => byDay[d])
+
+  // ── Vernetzungs-Annahmequote (aus linkedin_invitations) ──
+  const invAccepted = invites.filter(i => i.status === 'accepted')
+  const invPending  = invites.filter(i => i.status === 'pending')
+  const acceptDen = invAccepted.length + invPending.length
+  const acceptRate = acceptDen > 0 ? Math.round((invAccepted.length / acceptDen) * 100) : null
+  // Ø Zeit bis Annahme (Tage) aus responded_at - sent_at
+  const accDurations = invAccepted
+    .filter(i => i.sent_at && i.responded_at)
+    .map(i => (new Date(i.responded_at) - new Date(i.sent_at)) / 86400000)
+    .filter(d => d >= 0)
+  const avgAcceptDays = accDurations.length ? (accDurations.reduce((a,b)=>a+b,0) / accDurations.length) : null
+  // Wöchentliche Reihe: gesendet vs. angenommen (nach sent_at-Woche), + Annahmequote je Woche
+  const weekKey = (d) => { const x = new Date(d); const day = (x.getUTCDay()+6)%7; x.setUTCDate(x.getUTCDate()-day); x.setUTCHours(0,0,0,0); return x.toISOString().slice(0,10) }
+  const invByWeek = {}
+  for (const i of invites) {
+    if (!i.sent_at) continue
+    const k = weekKey(i.sent_at)
+    invByWeek[k] ||= { week:k, name: dDE(k), Gesendet:0, Angenommen:0 }
+    invByWeek[k].Gesendet++
+    if (i.status === 'accepted') invByWeek[k].Angenommen++
+  }
+  const invWeeks = Object.keys(invByWeek).sort().map(k => { const r = invByWeek[k]; return { ...r, Quote: r.Gesendet>0 ? Math.round((r.Angenommen/r.Gesendet)*100) : 0 } })
 
   const label = (r) => brandMap[r.brand_voice_id] || r.unipile_account_id?.slice(0, 8) || 'Login'
 
@@ -134,6 +161,39 @@ export default function NetzwerkAnalytics() {
                 </div>
               )}
             </div>
+
+            {/* ── Vernetzungs-Annahmequote ── */}
+            {invites.length > 0 && (
+              <div style={cardStyle}>
+                <div className="lk-eyebrow"><UserCheck size={12} style={{ verticalAlign:'-2px' }} /> Vernetzungs-Annahmequote</div>
+                <div style={{ display:'flex', gap:10, flexWrap:'wrap', margin:'6px 0 4px' }}>
+                  <div style={kpiTile}><div style={kpiLabel}>Annahmequote</div><div style={{ ...kpiValue, color:'var(--primary)' }}>{acceptRate != null ? acceptRate + ' %' : '–'}</div></div>
+                  <div style={kpiTile}><div style={kpiLabel}>Angenommen</div><div style={kpiValue}>{fmt(invAccepted.length)}</div></div>
+                  <div style={kpiTile}><div style={kpiLabel}>Offen (ausstehend)</div><div style={kpiValue}>{fmt(invPending.length)}</div></div>
+                  <div style={kpiTile}><div style={kpiLabel}>Ø Zeit bis Annahme</div><div style={kpiValue}>{avgAcceptDays != null ? avgAcceptDays.toFixed(1) + ' T' : '–'}</div></div>
+                </div>
+                {invWeeks.length >= 2 && (
+                  <div style={{ width:'100%', height:240, marginTop:8 }}>
+                    <ResponsiveContainer width="100%" height="100%">
+                      <ComposedChart data={invWeeks} margin={{ top:8, right:16, bottom:8, left:0 }}>
+                        <CartesianGrid strokeDasharray="3 3" stroke="#E4E7EC" />
+                        <XAxis dataKey="name" tick={{ fontSize:11 }} />
+                        <YAxis yAxisId="left" tick={{ fontSize:11 }} />
+                        <YAxis yAxisId="right" orientation="right" tick={{ fontSize:11 }} unit="%" domain={[0,100]} />
+                        <Tooltip />
+                        <Legend wrapperStyle={{ fontSize:12 }} />
+                        <Bar yAxisId="left" dataKey="Gesendet" fill="#CBD5E1" radius={[4,4,0,0]} maxBarSize={34} />
+                        <Bar yAxisId="left" dataKey="Angenommen" fill={PRIMARY} radius={[4,4,0,0]} maxBarSize={34} />
+                        <Line yAxisId="right" type="monotone" dataKey="Quote" name="Annahmequote %" stroke="#059669" strokeWidth={2} dot={{ r:2 }} />
+                      </ComposedChart>
+                    </ResponsiveContainer>
+                  </div>
+                )}
+                <div style={{ fontSize:11, color:'var(--text-muted,#9CA3AF)', marginTop:8 }}>
+                  Anteil angenommener Vernetzungsanfragen (angenommen ÷ (angenommen + offen)). Wochenbalken nach Sende-Woche, Linie = Quote je Woche.
+                </div>
+              </div>
+            )}
 
             {/* Per-Login-Aufschlüsselung */}
             <div style={cardStyle}>
