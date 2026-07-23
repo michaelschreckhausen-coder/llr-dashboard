@@ -1293,6 +1293,7 @@ export default function BrandVoice({ session, brandType = 'personal' }) {
 
   const [liConnecting, setLiConnecting] = useState(false)
   const [uniAccount, setUniAccount] = useState(null) // verbundener Unipile-Account DIESER Brand (brand-scoped)
+  const [connectedBy, setConnectedBy] = useState(null) // Name des Team-Users, der verknüpft hat
   const [freshlyCreated, setFreshlyCreated] = useState(false)
   const [liError, setLiError] = useState('')
   // Popups für Personal-Brand-Header-Buttons (Sichtbarkeit / LinkedIn verbinden)
@@ -1473,7 +1474,7 @@ export default function BrandVoice({ session, brandType = 'personal' }) {
       timers.push(setTimeout(async () => {
         if (cancelled) return
         const { data } = await supabase.from('unipile_accounts')
-          .select('unipile_account_id, provider_public_id')
+          .select('unipile_account_id, provider_public_id, user_id')
           .eq('brand_voice_id', bvId).eq('status', 'OK').limit(1).maybeSingle()
         if (cancelled) return
         if (data) { setUniAccount(data); timers.forEach(clearTimeout) }
@@ -1482,6 +1483,16 @@ export default function BrandVoice({ session, brandType = 'personal' }) {
     })
     return () => { cancelled = true; timers.forEach(clearTimeout) }
   }, [edit?.id])
+
+  // Wer aus dem Team hat dieses LinkedIn-Profil verknüpft? (Nachvollziehbarkeit)
+  useEffect(() => {
+    const u = uniAccount?.user_id
+    if (!u) { setConnectedBy(null); return }
+    let cancelled = false
+    supabase.from('profiles').select('full_name, email').eq('id', u).maybeSingle()
+      .then(({ data }) => { if (!cancelled) setConnectedBy(data?.full_name || data?.email || null) })
+    return () => { cancelled = true }
+  }, [uniAccount?.user_id])
 
   // Disconnect: revoked_at setzen + BV-Identity-Felder leeren
   async function disconnectLinkedIn() {
@@ -1911,6 +1922,7 @@ export default function BrandVoice({ session, brandType = 'personal' }) {
                     <div style={{ minWidth:0 }}>
                       <div style={{ fontSize:13, fontWeight:700, color:'#166534', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{edit.linkedin_display_name || uniAccount?.provider_public_id || 'LinkedIn-Profil verbunden'}</div>
                       <div style={{ fontSize:11, color:'#059669' }}>linkedin.com/in/{edit.linkedin_member_id || uniAccount?.provider_public_id}{edit.linkedin_verified_at ? ' · zuletzt geprüft '+new Date(edit.linkedin_verified_at).toLocaleDateString('de-DE') : ''}</div>
+                      {connectedBy && <div style={{ fontSize:11, color:'#059669' }}>Verknüpft von {connectedBy}</div>}
                     </div>
                   </div>
                   <div style={{ display:'flex', gap:8 }}>
