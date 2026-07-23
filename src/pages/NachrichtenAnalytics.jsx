@@ -11,6 +11,7 @@ import {
 } from 'recharts'
 import { supabase } from '../lib/supabase'
 import { useTeam } from '../context/TeamContext'
+import { useBrandVoice } from '../context/BrandVoiceContext'
 import PageHeader from '../components/PageHeader'
 
 const PRIMARY = 'rgb(49,90,231)'
@@ -26,20 +27,23 @@ const dDE = s => { try { return new Date(s).toLocaleDateString('de-DE', { day:'2
 
 export default function NachrichtenAnalytics() {
   const { activeTeamId } = useTeam()
+  const { activeBrandVoice } = useBrandVoice()
   const [rows, setRows] = useState([])
   const [brandMap, setBrandMap] = useState({})
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
-    if (!activeTeamId) { setRows([]); setLoading(false); return }
+    const bvId = activeBrandVoice?.id || null
+    if (!activeTeamId || !bvId) { setRows([]); setLoading(false); return }
     let cancelled = false
     setLoading(true)
     ;(async () => {
       try {
+        // Brand-scoped: Nachrichten-Analyse zeigt das Postfach des Profils der aktiven Marke.
         const [{ data: mm }, { data: bv }] = await Promise.all([
           supabase.from('linkedin_messaging_metrics')
             .select('unipile_account_id, brand_voice_id, chats_scanned, unread_threads, unread_messages, active_7d, captured_on')
-            .eq('team_id', activeTeamId).order('captured_on', { ascending: true }),
+            .eq('brand_voice_id', bvId).order('captured_on', { ascending: true }),
           supabase.from('brand_voices').select('id, name, brand_name'),
         ])
         if (cancelled) return
@@ -50,7 +54,7 @@ export default function NachrichtenAnalytics() {
       } finally { if (!cancelled) setLoading(false) }
     })()
     return () => { cancelled = true }
-  }, [activeTeamId])
+  }, [activeTeamId, activeBrandVoice?.id])
 
   const latestByAcct = {}
   for (const r of rows) latestByAcct[r.unipile_account_id] = r
@@ -73,7 +77,7 @@ export default function NachrichtenAnalytics() {
         <PageHeader
           overline="LinkedIn · Netzwerk"
           title="Nachrichten-Analytics"
-          subtitle="Inbox-Aktivität deines Teams — ungelesene Threads und aktive Gespräche je verbundenem Profil."
+          subtitle="Ungelesene Threads und aktive Gespräche im Postfach der aktiven Marke."
         />
 
         {loading ? (

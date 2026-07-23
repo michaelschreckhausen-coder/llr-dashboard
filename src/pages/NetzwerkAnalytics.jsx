@@ -12,6 +12,7 @@ import {
 } from 'recharts'
 import { supabase } from '../lib/supabase'
 import { useTeam } from '../context/TeamContext'
+import { useBrandVoice } from '../context/BrandVoiceContext'
 import PageHeader from '../components/PageHeader'
 
 const PRIMARY = 'rgb(49,90,231)'
@@ -27,6 +28,7 @@ const dDE = s => { try { return new Date(s).toLocaleDateString('de-DE', { day:'2
 
 export default function NetzwerkAnalytics() {
   const { activeTeamId } = useTeam()
+  const { activeBrandVoice } = useBrandVoice()
   const [rows, setRows] = useState([])
   const [brandMap, setBrandMap] = useState({})
   const [camps, setCamps] = useState([])
@@ -34,18 +36,20 @@ export default function NetzwerkAnalytics() {
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
-    if (!activeTeamId) { setRows([]); setLoading(false); return }
+    const bvId = activeBrandVoice?.id || null
+    if (!activeTeamId || !bvId) { setRows([]); setLoading(false); return }
     let cancelled = false
     setLoading(true)
     ;(async () => {
       try {
+        // Brand-scoped: Netzwerk-Analyse zeigt das Profil der aktiven Marke.
         const [{ data: nm }, { data: bv }, { data: cc }, { data: ee }] = await Promise.all([
           supabase.from('linkedin_network_metrics')
             .select('unipile_account_id, brand_voice_id, connections_total, followers_total, invites_pending_out, invites_pending_in, captured_on')
-            .eq('team_id', activeTeamId).order('captured_on', { ascending: true }),
+            .eq('brand_voice_id', bvId).order('captured_on', { ascending: true }),
           supabase.from('brand_voices').select('id, name, brand_name'),
-          supabase.from('la_campaigns').select('id, name, status').eq('team_id', activeTeamId),
-          supabase.from('la_enrollments').select('campaign_id, state, relation_status').eq('team_id', activeTeamId),
+          supabase.from('la_campaigns').select('id, name, status').eq('brand_voice_id', bvId),
+          supabase.from('la_enrollments').select('campaign_id, state, relation_status').eq('brand_voice_id', bvId),
         ])
         if (cancelled) return
         setRows(nm || [])
@@ -57,7 +61,7 @@ export default function NetzwerkAnalytics() {
       } finally { if (!cancelled) setLoading(false) }
     })()
     return () => { cancelled = true }
-  }, [activeTeamId])
+  }, [activeTeamId, activeBrandVoice?.id])
 
   // Neueste Zeile je Login
   const latestByAcct = {}
@@ -83,7 +87,7 @@ export default function NetzwerkAnalytics() {
         <PageHeader
           overline="LinkedIn · Netzwerk"
           title="Netzwerk-Analytics"
-          subtitle="Verbindungen, Follower und offene Einladungen deines Teams — je verbundenem LinkedIn-Profil."
+          subtitle="Verbindungen, Follower und offene Einladungen des Profils der aktiven Marke."
         />
 
         {loading ? (
