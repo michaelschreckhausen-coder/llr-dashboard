@@ -181,6 +181,7 @@ export default function Marketplace() {
   const filtered = useMemo(() => {
     const term = search.trim().toLowerCase()
     return (catalog || []).filter((a) => {
+      if (a.slug === 'automation') return false   // eigene Kapazitäts-Kachel oben (LinkedIn-Verknüpfung)
       if (category !== 'all' && a.category !== category) return false
       if (!term) return true
       return (
@@ -307,6 +308,45 @@ export default function Marketplace() {
 
         {/* Credits + Top-Up-Section (Sprint J.2 Phase B) */}
         <CreditsTopupSection onFlash={showFlash} />
+
+        {/* LinkedIn-Verknüpfung — Kapazitäts-Limit (pro Lizenz 1 inklusive, weitere 5 €/Monat) */}
+        {(() => {
+          const li = (catalog || []).find(a => a.slug === 'automation')
+          if (!li) return null
+          const sub = subscribedSlugs.has('automation')
+          const stripeManaged = stripeManagedSlugs.has('automation')
+          const al = uniAllowance
+          return (
+            <div style={{ margin: '18px 0 6px' }}>
+              <div style={{ fontSize: 14, fontWeight: 800, color: '#0F172A', marginBottom: 2, display: 'flex', alignItems: 'center', gap: 8 }}>
+                🔗 LinkedIn-Verknüpfung <span style={{ fontSize: 12, fontWeight: 500, color: '#64748B' }}>· pro Lizenz 1 inklusive · Monatlich · jederzeit kündbar</span>
+              </div>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 360px))', gap: 12, marginTop: 10 }}>
+                <div style={{ background: '#fff', border: '1px solid var(--border, #E4E7EC)', borderRadius: 14, padding: '16px 18px', boxShadow: 'var(--shadow-card)' }}>
+                  <div style={{ fontSize: 14.5, fontWeight: 800, color: '#0F172A' }}>Weitere LinkedIn-Anbindung</div>
+                  <div style={{ fontSize: 12.5, color: '#64748B', marginTop: 3, lineHeight: 1.5 }}>Jedes weitere LinkedIn-Profil — serverseitig über Unipile (Analyse, Nachrichten, Vernetzung, Content).</div>
+                  {al && (
+                    <div style={{ marginTop: 10, fontSize: 12.5, background: '#EEF2FF', border: '1px solid #E0E7FF', borderRadius: 10, padding: '8px 11px', color: '#3730A3' }}>
+                      Aktuell <strong>{al.connected} von {al.included}</strong> inklusive genutzt{al.can_add ? '' : ' — Limit erreicht'}{al.addon_active ? ' · Zubuchung aktiv' : ''}.
+                    </div>
+                  )}
+                  <div style={{ display: 'flex', alignItems: 'baseline', gap: 4, margin: '12px 0 10px' }}>
+                    <span style={{ fontSize: 22, fontWeight: 900, color: '#0F172A' }}>5 €</span>
+                    <span style={{ fontSize: 12, color: '#64748B' }}>/ Monat je weitere Verknüpfung</span>
+                  </div>
+                  {sub ? (
+                    <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+                      <span style={{ fontSize: 12.5, fontWeight: 700, color: '#059669', display: 'inline-flex', alignItems: 'center', gap: 5 }}>✓ Zubuchung aktiv</span>
+                      {stripeManaged && <button className="lk-btn lk-btn-ghost lk-btn-sm" onClick={() => onManageBilling(li)}>Verwalten</button>}
+                    </div>
+                  ) : (
+                    <button className="lk-btn lk-btn-primary" style={{ width: '100%' }} onClick={() => onSubscribe(li)}>Weitere Verknüpfung zubuchen</button>
+                  )}
+                </div>
+              </div>
+            </div>
+          )
+        })()}
 
         {/* Add-on-Tabs + Search */}
         <div style={{ display: 'flex', alignItems: 'center', gap: 16, flexWrap: 'wrap' }}>
