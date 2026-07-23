@@ -453,7 +453,7 @@ export default function Dashboard({ session }) {
               </div>
             )}
             {hero}
-            <div style={{ marginTop: 18, display: 'flex', flexDirection: 'column', gap: 18 }}>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 20, alignItems: 'start', marginTop: 18 }}>
               <div>{analytics}</div>
               <div>{planNode}</div>
             </div>

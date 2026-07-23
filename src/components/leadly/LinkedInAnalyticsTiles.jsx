@@ -128,7 +128,7 @@ export default function LinkedInAnalyticsTiles() {
       <style>{`
         @keyframes lk-tile-pop { 0% { opacity:0; transform: translateY(6px) scale(.98) } 100% { opacity:1; transform:none } }
         .lk-tile-in { animation: lk-tile-pop .34s ease both; }
-        .lk-analys-grid { display:grid; grid-template-columns: repeat(auto-fill, minmax(158px, 1fr)); gap:9px; align-items:start; }
+        .lk-analys-grid { display:grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap:9px; align-items:start; }
       `}</style>
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 6, marginBottom: 4 }}>
         <span style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 12, color: 'var(--text-muted, #6B7280)', fontWeight: 600 }}><Flame size={13} /> Deine Analysen</span>
