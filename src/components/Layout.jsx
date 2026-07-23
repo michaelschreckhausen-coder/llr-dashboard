@@ -63,6 +63,7 @@ function IcInbox()    { return <SvgIcon><path d="M22 12h-6l-2 3h-4l-2-3H2"/><pat
 function IcSearch()   { return <SvgIcon><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></SvgIcon> }
 function IcGrid()     { return <SvgIcon><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></SvgIcon> }
 function IcBarChart() { return <SvgIcon><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></SvgIcon> }
+function IcTrendUp()  { return <SvgIcon><polyline points="23 6 13.5 15.5 8.5 10.5 1 18"/><polyline points="17 6 23 6 23 12"/></SvgIcon> }
 function IcStar()     { return <SvgIcon><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></SvgIcon> }
 function IcImage()    { return <SvgIcon><rect x="3" y="3" width="18" height="18" rx="2" ry="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></SvgIcon> }
 function IcInstagram(){ return <SvgIcon><rect x="2" y="2" width="20" height="20" rx="5" ry="5"/><path d="M16 11.37A4 4 0 1 1 12.63 8 4 4 0 0 1 16 11.37z"/><line x1="17.5" y1="6.5" x2="17.51" y2="6.5"/></SvgIcon> }
@@ -139,9 +140,9 @@ function getNav(t) {
 
   { subSection: true, label: 'Analyse', items: [
     { to: '/linkedin-analytics',    icon: IcBarChart, label: 'Content-Performance' },
-    { to: '/wachstum',              icon: IcBarChart, label: 'Wachstum' },
-    { to: '/netzwerk-analytics',    icon: IcBarChart, label: 'Netzwerk-Analyse' },
-    { to: '/nachrichten-analytics', icon: IcBarChart, label: 'Nachrichten-Analyse' },
+    { to: '/wachstum',              icon: IcTrendUp,  label: 'Wachstum' },
+    { to: '/netzwerk-analytics',    icon: IcUsers,    label: 'Netzwerk-Analyse' },
+    { to: '/nachrichten-analytics', icon: IcMail,     label: 'Nachrichten-Analyse' },
     { to: '/ssi',                   icon: IcTarget,   label: 'SSI-Verlauf' },
   ] },
 
