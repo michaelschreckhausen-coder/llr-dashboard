@@ -134,8 +134,10 @@ export default function SSI({ session }) {
     // SSI ist brand-scoped (Kennzahl des Marken-Profils). Erst laden wenn Marke aufgelöst.
     if (!noBrand && !activeBrandVoice?.id) { setEntries([]); setLoading(false); return }
     const bvId = noBrand ? null : (activeBrandVoice?.id || null)
-    let _q = supabase.from('ssi_scores').select('*').eq('user_id', session.user.id)
-    _q = bvId ? _q.eq('brand_voice_id', bvId) : _q.is('brand_voice_id', null)
+    // Brand-scoped: bei aktiver Marke NUR nach brand_voice_id filtern (RLS = Marken-Zugriff),
+    // damit geteilte Marken auch für berechtigte Kollegen sichtbar sind. Ohne Marke: eigene.
+    let _q = supabase.from('ssi_scores').select('*')
+    _q = bvId ? _q.eq('brand_voice_id', bvId) : _q.is('brand_voice_id', null).eq('user_id', session.user.id)
     const { data } = await _q.order('recorded_at', { ascending: false }).limit(90)
     setEntries(data || [])
     setLoading(false)

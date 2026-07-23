@@ -73,15 +73,15 @@ export default function ProfilChecker({ session }) {
   const loadHistory = useCallback(async () => {
     if (!userId) { setHistory([]); return }
     try {
-      // Team-scoped + nur eigene Analysen (Solo-Fallback team_id IS NULL).
-      // RLS allein reichte nicht: pc_own liefert eigene Rows teamuebergreifend.
+      // Brand-scoped: bei aktiver Marke NUR nach brand_voice_id filtern (RLS = Marken-Zugriff,
+      // pc_brand) → geteilte Marke ist für berechtigte Kollegen sichtbar. Ohne Marke: eigene.
       let q = supabase
         .from('profile_checks')
         .select('id,profile_name,score,passed,total,results,created_at')
-        .eq('user_id', userId)
-      q = activeTeamId ? q.eq('team_id', activeTeamId) : q.is('team_id', null)
       const bvId = noBrand ? null : (activeBrandVoice?.id || null)
-      q = bvId ? q.eq('brand_voice_id', bvId) : q.is('brand_voice_id', null)
+      q = bvId
+        ? q.eq('brand_voice_id', bvId)
+        : q.eq('user_id', userId).is('brand_voice_id', null)
       const { data } = await q
         .order('created_at', { ascending: false })
         .limit(20)
