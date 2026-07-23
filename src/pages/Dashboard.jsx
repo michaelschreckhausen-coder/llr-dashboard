@@ -12,7 +12,7 @@
 
 import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { ChevronUp, BarChart3, ListChecks } from 'lucide-react';
+import { ChevronUp, ChevronDown, BarChart3, ListChecks } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import { colors, radii, shadows, space, motion, typography } from '../theme';
 import { useDashboardData } from '../hooks/useDashboardData';
@@ -102,10 +102,10 @@ function CockpitDropdown({ icon, value, options, onSelect, align = 'left' }) {
         style={{ display: 'inline-flex', alignItems: 'center', gap: 6, maxWidth: 176, background: '#fff', border: '1px solid var(--border,#E4E7EC)', borderRadius: 999, padding: '5px 11px', fontSize: 11.5, fontWeight: 600, color: 'var(--text-strong,#111827)', cursor: 'pointer', boxShadow: '0 1px 2px rgba(15,23,42,.05)', whiteSpace: 'nowrap' }}>
         <span style={{ color: 'var(--wl-primary, rgb(49,90,231))', display: 'inline-flex' }}>{icon}</span>
         <span style={{ overflow: 'hidden', textOverflow: 'ellipsis' }}>{cur?.label}</span>
-        <ChevronUp size={13} style={{ opacity: .5, flexShrink: 0 }} />
+        <ChevronDown size={13} style={{ opacity: .5, flexShrink: 0 }} />
       </button>
       {open && (
-        <div style={{ position: 'absolute', bottom: 'calc(100% + 6px)', [align]: 0, minWidth: 178, background: '#fff', border: '1px solid var(--border,#E4E7EC)', borderRadius: 12, boxShadow: '0 12px 34px rgba(15,23,42,.15)', padding: 5, zIndex: 60 }}>
+        <div style={{ position: 'absolute', top: 'calc(100% + 6px)', [align]: 0, minWidth: 178, background: '#fff', border: '1px solid var(--border,#E4E7EC)', borderRadius: 12, boxShadow: '0 12px 34px rgba(15,23,42,.15)', padding: 5, zIndex: 60 }}>
           {options.map(o => (
             <button key={o.value} type="button" onClick={() => { onSelect(o.value); setOpen(false); }}
               style={{ display: 'flex', alignItems: 'center', gap: 8, width: '100%', textAlign: 'left', background: o.value === value ? 'var(--wl-primary-tint, #EFF3FF)' : 'transparent', border: 'none', borderRadius: 8, padding: '7px 9px', fontSize: 12, fontWeight: o.value === value ? 700 : 500, color: 'var(--text-strong,#111827)', cursor: 'pointer' }}>
@@ -342,12 +342,15 @@ export default function Dashboard({ session }) {
         <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 12, color: colors.inkMuted, fontWeight: 600 }}>
           <span aria-hidden="true">✓</span> Dein Plan heute
         </div>
-        {suggestions.length >= 3 && (
-          <button type="button" className="lk-btn lk-btn-ghost lk-btn-sm"
-            onClick={() => askLeadly(`Hier ist mein heutiger Plan:\n${displayedSuggestions.map((s, i) => `${i + 1}. [${s.area.label}] ${s.title}`).join('\n')}\nGeh ihn mit mir durch: Womit starte ich, und was kannst du direkt vorbereiten?`)}>
-            Alle
-          </button>
-        )}
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+          {!cockpitNarrow && <CockpitDropdown icon={<ListChecks size={13} />} value={planCat} options={planCats} onSelect={setPlanCat} align="right" />}
+          {suggestions.length >= 3 && (
+            <button type="button" className="lk-btn lk-btn-ghost lk-btn-sm"
+              onClick={() => askLeadly(`Hier ist mein heutiger Plan:\n${displayedSuggestions.map((s, i) => `${i + 1}. [${s.area.label}] ${s.title}`).join('\n')}\nGeh ihn mit mir durch: Womit starte ich, und was kannst du direkt vorbereiten?`)}>
+              Alle
+            </button>
+          )}
+        </div>
       </div>
       {planShown.length > 0 ? (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
@@ -416,10 +419,7 @@ export default function Dashboard({ session }) {
           Analysen (links) · weißes Chat-Kästchen mit Orb-Beule (Mitte) · Plan (rechts) */}
       {(() => {
         const leftControl = cockpitNarrow ? null : (
-          <CockpitDropdown icon={<BarChart3 size={13} />} value={analyticsView} options={analyticsViews} onSelect={setAnalyticsView} align="left" />
-        );
-        const rightControl = cockpitNarrow ? null : (
-          <CockpitDropdown icon={<ListChecks size={13} />} value={planCat} options={planCats} onSelect={setPlanCat} align="right" />
+          <CockpitDropdown icon={<BarChart3 size={13} />} value={analyticsView} options={analyticsViews} onSelect={setAnalyticsView} align="right" />
         );
         const hero = (
           <LeadlyHero
@@ -433,28 +433,26 @@ export default function Dashboard({ session }) {
             }}
             onOpenTasks={() => nav('/aufgaben')}
             layout="cockpit"
-            leftControl={leftControl}
-            rightControl={rightControl}
           />
         );
-        const analytics = <LinkedInAnalyticsTiles mode={analyticsView} />;
+        const analytics = <LinkedInAnalyticsTiles mode={analyticsView} control={leftControl} />;
         if (cockpitNarrow) {
           return (
             <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+              {hero}
               {analytics}
               {planNode}
-              {hero}
             </div>
           );
         }
-        // Desktop: oben Analyse (links) + Todos (rechts), darunter Chat auf VOLLER Breite.
+        // Desktop: oben Chat+Orb (volle Breite), darunter Analyse (links) + Plan (rechts) symmetrisch.
         return (
           <div>
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 20, alignItems: 'start', marginBottom: 6 }}>
+            {hero}
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 20, alignItems: 'start', marginTop: 18 }}>
               <div>{analytics}</div>
               <div>{planNode}</div>
             </div>
-            {hero}
           </div>
         );
       })()}

@@ -15,7 +15,7 @@ import { useBrandVoice } from '../../context/BrandVoiceContext'
 
 const fmt = n => (n == null ? '–' : Number(n).toLocaleString('de-DE'))
 
-export default function LinkedInAnalyticsTiles({ mode = 'handlung' }) {
+export default function LinkedInAnalyticsTiles({ mode = 'handlung', control = null }) {
   const nav = useNavigate()
   const { activeTeamId } = useTeam()
   const { activeBrandVoice, noBrand, brandVoices, switchBrandVoice } = useBrandVoice()
@@ -150,8 +150,9 @@ export default function LinkedInAnalyticsTiles({ mode = 'handlung' }) {
         @keyframes lk-tile-pop { 0% { opacity:0; transform: translateY(6px) scale(.98) } 100% { opacity:1; transform:none } }
         .lk-tile-in { animation: lk-tile-pop .34s ease both; }
       `}</style>
-      <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 12, color: 'var(--text-muted, #6B7280)', fontWeight: 600, marginBottom: 8 }}>
-        <Flame size={13} /> Deine Analysen
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 6, marginBottom: 8 }}>
+        <span style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 12, color: 'var(--text-muted, #6B7280)', fontWeight: 600 }}><Flame size={13} /> Deine Analysen</span>
+        {control}
       </div>
 
       <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: '4px 12px', marginBottom: 9, fontSize: 10.5, fontWeight: 600, color: 'var(--text-muted, #6B7280)' }}>
