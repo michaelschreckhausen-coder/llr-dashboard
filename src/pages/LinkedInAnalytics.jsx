@@ -397,6 +397,70 @@ export default function LinkedInAnalytics() {
               )
             })()}
 
+            {/* ── Reifekurve (aggregiert) + wiederkehrende Engager ── */}
+            {(() => {
+              // Reifekurve: Ø Engagement-Rate je Tag-seit-Veröffentlichung über alle Posts
+              const byDay = {}
+              for (const arr of Object.values(metricsByPost)) {
+                for (const m of (arr || [])) {
+                  if (m.day == null || m.rate == null) continue
+                  ;(byDay[m.day] ||= []).push(m.rate)
+                }
+              }
+              const curve = Object.keys(byDay).map(Number).sort((a,b)=>a-b).slice(0,30)
+                .map(d => ({ day: d, 'Ø Engagement %': Number((byDay[d].reduce((a,b)=>a+b,0)/byDay[d].length).toFixed(2)) }))
+              // Wiederkehrende Engager: Personen, die auf mehreren Posts reagiert/kommentiert haben
+              const byActor = {}
+              for (const [pid, list] of Object.entries(engagersByPost)) {
+                for (const e of (list || [])) {
+                  const k = e.actor_profile_url || e.actor_name
+                  if (!k) continue
+                  const a = (byActor[k] ||= { name: e.actor_name, headline: e.actor_headline, url: e.actor_profile_url, posts: new Set(), converted: false })
+                  a.posts.add(pid); if (e.converted_lead_id) a.converted = true
+                }
+              }
+              const repeat = Object.values(byActor).map(a => ({ ...a, n: a.posts.size })).filter(a => a.n >= 2).sort((a,b)=>b.n-a.n).slice(0,10)
+              if (curve.length < 2 && repeat.length === 0) return null
+              return (
+                <div style={{ display:'flex', gap:16, flexWrap:'wrap' }}>
+                  {curve.length >= 2 && (
+                    <div style={{ ...cardStyle, flex:1, minWidth:300 }}>
+                      <div className="lk-eyebrow">Reifekurve · wann ein Post zündet</div>
+                      <div style={{ width:'100%', height:200, marginTop:6 }}>
+                        <ResponsiveContainer width="100%" height="100%">
+                          <LineChart data={curve} margin={{ top:8, right:16, bottom:8, left:0 }}>
+                            <CartesianGrid strokeDasharray="3 3" stroke="#E4E7EC" />
+                            <XAxis dataKey="day" tick={{ fontSize:11 }} label={{ value:'Tage seit Veröffentlichung', position:'insideBottom', offset:-4, fontSize:10 }} />
+                            <YAxis tick={{ fontSize:11 }} unit="%" /><Tooltip />
+                            <Line type="monotone" dataKey="Ø Engagement %" stroke="#DD2A7B" strokeWidth={2} dot={{ r:2 }} />
+                          </LineChart>
+                        </ResponsiveContainer>
+                      </div>
+                      <div style={{ fontSize:11, color:'var(--text-muted,#9CA3AF)', marginTop:6 }}>Über alle Posts gemittelt — zeigt, an welchem Tag nach Veröffentlichung das Engagement im Schnitt am höchsten ist.</div>
+                    </div>
+                  )}
+                  {repeat.length > 0 && (
+                    <div style={{ ...cardStyle, flex:1, minWidth:300 }}>
+                      <div className="lk-eyebrow">Wiederkehrende Engager · warme Leads</div>
+                      <div style={{ display:'flex', flexDirection:'column', gap:8, marginTop:6 }}>
+                        {repeat.map((a,i) => (
+                          <div key={i} style={{ display:'flex', alignItems:'center', gap:10, padding:'6px 0', borderTop: i? '1px solid var(--border-soft,#F1F5F9)':'none' }}>
+                            <div style={{ flex:1, minWidth:0 }}>
+                              <div style={{ fontSize:13, fontWeight:700, color:'var(--text-strong,#111827)' }}>{a.name || 'Unbekannt'}</div>
+                              {a.headline && <div style={{ fontSize:11, color:'var(--text-muted)', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{a.headline}</div>}
+                            </div>
+                            <span style={{ fontSize:11, fontWeight:700, color:'var(--primary)', background:'#EEF2FF', padding:'2px 8px', borderRadius:999, flexShrink:0 }}>{a.n} Posts</span>
+                            {a.url && <a href={a.url} target="_blank" rel="noreferrer" className="lk-btn lk-btn-ghost" style={{ textDecoration:'none', padding:'4px 8px' }}>Profil <ExternalLink size={12} /></a>}
+                          </div>
+                        ))}
+                      </div>
+                      <div style={{ fontSize:11, color:'var(--text-muted,#9CA3AF)', marginTop:8 }}>Personen, die auf mehreren deiner Posts reagiert haben — starke Signale für die Ansprache.</div>
+                    </div>
+                  )}
+                </div>
+              )
+            })()}
+
             {/* Post-Auswahl */}
             <div>
               <div className="lk-eyebrow">Top-Posts</div>
