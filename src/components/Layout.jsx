@@ -98,6 +98,7 @@ import { getRequiredPermission } from '../lib/routePermissions'
 import { isFlagEnabled } from '../lib/featureFlags'
 
 function getNav(t) {
+  const isStaging = import.meta.env.VITE_APP_ENV === 'staging'
   return [
   { to: '/dashboard',       icon: IcHome,     label: t('nav.home'), tourId: 'nav-dashboard' },
   { to: '/aufgaben',        icon: IcKanban,   label: t('nav.aufgaben') },
@@ -106,7 +107,7 @@ function getNav(t) {
   { to: '/organizations',   icon: IcUsers2,   label: 'Unternehmen' },
   { to: '/leads',           icon: IcUsers,    label: 'Kontakte' },
   { to: '/deals',           icon: IcBarChart, label: t('nav.deals') },
-  { to: '/sponsoring/kampagnen', icon: IcRocket, label: 'Kampagnen', module: 'sponsoring' },
+  ...(isStaging ? [{ to: '/sponsoring/kampagnen', icon: IcRocket, label: 'Kampagnen', module: 'sponsoring' }] : []),
   { to: '/reports',         icon: IcBarChart, label: t('nav.salesReporting') },
 
   { divider: true, label: t('nav.content'), tourId: 'nav-content' },
@@ -129,6 +130,8 @@ function getNav(t) {
   { to: '/profil-checker',  icon: IcLinkedIn, label: 'Profil-Checker' },
   { to: '/profiltexte',     icon: IcLinkedIn, label: t('nav.profiltexte') },
 
+  // Instagram + Sponsoring: nur Staging (auf Prod noch nicht fertig — 22.07.2026 Julian)
+  ...(isStaging ? [
   { divider: true, label: 'Instagram', tourId: 'nav-instagram' },
   { to: '/instagram',       icon: IcInstagram, label: 'Analysen' },
 
@@ -144,6 +147,7 @@ function getNav(t) {
   { to: '/sponsoring/signale',         icon: IcTarget,        label: 'Signale' },
   { to: '/sponsoring/sichtbarkeit',    icon: IcSparkles,      label: 'KI-Sichtbarkeit' },
   { to: '/sponsoring/success',         icon: IcStar,          label: 'Sponsor Success' },
+  ] : []),
 
   // ── Einrichtung (unten, leicht getönt): Branding + Wissen ──
   { divider: true, label: t('nav.branding'), tourId: 'nav-branding', setup: true },
@@ -156,10 +160,12 @@ function getNav(t) {
   { divider: true, label: 'Wissen', tourId: 'nav-wissen', setup: true },
   { to: '/wissensdatenbank',       icon: IcCloud,  label: t('nav.wissensdatenbank'), module: 'branding' },
   { to: '/brand-memory',           icon: IcBrain,  label: 'Brand Memory',            module: 'branding' },
+  ...(isStaging ? [
   { to: '/sponsoring/ligen',       icon: IcShield, label: 'Ligen',             module: 'sponsoring' },
   { to: '/sponsoring/pakete',      icon: IcPuzzle, label: 'Pakete',            module: 'sponsoring' },
   { to: '/sponsoring/rechte',      icon: IcGrid,   label: 'Rechte & Inventar', module: 'sponsoring' },
   { to: '/sponsoring/hospitality', icon: IcHeart,  label: 'Hospitality',       module: 'sponsoring' },
+  ] : []),
   ]
 }
 
