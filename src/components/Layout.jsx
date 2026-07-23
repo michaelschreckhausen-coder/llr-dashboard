@@ -117,17 +117,13 @@ function getNav(t) {
   { to: '/redaktionsplan',  icon: IcCalPen,   label: t('nav.redaktionsplan') },
   { to: '/content-studio',  icon: IcStar,     label: 'Content-Werkstatt' },
   { to: '/bibliothek',      icon: IcImage,    label: 'Bibliothek' },
-  { to: '/linkedin-analytics', icon: IcBarChart, label: 'Content-Analytics' },
 
   { divider: true, label: 'LinkedIn', tourId: 'nav-linkedin' },
   { subSection: true, label: 'Profil', items: [
-    { to: '/wachstum',        icon: IcBarChart, label: 'Wachstum' },
-    { to: '/ssi',             icon: IcTarget,   label: t('nav.ssiTracker') },
     { to: '/profil-checker',  icon: IcCheckCircle, label: 'Profil-Checker' },
     { to: '/profiltexte',     icon: IcLinkedIn, label: t('nav.profiltexte') },
   ] },
   { subSection: true, label: 'Netzwerk', items: [
-    { to: '/netzwerk-analytics', icon: IcBarChart, label: 'Netzwerk-Analytics' },
     { to: '/linkedin-suche',  icon: IcSearch,   label: 'Suche' },
     { to: '/linkedin-inbox',  icon: IcInbox,    label: 'LinkedIn Kontakte' },
     // AUSGEBLENDET 17.07.2026 (Julian): Michaels Netzwerk-Feature (Commit 54c9811c) ist
@@ -138,8 +134,15 @@ function getNav(t) {
     { to: '/vernetzungen',    icon: IcHeart,    label: 'Vernetzung' },
     { to: (!isFlagEnabled('linkedinAutomationV2Disabled')) ? '/automatisierung-neu' : '/automatisierung', icon: IcCog, label: 'Automatisierung' },
     { to: '/messages',        icon: IcMail,     label: 'Nachrichten' },
-    { to: '/nachrichten-analytics', icon: IcBarChart, label: 'Nachrichten-Analytics' },
     { to: '/linkedin-engagement', icon: IcZap,  label: 'Engagement' },
+  ] },
+
+  { subSection: true, label: 'Analyse', items: [
+    { to: '/linkedin-analytics',    icon: IcBarChart, label: 'Content-Performance' },
+    { to: '/wachstum',              icon: IcBarChart, label: 'Wachstum' },
+    { to: '/netzwerk-analytics',    icon: IcBarChart, label: 'Netzwerk-Analyse' },
+    { to: '/nachrichten-analytics', icon: IcBarChart, label: 'Nachrichten-Analyse' },
+    { to: '/ssi',                   icon: IcTarget,   label: 'SSI-Verlauf' },
   ] },
 
   // Instagram + Sponsoring: nur Staging (auf Prod noch nicht fertig — 22.07.2026 Julian)
@@ -1351,8 +1354,10 @@ function isBrandVoiceContext(pathname) {
   const bvRoutes = [
     // Meine Präsenz (brand-scoped)
     '/profiltexte', '/linkedin-analytics', '/wachstum', '/ssi', '/profil-checker',
-    // Akquise (agiert aus dem Profil der aktiven Marke — „Agiert als")
-    '/vernetzungen', '/messages', '/automatisierung', '/linkedin-inbox', '/linkedin-netzwerk', '/linkedin-suche',
+    // Analyse (brand-scoped)
+    '/netzwerk-analytics', '/nachrichten-analytics', '/linkedin-engagement',
+    // Akquise (agiert aus dem Profil der aktiven Marke)
+    '/vernetzungen', '/messages', '/automatisierung', '/automatisierung-neu', '/linkedin-inbox', '/linkedin-netzwerk', '/linkedin-suche',
     // Content (brand-scoped)
     '/redaktionsplan', '/content-studio', '/bibliothek', '/visuals', '/dokumente', '/media', '/content-reporting',
     '/brand-memory',
