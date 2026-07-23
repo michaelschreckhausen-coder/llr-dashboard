@@ -89,15 +89,18 @@ export default function LinkedInSuche() {
 
   const fetchSearches = useCallback(async () => {
     setLoading(true)
-    // RLS: linkedin_searches ist user_id = auth.uid()-gescoped → nur eigene Suchen.
+    // Brand-scoped: Suchen gehören zum Profil der aktiven Marke.
+    const bvId = activeBrandVoice?.id || null
+    if (!bvId) { setSearches([]); setLoading(false); return }
     const { data, error } = await supabase
       .from('linkedin_searches')
       .select('*')
+      .eq('brand_voice_id', bvId)
       .order('created_at', { ascending:false })
     if (error) { setFlash({ type:'error', text:'Suchen laden fehlgeschlagen: ' + error.message }); setSearches([]); setLoading(false); return }
     setSearches(data || [])
     setLoading(false)
-  }, [])
+  }, [activeBrandVoice?.id])
 
   const fetchInboxLists = useCallback(async () => {
     // Import-Inbox-Listen (kanonische Quelle) für das optionale Ziel-Dropdown.
@@ -132,6 +135,7 @@ export default function LinkedInSuche() {
     const { error } = await supabase.from('linkedin_searches').insert({
       user_id: uid,
       team_id: activeTeamId,                 // Multi-Tenant: team_id bei jedem Insert (CLAUDE.md)
+      brand_voice_id: activeBrandVoice?.id || null,   // Brand-scoped (Trigger füllt sonst nach)
       name: form.name.trim(),
       api: form.api,
       category: form.category,

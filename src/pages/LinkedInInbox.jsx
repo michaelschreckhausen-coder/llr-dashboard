@@ -153,7 +153,9 @@ export default function LinkedInInbox() {
   }
 
   const load = useCallback(async () => {
-    if (!activeTeamId) { setRows([]); setCounts({ kontakte: 0, netzwerk: 0 }); setLoading(false); return }
+    // Brand-scoped: LinkedIn-Kontakte gehören dem Profil der aktiven Marke.
+    const bvId = activeBrandVoice?.id || null
+    if (!activeTeamId || !bvId) { setRows([]); setCounts({ kontakte: 0, netzwerk: 0 }); setLoading(false); return }
     setLoading(true)
 
     // Aktiver Tab quellen-gefiltert laden — so verdrängt die Netzwerk-Flut die
@@ -161,14 +163,14 @@ export default function LinkedInInbox() {
     let q = supabase
       .from('linkedin_inbox')
       .select('id, source, sales_nav_id, linkedin_url, name, first_name, last_name, headline, job_title, company, location, avatar_url, imported_at, promoted_lead_id')
-      .eq('team_id', activeTeamId)
+      .eq('brand_voice_id', bvId)
       .eq('review_status', 'new')
     q = sourceTab === 'netzwerk' ? q.eq('source', NETWORK_SOURCE) : q.neq('source', NETWORK_SOURCE)
     const { data, error } = await q.order('imported_at', { ascending: false }).limit(500)
 
     // Tab-Badges: Gesamtzahl je Quelle (head-only, kein Row-Transfer).
     const countBase = () => supabase.from('linkedin_inbox')
-      .select('id', { count: 'exact', head: true }).eq('team_id', activeTeamId).eq('review_status', 'new')
+      .select('id', { count: 'exact', head: true }).eq('brand_voice_id', bvId).eq('review_status', 'new')
     Promise.all([
       countBase().eq('source', NETWORK_SOURCE),
       countBase().neq('source', NETWORK_SOURCE),
@@ -190,7 +192,7 @@ export default function LinkedInInbox() {
     }
     setExisting(hit)
     setLoading(false)
-  }, [activeTeamId, sourceTab])
+  }, [activeTeamId, activeBrandVoice?.id, sourceTab])
 
   useEffect(() => { load() }, [load])
 
