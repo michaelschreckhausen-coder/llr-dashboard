@@ -10,7 +10,7 @@
 
 import React, { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { Users, UserPlus, Mail, Rocket, Flame, Eye, FileText, Send, Inbox } from 'lucide-react'
+import { Users, UserPlus, Mail, Rocket, Flame, Eye, FileText, Send, Inbox, Handshake, Radio, Euro, Award } from 'lucide-react'
 import { supabase } from '../../lib/supabase'
 import { useTeam } from '../../context/TeamContext'
 
@@ -31,7 +31,7 @@ export default function LinkedInAnalyticsTiles({ mode = 'handlung', control = nu
     if (!activeTeamId) { setD(null); return }
     let cancelled = false
     ;(async () => {
-      const out = { unread: null, invitesIn: null, invitesOut: null, campaigns: null, connections: null, followers: null, posts: null, impressions: null, engagement: null }
+      const out = { unread: null, invitesIn: null, invitesOut: null, campaigns: null, connections: null, followers: null, posts: null, impressions: null, engagement: null, acceptanceRate: null, invitesAccepted: null, linkedinLeads: null, pipelineValue: null, wonValue: null }
       const [{ data: nm }, { data: mm }, { data: cc }, { data: posts }] = await Promise.all([
         supabase.from('linkedin_network_metrics').select('unipile_account_id, connections_total, followers_total, invites_pending_in, invites_pending_out, captured_on').eq('team_id', activeTeamId).order('captured_on', { ascending: false }).limit(80),
         supabase.from('linkedin_messaging_metrics').select('unipile_account_id, unread_threads, captured_on').eq('team_id', activeTeamId).order('captured_on', { ascending: false }).limit(40),
@@ -55,6 +55,22 @@ export default function LinkedInAnalyticsTiles({ mode = 'handlung', control = nu
         const engs = vals.map(m => m.engagement_rate).filter(x => x != null)
         if (engs.length) out.engagement = engs.reduce((a, b) => a + Number(b), 0) / engs.length
       }
+      // Vernetzungs-Annahmequote (aus gesendeten Einladungen)
+      const { data: inv } = await supabase.from('linkedin_invitations').select('status').eq('team_id', activeTeamId)
+      const acc = (inv || []).filter(i => i.status === 'accepted').length
+      const pend = (inv || []).filter(i => i.status === 'pending').length
+      out.invitesAccepted = acc
+      out.acceptanceRate = (acc + pend) > 0 ? acc / (acc + pend) : null
+      // Cross-Domain: Leads aus LinkedIn + Pipeline/Won-Wert der zugehörigen Deals
+      const LI_SOURCES = ['post_engagement', 'linkedin', 'sales_nav', 'linkedin_search', 'extension_import']
+      const { data: liLeads } = await supabase.from('leads').select('id').eq('team_id', activeTeamId).in('source', LI_SOURCES)
+      const liIds = (liLeads || []).map(l => l.id)
+      out.linkedinLeads = liIds.length
+      if (liIds.length) {
+        const { data: dls } = await supabase.from('deals').select('value, stage').eq('team_id', activeTeamId).in('lead_id', liIds)
+        out.pipelineValue = (dls || []).filter(d => d.stage !== 'gewonnen' && d.stage !== 'verloren').reduce((a, d) => a + (Number(d.value) || 0), 0)
+        out.wonValue = (dls || []).filter(d => d.stage === 'gewonnen').reduce((a, d) => a + (Number(d.value) || 0), 0)
+      }
       if (!cancelled) { setD(out); setTick(t => t + 1) }
     })()
     return () => { cancelled = true }
@@ -77,6 +93,11 @@ export default function LinkedInAnalyticsTiles({ mode = 'handlung', control = nu
   }
 
   const engTxt = d?.engagement != null ? (d.engagement * 100).toFixed(1).replace('.', ',') + ' %' : '–'
+  const fmtEur = n => (n == null ? '–' : Number(n).toLocaleString('de-DE', { maximumFractionDigits: 0 }) + ' €')
+  const pctTxt = n => (n == null ? '–' : (n * 100).toFixed(0) + ' %')
+  // Reichweiten-Rate = Ø Impressionen pro Post / Follower
+  const reach = (d?.impressions && d?.followers && d?.posts) ? (d.impressions / d.posts) / d.followers : null
+  const reachTxt = reach == null ? '–' : (reach * 100).toFixed(0) + ' %'
 
   let tiles = []
   if (mode === 'netzwerk') {
@@ -84,12 +105,20 @@ export default function LinkedInAnalyticsTiles({ mode = 'handlung', control = nu
       <Tile key="c" icon={<UserPlus size={15} />} label="Verbindungen" value={fmt(d?.connections)} to="/netzwerk-analytics" />,
       <Tile key="f" icon={<Users size={15} />} label="Follower" value={fmt(d?.followers)} to="/netzwerk-analytics" />,
       <Tile key="o" icon={<Send size={15} />} label="Anfragen offen (raus)" value={fmt(d?.invitesOut)} to="/netzwerk-analytics" />,
+      <Tile key="a" icon={<Handshake size={15} />} label="Annahmequote" value={pctTxt(d?.acceptanceRate)} sub={d?.invitesAccepted != null ? `${fmt(d.invitesAccepted)} angenommen` : null} to="/netzwerk-analytics" />,
     ]
   } else if (mode === 'content') {
     tiles = [
       <Tile key="p" icon={<FileText size={15} />} label="Posts" value={fmt(d?.posts)} to="/linkedin-analytics" />,
       <Tile key="i" icon={<Eye size={15} />} label="Impressionen gesamt" value={fmt(d?.impressions)} to="/linkedin-analytics" />,
       <Tile key="e" icon={<Flame size={15} />} label="Ø Engagement" value={engTxt} to="/linkedin-analytics" />,
+      <Tile key="r" icon={<Radio size={15} />} label="Reichweiten-Rate" value={reachTxt} sub="Impr. je Post / Follower" to="/linkedin-analytics" />,
+    ]
+  } else if (mode === 'roi') {
+    tiles = [
+      <Tile key="ll" icon={<UserPlus size={15} />} label="Leads aus LinkedIn" value={fmt(d?.linkedinLeads)} to="/leads" />,
+      <Tile key="pv" icon={<Euro size={15} />} label="Pipeline aus LinkedIn" value={fmtEur(d?.pipelineValue)} to="/deals" />,
+      <Tile key="wv" icon={<Award size={15} />} label="Gewonnen aus LinkedIn" value={fmtEur(d?.wonValue)} to="/deals" />,
     ]
   } else {
     tiles = [

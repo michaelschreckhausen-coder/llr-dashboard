@@ -334,6 +334,7 @@ export default function Dashboard({ session }) {
     { value: 'handlung', label: 'Handlungsbedarf' },
     { value: 'netzwerk', label: 'Netzwerk' },
     { value: 'content', label: 'Content' },
+    { value: 'roi', label: 'ROI · LinkedIn→CRM' },
   ];
 
   const planNode = (
