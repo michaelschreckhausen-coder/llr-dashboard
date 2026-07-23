@@ -84,7 +84,6 @@ function IcZap()      { return <SvgIcon><polygon points="13 2 3 14 12 14 11 22 2
 function IcCheckCircle(){ return <SvgIcon><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></SvgIcon> }
 function IcCog()      { return <SvgIcon><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></SvgIcon> }
 function IcTarget()   { return <SvgIcon><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="6"/><circle cx="12" cy="12" r="2"/></SvgIcon> }
-function IcRoi()      { return <SvgIcon><circle cx="12" cy="12" r="10"/><path d="M15 9.5a3.5 3.5 0 0 0-3-1.5 4 4 0 0 0 0 8 3.5 3.5 0 0 0 3-1.5"/><line x1="7" y1="11" x2="12.5" y2="11"/><line x1="7" y1="13" x2="12" y2="13"/></SvgIcon> }
 function IcShield()   { return <SvgIcon><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></SvgIcon> }
 function IcUsers2()   { return <SvgIcon><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></SvgIcon> }
 function IcKey()      { return <SvgIcon><path d="M21 2l-2 2m-7.61 7.61a5.5 5.5 0 1 1-7.778 7.778 5.5 5.5 0 0 1 7.777-7.777zm0 0L15.5 7.5m0 0l3 3L22 7l-3-3m-3.5 3.5L19 4"/></SvgIcon> }
@@ -144,7 +143,6 @@ function getNav(t) {
     { to: '/netzwerk-analytics',    icon: IcBarChart, label: 'Netzwerk-Analyse' },
     { to: '/nachrichten-analytics', icon: IcBarChart, label: 'Nachrichten-Analyse' },
     { to: '/ssi',                   icon: IcTarget,   label: 'SSI-Verlauf' },
-    { to: '/roi-analyse',           icon: IcRoi,      label: 'ROI · LinkedIn→CRM' },
   ] },
 
   // Instagram + Sponsoring: nur Staging (auf Prod noch nicht fertig â 22.07.2026 Julian)
