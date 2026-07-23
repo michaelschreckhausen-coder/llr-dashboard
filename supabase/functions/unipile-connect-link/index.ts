@@ -82,6 +82,29 @@ Deno.serve(async (req) => {
     return json({ connected: true, unipile_account_id: acct.id, public: pub, status }, 200);
   }
 
+  // ── Allowance-Gate (Lizenz = User): 1 Verknüpfung inkl., weitere nur mit Automation-Addon ──
+  {
+    const { data: connected } = await db.rpc("count_user_unipile", { p_user_id: userId });
+    let accId: string | null = null;
+    const { data: acc } = await db.from("accounts").select("id").eq("owner_user_id", userId).maybeSingle();
+    accId = acc?.id ?? null;
+    if (!accId) {
+      const { data: tmA } = await db.from("team_members").select("teams!inner(account_id)").eq("user_id", userId).limit(1).maybeSingle();
+      accId = (tmA as any)?.teams?.account_id ?? null;
+    }
+    let included = 1;
+    if (accId) { const { data: inc } = await db.rpc("account_included_unipile", { p_account_id: accId }); included = Number(inc ?? 1); }
+    let addonActive = false;
+    if (accId) {
+      const { data: ad } = await db.from("account_addons").select("id, addons!inner(slug)").eq("account_id", accId).eq("addons.slug", "automation").eq("status", "active").maybeSingle();
+      addonActive = !!ad;
+    }
+    const canAdd = (Number(connected ?? 0) < included) || addonActive;
+    if (!canAdd) {
+      return json({ blocked: true, reason: "allowance", message: "Verknüpfungs-Limit deiner Lizenz erreicht — bitte im Marketplace eine weitere Account-Verknüpfung (Automatisierung) zubuchen." }, 402);
+    }
+  }
+
   // ── Default: Hosted-Auth-Link erzeugen (mit notify_url = Canonical-Mapping) ──
   const appBase = (typeof body?.app_base === "string" && body.app_base) || "https://staging.leadesk.de";
   const notifyUrl = `${SB_PUBLIC}/functions/v1/unipile-webhook?secret=${encodeURIComponent(WEBHOOK_SECRET)}`;

@@ -27,7 +27,7 @@ Deno.serve(async (req) => {
   if (!aa.stripe_subscription_item_id) return json({ skipped: "no_stripe_item" });
 
   // SET-TO-ACTUAL-COUNT: # verbundene unipile_accounts (status OK) des Accounts.
-  const { data: cnt } = await db.rpc("count_account_unipile", { p_account_id: account_id });
+  const { data: cnt } = await db.rpc("account_billable_unipile", { p_account_id: account_id });
   const qty = Number(cnt ?? 0);   // 0-Fall wird sauber gesetzt (Stripe berechnet dann nichts)
 
   const r = await fetch(`https://api.stripe.com/v1/subscription_items/${aa.stripe_subscription_item_id}`, {

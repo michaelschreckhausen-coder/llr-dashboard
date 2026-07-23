@@ -1313,8 +1313,23 @@ export default function BrandVoice({ session, brandType = 'personal' }) {
     setLiConnecting(true); setLiError('')
     try {
       if (!edit?.id) { setLiError('Bitte zuerst die Brand Voice speichern, dann LinkedIn verbinden.'); setLiConnecting(false); return }
+      // Allowance-Gate (Lizenz=User): 1 Verknüpfung inkl., weitere nur mit Automation-Addon
+      const { data: allow } = await supabase.rpc('unipile_allowance')
+      if (allow && allow.can_add === false) {
+        setLiConnecting(false)
+        setLiError('Deine Lizenz enthält 1 LinkedIn-Verknüpfung — die ist belegt. Für eine weitere buche „LinkedIn-Automatisierung" (5 €/Monat) im Marketplace zu. Du wirst weitergeleitet …')
+        setTimeout(() => { window.location.href = '/marketplace' }, 1600)
+        return
+      }
       const { data, error } = await supabase.functions.invoke('unipile-connect-link', { body: { brand_voice_id: edit.id, app_base: window.location.origin, success_path: window.location.pathname + '?li_unipile=' + edit.id } })
       if (error) throw error
+      // Serverseitiger Riegel (falls Client-Gate umgangen): 402 blocked → Marketplace
+      if (data?.blocked) {
+        setLiConnecting(false)
+        setLiError(data.message || 'Verknüpfungs-Limit erreicht — bitte im Marketplace zubuchen. Du wirst weitergeleitet …')
+        setTimeout(() => { window.location.href = '/marketplace' }, 1600)
+        return
+      }
       if (data?.error) throw new Error(data.message || data.error)
       if (!data?.url) throw new Error('Connect-URL fehlt in Antwort')
       window.location.href = data.url
