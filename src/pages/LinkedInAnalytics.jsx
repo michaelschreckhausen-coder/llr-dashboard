@@ -56,6 +56,7 @@ export default function LinkedInAnalytics() {
   const [syncing, setSyncing]         = useState(false)
   const [flash, setFlash]             = useState(null) // { type, text, action?:{label,to} }
   const [convertState, setConvertState] = useState({}) // engagerId -> { state, leadId }
+  const [followers, setFollowers] = useState(null) // aktueller Follower-Stand der Marke (für Reichweiten-Rate)
   const [cpStats, setCpStats] = useState(null)          // Company-Page-KPIs (nur company_page-Brands)
   const [cpStatsLoading, setCpStatsLoading] = useState(false)
   const isCompanyBrand = activeBrandVoice?.account_type === 'company_page'
@@ -66,10 +67,17 @@ export default function LinkedInAnalytics() {
     if (!activeTeamId || (!noBrand && !activeBrandVoice?.id)) { setPosts([]); setLoading(false); return }
     const bvId = noBrand ? null : (activeBrandVoice?.id || null)
     setLoading(true)
+    // Follower-Stand der Marke (neuester Snapshot) — Basis für die Reichweiten-Rate.
+    if (bvId) {
+      supabase.from('linkedin_network_metrics')
+        .select('followers_total, captured_on').eq('brand_voice_id', bvId)
+        .order('captured_on', { ascending: false }).limit(1)
+        .then(({ data }) => setFollowers(data && data[0] ? data[0].followers_total : null))
+    } else { setFollowers(null) }
     // 1) Veröffentlichte Posts mit social_id (team-scoped, Fallstrick #14 expliziter Filter).
     let _pq = supabase
       .from('content_posts')
-      .select('id, title, content, linkedin_post_url, linkedin_social_id, published_at, last_metrics_sync_at')
+      .select('id, title, content, type, topic, hook, tags, linkedin_post_url, linkedin_social_id, published_at, last_metrics_sync_at')
       .eq('team_id', activeTeamId)
       .not('linkedin_social_id', 'is', null)
     _pq = bvId ? _pq.eq('brand_voice_id', bvId) : _pq.is('brand_voice_id', null)
@@ -275,6 +283,50 @@ export default function LinkedInAnalytics() {
               const totalImpr = sum('impressions'), totalReact = sum('likes'), totalComm = sum('comments_count'), totalRe = sum('reshares')
               const rates = withM.map(x => x.m.engagement_rate).filter(v => v != null)
               const avgRate = rates.length ? (rates.reduce((a, b) => a + b, 0) / rates.length) : null
+
+              // ── Abgeleitete Kennzahlen (rechnen wir selbst — LinkedIn liefert sie nicht) ──
+              const avgImpr = withM.length ? totalImpr / withM.length : null
+              const reachRate = (avgImpr != null && followers) ? avgImpr / followers : null      // Ø Impressions / Follower
+              const viralRate = totalImpr > 0 ? totalRe / totalImpr : null                        // Reposts / Impressions
+              const pubDates = posts.map(p => p.published_at).filter(Boolean).map(d => new Date(d))
+              let perWeek = null
+              if (pubDates.length >= 2) {
+                const span = Math.max(1, (Math.max(...pubDates) - Math.min(...pubDates)) / (1000*60*60*24*7))
+                perWeek = pubDates.length / span
+              }
+              const groupBy = (key) => {
+                const g = {}
+                for (const x of withM) {
+                  const v = (x.p[key] || '').toString().trim(); if (!v) continue
+                  ;(g[v] ||= { n:0, impr:0, eng:0 }).n++
+                  g[v].impr += Number(x.m.impressions) || 0
+                  g[v].eng  += x.m.engagement_rate != null ? x.m.engagement_rate : 0
+                }
+                return Object.entries(g).map(([k,v]) => ({ k, n:v.n, avgImpr:v.impr/v.n, avgEng:v.eng/v.n }))
+                  .sort((a,b) => b.avgEng - a.avgEng)
+              }
+              const byType = groupBy('type'), byTopic = groupBy('topic'), byHook = groupBy('hook')
+              const WD = ['So','Mo','Di','Mi','Do','Fr','Sa']
+              const wdMap = {}
+              for (const x of withM) {
+                if (!x.p.published_at) continue
+                const d = new Date(x.p.published_at).getDay()
+                ;(wdMap[d] ||= { n:0, eng:0 }).n++
+                wdMap[d].eng += x.m.engagement_rate != null ? x.m.engagement_rate : 0
+              }
+              const wdRanked = Object.entries(wdMap).map(([d,v]) => ({ d:Number(d), avgEng:v.eng/v.n, n:v.n })).sort((a,b)=>b.avgEng-a.avgEng)
+              const bestWd = wdRanked[0] || null
+              const bd = (title, rows) => rows.length < 2 ? null : (
+                <div style={{ flex:1, minWidth:200 }}>
+                  <div style={{ fontSize:11, fontWeight:700, color:'var(--text-muted,#6B7280)', marginBottom:6 }}>{title}</div>
+                  {rows.slice(0,5).map(r => (
+                    <div key={r.k} style={{ display:'flex', justifyContent:'space-between', gap:8, fontSize:12, padding:'4px 0', borderTop:'1px solid var(--border,#F1F5F9)' }}>
+                      <span style={{ color:'var(--text-strong,#111827)', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{r.k} <span style={{ color:'var(--text-muted,#9CA3AF)' }}>({r.n})</span></span>
+                      <span style={{ fontWeight:700, color:'var(--primary)', flexShrink:0 }}>{(r.avgEng*100).toFixed(2)} %</span>
+                    </div>
+                  ))}
+                </div>
+              )
               const chartData = withM
                 .filter(x => x.p.published_at)
                 .sort((a, b) => new Date(a.p.published_at) - new Date(b.p.published_at))
@@ -298,6 +350,9 @@ export default function LinkedInAnalytics() {
                     <Kpi icon={<MessageSquare size={11}/>} label="Kommentare" value={fmt(totalComm)} />
                     <Kpi icon={<Repeat2 size={11}/>} label="Reposts" value={fmt(totalRe)} />
                     <Kpi icon={<TrendingUp size={11}/>} label="Ø Engagement" value={avgRate != null ? (avgRate * 100).toFixed(2) + ' %' : '–'} />
+                    {reachRate != null && <Kpi icon={<Eye size={11}/>} label="Reichweiten-Rate" value={(reachRate * 100).toFixed(1) + ' %'} />}
+                    {viralRate != null && <Kpi icon={<Repeat2 size={11}/>} label="Viralitäts-Rate" value={(viralRate * 100).toFixed(2) + ' %'} />}
+                    {perWeek != null && <Kpi icon={<BarChart3 size={11}/>} label="Posts / Woche" value={perWeek.toFixed(1)} />}
                   </div>
                   {chartData.length > 1 && (
                     <div style={cardStyle}>
@@ -315,6 +370,26 @@ export default function LinkedInAnalytics() {
                             <Line yAxisId="right" type="monotone" dataKey="Engagement %" stroke="#DD2A7B" strokeWidth={2} dot={{ r:2 }} />
                           </ComposedChart>
                         </ResponsiveContainer>
+                      </div>
+                    </div>
+                  )}
+                  {(byType.length >= 2 || byTopic.length >= 2 || byHook.length >= 2 || bestWd) && (
+                    <div style={cardStyle}>
+                      <div className="lk-eyebrow">Content-Muster · was funktioniert</div>
+                      {(byType.length >= 2 || byTopic.length >= 2 || byHook.length >= 2) && (
+                        <div style={{ display:'flex', gap:20, flexWrap:'wrap', marginTop:6 }}>
+                          {bd('Nach Format', byType)}
+                          {bd('Nach Thema', byTopic)}
+                          {bd('Nach Hook', byHook)}
+                        </div>
+                      )}
+                      {bestWd && (
+                        <div style={{ fontSize:12, color:'var(--text-soft,#4B5563)', marginTop:12 }}>
+                          Bester Wochentag nach Ø Engagement: <strong>{WD[bestWd.d]}</strong> ({(bestWd.avgEng * 100).toFixed(2)} % über {bestWd.n} Post{bestWd.n === 1 ? '' : 's'})
+                        </div>
+                      )}
+                      <div style={{ fontSize:11, color:'var(--text-muted,#9CA3AF)', marginTop:8 }}>
+                        Nach Ø Engagement-Rate sortiert. Format/Thema/Hook stammen aus dem Redaktionsplan — je mehr Posts getaggt sind, desto aussagekräftiger.
                       </div>
                     </div>
                   )}
