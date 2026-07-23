@@ -307,44 +307,13 @@ export default function Marketplace() {
         </div>
 
         {/* Credits + Top-Up-Section (Sprint J.2 Phase B) */}
-        <CreditsTopupSection onFlash={showFlash} />
-
-        {/* LinkedIn-Verknüpfung — Kapazitäts-Limit (Optik = Top-Up-Karten) */}
-        {(() => {
-          const li = (catalog || []).find(a => a.slug === 'automation')
-          if (!li) return null
-          const sub = subscribedSlugs.has('automation')
-          const stripeManaged = stripeManagedSlugs.has('automation')
-          const al = uniAllowance
-          const desc = al
-            ? `Jedes weitere LinkedIn-Profil — serverseitig über Unipile. Aktuell ${al.connected} von ${al.included} genutzt${al.can_add ? '' : ' — Limit erreicht'}.`
-            : 'Jedes weitere LinkedIn-Profil — serverseitig über Unipile (Analyse, Nachrichten, Vernetzung, Content).'
-          return (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 10, marginTop: 16 }}>
-              <div style={{ display: 'flex', alignItems: 'baseline', gap: 8 }}>
-                <span style={{ fontSize: 14, fontWeight: 700, color: 'var(--text-strong, #111827)' }}>🔗 LinkedIn-Verknüpfung</span>
-                <span style={{ fontSize: 11, color: 'var(--text-muted, #6B7280)' }}>· pro Lizenz 1 inklusive · Monatlich · jederzeit kündbar</span>
-              </div>
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(220px, 1fr))', gap: 12 }}>
-                <div style={{ background: 'var(--surface, #fff)', border: '1.5px solid var(--border, #E4E7EC)', borderRadius: 12, padding: '14px 16px', display: 'flex', flexDirection: 'column', gap: 8 }}>
-                  <div style={{ fontSize: 15, fontWeight: 800, color: 'var(--text-strong, #111827)', letterSpacing: '-0.01em' }}>Weitere LinkedIn-Anbindung</div>
-                  <div style={{ fontSize: 11, color: 'var(--text-muted, #6B7280)', minHeight: 28, lineHeight: 1.4 }}>{desc}</div>
-                  <div style={{ display: 'flex', alignItems: 'baseline', gap: 4, marginTop: 4 }}>
-                    <span style={{ fontSize: 22, fontWeight: 900, color: 'var(--text-strong, #111827)', letterSpacing: '-0.02em' }}>5 €</span>
-                    <span style={{ fontSize: 11, color: 'var(--text-muted, #6B7280)' }}>/ Monat</span>
-                  </div>
-                  {sub ? (
-                    stripeManaged
-                      ? <button className="lk-btn lk-btn-cta" style={{ marginTop: 6 }} onClick={() => onManageBilling(li)}>Verwalten</button>
-                      : <div className="lk-btn lk-btn-cta" style={{ marginTop: 6, opacity: 0.55, cursor: 'default', textAlign: 'center' }}>✓ Aktiv</div>
-                  ) : (
-                    <button className="lk-btn lk-btn-cta" style={{ marginTop: 6 }} onClick={() => onSubscribe(li)}>Abo starten</button>
-                  )}
-                </div>
-              </div>
-            </div>
-          )
-        })()}
+        <CreditsTopupSection onFlash={showFlash} linkedin={{
+          addon: (catalog || []).find(a => a.slug === 'automation') || null,
+          allowance: uniAllowance,
+          subscribed: subscribedSlugs.has('automation'),
+          stripeManaged: stripeManagedSlugs.has('automation'),
+          onSubscribe, onManage: onManageBilling,
+        }} />
 
         {/* Add-on-Tabs + Search */}
         <div style={{ display: 'flex', alignItems: 'center', gap: 16, flexWrap: 'wrap' }}>
