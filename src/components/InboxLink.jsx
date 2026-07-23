@@ -20,6 +20,7 @@ export default function InboxLink({ style }) {
       .select('id', { count: 'exact', head: true })
       .eq('team_id', activeTeamId)
       .eq('review_status', 'new')
+      .neq('source', 'unipile_relations') // Netzwerk-Zeilen (1.-Grad-Relations) gehören in den „Netzwerk"-Tab, nicht in die Kontakte-Zahl
       .then(({ count }) => { if (active) setCount(count || 0) })
     return () => { active = false }
   }, [activeTeamId])

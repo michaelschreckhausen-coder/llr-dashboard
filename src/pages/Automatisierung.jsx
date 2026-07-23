@@ -221,6 +221,10 @@ export default function Automatisierung({ session }) {
     let inboxQ = supabase.from('linkedin_inbox')
       .select('id,first_name,last_name,name,company,job_title,linkedin_url,li_connection_status')
       .eq('review_status', 'new').not('linkedin_url','is', null)
+      // Netzwerk-Zeilen (unipile_relations = bereits verbundene 1.-Grad-Kontakte) NICHT in den
+      // „Alle"-Outreach-Pool — sie fluteten sonst das imported_at-DESC-LIMIT-300-Fenster und
+      // verdrängten echte Prospecting-Kontakte. Explizit gewählte Listen (Pfad unten) bleiben unberührt.
+      .neq('source', 'unipile_relations')
     if (activeTeamId) inboxQ = inboxQ.eq('team_id', activeTeamId)
     inboxQ = inboxQ.order('imported_at', { ascending:false }).limit(300)
     const [c, j, l, lg] = await Promise.all([
