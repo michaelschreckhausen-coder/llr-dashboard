@@ -462,8 +462,10 @@ export default function LinkedInInbox() {
         })}
       </div>
 
-      {/* Listen-Filterleiste (reine Auswahl-Sammlungen) — inkl. „+ Neue Liste" */}
-      {!loading && rows.length > 0 && (
+      {/* Listen-Filterleiste (reine Auswahl-Sammlungen) — inkl. „+ Neue Liste".
+          Immer sichtbar (auch bei leerem Tab), damit BEIDE Quell-Tabs konsistent
+          Listen-Filter + „Neue Liste" haben (Michael-Wunsch 23.07.2026). */}
+      {!loading && (
         <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap', marginBottom: 16 }}>
           <span style={{ fontSize: 12, fontWeight: 700, color: muted, marginRight: 2 }}>Nach Liste:</span>
           <span style={chip(listFilter === 'all')} onClick={() => setListFilter('all')}>Alle</span>
