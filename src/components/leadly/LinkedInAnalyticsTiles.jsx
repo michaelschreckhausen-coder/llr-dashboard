@@ -1,96 +1,67 @@
 // src/components/leadly/LinkedInAnalyticsTiles.jsx
 //
-// „Deine Analysen" — umschaltbare Analyse-Modi fürs Startseiten-Cockpit.
-//   mode='handlung'  → Handlungsbedarf (Ungelesen, offene Einladungen, Kampagnen) [team]
-//   mode='trend'     → Wochen-Trend (Follower/Verbindungen/Engagement + Δ) [marke]
-//   mode='content'   → Content-Wirkung (letzter Post Impressions/Reaktionen, Ø, Posts) [marke]
-// Marken-Wechsler in der Legende (switchBrandVoice). Kacheln = KPI + Deep-Link.
+// „Deine Analysen" — TEAM-WEITE Analyse-Übersicht fürs Startseiten-Cockpit.
+// Das team-übergreifende Gegenstück zu den brand-scoped Analyse-Seiten:
+// bündelt die wichtigsten Kennzahlen aller Bereiche über ALLE Marken/Profile des Teams.
+//   mode='handlung' → Handlungsbedarf (Ungelesen, offene Einladungen, aktive Kampagnen)
+//   mode='netzwerk' → Netzwerk (Verbindungen, Follower, offene Anfragen raus)
+//   mode='content'  → Content (Posts, Impressionen, Ø Engagement)
+// Jede Kachel = KPI + Deep-Link in den passenden Analyse-Bereich.
 
 import React, { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { Users, UserPlus, Building2, Mail, Rocket, Flame, Eye, Heart, FileText, ChevronDown } from 'lucide-react'
+import { Users, UserPlus, Mail, Rocket, Flame, Eye, FileText, Send, Inbox } from 'lucide-react'
 import { supabase } from '../../lib/supabase'
 import { useTeam } from '../../context/TeamContext'
-import { useBrandVoice } from '../../context/BrandVoiceContext'
 
 const fmt = n => (n == null ? '–' : Number(n).toLocaleString('de-DE'))
+const sumLatest = (rows, keyCol, valCol) => {
+  const latest = {}
+  for (const r of (rows || [])) if (!(r[keyCol] in latest)) latest[r[keyCol]] = r
+  return Object.values(latest).reduce((a, r) => a + (Number(r[valCol]) || 0), 0)
+}
 
 export default function LinkedInAnalyticsTiles({ mode = 'handlung', control = null }) {
   const nav = useNavigate()
   const { activeTeamId } = useTeam()
-  const { activeBrandVoice, noBrand, brandVoices, switchBrandVoice } = useBrandVoice()
-  const isCompany = activeBrandVoice?.account_type === 'company_page'
-  const bvId = noBrand ? null : (activeBrandVoice?.id || null)
-  const brandName = noBrand ? 'Ohne Marke' : (activeBrandVoice?.name || 'Deine Marke')
-
   const [d, setD] = useState(null)
   const [tick, setTick] = useState(0)
-  const [brandOpen, setBrandOpen] = useState(false)
-  const brandRef = React.useRef(null)
-
-  useEffect(() => {
-    if (!brandOpen) return
-    const h = (e) => { if (brandRef.current && !brandRef.current.contains(e.target)) setBrandOpen(false) }
-    document.addEventListener('mousedown', h)
-    return () => document.removeEventListener('mousedown', h)
-  }, [brandOpen])
 
   useEffect(() => {
     if (!activeTeamId) { setD(null); return }
     let cancelled = false
     ;(async () => {
-      const out = { follower: null, followerDelta: null, second: null, secondDelta: null, engagement: null, unread: null, campaigns: null, invitesIn: null, postsCount: null, lastImpr: null, lastLikes: null }
-      if (bvId) {
-        const tbl = isCompany ? 'linkedin_page_metrics' : 'linkedin_profile_metrics'
-        const selCols = isCompany ? 'followers_count, employee_count, captured_on' : 'follower_count, connections_count, captured_on'
-        const { data: rows } = await supabase.from(tbl).select(selCols).eq('brand_voice_id', bvId).order('captured_on', { ascending: true }).limit(30)
-        const list = rows || []
-        const last = list[list.length - 1], first = list[0]
-        if (isCompany) {
-          out.follower = last?.followers_count ?? null
-          out.second = last?.employee_count ?? null
-          if (last && first && last.followers_count != null && first.followers_count != null) out.followerDelta = last.followers_count - first.followers_count
-        } else {
-          out.follower = last?.follower_count ?? null
-          out.second = last?.connections_count ?? null
-          if (last && first && last.follower_count != null && first.follower_count != null) out.followerDelta = last.follower_count - first.follower_count
-          if (last && first && last.connections_count != null && first.connections_count != null) out.secondDelta = last.connections_count - first.connections_count
-        }
-        const { data: posts } = await supabase.from('content_posts').select('id').eq('team_id', activeTeamId).eq('brand_voice_id', bvId).not('linkedin_social_id', 'is', null).limit(200)
-        const ids = (posts || []).map(p => p.id)
-        out.postsCount = ids.length
-        if (ids.length) {
-          const { data: mets } = await supabase.from('content_post_metrics').select('post_id, impressions, likes, engagement_rate, measured_at').in('post_id', ids).order('measured_at', { ascending: true })
-          const latestByPost = {}
-          for (const m of (mets || [])) latestByPost[m.post_id] = m
-          const engs = Object.values(latestByPost).map(v => v.engagement_rate).filter(x => x != null)
-          if (engs.length) out.engagement = engs.reduce((a, b) => a + Number(b), 0) / engs.length
-          let latest = null
-          for (const m of (mets || [])) if (!latest || new Date(m.measured_at) > new Date(latest.measured_at)) latest = m
-          if (latest) { out.lastImpr = latest.impressions; out.lastLikes = latest.likes }
-        }
-      }
-      const [{ data: mm }, { data: cc }] = await Promise.all([
-        supabase.from('linkedin_messaging_metrics').select('unipile_account_id, unread_threads, captured_on').eq('team_id', activeTeamId).order('captured_on', { ascending: false }).limit(20),
+      const out = { unread: null, invitesIn: null, invitesOut: null, campaigns: null, connections: null, followers: null, posts: null, impressions: null, engagement: null }
+      const [{ data: nm }, { data: mm }, { data: cc }, { data: posts }] = await Promise.all([
+        supabase.from('linkedin_network_metrics').select('unipile_account_id, connections_total, followers_total, invites_pending_in, invites_pending_out, captured_on').eq('team_id', activeTeamId).order('captured_on', { ascending: false }).limit(80),
+        supabase.from('linkedin_messaging_metrics').select('unipile_account_id, unread_threads, captured_on').eq('team_id', activeTeamId).order('captured_on', { ascending: false }).limit(40),
         supabase.from('la_campaigns').select('status').eq('team_id', activeTeamId),
+        supabase.from('content_posts').select('id').eq('team_id', activeTeamId).not('linkedin_social_id', 'is', null).limit(500),
       ])
-      const byAcct = {}
-      for (const r of (mm || [])) if (!(r.unipile_account_id in byAcct)) byAcct[r.unipile_account_id] = r.unread_threads
-      out.unread = Object.values(byAcct).reduce((a, b) => a + (Number(b) || 0), 0)
-      out.campaigns = (cc || []).filter(c => c.status === 'active').length
-      {
-        const { data: nmt } = await supabase.from('linkedin_network_metrics').select('unipile_account_id, invites_pending_in, captured_on').eq('team_id', activeTeamId).order('captured_on', { ascending: false }).limit(20)
-        const byA = {}
-        for (const r of (nmt || [])) if (!(r.unipile_account_id in byA)) byA[r.unipile_account_id] = r.invites_pending_in
-        out.invitesIn = Object.values(byA).reduce((a, b) => a + (Number(b) || 0), 0)
+      out.connections = sumLatest(nm, 'unipile_account_id', 'connections_total')
+      out.followers   = sumLatest(nm, 'unipile_account_id', 'followers_total')
+      out.invitesIn   = sumLatest(nm, 'unipile_account_id', 'invites_pending_in')
+      out.invitesOut  = sumLatest(nm, 'unipile_account_id', 'invites_pending_out')
+      out.unread      = sumLatest(mm, 'unipile_account_id', 'unread_threads')
+      out.campaigns   = (cc || []).filter(c => c.status === 'active').length
+      const ids = (posts || []).map(p => p.id)
+      out.posts = ids.length
+      if (ids.length) {
+        const { data: mets } = await supabase.from('content_post_metrics').select('post_id, impressions, engagement_rate, measured_at').in('post_id', ids).order('measured_at', { ascending: true })
+        const latest = {}
+        for (const m of (mets || [])) latest[m.post_id] = m
+        const vals = Object.values(latest)
+        out.impressions = vals.reduce((a, m) => a + (Number(m.impressions) || 0), 0)
+        const engs = vals.map(m => m.engagement_rate).filter(x => x != null)
+        if (engs.length) out.engagement = engs.reduce((a, b) => a + Number(b), 0) / engs.length
       }
       if (!cancelled) { setD(out); setTick(t => t + 1) }
     })()
     return () => { cancelled = true }
-  }, [activeTeamId, bvId, isCompany])
+  }, [activeTeamId])
 
-  const Tile = ({ icon, label, value, delta, warn, to, tone, sub }) => {
-    const accent = tone === 'team' ? '#0F766E' : 'var(--wl-primary, rgb(49,90,231))'
+  const Tile = ({ icon, label, value, warn, to, sub }) => {
+    const accent = '#0F766E'
     return (
       <button type="button" onClick={() => nav(to)} className="lk-tile-in"
         style={{ textAlign: 'left', cursor: 'pointer', background: 'var(--surface, #fff)', border: '1px solid var(--border, #E4E7EC)', borderRadius: 12, padding: '10px 12px', display: 'flex', flexDirection: 'column', gap: 4, width: '100%', position: 'relative', overflow: 'hidden' }}>
@@ -99,50 +70,34 @@ export default function LinkedInAnalyticsTiles({ mode = 'handlung', control = nu
           <span style={{ color: warn ? '#B45309' : accent, display: 'inline-flex' }}>{icon}</span>
           <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{label}</span>
         </span>
-        <span style={{ display: 'flex', alignItems: 'baseline', gap: 6 }}>
-          <span style={{ fontSize: 19, fontWeight: 800, letterSpacing: '-0.02em', color: warn ? '#B45309' : 'var(--text-strong, #111827)', fontVariantNumeric: 'tabular-nums', lineHeight: 1 }}>{value}</span>
-          {delta != null && delta !== 0 && (
-            <span style={{ fontSize: 11, fontWeight: 700, color: delta > 0 ? '#059669' : '#DC2626' }}>{delta > 0 ? '▲' : '▼'}{Math.abs(delta)}</span>
-          )}
-        </span>
+        <span style={{ fontSize: 19, fontWeight: 800, letterSpacing: '-0.02em', color: warn ? '#B45309' : 'var(--text-strong, #111827)', fontVariantNumeric: 'tabular-nums', lineHeight: 1 }}>{value}</span>
         {sub && <span style={{ fontSize: 10.5, color: 'var(--text-muted, #9CA3AF)', marginTop: 1 }}>{sub}</span>}
       </button>
     )
   }
 
   const engTxt = d?.engagement != null ? (d.engagement * 100).toFixed(1).replace('.', ',') + ' %' : '–'
-  const trendSub = d?.followerDelta == null ? 'misst ab jetzt' : null
 
-  // ── Kacheln je Modus ──
   let tiles = []
-  let emptyHint = null
-  let note = null
-  if (mode === 'trend') {
-    if (!bvId || noBrand) emptyHint = 'Wähle eine Marke, um Wachstum & Engagement zu sehen.'
-    else {
-      tiles.push({ tone: 'brand', el: <Tile icon={<Users size={15} />} label="Follower" value={fmt(d?.follower)} delta={d?.followerDelta} sub={trendSub} tone="brand" to="/wachstum" /> })
-      tiles.push({ tone: 'brand', el: isCompany
-        ? <Tile icon={<Building2 size={15} />} label="Mitarbeitende" value={fmt(d?.second)} tone="brand" to="/wachstum" />
-        : <Tile icon={<UserPlus size={15} />} label="Verbindungen" value={fmt(d?.second)} delta={d?.secondDelta} sub={trendSub} tone="brand" to="/netzwerk-analytics" /> })
-      tiles.push({ tone: 'brand', el: <Tile icon={<Flame size={15} />} label="Ø Engagement" value={engTxt} tone="brand" to="/linkedin-analytics" /> })
-    }
+  if (mode === 'netzwerk') {
+    tiles = [
+      <Tile key="c" icon={<UserPlus size={15} />} label="Verbindungen" value={fmt(d?.connections)} to="/netzwerk-analytics" />,
+      <Tile key="f" icon={<Users size={15} />} label="Follower" value={fmt(d?.followers)} to="/netzwerk-analytics" />,
+      <Tile key="o" icon={<Send size={15} />} label="Anfragen offen (raus)" value={fmt(d?.invitesOut)} to="/netzwerk-analytics" />,
+    ]
   } else if (mode === 'content') {
-    if (!bvId || noBrand) emptyHint = 'Wähle eine Marke, um die Content-Wirkung zu sehen.'
-    else if (!d?.postsCount) emptyHint = `Für „${brandName}" sind noch keine veröffentlichten Posts erfasst.`
-    else {
-      tiles.push({ tone: 'brand', el: <Tile icon={<Eye size={15} />} label="Impressionen · letzter Post" value={fmt(d?.lastImpr)} tone="brand" to="/linkedin-analytics" /> })
-      tiles.push({ tone: 'brand', el: <Tile icon={<Heart size={15} />} label="Reaktionen · letzter Post" value={fmt(d?.lastLikes)} tone="brand" to="/linkedin-analytics" /> })
-      tiles.push({ tone: 'brand', el: <Tile icon={<Flame size={15} />} label="Ø Engagement" value={engTxt} tone="brand" to="/linkedin-analytics" /> })
-      tiles.push({ tone: 'brand', el: <Tile icon={<FileText size={15} />} label="Posts gesamt" value={fmt(d?.postsCount)} tone="brand" to="/linkedin-analytics" /> })
-    }
+    tiles = [
+      <Tile key="p" icon={<FileText size={15} />} label="Posts" value={fmt(d?.posts)} to="/linkedin-analytics" />,
+      <Tile key="i" icon={<Eye size={15} />} label="Impressionen gesamt" value={fmt(d?.impressions)} to="/linkedin-analytics" />,
+      <Tile key="e" icon={<Flame size={15} />} label="Ø Engagement" value={engTxt} to="/linkedin-analytics" />,
+    ]
   } else {
-    tiles.push({ tone: 'team', el: <Tile icon={<Mail size={15} />} label="Ungelesen" value={fmt(d?.unread)} warn={(d?.unread || 0) > 0} sub={(d?.unread || 0) > 0 ? 'warten auf Antwort' : null} tone="team" to="/nachrichten-analytics" /> })
-    tiles.push({ tone: 'team', el: <Tile icon={<UserPlus size={15} />} label="Offene Einladungen" value={fmt(d?.invitesIn)} warn={(d?.invitesIn || 0) > 0} sub={(d?.invitesIn || 0) > 0 ? 'noch nicht angenommen' : null} tone="team" to="/netzwerk-analytics" /> })
-    tiles.push({ tone: 'team', el: <Tile icon={<Rocket size={15} />} label="Aktive Kampagnen" value={fmt(d?.campaigns)} tone="team" to="/netzwerk-analytics" /> })
+    tiles = [
+      <Tile key="u" icon={<Mail size={15} />} label="Ungelesen" value={fmt(d?.unread)} warn={(d?.unread || 0) > 0} sub={(d?.unread || 0) > 0 ? 'warten auf Antwort' : null} to="/nachrichten-analytics" />,
+      <Tile key="in" icon={<Inbox size={15} />} label="Offene Einladungen" value={fmt(d?.invitesIn)} warn={(d?.invitesIn || 0) > 0} sub={(d?.invitesIn || 0) > 0 ? 'noch nicht angenommen' : null} to="/netzwerk-analytics" />,
+      <Tile key="k" icon={<Rocket size={15} />} label="Aktive Kampagnen" value={fmt(d?.campaigns)} to="/netzwerk-analytics" />,
+    ]
   }
-
-  const isBrandMode = mode === 'trend' || mode === 'content'
-  const selectable = (brandVoices || []).filter(b => b && b.id)
 
   return (
     <div>
@@ -155,45 +110,14 @@ export default function LinkedInAnalyticsTiles({ mode = 'handlung', control = nu
         {control}
       </div>
 
-      <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: '4px 12px', marginBottom: 9, fontSize: 10.5, fontWeight: 600, color: 'var(--text-muted, #6B7280)' }}>
-        {isBrandMode ? (
-          <div ref={brandRef} style={{ position: 'relative' }}>
-            <button type="button" onClick={() => setBrandOpen(o => !o)}
-              style={{ display: 'inline-flex', alignItems: 'center', gap: 5, background: 'transparent', border: 'none', cursor: 'pointer', padding: 0, fontSize: 10.5, fontWeight: 600, color: 'var(--text-strong, #374151)' }}>
-              <span style={{ width: 7, height: 7, borderRadius: 999, background: 'var(--wl-primary, rgb(49,90,231))' }} />
-              Marke · {brandName}
-              <ChevronDown size={12} style={{ opacity: .55 }} />
-            </button>
-            {brandOpen && selectable.length > 0 && (
-              <div style={{ position: 'absolute', top: 'calc(100% + 5px)', left: 0, minWidth: 190, maxHeight: 260, overflowY: 'auto', background: '#fff', border: '1px solid var(--border,#E4E7EC)', borderRadius: 12, boxShadow: '0 12px 34px rgba(15,23,42,.15)', padding: 5, zIndex: 60 }}>
-                {selectable.map(b => (
-                  <button key={b.id} type="button" onClick={() => { switchBrandVoice(b.id); setBrandOpen(false) }}
-                    style={{ display: 'flex', alignItems: 'center', gap: 7, width: '100%', textAlign: 'left', background: b.id === bvId ? 'var(--wl-primary-tint,#EFF3FF)' : 'transparent', border: 'none', borderRadius: 8, padding: '7px 9px', fontSize: 12, fontWeight: b.id === bvId ? 700 : 500, color: 'var(--text-strong,#111827)', cursor: 'pointer' }}>
-                    <span style={{ width: 7, height: 7, borderRadius: 999, flexShrink: 0, background: b.account_type === 'company_page' ? '#0F766E' : 'var(--wl-primary, rgb(49,90,231))' }} />
-                    <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{b.name}</span>
-                  </button>
-                ))}
-              </div>
-            )}
-          </div>
-        ) : (
-          <span style={{ display: 'inline-flex', alignItems: 'center', gap: 5 }}><span style={{ width: 7, height: 7, borderRadius: 999, background: '#0F766E' }} />Team-weit</span>
-        )}
+      <div style={{ display: 'flex', alignItems: 'center', gap: 5, marginBottom: 9, fontSize: 10.5, fontWeight: 600, color: 'var(--text-muted, #6B7280)' }}>
+        <span style={{ width: 7, height: 7, borderRadius: 999, background: '#0F766E' }} />Team-weit · alle Marken
       </div>
 
-      {emptyHint ? (
-        <div style={{ fontSize: 12, color: 'var(--text-muted, #9CA3AF)', padding: '2px 2px 10px', lineHeight: 1.5 }}>{emptyHint}</div>
-      ) : activeTeamId && (
+      {activeTeamId && (
         <div key={tick} style={{ display: 'grid', gridTemplateColumns: 'repeat(2, minmax(0, 1fr))', gap: 9, alignItems: 'start' }}>
-          {tiles.map((t, i) => (
-            <div key={i}>
-              {t.el}
-            </div>
-          ))}
+          {tiles.map((el, i) => <div key={i}>{el}</div>)}
         </div>
-      )}
-      {note && !emptyHint && (
-        <div style={{ fontSize: 11, color: 'var(--text-muted, #9CA3AF)', marginTop: 10, lineHeight: 1.5 }}>{note}</div>
       )}
     </div>
   )

@@ -332,8 +332,8 @@ export default function Dashboard({ session }) {
   const planScopeText = Object.entries(planCounts).map(([k, v]) => `${v} ${v > 1 ? (PLAN_PLURAL[k] || k) : k}`).join(' · ');
   const analyticsViews = [
     { value: 'handlung', label: 'Handlungsbedarf' },
-    { value: 'trend', label: 'Wochen-Trend' },
-    { value: 'content', label: 'Content-Wirkung' },
+    { value: 'netzwerk', label: 'Netzwerk' },
+    { value: 'content', label: 'Content' },
   ];
 
   const planNode = (
@@ -404,7 +404,7 @@ export default function Dashboard({ session }) {
             style={{ flexShrink: 0, border: 'none', background: 'transparent', color: '#991B1B', cursor: 'pointer', fontSize: 15, fontWeight: 700 }} aria-label="Ausblenden">✕</button>
         </div>
       )}
-      {affBanner && (
+      {cockpitNarrow && affBanner && (
         <div onClick={() => nav('/settings/affiliate')} style={{
           display: 'flex', alignItems: 'center', gap: 10, cursor: 'pointer',
           background: '#FFFBEB', border: '1px solid #FDE68A', borderRadius: 10,
@@ -446,8 +446,21 @@ export default function Dashboard({ session }) {
           );
         }
         // Desktop: oben Chat+Orb (volle Breite), darunter Analyse (links) + Plan (rechts) symmetrisch.
+        // Affiliate-Banner sitzt oben-links auf Orb-Beulen-Höhe, Breite nur bis zum Orb.
         return (
-          <div>
+          <div style={{ position: 'relative' }}>
+            {affBanner && (
+              <div onClick={() => nav('/settings/affiliate')} style={{
+                position: 'absolute', top: 8, left: 0, right: 'calc(50% + 96px)', zIndex: 5,
+                display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer',
+                background: '#FFFBEB', border: '1px solid #FDE68A', borderRadius: 10,
+                padding: '8px 12px', fontSize: 12, color: '#92400E', lineHeight: 1.35,
+              }}>
+                <span>💡 <strong>Wusstest du?</strong> Empfiehl Leadesk weiter — 20 % Provision für 12 Monate. <span style={{ textDecoration: 'underline' }}>Mehr erfahren →</span></span>
+                <button onClick={(e) => { e.stopPropagation(); localStorage.setItem('lk_aff_banner_dismissed', '1'); setAffBanner(false); }}
+                  style={{ marginLeft: 'auto', flexShrink: 0, border: 'none', background: 'transparent', color: '#92400E', cursor: 'pointer', fontSize: 14, fontWeight: 700 }} aria-label="Ausblenden">✕</button>
+              </div>
+            )}
             {hero}
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 20, alignItems: 'start', marginTop: 18 }}>
               <div>{analytics}</div>
