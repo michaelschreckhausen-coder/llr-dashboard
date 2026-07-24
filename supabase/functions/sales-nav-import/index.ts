@@ -105,6 +105,7 @@ async function handleCreate(
     team_id: teamId,
     user_id: userId,
     source_type: body.source_type || "saved_search",
+    brand_voice_id: body.brand_voice_id || null,  // aktive Marke der Extension
     source_url: body.source_url || "",
     source_id: body.source_id || null,
     status: "running",
@@ -140,6 +141,7 @@ async function handleIngest(
     if (!lead || !lead.sales_nav_id) { failed++; continue; }
     const { data, error } = await admin.rpc("sales_nav_upsert_inbox", {
       p_team_id: job.team_id, p_user_id: job.user_id, p_lead: lead,
+      p_brand_voice_id: (job as any).brand_voice_id ?? null,
     });
     if (error) {
       console.warn("[sales-nav-import] upsert error:", error.message);

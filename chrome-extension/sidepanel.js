@@ -775,6 +775,7 @@ async function importBulkStub(ctx, results) {
     const created = await efCall('create', {
       team_id: currentTeamId, source_type: 'saved_search',
       source_url: ctx.url, source_id: ctx.savedSearchId || null, total_scraped: count,
+      brand_voice_id: activeBrandVoice?.id || null, // Import der aktiven Marke zuordnen (LinkedIn Kontakte ist strikt brand-scoped)
     })
     if (!created.ok) throw new Error('create: ' + created.error)
     const { job_id, total_leads } = created.data

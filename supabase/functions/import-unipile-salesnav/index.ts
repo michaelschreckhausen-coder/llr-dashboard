@@ -54,11 +54,12 @@ Deno.serve(async (req) => {
   }
 
   const { data: acct, error: aerr } = await db.from("unipile_accounts")
-    .select("user_id, team_id, status").eq("unipile_account_id", unipile_account_id).maybeSingle();
+    .select("user_id, team_id, status, brand_voice_id").eq("unipile_account_id", unipile_account_id).maybeSingle();
   if (aerr) return json({ error: "acct lookup: " + aerr.message }, 500);
   if (!acct) return json({ error: "unipile_account not found" }, 404);
   if (acct.status !== "OK") return json({ skipped: "account_status:" + acct.status });
   if (!acct.team_id) return json({ skipped: "no_team" });
+  const brandId: string | null = (acct as any).brand_voice_id ?? null; // Import der aktiven Marke zuordnen (strict brand-scope)
 
   // Ziel-Team/-User für die Inbox-Rows = Caller/Liste (User-Kontext), NICHT das Unipile-Account-Team.
   // Fallback acct nur wenn kein Caller/kein aktives Team (z.B. service-role-Aufruf ohne Kontext).
@@ -113,7 +114,7 @@ Deno.serve(async (req) => {
         source: "unipile_salesnav",
       };
       const { data: ins, error: uerr } = await db.rpc("sales_nav_upsert_inbox", {
-        p_team_id: teamId, p_user_id: userId, p_lead: lead,
+        p_team_id: teamId, p_user_id: userId, p_lead: lead, p_brand_voice_id: brandId,
       });
       if (uerr) { failed++; continue; }
       const res = ins as any; // RPC gibt jetzt jsonb {id, inserted}
