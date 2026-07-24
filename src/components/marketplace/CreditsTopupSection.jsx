@@ -171,7 +171,7 @@ export default function CreditsTopupSection({ onFlash, linkedin = null }) {
                 <div style={{ fontSize: 15, fontWeight: 800, color: 'var(--text-strong, #111827)', letterSpacing: '-0.01em' }}>Weitere LinkedIn-Anbindung</div>
                 <div style={{ fontSize: 11, color: 'var(--text-muted, #6B7280)', minHeight: 28, lineHeight: 1.4 }}>{desc}</div>
                 <div style={{ display: 'flex', alignItems: 'baseline', gap: 4, marginTop: 4 }}>
-                  <span style={{ fontSize: 22, fontWeight: 900, color: 'var(--text-strong, #111827)', letterSpacing: '-0.02em' }}>5 €</span>
+                  <span style={{ fontSize: 22, fontWeight: 900, color: 'var(--text-strong, #111827)', letterSpacing: '-0.02em' }}>5,99 €</span>
                   <span style={{ fontSize: 11, color: 'var(--text-muted, #6B7280)' }}>/ Monat</span>
                 </div>
                 <button className="lk-btn lk-btn-cta" style={{ marginTop: 6 }}

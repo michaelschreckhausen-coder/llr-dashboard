@@ -1312,10 +1312,11 @@ export default function BrandVoice({ session, brandType = 'personal' }) {
   const [cpLoginsCount, setCpLoginsCount] = useState(null) // Anzahl verbundener Team-Logins
   const [showVisibilityModal, setShowVisibilityModal] = useState(false)
   // Unipile-Connect (brand-scoped): übergibt brand_voice_id → Webhook mappt den Account an DIESE Brand.
-  async function connectLinkedInUnipile() {
+  async function connectLinkedInUnipile(forceBvId) {
+    const bvId = forceBvId || edit?.id
     setLiConnecting(true); setLiError('')
     try {
-      if (!edit?.id) { setLiError('Bitte zuerst die Brand Voice speichern, dann LinkedIn verbinden.'); setLiConnecting(false); return }
+      if (!bvId) { setLiError('Bitte zuerst die Brand Voice speichern, dann LinkedIn verbinden.'); setLiConnecting(false); return }
       // Allowance-Gate (Lizenz=User): 1 Verknüpfung inkl., weitere nur mit Automation-Addon
       const { data: allow } = await supabase.rpc('unipile_allowance')
       if (allow && allow.can_add === false) {
@@ -1323,7 +1324,7 @@ export default function BrandVoice({ session, brandType = 'personal' }) {
         setShowLimitModal(true)
         return
       }
-      const { data, error } = await supabase.functions.invoke('unipile-connect-link', { body: { brand_voice_id: edit.id, app_base: window.location.origin, success_path: window.location.pathname + '?li_unipile=' + edit.id } })
+      const { data, error } = await supabase.functions.invoke('unipile-connect-link', { body: { brand_voice_id: bvId, app_base: window.location.origin, success_path: window.location.pathname + '?li_unipile=' + bvId } })
       if (error) throw error
       // Serverseitiger Riegel (falls Client-Gate umgangen): 402 blocked → Marketplace
       if (data?.blocked) {
@@ -1445,6 +1446,21 @@ export default function BrandVoice({ session, brandType = 'personal' }) {
       const url = new URL(window.location.href)
       url.searchParams.delete('li_connected')
       window.history.replaceState({}, '', url.toString())
+    }
+    // Reconnect-Deeplink: Editor der Marke öffnen und direkt die Verbindung starten
+    const connectBv = q.get('connect_bv')
+    if (connectBv) {
+      ;(async () => {
+        const { data: bv } = await supabase.from('brand_voices').select('*').eq('id', connectBv).maybeSingle()
+        if (bv) {
+          setEdit(prev => ({ ...(prev || {}), ...bv }))
+          setView('editor'); setTab('marke')
+          setTimeout(() => connectLinkedInUnipile(connectBv), 500)
+        }
+      })()
+      const url2 = new URL(window.location.href)
+      url2.searchParams.delete('connect_bv')
+      window.history.replaceState({}, '', url2.toString())
     }
     const liUnipile = q.get('li_unipile')
     if (liUnipile && liUnipile !== 'connected') {
@@ -2059,7 +2075,7 @@ export default function BrandVoice({ session, brandType = 'personal' }) {
             style={{ background:'var(--surface,#fff)', borderRadius:16, boxShadow:'0 24px 64px rgba(15,23,42,0.18)', width:440, maxWidth:'92vw', padding:26 }}>
             <div style={{ fontSize:17, fontWeight:800, color:'var(--text-strong,#111827)', marginBottom:10 }}>Keine LinkedIn-Verknüpfung mehr frei</div>
             <p style={{ fontSize:13.5, color:'#334155', lineHeight:1.6, margin:'0 0 18px' }}>
-              Deine Lizenz enthält <strong>1 LinkedIn-Verknüpfung</strong> — die ist bereits belegt. Für ein weiteres LinkedIn-Profil buche eine zusätzliche Verknüpfung für <strong>5 €/Monat</strong> hinzu. Alternativ kannst du das bestehende Profil über die Marken-Freigabe in anderen Teams mitnutzen.
+              Deine Lizenz enthält <strong>1 LinkedIn-Verknüpfung</strong> — die ist bereits belegt. Für ein weiteres LinkedIn-Profil buche eine zusätzliche Verknüpfung für <strong>5,99 €/Monat</strong> hinzu. Alternativ kannst du das bestehende Profil über die Marken-Freigabe in anderen Teams mitnutzen.
             </p>
             <div style={{ display:'flex', gap:8, justifyContent:'flex-end', flexWrap:'wrap' }}>
               <button className="lk-btn lk-btn-ghost" type="button" disabled={checkoutBusy} onClick={() => setShowLimitModal(false)}>Abbrechen</button>

@@ -4,6 +4,7 @@ import { useResponsive } from '../hooks/useResponsive'
 import { NavLink, useNavigate, useLocation } from 'react-router-dom'
 import BrandVoiceSwitcher from './BrandVoiceSwitcher'
 import ContentIntroModal from './ContentIntroModal'
+import ReconnectLinkedInModal from './ReconnectLinkedInModal'
 import { useBrandVoice } from '../context/BrandVoiceContext'
 import { HelpCircle } from 'lucide-react'
 import BrainButton from './BrainButton'
@@ -1233,6 +1234,7 @@ export default function Layout({ session, role, onLogout, children }) {
         <CreditsBanner />
           <main style={{ flex:1, overflowY: isMobile ? 'hidden' : 'auto', padding: isMobile ? 0 : 28, minHeight:0, display:'flex', flexDirection:'column' }}>
           {children}
+          <ReconnectLinkedInModal />
         </main>
         <TimerBar />
       </div>
