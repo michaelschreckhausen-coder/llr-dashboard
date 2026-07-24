@@ -24,7 +24,7 @@ update linkedin_invitations i
 
 -- 2b) inbox + searches: nur wenn der User in dem Team GENAU EINE verbundene Marke hat (eindeutig)
 with solo as (
-  select ua.user_id, ua.team_id, min(ua.brand_voice_id) as bv
+  select ua.user_id, ua.team_id, (array_agg(distinct ua.brand_voice_id))[1] as bv
     from unipile_accounts ua
    where ua.brand_voice_id is not null
    group by ua.user_id, ua.team_id
@@ -35,7 +35,7 @@ update linkedin_inbox x set brand_voice_id = solo.bv
  where x.user_id = solo.user_id and x.team_id = solo.team_id and x.brand_voice_id is null;
 
 with solo as (
-  select ua.user_id, ua.team_id, min(ua.brand_voice_id) as bv
+  select ua.user_id, ua.team_id, (array_agg(distinct ua.brand_voice_id))[1] as bv
     from unipile_accounts ua
    where ua.brand_voice_id is not null
    group by ua.user_id, ua.team_id
