@@ -701,7 +701,6 @@ chrome.runtime.onMessage.addListener(function(msg, sender, sendResponse) {
 // ── Alarm Handler ─────────────────────────────────────────────────
 chrome.alarms.onAlarm.addListener(function(alarm) {
   if (alarm.name === 'queuePoll' || alarm.name === 'nextJob') pollQueue()
-  if (alarm.name === 'ssiDaily') fetchAndSaveSSI()
 })
 
 function getNext8AM() {
@@ -723,14 +722,12 @@ chrome.runtime.onInstalled.addListener(async function(details) {
   }
 
   chrome.alarms.create('queuePoll', { periodInMinutes: 40/60 })
-  chrome.alarms.create('ssiDaily', { when: getNext8AM(), periodInMinutes: 24*60 })
   console.log('[Leadesk] v' + ((chrome.runtime.getManifest && chrome.runtime.getManifest().version) || '?') + ' installiert')
   if (details.reason === 'install') chrome.tabs.create({ url: 'https://app.leadesk.de' })
 })
 
 chrome.runtime.onStartup.addListener(function() {
   chrome.alarms.create('queuePoll', { periodInMinutes: 40/60 })
-  chrome.alarms.create('ssiDaily', { when: getNext8AM(), periodInMinutes: 24*60 })
 })
 
 setTimeout(pollQueue, 3000)
