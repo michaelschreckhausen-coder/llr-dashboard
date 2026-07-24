@@ -56,6 +56,8 @@ import LinkedInInbox from './pages/LinkedInInbox'
 import LinkedInAutomationNeu from './pages/LinkedInAutomationNeu'
 import LinkedInSuche from './pages/LinkedInSuche'
 import LinkedInAnalytics from './pages/LinkedInAnalytics'
+import NetzwerkAnalytics from './pages/NetzwerkAnalytics'
+import ProfilAnalyse from './pages/ProfilAnalyse'
 import LinkedInEngagement from './pages/LinkedInEngagement'
 import Reports       from './pages/Reports'
 import ICP           from './pages/ICP'
@@ -362,6 +364,8 @@ export default function App() {
             <Route path="/linkedin-inbox" element={<ModuleGuard module="linkedin"><LinkedInInbox session={session} /></ModuleGuard>} />
             <Route path="/linkedin-suche" element={<ModuleGuard module="linkedin"><LinkedInSuche session={session} /></ModuleGuard>} />
             <Route path="/linkedin-analytics" element={<ModuleGuard module="linkedin"><LinkedInAnalytics session={session} /></ModuleGuard>} />
+            <Route path="/netzwerk-analytics" element={<ModuleGuard module="linkedin"><NetzwerkAnalytics /></ModuleGuard>} />
+            <Route path="/profil-analyse" element={<ModuleGuard module="linkedin"><ProfilAnalyse session={session} /></ModuleGuard>} />
             <Route path="/linkedin-engagement" element={<ModuleGuard module="linkedin"><LinkedInEngagement session={session} /></ModuleGuard>} />
             {/* 3c-Flip: V2 (la_*) ist Default für alle. Not-Aus per User: localStorage lk_features.linkedinAutomationV2Disabled=true */}
             {(!isFlagEnabled('linkedinAutomationV2Disabled')) && (

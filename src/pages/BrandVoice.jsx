@@ -1292,11 +1292,111 @@ export default function BrandVoice({ session, brandType = 'personal' }) {
   function uLinkedIn(field, val) { setEdit(prev => ({...prev, linkedin_style: {...(prev.linkedin_style||{}), [field]:val}})) }
 
   const [liConnecting, setLiConnecting] = useState(false)
+  const [uniAccount, setUniAccount] = useState(null) // verbundener Unipile-Account DIESER Brand (brand-scoped)
+  const [connectedBy, setConnectedBy] = useState(null) // Name des Team-Users, der verknüpft hat
+  const [showLimitModal, setShowLimitModal] = useState(false) // LinkedIn-Verknüpfungs-Limit erreicht
+  const [checkoutBusy, setCheckoutBusy] = useState(false)
   const [freshlyCreated, setFreshlyCreated] = useState(false)
   const [liError, setLiError] = useState('')
   // Popups für Personal-Brand-Header-Buttons (Sichtbarkeit / LinkedIn verbinden)
   const [showLiModal, setShowLiModal] = useState(false)
+  // ── Company-Page-Verbindung (nur company_page-Brands) ──────────────
+  const [showCpModal, setShowCpModal] = useState(false)   // Company-Page-Modal offen
+  const [cpLogins, setCpLogins] = useState([])            // verbundene Team-Logins (unipile_accounts)
+  const [cpAccountId, setCpAccountId] = useState('')      // gewählter Admin-Login (unipile_account_id)
+  const [cpOrgs, setCpOrgs] = useState([])                // Pages, die der Login administriert
+  const [cpLoadingOrgs, setCpLoadingOrgs] = useState(false)
+  const [cpSaving, setCpSaving] = useState(false)
+  const [cpError, setCpError] = useState('')
+  const [cpSearch, setCpSearch] = useState('')
+  const [cpLoginsCount, setCpLoginsCount] = useState(null) // Anzahl verbundener Team-Logins
   const [showVisibilityModal, setShowVisibilityModal] = useState(false)
+  // Unipile-Connect (brand-scoped): übergibt brand_voice_id → Webhook mappt den Account an DIESE Brand.
+  async function connectLinkedInUnipile(forceBvId) {
+    const bvId = forceBvId || edit?.id
+    setLiConnecting(true); setLiError('')
+    try {
+      if (!bvId) { setLiError('Bitte zuerst die Brand Voice speichern, dann LinkedIn verbinden.'); setLiConnecting(false); return }
+      // Allowance-Gate (Lizenz=User): 1 Verknüpfung inkl., weitere nur mit Automation-Addon
+      const { data: allow } = await supabase.rpc('unipile_allowance')
+      if (allow && allow.can_add === false) {
+        setLiConnecting(false)
+        setShowLimitModal(true)
+        return
+      }
+      const { data, error } = await supabase.functions.invoke('unipile-connect-link', { body: { brand_voice_id: bvId, app_base: window.location.origin, success_path: window.location.pathname + '?li_unipile=' + bvId } })
+      if (error) throw error
+      // Serverseitiger Riegel (falls Client-Gate umgangen): 402 blocked → Marketplace
+      if (data?.blocked) {
+        setLiConnecting(false)
+        setShowLimitModal(true)
+        return
+      }
+      if (data?.error) throw new Error(data.message || data.error)
+      if (!data?.url) throw new Error('Connect-URL fehlt in Antwort')
+      window.location.href = data.url
+    } catch (e) { setLiError(e?.message || 'Fehler beim Verbinden'); setLiConnecting(false) }
+  }
+
+  // „Weiteres Profil hinzufügen" → direkt zur Stripe-Zahlungsoberfläche (wie „Abo starten" im Marketplace)
+  async function startAddonCheckout() {
+    setCheckoutBusy(true)
+    try {
+      const { data, error } = await supabase.functions.invoke('create-addon-checkout-session', { body: { addon_slug: 'automation' } })
+      if (error) throw error
+      if (data?.error) throw new Error(data.error)
+      if (data?.url) { window.location.href = data.url; return }
+      throw new Error('Keine Checkout-URL erhalten')
+    } catch (e) { setCheckoutBusy(false); setLiError(e?.message || 'Checkout fehlgeschlagen') }
+  }
+
+  // ── Company-Page-Verbindung: über einen verbundenen Admin-Login eine
+  //    LinkedIn Company Page auswählen und an der Company Brand speichern.
+  async function openCompanyPageModal() {
+    setCpError(''); setCpSearch(''); setShowCpModal(true)
+    if (!edit?.id) { setCpOrgs([]); setCpLoginsCount(0); return }
+    // ALLE administrierten Pages über alle verbundenen Team-Logins aggregieren
+    // (acting login wird pro Page automatisch mitgeliefert — User wählt keinen Login).
+    setCpLoadingOrgs(true); setCpOrgs([]); setCpLoginsCount(null)
+    try {
+      const { data, error } = await supabase.functions.invoke('unipile-list-company-pages', { body: { brand_voice_id: edit.id } })
+      if (error) throw error
+      if (data?.error) throw new Error(data.message || data.error)
+      setCpLoginsCount(typeof data?.logins_count === 'number' ? data.logins_count : 0)
+      setCpOrgs(Array.isArray(data?.organizations) ? data.organizations : [])
+    } catch (e) { setCpOrgs([]); setCpLoginsCount(0); setCpError('Konnte verwaltbare Company Pages nicht laden.') }
+    finally { setCpLoadingOrgs(false) }
+  }
+  async function saveCompanyPage(org) {
+    if (!edit?.id || !org?.org_id || !org?.acting_account_id) return
+    setCpSaving(true); setCpError('')
+    try {
+      const patch = {
+        linkedin_org_id: String(org.org_id),
+        linkedin_org_urn: org.organization_urn || null,
+        linkedin_org_name: org.name || null,
+        linkedin_acting_account_id: org.acting_account_id,
+        linkedin_org_verified_at: new Date().toISOString(),
+      }
+      const { error } = await supabase.from('brand_voices').update(patch).eq('id', edit.id)
+      if (error) throw error
+      setEdit(prev => ({ ...(prev || {}), ...patch }))
+      setVoices(p => p.map(v => v.id === edit.id ? { ...v, ...patch } : v))
+      setShowCpModal(false)
+    } catch (e) { setCpError('Speichern fehlgeschlagen: ' + (e?.message || 'Unbekannt')) }
+    finally { setCpSaving(false) }
+  }
+  async function disconnectCompanyPage() {
+    if (!edit?.id) return
+    if (!window.confirm('Company-Page-Verbindung trennen? Geplante Page-Posts schlagen dann fehl.')) return
+    const patch = { linkedin_org_id: null, linkedin_org_urn: null, linkedin_org_name: null, linkedin_org_logo_url: null, linkedin_acting_account_id: null, linkedin_org_verified_at: null }
+    try {
+      await supabase.from('brand_voices').update(patch).eq('id', edit.id)
+      setEdit(prev => ({ ...(prev || {}), ...patch }))
+      setVoices(p => p.map(v => v.id === edit.id ? { ...v, ...patch } : v))
+    } catch (e) { setCpError('Trennen fehlgeschlagen.') }
+  }
+
   async function connectLinkedIn() {
     // Phase 1a OAuth-Flow: Init-Edge-Function ruft uns die LinkedIn-Authorize-URL,
     // wir redirecten den User dorthin. Callback landet auf /auth/linkedin/callback.
@@ -1347,6 +1447,38 @@ export default function BrandVoice({ session, brandType = 'personal' }) {
       url.searchParams.delete('li_connected')
       window.history.replaceState({}, '', url.toString())
     }
+    // Reconnect-Deeplink: Editor der Marke öffnen und direkt die Verbindung starten
+    const connectBv = q.get('connect_bv')
+    if (connectBv) {
+      ;(async () => {
+        const { data: bv } = await supabase.from('brand_voices').select('*').eq('id', connectBv).maybeSingle()
+        if (bv) {
+          setEdit(prev => ({ ...(prev || {}), ...bv }))
+          setView('editor'); setTab('marke')
+          setTimeout(() => connectLinkedInUnipile(connectBv), 500)
+        }
+      })()
+      const url2 = new URL(window.location.href)
+      url2.searchParams.delete('connect_bv')
+      window.history.replaceState({}, '', url2.toString())
+    }
+    const liUnipile = q.get('li_unipile')
+    if (liUnipile && liUnipile !== 'connected') {
+      // Unipile-Return: zurück in den Editor der GERADE verbundenen Brand
+      // (analog OAuth-li_connected). Der uniAccount-Status-Effect (keyed auf
+      // edit.id) lädt den frischen „verbunden"-Zustand automatisch nach.
+      ;(async () => {
+        const { data: bv } = await supabase.from('brand_voices').select('*').eq('id', liUnipile).maybeSingle()
+        if (bv) {
+          setEdit(prev => ({ ...(prev || {}), ...bv }))
+          setView('editor')
+          setTab('marke')
+        }
+      })()
+      const url = new URL(window.location.href)
+      url.searchParams.delete('li_unipile')
+      window.history.replaceState({}, '', url.toString())
+    }
     if (liErrorParam) {
       setLiError(decodeURIComponent(liErrorParam))
       const url = new URL(window.location.href)
@@ -1355,6 +1487,40 @@ export default function BrandVoice({ session, brandType = 'personal' }) {
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
+
+  // Unipile-Verbindungsstatus DIESER Brand laden (brand-scoped).
+  // Kurzes Retry, weil der Unipile-Webhook direkt nach dem Connect-Redirect
+  // minimal verzögert eintreffen kann — so erscheint „verbunden" ohne Reload.
+  useEffect(() => {
+    const bvId = edit?.id
+    if (!bvId) { setUniAccount(null); return }
+    let cancelled = false
+    const justConnected = new URLSearchParams(window.location.search).get('li_unipile')
+    const tries = justConnected ? [0, 1500, 3000, 5000] : [0]
+    const timers = []
+    tries.forEach((delay, i) => {
+      timers.push(setTimeout(async () => {
+        if (cancelled) return
+        const { data } = await supabase.from('unipile_accounts')
+          .select('unipile_account_id, provider_public_id, user_id')
+          .eq('brand_voice_id', bvId).eq('status', 'OK').limit(1).maybeSingle()
+        if (cancelled) return
+        if (data) { setUniAccount(data); timers.forEach(clearTimeout) }
+        else if (i === 0) setUniAccount(null)
+      }, delay))
+    })
+    return () => { cancelled = true; timers.forEach(clearTimeout) }
+  }, [edit?.id])
+
+  // Wer aus dem Team hat dieses LinkedIn-Profil verknüpft? (Nachvollziehbarkeit)
+  useEffect(() => {
+    const u = uniAccount?.user_id
+    if (!u) { setConnectedBy(null); return }
+    let cancelled = false
+    supabase.from('profiles').select('full_name, email').eq('id', u).maybeSingle()
+      .then(({ data }) => { if (!cancelled) setConnectedBy(data?.full_name || data?.email || null) })
+    return () => { cancelled = true }
+  }, [uniAccount?.user_id])
 
   // Disconnect: revoked_at setzen + BV-Identity-Felder leeren
   async function disconnectLinkedIn() {
@@ -1576,8 +1742,14 @@ export default function BrandVoice({ session, brandType = 'personal' }) {
           </button>
           {!editIsCompany && (
             <button type="button" onClick={()=>setShowLiModal(true)} title="LinkedIn-Profil verbinden"
-              style={{ padding:'10px 16px', background: edit.linkedin_member_id ? '#F0FDF4' : 'var(--surface, #fff)', color: edit.linkedin_member_id ? '#166534' : 'var(--text-primary)', border:'1.5px solid '+(edit.linkedin_member_id ? '#BBF7D0' : 'var(--border)'), borderRadius:10, fontSize:13, fontWeight:600, cursor:'pointer', display:'inline-flex', alignItems:'center', gap:7, fontFamily:'inherit' }}>
-              <LinkedinIcon size={15}/><span>{edit.linkedin_member_id ? 'LinkedIn verbunden' : 'LinkedIn verbinden'}</span>
+              style={{ padding:'10px 16px', background: (edit.linkedin_member_id || uniAccount) ? '#F0FDF4' : 'var(--surface, #fff)', color: (edit.linkedin_member_id || uniAccount) ? '#166534' : 'var(--text-primary)', border:'1.5px solid '+((edit.linkedin_member_id || uniAccount) ? '#BBF7D0' : 'var(--border)'), borderRadius:10, fontSize:13, fontWeight:600, cursor:'pointer', display:'inline-flex', alignItems:'center', gap:7, fontFamily:'inherit' }}>
+              <LinkedinIcon size={15}/><span>{(edit.linkedin_member_id || uniAccount) ? 'LinkedIn verbunden' : 'LinkedIn verbinden'}</span>
+            </button>
+          )}
+          {editIsCompany && (
+            <button type="button" onClick={openCompanyPageModal} title="LinkedIn Company Page verbinden"
+              style={{ padding:'10px 16px', background: edit.linkedin_org_id ? '#F0FDF4' : 'var(--surface, #fff)', color: edit.linkedin_org_id ? '#166534' : 'var(--text-primary)', border:'1.5px solid '+(edit.linkedin_org_id ? '#BBF7D0' : 'var(--border)'), borderRadius:10, fontSize:13, fontWeight:600, cursor:'pointer', display:'inline-flex', alignItems:'center', gap:7, fontFamily:'inherit' }}>
+              <LinkedinIcon size={15}/><span>{edit.linkedin_org_id ? 'Page verbunden' : 'Company Page verbinden'}</span>
             </button>
           )}
           <button onClick={saveVoice} style={{ padding:'11px 22px', background:'var(--primary)', color:'#fff', border:'none', borderRadius:10, fontSize:13.5, fontWeight:600, cursor:'pointer', boxShadow:'0 2px 10px rgba(10,111,176,.25)', display:'inline-flex', alignItems:'center', gap:8, fontFamily:'inherit', flexShrink:0 }}>
@@ -1591,16 +1763,28 @@ export default function BrandVoice({ session, brandType = 'personal' }) {
           style={{ flex:1, padding:'10px 14px', border:'1.5px solid #dde3ea', borderRadius:8, fontSize:15, fontWeight:600 }}/>
       </div>
 
-        {!editIsCompany && edit.id && !edit.linkedin_member_id && (
+        {!editIsCompany && edit.id && !(edit.linkedin_member_id || uniAccount) && (
           <div style={{ marginBottom:16, padding:'14px 18px', background:'linear-gradient(90deg, rgba(10,111,176,0.10) 0%, rgba(48,160,208,0.08) 100%)', border:'1.5px solid rgba(10,111,176,0.25)', borderRadius:12, display:'flex', alignItems:'center', gap:14, flexWrap:'wrap' }}>
             <PartyPopper size={22} strokeWidth={1.75} style={{ color:'#16A34A' }}/>
             <div style={{ flex:1, minWidth:240 }}>
               <div style={{ fontSize:14, fontWeight:700, color:'var(--text-primary)', marginBottom:2 }}>Brand Voice erstellt — jetzt LinkedIn verbinden</div>
               <div style={{ fontSize:12, color:'var(--text-muted)', lineHeight:1.4 }}>Verknüpfe das passende LinkedIn-Profil mit dieser Brand Voice — Voraussetzung für Auto-Publishing, Vernetzungen und Nachrichten.</div>
             </div>
-            <button className="lk-btn lk-btn-primary" onClick={connectLinkedIn} disabled={liConnecting}
+            <button className="lk-btn lk-btn-primary" onClick={connectLinkedInUnipile} disabled={liConnecting}
               >
               {liConnecting ? <span style={{display:'inline-flex',alignItems:'center',gap:6}}><Loader2 size={14} className="lk-spin"/>…</span> : <span style={{display:'inline-flex',alignItems:'center',gap:6}}><LinkedinIcon size={14}/>Mit LinkedIn verbinden</span>}
+            </button>
+          </div>
+        )}
+        {editIsCompany && edit.id && !edit.linkedin_org_id && (
+          <div style={{ marginBottom:16, padding:'14px 18px', background:'linear-gradient(90deg, rgba(10,111,176,0.10) 0%, rgba(48,160,208,0.08) 100%)', border:'1.5px solid rgba(10,111,176,0.25)', borderRadius:12, display:'flex', alignItems:'center', gap:14, flexWrap:'wrap' }}>
+            <Building2 size={22} strokeWidth={1.75} style={{ color:'#0A6FB0' }}/>
+            <div style={{ flex:1, minWidth:240 }}>
+              <div style={{ fontSize:14, fontWeight:700, color:'var(--text-primary)', marginBottom:2 }}>Company Brand erstellt — jetzt Company Page verbinden</div>
+              <div style={{ fontSize:12, color:'var(--text-muted)', lineHeight:1.4 }}>Verknüpfe die LinkedIn Company Page über einen Admin-Login — Voraussetzung für Posten als Page und Page-Analytics.</div>
+            </div>
+            <button className="lk-btn lk-btn-primary" onClick={openCompanyPageModal}>
+              <span style={{display:'inline-flex',alignItems:'center',gap:6}}><LinkedinIcon size={14}/>Company Page verbinden</span>
             </button>
           </div>
         )}
@@ -1758,18 +1942,19 @@ export default function BrandVoice({ session, brandType = 'personal' }) {
               <button onClick={()=>setShowLiModal(false)} style={{ background:'none', border:'none', cursor:'pointer', color:'var(--text-muted)', padding:0, lineHeight:1 }}><X size={20} strokeWidth={1.75}/></button>
             </div>
 
-            <div style={{ marginTop:14, padding:'12px 14px', background: edit.linkedin_member_id ? '#F0FDF4' : '#F8FAFC', border:'1.5px solid '+(edit.linkedin_member_id?'#BBF7D0':'var(--border)'), borderRadius:10 }}>
-              {edit.linkedin_member_id ? (
+            <div style={{ marginTop:14, padding:'12px 14px', background: (edit.linkedin_member_id || uniAccount) ? '#F0FDF4' : '#F8FAFC', border:'1.5px solid '+((edit.linkedin_member_id || uniAccount)?'#BBF7D0':'var(--border)'), borderRadius:10 }}>
+              {(edit.linkedin_member_id || uniAccount) ? (
                 <div style={{ display:'flex', alignItems:'center', gap:12, justifyContent:'space-between', flexWrap:'wrap' }}>
                   <div style={{ display:'flex', alignItems:'center', gap:10, minWidth:0 }}>
                     {edit.linkedin_avatar_url ? <img src={edit.linkedin_avatar_url} alt="" style={{ width:36, height:36, borderRadius:'50%', objectFit:'cover', flexShrink:0 }}/> : <Briefcase size={28} strokeWidth={1.75} style={{ color:'var(--text-muted)' }}/>}
                     <div style={{ minWidth:0 }}>
-                      <div style={{ fontSize:13, fontWeight:700, color:'#166534', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{edit.linkedin_display_name || 'LinkedIn-Profil verbunden'}</div>
-                      <div style={{ fontSize:11, color:'#059669' }}>linkedin.com/in/{edit.linkedin_member_id}{edit.linkedin_verified_at ? ' · zuletzt geprüft '+new Date(edit.linkedin_verified_at).toLocaleDateString('de-DE') : ''}</div>
+                      <div style={{ fontSize:13, fontWeight:700, color:'#166534', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{edit.linkedin_display_name || uniAccount?.provider_public_id || 'LinkedIn-Profil verbunden'}</div>
+                      <div style={{ fontSize:11, color:'#059669' }}>linkedin.com/in/{edit.linkedin_member_id || uniAccount?.provider_public_id}{edit.linkedin_verified_at ? ' · zuletzt geprüft '+new Date(edit.linkedin_verified_at).toLocaleDateString('de-DE') : ''}</div>
+                      {connectedBy && <div style={{ fontSize:11, color:'#059669' }}>Verknüpft von {connectedBy}</div>}
                     </div>
                   </div>
                   <div style={{ display:'flex', gap:8 }}>
-                    <button className="lk-btn lk-btn-ghost" type="button" onClick={connectLinkedIn} disabled={liConnecting}
+                    <button className="lk-btn lk-btn-ghost" type="button" onClick={connectLinkedInUnipile} disabled={liConnecting}
                       >
                       {liConnecting ? <span style={{display:'inline-flex',alignItems:'center',gap:6}}><Loader2 size={12} className="lk-spin"/>Prüfe…</span> : 'Erneut verbinden'}
                     </button>
@@ -1784,7 +1969,7 @@ export default function BrandVoice({ session, brandType = 'personal' }) {
                     <div style={{ fontSize:13, fontWeight:700, color:'var(--text-primary)' }}>Noch nicht verbunden</div>
                     <div style={{ fontSize:11, color:'var(--text-muted)', marginTop:2 }}>Voraussetzung für Posting, Vernetzungen und Nachrichten aus diesem Auftritt. Du musst auf linkedin.com eingeloggt sein.</div>
                   </div>
-                  <button className="lk-btn lk-btn-primary" type="button" onClick={connectLinkedIn} disabled={liConnecting}
+                  <button className="lk-btn lk-btn-primary" type="button" onClick={connectLinkedInUnipile} disabled={liConnecting}
                     style={{ flexShrink:0 }}>
                     {liConnecting ? <span style={{display:'inline-flex',alignItems:'center',gap:6}}><Loader2 size={14} className="lk-spin"/>Lese Session…</span> : <span style={{display:'inline-flex',alignItems:'center',gap:6}}><LinkedinIcon size={14}/>Mit LinkedIn verbinden</span>}
                   </button>
@@ -1797,7 +1982,112 @@ export default function BrandVoice({ session, brandType = 'personal' }) {
         </div>
       )}
 
+      {/* ── Popup: Company Page verbinden ──────────────── */}
+      {showCpModal && editIsCompany && (
+        <div onClick={()=>setShowCpModal(false)}
+          style={{ position:'fixed', inset:0, background:'rgba(0,0,0,0.5)', display:'flex', alignItems:'center', justifyContent:'center', zIndex:1000, padding:20 }}>
+          <div onClick={e=>e.stopPropagation()}
+            style={{ background:'#fff', borderRadius:14, width:'100%', maxWidth:560, padding:24, boxShadow:'0 20px 60px rgba(0,0,0,.25)', maxHeight:'85vh', overflowY:'auto' }}>
+            <div style={{ display:'flex', justifyContent:'space-between', alignItems:'flex-start', marginBottom:14 }}>
+              <div>
+                <div style={{ fontSize:11, fontWeight:700, color:'var(--text-muted)', textTransform:'uppercase', letterSpacing:'0.05em' }}>LinkedIn Company Page</div>
+                <h3 style={{ fontSize:18, fontWeight:700, margin:'4px 0 0', color:'var(--text-primary)' }}>Company Page verbinden</h3>
+              </div>
+              <button onClick={()=>setShowCpModal(false)} style={{ background:'none', border:'none', cursor:'pointer', color:'var(--text-muted)', padding:0, lineHeight:1 }}><X size={20} strokeWidth={1.75}/></button>
+            </div>
+
+            {!edit.id ? (
+              <div style={{ fontSize:12, color:'#92400E', padding:'10px 12px', background:'#FFFBEB', border:'1px solid #FDE68A', borderRadius:8 }}>Bitte speichere die Company Brand zuerst.</div>
+            ) : (<>
+              {/* Aktueller Status */}
+              {edit.linkedin_org_id && (
+                <div style={{ marginBottom:14, padding:'12px 14px', background:'#F0FDF4', border:'1.5px solid #BBF7D0', borderRadius:10, display:'flex', alignItems:'center', gap:12, justifyContent:'space-between', flexWrap:'wrap' }}>
+                  <div style={{ display:'flex', alignItems:'center', gap:10, minWidth:0 }}>
+                    <Building2 size={26} strokeWidth={1.75} style={{ color:'#166534' }}/>
+                    <div style={{ minWidth:0 }}>
+                      <div style={{ fontSize:13, fontWeight:700, color:'#166534', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{edit.linkedin_org_name || 'Company Page verbunden'}</div>
+                      <div style={{ fontSize:11, color:'#059669' }}>Postet als Page{edit.linkedin_org_verified_at ? ' · verbunden '+new Date(edit.linkedin_org_verified_at).toLocaleDateString('de-DE') : ''}</div>
+                    </div>
+                  </div>
+                  <button className="lk-btn lk-btn-ghost" type="button" onClick={disconnectCompanyPage}>Trennen</button>
+                </div>
+              )}
+
+              {/* Erklärung des Modells */}
+              <div style={{ fontSize:12, color:'var(--text-muted)', marginBottom:14, lineHeight:1.55, padding:'10px 12px', background:'#F8FAFC', border:'1px solid var(--border)', borderRadius:8 }}>
+                Wähle die LinkedIn-Seite deines Unternehmens. Sie wird <b>über ein verbundenes LinkedIn-Profil</b> verknüpft, das sie administriert — kein separater Login, keine Zusatzkosten. Es erscheinen alle Seiten, die deine verbundenen Profile verwalten.
+              </div>
+
+              {cpLoadingOrgs ? (
+                <div style={{ display:'flex', alignItems:'center', gap:8, fontSize:13, color:'var(--text-muted)', padding:'14px 0' }}><Loader2 size={14} className="lk-spin"/>Suche deine Company Pages…</div>
+              ) : cpLoginsCount === 0 ? (
+                <div style={{ fontSize:13, color:'var(--text-primary)', padding:'14px 16px', background:'#FFFBEB', border:'1px solid #FDE68A', borderRadius:10, lineHeight:1.55 }}>
+                  <div style={{ fontWeight:700, marginBottom:4 }}>Noch kein LinkedIn-Profil verbunden</div>
+                  Verbinde zuerst ein persönliches LinkedIn-Profil, das diese Company Page administriert — z.B. in einer <b>Personal Brand</b>. Danach erscheint die Seite hier automatisch.
+                  <div style={{ marginTop:10 }}>
+                    <a href="/personal-brand" className="lk-btn lk-btn-ghost" style={{ textDecoration:'none', display:'inline-flex', alignItems:'center', gap:6 }}><LinkedinIcon size={14}/>Zu den Personal Brands</a>
+                  </div>
+                </div>
+              ) : cpOrgs.length === 0 ? (
+                <div style={{ fontSize:12, color:'var(--text-muted)', padding:'12px 14px', background:'#F8FAFC', border:'1px solid var(--border)', borderRadius:8, lineHeight:1.5 }}>
+                  Deine verbundenen LinkedIn-Profile administrieren keine Company Pages. Nur Seiten, für die dein Profil Admin-Rechte hat, können verknüpft werden.
+                </div>
+              ) : (
+                <>
+                  <div style={{ fontSize:12, fontWeight:700, color:'var(--text-primary)', marginBottom:8 }}>Deine Company Pages <span style={{ fontWeight:500, color:'var(--text-muted)' }}>({cpOrgs.length})</span></div>
+                  {cpOrgs.length > 6 && (
+                    <input value={cpSearch} onChange={e=>setCpSearch(e.target.value)} placeholder="Page suchen…"
+                      style={{ width:'100%', padding:'9px 12px', border:'1.5px solid var(--border)', borderRadius:8, fontSize:13, marginBottom:8 }}/>
+                  )}
+                  <div style={{ display:'flex', flexDirection:'column', gap:8, maxHeight:340, overflowY:'auto' }}>
+                    {cpOrgs.filter(o => !cpSearch || (o.name||'').toLowerCase().includes(cpSearch.toLowerCase())).map(o => {
+                      const active = String(o.org_id) === String(edit.linkedin_org_id)
+                      return (
+                        <button key={o.org_id} type="button" disabled={cpSaving} onClick={()=>saveCompanyPage(o)}
+                          style={{ display:'flex', alignItems:'center', justifyContent:'space-between', gap:10, padding:'11px 14px', border:'1.5px solid '+(active?'#BBF7D0':'var(--border)'), background: active?'#F0FDF4':'#fff', borderRadius:10, cursor:'pointer', textAlign:'left' }}>
+                          <span style={{ display:'inline-flex', alignItems:'center', gap:10, minWidth:0 }}>
+                            <Building2 size={18} strokeWidth={1.75} style={{ color: active?'#166534':'var(--text-muted)', flexShrink:0 }}/>
+                            <span style={{ minWidth:0 }}>
+                              <span style={{ display:'block', fontSize:13, fontWeight:600, color:'var(--text-primary)', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{o.name || o.org_id}</span>
+                              <span style={{ display:'block', fontSize:11, color:'var(--text-muted)' }}>über {o.login_label}</span>
+                            </span>
+                          </span>
+                          <span style={{ fontSize:12, fontWeight:700, color: active?'#166534':'var(--primary)', flexShrink:0 }}>{active ? '✓ Verbunden' : 'Auswählen'}</span>
+                        </button>
+                      )
+                    })}
+                  </div>
+                </>
+              )}
+
+              {cpError && <div style={{ marginTop:12, padding:'8px 12px', background:'#FEF2F2', border:'1px solid #FCA5A5', borderRadius:8, fontSize:12, color:'#991B1B' }}>{cpError}</div>}
+              <div style={{ marginTop:14, fontSize:11, color:'var(--text-muted)', lineHeight:1.5 }}>Company Pages können auf LinkedIn keine Vernetzungsanfragen/Nachrichten senden — für Pages sind Posten und Analytics verfügbar.</div>
+            </>)}
+          </div>
+        </div>
+      )}
+
       {/* ── Popup: Sichtbarkeit ────────────────────────── */}
+      {showLimitModal && (
+        <div onClick={() => !checkoutBusy && setShowLimitModal(false)}
+          style={{ position:'fixed', inset:0, background:'rgba(0,0,0,0.5)', display:'flex', alignItems:'center', justifyContent:'center', zIndex:1000, padding:20 }}>
+          <div onClick={e => e.stopPropagation()}
+            style={{ background:'var(--surface,#fff)', borderRadius:16, boxShadow:'0 24px 64px rgba(15,23,42,0.18)', width:440, maxWidth:'92vw', padding:26 }}>
+            <div style={{ fontSize:17, fontWeight:800, color:'var(--text-strong,#111827)', marginBottom:10 }}>Keine LinkedIn-Verknüpfung mehr frei</div>
+            <p style={{ fontSize:13.5, color:'#334155', lineHeight:1.6, margin:'0 0 18px' }}>
+              Deine Lizenz enthält <strong>1 LinkedIn-Verknüpfung</strong> — die ist bereits belegt. Für ein weiteres LinkedIn-Profil buche eine zusätzliche Verknüpfung für <strong>5,99 €/Monat</strong> hinzu. Alternativ kannst du das bestehende Profil über die Marken-Freigabe in anderen Teams mitnutzen.
+            </p>
+            <div style={{ display:'flex', gap:8, justifyContent:'flex-end', flexWrap:'wrap' }}>
+              <button className="lk-btn lk-btn-ghost" type="button" disabled={checkoutBusy} onClick={() => setShowLimitModal(false)}>Abbrechen</button>
+              <button className="lk-btn lk-btn-ghost" type="button" disabled={checkoutBusy} onClick={() => { window.location.href = '/marketplace' }}>Zum Marketplace</button>
+              <button className="lk-btn lk-btn-cta" type="button" disabled={checkoutBusy} onClick={startAddonCheckout}>
+                {checkoutBusy ? <span style={{display:'inline-flex',alignItems:'center',gap:6}}><Loader2 size={13} className="lk-spin"/>Öffne Zahlung…</span> : 'Weiteres Profil hinzufügen'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {showVisibilityModal && (
         <div onClick={()=>setShowVisibilityModal(false)}
           style={{ position:'fixed', inset:0, background:'rgba(0,0,0,0.5)', display:'flex', alignItems:'center', justifyContent:'center', zIndex:1000, padding:20 }}>

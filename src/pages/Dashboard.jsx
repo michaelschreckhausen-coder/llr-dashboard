@@ -12,12 +12,14 @@
 
 import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { ChevronUp, ChevronDown, BarChart3, ListChecks } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import { colors, radii, shadows, space, motion, typography } from '../theme';
 import { useDashboardData } from '../hooks/useDashboardData';
 import { useLeadly } from '../hooks/useLeadly';
 import { detectLeadeskExtension } from '../lib/leadeskExtension';
 import LeadlyHero from '../components/leadly/LeadlyHero';
+import LinkedInAnalyticsTiles from '../components/leadly/LinkedInAnalyticsTiles';
 
 // ─── Helpers ─────────────────────────────────────────────────────────────
 const leadName = (l) => (`${l.first_name || ''} ${l.last_name || ''}`.trim() || l.name || '—');
@@ -82,6 +84,39 @@ const SUGGESTION_AREAS = {
   linkedin_unanswered: AREA_META['kontakt'],
   content_post:        AREA_META['content'],
 };
+
+// Kompaktes Cockpit-Dropdown (oeffnet nach OBEN), flankiert den Orb.
+function CockpitDropdown({ icon, value, options, onSelect, align = 'left' }) {
+  const [open, setOpen] = React.useState(false);
+  const ref = React.useRef(null);
+  React.useEffect(() => {
+    if (!open) return;
+    const h = (e) => { if (ref.current && !ref.current.contains(e.target)) setOpen(false); };
+    document.addEventListener('mousedown', h);
+    return () => document.removeEventListener('mousedown', h);
+  }, [open]);
+  const cur = options.find(o => o.value === value) || options[0];
+  return (
+    <div ref={ref} style={{ position: 'relative' }}>
+      <button type="button" onClick={() => setOpen(o => !o)}
+        style={{ display: 'inline-flex', alignItems: 'center', gap: 6, maxWidth: 176, background: '#fff', border: '1px solid var(--border,#E4E7EC)', borderRadius: 999, padding: '5px 11px', fontSize: 11.5, fontWeight: 600, color: 'var(--text-strong,#111827)', cursor: 'pointer', boxShadow: '0 1px 2px rgba(15,23,42,.05)', whiteSpace: 'nowrap' }}>
+        <span style={{ color: 'var(--wl-primary, rgb(49,90,231))', display: 'inline-flex' }}>{icon}</span>
+        <span style={{ overflow: 'hidden', textOverflow: 'ellipsis' }}>{cur?.label}</span>
+        <ChevronDown size={13} style={{ opacity: .5, flexShrink: 0 }} />
+      </button>
+      {open && (
+        <div style={{ position: 'absolute', top: 'calc(100% + 6px)', [align]: 0, minWidth: 178, background: '#fff', border: '1px solid var(--border,#E4E7EC)', borderRadius: 12, boxShadow: '0 12px 34px rgba(15,23,42,.15)', padding: 5, zIndex: 60 }}>
+          {options.map(o => (
+            <button key={o.value} type="button" onClick={() => { onSelect(o.value); setOpen(false); }}
+              style={{ display: 'flex', alignItems: 'center', gap: 8, width: '100%', textAlign: 'left', background: o.value === value ? 'var(--wl-primary-tint, #EFF3FF)' : 'transparent', border: 'none', borderRadius: 8, padding: '7px 9px', fontSize: 12, fontWeight: o.value === value ? 700 : 500, color: 'var(--text-strong,#111827)', cursor: 'pointer' }}>
+              {o.label}
+            </button>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
 
 function suggestionReason(t) {
   if (!t.due_date) return '';
@@ -258,6 +293,15 @@ export default function Dashboard({ session }) {
         .sort((a, b) => a._prio - b._prio)
     : suggestions;
 
+  const [cockpitNarrow, setCockpitNarrow] = React.useState(false);
+  const [wide2col, setWide2col] = React.useState(true);
+  const [planCat, setPlanCat] = React.useState('all');
+  useEffect(() => {
+    const c = () => { const w = window.innerWidth || document.documentElement.clientWidth || 0; setCockpitNarrow(w > 0 && w < 900); setWide2col(!(w > 0 && w < 1180)); };
+    c(); const t = setTimeout(c, 300); window.addEventListener('resize', c);
+    return () => { clearTimeout(t); window.removeEventListener('resize', c); };
+  }, []);
+
   // ── Ab hier early-return erlaubt (keine Hooks mehr darunter) ──
   // Loading-Screen NUR beim Erstload: useDashboardData refetcht alle 60s und
   // setzt isLoading erneut — ein early-return würde dann den kompletten Baum
@@ -273,6 +317,63 @@ export default function Dashboard({ session }) {
 
   const now = new Date();
   const totalOverdue = _overdue.length;
+
+  // Aufgaben-Kategorien (fuers rechte Dropdown) aus den vorhandenen Vorschlaegen
+  const planCatSet = [];
+  for (const sg of displayedSuggestions) {
+    if (sg.area && !planCatSet.find(c => c.value === sg.area.key)) planCatSet.push({ value: sg.area.key, label: sg.area.label });
+  }
+  const planCats = [{ value: 'all', label: 'Alle Aufgaben' }, ...planCatSet];
+  const planShown = planCat === 'all' ? displayedSuggestions : displayedSuggestions.filter(sg => sg.area?.key === planCat);
+  const PLAN_PLURAL = { 'Deal': 'Deals', 'Kontakt': 'Kontakte', 'Aufgabe': 'Aufgaben', 'Follow-up': 'Follow-ups', 'Content': 'Content' };
+  const planCounts = {};
+  for (const sg of planShown.slice(0, 4)) if (sg.area) planCounts[sg.area.label] = (planCounts[sg.area.label] || 0) + 1;
+  const planScopeText = Object.entries(planCounts).map(([k, v]) => `${v} ${v > 1 ? (PLAN_PLURAL[k] || k) : k}`).join(' · ');
+
+  const planNode = (
+    <div>
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8, marginBottom: 8 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 12, color: colors.inkMuted, fontWeight: 600 }}>
+          <span aria-hidden="true">✓</span> Dein Plan heute
+        </div>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+          {!cockpitNarrow && <CockpitDropdown icon={<ListChecks size={13} />} value={planCat} options={planCats} onSelect={setPlanCat} align="right" />}
+          {suggestions.length >= 3 && (
+            <button type="button" className="lk-btn lk-btn-ghost lk-btn-sm"
+              onClick={() => askLeadly(`Hier ist mein heutiger Plan:\n${displayedSuggestions.map((s, i) => `${i + 1}. [${s.area.label}] ${s.title}`).join('\n')}\nGeh ihn mit mir durch: Womit starte ich, und was kannst du direkt vorbereiten?`)}>
+              Alle
+            </button>
+          )}
+        </div>
+      </div>
+      {planShown.length > 0 ? (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+          {planScopeText && (
+            <span style={{ alignSelf: 'flex-start', fontSize: 9.5, fontWeight: 700, letterSpacing: '0.05em', textTransform: 'uppercase', color: '#003060', background: '#EEF0FA', padding: '3px 9px', borderRadius: 999, whiteSpace: 'nowrap' }}>{planScopeText}</span>
+          )}
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, minmax(0, 1fr))', gap: 9, alignItems: 'start' }}>
+            {planShown.slice(0, 4).map((s, i) => (
+              <div key={s.id}>
+              <div className="lk-tile-in" style={{ background: colors.white, border: `1px solid ${colors.border}`, borderRadius: 12, padding: '10px 11px' }}>
+                <span style={{ fontSize: 10, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.04em', color: s.area.color, background: s.area.bg, padding: '2px 7px', borderRadius: 999 }}>{s.area.label}</span>
+                <div style={{ fontSize: 12.5, fontWeight: 600, color: colors.ink, lineHeight: 1.35, margin: '6px 0 8px' }}>{s.title}</div>
+                <div style={{ display: 'flex', gap: 6 }}>
+                  <button className="lk-btn lk-btn-primary lk-btn-sm" style={{ flex: 1, fontSize: 11 }}
+                    onClick={() => (s.action ? takeAction(s.action) : askLeadly(s.prompt))}>{s.action ? 'Erledigen' : 'Angehen'}</button>
+                  {s.href && <button className="lk-btn lk-btn-ghost lk-btn-sm" style={{ fontSize: 11 }} onClick={() => nav(s.href)}>Öffnen</button>}
+                </div>
+              </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      ) : (
+        <div style={{ fontSize: 12, color: colors.inkMuted, lineHeight: 1.5, padding: '8px 2px' }}>
+          Aktuell nichts Offenes — frag Leadly, was heute sinnvoll ist.
+        </div>
+      )}
+    </div>
+  );
 
   return (
     <div>
@@ -297,7 +398,7 @@ export default function Dashboard({ session }) {
             style={{ flexShrink: 0, border: 'none', background: 'transparent', color: '#991B1B', cursor: 'pointer', fontSize: 15, fontWeight: 700 }} aria-label="Ausblenden">✕</button>
         </div>
       )}
-      {affBanner && (
+      {cockpitNarrow && affBanner && (
         <div onClick={() => nav('/settings/affiliate')} style={{
           display: 'flex', alignItems: 'center', gap: 10, cursor: 'pointer',
           background: '#FFFBEB', border: '1px solid #FDE68A', borderRadius: 10,
@@ -308,77 +409,57 @@ export default function Dashboard({ session }) {
             style={{ marginLeft: 'auto', border: 'none', background: 'transparent', color: '#92400E', cursor: 'pointer', fontSize: 15, fontWeight: 700 }} aria-label="Ausblenden">✕</button>
         </div>
       )}
-      {/* Leadly-Hero — Gesicht + Essenz + Eingabe + Inline-Antworten */}
-      <LeadlyHero
-        firstName={firstName}
-        leadly={leadly}
-        stats={{
-          leads: (leads || []).length,
-          activeDeals: _deals.length,
-          overdue: totalOverdue,
-          today: _today.length,
-        }}
-        onOpenTasks={() => nav('/aufgaben')}
-      />
-      <div>
-
-        {/* Leadlys Plan für heute — priorisierte, übernehmbare Aktionen */}
-        <div style={{ marginTop: space[5] }}>
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 8, marginBottom: space[3] }}>
-            <div className="lk-eyebrow" style={{ marginBottom: 0 }}>
-              Leadlys Plan für heute
-            </div>
-            {suggestions.length >= 3 && (
-              <button type="button"
-                onClick={() => askLeadly(
-                  `Hier ist mein heutiger Plan:\n${displayedSuggestions.map((s, i) => `${i + 1}. [${s.area.label}] ${s.title}${s.reason ? ` (${s.reason})` : ''}`).join('\n')}\nGeh ihn mit mir durch: Womit starte ich am besten, und welche Schritte kannst du direkt für mich vorbereiten?`
-                )}
-                className="lk-btn lk-btn-ghost lk-btn-sm">
-                Alle mit Leadly durchgehen
-              </button>
-            )}
+      {/* Leadly-Cockpit: 3 Kästchen auf dem Standard-Hintergrund —
+          Analysen (links) · weißes Chat-Kästchen mit Orb-Beule (Mitte) · Plan (rechts) */}
+      {(() => {
+        const affSlot = (!cockpitNarrow && affBanner) ? (
+          <div onClick={() => nav('/settings/affiliate')} style={{
+            display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer',
+            background: '#FFFBEB', border: '1px solid #FDE68A', borderRadius: 10,
+            padding: '7px 12px', fontSize: 12, color: '#92400E', lineHeight: 1.3,
+          }}>
+            <span style={{ overflow: 'hidden', textOverflow: 'ellipsis' }}>💡 <strong>Wusstest du?</strong> Empfiehl Leadesk weiter — 20 % Provision für 12 Monate. <span style={{ textDecoration: 'underline' }}>Mehr erfahren →</span></span>
+            <button onClick={(e) => { e.stopPropagation(); localStorage.setItem('lk_aff_banner_dismissed', '1'); setAffBanner(false); }}
+              style={{ marginLeft: 'auto', flexShrink: 0, border: 'none', background: 'transparent', color: '#92400E', cursor: 'pointer', fontSize: 14, fontWeight: 700 }} aria-label="Ausblenden">✕</button>
           </div>
-          {suggestions.length > 0 ? (
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: space[3] }}>
-              {displayedSuggestions.map((s, idx) => (
-                <div key={s.id} style={{ background: colors.white, border: `1px solid ${colors.border}`, borderRadius: radii.lg, padding: '14px 16px', display: 'flex', flexDirection: 'column', gap: 8 }}>
-                  <span style={{ alignSelf: 'flex-start', fontSize: 10, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.04em', color: s.area.color, background: s.area.bg, padding: '2px 8px', borderRadius: radii.pill }}>{idx + 1} · {s.area.label}</span>
-                  <div style={{ fontSize: 14, fontWeight: 600, color: colors.ink, lineHeight: 1.35 }}>{s.title}</div>
-                  {s.reason && <div style={{ fontSize: 12, color: colors.inkMuted }}>{s.reason}</div>}
-                  <div style={{ display: 'flex', gap: 8, marginTop: 'auto', paddingTop: 4 }}>
-                    <button className="lk-btn lk-btn-primary" onClick={() => (s.action ? takeAction(s.action) : askLeadly(s.prompt))}
-                      >
-                      {s.action ? 'Erledigen' : 'Mit Leadly angehen'}
-                    </button>
-                    {s.href && (
-                      <button onClick={() => nav(s.href)} className="lk-btn lk-btn-ghost">
-                        Öffnen
-                      </button>
-                    )}
-                  </div>
-                </div>
-              ))}
+        ) : null;
+        const hero = (
+          <LeadlyHero
+            affiliateSlot={affSlot}
+            firstName={firstName}
+            leadly={leadly}
+            stats={{
+              leads: (leads || []).length,
+              activeDeals: _deals.length,
+              overdue: totalOverdue,
+              today: _today.length,
+            }}
+            onOpenTasks={() => nav('/aufgaben')}
+            layout="cockpit"
+          />
+        );
+        const analytics = <LinkedInAnalyticsTiles />;
+        if (cockpitNarrow) {
+          return (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+              {hero}
+              {analytics}
+              {planNode}
             </div>
-          ) : (
-            <div style={{
-              background: colors.white, border: `1px solid ${colors.border}`,
-              borderRadius: radii.lg, padding: '20px 22px',
-              display: 'flex', flexDirection: 'column', gap: 8,
-            }}>
-              <div style={{ fontSize: 14, fontWeight: 600, color: colors.ink, display: 'flex', alignItems: 'center', gap: 8 }}>
-                <span aria-hidden="true">✨</span> Leadly hat gerade nichts vorzuschlagen
-              </div>
-              <div style={{ fontSize: 13, color: colors.inkMuted, lineHeight: 1.5, maxWidth: '60ch' }}>
-                Aktuell stehen keine offenen Follow-ups, heißen Kontakte, aktiven Deals oder überfälligen Aufgaben an. Sobald sich etwas ergibt, erscheinen hier konkrete Vorschläge.
-              </div>
-              <button onClick={() => askLeadly('Was kann ich heute im Vertrieb sinnvoll angehen?')}
-                className="lk-btn lk-btn-ghost lk-btn-sm" style={{ alignSelf: 'flex-start', marginTop: 4 }}>
-                Leadly fragen
-              </button>
+          );
+        }
+        // Desktop: oben Chat+Orb (volle Breite), darunter Analyse (links) + Plan (rechts) symmetrisch.
+        // Affiliate-Banner wird oben (über dem Cockpit) als eigener Block gerendert.
+        return (
+          <div style={{ position: 'relative' }}>
+            {hero}
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 20, alignItems: 'start', marginTop: 18 }}>
+              <div>{analytics}</div>
+              <div>{planNode}</div>
             </div>
-          )}
-        </div>
-      </div>
+          </div>
+        );
+      })()}
 
     </div>
   );

@@ -85,6 +85,8 @@ const flashStyle = (type) => ({
 export default function Marketplace() {
   const navigate = useNavigate()
   const { catalog, subscribedSlugs, waitlistedSlugs, stripeManagedSlugs, isLoading, error, joinWaitlist, activateAddon, cancelAddon, reload } = useAddons()
+  const [uniAllowance, setUniAllowance] = useState(null)
+  useEffect(() => { supabase.rpc('unipile_allowance').then(({ data }) => setUniAllowance(data || null)).catch(() => setUniAllowance(null)) }, [])
   const { refresh: refreshEntitlements } = useEntitlements()
   const [category, setCategory] = useState('all')
   const [search, setSearch]     = useState('')
@@ -156,6 +158,7 @@ export default function Marketplace() {
   const filtered = useMemo(() => {
     const term = search.trim().toLowerCase()
     return (catalog || []).filter((a) => {
+      if (a.slug === 'automation') return false   // eigene Kapazitaets-Kachel oben (LinkedIn-Verknuepfung)
       if (category !== 'all' && a.category !== category) return false
       if (!term) return true
       return (
@@ -281,7 +284,13 @@ export default function Marketplace() {
         </div>
 
         {/* Credits + Top-Up-Section (Sprint J.2 Phase B) */}
-        <CreditsTopupSection onFlash={showFlash} />
+        <CreditsTopupSection onFlash={showFlash} linkedin={{
+          addon: (catalog || []).find(a => a.slug === 'automation') || null,
+          allowance: uniAllowance,
+          subscribed: subscribedSlugs.has('automation'),
+          stripeManaged: stripeManagedSlugs.has('automation'),
+          onSubscribe, onManage: onManageBilling,
+        }} />
 
         {/* Add-on-Tabs + Search */}
         <div style={{ display: 'flex', alignItems: 'center', gap: 16, flexWrap: 'wrap' }}>

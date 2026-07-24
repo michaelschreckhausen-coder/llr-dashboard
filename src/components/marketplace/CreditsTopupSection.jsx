@@ -7,7 +7,7 @@
 // Wird in Marketplace.jsx als Sektion oberhalb der Add-ons gerendered.
 
 import { useEffect, useMemo, useState } from 'react'
-import { Building2, Save, User } from 'lucide-react'
+import { Building2, Save, User, Link2 } from 'lucide-react'
 import { supabase } from '../../lib/supabase'
 
 const PRIMARY = 'var(--wl-primary, #0A6FB0)'
@@ -19,7 +19,7 @@ const TYPE_LABELS = {
   crm_contacts:   { label: 'CRM Kontakte',      icon: <User size={16} strokeWidth={1.75}/>, desc: 'Monatlich · für Sales-Lizenzen mit erhöhtem Bedarf' },
 }
 
-export default function CreditsTopupSection({ onFlash }) {
+export default function CreditsTopupSection({ onFlash, linkedin = null }) {
   const [offers, setOffers]   = useState([])
   const [loading, setLoading] = useState(true)
   const [error, setError]     = useState(null)
@@ -152,6 +152,37 @@ export default function CreditsTopupSection({ onFlash }) {
           </div>
         )
       })}
+
+      {linkedin?.addon && (() => {
+        const al = linkedin.allowance
+        const desc = al
+          ? `Jedes weitere LinkedIn-Profil — serverseitig über Unipile. Aktuell ${al.connected} von ${al.included} genutzt${al.can_add ? '' : ' — Limit erreicht'}.`
+          : 'Jedes weitere LinkedIn-Profil — serverseitig über Unipile (Analyse, Nachrichten, Vernetzung, Content).'
+        return (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+            <div style={{ display: 'flex', alignItems: 'baseline', gap: 8 }}>
+              <span style={{ fontSize: 14, fontWeight: 700, color: 'var(--text-strong, #111827)' }}>
+                <Link2 size={16} strokeWidth={1.75}/> LinkedIn-Verknüpfung
+              </span>
+              <span style={{ fontSize: 11, color: 'var(--text-muted, #6B7280)' }}>· pro Lizenz 1 inklusive · Monatlich · jederzeit kündbar</span>
+            </div>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(220px, 1fr))', gap: 12 }}>
+              <div style={{ background: 'var(--surface, #fff)', border: '1.5px solid var(--border, #E4E7EC)', borderRadius: 12, padding: '14px 16px', display: 'flex', flexDirection: 'column', gap: 8 }}>
+                <div style={{ fontSize: 15, fontWeight: 800, color: 'var(--text-strong, #111827)', letterSpacing: '-0.01em' }}>Weitere LinkedIn-Anbindung</div>
+                <div style={{ fontSize: 11, color: 'var(--text-muted, #6B7280)', minHeight: 28, lineHeight: 1.4 }}>{desc}</div>
+                <div style={{ display: 'flex', alignItems: 'baseline', gap: 4, marginTop: 4 }}>
+                  <span style={{ fontSize: 22, fontWeight: 900, color: 'var(--text-strong, #111827)', letterSpacing: '-0.02em' }}>5,99 €</span>
+                  <span style={{ fontSize: 11, color: 'var(--text-muted, #6B7280)' }}>/ Monat</span>
+                </div>
+                <button className="lk-btn lk-btn-cta" style={{ marginTop: 6 }}
+                  onClick={() => (linkedin.subscribed ? linkedin.onManage?.(linkedin.addon) : linkedin.onSubscribe?.(linkedin.addon))}>
+                  {linkedin.subscribed ? 'Verwalten' : 'Abo starten'}
+                </button>
+              </div>
+            </div>
+          </div>
+        )
+      })()}
     </div>
   )
 }

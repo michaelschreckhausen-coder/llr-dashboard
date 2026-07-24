@@ -46,6 +46,7 @@ const T = {
 }
 
 // ─── SVG Icons ────────────────────────────────────────────────────────────────
+import ReconnectLinkedInModal from './ReconnectLinkedInModal'
 function SvgIcon({ children, size=18 }) {
   return (
     <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
@@ -126,6 +127,8 @@ function getNav(t) {
   { to: '/messages',        icon: IcMail,     label: 'Nachrichten' },
   { to: '/ssi',             icon: IcTarget,   label: t('nav.ssiTracker') },
   { to: '/linkedin-analytics', icon: IcBarChart, label: 'Post-Analytics' },
+  { to: '/profil-analyse', icon: IcTarget, label: 'Profil & SSI' },
+  { to: '/netzwerk-analytics', icon: IcUsers, label: 'Netzwerk & Dialog' },
   { to: '/linkedin-engagement', icon: IcZap, label: 'Engagement' },
   { to: '/profil-checker',  icon: IcLinkedIn, label: 'Profil-Checker' },
   { to: '/profiltexte',     icon: IcLinkedIn, label: t('nav.profiltexte') },
@@ -1168,6 +1171,7 @@ export default function Layout({ session, role, onLogout, children }) {
         <CreditsBanner />
           <main style={{ flex:1, overflowY: isMobile ? 'hidden' : 'auto', padding: isMobile ? 0 : 28, minHeight:0, display:'flex', flexDirection:'column' }}>
           {children}
+          <ReconnectLinkedInModal />
         </main>
         <TimerBar />
       </div>

@@ -81,7 +81,7 @@ const QUICK_CHIPS = [
   'Was sollte ich diese Woche posten?',
 ];
 
-export default function LeadlyHero({ firstName, leadly, stats = {}, onOpenTasks }) {
+export default function LeadlyHero({ firstName, leadly, stats = {}, onOpenTasks, layout = 'classic', analyticsSlot = null, planSlot = null, leftControl = null, rightControl = null, affiliateSlot = null }) {
   const [text, setText] = useState('');
   const [engaged, setEngaged] = useState(false);
   const [showTranscript, setShowTranscript] = useState(false);
@@ -255,6 +255,20 @@ export default function LeadlyHero({ firstName, leadly, stats = {}, onOpenTasks 
   const salute = hour < 11 ? 'Guten Morgen' : hour < 17 ? 'Hallo' : 'Guten Abend';
   const { leads = 0, activeDeals = 0, overdue = 0, today = 0 } = stats;
 
+  const isCockpit = layout === 'cockpit';
+  const [isNarrow, setIsNarrow] = useState(false);
+  useEffect(() => {
+    // Desktop-Default (Wide): nur bei ECHT gemessener kleiner Breite auf Schmal wechseln.
+    const check = () => {
+      const w = window.innerWidth || document.documentElement.clientWidth || 0;
+      setIsNarrow(w > 0 && w < 900);
+    };
+    check();
+    const t = setTimeout(check, 300);
+    window.addEventListener('resize', check);
+    return () => { clearTimeout(t); window.removeEventListener('resize', check); };
+  }, []);
+
   const essenceShown = essence ? essence.slice(0, typedChars) : '';
   const chipStyle = {
     border: `1px solid ${colors.border}`, borderRadius: radii.pill,
@@ -272,13 +286,32 @@ export default function LeadlyHero({ firstName, leadly, stats = {}, onOpenTasks 
 
   return (
     <div ref={containerRef} style={{
+      position: 'relative',
       background: colors.white,
       border: `1px solid ${colors.border}`,
       borderRadius: 18,
       boxShadow: '0 1px 3px rgba(15,23,42,.05)',
-      padding: 'clamp(16px, 2.5vw, 26px)',
+      padding: isCockpit ? 'clamp(60px, 3.6vw, 66px) clamp(16px, 2.5vw, 26px) clamp(16px, 2.5vw, 26px)' : 'clamp(16px, 2.5vw, 26px)',
+      marginTop: isCockpit ? 66 : 0,
       marginBottom: space[8],
     }}>
+      {isCockpit && (
+        <>
+          <div style={{ position: 'absolute', top: -68, left: '50%', transform: 'translateX(-50%)', width: 142, height: 71, background: colors.white, borderTop: `1px solid ${colors.border}`, borderLeft: `1px solid ${colors.border}`, borderRight: `1px solid ${colors.border}`, borderRadius: '71px 71px 0 0', zIndex: 1 }} />
+          <div style={{ position: 'absolute', top: -60, left: '50%', transform: 'translateX(-50%)', zIndex: 2 }}>
+            <LeadlyOrb state={orbState} size={124} />
+          </div>
+          {leftControl && (
+            <div style={{ position: 'absolute', top: -34, right: 'calc(50% + 80px)', zIndex: 6 }}>{leftControl}</div>
+          )}
+          {rightControl && (
+            <div style={{ position: 'absolute', top: -34, left: 'calc(50% + 80px)', zIndex: 6 }}>{rightControl}</div>
+          )}
+          {affiliateSlot && (
+            <div style={{ position: 'absolute', bottom: 'calc(100% + 12px)', left: 0, right: 'calc(50% + 92px)', zIndex: 6 }}>{affiliateSlot}</div>
+          )}
+        </>
+      )}
       <style>{`
         @keyframes leadly-hero-pulse {
           0%, 100% { box-shadow: 0 0 0 0 rgba(239,68,68,0.45); }
@@ -289,25 +322,42 @@ export default function LeadlyHero({ firstName, leadly, stats = {}, onOpenTasks 
         }
       `}</style>
 
-      {/* ── Kopf: Orb + Begrüßung + Essenz ── */}
-      <div style={{ display: 'flex', gap: 'clamp(14px, 2.5vw, 26px)', alignItems: 'center', flexWrap: 'wrap' }}>
-        <LeadlyOrb state={orbState} size={104} />
-        <div style={{ flex: 1, minWidth: 220 }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 12.5, color: colors.inkMuted, fontWeight: 500 }}>
-            <span>{dateLabel}</span>
+      {/* ── Kopf: Orb + Begrüßung (+ Cockpit-Slots) ── */}
+      {(() => {
+        const greetingCore = (
+          <>
+            <div style={{ fontSize: 'clamp(22px, 2.6vw, 28px)', fontWeight: 800, letterSpacing: '-0.03em', lineHeight: 1.12, color: colors.ink, marginTop: 3 }}>
+              {salute}, {firstName || 'dort'} 👋
+            </div>
+            <div style={{ fontSize: 15.5, lineHeight: 1.55, color: colors.ink, fontWeight: 450, marginTop: 8, maxWidth: '62ch', minHeight: 24 }}>
+              {essence
+                ? <>{essenceShown}{typedChars < essence.length && <span style={{ opacity: 0.4 }}>▍</span>}</>
+                : briefingWaited
+                  ? 'Heute liegt nichts Dringendes an — frag mich einfach, womit ich helfen kann.'
+                  : <span style={{ color: colors.inkMuted }}>Leadly schaut sich deinen Tag an …</span>}
+            </div>
+          </>
+        );
+        if (isCockpit) {
+          return (
+            <div style={{ textAlign: 'center' }}>
+              <div style={{ fontSize: 12.5, color: colors.inkMuted, fontWeight: 500 }}>{dateLabel}</div>
+              <div style={{ maxWidth: 520, margin: '4px auto 0' }}>{greetingCore}</div>
+            </div>
+          );
+        }
+        return (
+          <div style={{ display: 'flex', gap: 'clamp(14px, 2.5vw, 26px)', alignItems: 'center', flexWrap: 'wrap' }}>
+            <LeadlyOrb state={orbState} size={104} />
+            <div style={{ flex: 1, minWidth: 220 }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 12.5, color: colors.inkMuted, fontWeight: 500 }}>
+                <span>{dateLabel}</span>
+              </div>
+              {greetingCore}
+            </div>
           </div>
-          <div style={{ fontSize: 'clamp(22px, 2.6vw, 28px)', fontWeight: 800, letterSpacing: '-0.03em', lineHeight: 1.12, color: colors.ink, marginTop: 3 }}>
-            {salute}, {firstName || 'dort'} 👋
-          </div>
-          <div style={{ fontSize: 15.5, lineHeight: 1.55, color: colors.ink, fontWeight: 450, marginTop: 8, maxWidth: '62ch', minHeight: 24 }}>
-            {essence
-              ? <>{essenceShown}{typedChars < essence.length && <span style={{ opacity: 0.4 }}>▍</span>}</>
-              : briefingWaited
-                ? 'Heute liegt nichts Dringendes an — frag mich einfach, womit ich helfen kann.'
-                : <span style={{ color: colors.inkMuted }}>Leadly schaut sich deinen Tag an …</span>}
-          </div>
-        </div>
-      </div>
+        );
+      })()}
 
       {/* ── Inline-Thread (erscheint nach der ersten Interaktion) ── */}
       {engaged && (visibleMessages.length > 0 || pendingUserShown || leadly.isSending || leadly.pendingActions.length > 0) && (
@@ -426,6 +476,7 @@ export default function LeadlyHero({ firstName, leadly, stats = {}, onOpenTasks 
       {voice.error && (
         <div style={{ marginTop: 6, fontSize: 12, color: colors.danger }}>{voice.error}</div>
       )}
+
 
       {/* ── Quick-Chips (bis zur ersten Interaktion) ── */}
       {!engaged && (
