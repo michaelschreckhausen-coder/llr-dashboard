@@ -20,9 +20,14 @@ export default function ReconnectLinkedInModal() {
     if (!activeTeamId || dismissed) return
     let cancelled = false
     ;(async () => {
+      const { data: { user } } = await supabase.auth.getUser()
+      if (!user || cancelled) return
+      // NUR eigene Marken des eingeloggten Users — sonst sieht ein Teamkollege
+      // (z.B. in geteiltem Team) den Reconnect-Hinweis für FREMDE Marken.
       const { data } = await supabase.from('brand_voices')
         .select('id, name, brand_name, account_type')
         .eq('linkedin_reconnect_required', true)
+        .eq('user_id', user.id)
         .limit(1)
       if (!cancelled) setPending((data && data[0]) || null)
     })()
