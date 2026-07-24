@@ -54,7 +54,7 @@ const MSG_TYPES = {
     softTarget:  '~400-800 Zeichen · max 5 Sätze',
     promptIntent: 'Schreibe eine erste LinkedIn-Direkt-Nachricht NACH erfolgreicher Vernetzung.'
       + ' Ziel: Conversation starten ODER konkreten Mehrwert anbieten. Länge 400-800 Zeichen,'
-      + ' max. ca. 5 Sätze. Persönlich, authentisch, du-Form je nach Brand Voice. KEIN harter'
+      + ' max. ca. 5 Sätze. Persönlich, authentisch, du-Form je nach Marke. KEIN harter'
       + ' Verkaufs-Pitch. Entweder EINE konkrete Frage stellen ODER EINEN konkreten Mehrwert'
       + ' (Link/Tipp/Beobachtung) anbieten — nicht beides.'
       + STRICT_FORMAT,
@@ -1612,7 +1612,7 @@ function renderBvSelect() {
   if (!wrap || !sel) return
   wrap.style.display = 'block'
   if (!brandVoices.length) {
-    sel.innerHTML = '<option value="">— Keine Brand Voice im Team —</option>'
+    sel.innerHTML = '<option value="">— Keine Marke im Team —</option>'
     return
   }
   sel.innerHTML = brandVoices.map(b =>
@@ -1649,11 +1649,11 @@ function updateBvBanner(bv) {
   if (bv) {
     banner.style.display = 'flex'
     banner.classList.remove('inactive')
-    label.textContent = 'Brand Voice: ' + bv.name
+    label.textContent = 'Marke: ' + bv.name
   } else {
     banner.style.display = 'flex'
     banner.classList.add('inactive')
-    label.textContent = 'Keine Brand Voice aktiv — Standard-Stil'
+    label.textContent = 'Keine Marke aktiv — Standard-Stil'
   }
 }
 
