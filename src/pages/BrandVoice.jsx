@@ -1294,6 +1294,8 @@ export default function BrandVoice({ session, brandType = 'personal' }) {
   const [liConnecting, setLiConnecting] = useState(false)
   const [uniAccount, setUniAccount] = useState(null) // verbundener Unipile-Account DIESER Brand (brand-scoped)
   const [connectedBy, setConnectedBy] = useState(null) // Name des Team-Users, der verknüpft hat
+  const [showLimitModal, setShowLimitModal] = useState(false) // LinkedIn-Verknüpfungs-Limit erreicht
+  const [checkoutBusy, setCheckoutBusy] = useState(false)
   const [freshlyCreated, setFreshlyCreated] = useState(false)
   const [liError, setLiError] = useState('')
   // Popups für Personal-Brand-Header-Buttons (Sichtbarkeit / LinkedIn verbinden)
@@ -1318,8 +1320,7 @@ export default function BrandVoice({ session, brandType = 'personal' }) {
       const { data: allow } = await supabase.rpc('unipile_allowance')
       if (allow && allow.can_add === false) {
         setLiConnecting(false)
-        setLiError('Deine Lizenz enthält 1 LinkedIn-Verknüpfung — die ist belegt. Für eine weitere buche „LinkedIn-Automatisierung" (5 €/Monat) im Marketplace zu. Du wirst weitergeleitet …')
-        setTimeout(() => { window.location.href = '/marketplace' }, 1600)
+        setShowLimitModal(true)
         return
       }
       const { data, error } = await supabase.functions.invoke('unipile-connect-link', { body: { brand_voice_id: edit.id, app_base: window.location.origin, success_path: window.location.pathname + '?li_unipile=' + edit.id } })
@@ -1327,14 +1328,25 @@ export default function BrandVoice({ session, brandType = 'personal' }) {
       // Serverseitiger Riegel (falls Client-Gate umgangen): 402 blocked → Marketplace
       if (data?.blocked) {
         setLiConnecting(false)
-        setLiError(data.message || 'Verknüpfungs-Limit erreicht — bitte im Marketplace zubuchen. Du wirst weitergeleitet …')
-        setTimeout(() => { window.location.href = '/marketplace' }, 1600)
+        setShowLimitModal(true)
         return
       }
       if (data?.error) throw new Error(data.message || data.error)
       if (!data?.url) throw new Error('Connect-URL fehlt in Antwort')
       window.location.href = data.url
     } catch (e) { setLiError(e?.message || 'Fehler beim Verbinden'); setLiConnecting(false) }
+  }
+
+  // „Weiteres Profil hinzufügen" → direkt zur Stripe-Zahlungsoberfläche (wie „Abo starten" im Marketplace)
+  async function startAddonCheckout() {
+    setCheckoutBusy(true)
+    try {
+      const { data, error } = await supabase.functions.invoke('create-addon-checkout-session', { body: { addon_slug: 'automation' } })
+      if (error) throw error
+      if (data?.error) throw new Error(data.error)
+      if (data?.url) { window.location.href = data.url; return }
+      throw new Error('Keine Checkout-URL erhalten')
+    } catch (e) { setCheckoutBusy(false); setLiError(e?.message || 'Checkout fehlgeschlagen') }
   }
 
   // ── Company-Page-Verbindung: über einen verbundenen Admin-Login eine
@@ -2040,6 +2052,26 @@ export default function BrandVoice({ session, brandType = 'personal' }) {
       )}
 
       {/* ── Popup: Sichtbarkeit ────────────────────────── */}
+      {showLimitModal && (
+        <div onClick={() => !checkoutBusy && setShowLimitModal(false)}
+          style={{ position:'fixed', inset:0, background:'rgba(0,0,0,0.5)', display:'flex', alignItems:'center', justifyContent:'center', zIndex:1000, padding:20 }}>
+          <div onClick={e => e.stopPropagation()}
+            style={{ background:'var(--surface,#fff)', borderRadius:16, boxShadow:'0 24px 64px rgba(15,23,42,0.18)', width:440, maxWidth:'92vw', padding:26 }}>
+            <div style={{ fontSize:17, fontWeight:800, color:'var(--text-strong,#111827)', marginBottom:10 }}>Keine LinkedIn-Verknüpfung mehr frei</div>
+            <p style={{ fontSize:13.5, color:'#334155', lineHeight:1.6, margin:'0 0 18px' }}>
+              Deine Lizenz enthält <strong>1 LinkedIn-Verknüpfung</strong> — die ist bereits belegt. Für ein weiteres LinkedIn-Profil buche eine zusätzliche Verknüpfung für <strong>5 €/Monat</strong> hinzu. Alternativ kannst du das bestehende Profil über die Marken-Freigabe in anderen Teams mitnutzen.
+            </p>
+            <div style={{ display:'flex', gap:8, justifyContent:'flex-end', flexWrap:'wrap' }}>
+              <button className="lk-btn lk-btn-ghost" type="button" disabled={checkoutBusy} onClick={() => setShowLimitModal(false)}>Abbrechen</button>
+              <button className="lk-btn lk-btn-ghost" type="button" disabled={checkoutBusy} onClick={() => { window.location.href = '/marketplace' }}>Zum Marketplace</button>
+              <button className="lk-btn lk-btn-cta" type="button" disabled={checkoutBusy} onClick={startAddonCheckout}>
+                {checkoutBusy ? <span style={{display:'inline-flex',alignItems:'center',gap:6}}><Loader2 size={13} className="lk-spin"/>Öffne Zahlung…</span> : 'Weiteres Profil hinzufügen'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {showVisibilityModal && (
         <div onClick={()=>setShowVisibilityModal(false)}
           style={{ position:'fixed', inset:0, background:'rgba(0,0,0,0.5)', display:'flex', alignItems:'center', justifyContent:'center', zIndex:1000, padding:20 }}>
