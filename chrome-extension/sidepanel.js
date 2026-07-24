@@ -478,6 +478,7 @@ async function importLead() {
       p_team_id: currentTeamId,
       p_user_id: currentUserId,
       p_profile: currentProfile,
+      p_brand_voice_id: activeBrandVoice?.id || null, // Import der aktiven Marke zuordnen (LinkedIn Kontakte ist strikt brand-scoped)
     })
     if (result !== null) {
       const isNew = result === true || (Array.isArray(result) && result[0] === true)
