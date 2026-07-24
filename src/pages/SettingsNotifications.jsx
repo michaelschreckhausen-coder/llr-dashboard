@@ -239,8 +239,8 @@ function LocaleButton({ active, onClick, disabled, children }) {
       onClick={onClick}
       disabled={disabled}
       style={{
-        padding: '8px 16px', border: '1.5px solid ' + (active ? 'var(--primary)' : '#e2e8f0'),
-        borderRadius: 8, background: active ? 'var(--primary)' : '#ffffff',
+        padding: '8px 16px', border: '1.5px solid ' + (active ? PRIMARY : '#e2e8f0'),
+        borderRadius: 8, background: active ? PRIMARY : '#ffffff',
         color: active ? '#ffffff' : '#0f172a',
         fontSize: 13, fontWeight: 600, cursor: disabled ? 'wait' : 'pointer',
         fontFamily: 'inherit', opacity: disabled ? 0.6 : 1,

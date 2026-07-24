@@ -15,18 +15,20 @@ import {
   ExternalLink, AlertCircle, CheckCircle2, Loader2, X, Info,
 } from 'lucide-react'
 import { supabase } from '../lib/supabase'
+import PageHeader from '../components/PageHeader'
 import { useTeam } from '../context/TeamContext'
+import { useBrandVoice } from '../context/BrandVoiceContext'
 import { mapEfError } from '../lib/efError'
 
 const PRIMARY = 'rgb(49,90,231)'
 const PRIMARY_VAR = `var(--wl-primary, ${PRIMARY})`
 
-const pageOuterStyle  = { background:'var(--surface-canvas, #F8FAFC)', minHeight:'100vh', padding:'24px 24px 60px' }
-const pageStyle       = { width:'100%', maxWidth:1000, margin:'0 auto', display:'flex', flexDirection:'column' }
+const pageOuterStyle  = { background:'transparent', minHeight:'100vh', padding:'24px 16px 60px' }
+const pageStyle       = { width:'100%', maxWidth:1068, margin:'0 auto', display:'flex', flexDirection:'column' }
 const headerRowStyle  = { display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:20, gap:12, flexWrap:'wrap' }
 const titleStyle      = { fontSize:22, fontWeight:800, margin:0, color:'var(--text-strong, #111827)', display:'flex', alignItems:'center', gap:10 }
 const subtitleStyle   = { fontSize:13, color:'var(--text-muted, #6B7280)', marginTop:4 }
-const cardStyle       = { background:'var(--surface)', borderRadius:12, border:'1px solid var(--border, #E4E7EC)', padding:'16px 18px' }
+const cardStyle       = { background:'var(--surface)', borderRadius:16, border:'1px solid var(--border, #E4E7EC)', boxShadow:'var(--shadow-card)', padding:'18px 20px' }
 const inputStyle      = { padding:'8px 12px', borderRadius:8, border:'1.5px solid #E4E7EC', fontSize:13, outline:'none', width:'100%', boxSizing:'border-box', fontFamily:'inherit', background:'var(--surface)' }
 const labelStyle      = { display:'block', fontSize:10, fontWeight:700, color:'var(--text-muted, #6B7280)', textTransform:'uppercase', letterSpacing:'0.07em', marginBottom:5 }
 const primaryBtnStyle = { padding:'9px 18px', background:PRIMARY_VAR, color:'#fff', border:'none', borderRadius:10, fontSize:13, fontWeight:700, display:'inline-flex', alignItems:'center', gap:6, cursor:'pointer' }
@@ -46,8 +48,8 @@ const MAX_REACTIONS_PER_DAY = 80
 
 const STATUS_CFG = {
   pending:    { label:'Geplant',      color:'#92400E', bg:'#FFFBEB', border:'#FCD34D' },
-  processing: { label:'Läuft',        color:'#1D4ED8', bg:'#EFF6FF', border:'#BFDBFE' },
-  done:       { label:'Erledigt',     color:'#065F46', bg:'#ECFDF5', border:'#6EE7B7' },
+  processing: { label:'Läuft',        color:'#003060', bg:'#EEF4FE', border:'#CFE0F5' },
+  done:       { label:'Erledigt',     color:'#039855', bg:'#EBFAF3', border:'#12B886' },
   error:      { label:'Fehler',       color:'#991B1B', bg:'#FEF2F2', border:'#FECACA' },
   skipped:    { label:'Übersprungen', color:'#475569', bg:'#F8FAFC', border:'#E5E7EB' },
 }
@@ -56,6 +58,7 @@ const EMPTY_FORM = { kind:'comment', post:'', comment_text:'', saved_comment_id:
 
 export default function LinkedInEngagement() {
   const { activeTeamId } = useTeam()
+  const { activeBrandVoice } = useBrandVoice()
   const navigate = useNavigate()
 
   const [uid, setUid]                 = useState(null)
@@ -72,18 +75,19 @@ export default function LinkedInEngagement() {
   useEffect(() => { supabase.auth.getUser().then(({ data }) => setUid(data?.user?.id || null)) }, [])
 
   const load = useCallback(async () => {
-    if (!activeTeamId) { setJobs([]); setLoading(false); return }
+    // Brand-scoped: Engagement läuft aus dem Profil der aktiven Marke.
+    const bvId = activeBrandVoice?.id || null
+    if (!activeTeamId || !bvId) { setJobs([]); setLoading(false); return }
     setLoading(true)
-    // Team-scoped (Fallstrick #14). RLS ist Owner-scoped; team_id-Filter zusätzlich.
     const { data, error } = await supabase
       .from('linkedin_engagement_jobs')
       .select('id, kind, post_social_id, post_url, comment_text, reaction_type, status, scheduled_at, executed_at, error, created_at')
-      .eq('team_id', activeTeamId)
+      .eq('brand_voice_id', bvId)
       .order('created_at', { ascending:false })
     if (error) { setFlash({ type:'error', text:'Jobs laden fehlgeschlagen: ' + error.message }); setJobs([]); setLoading(false); return }
     setJobs(data || [])
     setLoading(false)
-  }, [activeTeamId])
+  }, [activeTeamId, activeBrandVoice?.id])
 
   const loadSaved = useCallback(async () => {
     if (!uid) { setSaved([]); return }
@@ -99,17 +103,18 @@ export default function LinkedInEngagement() {
 
   // Eigene veröffentlichte Posts (mit social_id) — team-scoped (Fallstrick #14).
   const loadOwnPosts = useCallback(async () => {
-    if (!activeTeamId) { setOwnPosts([]); return }
+    const bvId = activeBrandVoice?.id || null
+    if (!activeTeamId || !bvId) { setOwnPosts([]); return }
     const { data, error } = await supabase
       .from('content_posts')
       .select('id, title, content, linkedin_social_id, published_at')
-      .eq('team_id', activeTeamId)
+      .eq('brand_voice_id', bvId)
       .not('linkedin_social_id', 'is', null)
       .order('published_at', { ascending:false })
       .limit(50)
     if (error) { console.warn('[engagement] own posts:', error.message); setOwnPosts([]); return }
     setOwnPosts(data || [])
-  }, [activeTeamId])
+  }, [activeTeamId, activeBrandVoice?.id])
 
   useEffect(() => { load() }, [load])
   useEffect(() => { loadSaved() }, [loadSaved])
@@ -127,6 +132,7 @@ export default function LinkedInEngagement() {
     const row = {
       user_id: uid,
       team_id: activeTeamId,               // Multi-Tenant: team_id bei jedem Insert
+      brand_voice_id: activeBrandVoice?.id || null,   // Brand-scoped (Trigger füllt sonst nach)
       kind: form.kind,
       post_social_id: isUrn ? form.post.trim() : null,
       post_url: isUrn ? null : form.post.trim(),
@@ -170,20 +176,21 @@ export default function LinkedInEngagement() {
   return (
     <div style={pageOuterStyle}>
       <div style={pageStyle}>
-        <div style={headerRowStyle}>
-          <div>
-            <h1 style={titleStyle}><Zap size={22} color={PRIMARY_VAR} /> Engagement</h1>
-            <div style={subtitleStyle}>Kommentare und Reaktionen auf konkrete LinkedIn-Posts planen — serverseitig ausgeführt.</div>
-          </div>
-          <div style={{ display:'flex', gap:10, flexWrap:'wrap' }}>
-            <button style={{ ...ghostBtnStyle, opacity: running ? 0.6 : 1 }} disabled={running} onClick={runNow}>
-              {running ? <Loader2 size={15} className="lk-spin" /> : <Play size={15} />} Jetzt ausführen
-            </button>
-            <button style={primaryBtnStyle} onClick={() => { setForm(EMPTY_FORM); setShowDialog(true) }}>
-              <Plus size={15} /> Neuer Job
-            </button>
-          </div>
-        </div>
+        <PageHeader
+          overline="LinkedIn · Engagement"
+          title="Engagement"
+          subtitle="Kommentare und Reaktionen auf konkrete LinkedIn-Posts planen — serverseitig ausgeführt."
+          action={(
+            <div style={{ display:'flex', gap:10, flexWrap:'wrap' }}>
+              <button className="lk-btn lk-btn-ghost" style={{ opacity: running ? 0.6 : 1 }} disabled={running} onClick={runNow}>
+                {running ? <Loader2 size={15} className="lk-spin" /> : <Play size={15} />} Jetzt ausführen
+              </button>
+              <button className="lk-btn lk-btn-navy" onClick={() => { setForm(EMPTY_FORM); setShowDialog(true) }}>
+                <Plus size={15} /> Neuer Job
+              </button>
+            </div>
+          )}
+        />
 
         {/* Compliance-Hinweis + Tageslimits */}
         <div style={{ display:'flex', alignItems:'flex-start', gap:8, marginBottom:16, padding:'10px 14px', borderRadius:10, fontSize:12.5,
@@ -199,9 +206,9 @@ export default function LinkedInEngagement() {
         {flash && (
           <div style={{
             display:'flex', alignItems:'center', gap:10, marginBottom:16, padding:'10px 14px', borderRadius:10, fontSize:13, fontWeight:600,
-            background: flash.type === 'error' ? '#FEF2F2' : '#F0FDF4',
-            color:      flash.type === 'error' ? '#B91C1C' : '#15803D',
-            border: `1px solid ${flash.type === 'error' ? '#FECACA' : '#BBF7D0'}`,
+            background: flash.type === 'error' ? '#FEF2F2' : '#EBFAF3',
+            color:      flash.type === 'error' ? '#B91C1C' : '#039855',
+            border: `1px solid ${flash.type === 'error' ? '#FECACA' : '#C7EFDC'}`,
           }}>
             {flash.type === 'error' ? <AlertCircle size={16} /> : <CheckCircle2 size={16} />}
             <span style={{ flex:1 }}>{flash.text}</span>
@@ -214,7 +221,7 @@ export default function LinkedInEngagement() {
         )}
 
         {/* Job-Liste */}
-        <div style={sectionTitle}><Zap size={14} /> Geplante & ausgeführte Jobs</div>
+        <div className="lk-eyebrow">Geplante & ausgeführte Jobs</div>
         {loading ? (
           <div style={{ ...cardStyle, textAlign:'center', color:'var(--text-muted, #6B7280)' }}>
             <Loader2 size={18} className="lk-spin" /> Lädt…
@@ -230,7 +237,7 @@ export default function LinkedInEngagement() {
               const target = j.post_social_id || j.post_url || '—'
               return (
                 <div key={j.id} style={{ ...cardStyle, padding:'12px 16px', display:'flex', alignItems:'center', gap:14, flexWrap:'wrap' }}>
-                  <div style={{ width:34, height:34, borderRadius:9, background:'#EFF6FF', display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0 }}>
+                  <div style={{ width:34, height:34, borderRadius:9, background:'#EEF4FE', display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0 }}>
                     {j.kind === 'comment' ? <MessageSquare size={16} color={PRIMARY_VAR} /> : <Heart size={16} color={PRIMARY_VAR} />}
                   </div>
                   <div style={{ flex:1, minWidth:200 }}>

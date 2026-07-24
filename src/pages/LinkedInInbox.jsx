@@ -4,6 +4,7 @@ import { useNavigate } from 'react-router-dom'
 import { Check, X, Loader2, UserPlus, Building2, Inbox as InboxIcon, Plus, ListChecks, Pencil, Trash2, AlertTriangle } from 'lucide-react'
 import { supabase } from '../lib/supabase'
 import { useTeam } from '../context/TeamContext'
+import { useBrandVoice } from '../context/BrandVoiceContext'
 import { useEntitlements } from '../hooks/useEntitlements'
 import { mapEfError } from '../lib/efError'
 import { useInboxLists } from '../hooks/useInboxLists'
@@ -52,6 +53,7 @@ function Avatar({ name, avatar_url, size = 44 }) {
 
 export default function LinkedInInbox() {
   const { activeTeamId } = useTeam()
+  const { activeBrandVoice } = useBrandVoice()
   const { hasPermission, loading: entLoading } = useEntitlements()
   const canSalesNav = entLoading || hasPermission('linkedin.sales_nav')   // P3: proaktives Disable (loading→nicht sperren)
   const navigate = useNavigate()
@@ -98,16 +100,18 @@ export default function LinkedInInbox() {
 
   useEffect(() => { supabase.auth.getUser().then(({ data }) => setUid(data?.user?.id || null)) }, [])
 
-  // Verbundenen Unipile-Account des Users laden (Status OK) — für den Sales-Nav-Import.
+  // Handelnder Unipile-Account = der der AKTIVEN MARKE (brand-scoped, „Agiert als").
+  // Import läuft aus dem LinkedIn-Profil der oben gewählten Marke.
   useEffect(() => {
-    if (!uid) return
-    supabase.from('unipile_accounts').select('unipile_account_id').eq('user_id', uid).eq('status', 'OK').limit(1)
+    const bvId = activeBrandVoice?.id
+    if (!bvId) { setOkAccount(null); return }
+    supabase.from('unipile_accounts').select('unipile_account_id').eq('brand_voice_id', bvId).eq('status', 'OK').limit(1)
       .then(({ data }) => setOkAccount(data?.[0]?.unipile_account_id || null))
-  }, [uid])
+  }, [activeBrandVoice?.id])
 
   const runSalesNavImport = async () => {
     setImportErr(null)
-    if (!okAccount) { setImportErr('Kein verbundener LinkedIn-Account.'); return }
+    if (!okAccount) { setImportErr('Für die aktive Marke ist kein LinkedIn-Profil verbunden — oben Marke wählen bzw. verbinden.'); return }
     if (!impUrl.trim()) { setImportErr('Bitte eine Sales-Navigator-Such-URL eingeben.'); return }
     setImporting(true)
     let listId = null
@@ -149,7 +153,9 @@ export default function LinkedInInbox() {
   }
 
   const load = useCallback(async () => {
-    if (!activeTeamId) { setRows([]); setCounts({ kontakte: 0, netzwerk: 0 }); setLoading(false); return }
+    // Brand-scoped: LinkedIn-Kontakte gehören dem Profil der aktiven Marke.
+    const bvId = activeBrandVoice?.id || null
+    if (!activeTeamId || !bvId) { setRows([]); setCounts({ kontakte: 0, netzwerk: 0 }); setLoading(false); return }
     setLoading(true)
 
     // Aktiver Tab quellen-gefiltert laden — so verdrängt die Netzwerk-Flut die
@@ -157,14 +163,14 @@ export default function LinkedInInbox() {
     let q = supabase
       .from('linkedin_inbox')
       .select('id, source, sales_nav_id, linkedin_url, name, first_name, last_name, headline, job_title, company, location, avatar_url, imported_at, promoted_lead_id')
-      .eq('team_id', activeTeamId)
+      .eq('brand_voice_id', bvId)
       .eq('review_status', 'new')
     q = sourceTab === 'netzwerk' ? q.eq('source', NETWORK_SOURCE) : q.neq('source', NETWORK_SOURCE)
     const { data, error } = await q.order('imported_at', { ascending: false }).limit(500)
 
     // Tab-Badges: Gesamtzahl je Quelle (head-only, kein Row-Transfer).
     const countBase = () => supabase.from('linkedin_inbox')
-      .select('id', { count: 'exact', head: true }).eq('team_id', activeTeamId).eq('review_status', 'new')
+      .select('id', { count: 'exact', head: true }).eq('brand_voice_id', bvId).eq('review_status', 'new')
     Promise.all([
       countBase().eq('source', NETWORK_SOURCE),
       countBase().neq('source', NETWORK_SOURCE),
@@ -186,7 +192,7 @@ export default function LinkedInInbox() {
     }
     setExisting(hit)
     setLoading(false)
-  }, [activeTeamId, sourceTab])
+  }, [activeTeamId, activeBrandVoice?.id, sourceTab])
 
   useEffect(() => { load() }, [load])
 
@@ -394,7 +400,7 @@ export default function LinkedInInbox() {
             ) : okAccount === null ? (
               <div style={{ background: 'var(--primary-soft)', border: `1px solid ${border}`, borderRadius: 10, padding: 16, fontSize: 14, color: text, lineHeight: 1.5 }}>
                 Kein verbundener LinkedIn-Account.{' '}
-                <button onClick={() => navigate('/settings/linkedin')} style={{ background: 'none', border: 'none', color: primary, fontWeight: 700, cursor: 'pointer', fontSize: 14, padding: 0 }}>LinkedIn zuerst verbinden →</button>
+                <button onClick={() => navigate('/personal-brand')} style={{ background: 'none', border: 'none', color: primary, fontWeight: 700, cursor: 'pointer', fontSize: 14, padding: 0 }}>LinkedIn zuerst verbinden →</button>
               </div>
             ) : (
               <>

@@ -294,6 +294,7 @@ function inviteAge(sentAt) {
 
 function OffeneAnfragen({ session, activeTeamId }) {
   const navigate = useNavigate()
+  const { activeBrandVoice } = useBrandVoice()
   const uid = session?.user?.id
   const [invitations, setInvitations] = useState([])
   const [loading, setLoading]   = useState(true)
@@ -302,11 +303,12 @@ function OffeneAnfragen({ session, activeTeamId }) {
   const [withdrawDays, setWithdrawDays] = useState('')  // '' = Default (21)
 
   const load = useCallback(async () => {
-    if (!activeTeamId) { setInvitations([]); setLoading(false); return }
+    const bvId = activeBrandVoice?.id || null
+    if (!activeTeamId || !bvId) { setInvitations([]); setLoading(false); return }
     setLoading(true)
     const { data, error } = await supabase.from('linkedin_invitations')
       .select('id, invitation_id, invitee_name, invitee_url, lead_id, status, sent_at, responded_at, withdrawn_at')
-      .eq('team_id', activeTeamId)
+      .eq('brand_voice_id', bvId)
       .order('sent_at', { ascending:false, nullsFirst:false })
     if (error) { setFlash({ type:'error', text:'Anfragen laden fehlgeschlagen: ' + error.message }); setInvitations([]); setLoading(false); return }
     setInvitations(data || [])
@@ -317,7 +319,7 @@ function OffeneAnfragen({ session, activeTeamId }) {
       if (pErr) console.warn('[vernetzungen] user_preferences:', pErr.message)
       if (pref?.linkedin_withdraw_after_days != null) setWithdrawDays(String(pref.linkedin_withdraw_after_days))
     }
-  }, [activeTeamId, uid])
+  }, [activeTeamId, activeBrandVoice?.id, uid])
   useEffect(() => { load() }, [load])
 
   const sync = async () => {
@@ -327,7 +329,7 @@ function OffeneAnfragen({ session, activeTeamId }) {
       let body = null
       try { body = await error.context?.json?.() } catch { /* Body evtl. konsumiert */ }
       const status = error.context?.status
-      if (status === 409) setFlash({ type:'error', text:'Kein aktiver LinkedIn-Account verbunden.', action:{ label:'LinkedIn verbinden', to:'/settings/linkedin' } })
+      if (status === 409) setFlash({ type:'error', text:'Kein aktiver LinkedIn-Account verbunden.', action:{ label:'LinkedIn verbinden', to:'/personal-brand' } })
       else if (status === 429 || body?.rate_limited) setFlash({ type:'error', text:'Rate-Limit erreicht — bitte später erneut.' })
       else setFlash({ type:'error', text: body?.error || ('Abgleich fehlgeschlagen: ' + error.message) })
       setSyncing(false); return
@@ -448,12 +450,13 @@ export default function Vernetzungen({ session }) {
   const [syncMsg, setSyncMsg]           = useState(null)
 
   const load = useCallback(async () => {
-    // STRICT team_id-Filter (Fallstrick #14 — kein user_id-Fallback)
-    if (!activeTeamId) { setLeads([]); setLoading(false); return }
+    // Brand-scoped: Vernetzungen laufen aus dem Profil der aktiven Marke.
+    const bvId = activeBrandVoice?.id || null
+    if (!activeTeamId || !bvId) { setLeads([]); setLoading(false); return }
     const { data } = await supabase
       .from('linkedin_inbox')
       .select('id,first_name,last_name,name,job_title,headline,company,avatar_url,linkedin_url,li_connection_status,li_connection_requested_at,li_connected_at,li_accepted_at,li_last_interaction_at,li_reply_behavior,team_id,user_id,imported_at')
-      .eq('team_id', activeTeamId)
+      .eq('brand_voice_id', bvId)
       .eq('review_status', 'new')
       .order('li_connected_at', { ascending:false, nullsFirst:false })
     const rows = (data || []).map(r => ({ ...r, created_at: r.imported_at }))
@@ -471,7 +474,7 @@ export default function Vernetzungen({ session }) {
         setActivities(prev => ({ ...prev, ...map }))
       }
     }
-  }, [activeTeamId])
+  }, [activeTeamId, activeBrandVoice?.id])
 
   useEffect(() => { load() }, [load])
 

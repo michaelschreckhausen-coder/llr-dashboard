@@ -13,7 +13,6 @@ import PillSelect from '../components/PillSelect'
 import React, { useState, useEffect, useCallback, useMemo } from 'react'
 import { useNavigate } from 'react-router-dom'
 import InboxLink from '../components/InboxLink'
-import { useResponsive } from '../hooks/useResponsive'
 import {
   Zap, Plus, Play, Pause, RotateCw, Send, Users, BarChart3,
   Clock, X, Trash2, Eye, UserPlus, UserCheck, MessageSquare, Hourglass, Download,
@@ -22,6 +21,7 @@ import {
 } from 'lucide-react'
 import { supabase } from '../lib/supabase'
 import { useTeam } from '../context/TeamContext'
+import { useResponsive } from '../hooks/useResponsive'
 import { useInboxLists } from '../hooks/useInboxLists'
 import WizardLayout from '../components/WizardLayout'
 import { EXTENSION_WEBSTORE_URL } from '../lib/leadeskExtension'
@@ -167,6 +167,7 @@ function fullName(l) {
 // ─── Component ────────────────────────────────────────────────────────────
 export default function Automatisierung({ session }) {
   const navigate = useNavigate()
+  const { isMobile } = useResponsive()
   const { activeTeamId } = useTeam() || {}
   const [sponsoringCampaigns, setSponsoringCampaigns] = useState([]) // K3: für die Zuordnung
   const [view, setView]               = useState('campaigns')   // campaigns | queue
@@ -511,7 +512,7 @@ export default function Automatisierung({ session }) {
         </div>
 
         {/* KPI-Tiles */}
-        <div style={kpiRowStyle}>
+        <div style={{ ...kpiRowStyle, gridTemplateColumns: isMobile ? 'repeat(2, 1fr)' : 'repeat(4, 1fr)' }}>
           <KpiTile Icon={Play}        label="Aktive Kampagnen"   value={kpis.active}      tint="#16a34a" tintBg="#ECFDF5" />
           <KpiTile Icon={Pause}       label="Pausiert"           value={kpis.paused}      tint="#f59e0b" tintBg="#FFFBEB" />
           <KpiTile Icon={Send}        label="Heute gesendet"     value={kpis.sentToday}   tint="#2563eb" tintBg="#EFF6FF" />
@@ -523,7 +524,7 @@ export default function Automatisierung({ session }) {
           connected={uniConnected}
           runningCount={jobs.filter(j => j.status === 'running').length}
           waitingCount={jobs.filter(j => j.status !== 'running').length}
-          onManage={() => navigate('/settings/linkedin')}
+          onManage={() => navigate('/personal-brand')}
         />
 
         {/* Nachrichten-Freigabe — message-Entwürfe warten auf menschliches OK vor dem Versand */}
@@ -814,8 +815,8 @@ function QueueView({ jobs, onCancel, onReload }) {
           Keine Jobs in der Warteschlange — bereit, sobald du eine Kampagne startest
         </div>
       ) : (
-        <div style={{ background:'var(--surface)', borderRadius:12, border:'1px solid var(--border, #E4E7EC)', overflow:'hidden' }}>
-          <div style={{ display:'grid', gridTemplateColumns:'140px 1fr 110px 140px 60px', padding:'10px 16px', background:'var(--surface-muted, #F8FAFC)', borderBottom:'1px solid var(--border)', fontSize:10, fontWeight:700, color:'var(--text-muted)', textTransform:'uppercase', letterSpacing:'0.06em', gap:8 }}>
+        <div style={{ background:'var(--surface)', borderRadius:12, border:'1px solid var(--border, #E4E7EC)', overflowX:'auto' }}>
+          <div style={{ display:'grid', gridTemplateColumns:'140px 1fr 110px 140px 60px', minWidth:560, padding:'10px 16px', background:'var(--surface-muted, #F8FAFC)', borderBottom:'1px solid var(--border)', fontSize:10, fontWeight:700, color:'var(--text-muted)', textTransform:'uppercase', letterSpacing:'0.06em', gap:8 }}>
             <div>Typ</div><div>Details</div><div>Status</div><div>Geplant</div><div></div>
           </div>
           {jobs.map((job, i) => {
@@ -823,7 +824,7 @@ function QueueView({ jobs, onCancel, onReload }) {
             const Icon = info.Icon
             const detail = job.payload?.linkedin_url?.replace('https://www.linkedin.com/in/', '@') || job.target_url || ''
             return (
-              <div key={job.id} style={{ display:'grid', gridTemplateColumns:'140px 1fr 110px 140px 60px', padding:'10px 16px', borderBottom: i < jobs.length - 1 ? '1px solid #F1F5F9' : 'none', alignItems:'center', gap:8, fontSize:12 }}>
+              <div key={job.id} style={{ display:'grid', gridTemplateColumns:'140px 1fr 110px 140px 60px', minWidth:560, padding:'10px 16px', borderBottom: i < jobs.length - 1 ? '1px solid #F1F5F9' : 'none', alignItems:'center', gap:8, fontSize:12 }}>
                 <div style={{ display:'inline-flex', alignItems:'center', gap:6, fontWeight:600, color:info.color }}>
                   <span style={{ width:22, height:22, borderRadius:6, background:info.bg, display:'inline-flex', alignItems:'center', justifyContent:'center' }}>
                     <Icon size={12} />
@@ -924,7 +925,7 @@ function WSc({ title, hint, action, children }) {
   )
 }
 
-const STEP_LABELS = { template:'Vorlage', configure:'Sequenz & Name', source:'Quelle', list:'Liste', select:'Auswahl' }
+const STEP_LABELS = { template:'Vorlage', configure:'Sequenz & Name', source:'Quelle', list:'Liste' }
 
 function NewCampaignWizard({
   step, setStep,
@@ -936,16 +937,14 @@ function NewCampaignWizard({
   addStep, removeStep, updateStep,
   onClose, onCreate,
 }) {
-  const { isMobile } = useResponsive()   // Fix: Wizard-Auswahl-Schritt nutzt isMobile (@1262); Def fehlte nach Cherry-Pick (spiegelt develop)
+  const { isMobile } = useResponsive()
   const { activeTeamId } = useTeam() || {}
   const { lists: inboxLists, membersByList } = useInboxLists({ activeTeamId })
-  const linkedinLeads = leads.filter(l => l.linkedin_url)
-  const [leadSearch, setLeadSearch] = useState('')
+  const linkedinLeads = useMemo(() => leads.filter(l => l.linkedin_url), [leads])
 
   // Lead-Quelle (Waalaxy-artig): 'inbox_list' | 'all' | 'later'
   const [source, setSource]         = useState(null)
   const [sourceListId, setSourceListId] = useState('')
-  const [selectMode, setSelectMode] = useState(null) // null = Entscheidung, 'manual' = Checkbox-Liste
   const [listLeads, setListLeads]   = useState([]) // Fix 3: Member-Rows der gewählten Liste, DIREKT geladen (ungecappt)
 
   // Eligibility (b): inbox_ids die AKTUELL in einer aktiven Kampagne enrollt sind.
@@ -1000,58 +999,73 @@ function NewCampaignWizard({
     [candidates, enrolledIds]
   )
   const excludedCount = candidates.length - eligible.length
+  const eligibleIds = useMemo(() => eligible.map(l => l.id), [eligible])
 
-  const filteredEligible = useMemo(() => {
-    const t = leadSearch.trim().toLowerCase()
-    if (!t) return eligible
-    return eligible.filter(l =>
-      fullName(l).toLowerCase().includes(t) ||
-      (l.company || '').toLowerCase().includes(t) ||
-      (l.job_title || '').toLowerCase().includes(t)
-    )
-  }, [eligible, leadSearch])
+  // Auswahl automatisch = alle zulässigen (kein manueller Auswahl-Screen mehr).
+  // Greift, sobald die Quelle final ist: „Alle Inbox-Kontakte" oder gewählte Liste.
+  useEffect(() => {
+    if (source === 'all' || (source === 'inbox_list' && sourceListId)) {
+      setSelectedLeads(eligibleIds)
+    }
+  }, [source, sourceListId, eligibleIds, setSelectedLeads])
 
-  // Pfad ist dynamisch: der „Liste"-Screen erscheint nur bei „Aus Inbox-Liste".
+  // Pfad ist dynamisch: der „Liste"-Schritt erscheint nur bei „Aus Inbox-Liste".
+  // Der frühere „Auswahl"-Screen entfällt — der letzte Schritt jedes Pfads erstellt.
   const path = source === 'inbox_list'
-    ? ['template', 'configure', 'source', 'list', 'select']
-    : ['template', 'configure', 'source', 'select']
+    ? ['template', 'configure', 'source', 'list']
+    : ['template', 'configure', 'source']
   const stepIndex = Math.max(path.indexOf(step), 0)
   const canConfigureNext = !!newCamp.name?.trim() && !!newCamp.sequence?.length
+  // Erstellen möglich, sobald die Quelle final ist (Alle-Karte bzw. Liste gewählt).
+  const canCreate = (step === 'source' && source === 'all') || (step === 'list' && !!sourceListId)
   const WIZARD_STEPS = path.map(s => ({
     label: STEP_LABELS[s],
-    sub: s === 'select' && selectedLeads.length ? `${selectedLeads.length} ausgewählt` : undefined,
+    sub: ((s === 'source' && source === 'all') || (s === 'list' && sourceListId)) && selectedLeads.length
+      ? `${selectedLeads.length} zulässig` : undefined,
   }))
 
   // Beim (Wieder-)Betreten der Quelle: Auswahl + Quelle zurücksetzen → sauberes
   // Branching (und „Später" erstellt garantiert ohne Leads).
   function goSource() {
-    setSource(null); setSourceListId(''); setSelectedLeads([]); setSelectMode(null); setStep('source')
+    setSource(null); setSourceListId(''); setSelectedLeads([]); setStep('source')
   }
 
   function goToStep(n) {
     const target = path[n - 1]
     if (!target) return
-    if ((target === 'source' || target === 'list' || target === 'select') && !canConfigureNext) return
-    if ((target === 'list' || target === 'select') && !source) return
-    if (target === 'select' && source === 'inbox_list' && !sourceListId) return
+    if ((target === 'source' || target === 'list') && !canConfigureNext) return
+    if (target === 'list' && !source) return
     setStep(target)
   }
 
   function nextStep() {
     if (step === 'template') setStep('configure')
     else if (step === 'configure') { if (canConfigureNext) goSource() }
-    else if (step === 'list') { if (sourceListId) { setSelectMode(null); setStep('select') } }
-    // 'source' verzweigt über Karten, 'select' erstellt über den Footer.
+    // 'source' verzweigt über Karten, 'list' erstellt über den Footer.
   }
   function prevStep() {
     if (step === 'configure') setStep('template')
     else if (step === 'source') setStep('configure')
     else if (step === 'list') goSource()
-    else if (step === 'select') { if (source === 'inbox_list') setStep('list'); else goSource() }
     else onClose()
   }
 
-  const nextDisabled = step === 'configure' ? !canConfigureNext : step === 'list' ? !sourceListId : false
+  // Inline-Eligibility-Hinweis für den letzten Schritt (still, ohne Auswahl-Screen).
+  function renderEligibility() {
+    if (eligible.length === 0) {
+      return (
+        <div style={{ fontSize:12.5, color:'#B45309', background:'#FFFBEB', border:'1px solid #FDE68A', borderRadius:8, padding:'8px 12px', lineHeight:1.5 }}>
+          Keine zulässigen Kontakte{excludedCount > 0 ? ` — ${excludedCount} ausgeschlossen (bereits vernetzt oder in Kampagne)` : ''}. Du kannst die Kampagne trotzdem als Entwurf ohne Leads erstellen.
+        </div>
+      )
+    }
+    return (
+      <div style={{ fontSize:12.5, color:'var(--text-muted)', lineHeight:1.5 }}>
+        <strong style={{ color:PRIMARY_VAR }}>{eligible.length}</strong> zulässige Kontakt(e) werden hinzugefügt{excludedCount > 0 ? `, ${excludedCount} ausgeschlossen (bereits vernetzt oder in Kampagne)` : ''}.
+      </div>
+    )
+  }
+
   const footer = (
     <>
       <button onClick={prevStep} className="lk-btn lk-btn-ghost">
@@ -1060,15 +1074,19 @@ function NewCampaignWizard({
       <div style={{ fontSize:12, color:'var(--text-muted)' }}>
         Schritt {stepIndex + 1} von {path.length}
       </div>
-      {step === 'select' ? (
-        <button onClick={onCreate} style={primaryBtnStyle}>
+      {canCreate ? (
+        <button onClick={onCreate} className="lk-btn lk-btn-navy">
           <Zap size={14} /> Kampagne erstellen{selectedLeads.length > 0 ? ` (${selectedLeads.length} Lead${selectedLeads.length === 1 ? '' : 's'})` : ''}
         </button>
       ) : step === 'source' ? (
         <span style={{ width:1 }} />
+      ) : step === 'list' ? (
+        <button disabled className="lk-btn lk-btn-navy" style={{ opacity:0.5, cursor:'not-allowed' }}>
+          <Zap size={14} /> Kampagne erstellen
+        </button>
       ) : (
-        <button onClick={nextStep} disabled={nextDisabled}
-          style={{ ...primaryBtnStyle, opacity:nextDisabled ? 0.5 : 1, cursor:nextDisabled ? 'not-allowed' : 'pointer' }}>
+        <button onClick={nextStep} disabled={step === 'configure' && !canConfigureNext}
+          className="lk-btn lk-btn-navy" style={{ opacity:(step === 'configure' && !canConfigureNext) ? 0.5 : 1, cursor:(step === 'configure' && !canConfigureNext) ? 'not-allowed' : 'pointer' }}>
           Weiter <ChevronRight size={14} />
         </button>
       )}
@@ -1138,7 +1156,7 @@ function NewCampaignWizard({
       {step === 'configure' && (
         <>
           <WSc title="Schritt 2: Kampagne benennen" hint="Der Name hilft dir, die Kampagne in der Liste wiederzufinden. Beschreibung ist optional.">
-            <div style={{ display:'grid', gridTemplateColumns:'2fr 3fr', gap:14 }}>
+            <div style={{ display:'grid', gridTemplateColumns: isMobile ? '1fr' : '2fr 3fr', gap:14 }}>
               <div>
                 <WLb label="Kampagnenname *" />
                 <WIn value={newCamp.name} onChange={v => setNewCamp(p => ({ ...p, name:v }))}
@@ -1159,7 +1177,7 @@ function NewCampaignWizard({
           </WSc>
 
           <WSc title="Limits & Arbeitszeit" hint="Wie viele Aktionen pro Tag und wann darf die Extension senden? Sinnvolle Defaults sind 20/Tag, 8–20 Uhr.">
-            <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr 1fr', gap:14 }}>
+            <div style={{ display:'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr 1fr', gap:14 }}>
               <div>
                 <WLb label="Tageslimit pro Aktion" />
                 <WIn type="number" value={newCamp.settings.daily_limit}
@@ -1210,19 +1228,21 @@ function NewCampaignWizard({
           <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fill, minmax(240px, 1fr))', gap:12 }}>
             {[
               { key:'inbox_list', Icon:ListChecks, label:'Aus Inbox-Liste',     desc:'Kontakte aus einer gespeicherten Inbox-Liste wählen.' },
-              { key:'all',        Icon:Users,      label:'Alle Inbox-Kontakte', desc:'Alle offenen Inbox-Kontakte mit LinkedIn-URL als Kandidaten.' },
+              { key:'all',        Icon:Users,      label:'Alle Inbox-Kontakte', desc:'Alle offenen Inbox-Kontakte mit LinkedIn-URL — alle zulässigen werden automatisch übernommen.' },
               { key:'later',      Icon:Clock,      label:'Später hinzufügen',   desc:'Kampagne als Entwurf ohne Leads anlegen — Kontakte kommen später.' },
-            ].map(opt => (
+            ].map(opt => {
+              const active = source === opt.key
+              return (
               <button key={opt.key}
                 onClick={() => {
                   if (opt.key === 'inbox_list') { setSource('inbox_list'); setSourceListId(''); setSelectedLeads([]); setStep('list') }
-                  else if (opt.key === 'all')   { setSource('all'); setSelectedLeads([]); setSelectMode(null); setStep('select') }
+                  else if (opt.key === 'all')   { setSource('all') }
                   else                          { setSource('later'); setSelectedLeads([]); onCreate() }
                 }}
                 onMouseEnter={e => { e.currentTarget.style.borderColor = PRIMARY_VAR; e.currentTarget.style.transform = 'translateY(-1px)' }}
-                onMouseLeave={e => { e.currentTarget.style.borderColor = 'var(--border, #E5E7EB)'; e.currentTarget.style.transform = 'translateY(0)' }}
-                style={{ textAlign:'left', cursor:'pointer', padding:'16px 18px', borderRadius:12, border:'1.5px solid var(--border, #E5E7EB)', background:'var(--surface, #fff)', display:'flex', flexDirection:'column', gap:10, boxShadow:'0 1px 2px rgba(15,23,42,.04)', transition:'all .15s ease' }}>
-                <span style={{ width:36, height:36, borderRadius:10, background:'rgba(49,90,231,0.10)', display:'inline-flex', alignItems:'center', justifyContent:'center', color:PRIMARY_VAR }}>
+                onMouseLeave={e => { e.currentTarget.style.borderColor = active ? 'var(--primary)' : 'var(--border, #E5E7EB)'; e.currentTarget.style.transform = 'translateY(0)' }}
+                style={{ textAlign:'left', cursor:'pointer', padding:'16px 18px', borderRadius:12, border:`1.5px solid ${active ? 'var(--primary)' : 'var(--border, #E5E7EB)'}`, background: active ? 'rgba(10,111,176,0.06)' : 'var(--surface, #fff)', display:'flex', flexDirection:'column', gap:10, boxShadow:'0 1px 2px rgba(15,23,42,.04)', transition:'all .15s ease' }}>
+                <span style={{ width:36, height:36, borderRadius:10, background:'rgba(10,111,176,0.10)', display:'inline-flex', alignItems:'center', justifyContent:'center', color:PRIMARY_VAR }}>
                   <opt.Icon size={17} />
                 </span>
                 <div style={{ fontSize:14, fontWeight:700, color:'var(--text-strong)' }}>{opt.label}</div>
@@ -1231,8 +1251,12 @@ function NewCampaignWizard({
                   <div style={{ fontSize:11, color:'#B45309', fontStyle:'italic' }}>Noch keine Inbox-Listen angelegt.</div>
                 )}
               </button>
-            ))}
+              )
+            })}
           </div>
+          {source === 'all' && (
+            <div style={{ marginTop:4 }}>{renderEligibility()}</div>
+          )}
         </WSc>
       )}
 
@@ -1247,102 +1271,13 @@ function NewCampaignWizard({
               <WLb label="Inbox-Liste" hint="Zahl in Klammern = Anzahl Kontakte in der Liste." />
               <PillSelect value={sourceListId} onChange={v => setSourceListId(v)} neutral options={[{ value: '', label: `— Liste wählen —` }, ...inboxLists.map((l) => { const cnt = (membersByList.get(l.id) || new Set()).size; return ({ value: l.id, label: `${l.name} (${cnt})` }); })]} buttonStyle={{ minWidth: 140 }} />
               {sourceListId && (
-                <div style={{ fontSize:12, color:'var(--text-muted)', marginTop:2 }}>
-                  {candidates.length} Kontakt(e) mit LinkedIn-URL in dieser Liste.
-                </div>
+                <div style={{ marginTop:4 }}>{renderEligibility()}</div>
               )}
             </>
           )}
         </WSc>
       )}
 
-      {step === 'select' && (
-        <WSc
-          title="Schritt 5: Kontakte auswählen"
-          hint={`${eligible.length} zulässige Kontakt(e)${source === 'inbox_list' ? ' in dieser Liste' : ''}. Bereits vernetzte oder schon in einer Kampagne enrollte Kontakte sind ausgeschlossen.`}
-        >
-          {eligible.length === 0 ? (
-            <div style={{ padding:28, textAlign:'center', color:'var(--text-muted)', fontSize:13, border:'1.5px dashed var(--border)', borderRadius:10 }}>
-              Keine zulässigen Kontakte{excludedCount > 0 ? ` — ${excludedCount} ausgeschlossen (bereits vernetzt oder in Kampagne)` : ''}.
-              Du kannst die Kampagne trotzdem als Entwurf ohne Leads erstellen.
-            </div>
-          ) : selectMode === null ? (
-            <>
-              <div style={{ display:'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr', gap:12 }}>
-                <button onClick={() => { setSelectedLeads(eligible.map(l => l.id)); setSelectMode('manual') }}
-                  style={{ textAlign:'left', cursor:'pointer', padding:'16px 18px', borderRadius:12, border:`1.5px solid ${PRIMARY_VAR}`, background:'rgba(49,90,231,0.06)', display:'flex', flexDirection:'column', gap:8 }}>
-                  <span style={{ display:'inline-flex', alignItems:'center', gap:8, fontSize:14, fontWeight:700, color:PRIMARY_VAR }}>
-                    <CheckCircle2 size={17} /> Alle zulässigen hinzufügen ({eligible.length})
-                  </span>
-                  <span style={{ fontSize:12, color:'var(--text-muted)' }}>Empfohlen — alle {eligible.length} zulässigen Kontakte übernehmen.</span>
-                </button>
-                <button onClick={() => setSelectMode('manual')}
-                  style={{ textAlign:'left', cursor:'pointer', padding:'16px 18px', borderRadius:12, border:'1.5px solid var(--border, #E5E7EB)', background:'var(--surface, #fff)', display:'flex', flexDirection:'column', gap:8 }}>
-                  <span style={{ display:'inline-flex', alignItems:'center', gap:8, fontSize:14, fontWeight:700, color:'var(--text-strong)' }}>
-                    <Search size={16} /> Selbst auswählen
-                  </span>
-                  <span style={{ fontSize:12, color:'var(--text-muted)' }}>Einzeln aus den zulässigen Kontakten wählen.</span>
-                </button>
-              </div>
-              {excludedCount > 0 && (
-                <div style={{ fontSize:12, color:'var(--text-muted)', marginTop:2 }}>
-                  {excludedCount} ausgeschlossen (bereits vernetzt oder in Kampagne).
-                </div>
-              )}
-            </>
-          ) : (
-            <>
-              <div style={{ display:'flex', gap:6, flexWrap:'wrap', justifyContent:'flex-end' }}>
-                <button onClick={() => setSelectedLeads(eligible.map(l => l.id))} style={ghostBtnStyle}>
-                  <CheckCircle2 size={12} /> Alle ({eligible.length})
-                </button>
-                <button onClick={() => setSelectedLeads(eligible.filter(l => (l.hs_score || 0) >= 70).map(l => l.id))} style={ghostBtnStyle}>
-                  <Sparkles size={12} /> Hot Leads (Score ≥ 70)
-                </button>
-                <button onClick={() => setSelectedLeads([])} style={ghostBtnStyle}>
-                  <X size={12} /> Auswahl löschen
-                </button>
-              </div>
-              <div style={{ position:'relative' }}>
-                <Search size={14} style={{ position:'absolute', left:12, top:'50%', transform:'translateY(-50%)', color:'#9CA3AF' }} />
-                <input value={leadSearch} onChange={e => setLeadSearch(e.target.value)}
-                  placeholder="Kontakt nach Name, Firma oder Position suchen…"
-                  style={{ width:'100%', padding:'10px 14px 10px 36px', border:'1.5px solid var(--border, #E5E7EB)', borderRadius:10, fontSize:13, outline:'none', background:'var(--surface)', boxSizing:'border-box' }} />
-              </div>
-              {excludedCount > 0 && (
-                <div style={{ fontSize:12, color:'var(--text-muted)' }}>
-                  {excludedCount} ausgeschlossen (bereits vernetzt oder in Kampagne).
-                </div>
-              )}
-              <div style={{ maxHeight:420, overflowY:'auto', border:'1px solid var(--border, #E5E7EB)', borderRadius:10 }}>
-                {filteredEligible.length === 0 ? (
-                  <div style={{ padding:36, textAlign:'center', color:'var(--text-muted)', fontSize:13 }}>
-                    Keine Kontakte passen zur Suche.
-                  </div>
-                ) : filteredEligible.map(lead => {
-                  const checked = selectedLeads.includes(lead.id)
-                  return (
-                    <label key={lead.id} style={{ display:'flex', alignItems:'center', gap:12, padding:'10px 14px', borderBottom:'1px solid var(--border-soft, #F1F5F9)', cursor:'pointer', background:checked ? 'rgba(49,90,231,0.04)' : 'transparent', transition:'background .12s' }}>
-                      <input type="checkbox" checked={checked}
-                        onChange={e => setSelectedLeads(prev => e.target.checked ? [...prev, lead.id] : prev.filter(x => x !== lead.id))}
-                        style={{ accentColor:PRIMARY }} />
-                      <div style={{ flex:1, minWidth:0 }}>
-                        <div style={{ fontSize:13.5, fontWeight:600, color:'var(--text-strong)', whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis' }}>{fullName(lead)}</div>
-                        <div style={{ fontSize:11.5, color:'var(--text-muted)', whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis' }}>
-                          {[lead.job_title, lead.company].filter(Boolean).join(' · ') || '—'}
-                        </div>
-                      </div>
-                      <span style={{ fontSize:11, padding:'3px 9px', borderRadius:99, background:'rgba(49,90,231,0.08)', color:PRIMARY_VAR, fontWeight:700 }}>
-                        ⚡ {lead.hs_score || 0}
-                      </span>
-                    </label>
-                  )
-                })}
-              </div>
-            </>
-          )}
-        </WSc>
-      )}
     </WizardLayout>
   )
 }

@@ -22,6 +22,7 @@ import {
 } from 'lucide-react'
 import { supabase } from '../lib/supabase'
 import { useTeam } from '../context/TeamContext'
+import { useBrandVoice } from '../context/BrandVoiceContext'
 import { mapEfError } from '../lib/efError'
 
 // Avatar mit Initialen-Fallback (Muster wie LinkedInInbox.jsx).
@@ -70,6 +71,7 @@ const EMPTY_FORM = {
 
 export default function LinkedInSuche() {
   const { activeTeamId } = useTeam()
+  const { activeBrandVoice } = useBrandVoice()
   const navigate = useNavigate()
 
   const [uid, setUid]             = useState(null)
@@ -87,15 +89,18 @@ export default function LinkedInSuche() {
 
   const fetchSearches = useCallback(async () => {
     setLoading(true)
-    // RLS: linkedin_searches ist user_id = auth.uid()-gescoped → nur eigene Suchen.
+    // Brand-scoped: Suchen gehören zum Profil der aktiven Marke.
+    const bvId = activeBrandVoice?.id || null
+    if (!bvId) { setSearches([]); setLoading(false); return }
     const { data, error } = await supabase
       .from('linkedin_searches')
       .select('*')
+      .eq('brand_voice_id', bvId)
       .order('created_at', { ascending:false })
     if (error) { setFlash({ type:'error', text:'Suchen laden fehlgeschlagen: ' + error.message }); setSearches([]); setLoading(false); return }
     setSearches(data || [])
     setLoading(false)
-  }, [])
+  }, [activeBrandVoice?.id])
 
   const fetchInboxLists = useCallback(async () => {
     // Import-Inbox-Listen (kanonische Quelle) für das optionale Ziel-Dropdown.
@@ -130,6 +135,7 @@ export default function LinkedInSuche() {
     const { error } = await supabase.from('linkedin_searches').insert({
       user_id: uid,
       team_id: activeTeamId,                 // Multi-Tenant: team_id bei jedem Insert (CLAUDE.md)
+      brand_voice_id: activeBrandVoice?.id || null,   // Brand-scoped (Trigger füllt sonst nach)
       name: form.name.trim(),
       api: form.api,
       category: form.category,
@@ -149,7 +155,7 @@ export default function LinkedInSuche() {
     setLastResult(null)
     setResults(null)
     setFlash(null)
-    const { data, error } = await supabase.functions.invoke('unipile-search', { body: { search_id: search.id } })
+    const { data, error } = await supabase.functions.invoke('unipile-search', { body: { search_id: search.id, brand_voice_id: activeBrandVoice?.id || null } })
     if (error) {
       // P3 Schritt 4: zentraler EF-Status→Mensch-Mapper (403→Upgrade, 401→Sitzung, 409→keine
       // Verbindung, 429→Rate-Limit, sonst lesbar) — eine Stelle statt pro-Seite-Blöcke.

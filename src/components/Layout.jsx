@@ -4,6 +4,7 @@ import { useResponsive } from '../hooks/useResponsive'
 import { NavLink, useNavigate, useLocation } from 'react-router-dom'
 import BrandVoiceSwitcher from './BrandVoiceSwitcher'
 import ContentIntroModal from './ContentIntroModal'
+import ReconnectLinkedInModal from './ReconnectLinkedInModal'
 import { useBrandVoice } from '../context/BrandVoiceContext'
 import { HelpCircle } from 'lucide-react'
 import BrainButton from './BrainButton'
@@ -23,14 +24,15 @@ import CreditsBar from './credits/CreditsBar'
 import CreditsBanner from './credits/CreditsBanner'
 import CreditsExhaustedModal from './credits/CreditsExhaustedModal'
 import { detectLeadeskExtension, EXTENSION_WEBSTORE_URL } from '../lib/leadeskExtension'
+import { loadUiState, patchUiState } from '../lib/uiPrefs'
 import { useOnboarding } from '../hooks/useOnboarding'
 import { tipForRoute, AREA_TOURS, areaForRoute } from '../lib/onboardingSteps'
 import TourGuide from './onboarding/TourGuide'
 import AreaTourGuide from './onboarding/AreaTourGuide'
 import AreaTip from './onboarding/AreaTip'
 
-// ─── Design Tokens (Theme-aware, Phase Theme-1) ────────────────────────────────
-// Alle Farben sind CSS-Variablen-Referenzen — sie ändern sich automatisch,
+// âââ Design Tokens (Theme-aware, Phase Theme-1) ââââââââââââââââââââââââââââââââ
+// Alle Farben sind CSS-Variablen-Referenzen â sie Ã¤ndern sich automatisch,
 // wenn der User zwischen Light/Dark wechselt. Definiert in src/index.css.
 const T = {
   bg:       'transparent',                                   // Body rendert Theme-Background
@@ -45,8 +47,7 @@ const T = {
   sidebar:  'var(--sidebar-bg)',                             // Respektiert Whitelabel
 }
 
-// ─── SVG Icons ────────────────────────────────────────────────────────────────
-import ReconnectLinkedInModal from './ReconnectLinkedInModal'
+// âââ SVG Icons ââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââ
 function SvgIcon({ children, size=18 }) {
   return (
     <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
@@ -63,6 +64,7 @@ function IcInbox()    { return <SvgIcon><path d="M22 12h-6l-2 3h-4l-2-3H2"/><pat
 function IcSearch()   { return <SvgIcon><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></SvgIcon> }
 function IcGrid()     { return <SvgIcon><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></SvgIcon> }
 function IcBarChart() { return <SvgIcon><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></SvgIcon> }
+function IcTrendUp()  { return <SvgIcon><polyline points="23 6 13.5 15.5 8.5 10.5 1 18"/><polyline points="17 6 23 6 23 12"/></SvgIcon> }
 function IcStar()     { return <SvgIcon><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></SvgIcon> }
 function IcImage()    { return <SvgIcon><rect x="3" y="3" width="18" height="18" rx="2" ry="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></SvgIcon> }
 function IcInstagram(){ return <SvgIcon><rect x="2" y="2" width="20" height="20" rx="5" ry="5"/><path d="M16 11.37A4 4 0 1 1 12.63 8 4 4 0 0 1 16 11.37z"/><line x1="17.5" y1="6.5" x2="17.51" y2="6.5"/></SvgIcon> }
@@ -81,13 +83,15 @@ function IcLogout()   { return <SvgIcon size={15}><path d="M9 21H5a2 2 0 0 1-2-2
 function IcCloud()    { return <SvgIcon><path d="M18 10h-1.26A8 8 0 1 0 9 20h9a5 5 0 0 0 0-10z"/></SvgIcon> }
 function IcKanban()   { return <SvgIcon><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h18M9 21V9"/></SvgIcon> }
 function IcZap()      { return <SvgIcon><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></SvgIcon> }
+function IcCheckCircle(){ return <SvgIcon><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></SvgIcon> }
+function IcCog()      { return <SvgIcon><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></SvgIcon> }
 function IcTarget()   { return <SvgIcon><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="6"/><circle cx="12" cy="12" r="2"/></SvgIcon> }
 function IcShield()   { return <SvgIcon><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></SvgIcon> }
 function IcUsers2()   { return <SvgIcon><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></SvgIcon> }
 function IcKey()      { return <SvgIcon><path d="M21 2l-2 2m-7.61 7.61a5.5 5.5 0 1 1-7.778 7.778 5.5 5.5 0 0 1 7.777-7.777zm0 0L15.5 7.5m0 0l3 3L22 7l-3-3m-3.5 3.5L19 4"/></SvgIcon> }
 function IcBrain()    { return <SvgIcon><path d="M9.5 2A2.5 2.5 0 0 1 12 4.5v15a2.5 2.5 0 0 1-4.96-.46 2.5 2.5 0 0 1-1.07-4.73A3 3 0 0 1 4 11.5 3 3 0 0 1 7 8.5a3 3 0 0 1 .1-.76A2.5 2.5 0 0 1 9.5 2z"/><path d="M14.5 2A2.5 2.5 0 0 0 12 4.5v15a2.5 2.5 0 0 0 4.96-.46 2.5 2.5 0 0 0 1.07-4.73A3 3 0 0 0 20 11.5 3 3 0 0 0 17 8.5a3 3 0 0 0-.1-.76A2.5 2.5 0 0 0 14.5 2z"/></SvgIcon> }
 
-// ─── Navigation Structure ─────────────────────────────────────────────────────
+// âââ Navigation Structure âââââââââââââââââââââââââââââââââââââââââââââââââââââ
 function IcAssistant() { return <SvgIcon><path d="M12 2a2 2 0 0 1 2 2c0 .74-.4 1.39-1 1.73V7h1a7 7 0 0 1 7 7h1a1 1 0 0 1 0 2h-1v1a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-1H2a1 1 0 0 1 0-2h1a7 7 0 0 1 7-7h1V5.73c-.6-.34-1-.99-1-1.73a2 2 0 0 1 2-2z"/><circle cx="9" cy="12" r="1"/><circle cx="15" cy="12" r="1"/></SvgIcon> }
 function IcCard() { return <SvgIcon><path d="M20 4H4c-1.11 0-1.99.89-1.99 2L2 18c0 1.11.89 2 2 2h16c1.11 0 2-.89 2-2V6c0-1.11-.89-2-2-2zm0 14H4v-6h16v6zm0-10H4V6h16v2z"/></SvgIcon> }
 function IcSparkles() { return <SvgIcon><path d="m12 3-1.9 5.8a2 2 0 0 1-1.287 1.288L3 12l5.8 1.9a2 2 0 0 1 1.288 1.287L12 21l1.9-5.8a2 2 0 0 1 1.287-1.288L21 12l-5.8-1.9a2 2 0 0 1-1.288-1.287Z"/><path d="M5 3v4"/><path d="M3 5h4"/><path d="M19 17v4"/><path d="M17 19h4"/></SvgIcon> }
@@ -117,31 +121,40 @@ function getNav(t) {
   { to: '/bibliothek',      icon: IcImage,    label: 'Bibliothek' },
 
   { divider: true, label: 'LinkedIn', tourId: 'nav-linkedin' },
-  { to: '/linkedin-suche',  icon: IcSearch,   label: 'Suche' },
-  { to: '/linkedin-inbox',  icon: IcInbox,    label: 'LinkedIn Kontakte' },
-  { to: '/vernetzungen',    icon: IcHeart,    label: 'Vernetzung' },
-  // Ein Eintrag „Automatisierung": V2 (la_*) ist Default für alle (3c-Flip).
-  // Not-Aus per User: localStorage lk_features.linkedinAutomationV2Disabled=true → Alt-Seite.
-  // Alt-Route /automatisierung + automation_* bleiben per Deep-Link erreichbar.
-  { to: (!isFlagEnabled('linkedinAutomationV2Disabled')) ? '/automatisierung-neu' : '/automatisierung', icon: IcZap, label: 'Automatisierung' },
-  { to: '/messages',        icon: IcMail,     label: 'Nachrichten' },
-  { to: '/ssi',             icon: IcTarget,   label: t('nav.ssiTracker') },
-  { to: '/linkedin-analytics', icon: IcBarChart, label: 'Post-Analytics' },
-  { to: '/profil-analyse', icon: IcTarget, label: 'Profil & SSI' },
-  { to: '/netzwerk-analytics', icon: IcUsers, label: 'Netzwerk & Dialog' },
-  { to: '/linkedin-engagement', icon: IcZap, label: 'Engagement' },
-  { to: '/profil-checker',  icon: IcLinkedIn, label: 'Profil-Checker' },
-  { to: '/profiltexte',     icon: IcLinkedIn, label: t('nav.profiltexte') },
+  { subSection: true, label: 'Profil', items: [
+    { to: '/profil-checker',  icon: IcCheckCircle, label: 'Profil-Checker' },
+    { to: '/profiltexte',     icon: IcLinkedIn, label: t('nav.profiltexte') },
+  ] },
+  { subSection: true, label: 'Netzwerk', items: [
+    { to: '/linkedin-suche',  icon: IcSearch,   label: 'Suche' },
+    { to: '/linkedin-inbox',  icon: IcInbox,    label: 'LinkedIn Kontakte' },
+    // AUSGEBLENDET 17.07.2026 (Julian): Michaels Netzwerk-Feature (Commit 54c9811c) ist
+    // develop-only, auf Staging noch nicht lauffÃ¤hig (Migration linkedin_network fehlt) und
+    // Michael arbeitet vorerst nicht weiter daran. NUR MenÃ¼punkt versteckt â Route/Seite/EF/
+    // Migrationen bleiben erhalten. Zum ZurÃ¼ckholen einfach diese Zeile wieder aktivieren:
+    // { to: '/linkedin-netzwerk', icon: IcUsers,  label: 'Netzwerk' },
+    { to: '/vernetzungen',    icon: IcHeart,    label: 'Vernetzung' },
+    { to: (!isFlagEnabled('linkedinAutomationV2Disabled')) ? '/automatisierung-neu' : '/automatisierung', icon: IcCog, label: 'Automatisierung' },
+    { to: '/messages',        icon: IcMail,     label: 'Nachrichten' },
+    { to: '/linkedin-engagement', icon: IcZap,  label: 'Engagement' },
+  ] },
 
-  // Instagram + Sponsoring: nur Staging (auf Prod noch nicht fertig — 22.07.2026 Julian)
+  { subSection: true, label: 'Analyse', items: [
+    { to: '/linkedin-analytics',    icon: IcBarChart, label: 'Content' },
+    { to: '/profil-analyse',        icon: IcTarget,   label: 'Profil & SSI' },
+    { to: '/netzwerk-analytics',    icon: IcUsers,    label: 'Netzwerk & Dialog' },
+  ] },
+
+  // Instagram + Sponsoring: nur Staging (auf Prod noch nicht fertig â 22.07.2026 Julian)
   ...(isStaging ? [
   { divider: true, label: 'Instagram', tourId: 'nav-instagram' },
   { to: '/instagram',       icon: IcInstagram, label: 'Analysen' },
+  { to: '/instagram/inbox', icon: IcInstagram, label: 'Postfach' },
 
   { divider: true, label: 'Sponsoring', tourId: 'nav-sponsoring' },
-  { to: '/sponsoring',                 icon: IcRocket,        label: 'Übersicht' },
+  { to: '/sponsoring',                 icon: IcRocket,        label: 'Ãbersicht' },
   { to: '/sponsoring/angebote',        icon: IcDoc,           label: 'Angebote' },
-  { to: '/sponsoring/vertraege',       icon: IcShield,        label: 'Verträge' },
+  { to: '/sponsoring/vertraege',       icon: IcShield,        label: 'VertrÃ¤ge' },
   { to: '/sponsoring/branchenanalyse', icon: IcTarget,        label: 'Branchenanalyse' },
   { to: '/sponsoring/mockup',          icon: IcSparkles,      label: 'Mockup-Studio' },
   { to: '/sponsoring/aktivierung',     icon: IcZap,           label: 'Aktivierung' },
@@ -152,7 +165,7 @@ function getNav(t) {
   { to: '/sponsoring/success',         icon: IcStar,          label: 'Sponsor Success' },
   ] : []),
 
-  // ── Einrichtung (unten, leicht getönt): Branding + Wissen ──
+  // ââ Einrichtung (unten, leicht getÃ¶nt): Branding + Wissen ââ
   { divider: true, label: t('nav.branding'), tourId: 'nav-branding', setup: true },
   { to: '/personal-brand',  icon: IcPersonBrand,  label: 'Personal Brand' },
   { to: '/company-brand',   icon: IcCompanyBrand, label: 'Company Brand' },
@@ -172,11 +185,11 @@ function getNav(t) {
   ]
 }
 
-// ─── Aktive Section bestimmen ────────────────────────────────────────────────
+// âââ Aktive Section bestimmen ââââââââââââââââââââââââââââââââââââââââââââââââ
 // Die aktive/aufgeklappte Section folgt dem Nav-ITEM, das den pathname am
-// spezifischsten matcht (längster passender `to`), NICHT einem URL-Präfix.
-// Sonst fängt z.B. die Sponsoring-"Übersicht" (to:'/sponsoring') auch
-// /sponsoring/ligen via startsWith und würde die Section "Wissen" verdrängen,
+// spezifischsten matcht (lÃ¤ngster passender `to`), NICHT einem URL-PrÃ¤fix.
+// Sonst fÃ¤ngt z.B. die Sponsoring-"Ãbersicht" (to:'/sponsoring') auch
+// /sponsoring/ligen via startsWith und wÃ¼rde die Section "Wissen" verdrÃ¤ngen,
 // obwohl Ligen/Pakete als Nav-Items in "Wissen" leben.
 function getActiveSectionLabel(nav, pathname) {
   let curLabel = null
@@ -196,7 +209,7 @@ function getActiveSectionLabel(nav, pathname) {
   return bestLabel
 }
 
-// ─── NavItem ──────────────────────────────────────────────────────────────────
+// âââ NavItem ââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââ
 function NavItem({ item, indent, inSection, collapsed }) {
   const loc = useLocation()
   const isActive = loc.pathname === item.to || loc.pathname.startsWith(item.to + '/')
@@ -235,7 +248,7 @@ function NavItem({ item, indent, inSection, collapsed }) {
             </span>
           )}
           {!collapsed && item._locked && (
-            <span title="Upgrade nötig" style={{ fontSize: 11, flexShrink: 0, opacity: 0.7 }}>🔒</span>
+            <span title="Upgrade nÃ¶tig" style={{ fontSize: 11, flexShrink: 0, opacity: 0.7 }}>ð</span>
           )}
         </div>
       )}
@@ -243,7 +256,7 @@ function NavItem({ item, indent, inSection, collapsed }) {
   )
 }
 
-// ─── SubSection (verschachteltes Accordion unter NavSection) ─────────────────
+// âââ SubSection (verschachteltes Accordion unter NavSection) âââââââââââââââââ
 function SubSection({ item, location }) {
   const hasActive = item.items.some(it => location.pathname === it.to || location.pathname.startsWith(it.to + '/'))
   const [open, setOpen] = useState(hasActive)
@@ -257,31 +270,32 @@ function SubSection({ item, location }) {
         color: open ? T.primary : T.navText, fontSize:13, fontWeight: open ? 600 : 400,
         transition:'all 0.15s',
       }}>
+        {item.icon && (
         <span style={{ display:'flex', alignItems:'center', justifyContent:'center', width:28, height:28, borderRadius:8, background:'transparent', color: open ? T.primary : T.navText, flexShrink:0 }}>
           <item.icon />
-        </span>
+        </span>)}
         <span style={{ flex:1, textAlign:'left' }}>{item.label}</span>
         <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"
           style={{ transform: open ? 'rotate(0deg)' : 'rotate(-90deg)', transition:'transform 0.2s', flexShrink:0 }}>
           <polyline points="6 9 12 15 18 9"/>
         </svg>
       </button>
-      <div style={{ overflow:'hidden', maxHeight: open ? '200px' : '0px', transition:'max-height 0.3s ease', marginLeft: 13 }}>
+      <div style={{ overflow:'hidden', maxHeight: open ? (item.items.length * 46 + 20) + 'px' : '0px', transition:'max-height 0.3s ease', marginLeft: 13 }}>
         {item.items.map((sub, i) => <NavItem key={i} item={sub} indent />)}
       </div>
     </div>
   )
 }
 
-// ─── NavSection (Accordion, collapsed: flat mit Divider) ─────────────────────
+// âââ NavSection (Accordion, collapsed: flat mit Divider) âââââââââââââââââââââ
 function NavSection({ label, items, isAdmin, location, collapsed, isOpen, onOpen, onToggle, tourId, autoActive }) {
   const open = isOpen
 
   // Auto-open: NUR die Section, die den pathname am spezifischsten matcht
-  // (autoActive wird zentral im Parent via getActiveSectionLabel bestimmt) — nicht
-  // jede Section, deren Item-Präfix zufällig passt. Sonst öffnet /sponsoring/ligen
+  // (autoActive wird zentral im Parent via getActiveSectionLabel bestimmt) â nicht
+  // jede Section, deren Item-PrÃ¤fix zufÃ¤llig passt. Sonst Ã¶ffnet /sponsoring/ligen
   // (Item in "Wissen") auch die Sponsoring-Section (to:'/sponsoring' matcht per
-  // startsWith) und verdrängt "Wissen".
+  // startsWith) und verdrÃ¤ngt "Wissen".
   useEffect(() => {
     if (autoActive) onOpen()
   }, [location.pathname, autoActive])
@@ -289,7 +303,7 @@ function NavSection({ label, items, isAdmin, location, collapsed, isOpen, onOpen
   const visibleItems = items.filter(it => !it.adminOnly || isAdmin)
   if (visibleItems.length === 0) return null
 
-  // ── Collapsed-Modus: Sections werden ganz ausgeblendet ─────────────────────
+  // ââ Collapsed-Modus: Sections werden ganz ausgeblendet âââââââââââââââââââââ
   // Im Icon-Rail sollen nur die Haupt-NavItems sichtbar sein (Startseite, Assistent).
   // Sub-Items in Sections (CRM, Pipeline, Aufgaben, etc.) erreicht der User ueber
   // den Hover-Expand oder indem er die Sidebar ueber den Toggle wieder aufklappt.
@@ -299,7 +313,7 @@ function NavSection({ label, items, isAdmin, location, collapsed, isOpen, onOpen
 
   return (
     <div>
-      {/* Section Header — gleiche Optik wie NavItem */}
+      {/* Section Header â gleiche Optik wie NavItem */}
       <button
         data-tour-id={tourId || undefined}
         onClick={() => onToggle()}
@@ -315,7 +329,7 @@ function NavSection({ label, items, isAdmin, location, collapsed, isOpen, onOpen
           letterSpacing: '-0.005em',
           fontFamily: 'inherit',
         }}>
-        {/* Icon-Platz links — Pfeil als Icon */}
+        {/* Icon-Platz links â Pfeil als Icon */}
         <span style={{
           display:'flex', alignItems:'center', justifyContent:'center',
           width: 24, height: 24, flexShrink: 0,
@@ -333,11 +347,11 @@ function NavSection({ label, items, isAdmin, location, collapsed, isOpen, onOpen
         </span>
       </button>
 
-      {/* Items — animated */}
+      {/* Items â animated */}
       <div style={{
         overflow: 'hidden',
         marginLeft: 16,
-        maxHeight: open ? visibleItems.length * 60 + 200 + 'px' : '0px',
+        maxHeight: open ? (visibleItems.reduce((n, it) => n + (it.subSection ? 1 + (it.items?.length || 0) : 1), 0) * 52 + 260) + 'px' : '0px',
         transition: 'max-height 0.25s ease',
       }}>
         {visibleItems.map((item, i) => {
@@ -351,7 +365,7 @@ function NavSection({ label, items, isAdmin, location, collapsed, isOpen, onOpen
   )
 }
 
-// ─── MenuBtn helper ──────────────────────────────────────────────────────────
+// âââ MenuBtn helper ââââââââââââââââââââââââââââââââââââââââââââââââââââââââââ
 function MenuBtn({ icon, label, onClick }) {
   return (
     <button onClick={onClick}
@@ -364,28 +378,28 @@ function MenuBtn({ icon, label, onClick }) {
   )
 }
 
-// ─── Layout ───────────────────────────────────────────────────────────────────
+// âââ Layout âââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââ
 export default function Layout({ session, role, onLogout, children }) {
   const navigate = useNavigate()
   const location = useLocation()
   const { isMobile } = useResponsive()
   const { wl } = useTenant()
   const { theme } = useTheme()
-  useTagRegistrySync() // füllt den Tag-Farb-Cache app-weit (auch Detailseiten-Pills)
+  useTagRegistrySync() // fÃ¼llt den Tag-Farb-Cache app-weit (auch Detailseiten-Pills)
   const { loading: onbLoading, tourDone, tipsDismissed, markTourDone, dismissTip, contentIntroSeen, areaToursDone, markContentIntroSeen, markAreaTourDone } = useOnboarding()
   const { brandVoices: _bvAll } = useBrandVoice()
   const [showContentIntro, setShowContentIntro] = useState(false)
   const [introManual, setIntroManual] = useState(false)
   const _isContentRoute = ['/redaktionsplan','/content-studio','/bibliothek','/visuals','/media','/dokumente'].some(r => location.pathname === r || location.pathname.startsWith(r + '/'))
   useEffect(() => {
-    if (false) setShowContentIntro(true) // abgelöst durch Content-Bereichstour (AREA_TOURS.content)
+    if (false) setShowContentIntro(true) // abgelÃ¶st durch Content-Bereichstour (AREA_TOURS.content)
   }, [onbLoading, contentIntroSeen, _isContentRoute, (_bvAll||[]).length])
   const [burgerOpen, setBurgerOpen] = useState(false)
   const [openSection, setOpenSection] = useState(null)
 
-  // ── Pro-Bereich-Touren (mehrseitig, geführt) ────────────────────────
+  // ââ Pro-Bereich-Touren (mehrseitig, gefÃ¼hrt) ââââââââââââââââââââââââ
   // Auto-Start beim ersten Betreten eines Bereichs (nach der globalen Tour,
-  // nur Desktop). "Später" snoozed den Bereich, bis der User ihn verlässt und
+  // nur Desktop). "SpÃ¤ter" snoozed den Bereich, bis der User ihn verlÃ¤sst und
   // wieder betritt; der ?-Button im Header startet die Tour jederzeit neu.
   const [activeAreaTour, setActiveAreaTour] = useState(null)
   const [laterArea, setLaterArea] = useState(null)
@@ -397,14 +411,14 @@ export default function Layout({ session, role, onLogout, children }) {
     if (areaToursDone[currentArea] || laterArea === currentArea) return
     setActiveAreaTour(currentArea)
   }, [onbLoading, tourDone, isMobile, currentArea, activeAreaTour, areaToursDone, laterArea])
-  // Manueller Start einer Bereichstour (z.B. aus „Erste Schritte")
+  // Manueller Start einer Bereichstour (z.B. aus âErste Schritte")
   useEffect(() => {
     const onStart = (e) => { const a = e?.detail; if (a && AREA_TOURS[a]) setActiveAreaTour(a) }
     window.addEventListener('leadesk:start-area-tour', onStart)
     return () => window.removeEventListener('leadesk:start-area-tour', onStart)
   }, [])
 
-  // Sidebar-Collapse deaktiviert — Seitenleiste bleibt immer ausgeklappt.
+  // Sidebar-Collapse deaktiviert â Seitenleiste bleibt immer ausgeklappt.
   // (Einklapp-Pfeil entfernt; collapsed fest false, damit auch zuvor eingeklappte
   //  User wieder die volle Leiste sehen.)
   const [collapsed] = useState(false)
@@ -431,7 +445,7 @@ export default function Layout({ session, role, onLogout, children }) {
   const isCollapsed = !isMobile && collapsed && !hovering
   const isHoverOverlay = !isMobile && collapsed && hovering
 
-  // Menü bei Navigation automatisch schließen
+  // MenÃ¼ bei Navigation automatisch schlieÃen
   useEffect(() => {
     setBurgerOpen(false)
   }, [location.pathname])
@@ -440,17 +454,21 @@ export default function Layout({ session, role, onLogout, children }) {
   const [userName, setUserName] = useState('')
   const [notifications, setNotifications] = useState([])
   const [showNotif, setShowNotif] = useState(false)
-  // IDs bereits gesehener Benachrichtigungen (persistiert) → ungelesene = neue IDs.
+  // IDs bereits gesehener Benachrichtigungen (persistiert) â ungelesene = neue IDs.
   // Dadurch wird die Glocke wieder rot, sobald etwas NEUES auftaucht.
   const [seenNotifIds, setSeenNotifIds] = useState(() => {
     try { return JSON.parse(localStorage.getItem('leadesk.notif.seen') || '[]') } catch { return [] }
   })
-  // Gelöschte Benachrichtigungen dauerhaft merken (per ID) → kommen nach Reload nicht wieder.
+  // GelÃ¶schte Benachrichtigungen dauerhaft merken (per ID) â kommen nach Reload nicht wieder.
   const persistDismiss = (ids) => {
+    let merged = []
     try {
       const cur = JSON.parse(localStorage.getItem('leadesk.notif.dismissed') || '[]')
-      localStorage.setItem('leadesk.notif.dismissed', JSON.stringify([...new Set([...cur, ...ids])].slice(-1000)))
+      merged = [...new Set([...cur, ...ids])].slice(-1000)
+      localStorage.setItem('leadesk.notif.dismissed', JSON.stringify(merged))
     } catch {}
+    // gerÃ¤teÃ¼bergreifend spiegeln (best-effort)
+    patchUiState({ notif_dismissed: merged }).catch(() => {})
   }
   const [extInstalled, setExtInstalled] = useState(false)
   useEffect(() => {
@@ -461,7 +479,7 @@ export default function Layout({ session, role, onLogout, children }) {
       const det = await detectLeadeskExtension()
       if (cancelled) return
       setExtInstalled(det.installed)
-      // Bei false: einmal nach 1.5s nachprobieren (für ganz späte Bridge-Inits)
+      // Bei false: einmal nach 1.5s nachprobieren (fÃ¼r ganz spÃ¤te Bridge-Inits)
       if (!det.installed) {
         retryTimer = setTimeout(() => { if (!cancelled) check() }, 1500)
       }
@@ -484,9 +502,9 @@ export default function Layout({ session, role, onLogout, children }) {
   const [showMenu, setShowMenu] = useState(false)
   // isAdmin: global_role='admin' (echter Admin) ODER Staging-Env (Tester-Convenience:
   // alle Sections sichtbar zum Feature-Test). Debug-Override: localStorage 'lk_force_member'
-  // schaltet den Staging-Auto-Admin NUR für den eigenen Tab ab — um Entitlement-/Sidebar-
+  // schaltet den Staging-Auto-Admin NUR fÃ¼r den eigenen Tab ab â um Entitlement-/Sidebar-
   // Gating aus Nicht-Admin-Sicht zu smoken, ohne anderen Staging-Testern die Admin-Sicht
-  // zu nehmen. (Prod-Verhalten unverändert: dort greift nur role==='admin'.)
+  // zu nehmen. (Prod-Verhalten unverÃ¤ndert: dort greift nur role==='admin'.)
   const _forceMember = typeof window !== 'undefined' && window.localStorage.getItem('lk_force_member') === '1'
   const isAdmin = !_forceMember && (role === 'admin' || import.meta.env.VITE_APP_ENV === 'staging')
   const { team: activeTeam, activeTeamId, allTeams, switchTeam } = useTeam()
@@ -495,18 +513,18 @@ export default function Layout({ session, role, onLogout, children }) {
   const { t } = useTranslation()
   const { language, setLanguage } = useLanguage()
   const NAV = getNav(t)
-  // Aktive Section folgt dem spezifischsten Nav-Item, nicht dem URL-Präfix.
+  // Aktive Section folgt dem spezifischsten Nav-Item, nicht dem URL-PrÃ¤fix.
   const activeSecLabel = getActiveSectionLabel(NAV, location.pathname)
   const { hasModule, hasPermission, loading: entitlementsLoading, data: entData } = useEntitlements()
-  // Sidebar-Gating B3: Addons mit leerem activates_modules (z.B. auralis →
-  // KI-Sichtbarkeit) sind nicht in entitlements.modules → Slug-Gate via useAddons.
+  // Sidebar-Gating B3: Addons mit leerem activates_modules (z.B. auralis â
+  // KI-Sichtbarkeit) sind nicht in entitlements.modules â Slug-Gate via useAddons.
   const { subscribedSlugs, reload: reloadAddons } = useAddons()
   // B4 Propagation: useAddons ist per-Component (nicht Context-shared wie
   // useEntitlements). Damit ein Cancel/Activate im Marketplace auch den Slug-Gate
-  // hier live aktualisiert (≤2s, ohne Reload), reloaden wir die Addons sobald sich
-  // die (Context-shared) Entitlements ändern — beide refreshen beim selben Event.
+  // hier live aktualisiert (â¤2s, ohne Reload), reloaden wir die Addons sobald sich
+  // die (Context-shared) Entitlements Ã¤ndern â beide refreshen beim selben Event.
   useEffect(() => { reloadAddons() }, [entData, reloadAddons])
-  // Phase 5 Block 3.5: planId/PLAN_LABELS removed — were dead code (never rendered)
+  // Phase 5 Block 3.5: planId/PLAN_LABELS removed â were dead code (never rendered)
   // and read from stale profiles.plan_id. Plan-Anzeige laeuft jetzt ueber useEntitlements.
 
   useEffect(() => {
@@ -545,7 +563,7 @@ export default function Layout({ session, role, onLogout, children }) {
   }, [session])
 
   // Benachrichtigungen: neu laden bei Session- ODER Team-Wechsel (Bugfix: lief vorher
-  // nur auf [session] und brach bei noch leerem activeTeamId ab → dauerhaft leer) +
+  // nur auf [session] und brach bei noch leerem activeTeamId ab â dauerhaft leer) +
   // leichtes Polling alle 60s, damit neue Events ohne Reload auftauchen.
   useEffect(() => {
     if (!session?.user || !activeTeamId) return
@@ -554,7 +572,43 @@ export default function Layout({ session, role, onLogout, children }) {
     return () => clearInterval(iv)
   }, [session, activeTeamId])
 
-  // Auf Profil-Updates hören (von der Profilseite gefeuert)
+  // Echtzeit: Postgres-Changes der benachrichtigungsrelevanten Tabellen abonnieren
+  // (team-scoped) â Glocke aktualisiert sofort statt erst beim 60s-Poll. Degradiert
+  // sicher: sind die Tabellen serverseitig nicht in der Realtime-Publication, feuert
+  // das Abo einfach nicht und das Polling oben bleibt der Fallback.
+  useEffect(() => {
+    if (!session?.user || !activeTeamId) return
+    let debounce
+    const trigger = () => { clearTimeout(debounce); debounce = setTimeout(() => loadNotifications(session.user.id), 1500) }
+    const tables = ['leads', 'deals', 'lead_tasks', 'pm_tasks', 'linkedin_inbox', 'content_posts']
+    const ch = supabase.channel('notif-rt-' + activeTeamId)
+    tables.forEach(tbl => {
+      ch.on('postgres_changes', { event: '*', schema: 'public', table: tbl, filter: `team_id=eq.${activeTeamId}` }, trigger)
+    })
+    ch.subscribe()
+    return () => { clearTimeout(debounce); try { supabase.removeChannel(ch) } catch {} }
+  }, [session, activeTeamId])
+
+  // GerÃ¤teÃ¼bergreifend: gesehene/gelÃ¶schte Benachrichtigungen aus user_preferences.ui_state
+  // holen und in State/localStorage spiegeln, damit âgelÃ¶scht" auch auf anderen GerÃ¤ten gilt.
+  useEffect(() => {
+    if (!session?.user) return
+    let cancelled = false
+    loadUiState().then(st => {
+      if (cancelled || !st) return
+      if (Array.isArray(st.notif_seen)) {
+        setSeenNotifIds(st.notif_seen)
+        try { localStorage.setItem('leadesk.notif.seen', JSON.stringify(st.notif_seen)) } catch {}
+      }
+      if (Array.isArray(st.notif_dismissed)) {
+        try { localStorage.setItem('leadesk.notif.dismissed', JSON.stringify(st.notif_dismissed)) } catch {}
+        if (activeTeamId) loadNotifications(session.user.id) // mit Server-Dismissed neu filtern
+      }
+    }).catch(() => {})
+    return () => { cancelled = true }
+  }, [session])
+
+  // Auf Profil-Updates hÃ¶ren (von der Profilseite gefeuert)
   useEffect(() => {
     const handler = () => loadProfile()
     window.addEventListener('leadesk_profile_updated', handler)
@@ -563,9 +617,9 @@ export default function Layout({ session, role, onLogout, children }) {
 
   async function loadNotifications(uid) {
     const tid = activeTeamId
-    if (!tid) return // Team noch nicht geladen — Effekt feuert erneut sobald activeTeamId da ist
+    if (!tid) return // Team noch nicht geladen â Effekt feuert erneut sobald activeTeamId da ist
     const notifs = []
-    // Dauerhaft gelöschte Benachrichtigungen (per ID, persistiert) — werden nie
+    // Dauerhaft gelÃ¶schte Benachrichtigungen (per ID, persistiert) â werden nie
     // wieder eingeblendet, auch nicht nach Reload/Polling.
     let dismissed = []
     try { dismissed = JSON.parse(localStorage.getItem('leadesk.notif.dismissed') || '[]') } catch {}
@@ -579,72 +633,72 @@ export default function Layout({ session, role, onLogout, children }) {
     // ganze Glocke killen.
     const src = async (fn) => { try { await fn() } catch(e) { /* still ignorieren */ } }
 
-    // ── CRM: Neue Leads (letzte 7 Tage) ──
+    // ââ CRM: Neue Leads (letzte 7 Tage) ââ
     await src(async () => {
       const {data} = await supabase.from('leads').select('id,first_name,last_name,name,created_at').eq('team_id',tid).gte('created_at',since).order('created_at',{ascending:false}).limit(5)
       data?.forEach(l => {
         const name = l.first_name ? `${l.first_name} ${l.last_name||''}`.trim() : (l.name||'Unbekannt')
-        notifs.push({id:'l'+l.id, type:'lead', icon:'👤', title:`Neuer Lead: ${name}`, time:l.created_at})
+        notifs.push({id:'l'+l.id, type:'lead', icon:'ð¤', title:`Neuer Lead: ${name}`, time:l.created_at})
       })
     })
 
-    // ── CRM: Überfällige/heute Follow-ups ──
+    // ââ CRM: ÃberfÃ¤llige/heute Follow-ups ââ
     await src(async () => {
       const {data} = await supabase.from('leads').select('id,first_name,last_name,next_followup').eq('team_id',tid).lte('next_followup',today).not('next_followup','is',null).order('next_followup',{ascending:true}).limit(5)
       data?.forEach(l => {
         const name = l.first_name ? `${l.first_name} ${l.last_name||''}`.trim() : 'Lead'
         const fd = new Date(l.next_followup)
-        if (isNaN(fd.getTime())) return // kaputtes/leeres Datum überspringen
+        if (isNaN(fd.getTime())) return // kaputtes/leeres Datum Ã¼berspringen
         const diff = Math.round((new Date()-fd)/86400000)
         const label = diff<=0?'Heute':diff===1?'Gestern':`vor ${diff} Tagen`
-        notifs.push({id:'f'+l.id, type:'followup', icon:'📅', title:`Follow-up ${label}: ${name}`, time:l.next_followup+'T09:00:00'})
+        notifs.push({id:'f'+l.id, type:'followup', icon:'ð', title:`Follow-up ${label}: ${name}`, time:l.next_followup+'T09:00:00'})
       })
     })
 
-    // ── CRM: Aufgaben überfällig/heute/morgen ──
+    // ââ CRM: Aufgaben Ã¼berfÃ¤llig/heute/morgen ââ
     await src(async () => {
       const {data} = await supabase.from('lead_tasks').select('id,title,due_date,leads(first_name,last_name)').eq('team_id',tid).eq('status','open').lte('due_date',tomorrowStr).order('due_date',{ascending:true}).limit(5)
       data?.forEach(t=>{
         const isOverdue = t.due_date < today
         const leadName = t.leads ? `${t.leads.first_name||''} ${t.leads.last_name||''}`.trim() : ''
-        notifs.push({id:'t'+t.id,type:'task',icon:isOverdue?'⚠️':'📋',title:`${isOverdue?'Überfällig':'Fällig'}: ${t.title}${leadName?' · '+leadName:''}`,time:t.due_date+'T09:00:00'})
+        notifs.push({id:'t'+t.id,type:'task',icon:isOverdue?'â ï¸':'ð',title:`${isOverdue?'ÃberfÃ¤llig':'FÃ¤llig'}: ${t.title}${leadName?' Â· '+leadName:''}`,time:t.due_date+'T09:00:00'})
       })
     })
 
-    // ── CRM: Deals mit anstehendem Abschluss (nächste 3 Tage / überfällig) ──
+    // ââ CRM: Deals mit anstehendem Abschluss (nÃ¤chste 3 Tage / Ã¼berfÃ¤llig) ââ
     await src(async () => {
       const {data} = await supabase.from('deals').select('id,title,stage,expected_close_date').eq('team_id',tid).lte('expected_close_date',in3Str).not('expected_close_date','is',null).not('stage','in','("gewonnen","verloren")').order('expected_close_date',{ascending:true}).limit(5)
       data?.forEach(d=>{
         const overdue = d.expected_close_date < today
-        notifs.push({id:'d'+d.id,type:'deal',icon:'💼',title:`${overdue?'Abschluss überfällig':'Abschluss steht an'}: ${d.title||'Deal'}`,time:d.expected_close_date+'T09:00:00'})
+        notifs.push({id:'d'+d.id,type:'deal',icon:'ð¼',title:`${overdue?'Abschluss Ã¼berfÃ¤llig':'Abschluss steht an'}: ${d.title||'Deal'}`,time:d.expected_close_date+'T09:00:00'})
       })
     })
 
-    // ── Projektumsetzung: Projekt-Aufgaben überfällig/heute ──
+    // ââ Projektumsetzung: Projekt-Aufgaben Ã¼berfÃ¤llig/heute ââ
     await src(async () => {
       const {data} = await supabase.from('pm_tasks').select('id,title,due_date,status').eq('team_id',tid).lte('due_date',today).not('due_date','is',null).neq('status','done').order('due_date',{ascending:true}).limit(5)
       data?.forEach(t=>{
         const overdue = t.due_date < today
-        notifs.push({id:'p'+t.id,type:'pm',icon:overdue?'⚠️':'🗂️',title:`${overdue?'Projekt überfällig':'Projekt fällig'}: ${t.title||'Aufgabe'}`,time:t.due_date+'T09:00:00'})
+        notifs.push({id:'p'+t.id,type:'pm',icon:overdue?'â ï¸':'ðï¸',title:`${overdue?'Projekt Ã¼berfÃ¤llig':'Projekt fÃ¤llig'}: ${t.title||'Aufgabe'}`,time:t.due_date+'T09:00:00'})
       })
     })
 
-    // ── LinkedIn: neue angenommene Vernetzungen (letzte 7 Tage) ──
+    // ââ LinkedIn: neue angenommene Vernetzungen (letzte 7 Tage) ââ
     await src(async () => {
       const {data} = await supabase.from('linkedin_inbox').select('id,name,li_accepted_at').eq('team_id',tid).gte('li_accepted_at',since).not('li_accepted_at','is',null).order('li_accepted_at',{ascending:false}).limit(5)
-      data?.forEach(c=>notifs.push({id:'c'+c.id,type:'connection',icon:'🤝',title:`Vernetzung angenommen: ${c.name||'Kontakt'}`,time:c.li_accepted_at}))
+      data?.forEach(c=>notifs.push({id:'c'+c.id,type:'connection',icon:'ð¤',title:`Vernetzung angenommen: ${c.name||'Kontakt'}`,time:c.li_accepted_at}))
     })
 
-    // ── Content: geplante Posts, die zur Veröffentlichung anstehen ──
+    // ââ Content: geplante Posts, die zur VerÃ¶ffentlichung anstehen ââ
     await src(async () => {
       const {data} = await supabase.from('content_posts').select('id,title,scheduled_at,status').eq('team_id',tid).eq('status','scheduled').lte('scheduled_at',tomorrowStr+'T23:59:59').not('scheduled_at','is',null).order('scheduled_at',{ascending:true}).limit(5)
-      data?.forEach(p=>notifs.push({id:'cp'+p.id,type:'content',icon:'📝',title:`Post geplant: ${p.title||'Beitrag'}`,time:p.scheduled_at}))
+      data?.forEach(p=>notifs.push({id:'cp'+p.id,type:'content',icon:'ð',title:`Post geplant: ${p.title||'Beitrag'}`,time:p.scheduled_at}))
     })
 
-    // ── Team: offene Einladungen ──
+    // ââ Team: offene Einladungen ââ
     await src(async () => {
       const {data} = await supabase.from('invites').select('id,email,created_at').eq('status','pending').limit(3)
-      data?.forEach(inv=>notifs.push({id:'i'+inv.id,type:'invite',icon:'✉️',title:'Einladung offen: '+inv.email,time:inv.created_at}))
+      data?.forEach(inv=>notifs.push({id:'i'+inv.id,type:'invite',icon:'âï¸',title:'Einladung offen: '+inv.email,time:inv.created_at}))
     })
 
     notifs.sort((a,b)=>new Date(b.time)-new Date(a.time))
@@ -666,7 +720,7 @@ export default function Layout({ session, role, onLogout, children }) {
       .then(({ data }) => setAllLeads(data || []))
   }, [session, activeTeamId])
 
-  // Leads neu laden wenn Suche geöffnet wird (damit neue Leads erscheinen)
+  // Leads neu laden wenn Suche geÃ¶ffnet wird (damit neue Leads erscheinen)
   useEffect(() => {
     if (!searchOpen || !session?.user?.id) return
     if (!activeTeamId) { setAllLeads([]); return }
@@ -733,8 +787,8 @@ export default function Layout({ session, role, onLogout, children }) {
   return (
     <div style={{ display:'flex', height:'100vh', background: T.bg, overflow:'hidden', fontFamily:'"Helvetica Neue", Inter, sans-serif' }}>
 
-      {/* ── SIDEBAR ── */}
-      {/* ── MOBILE: Burger Overlay ── */}
+      {/* ââ SIDEBAR ââ */}
+      {/* ââ MOBILE: Burger Overlay ââ */}
       {isMobile && burgerOpen && (
         <div onClick={() => setBurgerOpen(false)} style={{
           position:'fixed', inset:0, zIndex:300,
@@ -806,12 +860,12 @@ export default function Layout({ session, role, onLogout, children }) {
           )}
         </div>
 
-        {/* Collapse-Toggle entfernt — Seitenleiste bleibt immer ausgeklappt (Pfeil wurde nicht genutzt) */}
+        {/* Collapse-Toggle entfernt â Seitenleiste bleibt immer ausgeklappt (Pfeil wurde nicht genutzt) */}
 
-        {/* Team-Switcher — nur sichtbar wenn ≥2 Teams und Sidebar nicht eingeklappt */}
+        {/* Team-Switcher â nur sichtbar wenn â¥2 Teams und Sidebar nicht eingeklappt */}
         <TeamSwitcher isCollapsed={isCollapsed} />
 
-        {/* Nav Items — Accordion */}
+        {/* Nav Items â Accordion */}
         <nav style={{ flex: 1, paddingBottom: 12 }}>
           {/* Top-level items (kein divider) */}
           {(() => {
@@ -836,13 +890,13 @@ export default function Layout({ session, role, onLogout, children }) {
             })
 
             // Block 5.4: per-Item Permission-Filter.
-            //   - adminOnly + !isAdmin → ausgeblendet (existing)
-            //   - entitlementsLoading → Bypass (D-A=a optimistic, kein Flash)
-            //   - isAdmin → Bypass (existing)
-            //   - getRequiredPermission(item.to)===null → always-on, gerendert
-            //   - hasPermission(perm)===true → gerendert
-            //   - sonst → herausgefiltert
-            // P3 Schritt 4: Upsell-Zustand (Item sichtbar + Lock statt versteckt) NUR für
+            //   - adminOnly + !isAdmin â ausgeblendet (existing)
+            //   - entitlementsLoading â Bypass (D-A=a optimistic, kein Flash)
+            //   - isAdmin â Bypass (existing)
+            //   - getRequiredPermission(item.to)===null â always-on, gerendert
+            //   - hasPermission(perm)===true â gerendert
+            //   - sonst â herausgefiltert
+            // P3 Schritt 4: Upsell-Zustand (Item sichtbar + Lock statt versteckt) NUR fÃ¼r
             // LinkedIn-Suite-Tiers (Marketing/Sales/All-in/Trial), NICHT free/none. Sauberes
             // Signal (Free hat alle Module, aber keine linkedin.*/content.*-Permission):
             const _perms = entData?.permissions || []
@@ -857,24 +911,24 @@ export default function Layout({ session, role, onLogout, children }) {
               if (item.adminOnly && !isAdmin) return false
               if (!item.to) return true            // sub-section parent
               if (entitlementsLoading) return true // D-A=a Race-Schutz
-              // Admin sees all sidebar items for support — DO NOT remove without
+              // Admin sees all sidebar items for support â DO NOT remove without
               // alternative diagnostics path (Leadesk-Admin braucht Sicht auf
               // Sponsoring/Strike2/etc. auch ohne Modul-Activation des Accounts).
               if (isAdmin) return true
               // Sidebar-Gating (Marketplace-Addons): Item nur sichtbar wenn das
-              // zugehörige Addon/Modul aktiviert ist (verschwindet nach Cancel).
-              //   item.module    → Modul-Gate (Addon mit activates_modules, z.B. Strike2)
-              //   item.addonSlug → Slug-Gate (Addon mit leerem activates_modules, z.B. auralis)
+              // zugehÃ¶rige Addon/Modul aktiviert ist (verschwindet nach Cancel).
+              //   item.module    â Modul-Gate (Addon mit activates_modules, z.B. Strike2)
+              //   item.addonSlug â Slug-Gate (Addon mit leerem activates_modules, z.B. auralis)
               if (item.module && !hasModule(item.module)) return false
               if (item.addonSlug && !(subscribedSlugs?.has?.(item.addonSlug))) return false
               const perm = getRequiredPermission(item.to)
               if (perm === null) return true       // always-on
               if (hasPermission(perm)) return true
-              // Fehlt die Permission: P3-Upsell-Keys für Suite-Tiers sichtbar (Lock via NavItem),
+              // Fehlt die Permission: P3-Upsell-Keys fÃ¼r Suite-Tiers sichtbar (Lock via NavItem),
               // sonst wie bisher versteckt.
               return canUpsell && UPSELL_KEYS.has(perm)
             }
-            // sichtbar-aber-ohne-Permission ⟹ Upsell/Lock (proaktiv, hasPermission weiß es vorab, kein 403 nötig)
+            // sichtbar-aber-ohne-Permission â¹ Upsell/Lock (proaktiv, hasPermission weiÃ es vorab, kein 403 nÃ¶tig)
             const isItemLocked = (item) => {
               if (!item?.to || isAdmin || entitlementsLoading) return false
               const perm = getRequiredPermission(item.to)
@@ -884,13 +938,22 @@ export default function Layout({ session, role, onLogout, children }) {
             const renderSection = (sec, i) => {
               const moduleKey = SIDEBAR_DIVIDER_TO_MODULE[sec.label]
               let visibleItems = sec.items.filter(isItemVisible)
+              // Unterbereiche (subSection): Kinder ebenfalls per Gating filtern, leere entfernen.
+              visibleItems = visibleItems
+                .map(it => it.subSection ? { ...it, items: it.items.filter(isItemVisible) } : it)
+                .filter(it => !it.subSection || it.items.length > 0)
               if (moduleKey && !isAdmin && !entitlementsLoading && !hasModule(moduleKey)) {
                 if (sec.label === 'LinkedIn' && hasPermission('linkedin.profile_texts')) {
-                  visibleItems = sec.items.filter(it => it.to === '/profiltexte')
+                  const pt = []
+                  sec.items.forEach(it => {
+                    if (it.to === '/profiltexte') pt.push(it)
+                    else if (it.subSection) { const c = (it.items||[]).find(s2 => s2.to === '/profiltexte'); if (c) pt.push({ ...it, items: [c] }) }
+                  })
+                  visibleItems = pt
                 } else if (canUpsell && visibleItems.length > 0) {
-                  // P3 Schritt 4: Modul fehlt, aber Section hat Upsell-Items (z.B. Sales → Content)
-                  // → Section sichtbar mit den per isItemVisible bereits gefilterten Upsell-Items.
-                  // (free/none: canUpsell=false → weiter komplett versteckt.)
+                  // P3 Schritt 4: Modul fehlt, aber Section hat Upsell-Items (z.B. Sales â Content)
+                  // â Section sichtbar mit den per isItemVisible bereits gefilterten Upsell-Items.
+                  // (free/none: canUpsell=false â weiter komplett versteckt.)
                 } else { return null }
               }
               if (visibleItems.length === 0 && !entitlementsLoading) return null
@@ -926,7 +989,7 @@ export default function Layout({ session, role, onLogout, children }) {
 
       </aside>
 
-      {/* ── MAIN AREA ── */}
+      {/* ââ MAIN AREA ââ */}
       <div style={{ flex:1, display:'flex', flexDirection:'column', overflow:'hidden' }}>
 
         {/* TOP BAR */}
@@ -956,7 +1019,7 @@ export default function Layout({ session, role, onLogout, children }) {
               <span style={{ display:'block', width:22, height:2, background:T.primary, borderRadius:2 }}/>
             </button>
           )}
-          {/* Suche — links, Pill — auf Mobile ausgeblendet */}
+          {/* Suche â links, Pill â auf Mobile ausgeblendet */}
           {!isMobile && (
           <button onClick={() => setSearchOpen(true)} title={t('header.searchShortcut')}
             style={{ display:'flex', alignItems:'center', gap:7, padding:'8px 16px', borderRadius:99,
@@ -967,13 +1030,13 @@ export default function Layout({ session, role, onLogout, children }) {
               transition:'all 0.2s ease' }}
             onMouseEnter={e => { e.currentTarget.style.background = 'var(--border)'; e.currentTarget.style.color = 'var(--text-primary)' }}
             onMouseLeave={e => { e.currentTarget.style.background = 'var(--surface-muted)'; e.currentTarget.style.color = 'var(--text-muted)' }}>
-            ─ <span>{t('header.search')}</span>
-            <kbd style={{ fontSize:9, background:'var(--surface)', borderRadius:5, padding:'2px 6px', color:'var(--text-primary)', fontWeight:700, fontFamily:'inherit' }}>⌘K</kbd>
+            â <span>{t('header.search')}</span>
+            <kbd style={{ fontSize:9, background:'var(--surface)', borderRadius:5, padding:'2px 6px', color:'var(--text-primary)', fontWeight:700, fontFamily:'inherit' }}>âK</kbd>
           </button>
 
           )} {/* end !isMobile search */}
 
-          {/* Mitte — Logo nur Mobile */}
+          {/* Mitte â Logo nur Mobile */}
           <div style={{ flex:1, display:'flex', justifyContent:'center' }}>
             {isMobile && (
               <NavLink to="/" style={{ display:'flex', alignItems:'center', textDecoration:'none', lineHeight:0 }} title="Zur Startseite">
@@ -983,7 +1046,7 @@ export default function Layout({ session, role, onLogout, children }) {
           </div>
 
 
-          {/* Brand-Voice-Switcher — nur in LinkedIn- und Content-Bereichen sichtbar.
+          {/* Brand-Voice-Switcher â nur in LinkedIn- und Content-Bereichen sichtbar.
               Branding/CRM/Projektumsetzung sind team-shared, nicht BV-scoped. */}
           {!isMobile && isBrandVoiceContext(location.pathname) && (
             <span style={{ display:'inline-flex', alignItems:'center', gap:6 }}>
@@ -1004,16 +1067,16 @@ export default function Layout({ session, role, onLogout, children }) {
             </button>
           )}
 
-          {/* Globales Sprachmodell — Picker für alle KI-Funktionen.
+          {/* Globales Sprachmodell â Picker fÃ¼r alle KI-Funktionen.
               Auf /ssi ausgeblendet (reines SSI-Tracking, keine KI-Funktion). */}
           {!isMobile && location.pathname !== '/ssi' && <GlobalModelPicker/>}
 
-          {/* Extension-Button — direkt zum Chrome Web Store */}
+          {/* Extension-Button â direkt zum Chrome Web Store */}
           <a
             href={EXTENSION_WEBSTORE_URL}
             target="_blank"
             rel="noopener noreferrer"
-            title={extInstalled ? 'Browser-Extension aktiv — im Web Store ansehen' : 'Browser-Extension installieren'}
+            title={extInstalled ? 'Browser-Extension aktiv â im Web Store ansehen' : 'Browser-Extension installieren'}
             style={{ position:'relative', background:extInstalled?'rgba(34,197,94,0.12)':'var(--surface)', backdropFilter:'var(--glass-blur)', WebkitBackdropFilter:'var(--glass-blur)', border:'1px solid '+(extInstalled?'rgba(34,197,94,0.40)':'var(--border)'), cursor:'pointer', width:38, height:38, borderRadius:11, display:'flex', alignItems:'center', justifyContent:'center', color: extInstalled?'rgb(22,163,74)':'var(--text-muted)', transition:'all 0.15s', textDecoration:'none' }}
             onMouseEnter={e=>{ if(!extInstalled) e.currentTarget.style.color='var(--text-primary)' }}
             onMouseLeave={e=>{ if(!extInstalled) e.currentTarget.style.color='var(--text-muted)' }}>
@@ -1025,10 +1088,10 @@ export default function Layout({ session, role, onLogout, children }) {
             )}
           </a>
 
-          {/* Glocke — Pill */}
+          {/* Glocke â Pill */}
           <div style={{ position:'relative' }}>
             <button data-notif style={{ position:'relative', background: notifications.some(n=>!seenNotifIds.includes(n.id)) ? 'rgba(239,68,68,0.10)' : 'var(--surface)', backdropFilter:'var(--glass-blur)', WebkitBackdropFilter:'var(--glass-blur)', border:'1px solid '+(notifications.some(n=>!seenNotifIds.includes(n.id)) ? 'rgba(239,68,68,0.55)' : 'var(--border)'), cursor:'pointer', width:38, height:38, borderRadius:11, display:'flex', alignItems:'center', justifyContent:'center', color: notifications.some(n=>!seenNotifIds.includes(n.id)) ? 'rgb(220,38,38)' : 'var(--text-muted)', transition:'all 0.15s' }}
-              onClick={()=>{ setShowNotif(v=>{ const next=!v; if(next){ const ids=notifications.map(n=>n.id); setSeenNotifIds(ids); try{localStorage.setItem('leadesk.notif.seen',JSON.stringify(ids))}catch{} } return next }) }}
+              onClick={()=>{ setShowNotif(v=>{ const next=!v; if(next){ const ids=notifications.map(n=>n.id); setSeenNotifIds(ids); try{localStorage.setItem('leadesk.notif.seen',JSON.stringify(ids))}catch{} patchUiState({ notif_seen: ids }).catch(()=>{}) } return next }) }}
               onMouseEnter={e=>{ e.currentTarget.style.color='var(--text-primary)' }}
               onMouseLeave={e=>{ e.currentTarget.style.color = notifications.some(n=>!seenNotifIds.includes(n.id)) ? 'rgb(220,38,38)' : 'var(--text-muted)' }}>
               <IcBell/>
@@ -1040,11 +1103,11 @@ export default function Layout({ session, role, onLogout, children }) {
                 <div data-notif style={{ position:'absolute', top:'calc(100% + 8px)', right:0, width:320, background:'var(--surface-glass-strong)', backdropFilter:'var(--glass-blur)', WebkitBackdropFilter:'var(--glass-blur)', borderRadius:16, boxShadow:'0 8px 32px rgba(15,23,42,0.18)', border:'1px solid var(--border)', zIndex:1000, overflow:'hidden' }}>
                   <div style={{ padding:'14px 16px 10px', borderBottom:'1px solid var(--surface)', display:'flex', justifyContent:'space-between', alignItems:'center' }}>
                     <div style={{ fontWeight:800, fontSize:14, color:'var(--text-primary)' }}>Benachrichtigungen</div>
-                    {notifications.length>0 && <button onClick={()=>{persistDismiss(notifications.map(n=>n.id));setNotifications([]);setShowNotif(false)}} style={{ fontSize:11, color:'var(--text-muted)', background:'none', border:'none', cursor:'pointer', padding:'2px 6px', borderRadius:6, fontWeight:600 }}>Alle löschen</button>}
+                    {notifications.length>0 && <button onClick={()=>{persistDismiss(notifications.map(n=>n.id));setNotifications([]);setShowNotif(false)}} style={{ fontSize:11, color:'var(--text-muted)', background:'none', border:'none', cursor:'pointer', padding:'2px 6px', borderRadius:6, fontWeight:600 }}>Alle lÃ¶schen</button>}
                   </div>
                   {notifications.length===0 ? (
                     <div style={{ padding:'32px 16px', textAlign:'center', color:'var(--text-soft)' }}>
-                      <div style={{ fontSize:28, marginBottom:8 }}>─</div>
+                      <div style={{ fontSize:28, marginBottom:8 }}>â</div>
                       <div style={{ fontSize:13, fontWeight:600, color:'var(--text-primary)' }}>Keine Benachrichtigungen</div>
                       <div style={{ fontSize:12, marginTop:4 }}>Neue Leads und Events erscheinen hier</div>
                     </div>
@@ -1057,10 +1120,10 @@ export default function Layout({ session, role, onLogout, children }) {
                         <div style={{ fontSize:13, fontWeight:600, color:'var(--text-primary)', whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis' }}>{n.title}</div>
                         <div style={{ fontSize:11, color:'var(--text-soft)', marginTop:2 }}>{(() => { const d=new Date(n.time); return isNaN(d.getTime()) ? '' : d.toLocaleDateString('de-DE',{day:'2-digit',month:'short',hour:'2-digit',minute:'2-digit'}) })()}</div>
                       </div>
-                      <button title="Löschen" onClick={(e)=>{ e.stopPropagation(); persistDismiss([n.id]); setNotifications(list=>list.filter(x=>x.id!==n.id)) }}
+                      <button title="LÃ¶schen" onClick={(e)=>{ e.stopPropagation(); persistDismiss([n.id]); setNotifications(list=>list.filter(x=>x.id!==n.id)) }}
                         style={{ flexShrink:0, background:'none', border:'none', cursor:'pointer', color:'var(--text-soft)', fontSize:15, lineHeight:1, padding:'2px 4px', borderRadius:6 }}
                         onMouseEnter={e=>{ e.currentTarget.style.color='rgb(220,38,38)'; e.currentTarget.style.background='var(--surface-hover)' }}
-                        onMouseLeave={e=>{ e.currentTarget.style.color='var(--text-soft)'; e.currentTarget.style.background='none' }}>×</button>
+                        onMouseLeave={e=>{ e.currentTarget.style.color='var(--text-soft)'; e.currentTarget.style.background='none' }}>Ã</button>
                     </div>
                   ))}
                 </div>
@@ -1084,7 +1147,7 @@ export default function Layout({ session, role, onLogout, children }) {
               </div>
               {showMenu && (
                 <div style={{ position:'absolute', top:'calc(100% + 10px)', right:0, width:240, background:'var(--surface-glass-strong)', backdropFilter:'var(--glass-blur)', WebkitBackdropFilter:'var(--glass-blur)', borderRadius:16, boxShadow:'0 8px 32px rgba(0,0,0,0.14), 0 2px 8px rgba(0,0,0,0.08)', border:'1px solid rgba(0,0,0,0.06)', zIndex:999, overflow:'hidden' }}>
-                  {/* User-Info-Header entfernt (Name/Rolle/Enterprise — nicht funktional) */}
+                  {/* User-Info-Header entfernt (Name/Rolle/Enterprise â nicht funktional) */}
                   {/* Menu Items */}
                   <div style={{ padding:'6px' }}>
                     <button onClick={() => { navigate('/settings/profil'); setShowMenu(false) }}
@@ -1115,8 +1178,8 @@ export default function Layout({ session, role, onLogout, children }) {
                       </span>
                       <span style={{ fontWeight:500 }}>Erste Schritte</span>
                     </button>
-                    {/* LinkedIn-Cloud-Menüpunkt ausgeblendet — Seite (/linkedin-connect) bleibt erreichbar */}
-                    {/* Kanbanboards-Menüpunkt entfernt — Board-Ansicht aktuell nicht nutzbar */}
+                    {/* LinkedIn-Cloud-MenÃ¼punkt ausgeblendet â Seite (/linkedin-connect) bleibt erreichbar */}
+                    {/* Kanbanboards-MenÃ¼punkt entfernt â Board-Ansicht aktuell nicht nutzbar */}
                     {/* Phase 5A: Admin sidebar section disabled. Routes deactivated.
                         Migration to admin.leadesk.de in progress.
                         See docs/architecture/PHASE_5_DISCOVERY.md / PHASE_5_DECISIONS.md */}
@@ -1125,12 +1188,12 @@ export default function Layout({ session, role, onLogout, children }) {
                         <div style={{ height:1, background:'#F3F4F6', margin:'4px 6px' }}/>
                         <div style={{ padding:'4px 12px 2px', fontSize:10, fontWeight:700, color:'var(--text-soft)', textTransform:'uppercase', letterSpacing:'0.08em' }}>Admin</div>
                         <MenuBtn icon={<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>} label="Admin Panel" onClick={() => { navigate('/admin'); setShowMenu(false) }}/>
-                        <MenuBtn icon={<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>} label="─ Benutzerverwaltung" onClick={() => { navigate('/admin/users'); setShowMenu(false) }}/>
-                        <MenuBtn icon={<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg>} label="─ Changelog & Logs" onClick={() => { navigate('/admin-logs'); setShowMenu(false) }}/>
-                        <MenuBtn icon={<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>} label="─ Dokumentation" onClick={() => { navigate('/admin-docs'); setShowMenu(false) }}/>
+                        <MenuBtn icon={<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>} label="â Benutzerverwaltung" onClick={() => { navigate('/admin/users'); setShowMenu(false) }}/>
+                        <MenuBtn icon={<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg>} label="â Changelog & Logs" onClick={() => { navigate('/admin-logs'); setShowMenu(false) }}/>
+                        <MenuBtn icon={<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>} label="â Dokumentation" onClick={() => { navigate('/admin-docs'); setShowMenu(false) }}/>
                         <MenuBtn icon={<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h18M9 21V9"/></svg>} label="Whitelabel" onClick={() => { navigate('/admin/whitelabel'); setShowMenu(false) }}/>
-                        <MenuBtn icon={<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><rect x="2" y="7" width="20" height="14" rx="2"/><path d="M16 3v4M8 3v4M2 11h20"/></svg>} label="─ Tenant-Verwaltung" onClick={() => { navigate('/admin/tenants'); setShowMenu(false) }}/>
-                        <MenuBtn icon={<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg>} label="─ Pläne & Module" onClick={() => { navigate('/admin/plans'); setShowMenu(false) }}/>
+                        <MenuBtn icon={<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><rect x="2" y="7" width="20" height="14" rx="2"/><path d="M16 3v4M8 3v4M2 11h20"/></svg>} label="â Tenant-Verwaltung" onClick={() => { navigate('/admin/tenants'); setShowMenu(false) }}/>
+                        <MenuBtn icon={<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg>} label="â PlÃ¤ne & Module" onClick={() => { navigate('/admin/plans'); setShowMenu(false) }}/>
 
                       </>
                     )}
@@ -1157,13 +1220,13 @@ export default function Layout({ session, role, onLogout, children }) {
         {isDemo && (
           <div style={{ background:'linear-gradient(135deg,#f97316,#ef4444)', color:'white', padding:'8px 24px', display:'flex', alignItems:'center', justifyContent:'space-between', flexShrink:0, fontSize:13, fontWeight:600 }}>
             <div style={{ display:'flex', alignItems:'center', gap:10 }}>
-              <span style={{ fontSize:16 }}>🎬</span>
-              <span>Demo-Modus — Du siehst Musterdaten. Alle Features sind voll funktionsfähig.</span>
+              <span style={{ fontSize:16 }}>ð¬</span>
+              <span>Demo-Modus â Du siehst Musterdaten. Alle Features sind voll funktionsfÃ¤hig.</span>
             </div>
             <button onClick={async () => {
               await supabase.auth.signOut()
             }} style={{ background:'var(--text-soft)', border:'1px solid var(--text-soft)', borderRadius:8, color:'white', fontSize:12, fontWeight:700, padding:'4px 14px', cursor:'pointer' }}>
-              ✕ Demo beenden
+              â Demo beenden
             </button>
           </div>
         )}
@@ -1176,7 +1239,7 @@ export default function Layout({ session, role, onLogout, children }) {
         <TimerBar />
       </div>
 
-      {/* Globaler Leadly-Chatbot-Bubble (unten rechts, alle Seiten außer /assistant + /login) */}
+      {/* Globaler Leadly-Chatbot-Bubble (unten rechts, alle Seiten auÃer /assistant + /login) */}
       <LeadlyBubble />
 
       {/* Globales Credits-Exhausted-Modal (lauscht auf window-event 'leadesk:credits-exhausted') */}
@@ -1185,8 +1248,8 @@ export default function Layout({ session, role, onLogout, children }) {
       {/* Onboarding: First-Run-Coachmark-Tour (anchored an Sidebar) */}
       {!onbLoading && !tourDone && <TourGuide onFinish={markTourDone} />}
 
-      {/* Pro-Bereich-Tour (mehrseitig). Später = onClose (snooze),
-          Fertig/Überspringen = onFinish (Bereich als gesehen markieren). */}
+      {/* Pro-Bereich-Tour (mehrseitig). SpÃ¤ter = onClose (snooze),
+          Fertig/Ãberspringen = onFinish (Bereich als gesehen markieren). */}
       {activeAreaTour && AREA_TOURS[activeAreaTour] && (
         <AreaTourGuide
           tour={AREA_TOURS[activeAreaTour]}
@@ -1201,8 +1264,8 @@ export default function Layout({ session, role, onLogout, children }) {
         />
       )}
 
-      {/* Just-in-time-Tipp beim ersten Betreten eines Bereichs — erst nach
-          abgeschlossener Tour, und nur wenn für diese Route noch nicht weggeklickt. */}
+      {/* Just-in-time-Tipp beim ersten Betreten eines Bereichs â erst nach
+          abgeschlossener Tour, und nur wenn fÃ¼r diese Route noch nicht weggeklickt. */}
       {(() => {
         if (onbLoading || !tourDone || activeAreaTour) return null
         const tip = tipForRoute(location.pathname)
@@ -1210,7 +1273,7 @@ export default function Layout({ session, role, onLogout, children }) {
         return <AreaTip tip={tip} onDismiss={() => dismissTip(tip.key)} />
       })()}
 
-      {/* ── Globale Suche Modal ── */}
+      {/* ââ Globale Suche Modal ââ */}
       {searchOpen && (
         <div style={{ position:'fixed', inset:0, background:'rgba(15,23,42,0.6)', backdropFilter:'blur(4px)', zIndex:9999, display:'flex', alignItems:'flex-start', justifyContent:'center', paddingTop:80 }}
           onClick={() => setSearchOpen(false)}>
@@ -1218,10 +1281,10 @@ export default function Layout({ session, role, onLogout, children }) {
             onClick={e => e.stopPropagation()}>
             {/* Input */}
             <div style={{ display:'flex', alignItems:'center', gap:10, padding:'14px 16px', borderBottom:'1px solid #F1F5F9' }}>
-              <span style={{ fontSize:16 }}>─</span>
+              <span style={{ fontSize:16 }}>â</span>
               <input autoFocus value={globalSearch}
                 onChange={e => setGlobalSearch(e.target.value)}
-                placeholder="Lead suchen: Name, Firma…"
+                placeholder="Lead suchen: Name, Firmaâ¦"
                 style={{ flex:1, border:'none', outline:'none', fontSize:15, fontFamily:'inherit', color:'#0F172A' }}/>
               <kbd onClick={() => setSearchOpen(false)}
                 style={{ fontSize:11, background:'#F1F5F9', borderRadius:6, padding:'2px 7px', color:'#64748B', cursor:'pointer' }}>ESC</kbd>
@@ -1245,12 +1308,12 @@ export default function Layout({ session, role, onLogout, children }) {
                       <div style={{ flex:1, minWidth:0 }}>
                         <div style={{ fontWeight:700, fontSize:13, color:'#0F172A' }}>{name}</div>
                         <div style={{ fontSize:11, color:'#64748B', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>
-                          {lead.job_title||''}{lead.company?' · '+lead.company:''}
+                          {lead.job_title||''}{lead.company?' Â· '+lead.company:''}
                         </div>
                       </div>
                       <div style={{ display:'flex', flexDirection:'column', alignItems:'flex-end', gap:2, flexShrink:0 }}>
                         {score > 0 && <span style={{ fontSize:11, fontWeight:800, color:scoreColor }}>Score {score}</span>}
-                        {lead.ai_buying_intent === 'hoch' && <span style={{ fontSize:9, fontWeight:700, color:'#ef4444', background:'#FEF2F2', padding:'1px 5px', borderRadius:4 }}>─ Heiß</span>}
+                        {lead.ai_buying_intent === 'hoch' && <span style={{ fontSize:9, fontWeight:700, color:'#ef4444', background:'#FEF2F2', padding:'1px 5px', borderRadius:4 }}>â HeiÃ</span>}
                         {lead.deal_stage && lead.deal_stage !== 'kein_deal' && <span style={{ fontSize:9, color:'#8b5cf6', fontWeight:600 }}>{lead.deal_stage}</span>}
                       </div>
                     </div>
@@ -1259,11 +1322,11 @@ export default function Layout({ session, role, onLogout, children }) {
               </div>
             ) : globalSearch.trim() ? (
               <div style={{ padding:'32px', textAlign:'center', color:'var(--text-soft)', fontSize:13 }}>
-                Kein Lead gefunden für „{globalSearch}"
+                Kein Lead gefunden fÃ¼r â{globalSearch}"
               </div>
             ) : (
               <div style={{ padding:'16px' }}>
-                <div style={{ fontSize:11, fontWeight:700, color:'var(--text-soft)', marginBottom:8, textTransform:'uppercase', letterSpacing:'0.06em' }}>Zuletzt hinzugefügt</div>
+                <div style={{ fontSize:11, fontWeight:700, color:'var(--text-soft)', marginBottom:8, textTransform:'uppercase', letterSpacing:'0.06em' }}>Zuletzt hinzugefÃ¼gt</div>
                 {allLeads.slice(0,5).map(lead => {
                   const name = ((lead.first_name||'')+' '+(lead.last_name||'')).trim() || lead.name || 'Unbekannt'
                   return (
@@ -1272,7 +1335,7 @@ export default function Layout({ session, role, onLogout, children }) {
                       style={{ display:'flex', alignItems:'center', gap:10, padding:'8px', borderRadius:8, cursor:'pointer' }}
                       onMouseEnter={e => e.currentTarget.style.background='#F8FAFC'}
                       onMouseLeave={e => e.currentTarget.style.background='transparent'}>
-                      <span style={{ fontSize:13 }}>─</span>
+                      <span style={{ fontSize:13 }}>â</span>
                       <span style={{ fontSize:13, color:'#374151', fontWeight:500 }}>{name}</span>
                       <span style={{ fontSize:11, color:'var(--text-soft)', marginLeft:'auto' }}>{lead.company||''}</span>
                     </div>
@@ -1290,7 +1353,13 @@ export default function Layout({ session, role, onLogout, children }) {
 function isBrandVoiceContext(pathname) {
   // BV-Switcher sichtbar in LinkedIn-Bereich + Content-Bereich
   const bvRoutes = [
-    '/profiltexte', '/vernetzungen', '/messages', '/automatisierung',
+    // Meine PrÃ¤senz (brand-scoped)
+    '/profiltexte', '/linkedin-analytics', '/wachstum', '/ssi', '/profil-checker',
+    // Analyse (brand-scoped)
+    '/netzwerk-analytics', '/nachrichten-analytics', '/linkedin-engagement', '/profil-analyse',
+    // Akquise (agiert aus dem Profil der aktiven Marke)
+    '/vernetzungen', '/messages', '/automatisierung', '/automatisierung-neu', '/linkedin-inbox', '/linkedin-netzwerk', '/linkedin-suche',
+    // Content (brand-scoped)
     '/redaktionsplan', '/content-studio', '/bibliothek', '/visuals', '/dokumente', '/media', '/content-reporting',
     '/brand-memory',
   ]

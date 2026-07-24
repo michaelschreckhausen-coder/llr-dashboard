@@ -3,11 +3,11 @@ import { Routes, Route, Navigate, useParams, useLocation } from 'react-router-do
 import { NavigationTimer } from './lib/useTabPersistedState'
 import { supabase, IS_SUPPORT_TAB } from './lib/supabase'
 import { decodeJwt, clearImpersonationSession } from './lib/impersonation'
-import SupportSession from './pages/SupportSession'
-import ImpersonationBanner from './components/ImpersonationBanner'
 import { captureRefFromUrl } from './lib/affiliateTracking'
 import Login         from './pages/Login'
 import MfaChallenge  from './components/MfaChallenge'
+import SupportSession from './pages/SupportSession'
+import ImpersonationBanner from './components/ImpersonationBanner'
 import LinkedInCallback from './pages/auth/LinkedInCallback'
 import Unsubscribe   from './pages/Unsubscribe'
 import SettingsNotifications from './pages/SettingsNotifications'
@@ -30,6 +30,7 @@ import AdminUsers    from './pages/AdminUsers'
 import WhiteLabel    from './pages/WhiteLabel'
 import Aufgaben      from './pages/Aufgaben'
 import IntegrationSettings from './pages/IntegrationSettings'
+import AsanaCallback from './pages/auth/AsanaCallback'
 import Marketplace from './pages/Marketplace'
 import Deals         from './pages/Deals'
 import DealsContainer from './pages/DealsContainer'
@@ -42,21 +43,24 @@ import LinkedInConnect  from './pages/LinkedInConnect'
 import AdminPanel      from './pages/AdminPanel'
 import TeamSettings    from './pages/TeamSettings'
 import SettingsKonto   from './pages/SettingsKonto'
-import SettingsLinkedIn from './pages/SettingsLinkedIn'
 import { BrandVoiceProvider } from './context/BrandVoiceContext'
 import SettingsMemory  from './pages/SettingsMemory'
 import SettingsExtension from './pages/SettingsExtension'
 import SettingsAffiliate from './pages/SettingsAffiliate'
 import SettingsInstagram from './pages/SettingsInstagram'
 import Instagram         from './pages/Instagram'
+import InstagramInbox    from './pages/InstagramInbox'
 import Pipeline      from './pages/Pipeline'
 import Vernetzungen  from './pages/Vernetzungen'
 import ProfilChecker from './pages/ProfilChecker'
 import LinkedInInbox from './pages/LinkedInInbox'
+import LinkedInNetzwerk from './pages/LinkedInNetzwerk'
 import LinkedInAutomationNeu from './pages/LinkedInAutomationNeu'
 import LinkedInSuche from './pages/LinkedInSuche'
 import LinkedInAnalytics from './pages/LinkedInAnalytics'
+import Wachstum from './pages/Wachstum'
 import NetzwerkAnalytics from './pages/NetzwerkAnalytics'
+import NachrichtenAnalytics from './pages/NachrichtenAnalytics'
 import ProfilAnalyse from './pages/ProfilAnalyse'
 import LinkedInEngagement from './pages/LinkedInEngagement'
 import Reports       from './pages/Reports'
@@ -362,9 +366,12 @@ export default function App() {
             <Route path="/vernetzungen" element={<CompanyBrandGate feature="vernetzungen"><Vernetzungen session={session} /></CompanyBrandGate>} />
             <Route path="/profil-checker" element={<ModuleGuard module="linkedin"><ProfilChecker session={session} /></ModuleGuard>} />
             <Route path="/linkedin-inbox" element={<ModuleGuard module="linkedin"><LinkedInInbox session={session} /></ModuleGuard>} />
+            <Route path="/linkedin-netzwerk" element={<ModuleGuard module="linkedin"><LinkedInNetzwerk session={session} /></ModuleGuard>} />
             <Route path="/linkedin-suche" element={<ModuleGuard module="linkedin"><LinkedInSuche session={session} /></ModuleGuard>} />
             <Route path="/linkedin-analytics" element={<ModuleGuard module="linkedin"><LinkedInAnalytics session={session} /></ModuleGuard>} />
+            <Route path="/wachstum" element={<ModuleGuard module="linkedin"><Wachstum /></ModuleGuard>} />
             <Route path="/netzwerk-analytics" element={<ModuleGuard module="linkedin"><NetzwerkAnalytics /></ModuleGuard>} />
+            <Route path="/nachrichten-analytics" element={<ModuleGuard module="linkedin"><NachrichtenAnalytics /></ModuleGuard>} />
             <Route path="/profil-analyse" element={<ModuleGuard module="linkedin"><ProfilAnalyse session={session} /></ModuleGuard>} />
             <Route path="/linkedin-engagement" element={<ModuleGuard module="linkedin"><LinkedInEngagement session={session} /></ModuleGuard>} />
             {/* 3c-Flip: V2 (la_*) ist Default für alle. Not-Aus per User: localStorage lk_features.linkedinAutomationV2Disabled=true */}
@@ -436,7 +443,6 @@ export default function App() {
             } />
             <Route path="/settings" element={<Navigate to="/settings/profil" replace />} />
             <Route path="/settings/profil" element={<Settings session={session} />} />
-            <Route path="/settings/linkedin" element={<SettingsLinkedIn session={session} />} />
             <Route path="/settings/konto" element={<SettingsKonto session={session} />} />
             <Route path="/settings/memory" element={<SettingsMemory session={session} />} />
             <Route path="/settings/extension" element={<SettingsExtension session={session} />} />
@@ -448,6 +454,7 @@ export default function App() {
             <Route path="/profile"  element={<Navigate to="/settings/profil" replace />} />
             <Route path="/aufgaben" element={<Aufgaben session={session} />} />
             <Route path="/integrations" element={<IntegrationSettings session={session} />} />
+            <Route path="/integrations/asana/callback" element={<AsanaCallback />} />
             <Route path="/marketplace"  element={<Marketplace />} />
             <Route path="/deals"    element={<DealsContainer session={session} />} />
             <Route path="/deals/:id" element={<DealDetail session={session} />} />
@@ -470,6 +477,7 @@ export default function App() {
 
             {/* Instagram — Addon-Modul, gated über account_addons → modules[]='instagram' */}
             <Route path="/instagram" element={<ModuleGuard module="instagram"><Instagram /></ModuleGuard>} />
+            <Route path="/instagram/inbox" element={<ModuleGuard module="instagram"><InstagramInbox /></ModuleGuard>} />
 
             {/* Sponsoring OS — Addon-Modul, gated über account_addons → modules[]='sponsoring' */}
             <Route path="/sponsoring"               element={<ModuleGuard module="sponsoring"><SponsoringHome /></ModuleGuard>} />

@@ -5,22 +5,24 @@
 import PillSelect from '../components/PillSelect'
 import { useEffect, useState, useCallback, useRef } from 'react'
 import { supabase } from '../lib/supabase'
+import PageHeader from '../components/PageHeader'
 import { useTeam } from '../context/TeamContext'
+import { useBrandVoice } from '../context/BrandVoiceContext'
 import { Plus, Zap, Play, Pause, Square, RefreshCw, Users, AlertTriangle, Activity, Archive, RotateCcw, Trash2, X } from 'lucide-react'
 
 const PRIMARY = '#0A6FB0'
 const PRIMARY_VAR = `var(--wl-primary, ${PRIMARY})`
-const pageOuterStyle = { background: 'var(--surface-canvas, #F8FAFC)', minHeight: '100vh', padding: '24px 24px 60px' }
-const pageStyle = { width: '100%', maxWidth: 1180, margin: '0 auto' }
+const pageOuterStyle = { background: 'transparent', minHeight: '100vh', padding: '24px 16px 60px' }
+const pageStyle = { width: '100%', maxWidth: 1068, margin: '0 auto' }
 const headerRowStyle = { display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 20, gap: 12, flexWrap: 'wrap' }
 const titleStyle = { fontSize: 22, fontWeight: 800, margin: 0, color: 'var(--text-strong, #111827)' }
 const subtitleStyle = { fontSize: 13, color: 'var(--text-muted, #6B7280)', marginTop: 4 }
-const cardStyle = { background: 'var(--surface)', borderRadius: 12, border: '1px solid var(--border, #E4E7EC)', padding: '16px 18px' }
+const cardStyle = { background: 'var(--surface)', borderRadius: 16, border: '1px solid var(--border, #E4E7EC)', boxShadow: 'var(--shadow-card)', padding: '18px 20px' }
 const primaryBtn = { padding: '9px 18px', background: 'var(--primary)', color: '#fff', border: 'none', borderRadius: 10, fontSize: 13, fontWeight: 700, display: 'inline-flex', alignItems: 'center', gap: 6, cursor: 'pointer' }
 const ghostBtn = { padding: '7px 12px', background: 'var(--surface)', color: '#374151', border: '1.5px solid #E4E7EC', borderRadius: 10, fontSize: 12, fontWeight: 600, display: 'inline-flex', alignItems: 'center', gap: 6, cursor: 'pointer' }
 const inputStyle = { padding: '8px 12px', borderRadius: 8, border: '1.5px solid #E4E7EC', fontSize: 13, outline: 'none', width: '100%', boxSizing: 'border-box', fontFamily: 'inherit', background: 'var(--surface)' }
 const labelStyle = { display: 'block', fontSize: 10, fontWeight: 700, color: 'var(--text-muted, #6B7280)', textTransform: 'uppercase', letterSpacing: '0.07em', marginBottom: 5 }
-const statusColor = { draft: '#94A3B8', active: '#22c55e', paused: '#f59e0b', completed: '#2563eb' }
+const statusColor = { draft: '#94A3B8', active: '#039855', paused: '#D97706', completed: '#0A6FB0' }
 const statusLabel = { draft: 'Entwurf', active: 'Laufend', paused: 'Pausiert', completed: 'Gestoppt' }
 
 const ACTIONS = ['visit', 'invite', 'message', 'follow_up', 'withdraw', 'follow', 'react', 'comment', 'inmail']
@@ -34,6 +36,7 @@ function Pill({ status }) {
 
 export default function LinkedInAutomationNeu({ session }) {
   const { activeTeamId } = useTeam() || {}
+  const { brandVoices, activeBrandVoice } = useBrandVoice() || {}
   const uid = session?.user?.id
   const [campaigns, setCampaigns] = useState([])
   const [accounts, setAccounts] = useState([])
@@ -55,17 +58,19 @@ export default function LinkedInAutomationNeu({ session }) {
   const show = (msg, err) => { setFlash({ msg, err }); setTimeout(() => setFlash(null), 3500) }
 
   const load = useCallback(async () => {
-    if (!activeTeamId) return
+    // Brand-scoped: Automatisierung läuft strikt pro Marke (= verbundenes Profil).
+    const bvId = activeBrandVoice?.id || null
+    if (!activeTeamId || !bvId) { setCampaigns([]); setAccounts([]); setAudiences([]); setHealth(null); setInboxLists([]); return }
     const [c, a, au, h, il] = await Promise.all([
-      supabase.from('la_campaigns').select('*').eq('team_id', activeTeamId).order('created_at', { ascending: false }),
-      supabase.from('la_accounts').select('*').eq('team_id', activeTeamId).eq('status', 'connected'),
-      supabase.from('la_audiences').select('*').eq('team_id', activeTeamId).order('created_at', { ascending: false }),
+      supabase.from('la_campaigns').select('*').eq('brand_voice_id', bvId).order('created_at', { ascending: false }),
+      supabase.from('la_accounts').select('*').eq('brand_voice_id', bvId).eq('status', 'connected'),
+      supabase.from('la_audiences').select('*').eq('brand_voice_id', bvId).order('created_at', { ascending: false }),
       supabase.from('la_runner_health').select('*').maybeSingle(),
       supabase.from('inbox_lists').select('id, name').eq('team_id', activeTeamId).order('created_at', { ascending: true }),
     ])
     setCampaigns(c.data || []); setAccounts(a.data || []); setAudiences(au.data || []); setHealth(h.data || null)
     setInboxLists(il.data || [])
-  }, [activeTeamId])
+  }, [activeTeamId, activeBrandVoice?.id])
   useEffect(() => { load() }, [load])
 
   // Detail (Steps + Funnel) für die ausgewählte Kampagne, mit Polling.
@@ -90,7 +95,7 @@ export default function LinkedInAutomationNeu({ session }) {
     if (accounts.length === 0) { show('Kein verbundener Unipile-Account — bitte zuerst verbinden', true); return }
     setCreating(true)
     const { data, error } = await supabase.from('la_campaigns').insert({
-      team_id: activeTeamId, account_id: accounts[0].id, name: 'Neue Kampagne', status: 'draft',
+      team_id: activeTeamId, brand_voice_id: activeBrandVoice?.id || null, account_id: accounts[0].id, name: 'Neue Kampagne', status: 'draft',
       caps: { invite: { per_day: 20 }, message: { per_day: 30 } }, schedule: {},
     }).select().single()
     setCreating(false)
@@ -163,7 +168,7 @@ export default function LinkedInAutomationNeu({ session }) {
 
   async function createAudience(kind) {
     const initialQuery = kind === 'list' ? { list_id: null } : kind.startsWith('search') ? { keywords: '' } : null
-    const { data, error } = await supabase.from('la_audiences').insert({ team_id: activeTeamId, kind, query: initialQuery }).select().single()
+    const { data, error } = await supabase.from('la_audiences').insert({ team_id: activeTeamId, brand_voice_id: activeBrandVoice?.id || null, kind, query: initialQuery }).select().single()
     if (error) { show(error.message, true); return }
     await supabase.from('la_campaigns').update({ audience_id: data.id }).eq('id', sel.id)
     setSel({ ...sel, audience_id: data.id }); load()
@@ -225,21 +230,20 @@ export default function LinkedInAutomationNeu({ session }) {
 
   return (
     <div style={pageOuterStyle}><div style={pageStyle}>
-      <div style={headerRowStyle}>
-        <div>
-          <h1 style={titleStyle}>Automatisierung</h1>
-          <p style={subtitleStyle}>Kampagnen-Builder + Funnel-Monitor.</p>
-        </div>
-        <button className="lk-btn lk-btn-navy" onClick={createCampaign} disabled={creating}><Plus size={16} /> Neue Kampagne</button>
-      </div>
+      <PageHeader
+        overline="LinkedIn · Automatisierung"
+        title="Automatisierung"
+        subtitle="Kampagnen-Builder + Funnel-Monitor."
+        action={<button className="lk-btn lk-btn-navy" onClick={createCampaign} disabled={creating}><Plus size={16} /> Neue Kampagne</button>}
+      />
 
       {/* Runner-Health-Leiste */}
       {health && (
         <div style={{ ...cardStyle, marginBottom: 16, display: 'flex', gap: 20, alignItems: 'center', flexWrap: 'wrap', fontSize: 12.5 }}>
-          <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontWeight: 700 }}><Activity size={15} color={health.heartbeat_age_s > 180 ? '#ef4444' : '#22c55e'} /> Runner</span>
-          <span>Heartbeat: <b style={{ color: health.heartbeat_age_s > 180 ? '#ef4444' : 'inherit' }}>{health.heartbeat_age_s}s</b></span>
+          <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontWeight: 700 }}><Activity size={15} color={health.heartbeat_age_s > 180 ? '#DC2626' : '#039855'} /> Runner</span>
+          <span>Heartbeat: <b style={{ color: health.heartbeat_age_s > 180 ? '#DC2626' : 'inherit' }}>{health.heartbeat_age_s}s</b></span>
           <span>pending fällig: <b>{health.pending_due}</b> / gesamt {health.pending_total}</span>
-          <span>Dead-Letter: <b style={{ color: health.dead_total > 0 ? '#ef4444' : 'inherit' }}>{health.dead_total}</b></span>
+          <span>Dead-Letter: <b style={{ color: health.dead_total > 0 ? '#DC2626' : 'inherit' }}>{health.dead_total}</b></span>
           <button style={{ ...ghostBtn, marginLeft: 'auto' }} onClick={() => { load(); loadDetail(sel?.id) }}><RefreshCw size={13} /> Aktualisieren</button>
         </div>
       )}
@@ -326,7 +330,7 @@ export default function LinkedInAutomationNeu({ session }) {
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginTop: 12 }}>
                 <div><label style={labelStyle}>Name</label><input style={inputStyle} defaultValue={sel.name} onBlur={e => e.target.value !== sel.name && saveCampaign({ name: e.target.value })} /></div>
                 <div><label style={labelStyle}>Account</label>
-                  <PillSelect value={sel.account_id} onChange={v => saveCampaign({ account_id: v })} neutral options={[...accounts.map((a) => ({ value: a.id, label: `${a.public_identifier || a.unipile_account_id} (${a.status})` }))]} buttonStyle={{ minWidth: 140 }} />
+                  <PillSelect value={sel.account_id} onChange={v => saveCampaign({ account_id: v })} neutral options={[...accounts.map((a) => { const _bv = (brandVoices || []).find(b => b.id === a.brand_voice_id); const _bn = _bv ? (_bv.brand_name || _bv.name) : null; return { value: a.id, label: `${_bn ? _bn + ' · ' : ''}${a.public_identifier || a.unipile_account_id} (${a.status})` } })]} buttonStyle={{ minWidth: 140 }} />
                 </div>
               </div>
 
