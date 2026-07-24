@@ -45,6 +45,7 @@ Deno.serve(async (req) => {
     }
 
     const input = await req.json().catch(() => ({}));
+    const brandVoiceId: string | null = input.brand_voice_id ?? null; // aktive Marke -> Treffer sichtbar in brand-scoped LinkedIn Kontakte
     let search: any = null;
 
     if (input.search_id) {
@@ -152,7 +153,7 @@ Deno.serve(async (req) => {
         // RPC dedupt team-scoped über sales_nav_id/provider_id. Ohne beide Arbiter → skip.
         if (!lead.sales_nav_id && !lead.provider_id) continue;
         const { data: up, error: upErr } = await sb.rpc("sales_nav_upsert_inbox", {
-          p_team_id: conn.teamId, p_user_id: auth.userId, p_lead: lead,
+          p_team_id: conn.teamId, p_user_id: auth.userId, p_lead: lead, p_brand_voice_id: brandVoiceId,
         });
         if (upErr) { console.warn(`[unipile-search] inbox upsert: ${upErr.message}`); continue; }
         const res = up as { id?: string; inserted?: boolean } | null;
