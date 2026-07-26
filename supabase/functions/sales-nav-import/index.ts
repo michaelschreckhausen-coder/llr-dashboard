@@ -97,6 +97,14 @@ async function handleCreate(
   const teamId = body.team_id as string;
   if (!teamId || !teamIds.includes(teamId)) return json({ error: "team_forbidden" }, 403);
 
+  // Fallback fuer ALTE Extension (sendet keine Marke): aktive Marke des Users nehmen.
+  let brandVoiceId: string | null = body.brand_voice_id || null;
+  if (!brandVoiceId) {
+    const { data: pref } = await admin.from("user_preferences")
+      .select("active_brand_voice_id").eq("user_id", userId).maybeSingle();
+    brandVoiceId = (pref as any)?.active_brand_voice_id ?? null;
+  }
+
   const scraped = Math.max(0, Number(body.total_scraped) || 0);
   const capped = scraped > MAX_LEADS_PER_JOB;
   const total = Math.min(scraped, MAX_LEADS_PER_JOB);
@@ -105,7 +113,7 @@ async function handleCreate(
     team_id: teamId,
     user_id: userId,
     source_type: body.source_type || "saved_search",
-    brand_voice_id: body.brand_voice_id || null,  // aktive Marke der Extension
+    brand_voice_id: brandVoiceId,  // aktive Marke (body ODER user_preferences-Fallback fuer alte Extension)
     source_url: body.source_url || "",
     source_id: body.source_id || null,
     status: "running",
