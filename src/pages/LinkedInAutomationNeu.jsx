@@ -27,6 +27,15 @@ const statusLabel = { draft: 'Entwurf', active: 'Laufend', paused: 'Pausiert', c
 
 const ACTIONS = ['visit', 'invite', 'message', 'follow_up', 'withdraw', 'follow', 'react', 'comment', 'inmail']
 const CONDITIONS = [['always', 'immer'], ['if_accepted', 'wenn akzeptiert'], ['if_no_reply', 'wenn keine Antwort']]
+// Wartezeit-Konvertierung: PG-Interval <-> Tage (für das Step-Eingabefeld)
+function intervalToDays(iv) {
+  if (!iv || typeof iv !== 'string') return 0
+  let days = 0
+  const dm = iv.match(/(\d+)\s+days?/); if (dm) days += parseInt(dm[1], 10)
+  const tm = iv.match(/(\d{1,2}):(\d{2}):(\d{2})/); if (tm) days += (parseInt(tm[1],10)*3600 + parseInt(tm[2],10)*60 + parseInt(tm[3],10)) / 86400
+  return Math.round(days * 100) / 100
+}
+function daysToInterval(d) { const n = Number(d); return (!n || n <= 0) ? '0' : `${n} days` }
 const KINDS = [['search_classic', 'Suche (Classic)'], ['search_salesnav', 'Sales Navigator'], ['search_recruiter', 'Recruiter'], ['relations', 'Eigene Verbindungen'], ['list', 'Liste']]
 
 function Pill({ status }) {
@@ -171,6 +180,7 @@ export default function LinkedInAutomationNeu({ session }) {
     const payload = steps.map(st => ({
       ...(st.id ? { id: st.id } : {}),
       action: st.action, condition: st.condition, template: st.template || {},
+      wait_after: st.wait_after || '0',
     }))
     const { data, error } = await supabase.rpc('la_campaign_save_steps', { p_campaign_id: sel.id, p_steps: payload })
     if (error) { show(error.message.includes('active') ? 'Erst pausieren — aktive Kampagne kann die Sequenz nicht ändern' : error.message, true); return }
@@ -394,6 +404,14 @@ export default function LinkedInAutomationNeu({ session }) {
                         <span style={{ width: 22, height: 22, borderRadius: 6, background: PRIMARY_VAR + '18', color: PRIMARY_VAR, fontSize: 11, fontWeight: 800, display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }}>{i + 1}</span>
                         <PillSelect value={st.action} onChange={__lkv => saveStep(i, { action: __lkv })} neutral disabled={seqLocked} options={[...ACTIONS.map((a) => ({ value: a, label: a }))]} buttonStyle={{ minWidth: 140 }} />
                         <PillSelect value={st.condition} onChange={__lkv => saveStep(i, { condition: __lkv })} neutral disabled={seqLocked} options={[...CONDITIONS.map(([c, l]) => ({ value: c, label: l }))]} buttonStyle={{ minWidth: 140 }} />
+                        {i > 0 && (
+                          <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: 12.5, color: 'var(--text-muted, #6B7280)' }}>
+                            <input type="number" min="0" step="0.5" disabled={seqLocked} defaultValue={intervalToDays(st.wait_after)} title="Wartezeit vor diesem Schritt (Tage)"
+                              onBlur={e => saveStep(i, { wait_after: daysToInterval(e.target.value) })}
+                              style={{ ...inputStyle, width: 64, textAlign: 'center' }} />
+                            Tage warten
+                          </span>
+                        )}
                         {(st.action === 'message' || st.action === 'follow_up' || st.action === 'inmail' || st.action === 'comment') && (
                           <input disabled={seqLocked} style={{ ...inputStyle, flex: 1, minWidth: 180 }} defaultValue={st.template?.text || ''} placeholder={st.action === 'comment' ? 'Kommentartext (öffentlich!)…' : 'Nachrichtentext…'} onBlur={e => saveStep(i, { template: { ...(st.template || {}), text: e.target.value } })} />
                         )}
