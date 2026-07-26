@@ -70,9 +70,11 @@ Deno.serve(async (req) => {
     const { data: members } = await db.from("inbox_list_members").select("inbox_id").eq("list_id", listId);
     const inboxIds = (members ?? []).map((m: any) => m.inbox_id).filter(Boolean);
     if (inboxIds.length) {
+      // Listen-Mitgliedschaft ist bereits die Autorisierung (kuratierte Kontakte).
+      // KEIN Team-Filter -> team-uebergreifend nutzbar (Agentur: Kontakte + Account in versch. Teams).
       const { data: rows } = await db.from("linkedin_inbox")
         .select("id, provider_id, linkedin_url, name, headline, job_title, company")
-        .eq("team_id", aud.team_id).in("id", inboxIds);
+        .in("id", inboxIds);
       for (const r of rows ?? []) {
         persons.push({
           provider_id: (r as any).provider_id ?? null,

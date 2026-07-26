@@ -66,7 +66,7 @@ export default function LinkedInAutomationNeu({ session }) {
       supabase.from('la_accounts').select('*').eq('brand_voice_id', bvId).eq('status', 'connected'),
       supabase.from('la_audiences').select('*').eq('brand_voice_id', bvId).order('created_at', { ascending: false }),
       supabase.from('la_runner_health').select('*').maybeSingle(),
-      supabase.from('inbox_lists').select('id, name').eq('team_id', activeTeamId).order('created_at', { ascending: true }),
+      supabase.from('inbox_lists').select('id, name').order('created_at', { ascending: true }), // eigene + geteilte Listen (RLS-scoped, team-uebergreifend)
     ])
     setCampaigns(c.data || []); setAccounts(a.data || []); setAudiences(au.data || []); setHealth(h.data || null)
     setInboxLists(il.data || [])
