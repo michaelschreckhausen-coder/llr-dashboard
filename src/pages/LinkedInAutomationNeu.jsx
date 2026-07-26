@@ -94,8 +94,11 @@ export default function LinkedInAutomationNeu({ session }) {
   async function createCampaign() {
     if (accounts.length === 0) { show('Kein verbundener Unipile-Account — bitte zuerst verbinden', true); return }
     setCreating(true)
+    // team_id MUSS zum Account passen (FK la_campaigns(account_id,team_id)->la_accounts(id,team_id)).
+    // Bei Agentur-/Multi-Team-Nutzern kann activeTeamId vom Account-Team abweichen -> Account-Team nehmen.
+    const _acct = accounts[0]
     const { data, error } = await supabase.from('la_campaigns').insert({
-      team_id: activeTeamId, brand_voice_id: activeBrandVoice?.id || null, account_id: accounts[0].id, name: 'Neue Kampagne', status: 'draft',
+      team_id: _acct.team_id, brand_voice_id: activeBrandVoice?.id || null, account_id: _acct.id, name: 'Neue Kampagne', status: 'draft',
       caps: { invite: { per_day: 20 }, message: { per_day: 30 } }, schedule: {},
     }).select().single()
     setCreating(false)
@@ -109,6 +112,17 @@ export default function LinkedInAutomationNeu({ session }) {
     const { error } = await supabase.from('la_campaigns').update({ ...patch, updated_at: new Date().toISOString() }).eq('id', sel.id)
     if (error) { show(error.message, true); return }
     setSel({ ...sel, ...patch }); load()
+  }
+
+  async function changeCampaignAccount(v) {
+    if (!sel) return
+    const a = accounts.find(x => x.id === v)
+    const newTeam = a?.team_id || sel.team_id
+    // FK-Kette konsistent halten: bei Team-Wechsel zuerst die verknuepfte Audience umteamen.
+    if (newTeam !== sel.team_id && sel.audience_id) {
+      await supabase.from('la_audiences').update({ team_id: newTeam }).eq('id', sel.audience_id)
+    }
+    await saveCampaign({ account_id: v, team_id: newTeam })
   }
 
   async function setStatus(status) { await saveCampaign({ status }); show(`Kampagne → ${statusLabel[status]}`) }
@@ -168,7 +182,7 @@ export default function LinkedInAutomationNeu({ session }) {
 
   async function createAudience(kind) {
     const initialQuery = kind === 'list' ? { list_id: null } : kind.startsWith('search') ? { keywords: '' } : null
-    const { data, error } = await supabase.from('la_audiences').insert({ team_id: activeTeamId, brand_voice_id: activeBrandVoice?.id || null, kind, query: initialQuery }).select().single()
+    const { data, error } = await supabase.from('la_audiences').insert({ team_id: sel?.team_id || activeTeamId, brand_voice_id: activeBrandVoice?.id || null, kind, query: initialQuery }).select().single()
     if (error) { show(error.message, true); return }
     await supabase.from('la_campaigns').update({ audience_id: data.id }).eq('id', sel.id)
     setSel({ ...sel, audience_id: data.id }); load()
@@ -330,7 +344,7 @@ export default function LinkedInAutomationNeu({ session }) {
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginTop: 12 }}>
                 <div><label style={labelStyle}>Name</label><input style={inputStyle} defaultValue={sel.name} onBlur={e => e.target.value !== sel.name && saveCampaign({ name: e.target.value })} /></div>
                 <div><label style={labelStyle}>Account</label>
-                  <PillSelect value={sel.account_id} onChange={v => saveCampaign({ account_id: v })} neutral options={[...accounts.map((a) => { const _bv = (brandVoices || []).find(b => b.id === a.brand_voice_id); const _bn = _bv ? (_bv.brand_name || _bv.name) : null; return { value: a.id, label: `${_bn ? _bn + ' · ' : ''}${a.public_identifier || a.unipile_account_id} (${a.status})` } })]} buttonStyle={{ minWidth: 140 }} />
+                  <PillSelect value={sel.account_id} onChange={v => changeCampaignAccount(v)} neutral options={[...accounts.map((a) => { const _bv = (brandVoices || []).find(b => b.id === a.brand_voice_id); const _bn = _bv ? (_bv.brand_name || _bv.name) : null; return { value: a.id, label: `${_bn ? _bn + ' · ' : ''}${a.public_identifier || a.unipile_account_id} (${a.status})` } })]} buttonStyle={{ minWidth: 140 }} />
                 </div>
               </div>
 
