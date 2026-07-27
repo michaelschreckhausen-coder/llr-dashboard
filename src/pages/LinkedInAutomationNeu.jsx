@@ -420,8 +420,11 @@ export default function LinkedInAutomationNeu({ session }) {
                             Tage warten
                           </span>
                         )}
-                        {(st.action === 'message' || st.action === 'follow_up' || st.action === 'inmail' || st.action === 'comment') && (
-                          <input disabled={seqLocked} style={{ ...inputStyle, flex: 1, minWidth: 180 }} defaultValue={st.template?.text || ''} placeholder={st.action === 'comment' ? 'Kommentartext (öffentlich!)…' : 'Nachrichtentext…'} onBlur={e => saveStep(i, { template: { ...(st.template || {}), text: e.target.value } })} />
+                        {(st.action === 'message' || st.action === 'follow_up' || st.action === 'inmail' || st.action === 'comment' || st.action === 'invite') && (
+                          <input disabled={seqLocked} maxLength={st.action === 'invite' ? 300 : undefined} style={{ ...inputStyle, flex: 1, minWidth: 180 }} defaultValue={st.template?.text || ''} placeholder={st.action === 'comment' ? 'Kommentartext (öffentlich!)…' : st.action === 'invite' ? 'Vernetzungsnachricht (optional)…' : 'Nachrichtentext…'} onBlur={e => saveStep(i, { template: { ...(st.template || {}), text: e.target.value } })} />
+                        )}
+                        {st.action === 'invite' && (
+                          <div style={{ flexBasis: '100%', fontSize: 11, color: 'var(--text-muted, #6B7280)', marginTop: 2 }}>Optionale Vernetzungsnachricht (max. 300 Zeichen). Hinweis: kostenlose LinkedIn-Accounts können pro Woche nur begrenzt Anfragen mit Notiz senden — leer lassen erlaubt mehr Anfragen.</div>
                         )}
                         {st.action === 'react' && (
                           <PillSelect value={st.template?.reaction_type || 'like'} onChange={__lkv => saveStep(i, { template: { ...(st.template || {}), reaction_type: __lkv } })} neutral disabled={seqLocked} options={[...['like', 'celebrate', 'support', 'love', 'insightful', 'funny'].map((t) => ({ value: t, label: t }))]} buttonStyle={{ minWidth: 140 }} />
