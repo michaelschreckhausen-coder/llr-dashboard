@@ -36,7 +36,7 @@ function intervalToDays(iv) {
   return Math.round(days * 100) / 100
 }
 function daysToInterval(d) { const n = Number(d); return (!n || n <= 0) ? '0' : `${n} days` }
-const KINDS = [['search_classic', 'Suche (Classic)'], ['search_salesnav', 'Sales Navigator'], ['search_recruiter', 'Recruiter'], ['relations', 'Eigene Verbindungen'], ['list', 'Liste']]
+const KINDS = [['search_classic', 'Suche (Classic)'], ['search_salesnav', 'Sales Navigator'], ['search_recruiter', 'Recruiter'], ['relations', 'Eigene Verbindungen'], ['list', 'LinkedIn-Liste'], ['crm_list', 'CRM-Liste']]
 
 function Pill({ status }) {
   const c = statusColor[status] || '#94A3B8'
@@ -51,6 +51,7 @@ export default function LinkedInAutomationNeu({ session }) {
   const [accounts, setAccounts] = useState([])
   const [audiences, setAudiences] = useState([])
   const [inboxLists, setInboxLists] = useState([])   // Import-Inbox-Listen = kanonische Zielgruppen-Quelle
+  const [crmLists, setCrmLists] = useState([])       // CRM-Kontakte-Listen (nur Leads mit LinkedIn-Profil automatisierbar)
   const [health, setHealth] = useState(null)
   const [sel, setSel] = useState(null)          // ausgewählte Kampagne
   const [steps, setSteps] = useState([])
@@ -69,16 +70,17 @@ export default function LinkedInAutomationNeu({ session }) {
   const load = useCallback(async () => {
     // Brand-scoped: Automatisierung läuft strikt pro Marke (= verbundenes Profil).
     const bvId = activeBrandVoice?.id || null
-    if (!activeTeamId || !bvId) { setCampaigns([]); setAccounts([]); setAudiences([]); setHealth(null); setInboxLists([]); return }
-    const [c, a, au, h, il] = await Promise.all([
+    if (!activeTeamId || !bvId) { setCampaigns([]); setAccounts([]); setAudiences([]); setHealth(null); setInboxLists([]); setCrmLists([]); return }
+    const [c, a, au, h, il, cl] = await Promise.all([
       supabase.from('la_campaigns').select('*').eq('brand_voice_id', bvId).order('created_at', { ascending: false }),
       supabase.from('la_accounts').select('*').eq('brand_voice_id', bvId).eq('status', 'connected'),
       supabase.from('la_audiences').select('*').eq('brand_voice_id', bvId).order('created_at', { ascending: false }),
       supabase.from('la_runner_health').select('*').maybeSingle(),
       supabase.from('inbox_lists').select('id, name').order('created_at', { ascending: true }), // eigene + geteilte Listen (RLS-scoped, team-uebergreifend)
+      supabase.from('lead_lists').select('id, name').order('created_at', { ascending: true }),  // CRM-Kontakte-Listen
     ])
     setCampaigns(c.data || []); setAccounts(a.data || []); setAudiences(au.data || []); setHealth(h.data || null)
-    setInboxLists(il.data || [])
+    setInboxLists(il.data || []); setCrmLists(cl.data || [])
   }, [activeTeamId, activeBrandVoice?.id])
   useEffect(() => { load() }, [load])
 
@@ -191,7 +193,7 @@ export default function LinkedInAutomationNeu({ session }) {
   }
 
   async function createAudience(kind) {
-    const initialQuery = kind === 'list' ? { list_id: null } : kind.startsWith('search') ? { keywords: '' } : null
+    const initialQuery = (kind === 'list' || kind === 'crm_list') ? { list_id: null } : kind.startsWith('search') ? { keywords: '' } : null
     const { data, error } = await supabase.from('la_audiences').insert({ team_id: sel?.team_id || activeTeamId, brand_voice_id: activeBrandVoice?.id || null, kind, query: initialQuery }).select().single()
     if (error) { show(error.message, true); return }
     await supabase.from('la_campaigns').update({ audience_id: data.id }).eq('id', sel.id)
@@ -376,6 +378,12 @@ export default function LinkedInAutomationNeu({ session }) {
                       <div style={{ flex: 1, minWidth: 220 }}><label style={labelStyle}>Liste</label>
                         <PillSelect value={selAudience.query?.list_id || ''} onChange={v => saveAudience({ query: { ...(selAudience.query || {}), list_id: v || null } })} neutral options={[{ value: '', label: `— Liste wählen —` }, ...inboxLists.map((l) => ({ value: l.id, label: l.name }))]} buttonStyle={{ minWidth: 140 }} />
                         {inboxLists.length === 0 && <div style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 4 }}>Noch keine Listen — unter „LinkedIn Kontakte" anlegen.</div>}
+                      </div>
+                    )}
+                    {selAudience.kind === 'crm_list' && (
+                      <div style={{ flex: 1, minWidth: 220 }}><label style={labelStyle}>CRM-Liste</label>
+                        <PillSelect value={selAudience.query?.list_id || ''} onChange={v => saveAudience({ query: { ...(selAudience.query || {}), list_id: v || null } })} neutral options={[{ value: '', label: `— CRM-Liste wählen —` }, ...crmLists.map((l) => ({ value: l.id, label: l.name }))]} buttonStyle={{ minWidth: 140 }} />
+                        <div style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 4 }}>{crmLists.length === 0 ? 'Noch keine CRM-Listen — unter „Kontakte" anlegen.' : 'Es werden nur Kontakte mit hinterlegtem LinkedIn-Profil automatisiert.'}</div>
                       </div>
                     )}
                     <button className="lk-btn lk-btn-navy" onClick={runAudience}><Zap size={14} /> Audience ausführen</button>
