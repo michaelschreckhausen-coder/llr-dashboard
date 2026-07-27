@@ -115,7 +115,11 @@ Deno.serve(async () => {
         }
       }
       // rel !ok → Relation unklar: wir senden trotzdem, sendInvitation liefert dann den echten Fehler.
-      const note = (job.request as any)?.note ?? undefined;
+      // Vernetzungsnachricht aus dem Step-Template (la_steps.template.text), Fallback job.request.note.
+      // LinkedIn-Limit ~300 Zeichen -> serverseitig cappen (verhindert API-Fehler).
+      const { data: invStep } = await db.from("la_steps").select("template").eq("id", job.step_id).maybeSingle();
+      const rawNote = ((invStep?.template as any)?.text) || (job.request as any)?.note || "";
+      const note = rawNote ? String(rawNote).slice(0, 300) : undefined;
       const inv = await sendInvitation(accountId, providerId, note);
       if (inv.ok) {
         await patch(job.id, { state: "done", provider_ref: inv.data.invitation_id ?? null, response: inv.data, error: null });
