@@ -110,7 +110,7 @@ export default function LinkedInAutomationNeu({ session }) {
     const _acct = accounts[0]
     const { data, error } = await supabase.from('la_campaigns').insert({
       team_id: _acct.team_id, brand_voice_id: activeBrandVoice?.id || null, account_id: _acct.id, name: 'Neue Kampagne', status: 'draft',
-      caps: { invite: { per_day: 20 }, message: { per_day: 30 } }, schedule: {},
+      caps: { invite: { per_day: 20 }, message: { per_day: 30 } }, schedule: { tz: 'Europe/Berlin', days: [1,2,3,4,5], start: '09:00', end: '17:00' },
     }).select().single()
     setCreating(false)
     if (error) { show(error.message, true); return }
@@ -446,6 +446,40 @@ export default function LinkedInAutomationNeu({ session }) {
               <div style={{ marginTop: 18, display: 'flex', gap: 16, alignItems: 'flex-end', flexWrap: 'wrap' }}>
                 <div><label style={labelStyle}>Invites/Tag</label><input type="number" style={{ ...inputStyle, width: 100 }} defaultValue={sel.caps?.invite?.per_day ?? 20} onBlur={e => saveCampaign({ caps: { ...(sel.caps || {}), invite: { per_day: Number(e.target.value) } } })} /></div>
                 <div><label style={labelStyle}>Nachrichten/Tag</label><input type="number" style={{ ...inputStyle, width: 100 }} defaultValue={sel.caps?.message?.per_day ?? 30} onBlur={e => saveCampaign({ caps: { ...(sel.caps || {}), message: { per_day: Number(e.target.value) } } })} /></div>
+              </div>
+
+              {/* Sende-Zeitfenster (Arbeitszeiten) */}
+              <div style={{ marginTop: 18 }}>
+                <label style={labelStyle}>Sende-Zeitfenster</label>
+                {(() => {
+                  const sch = sel.schedule || {}
+                  const active = Array.isArray(sch.days) && sch.days.length > 0
+                  const setSch = (patch) => saveCampaign({ schedule: { tz: sch.tz || 'Europe/Berlin', days: sch.days || [1,2,3,4,5], start: sch.start || '09:00', end: sch.end || '17:00', ...patch } })
+                  const toggleDay = (d) => { const days = new Set(sch.days || []); days.has(d) ? days.delete(d) : days.add(d); setSch({ days: [...days].sort((a,b)=>a-b) }) }
+                  return (
+                    <div>
+                      <label style={{ display: 'inline-flex', alignItems: 'center', gap: 8, fontSize: 13, cursor: 'pointer' }}>
+                        <input type="checkbox" checked={active} onChange={e => saveCampaign({ schedule: e.target.checked ? { tz: 'Europe/Berlin', days: [1,2,3,4,5], start: '09:00', end: '17:00' } : {} })} />
+                        Nur zu bestimmten Zeiten senden
+                      </label>
+                      {active && (
+                        <div style={{ display: 'flex', gap: 10, alignItems: 'flex-end', flexWrap: 'wrap', marginTop: 10 }}>
+                          <div style={{ display: 'flex', gap: 4 }}>
+                            {[[1,'Mo'],[2,'Di'],[3,'Mi'],[4,'Do'],[5,'Fr'],[6,'Sa'],[7,'So']].map(([d, l]) => (
+                              <button key={d} type="button" onClick={() => toggleDay(d)} style={{ width: 34, height: 32, borderRadius: 8, border: '1px solid var(--border, #E5E7EB)', cursor: 'pointer', fontSize: 12, fontWeight: 700, background: (sch.days || []).includes(d) ? 'var(--wl-primary, rgb(49,90,231))' : '#fff', color: (sch.days || []).includes(d) ? '#fff' : 'var(--text, #111827)' }}>{l}</button>
+                            ))}
+                          </div>
+                          <div><label style={labelStyle}>von</label><input type="time" defaultValue={sch.start || '09:00'} onBlur={e => setSch({ start: e.target.value })} style={{ ...inputStyle, width: 120 }} /></div>
+                          <div><label style={labelStyle}>bis</label><input type="time" defaultValue={sch.end || '17:00'} onBlur={e => setSch({ end: e.target.value })} style={{ ...inputStyle, width: 120 }} /></div>
+                          <div><label style={labelStyle}>Zeitzone</label>
+                            <PillSelect value={sch.tz || 'Europe/Berlin'} onChange={v => setSch({ tz: v })} neutral options={['Europe/Berlin','Europe/Vienna','Europe/Zurich','Europe/London'].map(z => ({ value: z, label: z }))} buttonStyle={{ minWidth: 150 }} />
+                          </div>
+                        </div>
+                      )}
+                      <div style={{ fontSize: 11, color: 'var(--text-muted, #6B7280)', marginTop: 6 }}>{active ? 'Aktionen laufen nur an gewählten Tagen im Zeitfenster (menschlicheres Verhalten, kein Nacht-/Wochenend-Versand).' : 'Aus = jederzeit senden.'}</div>
+                    </div>
+                  )
+                })()}
               </div>
             </div>
           </div>
