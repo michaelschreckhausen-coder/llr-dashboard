@@ -27,15 +27,24 @@ const statusLabel = { draft: 'Entwurf', active: 'Laufend', paused: 'Pausiert', c
 
 const ACTIONS = ['visit', 'invite', 'message', 'follow_up', 'withdraw', 'follow', 'react', 'comment', 'inmail']
 const CONDITIONS = [['always', 'immer'], ['if_accepted', 'wenn akzeptiert'], ['if_no_reply', 'wenn keine Antwort']]
-// Wartezeit-Konvertierung: PG-Interval <-> Tage (für das Step-Eingabefeld)
-function intervalToDays(iv) {
-  if (!iv || typeof iv !== 'string') return 0
-  let days = 0
-  const dm = iv.match(/(\d+)\s+days?/); if (dm) days += parseInt(dm[1], 10)
-  const tm = iv.match(/(\d{1,2}):(\d{2}):(\d{2})/); if (tm) days += (parseInt(tm[1],10)*3600 + parseInt(tm[2],10)*60 + parseInt(tm[3],10)) / 86400
-  return Math.round(days * 100) / 100
+// Wartezeit-Konvertierung: PG-Interval <-> {value, unit} (Minuten/Stunden/Tage)
+function intervalToParts(iv) {
+  if (!iv || typeof iv !== 'string') return { value: 0, unit: 'days' }
+  let mins = 0
+  const dm = iv.match(/(\d+)\s+days?/); if (dm) mins += parseInt(dm[1], 10) * 1440
+  const hm = iv.match(/(\d+)\s+hours?/); if (hm) mins += parseInt(hm[1], 10) * 60
+  const mm = iv.match(/(\d+)\s+mins?|(\d+)\s+minutes?/); if (mm) mins += parseInt(mm[1] || mm[2], 10)
+  const tm = iv.match(/(\d{1,3}):(\d{2}):(\d{2})/); if (tm) mins += parseInt(tm[1],10)*60 + parseInt(tm[2],10) + Math.round(parseInt(tm[3],10)/60)
+  if (!mins) return { value: 0, unit: 'days' }
+  if (mins % 1440 === 0) return { value: mins / 1440, unit: 'days' }
+  if (mins % 60 === 0) return { value: mins / 60, unit: 'hours' }
+  return { value: mins, unit: 'minutes' }
 }
-function daysToInterval(d) { const n = Number(d); return (!n || n <= 0) ? '0' : `${n} days` }
+function partsToInterval(value, unit) {
+  const n = Math.max(0, Number(value) || 0)
+  return n ? `${n} ${unit === 'minutes' ? 'minutes' : unit === 'hours' ? 'hours' : 'days'}` : '0'
+}
+const WAIT_UNITS = [['minutes', 'Minuten'], ['hours', 'Stunden'], ['days', 'Tage']]
 const KINDS = [['search_classic', 'Suche (Classic)'], ['search_salesnav', 'Sales Navigator'], ['search_recruiter', 'Recruiter'], ['relations', 'Eigene Verbindungen'], ['list', 'Liste']]
 
 function Pill({ status }) {
@@ -406,10 +415,12 @@ export default function LinkedInAutomationNeu({ session }) {
                         <PillSelect value={st.condition} onChange={__lkv => saveStep(i, { condition: __lkv })} neutral disabled={seqLocked} options={[...CONDITIONS.map(([c, l]) => ({ value: c, label: l }))]} buttonStyle={{ minWidth: 140 }} />
                         {i > 0 && (
                           <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: 12.5, color: 'var(--text-muted, #6B7280)' }}>
-                            <input type="number" min="0" step="0.5" disabled={seqLocked} defaultValue={intervalToDays(st.wait_after)} title="Wartezeit vor diesem Schritt (Tage)"
-                              onBlur={e => saveStep(i, { wait_after: daysToInterval(e.target.value) })}
+                            <input type="number" min="0" step="1" disabled={seqLocked} defaultValue={intervalToParts(st.wait_after).value} title="Wartezeit vor diesem Schritt"
+                              onBlur={e => saveStep(i, { wait_after: partsToInterval(e.target.value, intervalToParts(st.wait_after).unit) })}
                               style={{ ...inputStyle, width: 64, textAlign: 'center' }} />
-                            Tage warten
+                            <PillSelect value={intervalToParts(st.wait_after).unit} onChange={u => saveStep(i, { wait_after: partsToInterval(intervalToParts(st.wait_after).value, u) })} neutral disabled={seqLocked}
+                              options={WAIT_UNITS.map(([v, l]) => ({ value: v, label: l }))} buttonStyle={{ minWidth: 104 }} />
+                            warten
                           </span>
                         )}
                         {(st.action === 'message' || st.action === 'follow_up' || st.action === 'inmail' || st.action === 'comment' || st.action === 'invite') && (
