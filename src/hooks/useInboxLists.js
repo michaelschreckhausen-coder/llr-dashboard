@@ -169,7 +169,10 @@ export function useInboxLists({ activeTeamId, activeBrandVoiceId } = {}) {
         return n
       })
     }
-    const toggleShareList = useCallback(async (listId, share) => {
+    return { data: { removed: 1 } }
+  }, [])
+
+  const toggleShareList = useCallback(async (listId, share) => {
     const { data, error } = await supabase
       .from('inbox_lists')
       .update({ is_shared: !!share, updated_at: new Date().toISOString() })
@@ -181,9 +184,6 @@ export function useInboxLists({ activeTeamId, activeBrandVoiceId } = {}) {
     return { data }
   }, [])
 
-  return { data: { removed: 1 , toggleShareList } }
-  }, [])
-
   return useMemo(() => ({
     lists,
     membersByList,
@@ -193,6 +193,7 @@ export function useInboxLists({ activeTeamId, activeBrandVoiceId } = {}) {
     removeFromList,
     renameList,
     deleteList,
+    toggleShareList,
     refresh: fetchAll,
-  }), [lists, membersByList, isLoading, createList, addToList, removeFromList, renameList, deleteList, fetchAll])
+  }), [lists, membersByList, isLoading, createList, addToList, removeFromList, renameList, deleteList, toggleShareList, fetchAll])
 }
