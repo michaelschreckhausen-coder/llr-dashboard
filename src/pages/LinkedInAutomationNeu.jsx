@@ -27,7 +27,23 @@ const statusLabel = { draft: 'Entwurf', active: 'Laufend', paused: 'Pausiert', c
 
 const ACTIONS = ['visit', 'invite', 'message', 'withdraw', 'follow', 'react', 'comment', 'inmail']  // follow_up entfernt: identisch mit 'message' (Bestands-Steps laufen weiter)
 const ACTION_LABELS = { visit: 'Profil besuchen', invite: 'Vernetzungsanfrage', message: 'Nachricht', follow_up: 'Follow-up-Nachricht', withdraw: 'Anfrage zurückziehen', follow: 'Folgen', react: 'Beitrag liken', comment: 'Beitrag kommentieren', inmail: 'InMail (Sales Nav)' }
-const CONDITIONS = [['always', 'immer'], ['if_accepted', 'wenn akzeptiert'], ['if_no_reply', 'wenn keine Antwort']]
+const CONDITIONS = [['always', 'immer'], ['if_accepted', 'sobald Anfrage angenommen'], ['if_no_reply', 'wenn keine Antwort']]
+// Kontextabhaengige Bedingungen: Schritt 1 nur 'immer'; 'sobald angenommen' nur nach einer
+// Vernetzungsanfrage UND solange kein frueherer Schritt die Annahme schon abwartet (Event gibt es 1x);
+// 'wenn keine Antwort' nur nach einer Nachricht/InMail. Bestands-Werte bleiben sichtbar.
+function condOptionsFor(steps, i, current) {
+  const opts = [['always', 'immer']]
+  if (i > 0) {
+    const prev = steps.slice(0, i)
+    const hasInvite = prev.some(p => p.action === 'invite')
+    const acceptedUsed = prev.some(p => p.condition === 'if_accepted')
+    const hasMsg = prev.some(p => ['message', 'follow_up', 'inmail'].includes(p.action))
+    if (hasInvite && !acceptedUsed) opts.push(['if_accepted', 'sobald Anfrage angenommen'])
+    if (hasMsg) opts.push(['if_no_reply', 'wenn keine Antwort'])
+  }
+  if (current && !opts.some(([c]) => c === current)) opts.unshift([current, (CONDITIONS.find(c => c[0] === current) || [current, current])[1]])
+  return opts
+}
 // Wartezeit-Konvertierung: PG-Interval <-> {value, unit} (Minuten/Stunden/Tage)
 function intervalToParts(iv) {
   if (!iv || typeof iv !== 'string') return { value: 0, unit: 'days' }
@@ -421,7 +437,7 @@ export default function LinkedInAutomationNeu({ session }) {
                       <div key={st.id || st._key} style={{ display: 'flex', gap: 8, alignItems: 'center', marginBottom: 8, flexWrap: 'wrap' }}>
                         <span style={{ width: 22, height: 22, borderRadius: 6, background: PRIMARY_VAR + '18', color: PRIMARY_VAR, fontSize: 11, fontWeight: 800, display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }}>{i + 1}</span>
                         <PillSelect value={st.action} onChange={__lkv => saveStep(i, { action: __lkv })} neutral disabled={seqLocked} options={(ACTIONS.includes(st.action) ? ACTIONS : [st.action, ...ACTIONS]).map((a) => ({ value: a, label: ACTION_LABELS[a] || a }))} buttonStyle={{ minWidth: 140 }} />
-                        <PillSelect value={st.condition} onChange={__lkv => saveStep(i, { condition: __lkv })} neutral disabled={seqLocked} options={[...CONDITIONS.map(([c, l]) => ({ value: c, label: l }))]} buttonStyle={{ minWidth: 140 }} />
+                        <PillSelect value={st.condition} onChange={__lkv => saveStep(i, { condition: __lkv })} neutral disabled={seqLocked || i === 0} options={condOptionsFor(steps, i, st.condition).map(([c, l]) => ({ value: c, label: l }))} buttonStyle={{ minWidth: 140 }} />
                         {i > 0 && (
                           <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: 12.5, color: 'var(--text-muted, #6B7280)' }}>
                             <input type="number" min="0" step="1" disabled={seqLocked} defaultValue={intervalToParts(st.wait_after).value} title="Wartezeit vor diesem Schritt"
@@ -438,8 +454,8 @@ export default function LinkedInAutomationNeu({ session }) {
                         {st.action === 'invite' && (
                           <div style={{ flexBasis: '100%', fontSize: 11, color: 'var(--text-muted, #6B7280)', marginTop: 2 }}>Optionale Vernetzungsnachricht (max. 300 Zeichen). Hinweis: kostenlose LinkedIn-Accounts können pro Woche nur begrenzt Anfragen mit Notiz senden — leer lassen erlaubt mehr Anfragen.</div>
                         )}
-                        {st.condition === 'if_accepted' && !steps.slice(0, i).some(p => p.action === 'invite') && (
-                          <div style={{ flexBasis: '100%', fontSize: 11, color: '#B45309', marginTop: 2 }}>⚠ „wenn akzeptiert" wartet auf die Annahme einer Vernetzungsanfrage — davor gibt es aber keinen Vernetzungsanfrage-Schritt. Dieser Schritt würde nie ausgeführt.</div>
+                        {st.condition === 'if_accepted' && (!steps.slice(0, i).some(p => p.action === 'invite') || steps.slice(0, i).some(p => p.condition === 'if_accepted')) && (
+                          <div style={{ flexBasis: '100%', fontSize: 11, color: '#B45309', marginTop: 2 }}>⚠ „sobald Anfrage angenommen" kann hier nie ausgelöst werden — {steps.slice(0, i).some(p => p.condition === 'if_accepted') ? 'ein früherer Schritt wartet die Annahme bereits ab (das Ereignis gibt es nur einmal). Nimm hier „immer" + Wartezeit.' : 'davor gibt es keinen Vernetzungsanfrage-Schritt.'}</div>
                         )}
                         {(st.action === 'react' || st.action === 'comment') && (
                           <div style={{ flexBasis: '100%', fontSize: 11, color: 'var(--text-muted, #6B7280)', marginTop: 2 }}>Bezieht sich automatisch auf den neuesten Beitrag des Kontakts. Hat der Kontakt keine Beiträge, wird der Schritt übersprungen.</div>
