@@ -25,7 +25,7 @@ const labelStyle = { display: 'block', fontSize: 10, fontWeight: 700, color: 'va
 const statusColor = { draft: '#94A3B8', active: '#039855', paused: '#D97706', completed: '#0A6FB0' }
 const statusLabel = { draft: 'Entwurf', active: 'Laufend', paused: 'Pausiert', completed: 'Gestoppt' }
 
-const ACTIONS = ['visit', 'invite', 'message', 'follow_up', 'withdraw', 'follow', 'react', 'comment', 'inmail']
+const ACTIONS = ['visit', 'invite', 'message', 'withdraw', 'follow', 'react', 'comment', 'inmail']  // follow_up entfernt: identisch mit 'message' (Bestands-Steps laufen weiter)
 const ACTION_LABELS = { visit: 'Profil besuchen', invite: 'Vernetzungsanfrage', message: 'Nachricht', follow_up: 'Follow-up-Nachricht', withdraw: 'Anfrage zurückziehen', follow: 'Folgen', react: 'Beitrag liken', comment: 'Beitrag kommentieren', inmail: 'InMail (Sales Nav)' }
 const CONDITIONS = [['always', 'immer'], ['if_accepted', 'wenn akzeptiert'], ['if_no_reply', 'wenn keine Antwort']]
 // Wartezeit-Konvertierung: PG-Interval <-> {value, unit} (Minuten/Stunden/Tage)
@@ -420,7 +420,7 @@ export default function LinkedInAutomationNeu({ session }) {
                     {steps.map((st, i) => (
                       <div key={st.id || st._key} style={{ display: 'flex', gap: 8, alignItems: 'center', marginBottom: 8, flexWrap: 'wrap' }}>
                         <span style={{ width: 22, height: 22, borderRadius: 6, background: PRIMARY_VAR + '18', color: PRIMARY_VAR, fontSize: 11, fontWeight: 800, display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }}>{i + 1}</span>
-                        <PillSelect value={st.action} onChange={__lkv => saveStep(i, { action: __lkv })} neutral disabled={seqLocked} options={[...ACTIONS.map((a) => ({ value: a, label: ACTION_LABELS[a] || a }))]} buttonStyle={{ minWidth: 140 }} />
+                        <PillSelect value={st.action} onChange={__lkv => saveStep(i, { action: __lkv })} neutral disabled={seqLocked} options={(ACTIONS.includes(st.action) ? ACTIONS : [st.action, ...ACTIONS]).map((a) => ({ value: a, label: ACTION_LABELS[a] || a }))} buttonStyle={{ minWidth: 140 }} />
                         <PillSelect value={st.condition} onChange={__lkv => saveStep(i, { condition: __lkv })} neutral disabled={seqLocked} options={[...CONDITIONS.map(([c, l]) => ({ value: c, label: l }))]} buttonStyle={{ minWidth: 140 }} />
                         {i > 0 && (
                           <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: 12.5, color: 'var(--text-muted, #6B7280)' }}>
@@ -433,7 +433,7 @@ export default function LinkedInAutomationNeu({ session }) {
                           </span>
                         )}
                         {(st.action === 'message' || st.action === 'follow_up' || st.action === 'inmail' || st.action === 'comment' || st.action === 'invite') && (
-                          <input disabled={seqLocked} maxLength={st.action === 'invite' ? 300 : undefined} style={{ ...inputStyle, flex: 1, minWidth: 180 }} defaultValue={st.template?.text || ''} placeholder={st.action === 'comment' ? 'Kommentartext (öffentlich!)…' : st.action === 'invite' ? 'Vernetzungsnachricht (optional)…' : 'Nachrichtentext…'} onBlur={e => saveStep(i, { template: { ...(st.template || {}), text: e.target.value } })} />
+                          <input disabled={seqLocked} maxLength={st.action === 'invite' ? 300 : undefined} style={{ ...inputStyle, flex: 1, minWidth: 180, flexBasis: '100%' }} defaultValue={st.template?.text || ''} placeholder={st.action === 'comment' ? 'Kommentartext (öffentlich!)…' : st.action === 'invite' ? 'Vernetzungsnachricht (optional)…' : 'Nachrichtentext…'} onBlur={e => saveStep(i, { template: { ...(st.template || {}), text: e.target.value } })} />
                         )}
                         {st.action === 'invite' && (
                           <div style={{ flexBasis: '100%', fontSize: 11, color: 'var(--text-muted, #6B7280)', marginTop: 2 }}>Optionale Vernetzungsnachricht (max. 300 Zeichen). Hinweis: kostenlose LinkedIn-Accounts können pro Woche nur begrenzt Anfragen mit Notiz senden — leer lassen erlaubt mehr Anfragen.</div>
@@ -468,8 +468,9 @@ export default function LinkedInAutomationNeu({ session }) {
                 if (!showInv && !showMsg) return null
                 return (
                   <div style={{ marginTop: 18, display: 'flex', gap: 16, alignItems: 'flex-end', flexWrap: 'wrap' }}>
-                    {showInv && <div><label style={labelStyle}>Invites/Tag</label><input type="number" min="1" style={{ ...inputStyle, width: 100 }} defaultValue={sel.caps?.invite?.per_day ?? 20} onBlur={e => saveCampaign({ caps: { ...(sel.caps || {}), invite: { per_day: Number(e.target.value) } } })} /></div>}
-                    {showMsg && <div><label style={labelStyle}>Nachrichten/Tag</label><input type="number" min="1" style={{ ...inputStyle, width: 100 }} defaultValue={sel.caps?.message?.per_day ?? 30} onBlur={e => saveCampaign({ caps: { ...(sel.caps || {}), message: { per_day: Number(e.target.value) } } })} /></div>}
+                    {showInv && <div><label style={labelStyle}>Anfragen/Tag</label><input type="number" min="1" max="40" style={{ ...inputStyle, width: 100 }} defaultValue={sel.caps?.invite?.per_day ?? 20} onBlur={e => saveCampaign({ caps: { ...(sel.caps || {}), invite: { per_day: Math.min(40, Math.max(1, Number(e.target.value) || 20)) } } })} /></div>}
+                    {showMsg && <div><label style={labelStyle}>Nachrichten/Tag</label><input type="number" min="1" max="100" style={{ ...inputStyle, width: 100 }} defaultValue={sel.caps?.message?.per_day ?? 30} onBlur={e => saveCampaign({ caps: { ...(sel.caps || {}), message: { per_day: Math.min(100, Math.max(1, Number(e.target.value) || 30)) } } })} /></div>}
+                    <div style={{ flexBasis: '100%', fontSize: 11, color: 'var(--text-muted, #6B7280)' }}>LinkedIn deckelt Anfragen intern auf ~100/Woche. Empfehlung: max. 20 Anfragen/Tag, 30–50 Nachrichten/Tag (Sales Navigator bis ~80). Limits nicht dauerhaft ausreizen — das wirkt automatisiert.</div>
                   </div>
                 )
               })()}
