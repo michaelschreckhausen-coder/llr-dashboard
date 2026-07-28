@@ -51,6 +51,7 @@ function partsToInterval(value, unit) {
   return `${n} ${u}`
 }
 const WAIT_UNITS = [['minutes', 'Minuten'], ['hours', 'Stunden'], ['days', 'Tage']]
+function toLocalInput(iso) { const d = new Date(iso); if (isNaN(d)) return ''; const p = n => String(n).padStart(2, '0'); return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}T${p(d.getHours())}:${p(d.getMinutes())}` }
 const KINDS = [['search_classic', 'Suche (Classic)'], ['search_salesnav', 'Sales Navigator'], ['search_recruiter', 'Recruiter'], ['relations', 'Eigene Verbindungen'], ['list', 'Liste']]
 
 function Pill({ status }) {
@@ -368,8 +369,10 @@ export default function LinkedInAutomationNeu({ session }) {
               <b style={{ fontSize: 14 }}>Konfiguration</b>
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginTop: 12 }}>
                 <div><label style={labelStyle}>Name</label><input style={inputStyle} defaultValue={sel.name} onBlur={e => e.target.value !== sel.name && saveCampaign({ name: e.target.value })} /></div>
-                <div><label style={labelStyle}>Account</label>
-                  <PillSelect value={sel.account_id} onChange={v => changeCampaignAccount(v)} neutral options={[...accounts.map((a) => { const _bv = (brandVoices || []).find(b => b.id === a.brand_voice_id); const _bn = _bv ? (_bv.brand_name || _bv.name) : null; return { value: a.id, label: `${_bn ? _bn + ' · ' : ''}${a.public_identifier || a.unipile_account_id} (${a.status})` } })]} buttonStyle={{ minWidth: 140 }} />
+                <div><label style={labelStyle}>Verbundenes Profil</label>
+                  {(() => { const a = accounts.find(x => x.id === sel.account_id) || accounts[0]
+                    const _bv = (brandVoices || []).find(b => b.id === a?.brand_voice_id)
+                    return <div style={{ fontSize: 13, fontWeight: 600, padding: '9px 0' }}>{a ? `${_bv ? (_bv.brand_name || _bv.name) + ' · ' : ''}${a.public_identifier || a.unipile_account_id}` : '—'} <span style={{ fontWeight: 400, fontSize: 11, color: 'var(--text-muted, #6B7280)' }}>(durch die Marke bestimmt)</span></div> })()}
                 </div>
               </div>
 
@@ -457,24 +460,42 @@ export default function LinkedInAutomationNeu({ session }) {
                 )
               })()}
 
-              {/* Caps */}
-              <div style={{ marginTop: 18, display: 'flex', gap: 16, alignItems: 'flex-end', flexWrap: 'wrap' }}>
-                <div><label style={labelStyle}>Invites/Tag</label><input type="number" min="1" style={{ ...inputStyle, width: 100 }} defaultValue={sel.caps?.invite?.per_day ?? 20} onBlur={e => saveCampaign({ caps: { ...(sel.caps || {}), invite: { per_day: Number(e.target.value) } } })} /></div>
-                <div><label style={labelStyle}>Nachrichten/Tag</label><input type="number" min="1" style={{ ...inputStyle, width: 100 }} defaultValue={sel.caps?.message?.per_day ?? 30} onBlur={e => saveCampaign({ caps: { ...(sel.caps || {}), message: { per_day: Number(e.target.value) } } })} /></div>
-              </div>
+              {/* Caps — nur fuer Aktionen, die in der Sequenz vorkommen */}
+              {(() => {
+                const acts = steps.map(st => st.action)
+                const showInv = acts.includes('invite')
+                const showMsg = acts.some(a => ['message', 'follow_up', 'inmail'].includes(a))
+                if (!showInv && !showMsg) return null
+                return (
+                  <div style={{ marginTop: 18, display: 'flex', gap: 16, alignItems: 'flex-end', flexWrap: 'wrap' }}>
+                    {showInv && <div><label style={labelStyle}>Invites/Tag</label><input type="number" min="1" style={{ ...inputStyle, width: 100 }} defaultValue={sel.caps?.invite?.per_day ?? 20} onBlur={e => saveCampaign({ caps: { ...(sel.caps || {}), invite: { per_day: Number(e.target.value) } } })} /></div>}
+                    {showMsg && <div><label style={labelStyle}>Nachrichten/Tag</label><input type="number" min="1" style={{ ...inputStyle, width: 100 }} defaultValue={sel.caps?.message?.per_day ?? 30} onBlur={e => saveCampaign({ caps: { ...(sel.caps || {}), message: { per_day: Number(e.target.value) } } })} /></div>}
+                  </div>
+                )
+              })()}
 
               {/* Sende-Zeitfenster (Arbeitszeiten) */}
               <div style={{ marginTop: 18 }}>
-                <label style={labelStyle}>Sende-Zeitfenster</label>
+                <label style={labelStyle}>Zeitplan</label>
+                <div style={{ display: 'flex', gap: 10, alignItems: 'flex-end', flexWrap: 'wrap', marginBottom: 10 }}>
+                  <div><label style={labelStyle}>Frühester Start (optional)</label>
+                    <input type="datetime-local" defaultValue={sel.schedule?.start_at ? toLocalInput(sel.schedule.start_at) : ''}
+                      onBlur={e => { const v = e.target.value; const next = { ...(sel.schedule || {}) }; if (v) next.start_at = new Date(v).toISOString(); else delete next.start_at; saveCampaign({ schedule: next }) }}
+                      style={{ ...inputStyle, width: 210 }} />
+                  </div>
+                  {sel.schedule?.start_at && new Date(sel.schedule.start_at) > new Date() && (
+                    <span style={{ fontSize: 12, color: 'var(--text-muted, #6B7280)', paddingBottom: 8 }}>Kampagne führt vor diesem Zeitpunkt nichts aus.</span>
+                  )}
+                </div>
                 {(() => {
                   const sch = sel.schedule || {}
                   const active = Array.isArray(sch.days) && sch.days.length > 0
-                  const setSch = (patch) => saveCampaign({ schedule: { tz: sch.tz || 'Europe/Berlin', days: sch.days || [1,2,3,4,5], start: sch.start || '09:00', end: sch.end || '17:00', ...patch } })
+                  const setSch = (patch) => saveCampaign({ schedule: { ...(sel.schedule || {}), tz: sch.tz || 'Europe/Berlin', days: sch.days || [1,2,3,4,5], start: sch.start || '09:00', end: sch.end || '17:00', ...patch } })
                   const toggleDay = (d) => { const days = new Set(sch.days || []); days.has(d) ? days.delete(d) : days.add(d); setSch({ days: [...days].sort((a,b)=>a-b) }) }
                   return (
                     <div>
                       <label style={{ display: 'inline-flex', alignItems: 'center', gap: 8, fontSize: 13, cursor: 'pointer' }}>
-                        <input type="checkbox" checked={active} onChange={e => saveCampaign({ schedule: e.target.checked ? { tz: 'Europe/Berlin', days: [1,2,3,4,5], start: '09:00', end: '17:00' } : {} })} />
+                        <input type="checkbox" checked={active} onChange={e => { const keep = sel.schedule?.start_at ? { start_at: sel.schedule.start_at } : {}; saveCampaign({ schedule: e.target.checked ? { ...keep, tz: 'Europe/Berlin', days: [1,2,3,4,5], start: '09:00', end: '17:00' } : keep }) }} />
                         Nur zu bestimmten Zeiten senden
                       </label>
                       {active && (
