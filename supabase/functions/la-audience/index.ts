@@ -103,7 +103,7 @@ Deno.serve(async (req) => {
   const seen = new Set<string>();
   for (const e of existing ?? []) { if (e.provider_id) seen.add("p:" + e.provider_id); if (e.public_identifier) seen.add("u:" + e.public_identifier); }
 
-  const perDay: number = (camp.caps as any)?.[step0.action]?.per_day ?? (camp.caps as any)?.per_day ?? DEFAULT_PER_DAY;
+  const perDay: number = Math.max(1, Number((camp.caps as any)?.[step0.action]?.per_day ?? (camp.caps as any)?.per_day) || DEFAULT_PER_DAY); // Guard: 0/NaN -> kein Div-by-0-Crash
   let inserted = 0, deduped = 0, jobs = 0, idx = 0;
   for (const p of persons) {
     if (!p.provider_id && !p.public_identifier) continue;

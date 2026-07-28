@@ -26,6 +26,7 @@ const statusColor = { draft: '#94A3B8', active: '#039855', paused: '#D97706', co
 const statusLabel = { draft: 'Entwurf', active: 'Laufend', paused: 'Pausiert', completed: 'Gestoppt' }
 
 const ACTIONS = ['visit', 'invite', 'message', 'follow_up', 'withdraw', 'follow', 'react', 'comment', 'inmail']
+const ACTION_LABELS = { visit: 'Profil besuchen', invite: 'Vernetzungsanfrage', message: 'Nachricht', follow_up: 'Follow-up-Nachricht', withdraw: 'Anfrage zurückziehen', follow: 'Folgen', react: 'Beitrag liken', comment: 'Beitrag kommentieren', inmail: 'InMail (Sales Nav)' }
 const CONDITIONS = [['always', 'immer'], ['if_accepted', 'wenn akzeptiert'], ['if_no_reply', 'wenn keine Antwort']]
 // Wartezeit-Konvertierung: PG-Interval <-> {value, unit} (Minuten/Stunden/Tage)
 function intervalToParts(iv) {
@@ -416,7 +417,7 @@ export default function LinkedInAutomationNeu({ session }) {
                     {steps.map((st, i) => (
                       <div key={st.id || st._key} style={{ display: 'flex', gap: 8, alignItems: 'center', marginBottom: 8, flexWrap: 'wrap' }}>
                         <span style={{ width: 22, height: 22, borderRadius: 6, background: PRIMARY_VAR + '18', color: PRIMARY_VAR, fontSize: 11, fontWeight: 800, display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }}>{i + 1}</span>
-                        <PillSelect value={st.action} onChange={__lkv => saveStep(i, { action: __lkv })} neutral disabled={seqLocked} options={[...ACTIONS.map((a) => ({ value: a, label: a }))]} buttonStyle={{ minWidth: 140 }} />
+                        <PillSelect value={st.action} onChange={__lkv => saveStep(i, { action: __lkv })} neutral disabled={seqLocked} options={[...ACTIONS.map((a) => ({ value: a, label: ACTION_LABELS[a] || a }))]} buttonStyle={{ minWidth: 140 }} />
                         <PillSelect value={st.condition} onChange={__lkv => saveStep(i, { condition: __lkv })} neutral disabled={seqLocked} options={[...CONDITIONS.map(([c, l]) => ({ value: c, label: l }))]} buttonStyle={{ minWidth: 140 }} />
                         {i > 0 && (
                           <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: 12.5, color: 'var(--text-muted, #6B7280)' }}>
@@ -433,6 +434,12 @@ export default function LinkedInAutomationNeu({ session }) {
                         )}
                         {st.action === 'invite' && (
                           <div style={{ flexBasis: '100%', fontSize: 11, color: 'var(--text-muted, #6B7280)', marginTop: 2 }}>Optionale Vernetzungsnachricht (max. 300 Zeichen). Hinweis: kostenlose LinkedIn-Accounts können pro Woche nur begrenzt Anfragen mit Notiz senden — leer lassen erlaubt mehr Anfragen.</div>
+                        )}
+                        {st.condition === 'if_accepted' && !steps.slice(0, i).some(p => p.action === 'invite') && (
+                          <div style={{ flexBasis: '100%', fontSize: 11, color: '#B45309', marginTop: 2 }}>⚠ „wenn akzeptiert" wartet auf die Annahme einer Vernetzungsanfrage — davor gibt es aber keinen Vernetzungsanfrage-Schritt. Dieser Schritt würde nie ausgeführt.</div>
+                        )}
+                        {(st.action === 'react' || st.action === 'comment') && (
+                          <div style={{ flexBasis: '100%', fontSize: 11, color: 'var(--text-muted, #6B7280)', marginTop: 2 }}>Bezieht sich automatisch auf den neuesten Beitrag des Kontakts. Hat der Kontakt keine Beiträge, wird der Schritt übersprungen.</div>
                         )}
                         {st.action === 'react' && (
                           <PillSelect value={st.template?.reaction_type || 'like'} onChange={__lkv => saveStep(i, { template: { ...(st.template || {}), reaction_type: __lkv } })} neutral disabled={seqLocked} options={[...['like', 'celebrate', 'support', 'love', 'insightful', 'funny'].map((t) => ({ value: t, label: t }))]} buttonStyle={{ minWidth: 140 }} />
@@ -452,8 +459,8 @@ export default function LinkedInAutomationNeu({ session }) {
 
               {/* Caps */}
               <div style={{ marginTop: 18, display: 'flex', gap: 16, alignItems: 'flex-end', flexWrap: 'wrap' }}>
-                <div><label style={labelStyle}>Invites/Tag</label><input type="number" style={{ ...inputStyle, width: 100 }} defaultValue={sel.caps?.invite?.per_day ?? 20} onBlur={e => saveCampaign({ caps: { ...(sel.caps || {}), invite: { per_day: Number(e.target.value) } } })} /></div>
-                <div><label style={labelStyle}>Nachrichten/Tag</label><input type="number" style={{ ...inputStyle, width: 100 }} defaultValue={sel.caps?.message?.per_day ?? 30} onBlur={e => saveCampaign({ caps: { ...(sel.caps || {}), message: { per_day: Number(e.target.value) } } })} /></div>
+                <div><label style={labelStyle}>Invites/Tag</label><input type="number" min="1" style={{ ...inputStyle, width: 100 }} defaultValue={sel.caps?.invite?.per_day ?? 20} onBlur={e => saveCampaign({ caps: { ...(sel.caps || {}), invite: { per_day: Number(e.target.value) } } })} /></div>
+                <div><label style={labelStyle}>Nachrichten/Tag</label><input type="number" min="1" style={{ ...inputStyle, width: 100 }} defaultValue={sel.caps?.message?.per_day ?? 30} onBlur={e => saveCampaign({ caps: { ...(sel.caps || {}), message: { per_day: Number(e.target.value) } } })} /></div>
               </div>
 
               {/* Sende-Zeitfenster (Arbeitszeiten) */}
