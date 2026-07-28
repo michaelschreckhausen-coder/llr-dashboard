@@ -87,29 +87,6 @@ Deno.serve(async (req) => {
       }
     }
     cursor = null; // Inbox-Liste ist endlich → kein Checkpoint
-  } else if (aud.kind === "crm_list") {
-    // query.list_id → lead_list_members → leads (NUR mit linkedin_url = automatisierbar).
-    const listId: string | null = (aud.query as any)?.list_id ?? null;
-    if (!listId) return json({ error: "crm_list_audience_missing_list_id" }, 400);
-    const { data: members } = await db.from("lead_list_members").select("lead_id").eq("list_id", listId);
-    const leadIds = (members ?? []).map((m: any) => m.lead_id).filter(Boolean);
-    if (leadIds.length) {
-      // Listen-Mitgliedschaft = Autorisierung. Nur Leads MIT LinkedIn-Profil einreihen.
-      const { data: rows } = await db.from("leads")
-        .select("id, linkedin_url, sales_nav_id, name, headline, job_title, company")
-        .in("id", leadIds).not("linkedin_url", "is", null);
-      for (const r of rows ?? []) {
-        persons.push({
-          provider_id: null,
-          public_identifier: publicIdFromUrl((r as any).linkedin_url ?? null),
-          name: (r as any).name ?? null,
-          headline: (r as any).headline ?? (r as any).job_title ?? null,
-          profile_url: (r as any).linkedin_url ?? null,
-          raw: r,
-        });
-      }
-    }
-    cursor = null; // CRM-Liste ist endlich → kein Checkpoint
   } else {
     do {
       const res: UnipileResult<Page> = aud.kind === "relations"
