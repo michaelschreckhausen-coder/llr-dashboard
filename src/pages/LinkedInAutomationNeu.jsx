@@ -35,14 +35,19 @@ function intervalToParts(iv) {
   const hm = iv.match(/(\d+)\s+hours?/); if (hm) mins += parseInt(hm[1], 10) * 60
   const mm = iv.match(/(\d+)\s+mins?|(\d+)\s+minutes?/); if (mm) mins += parseInt(mm[1] || mm[2], 10)
   const tm = iv.match(/(\d{1,3}):(\d{2}):(\d{2})/); if (tm) mins += parseInt(tm[1],10)*60 + parseInt(tm[2],10) + Math.round(parseInt(tm[3],10)/60)
-  if (!mins) return { value: 0, unit: 'days' }
+  if (!mins) {
+    // Einheit auch bei 0 erhalten (sonst springt das Dropdown auf Tage zurueck)
+    const unit = /minute|min\b/i.test(iv) ? 'minutes' : /hour/i.test(iv) ? 'hours' : 'days'
+    return { value: 0, unit }
+  }
   if (mins % 1440 === 0) return { value: mins / 1440, unit: 'days' }
   if (mins % 60 === 0) return { value: mins / 60, unit: 'hours' }
   return { value: mins, unit: 'minutes' }
 }
 function partsToInterval(value, unit) {
   const n = Math.max(0, Number(value) || 0)
-  return n ? `${n} ${unit === 'minutes' ? 'minutes' : unit === 'hours' ? 'hours' : 'days'}` : '0'
+  const u = unit === 'minutes' ? 'minutes' : unit === 'hours' ? 'hours' : 'days'
+  return `${n} ${u}`
 }
 const WAIT_UNITS = [['minutes', 'Minuten'], ['hours', 'Stunden'], ['days', 'Tage']]
 const KINDS = [['search_classic', 'Suche (Classic)'], ['search_salesnav', 'Sales Navigator'], ['search_recruiter', 'Recruiter'], ['relations', 'Eigene Verbindungen'], ['list', 'Liste']]
