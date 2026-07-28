@@ -16,7 +16,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { supabase } from '../lib/supabase'
 
-export function useInboxLists({ activeTeamId } = {}) {
+export function useInboxLists({ activeTeamId, activeBrandVoiceId } = {}) {
   const [lists, setLists] = useState([])
   const [membersByList, setMembersByList] = useState(() => new Map())
   const [uid, setUid] = useState(null)
@@ -35,7 +35,7 @@ export function useInboxLists({ activeTeamId } = {}) {
     // Listen team-gescopet (expliziter Filter, Top-Fallstrick #14).
     let q = supabase
       .from('inbox_lists')
-      .select('id, name, color, user_id, team_id, is_shared, created_at, updated_at')
+      .select('id, name, color, user_id, team_id, brand_voice_id, is_shared, created_at, updated_at')
       .order('created_at', { ascending: true })
     if (activeTeamId) {
       q = q.eq('team_id', activeTeamId)
@@ -87,12 +87,13 @@ export function useInboxLists({ activeTeamId } = {}) {
       color: color || null,
       user_id: ownerId,
       team_id: activeTeamId || null, // NOT-NULL-Sicherheit (Multi-Tenant-Konvention)
+      brand_voice_id: activeBrandVoiceId || null, // Liste gehoert der aktiven Marke (teilbar via is_shared)
       is_shared: false,
     }
     const { data, error } = await supabase
       .from('inbox_lists')
       .insert(payload)
-      .select('id, name, color, user_id, team_id, is_shared, created_at, updated_at')
+      .select('id, name, color, user_id, team_id, brand_voice_id, is_shared, created_at, updated_at')
       .single()
     if (error) return { error }
     if (mountedRef.current) {
@@ -132,7 +133,7 @@ export function useInboxLists({ activeTeamId } = {}) {
       .from('inbox_lists')
       .update({ name: trimmed, updated_at: new Date().toISOString() })
       .eq('id', listId)
-      .select('id, name, color, user_id, team_id, is_shared, created_at, updated_at')
+      .select('id, name, color, user_id, team_id, brand_voice_id, is_shared, created_at, updated_at')
       .single()
     if (error) return { error }
     if (mountedRef.current) setLists(prev => prev.map(l => (l.id === listId ? { ...l, ...data } : l)))
@@ -168,7 +169,19 @@ export function useInboxLists({ activeTeamId } = {}) {
         return n
       })
     }
-    return { data: { removed: 1 } }
+    const toggleShareList = useCallback(async (listId, share) => {
+    const { data, error } = await supabase
+      .from('inbox_lists')
+      .update({ is_shared: !!share, updated_at: new Date().toISOString() })
+      .eq('id', listId)
+      .select('id, name, color, user_id, team_id, brand_voice_id, is_shared, created_at, updated_at')
+      .single()
+    if (error) return { error }
+    if (mountedRef.current) setLists(prev => prev.map(l => l.id === listId ? data : l))
+    return { data }
+  }, [])
+
+  return { data: { removed: 1 , toggleShareList } }
   }, [])
 
   return useMemo(() => ({

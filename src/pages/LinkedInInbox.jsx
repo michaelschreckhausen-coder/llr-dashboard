@@ -1,7 +1,7 @@
 import PillSelect from '../components/PillSelect'
 import React, { useEffect, useState, useCallback, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { Check, X, Loader2, UserPlus, Building2, Inbox as InboxIcon, Plus, ListChecks, Pencil, Trash2, AlertTriangle } from 'lucide-react'
+import { Check, X, Loader2, UserPlus, Building2, Inbox as InboxIcon, Plus, ListChecks, Pencil, Trash2, AlertTriangle , Share2 } from 'lucide-react'
 import { supabase } from '../lib/supabase'
 import { useTeam } from '../context/TeamContext'
 import { useBrandVoice } from '../context/BrandVoiceContext'
@@ -73,7 +73,7 @@ export default function LinkedInInbox() {
 
   // Kampagnen-Gruppierung
   // Inbox-Listen (reine Auswahl-Sammlungen — die einzige Gruppierung auf dieser Seite)
-  const { lists, membersByList, createList, addToList, renameList, deleteList } = useInboxLists({ activeTeamId })
+  const { lists, membersByList, createList, addToList, renameList, deleteList, toggleShareList } = useInboxLists({ activeTeamId, activeBrandVoiceId: activeBrandVoice?.id })
   const [listOpen, setListOpen]     = useState(false)
   const [deleteBulkModal, setDeleteBulkModal] = useState(null) // { ids, count, refs:{count,campaigns}, checking }
   const [listFilter, setListFilter] = useState('all')        // 'all' | list_id
@@ -475,7 +475,7 @@ export default function LinkedInInbox() {
         <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap', marginBottom: 16 }}>
           <span style={{ fontSize: 12, fontWeight: 700, color: muted, marginRight: 2 }}>Nach Liste:</span>
           <span style={chip(listFilter === 'all')} onClick={() => setListFilter('all')}>Alle</span>
-          {lists.map(l => {
+          {lists.filter(l => !l.brand_voice_id || l.brand_voice_id === activeBrandVoice?.id || l.is_shared).map(l => {
             const set = membersByList.get(l.id)
             const cnt = set ? rows.reduce((n, r) => n + (set.has(r.id) ? 1 : 0), 0) : 0
             if (editingListId === l.id) {
@@ -495,7 +495,10 @@ export default function LinkedInInbox() {
                 <span onClick={() => setListFilter(l.id)} style={{ display: 'inline-flex', alignItems: 'center', gap: 6, cursor: 'pointer' }}>
                   <ListChecks size={13} /> {l.name} <b>{cnt}</b>
                 </span>
-                <button onClick={() => startRename(l)} title="Umbenennen" style={{ ...miniBtn, color: active ? primary : muted, marginLeft: 2 }}><Pencil size={12} /></button>
+                <button onClick={async () => { const r = await toggleShareList(l.id, !l.is_shared); if (r?.error) setMsg({ text: 'Teilen fehlgeschlagen: ' + r.error.message }) }}
+                  title={l.is_shared ? 'Team-weit geteilt — Klick: nur diese Marke' : 'Für alle Marken im Team freigeben'}
+                  style={{ ...miniBtn, color: l.is_shared ? '#059669' : (active ? primary : muted), marginLeft: 2 }}><Share2 size={12} /></button>
+                <button onClick={() => startRename(l)} title="Umbenennen" style={{ ...miniBtn, color: active ? primary : muted }}><Pencil size={12} /></button>
                 <button onClick={() => openDeleteList(l)} title="Löschen" style={{ ...miniBtn, color: active ? primary : muted }}><Trash2 size={12} /></button>
               </span>
             )
