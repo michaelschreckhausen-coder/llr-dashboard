@@ -25,7 +25,6 @@ import Strike2PersonaWizard from './pages/Strike2PersonaWizard'
 import Strike2PersonaIdeas from './pages/Strike2PersonaIdeas'
 import Wissensdatenbank          from './pages/Wissensdatenbank'
 import BrandMemory             from './pages/BrandMemory'
-import Automatisierung  from './pages/Automatisierung'
 import AdminUsers    from './pages/AdminUsers'
 import WhiteLabel    from './pages/WhiteLabel'
 import Aufgaben      from './pages/Aufgaben'
@@ -353,7 +352,6 @@ export default function App() {
             <Route path="/dashboard" element={<Dashboard session={session} />} />
             <Route path="/getting-started" element={<GettingStarted />} />
             <Route path="/dokumente" element={<Documents />} />
-                <Route path="/automatisierung" element={<Automatisierung session={session} />} />
                 <Route path="/projekte" element={<Projektmanagement session={session} />} />
                 <Route path="/projekte/:id" element={<ProjektDetail session={session} />} />
                 <Route path="/zeiten" element={<Zeiterfassung session={session} />} />

@@ -134,7 +134,7 @@ function getNav(t) {
     // Migrationen bleiben erhalten. Zum ZurÃ¼ckholen einfach diese Zeile wieder aktivieren:
     // { to: '/linkedin-netzwerk', icon: IcUsers,  label: 'Netzwerk' },
     { to: '/vernetzungen',    icon: IcHeart,    label: 'Vernetzung' },
-    { to: (!isFlagEnabled('linkedinAutomationV2Disabled')) ? '/automatisierung-neu' : '/automatisierung', icon: IcCog, label: 'Automatisierung' },
+    { to: '/automatisierung-neu', icon: IcCog, label: 'Automatisierung' },
     { to: '/messages',        icon: IcMail,     label: 'Nachrichten' },
     { to: '/linkedin-engagement', icon: IcZap,  label: 'Engagement' },
   ] },
@@ -1358,7 +1358,7 @@ function isBrandVoiceContext(pathname) {
     // Analyse (brand-scoped)
     '/netzwerk-analytics', '/nachrichten-analytics', '/linkedin-engagement', '/profil-analyse',
     // Akquise (agiert aus dem Profil der aktiven Marke)
-    '/vernetzungen', '/messages', '/automatisierung', '/automatisierung-neu', '/linkedin-inbox', '/linkedin-netzwerk', '/linkedin-suche',
+    '/vernetzungen', '/messages', '/automatisierung-neu', '/linkedin-inbox', '/linkedin-netzwerk', '/linkedin-suche',
     // Content (brand-scoped)
     '/redaktionsplan', '/content-studio', '/bibliothek', '/visuals', '/dokumente', '/media', '/content-reporting',
     '/brand-memory',
