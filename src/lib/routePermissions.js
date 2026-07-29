@@ -58,7 +58,6 @@ const ROUTE_PERMISSIONS = {
   '/linkedin-inbox':   'linkedin.connections',        // P3 Nachtrag: LinkedIn-Kontakte = Sales+
   '/linkedin-netzwerk': 'linkedin.connections',       // P3 Nachtrag: href↔Map-Fund — Netzwerk-Seite war ungegated (nur ModuleGuard)
   '/messages':         'linkedin.messages',
-  '/automatisierung':  'linkedin.automation',
   '/automatisierung-neu': 'linkedin.automation',      // P3 Nachtrag: Builder ist Default-Route (Layout:126 Flag) — Loch geschlossen
   '/linkedin-engagement': 'linkedin.engagement',      // P3 Schritt 4: Marketing lacks → Upsell
   '/linkedin-analytics':  'linkedin.post_analytics',  // P3 Schritt 4: Sales lacks → Upsell (Marketing/All-in hat's)

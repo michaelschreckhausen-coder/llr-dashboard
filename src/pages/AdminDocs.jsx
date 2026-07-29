@@ -50,7 +50,7 @@ const PAGES = [
   { route:'/deals',          file:'pages/Deals.jsx',            desc:'Deals-Übersicht — sevDesk-Angebote, Slide-in Detail-Panel, PDF-Anhänge, Stage-Verwaltung' },
   { route:'/pipeline',       file:'pages/Pipeline.jsx',         desc:'Kanban + Listen-Ansicht — Drag & Drop, Stage-Editor, Score-Sortierung, Won-Flash' },
   { route:'/messages',       file:'pages/Messages.jsx',         desc:'Nachrichten — echtes LinkedIn-Postfach (Unipile): DMs/InMail lesen & senden, KI-Antwort im Thread, neuen Kontakt anschreiben' },
-  { route:'/automatisierung',file:'pages/ComingSoon.jsx',       desc:'Automatisierung — LinkedIn-Workflows (in Entwicklung, bald verfügbar)' },
+  { route:'/automatisierung-neu',file:'pages/LinkedInAutomationNeu.jsx', desc:'Automatisierung — Kampagnen-Builder + Funnel-Monitor (la_* System)' },
   { route:'/content-studio', file:'pages/ContentStudio.jsx',    desc:'Content Studio — LinkedIn Content Generator: Posts, Kommentare, Templates' },
   { route:'/redaktionsplan', file:'pages/Redaktionsplan.jsx',   desc:'Redaktionsplan — Content-Kalender für geplante LinkedIn-Posts' },
   { route:'/reports',        file:'pages/Reports.jsx',          desc:'Sales Reporting — 6-Tab Reporting: Übersicht, Pipeline, Vernetzungen, Aktivitäten, Lead Scores, SSI' },
