@@ -10,7 +10,7 @@
 // Zielgruppe gewählt. Diese Page schreibt selbst keine Kontakte, nur Such-Definitionen.
 //
 // Backend-Anschluss: unipile_accounts (status='OK') über getUnipileConnection,
-// Addon-Gate 'automation'. Fehlercodes der EF: 403 no_addon, 409 kein OK-Account,
+// Addon-Gate 'extra_linkedin_connection'. Fehlercodes der EF: 403 no_addon, 409 kein OK-Account,
 // 429 Rate-Limit.
 
 import PillSelect from '../components/PillSelect'

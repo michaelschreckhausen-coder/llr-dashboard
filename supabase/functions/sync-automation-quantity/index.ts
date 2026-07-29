@@ -1,4 +1,4 @@
-// sync-automation-quantity — setzt die Stripe-Item-Quantity des 'automation'-Addons
+// sync-automation-quantity — setzt die Stripe-Item-Quantity des 'extra_linkedin_connection'-Addons (zusaetzliche LinkedIn-Verknuepfung)
 // auf die AKTUELLE Anzahl verbundener unipile_accounts (status OK) eines Accounts.
 // SET-TO-ACTUAL-COUNT (idempotent, kein Delta) → race-sicher, 0-Fall sauber.
 // Grandfathered / kein Sub / nicht aktiv → skip (keine Belastung).
@@ -20,7 +20,7 @@ Deno.serve(async (req) => {
   // comped/external/grandfathered (jede Ebene) → kein Stripe-Charge, überspringen.
   const { data: aa } = await db.from("account_addons")
     .select("status, billing_type, stripe_subscription_item_id, addons!inner(slug)")
-    .eq("account_id", account_id).eq("addons.slug", "automation").eq("billing_type", "stripe").eq("status", "active")
+    .eq("account_id", account_id).eq("addons.slug", "extra_linkedin_connection").eq("billing_type", "stripe").eq("status", "active")
     .limit(1).maybeSingle();
 
   if (!aa) return json({ skipped: "kein_stripe_addon" });

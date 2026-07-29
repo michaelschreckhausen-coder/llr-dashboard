@@ -74,11 +74,11 @@ export function userClientFromReq(req: Request): SupabaseClient | null {
 }
 
 /** Addon-Gate: prüft via RPC i_have_addon({p_slug}) ob das aktive Konto das
- *  Addon aktiv hat. Gleiche Autorität wie unipile-connect-link (Addon 'automation').
+ *  Addon aktiv hat. Gleiche Autorität wie unipile-connect-link (Addon 'extra_linkedin_connection').
  *  Fallstrick #12: error prüfen -> bei Fehler defensiv false (kein Zugriff). */
 export async function hasAddon(
   userClient: SupabaseClient,
-  slug = "automation",
+  slug = "extra_linkedin_connection",
 ): Promise<boolean> {
   const { data, error } = await userClient.rpc("i_have_addon", { p_slug: slug });
   if (error) {

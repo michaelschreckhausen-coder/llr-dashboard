@@ -12,7 +12,7 @@ import { useBrandVoice } from '../context/BrandVoiceContext'
 // Lead machen will, geht über „LinkedIn Kontakte" (die Inbox).
 //
 // Quelle: public.linkedin_network, befüllt von import-unipile-relations
-// (stündlicher Cron, gestaffelt per Hash-Stunde, Addon-Gate 'automation').
+// (stündlicher Cron, gestaffelt per Hash-Stunde, Addon-Gate 'extra_linkedin_connection').
 //
 // Team-Scoping: expliziter team_id-Filter — RLS allein reicht bei Multi-Team-
 // Membership nicht (Top-Fallstrick #14).

@@ -96,7 +96,7 @@ Deno.serve(async (req) => {
     if (accId) { const { data: inc } = await db.rpc("account_included_unipile", { p_account_id: accId }); included = Number(inc ?? 1); }
     let addonActive = false;
     if (accId) {
-      const { data: ad } = await db.from("account_addons").select("id, addons!inner(slug)").eq("account_id", accId).eq("addons.slug", "automation").eq("status", "active").maybeSingle();
+      const { data: ad } = await db.from("account_addons").select("id, addons!inner(slug)").eq("account_id", accId).eq("addons.slug", "extra_linkedin_connection").eq("status", "active").maybeSingle();
       addonActive = !!ad;
     }
     const canAdd = (Number(connected ?? 0) < included) || addonActive;

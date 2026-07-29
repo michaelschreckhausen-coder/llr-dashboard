@@ -1348,7 +1348,7 @@ export default function BrandVoice({ session, brandType = 'personal' }) {
   async function startAddonCheckout() {
     setCheckoutBusy(true)
     try {
-      const { data, error } = await supabase.functions.invoke('create-addon-checkout-session', { body: { addon_slug: 'automation' } })
+      const { data, error } = await supabase.functions.invoke('create-addon-checkout-session', { body: { addon_slug: 'extra_linkedin_connection' } })
       if (error) throw error
       if (data?.error) throw new Error(data.error)
       if (data?.url) { window.location.href = data.url; return }
