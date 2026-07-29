@@ -84,6 +84,7 @@ export default function OffeneAnfragen() {
 
   const pending  = invitations.filter(i => i.status === 'pending')
   const accepted = invitations.filter(i => i.status === 'accepted')
+  const notAccepted = invitations.filter(i => i.status === 'withdrawn' || i.status === 'expired')
   const denom = pending.length + accepted.length
   const acceptRate = denom > 0 ? Math.round((accepted.length / denom) * 100) : 0
 
@@ -94,7 +95,7 @@ export default function OffeneAnfragen() {
     <div style={cardStyle}>
       <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', gap:12, flexWrap:'wrap', marginBottom:12 }}>
         <div style={{ fontSize:14, fontWeight:800, color:RC.text1, display:'flex', alignItems:'center', gap:8 }}>
-          <UserCheck size={16} color={P}/> Offene Vernetzungsanfragen
+          <UserCheck size={16} color={P}/> Vernetzungsanfragen
         </div>
         <button onClick={sync} disabled={syncing} style={{ ...btnPrimary, opacity: syncing ? 0.6 : 1 }}>
           {syncing ? <Loader2 size={14} className="lk-spin"/> : <RefreshCw size={14}/>} Jetzt abgleichen
@@ -157,6 +158,29 @@ export default function OffeneAnfragen() {
               </div>
             )
           })}
+        </div>
+      )}
+    </div>
+      {notAccepted.length > 0 && (
+        <div style={{ marginTop:18 }}>
+          <div style={{ fontSize:13, fontWeight:800, color:RC.text1, marginBottom:8, display:'flex', alignItems:'center', gap:8 }}>
+            <Clock size={15} color={RC.text3}/> Nicht angenommen ({notAccepted.length})
+          </div>
+          <div style={{ display:'flex', flexDirection:'column', gap:8 }}>
+            {notAccepted.slice(0,20).map(inv => {
+              const st = INV_STATUS[inv.status] || INV_STATUS.expired
+              return (
+                <div key={inv.id} style={{ display:'flex', alignItems:'center', gap:12, flexWrap:'wrap', padding:'10px 12px', border:`1px solid ${RC.border}`, borderRadius:10, opacity:0.85 }}>
+                  <div style={{ flex:1, minWidth:180 }}>
+                    <div style={{ fontSize:13.5, fontWeight:700, color:RC.text1 }}>{inv.invitee_name || 'Unbekannt'}</div>
+                    <div style={{ fontSize:11.5, color:RC.text3, marginTop:2 }}>gesendet {inviteAge(inv.sent_at)}</div>
+                  </div>
+                  <span style={{ fontSize:11, fontWeight:700, padding:'3px 9px', borderRadius:20, background:st.bg, color:st.color, border:`1px solid ${st.border}` }}>{st.label}</span>
+                  {inv.invitee_url && <a href={inv.invitee_url} target="_blank" rel="noopener noreferrer" style={{ padding:'6px 10px', background:'#fff', border:`1px solid ${RC.border}`, borderRadius:8, fontSize:12, fontWeight:600, textDecoration:'none', color:RC.text2, display:'inline-flex', alignItems:'center', gap:4 }}>Profil <ExternalLink size={12}/></a>}
+                </div>
+              )
+            })}
+          </div>
         </div>
       )}
     </div>

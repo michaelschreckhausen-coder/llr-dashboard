@@ -10,6 +10,7 @@ import { useBrandVoice } from '../context/BrandVoiceContext'
 import { useModel } from '../context/ModelContext'
 import PageHeader from '../components/PageHeader'
 import TabBar from '../components/TabBar'
+import OffeneAnfragen from '../components/OffeneAnfragen'
 import {
   MessageSquare, PenLine, Send, RefreshCw, Sparkles, Search, Loader2, Inbox as InboxIcon,
   Handshake, Mail, Target, Reply, ExternalLink, Plus, Check, X, UserPlus,
@@ -93,11 +94,14 @@ export default function Messages() {
         tabs={[
           { v: 'verfassen', label: 'Verfassen', icon: <PenLine size={16} strokeWidth={1.75} />, color: 'blue' },
           { v: 'postfach',  label: 'Postfach',  icon: <MessageSquare size={16} strokeWidth={1.75} />, color: 'purple' },
+          { v: 'anfragen',  label: 'Anfragen',  icon: <UserPlus size={16} strokeWidth={1.75} />, color: 'amber' },
         ]}
         active={tab} onChange={setTab} style={{ marginBottom: 18 }}
       />
       {tab === 'verfassen'
         ? <Verfassen bvId={bvId} model={selectedModel} contacts={contacts} caps={caps} onOpenPostfach={() => setTab('postfach')} />
+        : tab === 'anfragen'
+        ? <OffeneAnfragen />
         : <Postfach bvId={bvId} brandName={brandName} contacts={contacts} reloadContacts={loadContacts} goCompose={() => setTab('verfassen')} />}
     </div>
   )
@@ -342,7 +346,7 @@ function Postfach({ bvId, contacts, goCompose }) {
   return (
     <div style={{ ...card, height: 'calc(100vh - 240px)', minHeight: 460, display: 'grid', gridTemplateColumns: '340px 1fr', overflow: 'hidden' }}>
       {/* Thread-Liste */}
-      <div style={{ borderRight: '1px solid var(--border)', display: 'flex', flexDirection: 'column', minHeight: 0 }}>
+      <div style={{ borderRight: '1px solid var(--border)', display: 'flex', flexDirection: 'column', minHeight: 0, minWidth: 0 }}>
         <div style={{ padding: 10, borderBottom: '1px solid var(--border)', display: 'flex', alignItems: 'center', gap: 8 }}>
           <Search size={15} color="#9CA3AF" />
           <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Kontakt suchen…" style={{ border: 'none', outline: 'none', fontSize: 13, flex: 1, background: 'transparent', color: 'var(--text-primary)' }} />
