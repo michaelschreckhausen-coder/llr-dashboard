@@ -57,7 +57,7 @@ Deno.serve(async (req) => {
       const providerId = pick(evt, ["provider_id", "user_provider_id", "member_id", "relation.provider_id", "user.provider_id"]);
       const publicId = pick(evt, ["public_identifier", "user_public_identifier", "relation.public_identifier", "user.public_identifier"]);
       const enr = await findEnrollment(accountId, providerId, publicId);
-      if (enr) { const { data: m } = await db.rpc("la_materialize_accepted", { p_enrollment_id: enr.id }); dispatch = { new_relation: enr.id, result: m }; }
+      if (enr) { await db.from("la_enrollments").update({ accepted_at: new Date().toISOString() }).eq("id", enr.id); const { data: m } = await db.rpc("la_materialize_accepted", { p_enrollment_id: enr.id }); dispatch = { new_relation: enr.id, result: m }; }
       else dispatch = "new_relation:no_enrollment";
 
     } else if (/message/i.test(type)) {
