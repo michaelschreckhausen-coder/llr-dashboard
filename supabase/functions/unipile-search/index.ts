@@ -13,7 +13,6 @@ import { handlePreflight, jsonResponse } from "../_shared/cors.ts";
 import {
   getAuthenticatedUser,
   getUnipileConnection,
-  hasAddon,
   identifierFromUrl,
   linkedinSearch,
   resolveSearchParameter,
@@ -21,6 +20,7 @@ import {
   UnipileError,
   userClientFromReq,
 } from "../_shared/unipile.ts";
+import { requirePermission } from "../_shared/permissions.ts";
 
 const MAX_PAGES = 5;      // Schutz gegen Endlos-Pagination pro Aufruf
 const PREVIEW_CAP = 100;  // max. Treffer, die als Vorschau (items) zurückgegeben werden
@@ -33,12 +33,10 @@ Deno.serve(async (req) => {
     const auth = await getAuthenticatedUser(req);
     if (!auth) return jsonResponse({ error: "unauthorized" }, 401);
 
-    // Addon-Gate 'automation' (gleiche Autorität wie unipile-connect-link).
+    // Permission-Gate linkedin.automation (Kill-Switch im Resolver).
     const uc = userClientFromReq(req);
     if (!uc) return jsonResponse({ error: "unauthorized" }, 401);
-    if (!(await hasAddon(uc, "automation"))) {
-      return jsonResponse({ error: "no_addon", message: "Automatisierung-Addon nicht aktiv" }, 403);
-    }
+    { const denied = await requirePermission(uc, "linkedin.automation"); if (denied) return denied; }
 
     const sb = serviceClient();
     const conn = await getUnipileConnection(sb, auth.userId);
@@ -47,6 +45,7 @@ Deno.serve(async (req) => {
     }
 
     const input = await req.json().catch(() => ({}));
+    const brandVoiceId: string | null = input.brand_voice_id ?? null; // aktive Marke -> Treffer sichtbar in brand-scoped LinkedIn Kontakte
     let search: any = null;
 
     if (input.search_id) {
@@ -67,6 +66,44 @@ Deno.serve(async (req) => {
     const isSalesNav = api === "sales_navigator";
     // target_list_id zeigt jetzt auf inbox_lists (nicht mehr lead_lists) — Prozess-Vereinheitlichung.
     const targetListId = search?.target_list_id ?? input.target_list_id ?? null;
+
+    // ── Modus 'import': ausgewaehlte Vorschau-Treffer jetzt in die LinkedIn Kontakte
+    //    schreiben (aus der Suche kommt NICHTS mehr automatisch rein). ──
+    if (input.mode === "import") {
+      const items: any[] = Array.isArray(input.items) ? input.items : [];
+      let imported = 0, skipped = 0;
+      for (const it of items) {
+        const lead: Record<string, unknown> = {
+          name: it.name ?? "Unbekannt",
+          first_name: it.first_name ?? null, last_name: it.last_name ?? null,
+          headline: it.headline ?? null, company: it.company ?? null,
+          job_title: it.job_title ?? null, location: it.location ?? null,
+          linkedin_url: it.linkedin_url ?? null, avatar_url: it.avatar_url ?? null,
+          sales_nav_id: it.sales_nav_id ?? null, provider_id: it.provider_id ?? null,
+          source: "linkedin_search",
+        };
+        if (!lead.sales_nav_id && !lead.provider_id) { skipped++; continue; }
+        const { data: up, error: upErr } = await sb.rpc("sales_nav_upsert_inbox", {
+          p_team_id: conn.teamId, p_user_id: auth.userId, p_lead: lead, p_brand_voice_id: brandVoiceId,
+        });
+        if (upErr) { console.warn(`[unipile-search] import upsert: ${upErr.message}`); skipped++; continue; }
+        const res = up as { id?: string; inserted?: boolean } | null;
+        if (res?.inserted) imported++;
+        const inboxId = res?.id ?? null;
+        if (targetListId && inboxId) {
+          const { error: mErr } = await sb.from("inbox_list_members")
+            .upsert({ list_id: targetListId, inbox_id: inboxId, user_id: auth.userId },
+              { onConflict: "list_id,inbox_id", ignoreDuplicates: true });
+          if (mErr) console.warn(`[unipile-search] inbox_list_members: ${mErr.message}`);
+        }
+      }
+      if (search) {
+        await sb.from("linkedin_searches")
+          .update({ results_imported: (search.results_imported ?? 0) + imported })
+          .eq("id", search.id);
+      }
+      return jsonResponse({ ok: true, imported, requested: items.length, skipped });
+    }
 
     // Body für Unipile: entweder URL- oder Parameter-basierte Suche.
     // WICHTIG (Classic/People-Schema): required = api+category; keywords = STRING;
@@ -139,33 +176,14 @@ Deno.serve(async (req) => {
         // Vorschau-Liste (gedeckelt) für die Anzeige im Frontend.
         if (results.length < PREVIEW_CAP) results.push(mapped);
 
-        // Nur Personen-Treffer werden in die Inbox importiert (Unternehmen: nur gezählt).
-        if (category !== "people") continue;
-
-        // Import in die Import-Inbox (linkedin_inbox) via RPC — NICHT ins CRM.
-        // it.id = sales_nav_id (Sales-Nav, ACwAA) bzw. provider_id (Classic, ACoAA).
-        const idRaw: string | null = (it.id ?? it.provider_id ?? it.member_id) ?? null;
-        const lead: Record<string, unknown> = {
-          ...mapped,                                   // name/first/last/headline/company/job_title/location/linkedin_url/avatar_url
-          sales_nav_id: isSalesNav ? idRaw : null,
-          provider_id: isSalesNav ? (it.provider_id ?? null) : idRaw,
-          source: "linkedin_search",
-        };
-        // RPC dedupt team-scoped über sales_nav_id/provider_id. Ohne beide Arbiter → skip.
-        if (!lead.sales_nav_id && !lead.provider_id) continue;
-        const { data: up, error: upErr } = await sb.rpc("sales_nav_upsert_inbox", {
-          p_team_id: conn.teamId, p_user_id: auth.userId, p_lead: lead,
-        });
-        if (upErr) { console.warn(`[unipile-search] inbox upsert: ${upErr.message}`); continue; }
-        const res = up as { id?: string; inserted?: boolean } | null;
-        if (res?.inserted) imported++;
-        const inboxId = res?.id ?? null;
-        // Optionale Ziel-Liste = inbox_lists.id → Mitgliedschaft (idempotent).
-        if (targetListId && inboxId) {
-          const { error: mErr } = await sb.from("inbox_list_members")
-            .upsert({ list_id: targetListId, inbox_id: inboxId, user_id: auth.userId },
-              { onConflict: "list_id,inbox_id", ignoreDuplicates: true });
-          if (mErr) console.warn(`[unipile-search] inbox_list_members: ${mErr.message}`);
+        // KEIN Auto-Import mehr — die Suche liefert nur eine Vorschau.
+        // Arbiter-IDs an den Vorschau-Treffer haengen, damit der spaetere
+        // Import (mode:'import') team-scoped dedupen kann.
+        if (category === "people") {
+          const idRaw: string | null = (it.id ?? it.provider_id ?? it.member_id) ?? null;
+          (mapped as any).sales_nav_id = isSalesNav ? idRaw : null;
+          (mapped as any).provider_id  = isSalesNav ? (it.provider_id ?? null) : idRaw;
+          (mapped as any).source = "linkedin_search";
         }
       }
       cursor = resp?.cursor ?? resp?.paging?.cursor ?? undefined;

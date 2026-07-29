@@ -84,6 +84,8 @@ export default function LinkedInSuche() {
   const [flash, setFlash]         = useState(null)      // { type:'error'|'success', text, action?:{label,to} }
   const [lastResult, setLastResult] = useState(null)    // { found, imported, cursor }
   const [results, setResults]     = useState(null)      // { searchId, searchName, items:[], truncated:bool, category }
+  const [selected, setSelected]   = useState(() => new Set())  // Vorschau-Auswahl (Indizes)
+  const [importing, setImporting] = useState(false)
 
   useEffect(() => { supabase.auth.getUser().then(({ data }) => setUid(data?.user?.id || null)) }, [])
 
@@ -155,7 +157,7 @@ export default function LinkedInSuche() {
     setLastResult(null)
     setResults(null)
     setFlash(null)
-    const { data, error } = await supabase.functions.invoke('unipile-search', { body: { search_id: search.id, brand_voice_id: activeBrandVoice?.id || null } })
+    const { data, error } = await supabase.functions.invoke('unipile-search', { body: { search_id: search.id, brand_voice_id: activeBrandVoice?.id || null, mode: 'search' } })
     if (error) {
       // P3 Schritt 4: zentraler EF-Status→Mensch-Mapper (403→Upgrade, 401→Sitzung, 409→keine
       // Verbindung, 429→Rate-Limit, sonst lesbar) — eine Stelle statt pro-Seite-Blöcke.
@@ -166,17 +168,40 @@ export default function LinkedInSuche() {
     }
     setLastResult(data)   // { ok, found, imported, cursor }
     const items = Array.isArray(data?.items) ? data.items : []
-    setResults({ searchId: search.id, searchName: search.name, items, truncated: !!data?.preview_truncated, category: search.category })
+    setResults({ searchId: search.id, searchName: search.name, items, truncated: !!data?.preview_truncated, category: search.category, targetListId: search.target_list_id || null, imported: false })
     const isPeople = search.category === 'people'
+    // Personen-Treffer standardmäßig alle vorausgewählt (schneller Bulk-Add).
+    setSelected(new Set(isPeople ? items.map((_, i) => i) : []))
     setFlash({
       type:'success',
       text: isPeople
-        ? `${data?.found ?? 0} Treffer gefunden, ${data?.imported ?? 0} neu in den LinkedIn Kontakten.`
-        : `${data?.found ?? 0} Unternehmens-Treffer gefunden (nur Personen landen in der Inbox).`,
-      action: isPeople ? { label:'Zu den LinkedIn Kontakten', to:'/linkedin-inbox' } : undefined,
+        ? `${data?.found ?? 0} Treffer gefunden — unten auswählen und zu den LinkedIn Kontakten hinzufügen.`
+        : `${data?.found ?? 0} Unternehmens-Treffer gefunden (nur Personen können übernommen werden).`,
     })
     setRunningId(null)
     fetchSearches()       // aktualisierte results_imported / status / last_run_at
+  }
+
+  const toggleSel = (i) => setSelected(prev => { const n = new Set(prev); n.has(i) ? n.delete(i) : n.add(i); return n })
+
+  const addSelectedToContacts = async () => {
+    if (!results) return
+    const chosen = results.items.filter((_, i) => selected.has(i))
+    if (!chosen.length) { setFlash({ type:'error', text:'Bitte mindestens einen Treffer auswählen.' }); return }
+    setImporting(true); setFlash(null)
+    const { data, error } = await supabase.functions.invoke('unipile-search', {
+      body: { mode: 'import', search_id: results.searchId, items: chosen, brand_voice_id: activeBrandVoice?.id || null },
+    })
+    if (error) { const m = await mapEfError(error); setFlash({ type:'error', text:m.text, action:m.action }); setImporting(false); return }
+    setImporting(false)
+    setResults(r => r ? { ...r, imported: true } : r)
+    const already = Math.max(0, (data?.requested ?? chosen.length) - (data?.imported ?? 0))
+    setFlash({
+      type:'success',
+      text: `${data?.imported ?? 0} neu zu den LinkedIn Kontakten hinzugefügt${already > 0 ? ` (${already} bereits vorhanden)` : ''}.`,
+      action: { label:'Zu den LinkedIn Kontakten', to:'/linkedin-inbox' },
+    })
+    fetchSearches()
   }
 
   const deleteSearch = async (id) => {
@@ -343,9 +368,20 @@ export default function LinkedInSuche() {
             <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', gap:12, marginBottom:10, flexWrap:'wrap' }}>
               <div style={sectionTitle}><Users size={14} /> Ergebnisse für „{results.searchName}"</div>
               {results.category === 'people' && (
-                <button className="lk-btn lk-btn-ghost" onClick={() => navigate('/linkedin-inbox')}>
-                  <InboxIcon size={14} /> Zu den LinkedIn Kontakten
-                </button>
+                results.imported ? (
+                  <button className="lk-btn lk-btn-ghost" onClick={() => navigate('/linkedin-inbox')}>
+                    <InboxIcon size={14} /> Zu den LinkedIn Kontakten
+                  </button>
+                ) : results.items.length > 0 ? (
+                  <div style={{ display:'flex', alignItems:'center', gap:8, flexWrap:'wrap' }}>
+                    <button className="lk-btn lk-btn-ghost" onClick={() => setSelected(selected.size === results.items.length ? new Set() : new Set(results.items.map((_, i) => i)))}>
+                      {selected.size === results.items.length ? 'Keine' : 'Alle'} auswählen
+                    </button>
+                    <button className="lk-btn lk-btn-navy" disabled={importing || selected.size === 0} onClick={addSelectedToContacts}>
+                      {importing ? <Loader2 size={15} className="lk-spin" /> : <InboxIcon size={14} />} {selected.size} zu Kontakten hinzufügen
+                    </button>
+                  </div>
+                ) : null
               )}
             </div>
 
@@ -384,9 +420,15 @@ export default function LinkedInSuche() {
                         </a>
                       )}
                       {results.category === 'people' && (
-                        <span className="lk-btn lk-btn-ghost" style={{ color:'#15803D', borderColor:'#BBF7D0', cursor:'default' }}>
-                          <InboxIcon size={14} /> in LinkedIn Kontakten
-                        </span>
+                        results.imported ? (
+                          <span className="lk-btn lk-btn-ghost" style={{ color:'#15803D', borderColor:'#BBF7D0', cursor:'default' }}>
+                            <InboxIcon size={14} /> hinzugefügt
+                          </span>
+                        ) : (
+                          <label style={{ display:'inline-flex', alignItems:'center', gap:6, fontSize:12, color:'var(--text-muted, #6B7280)', cursor:'pointer', userSelect:'none' }}>
+                            <input type="checkbox" checked={selected.has(idx)} onChange={() => toggleSel(idx)} /> auswählen
+                          </label>
+                        )
                       )}
                     </div>
                   )
