@@ -5,7 +5,7 @@ import React, { useState, useEffect, useCallback, useRef } from 'react'
 import { supabase } from '../lib/supabase'
 import { useBrandVoice } from '../context/BrandVoiceContext'
 import { useModel } from '../context/ModelContext'
-import { Send, RefreshCw, ExternalLink, Loader2, Inbox as InboxIcon, Search, MessageSquare, Sparkles } from 'lucide-react'
+import { Send, RefreshCw, ExternalLink, Loader2, Inbox as InboxIcon, Search, MessageSquare, Sparkles, Plus } from 'lucide-react'
 
 const PRIMARY = 'var(--wl-primary, rgb(49,90,231))'
 const card = { background: 'var(--surface)', border: '1px solid var(--border, #E4E7EC)', borderRadius: 12 }
@@ -48,6 +48,10 @@ export default function Messages() {
   const { model: selectedModel } = useModel()
   const [aiLoading, setAiLoading] = useState(false)
   const [aiMenu, setAiMenu] = useState(false)
+  const [contacts, setContacts] = useState([])
+  const [contactSearch, setContactSearch] = useState('')
+  const [newMsgOpen, setNewMsgOpen] = useState(false)
+  const [draftTarget, setDraftTarget] = useState(null)
 
   const loadChats = useCallback(async () => {
     if (!bvId) { setChats([]); setLoading(false); return }
@@ -70,11 +74,23 @@ export default function Messages() {
   const selChat = (c) => { setSelId(c.id); setErr(''); loadMsgs(c.id) }
 
   const doSend = async () => {
-    const t = text.trim(); if (!t || !selId || sending) return
+    const t = text.trim(); if (!t || sending) return
+    if (!selId && !draftTarget) return
     setSending(true); setErr('')
-    const { data, error } = await supabase.functions.invoke('unipile-message-send', { body: { chat_id: selId, text: t, inmail } })
-    if (error || data?.error) { setErr(data?.error || error?.message || 'Senden fehlgeschlagen'); setSending(false); return }
+    const body = selId
+      ? { chat_id: selId, text: t, inmail }
+      : { brand_voice_id: bvId, attendee_provider_id: draftTarget.provider_id, text: t, inmail }
+    const { data, error } = await supabase.functions.invoke('unipile-message-send', { body })
+    if (error || data?.error) {
+      const e = data?.error
+      setErr(e === 'no_connection_for_brand' ? 'Keine LinkedIn-Verbindung fuer diese Marke.' : (e || error?.message || 'Senden fehlgeschlagen'))
+      setSending(false); return
+    }
     setText(''); setSending(false)
+    const newChatId = data?.chat_id || null
+    if (!selId && newChatId) {
+      setDraftTarget(null); await loadChats(); setSelId(newChatId); loadMsgs(newChatId); return
+    }
     setMsgs(m => [...m, { id: 'tmp' + Date.now(), direction: 'outbound', text: t, sent_at: new Date().toISOString() }])
     setTimeout(() => bottomRef.current?.scrollIntoView({ behavior: 'smooth' }), 60)
     loadChats()
@@ -88,9 +104,25 @@ export default function Messages() {
     setTimeout(async () => { await loadChats(); if (selId) await loadMsgs(selId); setSyncing(false) }, 4500)
   }
 
+  const loadContacts = useCallback(async () => {
+    if (!bvId) return
+    const { data } = await supabase.from('linkedin_inbox')
+      .select('provider_id, name, first_name, last_name, headline, avatar_url')
+      .eq('brand_voice_id', bvId).not('provider_id', 'is', null).order('name').limit(400)
+    setContacts(data || [])
+  }, [bvId])
+  const openNewMsg = () => { setNewMsgOpen(true); setContactSearch(''); loadContacts() }
+  const pickContact = (ct) => {
+    const nm = ct.name || ((ct.first_name || '') + ' ' + (ct.last_name || '')).trim() || 'Kontakt'
+    setDraftTarget({ provider_id: ct.provider_id, name: nm, headline: ct.headline, avatar_url: ct.avatar_url })
+    setSelId(null); setMsgs([]); setNewMsgOpen(false); setText(''); setErr('')
+  }
+
   const genReply = async (intent) => {
     setAiMenu(false)
-    const c = chats.find(x => x.id === selId); if (!c || aiLoading) return
+    if (aiLoading) return
+    const c = chats.find(x => x.id === selId) || (draftTarget ? { attendee_name: draftTarget.name, attendee_headline: draftTarget.headline } : null)
+    if (!c) return
     setAiLoading(true); setErr('')
     const name = c.attendee_name || 'der Kontakt'
     const transcript = msgs.slice(-12).map(m => (m.direction === 'outbound' ? 'Ich' : name) + ': ' + (m.text || '').replace(/\s+/g, ' ')).join('\n') || '(noch keine Nachrichten im Verlauf)'
@@ -107,6 +139,8 @@ export default function Messages() {
   }
 
   const sel = chats.find(c => c.id === selId)
+  const conv = sel || (draftTarget ? { attendee_name: draftTarget.name, attendee_headline: draftTarget.headline, attendee_avatar_url: draftTarget.avatar_url, attendee_profile_url: null } : null)
+  const contactsFiltered = contacts.filter(c => { const n = (c.name || ((c.first_name||'')+' '+(c.last_name||''))).toLowerCase(); return !contactSearch || n.includes(contactSearch.toLowerCase()) })
   const filtered = chats.filter(c => !search || (c.attendee_name || '').toLowerCase().includes(search.toLowerCase()))
 
   if (!bvId) return (
@@ -123,9 +157,12 @@ export default function Messages() {
           <h1 style={{ fontSize: 22, fontWeight: 800, margin: 0, color: 'var(--text-strong,#111827)', display: 'flex', alignItems: 'center', gap: 10 }}><MessageSquare size={22} color={PRIMARY} /> Postfach</h1>
           <div style={{ fontSize: 13, color: 'var(--text-muted,#6B7280)', marginTop: 2 }}>LinkedIn-Nachrichten deiner Marke {activeBrandVoice?.brand_name || activeBrandVoice?.name || ''} — direkt aus Leadesk.</div>
         </div>
-        <button className="lk-btn lk-btn-ghost" onClick={doSync} disabled={syncing}>
-          {syncing ? <Loader2 size={15} className="lk-spin" /> : <RefreshCw size={15} />} Aktualisieren
-        </button>
+        <div style={{ display: 'flex', gap: 8 }}>
+          <button className="lk-btn lk-btn-ghost" onClick={doSync} disabled={syncing}>
+            {syncing ? <Loader2 size={15} className="lk-spin" /> : <RefreshCw size={15} />} Aktualisieren
+          </button>
+          <button className="lk-btn lk-btn-navy" onClick={openNewMsg}><Plus size={15} /> Neue Nachricht</button>
+        </div>
       </div>
       {err && <div style={{ fontSize: 12, color: '#B91C1C', background: '#FEF2F2', border: '1px solid #FECACA', borderRadius: 8, padding: '8px 12px', marginBottom: 8 }}>{err}</div>}
 
@@ -160,15 +197,15 @@ export default function Messages() {
 
         {/* Konversation */}
         <div style={{ display: 'flex', flexDirection: 'column', minHeight: 0 }}>
-          {!sel ? <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#9CA3AF', fontSize: 14 }}>Waehle links eine Konversation.</div>
+          {!conv ? <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#9CA3AF', fontSize: 14 }}>Waehle links eine Konversation oder starte eine neue Nachricht.</div>
             : <>
               <div style={{ padding: '12px 16px', borderBottom: '1px solid var(--border,#E4E7EC)', display: 'flex', alignItems: 'center', gap: 12 }}>
-                <Avatar name={sel.attendee_name} url={sel.attendee_avatar_url} size={38} />
+                <Avatar name={conv.attendee_name} url={conv.attendee_avatar_url} size={38} />
                 <div style={{ flex: 1, minWidth: 0 }}>
-                  <div style={{ fontSize: 15, fontWeight: 700, color: 'var(--text-strong,#111827)' }}>{sel.attendee_name || 'Unbekannt'}</div>
-                  {sel.attendee_headline && <div style={{ fontSize: 12, color: '#6B7280', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{sel.attendee_headline}</div>}
+                  <div style={{ fontSize: 15, fontWeight: 700, color: 'var(--text-strong,#111827)' }}>{conv.attendee_name || 'Unbekannt'}</div>
+                  {conv.attendee_headline && <div style={{ fontSize: 12, color: '#6B7280', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{conv.attendee_headline}</div>}
                 </div>
-                {sel.attendee_profile_url && <a href={sel.attendee_profile_url} target="_blank" rel="noreferrer" className="lk-btn lk-btn-ghost" style={{ textDecoration: 'none' }}>Profil <ExternalLink size={13} /></a>}
+                {conv.attendee_profile_url && <a href={conv.attendee_profile_url} target="_blank" rel="noreferrer" className="lk-btn lk-btn-ghost" style={{ textDecoration: 'none' }}>Profil <ExternalLink size={13} /></a>}
               </div>
 
               <div style={{ flex: 1, overflowY: 'auto', padding: '16px', display: 'flex', flexDirection: 'column', gap: 8, background: '#FafBff' }}>
@@ -182,6 +219,7 @@ export default function Messages() {
                       </div>
                     )
                   })}
+                {draftTarget && !sel && msgs.length === 0 && !msgLoading && <div style={{ margin: 'auto', textAlign: 'center', color: '#9CA3AF', fontSize: 13 }}>Neue Konversation mit {draftTarget.name} — schreibe die erste Nachricht.</div>}
                 <div ref={bottomRef} />
               </div>
 
@@ -211,6 +249,34 @@ export default function Messages() {
             </>}
         </div>
       </div>
+
+      {newMsgOpen && (
+        <div onClick={() => setNewMsgOpen(false)} style={{ position: 'fixed', inset: 0, background: 'rgba(17,24,39,.45)', zIndex: 50, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 16 }}>
+          <div onClick={e => e.stopPropagation()} style={{ ...card, width: 460, maxWidth: '100%', maxHeight: '78vh', display: 'flex', flexDirection: 'column', overflow: 'hidden', boxShadow: '0 18px 50px rgba(0,0,0,.25)' }}>
+            <div style={{ padding: '14px 16px', borderBottom: '1px solid var(--border,#E4E7EC)', fontWeight: 800, fontSize: 16, color: 'var(--text-strong,#111827)' }}>Neue Nachricht</div>
+            <div style={{ padding: 10, borderBottom: '1px solid var(--border,#E4E7EC)', display: 'flex', alignItems: 'center', gap: 8 }}>
+              <Search size={15} color="#9CA3AF" />
+              <input autoFocus value={contactSearch} onChange={e => setContactSearch(e.target.value)} placeholder="Kontakt aus deinen LinkedIn-Kontakten suchen…" style={{ border: 'none', outline: 'none', fontSize: 13.5, flex: 1, background: 'transparent', color: 'var(--text-strong,#111827)' }} />
+            </div>
+            <div style={{ overflowY: 'auto', flex: 1 }}>
+              {contacts.length === 0 ? <div style={{ padding: 24, textAlign: 'center', color: '#9CA3AF', fontSize: 13 }}>Keine anschreibbaren Kontakte fuer diese Marke.</div>
+                : contactsFiltered.length === 0 ? <div style={{ padding: 20, textAlign: 'center', color: '#9CA3AF', fontSize: 13 }}>Kein Treffer.</div>
+                : contactsFiltered.map(ct => {
+                  const nm = ct.name || ((ct.first_name || '') + ' ' + (ct.last_name || '')).trim() || 'Kontakt'
+                  return (
+                    <div key={ct.provider_id} onClick={() => pickContact(ct)} style={{ display: 'flex', gap: 10, padding: '9px 14px', cursor: 'pointer', alignItems: 'center' }} onMouseEnter={e => e.currentTarget.style.background = '#F3F4F6'} onMouseLeave={e => e.currentTarget.style.background = 'transparent'}>
+                      <Avatar name={nm} url={ct.avatar_url} size={36} />
+                      <div style={{ minWidth: 0 }}>
+                        <div style={{ fontSize: 13.5, fontWeight: 600, color: 'var(--text-strong,#111827)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{nm}</div>
+                        {ct.headline && <div style={{ fontSize: 11.5, color: '#6B7280', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{ct.headline}</div>}
+                      </div>
+                    </div>
+                  )
+                })}
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }
