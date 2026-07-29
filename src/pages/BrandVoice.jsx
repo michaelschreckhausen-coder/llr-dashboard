@@ -1324,6 +1324,12 @@ export default function BrandVoice({ session, brandType = 'personal' }) {
         setShowLimitModal(true)
         return
       }
+      // Modell 2 (metered): ab dem 2. Profil (jenseits der inklusiven Verknüpfung)
+      // kostet jede weitere Anbindung 5,99 €/Monat — vor dem Verbinden bewusst bestätigen.
+      if (allow && typeof allow.connected === 'number' && typeof allow.included === 'number' && allow.connected >= allow.included) {
+        const ok = window.confirm('Dieses zusätzliche LinkedIn-Profil kostet 5,99 €/Monat extra — es wird automatisch über dein Abo abgerechnet, solange das Profil verbunden ist. Jetzt kostenpflichtig verbinden?')
+        if (!ok) { setLiConnecting(false); return }
+      }
       const { data, error } = await supabase.functions.invoke('unipile-connect-link', { body: { brand_voice_id: bvId, app_base: window.location.origin, success_path: window.location.pathname + '?li_unipile=' + bvId } })
       if (error) throw error
       // Serverseitiger Riegel (falls Client-Gate umgangen): 402 blocked → Marketplace
