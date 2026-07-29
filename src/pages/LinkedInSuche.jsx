@@ -65,7 +65,7 @@ const CATEGORY_OPTIONS = [
 
 const EMPTY_FORM = {
   name:'', api:'classic', category:'people',
-  keywords:'', location:'', company:'', industry:'',
+  person_name:'', keywords:'', location:'', company:'', industry:'',
   search_url:'', target_list_id:'',
 }
 
@@ -123,13 +123,15 @@ export default function LinkedInSuche() {
 
   const saveSearch = async () => {
     if (!form.name.trim()) { setFlash({ type:'error', text:'Bitte einen Namen für die Suche vergeben.' }); return }
-    if (!form.keywords.trim() && !form.search_url.trim()) {
-      setFlash({ type:'error', text:'Bitte Keywords oder eine gespeicherte Such-URL angeben.' }); return
+    if (!form.person_name.trim() && !form.keywords.trim() && !form.search_url.trim()) {
+      setFlash({ type:'error', text:'Bitte einen Namen, Keywords oder eine gespeicherte Such-URL angeben.' }); return
     }
     setSaving(true)
     // params bündelt die Freitext-Filter; leere Felder weglassen.
     const params = {}
-    if (form.keywords.trim()) params.keywords = form.keywords.trim()
+    // LinkedIn-Classic hat keinen eigenen Namens-Filter — Name fliesst in die Keyword-Suche (kombiniert).
+    const _kw = [form.person_name.trim(), form.keywords.trim()].filter(Boolean).join(' ')
+    if (_kw) params.keywords = _kw
     if (form.location.trim()) params.location = form.location.trim()
     if (form.company.trim())  params.company  = form.company.trim()
     if (form.industry.trim()) params.industry = form.industry.trim()
@@ -267,6 +269,12 @@ export default function LinkedInSuche() {
             )}
 
             <div style={gridStyle}>
+              {form.category === 'people' && (
+                <div>
+                  <label style={labelStyle}>Name (Person)</label>
+                  <input style={inputStyle} value={form.person_name} onChange={e => setField('person_name', e.target.value)} placeholder="z. B. Max Mustermann" />
+                </div>
+              )}
               <div>
                 <label style={labelStyle}>Keywords</label>
                 <input style={inputStyle} value={form.keywords} onChange={e => setField('keywords', e.target.value)} placeholder="z. B. Softwareentwickler" />
