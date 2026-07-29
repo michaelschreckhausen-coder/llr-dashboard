@@ -124,6 +124,7 @@ function RecipientPicker({ bvId, cat, canInmail, value, onChange }) {
   const [q, setQ] = useState('')
   const [rows, setRows] = useState([])
   const [loading, setLoading] = useState(false)
+  const [searchErr, setSearchErr] = useState(null)
   const ref = useRef(null)
   useEffect(() => { setSrc(sources[0]) }, [cat.key, canInmail]) // eslint-disable-line
   useEffect(() => { const h = e => { if (ref.current && !ref.current.contains(e.target)) setOpen(false) }; if (open) document.addEventListener('mousedown', h); return () => document.removeEventListener('mousedown', h) }, [open])
@@ -151,11 +152,16 @@ function RecipientPicker({ bvId, cat, canInmail, value, onChange }) {
   useEffect(() => {
     if (!open || src !== 'suche') return
     const query = q.trim()
+    setSearchErr(null)
     if (query.length < 2) { setRows([]); setLoading(false); return }
     let cancel = false; setLoading(true)
     const t = setTimeout(async () => {
-      const { data } = await supabase.functions.invoke('unipile-people-search', { body: { brand_voice_id: bvId, query } })
-      if (!cancel) { setRows((data && data.items) || []); setLoading(false) }
+      const { data, error } = await supabase.functions.invoke('unipile-people-search', { body: { brand_voice_id: bvId, query } })
+      if (cancel) return
+      const errMsg = error ? 'LinkedIn-Suche momentan nicht verfuegbar.' : (data && data.error) || null
+      setSearchErr(errMsg)
+      setRows((data && data.items) || [])
+      setLoading(false)
     }, 450)
     return () => { cancel = true; clearTimeout(t) }
   }, [open, src, q, bvId])
@@ -171,7 +177,7 @@ function RecipientPicker({ bvId, cat, canInmail, value, onChange }) {
         <div style={{ position: 'absolute', zIndex: 60, top: 'calc(100% + 4px)', left: 0, right: 0, ...card, boxShadow: '0 14px 34px rgba(15,23,42,.16)', padding: 6, maxHeight: 380, overflowY: 'auto' }}>
           <div style={{ display: 'flex', gap: 4, padding: '4px 4px 8px', flexWrap: 'wrap', borderBottom: '1px solid var(--border-soft)' }}>
             {sources.map(sv => (
-              <button key={sv} onClick={() => { setSrc(sv); setQ('') }} style={{ fontSize: 11.5, fontWeight: 600, padding: '5px 9px', borderRadius: 999, cursor: 'pointer', fontFamily: 'inherit', border: '1px solid ' + (sv === src ? P : 'var(--border)'), background: sv === src ? 'var(--primary-soft, rgba(0,48,96,.08))' : 'var(--surface)', color: sv === src ? P : 'var(--text-muted)' }}>{SRC_LABEL[sv]}</button>
+              <button key={sv} onClick={() => { setSrc(sv); setQ(''); setSearchErr(null) }} style={{ fontSize: 11.5, fontWeight: 600, padding: '5px 9px', borderRadius: 999, cursor: 'pointer', fontFamily: 'inherit', border: '1px solid ' + (sv === src ? P : 'var(--border)'), background: sv === src ? 'var(--primary-soft, rgba(0,48,96,.08))' : 'var(--surface)', color: sv === src ? P : 'var(--text-muted)' }}>{SRC_LABEL[sv]}</button>
             ))}
           </div>
           <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '8px', borderBottom: '1px solid var(--border-soft)' }}>
@@ -179,7 +185,7 @@ function RecipientPicker({ bvId, cat, canInmail, value, onChange }) {
             <input autoFocus value={q} onChange={e => setQ(e.target.value)} placeholder={src === 'suche' ? 'Auf LinkedIn suchen (Name oder Keyword)…' : 'In ' + SRC_LABEL[src] + ' suchen…'} style={{ border: 'none', outline: 'none', background: 'transparent', flex: 1, fontSize: 13, color: 'var(--text-primary)' }} />
           </div>
           {loading ? <div style={{ padding: 20, textAlign: 'center', color: '#9CA3AF' }}><Loader2 size={16} className="lk-spin" /></div>
-            : filtered.length === 0 ? <div style={{ padding: 16, textAlign: 'center', color: '#9CA3AF', fontSize: 13 }}>{src === 'suche' ? (q.trim().length < 2 ? 'Mind. 2 Zeichen fuer die LinkedIn-Suche eingeben.' : 'Keine Treffer.') : (rows.length === 0 ? 'Keine Eintraege mit LinkedIn-Profil.' : 'Kein Treffer.')}</div>
+            : filtered.length === 0 ? <div style={{ padding: 16, textAlign: 'center', color: searchErr ? '#B45309' : '#9CA3AF', fontSize: 13 }}>{src === 'suche' ? (searchErr ? searchErr : q.trim().length < 2 ? 'Mind. 2 Zeichen fuer die LinkedIn-Suche eingeben.' : 'Keine Treffer.') : (rows.length === 0 ? 'Keine Eintraege mit LinkedIn-Profil.' : 'Kein Treffer.')}</div>
             : filtered.slice(0, 100).map((r, i) => (
               <button key={(r.provider_id || r.url || '') + i} className="lk-dd-opt" onClick={() => { onChange(r); setOpen(false); setQ('') }}
                 style={{ display: 'flex', gap: 10, alignItems: 'center', width: '100%', border: 'none', background: 'transparent', padding: '8px 10px', borderRadius: 8, cursor: 'pointer', textAlign: 'left' }}>

@@ -16,7 +16,7 @@ Deno.serve(async (req) => {
     const { data: acc } = await uc.from("unipile_accounts").select("unipile_account_id").eq("brand_voice_id", brandVoiceId).eq("status", "OK").maybeSingle();
     if (!acc) return jsonResponse({ error: "Keine LinkedIn-Verbindung fuer diese Marke.", items: [] }, 409);
     const res = await search(acc.unipile_account_id, { kind: "search_classic", params: { keywords: query }, limit: 15 });
-    if (!res.ok) return jsonResponse({ error: "LinkedIn-Suche fehlgeschlagen.", items: [] }, 502);
+    if (!res.ok) return jsonResponse({ error: "LinkedIn-Suche momentan nicht moeglich — bitte Verbindung pruefen.", items: [] }, 502);
     const items = (res.data.items || []).slice(0, 15).map((p: any) => {
       const raw = p.raw || {};
       return { provider_id: p.provider_id, url: p.profile_url, name: p.name || "Profil", headline: p.headline, avatar_url: raw.profile_picture_url || raw.avatar_url || raw.profile_picture_url_large || null, source: "suche" };
