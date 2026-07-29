@@ -86,9 +86,6 @@ export default function LinkedInSuche() {
   const [results, setResults]     = useState(null)      // { searchId, searchName, items:[], truncated:bool, category }
   const [selected, setSelected]   = useState(() => new Set())  // Vorschau-Auswahl (Indizes)
   const [importing, setImporting] = useState(false)
-  const [quickQ, setQuickQ]       = useState('')            // Einzelsuche-Begriff
-  const [quickCat, setQuickCat]   = useState('people')      // 'people' | 'company'
-  const [quickRunning, setQuickRunning] = useState(false)
 
   useEffect(() => { supabase.auth.getUser().then(({ data }) => setUid(data?.user?.id || null)) }, [])
 
@@ -209,24 +206,6 @@ export default function LinkedInSuche() {
     fetchSearches()
   }
 
-  const runQuickSearch = async () => {
-    const q = quickQ.trim()
-    if (!q) { setFlash({ type:'error', text:'Bitte einen Namen oder Suchbegriff eingeben.' }); return }
-    if (!activeBrandVoice?.id) { setFlash({ type:'error', text:'Bitte zuerst oben eine Marke mit verbundenem LinkedIn wählen.' }); return }
-    setQuickRunning(true); setResults(null); setFlash(null)
-    const { data, error } = await supabase.functions.invoke('unipile-search', {
-      body: { mode: 'search', api: 'classic', category: quickCat, params: { keywords: q }, brand_voice_id: activeBrandVoice.id },
-    })
-    if (error) { const m = await mapEfError(error); setFlash({ type:'error', text:m.text, action:m.action }); setQuickRunning(false); return }
-    const items = Array.isArray(data?.items) ? data.items : []
-    setResults({ searchId: null, searchName: q, items, truncated: !!data?.preview_truncated, category: quickCat, targetListId: null, imported: false })
-    setSelected(new Set(quickCat === 'people' ? items.map((_, i) => i) : []))
-    setFlash({ type:'success', text: quickCat === 'people'
-      ? `${data?.found ?? 0} Treffer gefunden — unten auswählen und zu den LinkedIn Kontakten hinzufügen.`
-      : `${data?.found ?? 0} Unternehmens-Treffer gefunden (nur Personen können übernommen werden).` })
-    setQuickRunning(false)
-  }
-
   const deleteSearch = async (id) => {
     const { error } = await supabase.from('linkedin_searches').delete().eq('id', id)
     if (error) { setFlash({ type:'error', text:'Löschen fehlgeschlagen: ' + error.message }); return }
@@ -263,25 +242,6 @@ export default function LinkedInSuche() {
             )}
           </div>
         )}
-
-        {/* Schnellsuche: einzelne Person/Unternehmen (ad-hoc, ohne Speichern) */}
-        <div style={{ ...cardStyle, marginBottom:20 }}>
-          <div style={sectionTitle}><Search size={14} /> Einzelne Person oder Unternehmen suchen</div>
-          <div style={{ display:'flex', gap:10, alignItems:'flex-end', flexWrap:'wrap' }}>
-            <div style={{ flex:1, minWidth:220 }}>
-              <label style={labelStyle}>Name oder Suchbegriff</label>
-              <input style={inputStyle} value={quickQ} onChange={e => setQuickQ(e.target.value)} onKeyDown={e => { if (e.key === 'Enter') runQuickSearch() }} placeholder="z. B. Max Mustermann oder Acme GmbH" />
-            </div>
-            <div>
-              <label style={labelStyle}>Typ</label>
-              <PillSelect value={quickCat} onChange={setQuickCat} neutral options={[{ value:'people', label:'Personen' }, { value:'company', label:'Unternehmen' }]} buttonStyle={{ minWidth: 150 }} />
-            </div>
-            <button className="lk-btn lk-btn-navy" disabled={quickRunning} onClick={runQuickSearch}>
-              {quickRunning ? <Loader2 size={15} className="lk-spin" /> : <Search size={15} />} Suchen
-            </button>
-          </div>
-          <div style={{ fontSize:11, color:'var(--text-muted, #6B7280)', marginTop:8 }}>Direkte Suche ohne Speichern — Treffer erscheinen unten als Vorschau und werden per Auswahl in die LinkedIn Kontakte übernommen.</div>
-        </div>
 
         {/* Formular: neue Suche */}
         <div style={{ ...cardStyle, marginBottom:20 }}>
