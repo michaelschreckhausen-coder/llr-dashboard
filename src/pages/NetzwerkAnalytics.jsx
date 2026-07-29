@@ -16,6 +16,7 @@ import { supabase } from '../lib/supabase'
 import { useTeam } from '../context/TeamContext'
 import { useBrandVoice } from '../context/BrandVoiceContext'
 import PageHeader from '../components/PageHeader'
+import OffeneAnfragen from '../components/OffeneAnfragen'
 
 const PRIMARY = 'rgb(49,90,231)'
 const pageOuterStyle = { background:'transparent', minHeight:'100vh', padding:'24px 16px 60px' }
@@ -257,6 +258,9 @@ export default function NetzwerkAnalytics() {
                 )}
               </div>
             )}
+
+            {/* ── Offene Anfragen verwalten (aus Vernetzung verlagert) ── */}
+            <OffeneAnfragen />
 
             {/* ── Vernetzungs-Annahmequote ── */}
             {invites.length > 0 && (

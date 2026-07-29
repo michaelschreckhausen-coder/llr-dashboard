@@ -51,7 +51,6 @@ import SettingsInstagram from './pages/SettingsInstagram'
 import Instagram         from './pages/Instagram'
 import InstagramInbox    from './pages/InstagramInbox'
 import Pipeline      from './pages/Pipeline'
-import Vernetzungen  from './pages/Vernetzungen'
 import ProfilChecker from './pages/ProfilChecker'
 import LinkedInInbox from './pages/LinkedInInbox'
 import LinkedInNetzwerk from './pages/LinkedInNetzwerk'
@@ -60,7 +59,6 @@ import LinkedInSuche from './pages/LinkedInSuche'
 import LinkedInAnalytics from './pages/LinkedInAnalytics'
 import Wachstum from './pages/Wachstum'
 import NetzwerkAnalytics from './pages/NetzwerkAnalytics'
-import NachrichtenAnalytics from './pages/NachrichtenAnalytics'
 import ProfilAnalyse from './pages/ProfilAnalyse'
 import LinkedInEngagement from './pages/LinkedInEngagement'
 import Reports       from './pages/Reports'
@@ -363,7 +361,6 @@ export default function App() {
             <Route path="/leads-v2" element={<Navigate to="/leads" replace />} />
             <Route path="/leads-v2/:id" element={<LeadV2DetailRedirect />} />
             <Route path="/comments" element={<ComingSoon title="Kommentare" />} />
-            <Route path="/vernetzungen" element={<CompanyBrandGate feature="vernetzungen"><Vernetzungen session={session} /></CompanyBrandGate>} />
             <Route path="/profil-checker" element={<ModuleGuard module="linkedin"><ProfilChecker session={session} /></ModuleGuard>} />
             <Route path="/linkedin-inbox" element={<ModuleGuard module="linkedin"><LinkedInInbox session={session} /></ModuleGuard>} />
             <Route path="/linkedin-netzwerk" element={<ModuleGuard module="linkedin"><LinkedInNetzwerk session={session} /></ModuleGuard>} />
@@ -371,7 +368,6 @@ export default function App() {
             <Route path="/linkedin-analytics" element={<ModuleGuard module="linkedin"><LinkedInAnalytics session={session} /></ModuleGuard>} />
             <Route path="/wachstum" element={<ModuleGuard module="linkedin"><Wachstum /></ModuleGuard>} />
             <Route path="/netzwerk-analytics" element={<ModuleGuard module="linkedin"><NetzwerkAnalytics /></ModuleGuard>} />
-            <Route path="/nachrichten-analytics" element={<ModuleGuard module="linkedin"><NachrichtenAnalytics /></ModuleGuard>} />
             <Route path="/profil-analyse" element={<ModuleGuard module="linkedin"><ProfilAnalyse session={session} /></ModuleGuard>} />
             <Route path="/linkedin-engagement" element={<ModuleGuard module="linkedin"><LinkedInEngagement session={session} /></ModuleGuard>} />
             {/* 3c-Flip: V2 (la_*) ist Default für alle. Not-Aus per User: localStorage lk_features.linkedinAutomationV2Disabled=true */}

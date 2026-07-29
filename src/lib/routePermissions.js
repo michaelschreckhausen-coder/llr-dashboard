@@ -53,7 +53,6 @@ const ROUTE_PERMISSIONS = {
   '/deals':            'crm.deals',
   // '/aufgaben' ist always-on (siehe ALWAYS_ON oben) — Hub aggregiert
   // ueber alle Module, daher kein Permission-Gating.
-  '/vernetzungen':     'linkedin.connections',
   '/linkedin-connect': 'linkedin.connections',
   '/linkedin-suche':   'linkedin.connections',        // P3 Nachtrag: Prospecting = Sales+
   '/linkedin-inbox':   'linkedin.connections',        // P3 Nachtrag: LinkedIn-Kontakte = Sales+

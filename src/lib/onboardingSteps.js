@@ -84,9 +84,9 @@ export const AREA_TIPS = [
     body: 'Zieh deine Verkaufschancen durch die Stufen. Was hier landet, fließt automatisch ins Reporting.',
   },
   {
-    key: '/vernetzungen',
+    key: '/automatisierung-neu',
     title: 'Vernetzung automatisieren',
-    body: 'Sende personalisierte Vernetzungsanfragen im sicheren Tagesrhythmus. Die Chrome-Extension führt sie aus.',
+    body: 'Sende personalisierte Vernetzungsanfragen im sicheren Tagesrhythmus — vollständig serverseitig über die Marke.',
   },
   {
     key: '/content-studio',

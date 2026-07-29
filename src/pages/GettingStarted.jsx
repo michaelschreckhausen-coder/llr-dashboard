@@ -28,7 +28,7 @@ const STEPS = [
     id: 'vernetzung', icon: <Handshake size={16} strokeWidth={1.75}/>, title: 'Vernetzungsanfrage senden',
     description: 'Schicke eine erste personalisierte KI-Vernetzungsanfrage an einen Lead.',
     color: '#0A6FB0', bg: '#F5F3FF', border: '#DDD6FE',
-    action: { label: 'Vernetzungen öffnen', href: '/vernetzungen' },
+    action: { label: 'Automatisierung öffnen', href: '/automatisierung-neu' },
   },
   {
     id: 'csv_import', icon: '⬆', title: 'Leads importieren (CSV)',

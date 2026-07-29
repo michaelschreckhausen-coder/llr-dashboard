@@ -133,7 +133,6 @@ function getNav(t) {
     // Michael arbeitet vorerst nicht weiter daran. NUR MenÃ¼punkt versteckt â Route/Seite/EF/
     // Migrationen bleiben erhalten. Zum ZurÃ¼ckholen einfach diese Zeile wieder aktivieren:
     // { to: '/linkedin-netzwerk', icon: IcUsers,  label: 'Netzwerk' },
-    { to: '/vernetzungen',    icon: IcHeart,    label: 'Vernetzung' },
     { to: (!isFlagEnabled('linkedinAutomationV2Disabled')) ? '/automatisierung-neu' : '/automatisierung', icon: IcCog, label: 'Automatisierung' },
     { to: '/messages',        icon: IcMail,     label: 'Nachrichten' },
     { to: '/linkedin-engagement', icon: IcZap,  label: 'Engagement' },
@@ -760,7 +759,7 @@ export default function Layout({ session, role, onLogout, children }) {
   // Current page title
   const pageTitles = {
     '/': 'Startseite', '/dashboard': 'Startseite', '/leads': 'Kontakte',
-    '/vernetzungen': 'Vernetzung', '/pipeline': 'Pipeline',
+    '/pipeline': 'Pipeline',
     '/organizations': 'Unternehmen',
     '/reports': 'Sales Reporting', '/ssi': 'SSI Tracker',
     '/messages': 'Nachrichten', '/getting-started': 'Erste Schritte',
@@ -1356,9 +1355,9 @@ function isBrandVoiceContext(pathname) {
     // Meine PrÃ¤senz (brand-scoped)
     '/profiltexte', '/linkedin-analytics', '/wachstum', '/ssi', '/profil-checker',
     // Analyse (brand-scoped)
-    '/netzwerk-analytics', '/nachrichten-analytics', '/linkedin-engagement', '/profil-analyse',
+    '/netzwerk-analytics', '/linkedin-engagement', '/profil-analyse',
     // Akquise (agiert aus dem Profil der aktiven Marke)
-    '/vernetzungen', '/messages', '/automatisierung', '/automatisierung-neu', '/linkedin-inbox', '/linkedin-netzwerk', '/linkedin-suche',
+    '/messages', '/automatisierung', '/automatisierung-neu', '/linkedin-inbox', '/linkedin-netzwerk', '/linkedin-suche',
     // Content (brand-scoped)
     '/redaktionsplan', '/content-studio', '/bibliothek', '/visuals', '/dokumente', '/media', '/content-reporting',
     '/brand-memory',
