@@ -74,7 +74,7 @@ export default function Messages() {
   }, [bvId])
 
   if (!bvId) return (
-    <div style={{ width: '100%', maxWidth: 1360, margin: '0 auto', padding: '28px 24px' }}>
+    <div style={{ width: '100%', maxWidth: 1100, margin: '0 auto', padding: '28px 24px' }}>
       <PageHeader overline="LinkedIn · Netzwerk" title="Nachrichten" subtitle="Nachrichten & Vernetzungsanfragen erstellen und dein LinkedIn-Postfach verwalten." />
       <div style={{ ...card, textAlign: 'center', color: 'var(--text-muted)', padding: '48px 20px' }}>
         <InboxIcon size={34} color={P} /><div style={{ marginTop: 10, fontSize: 14 }}>Bitte oben eine Marke mit verbundenem LinkedIn-Profil waehlen.</div>
@@ -83,7 +83,7 @@ export default function Messages() {
   )
 
   return (
-    <div style={{ width: '100%', maxWidth: 1360, margin: '0 auto', padding: '20px 24px 48px', display: 'flex', flexDirection: 'column', minHeight: 'calc(100vh - 40px)' }}>
+    <div style={{ width: '100%', maxWidth: 1100, margin: '0 auto', padding: '20px 24px 40px' }}>
       <PageHeader
         overline="LinkedIn · Netzwerk"
         title="Nachrichten"
@@ -340,7 +340,7 @@ function Postfach({ bvId, contacts, goCompose }) {
   const filtered = chats.filter(c => !search || (c.attendee_name || '').toLowerCase().includes(search.toLowerCase()))
 
   return (
-    <div style={{ ...card, flex: 1, display: 'grid', gridTemplateColumns: '360px 1fr', overflow: 'hidden', minHeight: 560 }}>
+    <div style={{ ...card, height: 'calc(100vh - 240px)', minHeight: 460, display: 'grid', gridTemplateColumns: '340px 1fr', overflow: 'hidden' }}>
       {/* Thread-Liste */}
       <div style={{ borderRight: '1px solid var(--border)', display: 'flex', flexDirection: 'column', minHeight: 0 }}>
         <div style={{ padding: 10, borderBottom: '1px solid var(--border)', display: 'flex', alignItems: 'center', gap: 8 }}>
