@@ -167,6 +167,7 @@ export default function NetzwerkAnalytics() {
 
   const label = (r) => brandMap[r.brand_voice_id] || r.unipile_account_id?.slice(0, 8) || 'Login'
 
+  const isCompany = activeBrandVoice?.account_type === 'company'
   const NTABS = [
     { v:'netzwerk',  label:'Übersicht', icon:<Users size={16} strokeWidth={1.75}/>,       color:'blue' },
     { v:'dialog',    label:'Dialog',    icon:<MessageSquare size={16} strokeWidth={1.75}/>,color:'purple' },
@@ -195,7 +196,7 @@ export default function NetzwerkAnalytics() {
           </div>
         ) : (
           <div style={{ display:'flex', flexDirection:'column', gap:16 }}>
-            <TabBar tabs={NTABS} active={ntab} onChange={setNtab} style={{ marginBottom:4 }} />
+            <TabBar tabs={NTABS.filter(t => !isCompany || (t.v !== 'annahmen' && t.v !== 'kampagnen'))} active={ntab} onChange={setNtab} style={{ marginBottom:4 }} />
             {ntab==='netzwerk' && (<>
             {/* KPI-Reihe (Team-Summe) */}
             <div style={{ display:'flex', gap:10, flexWrap:'wrap' }}>
@@ -326,7 +327,7 @@ export default function NetzwerkAnalytics() {
             )}
 
             </>)}
-            {ntab==='annahmen' && (<>
+            {ntab==='annahmen' && !isCompany && (<>
             {/* ── Offene Anfragen verwalten (aus Vernetzung verlagert) ── */}
             <OffeneAnfragen />
 
@@ -364,7 +365,7 @@ export default function NetzwerkAnalytics() {
             )}
 
             </>)}
-            {ntab==='kampagnen' && (<>
+            {ntab==='kampagnen' && !isCompany && (<>
             {/* ── Automatisierung (Kampagnen-Reporting) ── */}
             {camps.length > 0 && (() => {
               const byCampaign = {}
