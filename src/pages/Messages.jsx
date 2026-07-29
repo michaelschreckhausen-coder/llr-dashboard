@@ -69,7 +69,7 @@ export default function Messages() {
   useEffect(() => { loadContacts() }, [loadContacts])
 
   if (!bvId) return (
-    <div style={{ maxWidth: 1280, margin: '0 auto', padding: '28px 20px' }}>
+    <div style={{ width: '100%', maxWidth: 1360, margin: '0 auto', padding: '28px 24px' }}>
       <PageHeader overline="LinkedIn · Netzwerk" title="Nachrichten" subtitle="Nachrichten & Vernetzungsanfragen erstellen und dein LinkedIn-Postfach verwalten." />
       <div style={{ ...card, textAlign: 'center', color: 'var(--text-muted)', padding: '48px 20px' }}>
         <InboxIcon size={34} color={P} /><div style={{ marginTop: 10, fontSize: 14 }}>Bitte oben eine Marke mit verbundenem LinkedIn-Profil waehlen.</div>
@@ -78,7 +78,7 @@ export default function Messages() {
   )
 
   return (
-    <div style={{ maxWidth: 1280, margin: '0 auto', padding: '20px 20px 48px', display: 'flex', flexDirection: 'column', minHeight: 'calc(100vh - 40px)' }}>
+    <div style={{ width: '100%', maxWidth: 1360, margin: '0 auto', padding: '20px 24px 48px', display: 'flex', flexDirection: 'column', minHeight: 'calc(100vh - 40px)' }}>
       <PageHeader
         overline="LinkedIn · Netzwerk"
         title="Nachrichten"
