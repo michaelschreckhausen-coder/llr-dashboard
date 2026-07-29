@@ -177,7 +177,26 @@ export default function LinkedInInbox() {
     ]).then(([net, kon]) => setCounts({ kontakte: kon.count || 0, netzwerk: net.count || 0 }))
 
     if (error) { setMsg({ text: 'Laden fehlgeschlagen: ' + error.message }); setRows([]); setLoading(false); return }
-    const list = data || []
+    let list = data || []
+    // Geteilte Listen: Mitglieder-Kontakte anderer Marken mitladen (RLS erlaubt via
+    // inbox_in_shared_list) — sonst zeigt eine geteilte Liste beim anderen Brand leer.
+    try {
+      const { data: sharedLists } = await supabase.from('inbox_lists').select('id').eq('is_shared', true)
+      const sharedIds = (sharedLists || []).map(l => l.id)
+      if (sharedIds.length) {
+        const { data: mem } = await supabase.from('inbox_list_members').select('inbox_id').in('list_id', sharedIds)
+        const have = new Set(list.map(r => r.id))
+        const missing = [...new Set((mem || []).map(m => m.inbox_id))].filter(id => !have.has(id))
+        if (missing.length) {
+          let sq = supabase.from('linkedin_inbox')
+            .select('id, source, sales_nav_id, linkedin_url, name, first_name, last_name, headline, job_title, company, location, avatar_url, imported_at, promoted_lead_id')
+            .in('id', missing).eq('review_status', 'new')
+          sq = sourceTab === 'netzwerk' ? sq.eq('source', NETWORK_SOURCE) : sq.neq('source', NETWORK_SOURCE)
+          const { data: extra } = await sq.limit(1000)
+          if (extra?.length) list = [...list, ...extra]
+        }
+      }
+    } catch (e) { /* geteilte-Merge best-effort — bricht das normale Laden nicht */ }
     setRows(list)
     setSelected(new Set())
 
