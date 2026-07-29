@@ -7,7 +7,6 @@ import {
   getProfile, sendInvitation, sendMessage,
   cancelInvitationSent, sendPostReaction, sendPostComment, getAllPosts, followProfile, sendInMail,
 } from "../_shared/unipile-client.ts";
-import { teamHasPermission } from "../_shared/permissions.ts";
 
 const SB_URL = Deno.env.get("SUPABASE_URL")!;
 const SB_SERVICE = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
@@ -48,20 +47,30 @@ Deno.serve(async () => {
 
   const out: unknown[] = [];
   for (const job of jobs) {
-    // 3a) Permission-Gate gegen das JOB-Team (la_jobs.team_id), NICHT active_team_id. Ohne Berechtigung: zurück auf pending (idle). Kill-Switch steckt im Resolver.
-    if (!(await teamHasPermission(db, job.team_id, "linkedin.automation"))) { await patch(job.id, { state: "pending", error: "no_automation_permission" }); out.push({ id: job.id, skipped: "no_permission" }); continue; }
+    // 3a) Addon-Gate gegen das JOB-Team (la_jobs.team_id), NICHT active_team_id. Ohne Addon: zurück auf pending (idle).
+    const { data: paid } = await db.rpc("team_has_addon", { p_team_id: job.team_id, p_slug: "automation" });
+    if (!paid) { await patch(job.id, { state: "pending", error: "no_automation_addon" }); out.push({ id: job.id, skipped: "no_addon" }); continue; }
 
     // 3b) running
     await patch(job.id, { state: "running" });
 
     // 3c) Kontext: enrollment → campaign → account (unipile_account_id)
     const { data: enr } = await db.from("la_enrollments")
-      .select("id, campaign_id, provider_id, public_identifier, state").eq("id", job.enrollment_id).maybeSingle();
+      .select("id, campaign_id, provider_id, public_identifier, state, accepted_at").eq("id", job.enrollment_id).maybeSingle();
     if (!enr) { const r = await fail(job, false, "enrollment_missing"); out.push({ id: job.id, [r]: "enrollment_missing" }); continue; }
     // Reply-Stop-Doppelsicherung (if_no_reply u.a.): repliedes/gestopptes Enrollment → NICHT senden.
     if (enr.state === "replied" || enr.state === "stopped") {
       await patch(job.id, { state: "skipped", error: `enrollment_${enr.state}` });
       out.push({ id: job.id, skipped: `enrollment_${enr.state}` }); continue;
+    }
+    // if_not_accepted: hat der Kontakt inzwischen angenommen -> Schritt ueberspringen + Sequenz fortsetzen.
+    {
+      const { data: stp } = await db.from("la_steps").select("condition").eq("id", job.step_id).maybeSingle();
+      if ((stp as any)?.condition === "if_not_accepted" && enr.accepted_at) {
+        await patch(job.id, { state: "skipped", error: "already_accepted" });
+        const { data: mat } = await db.rpc("la_materialize_next", { p_enrollment_id: enr.id });
+        out.push({ id: job.id, skipped: "accepted", next: mat }); continue;
+      }
     }
     const { data: camp } = await db.from("la_campaigns").select("account_id").eq("id", enr.campaign_id).maybeSingle();
     const { data: acct } = camp
