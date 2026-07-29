@@ -194,3 +194,26 @@ export async function sendInMail(account_id: string, provider_id: string, text: 
   let data: ChatStarted; try { data = txt ? (JSON.parse(txt) as ChatStarted) : ({} as ChatStarted); } catch { data = ({} as ChatStarted); }
   return { ok: true, data };
 }
+
+// ── P1-Postfach: Chats / Nachrichten / Attendees lesen (read-only) ──
+export interface ChatItem { id: string; attendee_provider_id?: string; unread_count?: number; unread?: boolean; timestamp?: string; name?: string | null; archived?: boolean; [k: string]: unknown }
+export interface ChatMessage { id: string; text?: string; timestamp?: string; is_sender?: number | boolean; sender_id?: string; seen?: number | boolean; [k: string]: unknown }
+export interface ChatAttendee { name?: string; provider_id?: string; picture_url?: string; profile_url?: string; is_self?: number | boolean; specifics?: any; [k: string]: unknown }
+
+export async function getChats(account_id: string, cursor?: string | null, limit = 50): Promise<UnipileResult<{ items: ChatItem[]; cursor: string | null }>> {
+  const path = `/chats?account_id=${encodeURIComponent(account_id)}&limit=${limit}` + (cursor ? `&cursor=${encodeURIComponent(cursor)}` : "");
+  const r = await call<any>("GET", path);
+  if (!r.ok) return r;
+  return { ok: true, data: { items: r.data?.items ?? [], cursor: r.data?.cursor ?? null } };
+}
+export async function getChatMessages(chat_id: string, cursor?: string | null, limit = 30): Promise<UnipileResult<{ items: ChatMessage[]; cursor: string | null }>> {
+  const path = `/chats/${encodeURIComponent(chat_id)}/messages?limit=${limit}` + (cursor ? `&cursor=${encodeURIComponent(cursor)}` : "");
+  const r = await call<any>("GET", path);
+  if (!r.ok) return r;
+  return { ok: true, data: { items: r.data?.items ?? [], cursor: r.data?.cursor ?? null } };
+}
+export async function getChatAttendees(chat_id: string): Promise<UnipileResult<{ items: ChatAttendee[] }>> {
+  const r = await call<any>("GET", `/chats/${encodeURIComponent(chat_id)}/attendees`);
+  if (!r.ok) return r;
+  return { ok: true, data: { items: r.data?.items ?? [] } };
+}
