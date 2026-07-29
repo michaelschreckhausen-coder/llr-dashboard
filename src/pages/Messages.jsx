@@ -4,10 +4,17 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react'
 import { supabase } from '../lib/supabase'
 import { useBrandVoice } from '../context/BrandVoiceContext'
-import { Send, RefreshCw, ExternalLink, Loader2, Inbox as InboxIcon, Search, MessageSquare } from 'lucide-react'
+import { useModel } from '../context/ModelContext'
+import { Send, RefreshCw, ExternalLink, Loader2, Inbox as InboxIcon, Search, MessageSquare, Sparkles } from 'lucide-react'
 
 const PRIMARY = 'var(--wl-primary, rgb(49,90,231))'
 const card = { background: 'var(--surface)', border: '1px solid var(--border, #E4E7EC)', borderRadius: 12 }
+const REPLY_INTENTS = [
+  { key: 'reply',    label: 'Passende Antwort',   instr: 'Antworte passend und hilfreich auf die letzte Nachricht und bringe den Dialog natuerlich weiter.' },
+  { key: 'followup', label: 'Freundlich nachfassen', instr: 'Fasse freundlich nach, ohne aufdringlich zu wirken, und lade zu einer Reaktion ein.' },
+  { key: 'meeting',  label: 'Gespraech vorschlagen', instr: 'Schlage unaufdringlich ein kurzes Kennenlern-Gespraech (Call) vor und frage nach Verfuegbarkeit.' },
+  { key: 'close',    label: 'Freundlich abschliessen', instr: 'Bedanke dich und schliesse den Dialog freundlich und offen ab.' },
+]
 
 function initials(n) { return (n || '?').split(' ').filter(Boolean).slice(0, 2).map(w => w[0]).join('').toUpperCase() }
 function Avatar({ name, url, size = 42 }) {
@@ -38,6 +45,9 @@ export default function Messages() {
   const [search, setSearch] = useState('')
   const [err, setErr] = useState('')
   const bottomRef = useRef(null)
+  const { model: selectedModel } = useModel()
+  const [aiLoading, setAiLoading] = useState(false)
+  const [aiMenu, setAiMenu] = useState(false)
 
   const loadChats = useCallback(async () => {
     if (!bvId) { setChats([]); setLoading(false); return }
@@ -76,6 +86,24 @@ export default function Messages() {
     const { data } = await supabase.rpc('request_inbox_sync', { p_brand_voice_id: bvId })
     if (data?.error) { setErr(data.error === 'no_connection' ? 'Keine LinkedIn-Verbindung fuer diese Marke.' : data.error); setSyncing(false); return }
     setTimeout(async () => { await loadChats(); if (selId) await loadMsgs(selId); setSyncing(false) }, 4500)
+  }
+
+  const genReply = async (intent) => {
+    setAiMenu(false)
+    const c = chats.find(x => x.id === selId); if (!c || aiLoading) return
+    setAiLoading(true); setErr('')
+    const name = c.attendee_name || 'der Kontakt'
+    const transcript = msgs.slice(-12).map(m => (m.direction === 'outbound' ? 'Ich' : name) + ': ' + (m.text || '').replace(/\s+/g, ' ')).join('\n') || '(noch keine Nachrichten im Verlauf)'
+    const prompt = 'Du antwortest im Namen der Marke in einem laufenden LinkedIn-Dialog mit ' + name + (c.attendee_headline ? ' (' + c.attendee_headline + ')' : '') + '.\n\n'
+      + 'Bisheriger Verlauf (alt zu neu):\n' + transcript + '\n\n'
+      + 'Aufgabe: ' + intent.instr + '\n\nSchreibe NUR die naechste Nachricht als reinen Text — kein Betreff, keine Meta-Kommentare, keine Anfuehrungszeichen. Kurz, natuerlich, auf Deutsch, passend zum Verlauf.'
+    const { data, error } = await supabase.functions.invoke('generate', {
+      body: { prompt, brand_voice_id: bvId, model: selectedModel, content_kind: 'linkedin_first_message' }
+    })
+    setAiLoading(false)
+    if (error || data?.error) { setErr(data?.error || error?.message || 'KI-Antwort fehlgeschlagen'); return }
+    const out = ((typeof data === 'string' ? data : null) || data?.text || (typeof data?.content === 'string' ? data.content : null) || (Array.isArray(data?.content) ? data.content[0]?.text : null) || data?.result || '').trim()
+    if (out) setText(out)
   }
 
   const sel = chats.find(c => c.id === selId)
@@ -160,6 +188,18 @@ export default function Messages() {
               <div style={{ borderTop: '1px solid var(--border,#E4E7EC)', padding: 10 }}>
                 <div style={{ display: 'flex', gap: 8, alignItems: 'flex-end' }}>
                   <textarea value={text} onChange={e => setText(e.target.value)} onKeyDown={e => { if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) doSend() }} rows={2} placeholder={inmail ? 'InMail schreiben…' : 'Nachricht schreiben…  (Cmd/Ctrl+Enter zum Senden)'} style={{ flex: 1, resize: 'none', border: '1.5px solid #E4E7EC', borderRadius: 10, padding: '9px 12px', fontSize: 13.5, fontFamily: 'inherit', outline: 'none', background: 'var(--surface)' }} />
+                  <div style={{ position: 'relative' }}>
+                    <button className="lk-btn lk-btn-ghost" onClick={() => setAiMenu(v => !v)} disabled={aiLoading} style={{ height: 40 }} title="KI-Antwort vorschlagen">
+                      {aiLoading ? <Loader2 size={15} className="lk-spin" /> : <Sparkles size={15} />} KI-Antwort
+                    </button>
+                    {aiMenu && (
+                      <div style={{ position: 'absolute', bottom: 46, right: 0, ...card, boxShadow: '0 8px 28px rgba(0,0,0,.14)', padding: 6, zIndex: 30, minWidth: 210 }}>
+                        {REPLY_INTENTS.map(it => (
+                          <div key={it.key} onClick={() => genReply(it)} style={{ padding: '9px 11px', fontSize: 13, borderRadius: 8, cursor: 'pointer', color: 'var(--text-strong,#111827)' }} onMouseEnter={e => e.currentTarget.style.background = '#F3F4F6'} onMouseLeave={e => e.currentTarget.style.background = 'transparent'}>{it.label}</div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
                   <button className="lk-btn lk-btn-navy" onClick={doSend} disabled={sending || !text.trim()} style={{ height: 40 }}>
                     {sending ? <Loader2 size={15} className="lk-spin" /> : <Send size={15} />} Senden
                   </button>
