@@ -2,7 +2,7 @@
 // ueber Unipile. User-JWT, brand-scoped (Konto der aktiven Marke via RLS).
 import { handlePreflight, jsonResponse } from "../_shared/cors.ts";
 import { getAuthenticatedUser, serviceClient, userClientFromReq } from "../_shared/unipile.ts";
-import { sendInvitation } from "../_shared/unipile-client.ts";
+import { sendInvitation, getProfile, publicIdentifierFromUrl } from "../_shared/unipile-client.ts";
 
 Deno.serve(async (req) => {
   const pre = handlePreflight(req); if (pre) return pre;
@@ -14,13 +14,21 @@ Deno.serve(async (req) => {
     const sb = serviceClient();
     const input = await req.json().catch(() => ({} as any));
     const brandVoiceId = input.brand_voice_id ?? null;
-    const providerId = String(input.attendee_provider_id ?? "");
+    let providerId = String(input.attendee_provider_id ?? "");
+    const attendeeUrl = input.attendee_url ? String(input.attendee_url) : "";
     const note = input.note ? String(input.note).slice(0, 300) : undefined;
-    if (!brandVoiceId || !providerId) return jsonResponse({ error: "brand_and_attendee_required" }, 400);
+    if (!brandVoiceId || (!providerId && !attendeeUrl)) return jsonResponse({ error: "brand_and_attendee_required" }, 400);
 
     const { data: acc } = await uc.from("unipile_accounts")
       .select("unipile_account_id, team_id").eq("brand_voice_id", brandVoiceId).eq("status", "OK").maybeSingle();
     if (!acc) return jsonResponse({ error: "Keine LinkedIn-Verbindung fuer diese Marke." }, 409);
+
+    if (!providerId && attendeeUrl) {
+      const pr = await getProfile(acc.unipile_account_id, publicIdentifierFromUrl(attendeeUrl));
+      const pid = pr.ok ? (pr.data as any)?.provider_id : null;
+      if (!pid) return jsonResponse({ error: "Profil ueber die LinkedIn-URL nicht auffindbar." }, 404);
+      providerId = String(pid);
+    }
 
     const res = await sendInvitation(acc.unipile_account_id, providerId, note);
     if (!res.ok) {

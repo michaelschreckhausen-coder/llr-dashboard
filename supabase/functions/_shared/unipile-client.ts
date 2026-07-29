@@ -222,3 +222,9 @@ export async function getChatAttendees(chat_id: string): Promise<UnipileResult<{
 export function getAccount(account_id: string): Promise<UnipileResult<any>> {
   return call<any>("GET", `/accounts/${encodeURIComponent(account_id)}`);
 }
+
+/** Extrahiert den LinkedIn-Public-Identifier (Slug) aus einer Profil-/Company-URL. */
+export function publicIdentifierFromUrl(u: string): string {
+  const m = String(u || "").match(/linkedin\.com\/(?:in|company|pub)\/([^/?#]+)/i);
+  return m ? decodeURIComponent(m[1]) : String(u || "").replace(/[/?#].*$/, "").replace(/\/+$/, "").split("/").pop() || "";
+}

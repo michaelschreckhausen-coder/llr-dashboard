@@ -8,6 +8,7 @@ import React, { useState, useEffect, useCallback, useRef } from 'react'
 import { supabase } from '../lib/supabase'
 import { useBrandVoice } from '../context/BrandVoiceContext'
 import { useModel } from '../context/ModelContext'
+import { useNavigate } from 'react-router-dom'
 import PageHeader from '../components/PageHeader'
 import TabBar from '../components/TabBar'
 import OffeneAnfragen from '../components/OffeneAnfragen'
@@ -108,41 +109,81 @@ export default function Messages() {
 }
 
 /* ─────────────────────────── Reiter: VERFASSEN ─────────────────────────── */
-function ContactPicker({ contacts, value, onChange }) {
+const SRC_LABEL = { kontakte:'LinkedIn-Kontakte', crm:'CRM-Kontakte', firmen:'Unternehmen', suche:'LinkedIn-Suche' }
+function sourcesFor(cat, canInmail) {
+  if (cat.action === 'invite') return ['kontakte', 'crm', 'firmen', 'suche']
+  return canInmail ? ['kontakte', 'crm', 'firmen', 'suche'] : ['kontakte', 'crm']
+}
+function RecipientPicker({ bvId, cat, canInmail, value, onChange }) {
+  const nav = useNavigate()
+  const sources = sourcesFor(cat, canInmail)
   const [open, setOpen] = useState(false)
+  const [src, setSrc] = useState(sources[0])
   const [q, setQ] = useState('')
+  const [rows, setRows] = useState([])
+  const [loading, setLoading] = useState(false)
   const ref = useRef(null)
+  useEffect(() => { setSrc(sources[0]) }, [cat.key, canInmail]) // eslint-disable-line
+  useEffect(() => { const h = e => { if (ref.current && !ref.current.contains(e.target)) setOpen(false) }; if (open) document.addEventListener('mousedown', h); return () => document.removeEventListener('mousedown', h) }, [open])
   useEffect(() => {
-    const h = e => { if (ref.current && !ref.current.contains(e.target)) setOpen(false) }
-    if (open) document.addEventListener('mousedown', h)
-    return () => document.removeEventListener('mousedown', h)
-  }, [open])
-  const filtered = contacts.filter(c => !q || contactName(c).toLowerCase().includes(q.toLowerCase()))
+    if (!open || src === 'suche') return
+    let cancel = false; setLoading(true); setRows([])
+    ;(async () => {
+      let data = []
+      if (src === 'kontakte') {
+        const r = await supabase.from('linkedin_inbox').select('provider_id, name, first_name, last_name, headline, avatar_url').eq('brand_voice_id', bvId).not('provider_id', 'is', null).order('name').limit(500)
+        data = (r.data || []).map(c => ({ provider_id: c.provider_id, name: c.name || ((c.first_name || '') + ' ' + (c.last_name || '')).trim() || 'Kontakt', headline: c.headline, avatar_url: c.avatar_url, source: 'kontakte' }))
+      } else if (src === 'crm') {
+        const r = await supabase.from('leads').select('name, first_name, last_name, headline, avatar_url, company, linkedin_url').not('linkedin_url', 'is', null).order('name').limit(500)
+        data = (r.data || []).map(c => ({ url: c.linkedin_url, name: c.name || ((c.first_name || '') + ' ' + (c.last_name || '')).trim() || 'Kontakt', headline: c.headline || c.company, avatar_url: c.avatar_url, source: 'crm' }))
+      } else if (src === 'firmen') {
+        const r = await supabase.from('organizations').select('name, logo_url, linkedin_company_url').not('linkedin_company_url', 'is', null).order('name').limit(500)
+        data = (r.data || []).map(o => ({ url: o.linkedin_company_url, name: o.name || 'Unternehmen', headline: 'Unternehmen', avatar_url: o.logo_url, source: 'firmen' }))
+      }
+      if (!cancel) { setRows(data); setLoading(false) }
+    })()
+    return () => { cancel = true }
+  }, [open, src, bvId])
+  const filtered = rows.filter(r => !q || (r.name || '').toLowerCase().includes(q.toLowerCase()))
   return (
     <div ref={ref} style={{ position: 'relative' }}>
       <button type="button" className="lk-dd-trigger" onClick={() => setOpen(o => !o)} style={{ width: '100%', justifyContent: 'flex-start', minHeight: 44 }}>
         {value
-          ? <><Avatar name={contactName(value)} url={value.avatar_url} size={24} /><span style={{ flex: 1, textAlign: 'left', overflow: 'hidden', textOverflow: 'ellipsis' }}>{contactName(value)}</span></>
-          : <><Search size={14} color="#9CA3AF" /><span style={{ flex: 1, textAlign: 'left', color: 'var(--text-muted)' }}>Kontakt aus deinen LinkedIn-Kontakten waehlen…</span></>}
+          ? <><Avatar name={value.name} url={value.avatar_url} size={24} /><span style={{ flex: 1, textAlign: 'left', overflow: 'hidden', textOverflow: 'ellipsis' }}>{value.name}</span></>
+          : <><Search size={14} color="#9CA3AF" /><span style={{ flex: 1, textAlign: 'left', color: 'var(--text-muted)' }}>Empfaenger waehlen…</span></>}
       </button>
       {open && (
-        <div style={{ position: 'absolute', zIndex: 60, top: 'calc(100% + 4px)', left: 0, right: 0, ...card, boxShadow: '0 14px 34px rgba(15,23,42,.16)', padding: 6, maxHeight: 320, overflowY: 'auto' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '6px 8px', borderBottom: '1px solid var(--border-soft)' }}>
-            <Search size={14} color="#9CA3AF" />
-            <input autoFocus value={q} onChange={e => setQ(e.target.value)} placeholder="Suchen…" style={{ border: 'none', outline: 'none', background: 'transparent', flex: 1, fontSize: 13, color: 'var(--text-primary)' }} />
-          </div>
-          {contacts.length === 0 ? <div style={{ padding: 18, textAlign: 'center', color: '#9CA3AF', fontSize: 13 }}>Keine anschreibbaren Kontakte fuer diese Marke.</div>
-            : filtered.length === 0 ? <div style={{ padding: 16, textAlign: 'center', color: '#9CA3AF', fontSize: 13 }}>Kein Treffer.</div>
-            : filtered.slice(0, 100).map(c => (
-              <button key={c.provider_id} className="lk-dd-opt" onClick={() => { onChange(c); setOpen(false); setQ('') }}
-                style={{ display: 'flex', gap: 10, alignItems: 'center', width: '100%', border: 'none', background: 'transparent', padding: '8px 10px', borderRadius: 8, cursor: 'pointer', textAlign: 'left' }}>
-                <Avatar name={contactName(c)} url={c.avatar_url} size={30} />
-                <span style={{ minWidth: 0 }}>
-                  <span style={{ display: 'block', fontSize: 13.5, fontWeight: 600, color: 'var(--text-primary)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{contactName(c)}</span>
-                  {c.headline && <span style={{ display: 'block', fontSize: 11.5, color: 'var(--text-muted)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{c.headline}</span>}
-                </span>
-              </button>
+        <div style={{ position: 'absolute', zIndex: 60, top: 'calc(100% + 4px)', left: 0, right: 0, ...card, boxShadow: '0 14px 34px rgba(15,23,42,.16)', padding: 6, maxHeight: 380, overflowY: 'auto' }}>
+          <div style={{ display: 'flex', gap: 4, padding: '4px 4px 8px', flexWrap: 'wrap', borderBottom: '1px solid var(--border-soft)' }}>
+            {sources.map(sv => (
+              <button key={sv} onClick={() => { setSrc(sv); setQ('') }} style={{ fontSize: 11.5, fontWeight: 600, padding: '5px 9px', borderRadius: 999, cursor: 'pointer', fontFamily: 'inherit', border: '1px solid ' + (sv === src ? P : 'var(--border)'), background: sv === src ? 'var(--primary-soft, rgba(0,48,96,.08))' : 'var(--surface)', color: sv === src ? P : 'var(--text-muted)' }}>{SRC_LABEL[sv]}</button>
             ))}
+          </div>
+          {src === 'suche' ? (
+            <div style={{ padding: '18px 12px', textAlign: 'center', color: 'var(--text-muted)', fontSize: 13, lineHeight: 1.6 }}>
+              Neue Profile findest du in der LinkedIn-Suche — dort als Kontakt hinzufuegen, dann hier auswaehlen.
+              <div style={{ marginTop: 10 }}><button className="lk-btn lk-btn-ghost lk-btn-sm" onClick={() => nav('/linkedin-suche')}>Zur LinkedIn-Suche</button></div>
+            </div>
+          ) : (
+            <>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '8px', borderBottom: '1px solid var(--border-soft)' }}>
+                <Search size={14} color="#9CA3AF" />
+                <input autoFocus value={q} onChange={e => setQ(e.target.value)} placeholder={'In ' + SRC_LABEL[src] + ' suchen…'} style={{ border: 'none', outline: 'none', background: 'transparent', flex: 1, fontSize: 13, color: 'var(--text-primary)' }} />
+              </div>
+              {loading ? <div style={{ padding: 20, textAlign: 'center', color: '#9CA3AF' }}><Loader2 size={16} className="lk-spin" /></div>
+                : filtered.length === 0 ? <div style={{ padding: 16, textAlign: 'center', color: '#9CA3AF', fontSize: 13 }}>{rows.length === 0 ? 'Keine Eintraege mit LinkedIn-Profil.' : 'Kein Treffer.'}</div>
+                : filtered.slice(0, 100).map((r, i) => (
+                  <button key={(r.provider_id || r.url || '') + i} className="lk-dd-opt" onClick={() => { onChange(r); setOpen(false); setQ('') }}
+                    style={{ display: 'flex', gap: 10, alignItems: 'center', width: '100%', border: 'none', background: 'transparent', padding: '8px 10px', borderRadius: 8, cursor: 'pointer', textAlign: 'left' }}>
+                    <Avatar name={r.name} url={r.avatar_url} size={30} />
+                    <span style={{ minWidth: 0 }}>
+                      <span style={{ display: 'block', fontSize: 13.5, fontWeight: 600, color: 'var(--text-primary)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{r.name}</span>
+                      {r.headline && <span style={{ display: 'block', fontSize: 11.5, color: 'var(--text-muted)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{r.headline}</span>}
+                    </span>
+                  </button>
+                ))}
+            </>
+          )}
         </div>
       )}
     </div>
@@ -192,9 +233,10 @@ function Verfassen({ bvId, model, contacts, onOpenPostfach, caps }) {
     if (!target || !t || sending || overCap) return
     setSending(true); setFlash(null)
     const fn = cat.action === 'invite' ? 'unipile-invite-send' : 'unipile-message-send'
+    const attendee = target.provider_id ? { attendee_provider_id: target.provider_id } : { attendee_url: target.url }
     const body = cat.action === 'invite'
-      ? { brand_voice_id: bvId, attendee_provider_id: target.provider_id, note: t }
-      : { brand_voice_id: bvId, attendee_provider_id: target.provider_id, text: t, inmail: (inmail && canInmail) }
+      ? { brand_voice_id: bvId, note: t, ...attendee }
+      : { brand_voice_id: bvId, text: t, inmail: (inmail && canInmail), ...attendee }
     const { data, error } = await supabase.functions.invoke(fn, { body })
     setSending(false)
     if (error || data?.error) { setFlash({ type: 'error', msg: data?.error || error?.message || 'Senden fehlgeschlagen' }); return }
@@ -224,7 +266,7 @@ function Verfassen({ bvId, model, contacts, onOpenPostfach, caps }) {
         </div>
 
         <div style={label}>Empfaenger</div>
-        <div style={{ marginBottom: 16 }}><ContactPicker contacts={contacts} value={target} onChange={setTarget} /></div>
+        <div style={{ marginBottom: 16 }}><RecipientPicker bvId={bvId} cat={cat} canInmail={canInmail} value={target} onChange={setTarget} /></div>
 
         <div style={label}>Anlass / Kontext <span style={{ textTransform: 'none', fontWeight: 500, color: '#9CA3AF' }}>(optional)</span></div>
         <textarea value={context} onChange={e => setContext(e.target.value)} rows={3} placeholder="z. B. gemeinsames Event, konkreter Aufhaenger, Angebot…"
@@ -257,8 +299,8 @@ function Verfassen({ bvId, model, contacts, onOpenPostfach, caps }) {
 
         <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginTop: 14 }}>
           {target && <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 12.5, color: 'var(--text-muted)', flex: 1, minWidth: 0 }}>
-            <Avatar name={contactName(target)} url={target.avatar_url} size={26} />
-            <span style={{ whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>an <strong style={{ color: 'var(--text-primary)' }}>{contactName(target)}</strong></span>
+            <Avatar name={target.name} url={target.avatar_url} size={26} />
+            <span style={{ whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>an <strong style={{ color: 'var(--text-primary)' }}>{target.name}</strong></span>
           </div>}
           <button className="lk-btn lk-btn-cta" onClick={send} disabled={!target || !text.trim() || sending || overCap} style={{ marginLeft: target ? 0 : 'auto' }}>
             {sending ? <Loader2 size={15} className="lk-spin" /> : cat.action === 'invite' ? <UserPlus size={15} /> : <Send size={15} />}
