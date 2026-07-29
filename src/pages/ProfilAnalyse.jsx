@@ -128,7 +128,7 @@ export default function ProfilAnalyse({ session }) {
         <div style={{ ...card, textAlign:'center', color:'var(--text-muted)', padding:'40px' }}>Wähle oben eine Marke, um ihr Profil zu analysieren.</div>
       ) : (
         <div style={{ display:'flex', flexDirection:'column', gap:18 }}>
-
+          {!isCompany && (<>
           {/* ── SSI ── */}
           <div style={card}>
             <div className="lk-eyebrow"><Target size={12} style={{ verticalAlign:'-2px' }} /> Social Selling Index</div>
@@ -168,6 +168,9 @@ export default function ProfilAnalyse({ session }) {
             )}
           </div>
 
+          </>)}
+
+          {!isCompany && (<>
           {/* ── Profilbesucher ── */}
           <div style={card}>
             <div className="lk-eyebrow"><Eye size={12} style={{ verticalAlign:'-2px' }} /> Wer hat dein Profil angesehen</div>
@@ -205,6 +208,8 @@ export default function ProfilAnalyse({ session }) {
             )}
           </div>
 
+          </>)}
+
           {/* ── Wachstum ── */}
           <div style={card}>
             <div className="lk-eyebrow"><TrendingUp size={12} style={{ verticalAlign:'-2px' }} /> {isCompany ? 'Page-Wachstum' : 'Reichweiten-Wachstum'}</div>
@@ -226,6 +231,7 @@ export default function ProfilAnalyse({ session }) {
             ) : <div style={{ fontSize:12, color:'var(--text-muted)', padding:'16px 0', textAlign:'center' }}>Der Verlauf entsteht aus täglichen Snapshots — ab morgen erste Kurvenpunkte.</div>}
           </div>
 
+          {!isCompany && (<>
           {/* ── Profil-Checker ── */}
           <div style={card}>
             <div className="lk-eyebrow"><CheckCircle2 size={12} style={{ verticalAlign:'-2px' }} /> Profil-Check</div>
@@ -248,7 +254,9 @@ export default function ProfilAnalyse({ session }) {
                 <button className="lk-btn lk-btn-ghost" onClick={() => nav('/profil-checker')}>Zum Profil-Checker</button>
               </div>
             )}
-          </div>
+          </div>          </>)}
+
+
 
         </div>
       )}
