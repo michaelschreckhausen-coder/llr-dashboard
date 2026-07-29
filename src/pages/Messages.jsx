@@ -67,6 +67,11 @@ export default function Messages() {
     setContacts(data || [])
   }, [bvId])
   useEffect(() => { loadContacts() }, [loadContacts])
+  const [caps, setCaps] = useState(null)
+  useEffect(() => {
+    if (!bvId) { setCaps(null); return }
+    supabase.rpc('get_brand_connection_caps', { p_brand_voice_id: bvId }).then(({ data }) => setCaps(data || null))
+  }, [bvId])
 
   if (!bvId) return (
     <div style={{ width: '100%', maxWidth: 1360, margin: '0 auto', padding: '28px 24px' }}>
@@ -92,7 +97,7 @@ export default function Messages() {
         active={tab} onChange={setTab} style={{ marginBottom: 18 }}
       />
       {tab === 'verfassen'
-        ? <Verfassen bvId={bvId} model={selectedModel} contacts={contacts} onOpenPostfach={() => setTab('postfach')} />
+        ? <Verfassen bvId={bvId} model={selectedModel} contacts={contacts} caps={caps} onOpenPostfach={() => setTab('postfach')} />
         : <Postfach bvId={bvId} brandName={brandName} contacts={contacts} reloadContacts={loadContacts} goCompose={() => setTab('verfassen')} />}
     </div>
   )
@@ -140,7 +145,10 @@ function ContactPicker({ contacts, value, onChange }) {
   )
 }
 
-function Verfassen({ bvId, model, contacts, onOpenPostfach }) {
+function Verfassen({ bvId, model, contacts, onOpenPostfach, caps }) {
+  const isCompany = caps?.account_type === 'company'
+  const canInmail = !!(caps?.caps?.inmail)
+  const [inmail, setInmail] = useState(false)
   const [catKey, setCatKey] = useState('vernetzung')
   const [target, setTarget] = useState(null)
   const [context, setContext] = useState('')
@@ -150,6 +158,15 @@ function Verfassen({ bvId, model, contacts, onOpenPostfach }) {
   const [flash, setFlash] = useState(null) // {type,msg}
   const cat = CATS.find(c => c.key === catKey)
   const overCap = cat.cap && text.length > cat.cap
+
+  if (isCompany) return (
+    <div style={{ ...card, padding: 32, textAlign: 'center', color: 'var(--text-muted)', maxWidth: 640, margin: '0 auto' }}>
+      <Handshake size={30} color={P} />
+      <div style={{ fontWeight: 800, color: 'var(--text-primary)', marginTop: 12, fontSize: 16 }}>Company Pages können keine Vernetzungsanfragen oder Direktnachrichten initiieren</div>
+      <div style={{ marginTop: 8, fontSize: 13.5, lineHeight: 1.6 }}>LinkedIn erlaubt Unternehmensseiten nur, auf eingehende Nachrichten zu antworten — nicht selbst Anfragen oder DMs zu starten. Öffne das Postfach, um auf eingehende Dialoge zu reagieren.</div>
+      <button className="lk-btn lk-btn-navy" style={{ marginTop: 16 }} onClick={onOpenPostfach}><MessageSquare size={15} /> Zum Postfach</button>
+    </div>
+  )
 
   const generate = async () => {
     if (!target || gen) return
@@ -173,7 +190,7 @@ function Verfassen({ bvId, model, contacts, onOpenPostfach }) {
     const fn = cat.action === 'invite' ? 'unipile-invite-send' : 'unipile-message-send'
     const body = cat.action === 'invite'
       ? { brand_voice_id: bvId, attendee_provider_id: target.provider_id, note: t }
-      : { brand_voice_id: bvId, attendee_provider_id: target.provider_id, text: t }
+      : { brand_voice_id: bvId, attendee_provider_id: target.provider_id, text: t, inmail: (inmail && canInmail) }
     const { data, error } = await supabase.functions.invoke(fn, { body })
     setSending(false)
     if (error || data?.error) { setFlash({ type: 'error', msg: data?.error || error?.message || 'Senden fehlgeschlagen' }); return }
@@ -244,6 +261,13 @@ function Verfassen({ bvId, model, contacts, onOpenPostfach }) {
             {cat.action === 'invite' ? 'Anfrage senden' : 'Nachricht senden'}
           </button>
         </div>
+        {cat.action === 'dm' && (
+          <label title={canInmail ? '' : 'Benötigt LinkedIn Premium / Sales Navigator am verbundenen Profil'}
+            style={{ display: 'inline-flex', alignItems: 'center', gap: 7, fontSize: 12, color: 'var(--text-muted)', marginTop: 10, cursor: canInmail ? 'pointer' : 'not-allowed', opacity: canInmail ? 1 : 0.55 }}>
+            <input type="checkbox" disabled={!canInmail} checked={inmail && canInmail} onChange={e => setInmail(e.target.checked)} />
+            Als InMail senden (an Nicht-Verbundene){!canInmail && ' — LinkedIn Premium nötig'}
+          </label>
+        )}
       </div>
     </div>
   )
