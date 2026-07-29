@@ -148,6 +148,17 @@ function RecipientPicker({ bvId, cat, canInmail, value, onChange }) {
     })()
     return () => { cancel = true }
   }, [open, src, bvId])
+  useEffect(() => {
+    if (!open || src !== 'suche') return
+    const query = q.trim()
+    if (query.length < 2) { setRows([]); setLoading(false); return }
+    let cancel = false; setLoading(true)
+    const t = setTimeout(async () => {
+      const { data } = await supabase.functions.invoke('unipile-people-search', { body: { brand_voice_id: bvId, query } })
+      if (!cancel) { setRows((data && data.items) || []); setLoading(false) }
+    }, 450)
+    return () => { cancel = true; clearTimeout(t) }
+  }, [open, src, q, bvId])
   const filtered = rows.filter(r => !q || (r.name || '').toLowerCase().includes(q.toLowerCase()))
   return (
     <div ref={ref} style={{ position: 'relative' }}>
@@ -163,31 +174,22 @@ function RecipientPicker({ bvId, cat, canInmail, value, onChange }) {
               <button key={sv} onClick={() => { setSrc(sv); setQ('') }} style={{ fontSize: 11.5, fontWeight: 600, padding: '5px 9px', borderRadius: 999, cursor: 'pointer', fontFamily: 'inherit', border: '1px solid ' + (sv === src ? P : 'var(--border)'), background: sv === src ? 'var(--primary-soft, rgba(0,48,96,.08))' : 'var(--surface)', color: sv === src ? P : 'var(--text-muted)' }}>{SRC_LABEL[sv]}</button>
             ))}
           </div>
-          {src === 'suche' ? (
-            <div style={{ padding: '18px 12px', textAlign: 'center', color: 'var(--text-muted)', fontSize: 13, lineHeight: 1.6 }}>
-              Neue Profile findest du in der LinkedIn-Suche — dort als Kontakt hinzufuegen, dann hier auswaehlen.
-              <div style={{ marginTop: 10 }}><button className="lk-btn lk-btn-ghost lk-btn-sm" onClick={() => nav('/linkedin-suche')}>Zur LinkedIn-Suche</button></div>
-            </div>
-          ) : (
-            <>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '8px', borderBottom: '1px solid var(--border-soft)' }}>
-                <Search size={14} color="#9CA3AF" />
-                <input autoFocus value={q} onChange={e => setQ(e.target.value)} placeholder={'In ' + SRC_LABEL[src] + ' suchen…'} style={{ border: 'none', outline: 'none', background: 'transparent', flex: 1, fontSize: 13, color: 'var(--text-primary)' }} />
-              </div>
-              {loading ? <div style={{ padding: 20, textAlign: 'center', color: '#9CA3AF' }}><Loader2 size={16} className="lk-spin" /></div>
-                : filtered.length === 0 ? <div style={{ padding: 16, textAlign: 'center', color: '#9CA3AF', fontSize: 13 }}>{rows.length === 0 ? 'Keine Eintraege mit LinkedIn-Profil.' : 'Kein Treffer.'}</div>
-                : filtered.slice(0, 100).map((r, i) => (
-                  <button key={(r.provider_id || r.url || '') + i} className="lk-dd-opt" onClick={() => { onChange(r); setOpen(false); setQ('') }}
-                    style={{ display: 'flex', gap: 10, alignItems: 'center', width: '100%', border: 'none', background: 'transparent', padding: '8px 10px', borderRadius: 8, cursor: 'pointer', textAlign: 'left' }}>
-                    <Avatar name={r.name} url={r.avatar_url} size={30} />
-                    <span style={{ minWidth: 0 }}>
-                      <span style={{ display: 'block', fontSize: 13.5, fontWeight: 600, color: 'var(--text-primary)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{r.name}</span>
-                      {r.headline && <span style={{ display: 'block', fontSize: 11.5, color: 'var(--text-muted)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{r.headline}</span>}
-                    </span>
-                  </button>
-                ))}
-            </>
-          )}
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '8px', borderBottom: '1px solid var(--border-soft)' }}>
+            <Search size={14} color="#9CA3AF" />
+            <input autoFocus value={q} onChange={e => setQ(e.target.value)} placeholder={src === 'suche' ? 'Auf LinkedIn suchen (Name oder Keyword)…' : 'In ' + SRC_LABEL[src] + ' suchen…'} style={{ border: 'none', outline: 'none', background: 'transparent', flex: 1, fontSize: 13, color: 'var(--text-primary)' }} />
+          </div>
+          {loading ? <div style={{ padding: 20, textAlign: 'center', color: '#9CA3AF' }}><Loader2 size={16} className="lk-spin" /></div>
+            : filtered.length === 0 ? <div style={{ padding: 16, textAlign: 'center', color: '#9CA3AF', fontSize: 13 }}>{src === 'suche' ? (q.trim().length < 2 ? 'Mind. 2 Zeichen fuer die LinkedIn-Suche eingeben.' : 'Keine Treffer.') : (rows.length === 0 ? 'Keine Eintraege mit LinkedIn-Profil.' : 'Kein Treffer.')}</div>
+            : filtered.slice(0, 100).map((r, i) => (
+              <button key={(r.provider_id || r.url || '') + i} className="lk-dd-opt" onClick={() => { onChange(r); setOpen(false); setQ('') }}
+                style={{ display: 'flex', gap: 10, alignItems: 'center', width: '100%', border: 'none', background: 'transparent', padding: '8px 10px', borderRadius: 8, cursor: 'pointer', textAlign: 'left' }}>
+                <Avatar name={r.name} url={r.avatar_url} size={30} />
+                <span style={{ minWidth: 0 }}>
+                  <span style={{ display: 'block', fontSize: 13.5, fontWeight: 600, color: 'var(--text-primary)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{r.name}</span>
+                  {r.headline && <span style={{ display: 'block', fontSize: 11.5, color: 'var(--text-muted)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{r.headline}</span>}
+                </span>
+              </button>
+            ))}
         </div>
       )}
     </div>
