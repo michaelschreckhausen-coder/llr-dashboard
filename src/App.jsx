@@ -52,7 +52,6 @@ import InstagramInbox    from './pages/InstagramInbox'
 import Pipeline      from './pages/Pipeline'
 import ProfilChecker from './pages/ProfilChecker'
 import LinkedInInbox from './pages/LinkedInInbox'
-import LinkedInNetzwerk from './pages/LinkedInNetzwerk'
 import LinkedInAutomationNeu from './pages/LinkedInAutomationNeu'
 import LinkedInSuche from './pages/LinkedInSuche'
 import LinkedInAnalytics from './pages/LinkedInAnalytics'
@@ -361,7 +360,6 @@ export default function App() {
             <Route path="/comments" element={<ComingSoon title="Kommentare" />} />
             <Route path="/profil-checker" element={<ModuleGuard module="linkedin"><ProfilChecker session={session} /></ModuleGuard>} />
             <Route path="/linkedin-inbox" element={<ModuleGuard module="linkedin"><LinkedInInbox session={session} /></ModuleGuard>} />
-            <Route path="/linkedin-netzwerk" element={<ModuleGuard module="linkedin"><LinkedInNetzwerk session={session} /></ModuleGuard>} />
             <Route path="/linkedin-suche" element={<ModuleGuard module="linkedin"><LinkedInSuche session={session} /></ModuleGuard>} />
             <Route path="/linkedin-analytics" element={<ModuleGuard module="linkedin"><LinkedInAnalytics session={session} /></ModuleGuard>} />
             <Route path="/wachstum" element={<ModuleGuard module="linkedin"><Wachstum /></ModuleGuard>} />

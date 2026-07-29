@@ -109,10 +109,12 @@ export default function Messages() {
 }
 
 /* ─────────────────────────── Reiter: VERFASSEN ─────────────────────────── */
-const SRC_LABEL = { kontakte:'LinkedIn-Kontakte', crm:'CRM-Kontakte', firmen:'Unternehmen', suche:'LinkedIn-Suche' }
+const SRC_LABEL = { kontakte:'LinkedIn-Kontakte', netzwerk:'LinkedIn-Netzwerk', crm:'CRM-Kontakte', firmen:'CRM-Unternehmen', suche:'LinkedIn-Suche' }
 function sourcesFor(cat, canInmail) {
+  // Vernetzungsanfrage: an Nicht-Verbundene -> Netzwerk (bereits verbunden) ausgeschlossen.
   if (cat.action === 'invite') return ['kontakte', 'crm', 'firmen', 'suche']
-  return canInmail ? ['kontakte', 'crm', 'firmen', 'suche'] : ['kontakte', 'crm']
+  // Direktnachricht: an Verbundene -> Netzwerk zuerst; ohne Premium keine Nicht-Verbundenen (Firmen/Suche).
+  return canInmail ? ['netzwerk', 'kontakte', 'crm', 'firmen', 'suche'] : ['netzwerk', 'kontakte', 'crm']
 }
 function RecipientPicker({ bvId, cat, canInmail, value, onChange }) {
   const nav = useNavigate()
@@ -130,9 +132,11 @@ function RecipientPicker({ bvId, cat, canInmail, value, onChange }) {
     let cancel = false; setLoading(true); setRows([])
     ;(async () => {
       let data = []
-      if (src === 'kontakte') {
-        const r = await supabase.from('linkedin_inbox').select('provider_id, name, first_name, last_name, headline, avatar_url').eq('brand_voice_id', bvId).not('provider_id', 'is', null).order('name').limit(500)
-        data = (r.data || []).map(c => ({ provider_id: c.provider_id, name: c.name || ((c.first_name || '') + ' ' + (c.last_name || '')).trim() || 'Kontakt', headline: c.headline, avatar_url: c.avatar_url, source: 'kontakte' }))
+      if (src === 'kontakte' || src === 'netzwerk') {
+        let r = supabase.from('linkedin_inbox').select('provider_id, name, first_name, last_name, headline, avatar_url').eq('brand_voice_id', bvId).not('provider_id', 'is', null)
+        r = src === 'netzwerk' ? r.eq('source', 'unipile_relations') : r.neq('source', 'unipile_relations')
+        const rr = await r.order('name').limit(500)
+        data = (rr.data || []).map(c => ({ provider_id: c.provider_id, name: c.name || ((c.first_name || '') + ' ' + (c.last_name || '')).trim() || 'Kontakt', headline: c.headline, avatar_url: c.avatar_url, source: src }))
       } else if (src === 'crm') {
         const r = await supabase.from('leads').select('name, first_name, last_name, headline, avatar_url, company, linkedin_url').not('linkedin_url', 'is', null).order('name').limit(500)
         data = (r.data || []).map(c => ({ url: c.linkedin_url, name: c.name || ((c.first_name || '') + ' ' + (c.last_name || '')).trim() || 'Kontakt', headline: c.headline || c.company, avatar_url: c.avatar_url, source: 'crm' }))

@@ -132,7 +132,6 @@ function getNav(t) {
     // develop-only, auf Staging noch nicht lauffÃ¤hig (Migration linkedin_network fehlt) und
     // Michael arbeitet vorerst nicht weiter daran. NUR MenÃ¼punkt versteckt â Route/Seite/EF/
     // Migrationen bleiben erhalten. Zum ZurÃ¼ckholen einfach diese Zeile wieder aktivieren:
-    // { to: '/linkedin-netzwerk', icon: IcUsers,  label: 'Netzwerk' },
     { to: '/automatisierung-neu', icon: IcCog, label: 'Automatisierung' },
     { to: '/messages',        icon: IcMail,     label: 'Nachrichten' },
     { to: '/linkedin-engagement', icon: IcZap,  label: 'Engagement' },
@@ -1357,7 +1356,7 @@ function isBrandVoiceContext(pathname) {
     // Analyse (brand-scoped)
     '/netzwerk-analytics', '/linkedin-engagement', '/profil-analyse',
     // Akquise (agiert aus dem Profil der aktiven Marke)
-    '/messages', '/automatisierung-neu', '/linkedin-inbox', '/linkedin-netzwerk', '/linkedin-suche',
+    '/messages', '/automatisierung-neu', '/linkedin-inbox', '/linkedin-suche',
     // Content (brand-scoped)
     '/redaktionsplan', '/content-studio', '/bibliothek', '/visuals', '/dokumente', '/media', '/content-reporting',
     '/brand-memory',
