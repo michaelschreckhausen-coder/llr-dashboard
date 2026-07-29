@@ -1,12 +1,13 @@
 // src/pages/NetzwerkAnalytics.jsx
 //
-// Reporting — Netzwerk-Analytics (Bereich Netzwerk, TEAM-scoped).
+// Reporting — Netzwerk & Dialog (Bereich Analyse, BRAND-scoped).
 // Quelle: linkedin_network_metrics (tägliche Snapshots je Login, vom
 // analytics-snapshot Cron): Verbindungen/Follower/offene Einladungen.
-// Team-scoped über activeTeamId + RLS. Kein Brand-Umschalter.
+// Brand-scoped über die aktive Marke (brand_voice_id) + RLS. Dialog-Kennzahlen
+// aus linkedin_chats/linkedin_chat_messages (echtes Postfach).
 
 import React, { useState, useEffect } from 'react'
-import { Users, UserPlus, Send, Inbox, Loader2, BarChart3, Rocket, UserCheck, Clock } from 'lucide-react'
+import { Users, UserPlus, Send, Inbox, Loader2, BarChart3, Rocket, UserCheck, Clock, MessageSquare, ArrowDownLeft, ArrowUpRight } from 'lucide-react'
 import {
   ResponsiveContainer, LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend,
   ComposedChart, Bar,
@@ -36,6 +37,8 @@ export default function NetzwerkAnalytics() {
   const [enr, setEnr] = useState([])
   const [invites, setInvites] = useState([])
   const [msg, setMsg] = useState([])
+  const [chats, setChats] = useState([])
+  const [dmsgs, setDmsgs] = useState([])
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
@@ -46,7 +49,7 @@ export default function NetzwerkAnalytics() {
     ;(async () => {
       try {
         // Brand-scoped: Netzwerk-Analyse zeigt das Profil der aktiven Marke.
-        const [{ data: nm }, { data: bv }, { data: cc }, { data: ee }, { data: iv }, { data: mm }] = await Promise.all([
+        const [{ data: nm }, { data: bv }, { data: cc }, { data: ee }, { data: iv }, { data: mm }, { data: ch }] = await Promise.all([
           supabase.from('linkedin_network_metrics')
             .select('unipile_account_id, brand_voice_id, connections_total, followers_total, invites_pending_out, invites_pending_in, captured_on')
             .eq('brand_voice_id', bvId).order('captured_on', { ascending: true }),
@@ -55,6 +58,7 @@ export default function NetzwerkAnalytics() {
           supabase.from('la_enrollments').select('campaign_id, state, relation_status').eq('brand_voice_id', bvId),
           supabase.from('linkedin_invitations').select('status, sent_at, responded_at').eq('brand_voice_id', bvId),
           supabase.from('linkedin_messaging_metrics').select('unipile_account_id, unread_threads, unread_messages, active_7d, chats_scanned, captured_on').eq('brand_voice_id', bvId).order('captured_on', { ascending: true }),
+          supabase.from('linkedin_chats').select('id, attendee_name, unread_count, last_message_at').eq('brand_voice_id', bvId).order('last_message_at', { ascending: false }),
         ])
         if (cancelled) return
         setRows(nm || [])
@@ -62,6 +66,15 @@ export default function NetzwerkAnalytics() {
         setEnr(ee || [])
         setInvites(iv || [])
         setMsg(mm || [])
+        setChats(ch || [])
+        let dm = []
+        if (ch && ch.length) {
+          const ids = ch.map(c => c.id)
+          const { data: dmr } = await supabase.from('linkedin_chat_messages')
+            .select('chat_id, direction, sent_at').in('chat_id', ids).order('sent_at', { ascending: true })
+          dm = dmr || []
+        }
+        if (!cancelled) setDmsgs(dm)
         const map = {}
         for (const b of (bv || [])) map[b.id] = b.name || b.brand_name || null
         setBrandMap(map)
@@ -123,6 +136,32 @@ export default function NetzwerkAnalytics() {
   }
   const msgSeries = Object.keys(msgByDay).sort().map(d => msgByDay[d])
 
+  // ── Dialog-Metriken (aus linkedin_chats / linkedin_chat_messages) ──
+  const byChat = {}
+  for (const m of dmsgs) (byChat[m.chat_id] ||= []).push(m)
+  let dInbound = 0, dOutbound = 0, chatsWithOut = 0, chatsReplied = 0
+  const respHours = []
+  for (const c of chats) {
+    const ms = (byChat[c.id] || []).slice().sort((a, b) => new Date(a.sent_at) - new Date(b.sent_at))
+    const hasOut = ms.some(m => m.direction === 'outbound')
+    const hasIn = ms.some(m => m.direction === 'inbound')
+    for (const m of ms) { if (m.direction === 'inbound') dInbound++; else dOutbound++ }
+    if (hasOut) { chatsWithOut++; if (hasIn) chatsReplied++ }
+    let lastOut = null
+    for (const m of ms) {
+      if (m.direction === 'outbound') { if (lastOut == null) lastOut = new Date(m.sent_at) }
+      else if (m.direction === 'inbound' && lastOut) { const h = (new Date(m.sent_at) - lastOut) / 3600000; if (h >= 0) respHours.push(h); break }
+    }
+  }
+  const replyRate = chatsWithOut > 0 ? Math.round((chatsReplied / chatsWithOut) * 100) : null
+  const avgRespH = respHours.length ? (respHours.reduce((a, b) => a + b, 0) / respHours.length) : null
+  const avgRespTxt = avgRespH == null ? '–' : (avgRespH < 48 ? avgRespH.toFixed(1) + ' h' : (avgRespH / 24).toFixed(1) + ' T')
+  const unreadChats = chats.filter(c => (c.unread_count || 0) > 0).length
+  const activeDialogs = chats.filter(c => { const ms = byChat[c.id] || []; return ms.some(m => m.direction === 'outbound') && ms.some(m => m.direction === 'inbound') }).length
+  const personRows = chats
+    .map(c => ({ name: c.attendee_name || 'Unbekannt', count: (byChat[c.id] || []).length, unread: c.unread_count || 0, last: c.last_message_at }))
+    .sort((a, b) => new Date(b.last || 0) - new Date(a.last || 0)).slice(0, 12)
+
   const label = (r) => brandMap[r.brand_voice_id] || r.unipile_account_id?.slice(0, 8) || 'Login'
 
   return (
@@ -178,6 +217,46 @@ export default function NetzwerkAnalytics() {
                 </div>
               )}
             </div>
+
+            {/* ── Dialog (aus dem Postfach) ── */}
+            {(dOutbound + dInbound) > 0 && (
+              <div style={cardStyle}>
+                <div className="lk-eyebrow"><MessageSquare size={12} style={{ verticalAlign:'-2px' }} /> Dialog</div>
+                <div style={{ display:'flex', gap:10, flexWrap:'wrap', margin:'6px 0 4px' }}>
+                  <div style={kpiTile}><div style={kpiLabel}><UserCheck size={11}/>Antwortquote</div><div style={{ ...kpiValue, color:'var(--primary)' }}>{replyRate != null ? replyRate + ' %' : '–'}</div></div>
+                  <div style={kpiTile}><div style={kpiLabel}><Clock size={11}/>Ø Antwortzeit</div><div style={kpiValue}>{avgRespTxt}</div></div>
+                  <div style={kpiTile}><div style={kpiLabel}><MessageSquare size={11}/>Aktive Dialoge</div><div style={kpiValue}>{fmt(activeDialogs)}</div></div>
+                  <div style={kpiTile}><div style={kpiLabel}><Inbox size={11}/>Ungelesen</div><div style={{ ...kpiValue, color: unreadChats>0 ? '#B54708' : undefined }}>{fmt(unreadChats)}</div></div>
+                  <div style={kpiTile}><div style={kpiLabel}><ArrowUpRight size={11}/>Nachrichten raus</div><div style={kpiValue}>{fmt(dOutbound)}</div></div>
+                  <div style={kpiTile}><div style={kpiLabel}><ArrowDownLeft size={11}/>Nachrichten rein</div><div style={kpiValue}>{fmt(dInbound)}</div></div>
+                </div>
+                {personRows.length > 0 && (
+                  <div style={{ marginTop:12, overflowX:'auto' }}>
+                    <div style={{ fontSize:12, fontWeight:700, color:'var(--text-strong,#111827)', marginBottom:6 }}>Dialoge nach Kontakt</div>
+                    <table style={{ width:'100%', borderCollapse:'collapse', fontSize:13 }}>
+                      <thead>
+                        <tr style={{ textAlign:'left', color:'var(--text-muted,#6B7280)', fontSize:11, textTransform:'uppercase', letterSpacing:'0.04em' }}>
+                          <th style={{ padding:'6px 8px' }}>Kontakt</th>
+                          <th style={{ padding:'6px 8px', textAlign:'right' }}>Nachrichten</th>
+                          <th style={{ padding:'6px 8px', textAlign:'right' }}>Ungelesen</th>
+                          <th style={{ padding:'6px 8px', textAlign:'right' }}>Letzte Aktivität</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {personRows.map((p, i) => (
+                          <tr key={i} style={{ borderTop:'1px solid #F1F3F5' }}>
+                            <td style={{ padding:'7px 8px', color:'var(--text-strong,#111827)', fontWeight:500 }}>{p.name}</td>
+                            <td style={{ padding:'7px 8px', textAlign:'right', fontVariantNumeric:'tabular-nums' }}>{fmt(p.count)}</td>
+                            <td style={{ padding:'7px 8px', textAlign:'right', fontVariantNumeric:'tabular-nums', color: p.unread>0 ? '#B54708' : '#9CA3AF', fontWeight: p.unread>0 ? 700 : 400 }}>{p.unread > 0 ? p.unread : '–'}</td>
+                            <td style={{ padding:'7px 8px', textAlign:'right', color:'var(--text-muted,#6B7280)' }}>{p.last ? dDE(p.last) : '–'}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                )}
+              </div>
+            )}
 
             {/* ── Vernetzungs-Annahmequote ── */}
             {invites.length > 0 && (
