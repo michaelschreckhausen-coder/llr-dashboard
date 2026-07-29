@@ -217,3 +217,8 @@ export async function getChatAttendees(chat_id: string): Promise<UnipileResult<{
   if (!r.ok) return r;
   return { ok: true, data: { items: r.data?.items ?? [] } };
 }
+
+/** GET /accounts/{id} — Account-Objekt (Lizenz/Premium/Organisationen in connection_params.im). */
+export function getAccount(account_id: string): Promise<UnipileResult<any>> {
+  return call<any>("GET", `/accounts/${encodeURIComponent(account_id)}`);
+}
