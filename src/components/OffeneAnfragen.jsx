@@ -160,7 +160,6 @@ export default function OffeneAnfragen() {
           })}
         </div>
       )}
-    </div>
       {notAccepted.length > 0 && (
         <div style={{ marginTop:18 }}>
           <div style={{ fontSize:13, fontWeight:800, color:RC.text1, marginBottom:8, display:'flex', alignItems:'center', gap:8 }}>
