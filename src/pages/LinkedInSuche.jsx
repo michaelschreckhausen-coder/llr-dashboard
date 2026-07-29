@@ -269,16 +269,16 @@ export default function LinkedInSuche() {
             )}
 
             <div style={gridStyle}>
-              {form.category === 'people' && (
-                <div>
-                  <label style={labelStyle}>Name (Person)</label>
-                  <input style={inputStyle} value={form.person_name} onChange={e => setField('person_name', e.target.value)} placeholder="z. B. Max Mustermann" />
-                </div>
-              )}
               <div>
                 <label style={labelStyle}>Keywords</label>
                 <input style={inputStyle} value={form.keywords} onChange={e => setField('keywords', e.target.value)} placeholder="z. B. Softwareentwickler" />
               </div>
+              {form.category === 'people' && (
+                <div>
+                  <label style={labelStyle}>Name (optional)</label>
+                  <input style={inputStyle} value={form.person_name} onChange={e => setField('person_name', e.target.value)} placeholder="z. B. Max Mustermann" />
+                </div>
+              )}
               <div>
                 <label style={labelStyle}>Ort (optional)</label>
                 <input style={inputStyle} value={form.location} onChange={e => setField('location', e.target.value)} placeholder="z. B. Berlin" />
