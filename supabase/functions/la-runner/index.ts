@@ -47,9 +47,10 @@ Deno.serve(async () => {
 
   const out: unknown[] = [];
   for (const job of jobs) {
-    // 3a) Addon-Gate gegen das JOB-Team (la_jobs.team_id), NICHT active_team_id. Ohne Addon: zurück auf pending (idle).
-    const { data: paid } = await db.rpc("team_has_addon", { p_team_id: job.team_id, p_slug: "automation" });
-    if (!paid) { await patch(job.id, { state: "pending", error: "no_automation_addon" }); out.push({ id: job.id, skipped: "no_addon" }); continue; }
+    // 3a) Plan-Gate gegen das JOB-Team (la_jobs.team_id): Automation gehoert FEST zum LinkedIn-Modul
+    //     (Sales/All-in/KMU ...), ist KEIN Addon mehr. Prueft plans.permissions via team_has_permission.
+    const { data: allowed } = await db.rpc("team_has_permission", { p_team_id: job.team_id, p_key: "linkedin.automation" });
+    if (!allowed) { await patch(job.id, { state: "pending", error: "no_automation_permission" }); out.push({ id: job.id, skipped: "no_automation_permission" }); continue; }
 
     // 3b) running
     await patch(job.id, { state: "running" });
