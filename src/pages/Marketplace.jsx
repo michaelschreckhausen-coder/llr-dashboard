@@ -158,7 +158,7 @@ export default function Marketplace() {
   const filtered = useMemo(() => {
     const term = search.trim().toLowerCase()
     return (catalog || []).filter((a) => {
-      if (a.slug === 'automation') return false   // eigene Kapazitaets-Kachel oben (LinkedIn-Verknuepfung)
+      if (a.slug === 'extra_linkedin_connection') return false   // eigene Kapazitaets-Kachel oben (LinkedIn-Verknuepfung)
       if (category !== 'all' && a.category !== category) return false
       if (!term) return true
       return (
@@ -285,10 +285,10 @@ export default function Marketplace() {
 
         {/* Credits + Top-Up-Section (Sprint J.2 Phase B) */}
         <CreditsTopupSection onFlash={showFlash} linkedin={{
-          addon: (catalog || []).find(a => a.slug === 'automation') || null,
+          addon: (catalog || []).find(a => a.slug === 'extra_linkedin_connection') || null,
           allowance: uniAllowance,
-          subscribed: subscribedSlugs.has('automation'),
-          stripeManaged: stripeManagedSlugs.has('automation'),
+          subscribed: subscribedSlugs.has('extra_linkedin_connection'),
+          stripeManaged: stripeManagedSlugs.has('extra_linkedin_connection'),
           onSubscribe, onManage: onManageBilling,
         }} />
 

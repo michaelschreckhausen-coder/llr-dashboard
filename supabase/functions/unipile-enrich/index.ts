@@ -28,10 +28,10 @@ Deno.serve(async (req) => {
     const auth = await getAuthenticatedUser(req);
     if (!auth) return jsonResponse({ error: "unauthorized" }, 401);
 
-    // Addon-Gate 'automation' (gleiche Autorität wie unipile-connect-link).
+    // Addon-Gate 'extra_linkedin_connection' (gleiche Autorität wie unipile-connect-link).
     const uc = userClientFromReq(req);
     if (!uc) return jsonResponse({ error: "unauthorized" }, 401);
-    if (!(await hasAddon(uc, "automation"))) {
+    if (!(await hasAddon(uc, "extra_linkedin_connection"))) {
       return jsonResponse({ error: "no_addon", message: "Automatisierung-Addon nicht aktiv" }, 403);
     }
 

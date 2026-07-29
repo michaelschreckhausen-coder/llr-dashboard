@@ -19,7 +19,7 @@ Deno.serve(async (req) => {
   // Automation-Addon-Zeile des Accounts
   const { data: aa } = await db.from("account_addons")
     .select("status, is_grandfathered, stripe_subscription_item_id, addons!inner(slug)")
-    .eq("account_id", account_id).eq("addons.slug", "automation").limit(1).maybeSingle();
+    .eq("account_id", account_id).eq("addons.slug", "extra_linkedin_connection").limit(1).maybeSingle();
 
   // Nur ZAHLENDE (aktiv, nicht grandfathered, mit Stripe-Item) syncen.
   if (!aa) return json({ skipped: "no_addon" });

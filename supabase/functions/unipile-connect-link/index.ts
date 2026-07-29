@@ -63,8 +63,8 @@ Deno.serve(async (req) => {
     return json({ connected: true, unipile_account_id: acct.id, public: pub, status }, 200);
   }
 
-  // ── Onboarding-Gate: LinkedIn verbinden nur mit aktivem 'automation'-Addon ──
-  const { data: hasAddon } = await userClient.rpc("i_have_addon", { p_slug: "automation" });
+  // ── Onboarding-Gate: LinkedIn verbinden nur mit aktivem 'extra_linkedin_connection'-Addon ──
+  const { data: hasAddon } = await userClient.rpc("i_have_addon", { p_slug: "extra_linkedin_connection" });
   if (!hasAddon) return json({ error: "no_addon", message: "Automatisierung-Addon nicht aktiv" }, 403);
 
   // ── Default: Hosted-Auth-Link erzeugen (mit notify_url = Canonical-Mapping) ──
