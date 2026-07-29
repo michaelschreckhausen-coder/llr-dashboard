@@ -125,7 +125,7 @@ export default function LinkedInAutomationNeu({ session }) {
     if (!bvId) { setCaps(null); return }
     supabase.rpc('get_brand_connection_caps', { p_brand_voice_id: bvId }).then(({ data }) => setCaps(data || null))
   }, [activeBrandVoice?.id])
-  const isCompany = caps?.account_type === 'company'
+  const isCompany = caps?.account_type === 'company_page'
   const canInmail = !!(caps?.caps?.inmail)
   const availActions = ACTIONS.filter(a => a !== 'inmail' || canInmail)
 

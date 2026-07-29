@@ -167,7 +167,7 @@ export default function NetzwerkAnalytics() {
 
   const label = (r) => brandMap[r.brand_voice_id] || r.unipile_account_id?.slice(0, 8) || 'Login'
 
-  const isCompany = activeBrandVoice?.account_type === 'company'
+  const isCompany = activeBrandVoice?.account_type === 'company_page'
   const NTABS = [
     { v:'netzwerk',  label:'Übersicht', icon:<Users size={16} strokeWidth={1.75}/>,       color:'blue' },
     { v:'dialog',    label:'Dialog',    icon:<MessageSquare size={16} strokeWidth={1.75}/>,color:'purple' },

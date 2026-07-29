@@ -146,7 +146,7 @@ function ContactPicker({ contacts, value, onChange }) {
 }
 
 function Verfassen({ bvId, model, contacts, onOpenPostfach, caps }) {
-  const isCompany = caps?.account_type === 'company'
+  const isCompany = caps?.account_type === 'company_page'
   const canInmail = !!(caps?.caps?.inmail)
   const [inmail, setInmail] = useState(false)
   const [catKey, setCatKey] = useState('vernetzung')
