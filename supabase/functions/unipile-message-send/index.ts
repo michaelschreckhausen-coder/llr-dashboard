@@ -35,7 +35,26 @@ Deno.serve(async (req) => {
     }
 
     const res = useInmail ? await sendInMail(accountId, providerId, text) : await sendMessage(accountId, providerId, text);
-    if (!res.ok) return jsonResponse({ error: "send_failed", detail: (res as any).detail, status: (res as any).status }, 502);
+    if (!res.ok) {
+      let reason = "send_failed";
+      let msg = "Senden fehlgeschlagen.";
+      try {
+        const d = JSON.parse(String((res as any).detail ?? ""));
+        const t = String(d?.type ?? "");
+        if (t.includes("subscription_required")) {
+          reason = "subscription_required";
+          msg = useInmail
+            ? "InMail nicht moeglich — dafuer braucht dein LinkedIn-Account ein passendes Abo (Premium/Sales Navigator)."
+            : "Direktnachricht nicht moeglich — der Empfaenger ist nicht mit dir verbunden. Sende zuerst eine Vernetzungsanfrage, oder nutze InMail (LinkedIn Premium).";
+        } else if (t.includes("insufficient_credits")) {
+          reason = "insufficient_credits";
+          msg = "Keine InMail-Credits mehr uebrig. Lade sie in LinkedIn auf oder sende stattdessen eine Vernetzungsanfrage.";
+        } else if (d?.detail) {
+          msg = String(d.detail);
+        }
+      } catch { /* detail war kein JSON */ }
+      return jsonResponse({ error: msg, reason, detail: (res as any).detail, status: (res as any).status }, 502);
+    }
     const nowIso = new Date().toISOString();
     const realChatId = (res.data as any)?.chat_id ?? null;
     const msgId = (res.data as any)?.message_id ?? null;
