@@ -413,7 +413,7 @@ function PostModal({ post, onClose, onSave, onDelete, session, activeTeamId, mem
   const [showAdvanced, setShowAdvanced] = useState(false)
   // Phase 2a: Person-Posts optional über Unipile veröffentlichen (statt Julians nativer
   // LinkedIn-OAuth-Route) — schaltet Reichweiten-Monitoring frei. Default AUS.
-  const [viaUnipile] = useState(true) // A4: Unipile ist Standard-Postingweg (offizielle API nur via publish_channel='official')
+  const [viaUnipile, setViaUnipile] = useState(false)
   const [generatingVisual, setGeneratingVisual] = useState(false)
   // Multi-Visual: Array statt Singular. Jedes Element: { id (visual_id), signed_url, prompt, position }
   const [postVisuals, setPostVisuals] = useState([])
@@ -785,7 +785,6 @@ function PostModal({ post, onClose, onSave, onDelete, session, activeTeamId, mem
   const [previewBV, setPreviewBV] = useState(null)
   // Scheduling/Publishing + Company-Auswahl nur bei Personal Brands (Company-Posting technisch noch nicht)
   const isPersonalPost = (previewBV ? previewBV.account_type !== 'company_page' : activeBrandVoice?.account_type !== 'company_page')
-  const isCompanyPost = (previewBV ? previewBV.account_type === 'company_page' : activeBrandVoice?.account_type === 'company_page') // Company Page: postet als Organisation via Unipile
   // P3 Schritt 4: Publish-Affordance NUR für Eigen-Team-Posts. Fremdposts (geteilte Brand
   // Voice, post.team_id !== activeTeamId) sind auf dem Board sichtbar, aber NICHT publishbar —
   // deckt sich mit dem EF-Gate auf post.team_id (schließt die "FE zeigt, EF verweigert"-Kante).
@@ -808,21 +807,9 @@ function PostModal({ post, onClose, onSave, onDelete, session, activeTeamId, mem
   useEffect(() => {
     if (!form.brand_voice_id) { setLiConnected(false); return }
     let cancelled = false
-    ;(async () => {
-      // Company Page: verbunden, wenn Org + Admin-Login an der Brand hinterlegt sind (postet als Page).
-      const { data: bv } = await supabase.from('brand_voices')
-        .select('account_type, linkedin_org_id, linkedin_acting_account_id')
-        .eq('id', form.brand_voice_id).maybeSingle()
-      if (cancelled) return
-      if (bv?.account_type === 'company_page') {
-        setLiConnected(!!(bv.linkedin_org_id && bv.linkedin_acting_account_id))
-        return
-      }
-      // Personal Brand: eigener Unipile-Account (brand-scoped)
-      const { data } = await supabase.from('unipile_accounts')
-        .select('unipile_account_id').eq('brand_voice_id', form.brand_voice_id).eq('status', 'OK').limit(1).maybeSingle()
-      if (!cancelled) setLiConnected(!!data)
-    })().catch(() => { if (!cancelled) setLiConnected(false) })
+    supabase.rpc('bv_linkedin_connected', { bv_id: form.brand_voice_id })
+      .then(({ data }) => { if (!cancelled) setLiConnected(!!data) })
+      .catch(() => { if (!cancelled) setLiConnected(false) })
     return () => { cancelled = true }
   }, [form.brand_voice_id])
 
@@ -1864,24 +1851,28 @@ function PostModal({ post, onClose, onSave, onDelete, session, activeTeamId, mem
             {saving ? <span style={{display:'inline-flex',alignItems:'center',gap:6}}><Loader2 size={12} className='lk-spin'/>Speichere…</span> : isNew ? <span style={{display:'inline-flex',alignItems:'center',gap:6}}><Plus size={12}/>Erstellen</span> : <span style={{display:'inline-flex',alignItems:'center',gap:6}}><Save size={12}/>Speichern</span>}
           </button>
           {/* P3 Schritt 4: Fremdteam-Post (geteilte Brand Voice) — Publish nur im Eigen-Team */}
-          {(isPersonalPost || isCompanyPost) && !isOwnTeamPost && form.platform !== 'instagram' && form.content && form.status !== 'published' && (
+          {isPersonalPost && !isOwnTeamPost && form.platform !== 'instagram' && form.content && form.status !== 'published' && (
             <div style={{ fontSize:12, color:'var(--text-muted, #6B7280)', display:'inline-flex', alignItems:'center', gap:6 }}>
               ℹ️ Dieser Beitrag gehört einem anderen Team (geteilte Brand Voice) — Veröffentlichen nur im Eigen-Team.
             </div>
           )}
-          {(isPersonalPost || isCompanyPost) && isOwnTeamPost && form.platform !== 'instagram' && form.content && form.status !== 'published' && (() => {
+          {/* Phase 2a: Unipile-Route-Schalter (nur Person-Posts) — schaltet Monitoring frei */}
+          {isPersonalPost && isOwnTeamPost && form.platform !== 'instagram' && form.content && form.status !== 'published' && (
+            <label
+              title="Veröffentlicht über die Unipile-Server-Automation statt der nativen LinkedIn-API — ermöglicht Reichweiten-Monitoring (Impressions, Reaktionen, Kommentare). Erfordert einen verbundenen Unipile-LinkedIn-Account."
+              style={{ display:'inline-flex', alignItems:'center', gap:6, fontSize:12, fontWeight:600, color:'var(--text-muted, #6B7280)', cursor:'pointer', userSelect:'none' }}>
+              <input type="checkbox" checked={viaUnipile} onChange={e => setViaUnipile(e.target.checked)}
+                style={{ accentColor:'var(--wl-primary, #0A6FB0)', cursor:'pointer' }} />
+              Über Unipile posten (Monitoring)
+            </label>
+          )}
+          {isPersonalPost && isOwnTeamPost && form.platform !== 'instagram' && form.content && form.status !== 'published' && (() => {
             const hasSchedule = !!form.scheduled_at
             const future = hasSchedule && new Date(form.scheduled_at) > new Date()
             return (
               <button className="lk-btn lk-btn-cta" onClick={async () => {
                 // ── Phase 2a: Unipile-Route (mit Monitoring) ──
                 if (viaUnipile) {
-                  if (!liConnected) {
-                    alert(activeBrandVoice?.noBrand || !form.brand_voice_id
-                      ? 'Posten geht nur im Redaktionsplan einer Marke. Wechsle oben zu einer Marke mit verbundenem LinkedIn-Profil.'
-                      : 'Für diese Marke ist kein LinkedIn-Profil verbunden — erst in der Brand verbinden (Branding → Personal Brand → LinkedIn verbinden).')
-                    return
-                  }
                   if (!post?.id) { alert('Bitte zuerst speichern.'); return }
                   setSaving(true)
                   try {
@@ -1986,10 +1977,10 @@ function PostModal({ post, onClose, onSave, onDelete, session, activeTeamId, mem
                 } catch (e) {
                   alert('Posten fehlgeschlagen: ' + (e.message || 'Unbekannt'))
                 } finally { setSaving(false) }
-              }} disabled={saving} title={!liConnected ? ((activeBrandVoice?.noBrand || !form.brand_voice_id) ? 'Nur im Redaktionsplan einer Marke möglich' : 'Kein LinkedIn-Profil mit dieser Brand verknüpft — erst verbinden') : undefined} style={{ display:'flex', alignItems:'center', gap:5, opacity: !liConnected ? 0.9 : 1 }}>
+              }} disabled={saving} title={(!liConnected && !viaUnipile) ? ((activeBrandVoice?.noBrand || !form.brand_voice_id) ? 'Nur im Redaktionsplan einer Marke möglich' : 'Kein LinkedIn-Profil mit dieser Brand verknüpft — erst verbinden') : undefined} style={{ display:'flex', alignItems:'center', gap:5, opacity: (!liConnected && !viaUnipile) ? 0.9 : 1 }}>
                 {future
-                  ? <span style={{display:'inline-flex',alignItems:'center',gap:6}}><Calendar size={13}/>Auto-Publish einplanen</span>
-                  : <span style={{display:'inline-flex',alignItems:'center',gap:6}}><Rocket size={13}/>Jetzt auf LinkedIn posten</span>}
+                  ? <span style={{display:'inline-flex',alignItems:'center',gap:6}}><Calendar size={13}/>{viaUnipile ? 'Über Unipile einplanen' : 'Auto-Publish einplanen'}</span>
+                  : <span style={{display:'inline-flex',alignItems:'center',gap:6}}><Rocket size={13}/>{viaUnipile ? 'Jetzt über Unipile posten' : 'Jetzt auf LinkedIn posten'}</span>}
               </button>
             )
           })()}

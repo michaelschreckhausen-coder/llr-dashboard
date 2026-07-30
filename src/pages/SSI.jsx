@@ -1,6 +1,5 @@
 import { useTranslation } from 'react-i18next'
 import React, { useState, useEffect, useCallback, useRef } from 'react'
-import { ResponsiveContainer, RadarChart, PolarGrid, PolarAngleAxis, PolarRadiusAxis, Radar, Tooltip } from 'recharts'
 import { supabase } from '../lib/supabase'
 import { useBrandVoice } from '../context/BrandVoiceContext'
 import { EXTENSION_WEBSTORE_URL } from '../lib/leadeskExtension'
@@ -116,12 +115,11 @@ const SUBSCORES = [
 ]
 
 export default function SSI({ session }) {
-  const { activeBrandVoice, noBrand } = useBrandVoice()
+  const { activeBrandVoice } = useBrandVoice()
   const [entries,  setEntries]  = useState([])
   const { t } = useTranslation()
   const [loading,  setLoading]  = useState(true)
   const [saving,   setSaving]   = useState(false)
-  const [refreshing, setRefreshing] = useState(false)
   const [flash,    setFlash]    = useState(null)
   const [showForm, setShowForm] = useState(false)
   const [form, setForm] = useState({
@@ -133,36 +131,17 @@ export default function SSI({ session }) {
 
   const load = useCallback(async () => {
     setLoading(true)
-    // SSI ist brand-scoped (Kennzahl des Marken-Profils). Erst laden wenn Marke aufgelöst.
-    if (!noBrand && !activeBrandVoice?.id) { setEntries([]); setLoading(false); return }
-    const bvId = noBrand ? null : (activeBrandVoice?.id || null)
-    // Brand-scoped: bei aktiver Marke NUR nach brand_voice_id filtern (RLS = Marken-Zugriff),
-    // damit geteilte Marken auch für berechtigte Kollegen sichtbar sind. Ohne Marke: eigene.
-    let _q = supabase.from('ssi_scores').select('*')
-    _q = bvId ? _q.eq('brand_voice_id', bvId) : _q.is('brand_voice_id', null).eq('user_id', session.user.id)
-    const { data } = await _q.order('recorded_at', { ascending: false }).limit(90)
+    // SSI ist account-weit (eine LinkedIn-Kennzahl pro Account), NICHT pro
+    // Brand Voice — daher kein brand_voice_id-Filter. (Vorher: beim Mount alle
+    // geladen, dann nach BV-Resolve gefiltert -> Score verschwand wieder.)
+    const { data } = await supabase.from('ssi_scores').select('*')
+      .eq('user_id', session.user.id)
+      .order('recorded_at', { ascending: false }).limit(90)
     setEntries(data || [])
     setLoading(false)
-  }, [session, activeBrandVoice?.id, noBrand])
+  }, [session])
 
   useEffect(() => { load() }, [load])
-
-  // SSI live über Unipile aktualisieren (kein Extension-Scrape) → schreibt einen
-  // ssi_scores-Snapshot für die aktive Marke und lädt neu.
-  async function refreshFromLinkedIn() {
-    if (!activeBrandVoice?.id) { showFlash('Bitte zuerst eine Marke wählen.', 'info'); return }
-    setRefreshing(true); setFlash(null)
-    try {
-      const { data, error } = await supabase.functions.invoke('ssi-refresh', { body: { brand_voice_id: activeBrandVoice.id } })
-      if (error) { showFlash('Aktualisieren fehlgeschlagen: ' + (error.message || error), 'error'); return }
-      if (data?.written > 0) showFlash('SSI aktualisiert.')
-      else if (data?.skipped > 0) showFlash('Heute schon aktualisiert — neuer Wert kommt morgen.', 'info')
-      else if (data?.noSeat > 0) showFlash('Kein SSI-Wert von LinkedIn erhalten (Konto prüfen).', 'error')
-      else showFlash('Kein verbundenes LinkedIn-Konto für diese Marke.', 'info')
-      await load()
-    } catch (e) { showFlash('Aktualisieren fehlgeschlagen: ' + String(e), 'error') }
-    finally { setRefreshing(false) }
-  }
 
   function showFlash(msg, type='success') { setFlash({ msg, type }); setTimeout(() => setFlash(null), 5000) }
 
@@ -208,17 +187,17 @@ export default function SSI({ session }) {
           <div className="lk-eyebrow" style={{ fontSize:12, fontWeight:700, letterSpacing:'1.6px', textTransform:'uppercase', fontFamily:'Inter, sans-serif', color:'var(--primary, #003060)', marginBottom:6 }}>LinkedIn · SSI</div>
           <h1 style={{ fontSize:26, fontWeight:700, margin:0, letterSpacing:'-0.3px', lineHeight:1.2, color:'var(--text-primary, rgb(20,20,43))' }}>Dein Social Selling Index.</h1>
           <p style={{ fontSize:13, color:'var(--text-muted)', margin:'8px 0 0', lineHeight:1.6, maxWidth:600 }}>
-            Dein LinkedIn-SSI im Blick — jetzt automatisch über die LinkedIn-Anbindung ausgelesen (kein Extension-Klick mehr nötig).
+            Dein LinkedIn-SSI im Blick — automatisch über die Extension ausgelesen oder manuell erfasst.
           </p>
         </div>
 
         <div style={{ display:'flex', gap:10, alignItems:'center', flexWrap:'wrap' }}>
-          <button className="lk-btn lk-btn-navy" onClick={refreshFromLinkedIn} disabled={refreshing}
-            title="Liest den SSI live über die LinkedIn-Anbindung (Unipile) aus — ohne Extension"
-            style={{ opacity: refreshing ? 0.6 : 1 }}>
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={refreshing ? { animation:'lk-spin 1s linear infinite' } : undefined}><path d="M21 12a9 9 0 1 1-2.64-6.36"/><path d="M21 3v6h-6"/></svg>
-            {refreshing ? 'Aktualisiere…' : 'SSI aktualisieren'}
-          </button>
+          <a href={EXTENSION_WEBSTORE_URL} target="_blank" rel="noopener noreferrer"
+            title="Der SSI wird automatisch über die Leadesk Chrome-Extension ausgelesen"
+            style={{ display:'flex', alignItems:'center', gap:7, padding:'10px 18px', borderRadius:12, border:'1.5px solid #0A6FB0', background:'var(--surface)', color:'var(--wl-primary, #0A6FB0)', fontSize:13, fontWeight:700, cursor:'pointer', textDecoration:'none' }}>
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><path d="M12 8v8M8 12h8"/></svg>
+            SSI per Extension auslesen
+          </a>
           <button className="lk-btn lk-btn-primary" onClick={() => setShowForm(f=>!f)} >
             {showForm ? 'Abbrechen' : '+ Eintragen'}
           </button>
@@ -275,7 +254,7 @@ export default function SSI({ session }) {
         <div style={{ textAlign:'center', padding:80, background:'var(--surface)', borderRadius:20, border:'1px solid var(--border)' }}>
           <div style={{ fontSize:56, marginBottom:14 }}>📊</div>
           <div style={{ fontWeight:800, fontSize:18, color:'rgb(20,20,43)', marginBottom:8 }}>Noch kein SSI-Score erfasst</div>
-          <div style={{ fontSize:13, color:'var(--text-muted)' }}>Klick auf „SSI aktualisieren", um deinen aktuellen Wert live über LinkedIn auszulesen — danach wächst der Verlauf täglich automatisch.</div>
+          <div style={{ fontSize:13, color:'var(--text-muted)' }}>Lass deinen SSI per Leadesk Chrome-Extension auslesen oder trage die Werte über „+ Eintragen" manuell ein.</div>
         </div>
       ) : (
         <div>
@@ -314,28 +293,24 @@ export default function SSI({ session }) {
               </div>
             </div>
 
-            {/* 4-Säulen-Radar + Werte */}
+            {/* Teilscores — Reports-BarRows */}
             <div style={{ background:'var(--surface)', border:'1px solid var(--border)', borderRadius:16, boxShadow:'var(--shadow-card)', padding:18 }}>
-              <h3 style={{ fontSize:14, fontWeight:700, color:'rgb(20,20,43)', margin:'0 0 6px' }}>Die 4 Säulen</h3>
-              <div style={{ width:'100%', height:220 }}>
-                <ResponsiveContainer width="100%" height="100%">
-                  <RadarChart data={SUBSCORES.map(s => ({ pillar: s.label, value: Number(latest[s.key] || 0) }))} outerRadius="70%">
-                    <PolarGrid stroke="#E5E7EB" />
-                    <PolarAngleAxis dataKey="pillar" tick={{ fontSize:10, fill:'#6B7280' }} />
-                    <PolarRadiusAxis domain={[0, 25]} tick={{ fontSize:8, fill:'#9CA3AF' }} angle={90} />
-                    <Radar dataKey="value" stroke="#315AE7" fill="#315AE7" fillOpacity={0.30} />
-                    <Tooltip formatter={v => [Number(v).toFixed(1) + ' / 25', 'Score']} />
-                  </RadarChart>
-                </ResponsiveContainer>
-              </div>
-              <div style={{ display:'flex', flexWrap:'wrap', gap:'6px 14px', marginTop:4 }}>
-                {SUBSCORES.map(s => (
-                  <div key={s.key} style={{ display:'flex', alignItems:'center', gap:6, fontSize:11, color:'#6B7280' }}>
-                    <span style={{ width:8, height:8, borderRadius:2, background:s.color, display:'inline-block' }} />
-                    {s.label}: <strong style={{ color:'rgb(20,20,43)' }}>{Number(latest[s.key] || 0).toFixed(1)}</strong>
+              <h3 style={{ fontSize:14, fontWeight:700, color:'rgb(20,20,43)', margin:'0 0 14px' }}>Teilscores</h3>
+              {SUBSCORES.map(s => {
+                const v = Number(latest[s.key] || 0)
+                const pct = Math.min(100, v / 25 * 100)
+                return (
+                  <div key={s.key} style={{ marginBottom:12 }}>
+                    <div style={{ display:'flex', justifyContent:'space-between', alignItems:'baseline', marginBottom:5 }}>
+                      <span style={{ fontSize:13, color:'#374151', fontWeight:500 }}>{s.label}</span>
+                      <span style={{ fontSize:12, color:'#6B7280' }}><strong style={{ color:'rgb(20,20,43)' }}>{v.toFixed(1)}</strong> / 25</span>
+                    </div>
+                    <div style={{ height:6, background:'#F3F4F6', borderRadius:3, overflow:'hidden' }}>
+                      <div style={{ width:pct+'%', height:'100%', background:s.color, transition:'width 0.5s' }}/>
+                    </div>
                   </div>
-                ))}
-              </div>
+                )
+              })}
             </div>
           </div>
 
