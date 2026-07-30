@@ -37,7 +37,7 @@ const STEPS = [
       { icon: <CheckCircle2 size={20} strokeWidth={1.75}/>, text: 'Akzeptanzrate messen' },
       { icon: <Calendar size={20} strokeWidth={1.75}/>, text: 'Automatischer Zeitstempel bei Vernetzung' },
     ],
-    cta: { label: 'Vernetzungen öffnen', href: '/vernetzungen' },
+    cta: { label: 'Automatisierung öffnen', href: '/automatisierung-neu' },
   },
   {
     id: 4,

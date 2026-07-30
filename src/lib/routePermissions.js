@@ -53,11 +53,9 @@ const ROUTE_PERMISSIONS = {
   '/deals':            'crm.deals',
   // '/aufgaben' ist always-on (siehe ALWAYS_ON oben) — Hub aggregiert
   // ueber alle Module, daher kein Permission-Gating.
-  '/vernetzungen':     'linkedin.connections',
   '/linkedin-connect': 'linkedin.connections',
   '/linkedin-suche':   'linkedin.connections',        // P3 Nachtrag: Prospecting = Sales+
   '/linkedin-inbox':   'linkedin.connections',        // P3 Nachtrag: LinkedIn-Kontakte = Sales+
-  '/linkedin-netzwerk': 'linkedin.connections',       // P3 Nachtrag: href↔Map-Fund — Netzwerk-Seite war ungegated (nur ModuleGuard)
   '/messages':         'linkedin.messages',
   '/automatisierung-neu': 'linkedin.automation',      // P3 Nachtrag: Builder ist Default-Route (Layout:126 Flag) — Loch geschlossen
   '/linkedin-engagement': 'linkedin.engagement',      // P3 Schritt 4: Marketing lacks → Upsell

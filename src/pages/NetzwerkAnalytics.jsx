@@ -1,12 +1,13 @@
 // src/pages/NetzwerkAnalytics.jsx
 //
-// Reporting — Netzwerk-Analytics (Bereich Netzwerk, TEAM-scoped).
+// Reporting — Netzwerk & Dialog (Bereich Analyse, BRAND-scoped).
 // Quelle: linkedin_network_metrics (tägliche Snapshots je Login, vom
 // analytics-snapshot Cron): Verbindungen/Follower/offene Einladungen.
-// Team-scoped über activeTeamId + RLS. Kein Brand-Umschalter.
+// Brand-scoped über die aktive Marke (brand_voice_id) + RLS. Dialog-Kennzahlen
+// aus linkedin_chats/linkedin_chat_messages (echtes Postfach).
 
 import React, { useState, useEffect } from 'react'
-import { Users, UserPlus, Send, Inbox, Loader2, BarChart3, Rocket, UserCheck, Clock } from 'lucide-react'
+import { Users, UserPlus, Send, Inbox, Loader2, BarChart3, Rocket, UserCheck, Clock, MessageSquare, ArrowDownLeft, ArrowUpRight } from 'lucide-react'
 import {
   ResponsiveContainer, LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend,
   ComposedChart, Bar,
@@ -15,6 +16,8 @@ import { supabase } from '../lib/supabase'
 import { useTeam } from '../context/TeamContext'
 import { useBrandVoice } from '../context/BrandVoiceContext'
 import PageHeader from '../components/PageHeader'
+import TabBar from '../components/TabBar'
+import OffeneAnfragen from '../components/OffeneAnfragen'
 
 const PRIMARY = 'rgb(49,90,231)'
 const pageOuterStyle = { background:'transparent', minHeight:'100vh', padding:'24px 16px 60px' }
@@ -36,7 +39,10 @@ export default function NetzwerkAnalytics() {
   const [enr, setEnr] = useState([])
   const [invites, setInvites] = useState([])
   const [msg, setMsg] = useState([])
+  const [chats, setChats] = useState([])
+  const [dmsgs, setDmsgs] = useState([])
   const [loading, setLoading] = useState(true)
+  const [ntab, setNtab] = useState('netzwerk')
 
   useEffect(() => {
     const bvId = activeBrandVoice?.id || null
@@ -46,7 +52,7 @@ export default function NetzwerkAnalytics() {
     ;(async () => {
       try {
         // Brand-scoped: Netzwerk-Analyse zeigt das Profil der aktiven Marke.
-        const [{ data: nm }, { data: bv }, { data: cc }, { data: ee }, { data: iv }, { data: mm }] = await Promise.all([
+        const [{ data: nm }, { data: bv }, { data: cc }, { data: ee }, { data: iv }, { data: mm }, { data: ch }] = await Promise.all([
           supabase.from('linkedin_network_metrics')
             .select('unipile_account_id, brand_voice_id, connections_total, followers_total, invites_pending_out, invites_pending_in, captured_on')
             .eq('brand_voice_id', bvId).order('captured_on', { ascending: true }),
@@ -55,6 +61,7 @@ export default function NetzwerkAnalytics() {
           supabase.from('la_enrollments').select('campaign_id, state, relation_status').eq('brand_voice_id', bvId),
           supabase.from('linkedin_invitations').select('status, sent_at, responded_at').eq('brand_voice_id', bvId),
           supabase.from('linkedin_messaging_metrics').select('unipile_account_id, unread_threads, unread_messages, active_7d, chats_scanned, captured_on').eq('brand_voice_id', bvId).order('captured_on', { ascending: true }),
+          supabase.from('linkedin_chats').select('id, attendee_name, unread_count, last_message_at').eq('brand_voice_id', bvId).order('last_message_at', { ascending: false }),
         ])
         if (cancelled) return
         setRows(nm || [])
@@ -62,6 +69,15 @@ export default function NetzwerkAnalytics() {
         setEnr(ee || [])
         setInvites(iv || [])
         setMsg(mm || [])
+        setChats(ch || [])
+        let dm = []
+        if (ch && ch.length) {
+          const ids = ch.map(c => c.id)
+          const { data: dmr } = await supabase.from('linkedin_chat_messages')
+            .select('chat_id, direction, sent_at').in('chat_id', ids).order('sent_at', { ascending: true })
+          dm = dmr || []
+        }
+        if (!cancelled) setDmsgs(dm)
         const map = {}
         for (const b of (bv || [])) map[b.id] = b.name || b.brand_name || null
         setBrandMap(map)
@@ -123,7 +139,41 @@ export default function NetzwerkAnalytics() {
   }
   const msgSeries = Object.keys(msgByDay).sort().map(d => msgByDay[d])
 
+  // ── Dialog-Metriken (aus linkedin_chats / linkedin_chat_messages) ──
+  const byChat = {}
+  for (const m of dmsgs) (byChat[m.chat_id] ||= []).push(m)
+  let dInbound = 0, dOutbound = 0, chatsWithOut = 0, chatsReplied = 0
+  const respHours = []
+  for (const c of chats) {
+    const ms = (byChat[c.id] || []).slice().sort((a, b) => new Date(a.sent_at) - new Date(b.sent_at))
+    const hasOut = ms.some(m => m.direction === 'outbound')
+    const hasIn = ms.some(m => m.direction === 'inbound')
+    for (const m of ms) { if (m.direction === 'inbound') dInbound++; else dOutbound++ }
+    if (hasOut) { chatsWithOut++; if (hasIn) chatsReplied++ }
+    let lastOut = null
+    for (const m of ms) {
+      if (m.direction === 'outbound') { if (lastOut == null) lastOut = new Date(m.sent_at) }
+      else if (m.direction === 'inbound' && lastOut) { const h = (new Date(m.sent_at) - lastOut) / 3600000; if (h >= 0) respHours.push(h); break }
+    }
+  }
+  const replyRate = chatsWithOut > 0 ? Math.round((chatsReplied / chatsWithOut) * 100) : null
+  const avgRespH = respHours.length ? (respHours.reduce((a, b) => a + b, 0) / respHours.length) : null
+  const avgRespTxt = avgRespH == null ? '–' : (avgRespH < 48 ? avgRespH.toFixed(1) + ' h' : (avgRespH / 24).toFixed(1) + ' T')
+  const unreadChats = chats.filter(c => (c.unread_count || 0) > 0).length
+  const activeDialogs = chats.filter(c => { const ms = byChat[c.id] || []; return ms.some(m => m.direction === 'outbound') && ms.some(m => m.direction === 'inbound') }).length
+  const personRows = chats
+    .map(c => ({ name: c.attendee_name || 'Unbekannt', count: (byChat[c.id] || []).length, unread: c.unread_count || 0, last: c.last_message_at }))
+    .sort((a, b) => new Date(b.last || 0) - new Date(a.last || 0)).slice(0, 12)
+
   const label = (r) => brandMap[r.brand_voice_id] || r.unipile_account_id?.slice(0, 8) || 'Login'
+
+  const isCompany = activeBrandVoice?.account_type === 'company_page'
+  const NTABS = [
+    { v:'netzwerk',  label:'Übersicht', icon:<Users size={16} strokeWidth={1.75}/>,       color:'blue' },
+    { v:'dialog',    label:'Dialog',    icon:<MessageSquare size={16} strokeWidth={1.75}/>,color:'purple' },
+    { v:'annahmen',  label:'Annahmen',  icon:<UserCheck size={16} strokeWidth={1.75}/>,    color:'green' },
+    { v:'kampagnen', label:'Kampagnen', icon:<Rocket size={16} strokeWidth={1.75}/>,       color:'amber' },
+  ]
 
   return (
     <div style={pageOuterStyle}>
@@ -146,6 +196,8 @@ export default function NetzwerkAnalytics() {
           </div>
         ) : (
           <div style={{ display:'flex', flexDirection:'column', gap:16 }}>
+            <TabBar tabs={NTABS.filter(t => !isCompany || (t.v !== 'annahmen' && t.v !== 'kampagnen'))} active={ntab} onChange={setNtab} style={{ marginBottom:4 }} />
+            {ntab==='netzwerk' && (<>
             {/* KPI-Reihe (Team-Summe) */}
             <div style={{ display:'flex', gap:10, flexWrap:'wrap' }}>
               <div style={kpiTile}><div style={kpiLabel}><Users size={11}/>Verbindungen</div><div style={kpiValue}>{fmt(sum('connections_total'))}</div></div>
@@ -178,6 +230,106 @@ export default function NetzwerkAnalytics() {
                 </div>
               )}
             </div>
+
+            {/* Per-Login-Aufschlüsselung — nur wenn eine Marke ausnahmsweise mehrere Profile hat (brand-scoped = i.d.R. 1) */}
+            {logins.length > 1 && (
+            <div style={cardStyle}>
+              <div className="lk-eyebrow">Je Profil</div>
+              <div style={{ display:'flex', flexDirection:'column', gap:8 }}>
+                <div style={{ display:'flex', fontSize:11, fontWeight:700, color:'var(--text-muted,#6B7280)', textTransform:'uppercase', letterSpacing:'0.05em', padding:'0 4px' }}>
+                  <span style={{ flex:2, minWidth:120 }}>Profil</span>
+                  <span style={{ flex:1, textAlign:'right' }}>Verbindungen</span>
+                  <span style={{ flex:1, textAlign:'right' }}>Follower</span>
+                  <span style={{ flex:1, textAlign:'right' }}>Anfr. raus</span>
+                  <span style={{ flex:1, textAlign:'right' }}>Anfr. rein</span>
+                </div>
+                {logins.map(r => (
+                  <div key={r.unipile_account_id} style={{ display:'flex', alignItems:'center', fontSize:13, padding:'8px 4px', borderTop:'1px solid var(--border-soft,#F1F5F9)' }}>
+                    <span style={{ flex:2, minWidth:120, fontWeight:600, color:'var(--text-strong,#111827)', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{label(r)}</span>
+                    <span style={{ flex:1, textAlign:'right', fontVariantNumeric:'tabular-nums' }}>{fmt(r.connections_total)}</span>
+                    <span style={{ flex:1, textAlign:'right', fontVariantNumeric:'tabular-nums' }}>{fmt(r.followers_total)}</span>
+                    <span style={{ flex:1, textAlign:'right', fontVariantNumeric:'tabular-nums' }}>{fmt(r.invites_pending_out)}</span>
+                    <span style={{ flex:1, textAlign:'right', fontVariantNumeric:'tabular-nums' }}>{fmt(r.invites_pending_in)}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+            )}
+
+            <div style={{ fontSize:11, color:'var(--text-muted,#9CA3AF)', lineHeight:1.5 }}>
+              Hinweis: LinkedIn liefert nur aktuelle Werte — den Verlauf bauen wir über tägliche Snapshots auf. „Anfragen offen" = ausstehende gesendete/erhaltene Vernetzungsanfragen. „Angenommen/Ausstehend" bei Kampagnen wird durch den Automatisierungs-Runner aktualisiert.
+            </div>            </>)}
+            {ntab==='dialog' && (<>
+            {/* ── Dialog (aus dem Postfach) ── */}
+            {(dOutbound + dInbound) > 0 && (
+              <div style={cardStyle}>
+                <div className="lk-eyebrow"><MessageSquare size={12} style={{ verticalAlign:'-2px' }} /> Dialog</div>
+                <div style={{ display:'flex', gap:10, flexWrap:'wrap', margin:'6px 0 4px' }}>
+                  <div style={kpiTile}><div style={kpiLabel}><UserCheck size={11}/>Antwortquote</div><div style={{ ...kpiValue, color:'var(--primary)' }}>{replyRate != null ? replyRate + ' %' : '–'}</div></div>
+                  <div style={kpiTile}><div style={kpiLabel}><Clock size={11}/>Ø Antwortzeit</div><div style={kpiValue}>{avgRespTxt}</div></div>
+                  <div style={kpiTile}><div style={kpiLabel}><MessageSquare size={11}/>Aktive Dialoge</div><div style={kpiValue}>{fmt(activeDialogs)}</div></div>
+                  <div style={kpiTile}><div style={kpiLabel}><Inbox size={11}/>Ungelesen</div><div style={{ ...kpiValue, color: unreadChats>0 ? '#B54708' : undefined }}>{fmt(unreadChats)}</div></div>
+                  <div style={kpiTile}><div style={kpiLabel}><ArrowUpRight size={11}/>Nachrichten raus</div><div style={kpiValue}>{fmt(dOutbound)}</div></div>
+                  <div style={kpiTile}><div style={kpiLabel}><ArrowDownLeft size={11}/>Nachrichten rein</div><div style={kpiValue}>{fmt(dInbound)}</div></div>
+                </div>
+                {personRows.length > 0 && (
+                  <div style={{ marginTop:12, overflowX:'auto' }}>
+                    <div style={{ fontSize:12, fontWeight:700, color:'var(--text-strong,#111827)', marginBottom:6 }}>Dialoge nach Kontakt</div>
+                    <table style={{ width:'100%', borderCollapse:'collapse', fontSize:13 }}>
+                      <thead>
+                        <tr style={{ textAlign:'left', color:'var(--text-muted,#6B7280)', fontSize:11, textTransform:'uppercase', letterSpacing:'0.04em' }}>
+                          <th style={{ padding:'6px 8px' }}>Kontakt</th>
+                          <th style={{ padding:'6px 8px', textAlign:'right' }}>Nachrichten</th>
+                          <th style={{ padding:'6px 8px', textAlign:'right' }}>Ungelesen</th>
+                          <th style={{ padding:'6px 8px', textAlign:'right' }}>Letzte Aktivität</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {personRows.map((p, i) => (
+                          <tr key={i} style={{ borderTop:'1px solid #F1F3F5' }}>
+                            <td style={{ padding:'7px 8px', color:'var(--text-strong,#111827)', fontWeight:500 }}>{p.name}</td>
+                            <td style={{ padding:'7px 8px', textAlign:'right', fontVariantNumeric:'tabular-nums' }}>{fmt(p.count)}</td>
+                            <td style={{ padding:'7px 8px', textAlign:'right', fontVariantNumeric:'tabular-nums', color: p.unread>0 ? '#B54708' : '#9CA3AF', fontWeight: p.unread>0 ? 700 : 400 }}>{p.unread > 0 ? p.unread : '–'}</td>
+                            <td style={{ padding:'7px 8px', textAlign:'right', color:'var(--text-muted,#6B7280)' }}>{p.last ? dDE(p.last) : '–'}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* ── Postfach (Dialog) ── */}
+            {msg.length > 0 && (
+              <div style={cardStyle}>
+                <div className="lk-eyebrow">Postfach · Dialog</div>
+                <div style={{ display:'flex', gap:10, flexWrap:'wrap', margin:'6px 0 4px' }}>
+                  <div style={kpiTile}><div style={kpiLabel}>Ungelesene Threads</div><div style={{ ...kpiValue, color: msgSum('unread_threads')>0 ? '#B45309' : undefined }}>{fmt(msgSum('unread_threads'))}</div></div>
+                  <div style={kpiTile}><div style={kpiLabel}>Ungelesene Nachrichten</div><div style={kpiValue}>{fmt(msgSum('unread_messages'))}</div></div>
+                  <div style={kpiTile}><div style={kpiLabel}>Aktive Gespräche (7T)</div><div style={kpiValue}>{fmt(msgSum('active_7d'))}</div></div>
+                  <div style={kpiTile}><div style={kpiLabel}>Gescannte Chats</div><div style={kpiValue}>{fmt(msgSum('chats_scanned'))}</div></div>
+                </div>
+                {msgSeries.length >= 2 && (
+                  <div style={{ width:'100%', height:200, marginTop:8 }}>
+                    <ResponsiveContainer width="100%" height="100%">
+                      <LineChart data={msgSeries} margin={{ top:8, right:16, bottom:8, left:0 }}>
+                        <CartesianGrid strokeDasharray="3 3" stroke="#E4E7EC" />
+                        <XAxis dataKey="name" tick={{ fontSize:11 }} /><YAxis tick={{ fontSize:11 }} /><Tooltip /><Legend wrapperStyle={{ fontSize:12 }} />
+                        <Line type="monotone" dataKey="Ungelesene Threads" stroke="#D97706" strokeWidth={2} dot={{ r:2 }} />
+                        <Line type="monotone" dataKey="Aktiv (7T)" stroke={PRIMARY} strokeWidth={2} dot={{ r:2 }} />
+                      </LineChart>
+                    </ResponsiveContainer>
+                  </div>
+                )}
+                <div style={{ fontSize:11, color:'var(--text-muted,#9CA3AF)', marginTop:8 }}>Gescannt werden die zuletzt aktiven Konversationen (gedeckelt). „Ungelesen" = Threads mit ungelesenen Nachrichten, „Aktiv 7T" = Gespräche mit Aktivität in den letzten 7 Tagen.</div>
+              </div>
+            )}
+
+            </>)}
+            {ntab==='annahmen' && !isCompany && (<>
+            {/* ── Offene Anfragen verwalten (aus Vernetzung verlagert) ── */}
+            <OffeneAnfragen />
 
             {/* ── Vernetzungs-Annahmequote ── */}
             {invites.length > 0 && (
@@ -212,57 +364,8 @@ export default function NetzwerkAnalytics() {
               </div>
             )}
 
-            {/* ── Postfach (Dialog) ── */}
-            {msg.length > 0 && (
-              <div style={cardStyle}>
-                <div className="lk-eyebrow">Postfach · Dialog</div>
-                <div style={{ display:'flex', gap:10, flexWrap:'wrap', margin:'6px 0 4px' }}>
-                  <div style={kpiTile}><div style={kpiLabel}>Ungelesene Threads</div><div style={{ ...kpiValue, color: msgSum('unread_threads')>0 ? '#B45309' : undefined }}>{fmt(msgSum('unread_threads'))}</div></div>
-                  <div style={kpiTile}><div style={kpiLabel}>Ungelesene Nachrichten</div><div style={kpiValue}>{fmt(msgSum('unread_messages'))}</div></div>
-                  <div style={kpiTile}><div style={kpiLabel}>Aktive Gespräche (7T)</div><div style={kpiValue}>{fmt(msgSum('active_7d'))}</div></div>
-                  <div style={kpiTile}><div style={kpiLabel}>Gescannte Chats</div><div style={kpiValue}>{fmt(msgSum('chats_scanned'))}</div></div>
-                </div>
-                {msgSeries.length >= 2 && (
-                  <div style={{ width:'100%', height:200, marginTop:8 }}>
-                    <ResponsiveContainer width="100%" height="100%">
-                      <LineChart data={msgSeries} margin={{ top:8, right:16, bottom:8, left:0 }}>
-                        <CartesianGrid strokeDasharray="3 3" stroke="#E4E7EC" />
-                        <XAxis dataKey="name" tick={{ fontSize:11 }} /><YAxis tick={{ fontSize:11 }} /><Tooltip /><Legend wrapperStyle={{ fontSize:12 }} />
-                        <Line type="monotone" dataKey="Ungelesene Threads" stroke="#D97706" strokeWidth={2} dot={{ r:2 }} />
-                        <Line type="monotone" dataKey="Aktiv (7T)" stroke={PRIMARY} strokeWidth={2} dot={{ r:2 }} />
-                      </LineChart>
-                    </ResponsiveContainer>
-                  </div>
-                )}
-                <div style={{ fontSize:11, color:'var(--text-muted,#9CA3AF)', marginTop:8 }}>Gescannt werden die zuletzt aktiven Konversationen (gedeckelt). „Ungelesen" = Threads mit ungelesenen Nachrichten, „Aktiv 7T" = Gespräche mit Aktivität in den letzten 7 Tagen.</div>
-              </div>
-            )}
-
-            {/* Per-Login-Aufschlüsselung — nur wenn eine Marke ausnahmsweise mehrere Profile hat (brand-scoped = i.d.R. 1) */}
-            {logins.length > 1 && (
-            <div style={cardStyle}>
-              <div className="lk-eyebrow">Je Profil</div>
-              <div style={{ display:'flex', flexDirection:'column', gap:8 }}>
-                <div style={{ display:'flex', fontSize:11, fontWeight:700, color:'var(--text-muted,#6B7280)', textTransform:'uppercase', letterSpacing:'0.05em', padding:'0 4px' }}>
-                  <span style={{ flex:2, minWidth:120 }}>Profil</span>
-                  <span style={{ flex:1, textAlign:'right' }}>Verbindungen</span>
-                  <span style={{ flex:1, textAlign:'right' }}>Follower</span>
-                  <span style={{ flex:1, textAlign:'right' }}>Anfr. raus</span>
-                  <span style={{ flex:1, textAlign:'right' }}>Anfr. rein</span>
-                </div>
-                {logins.map(r => (
-                  <div key={r.unipile_account_id} style={{ display:'flex', alignItems:'center', fontSize:13, padding:'8px 4px', borderTop:'1px solid var(--border-soft,#F1F5F9)' }}>
-                    <span style={{ flex:2, minWidth:120, fontWeight:600, color:'var(--text-strong,#111827)', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{label(r)}</span>
-                    <span style={{ flex:1, textAlign:'right', fontVariantNumeric:'tabular-nums' }}>{fmt(r.connections_total)}</span>
-                    <span style={{ flex:1, textAlign:'right', fontVariantNumeric:'tabular-nums' }}>{fmt(r.followers_total)}</span>
-                    <span style={{ flex:1, textAlign:'right', fontVariantNumeric:'tabular-nums' }}>{fmt(r.invites_pending_out)}</span>
-                    <span style={{ flex:1, textAlign:'right', fontVariantNumeric:'tabular-nums' }}>{fmt(r.invites_pending_in)}</span>
-                  </div>
-                ))}
-              </div>
-            </div>
-            )}
-
+            </>)}
+            {ntab==='kampagnen' && !isCompany && (<>
             {/* ── Automatisierung (Kampagnen-Reporting) ── */}
             {camps.length > 0 && (() => {
               const byCampaign = {}
@@ -312,9 +415,8 @@ export default function NetzwerkAnalytics() {
               )
             })()}
 
-            <div style={{ fontSize:11, color:'var(--text-muted,#9CA3AF)', lineHeight:1.5 }}>
-              Hinweis: LinkedIn liefert nur aktuelle Werte — den Verlauf bauen wir über tägliche Snapshots auf. „Anfragen offen" = ausstehende gesendete/erhaltene Vernetzungsanfragen. „Angenommen/Ausstehend" bei Kampagnen wird durch den Automatisierungs-Runner aktualisiert.
-            </div>
+            </>)}
+
           </div>
         )}
       </div>

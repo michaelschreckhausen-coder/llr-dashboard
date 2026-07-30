@@ -119,6 +119,15 @@ export default function LinkedInAutomationNeu({ session }) {
     setInboxLists(il.data || [])
   }, [activeTeamId, activeBrandVoice?.id])
   useEffect(() => { load() }, [load])
+  const [caps, setCaps] = useState(null)
+  useEffect(() => {
+    const bvId = activeBrandVoice?.id || null
+    if (!bvId) { setCaps(null); return }
+    supabase.rpc('get_brand_connection_caps', { p_brand_voice_id: bvId }).then(({ data }) => setCaps(data || null))
+  }, [activeBrandVoice?.id])
+  const isCompany = caps?.account_type === 'company_page'
+  const canInmail = !!(caps?.caps?.inmail)
+  const availActions = ACTIONS.filter(a => a !== 'inmail' || canInmail)
 
   // Detail (Steps + Funnel) für die ausgewählte Kampagne, mit Polling.
   const loadDetail = useCallback(async (campId) => {
@@ -296,8 +305,13 @@ export default function LinkedInAutomationNeu({ session }) {
         overline="LinkedIn · Automatisierung"
         title="Automatisierung"
         subtitle="Kampagnen-Builder + Funnel-Monitor."
-        action={<button className="lk-btn lk-btn-navy" onClick={createCampaign} disabled={creating}><Plus size={16} /> Neue Kampagne</button>}
+        action={<button className="lk-btn lk-btn-navy" onClick={createCampaign} disabled={creating || isCompany} title={isCompany ? 'Company Pages koennen keine Outreach-Automatisierung ausfuehren' : ''}><Plus size={16} /> Neue Kampagne</button>}
       />
+      {isCompany && (
+        <div style={{ margin: '0 0 16px', padding: '11px 14px', borderRadius: 12, background: '#FFF7ED', border: '1px solid #FED7AA', color: '#9A3412', fontSize: 13, lineHeight: 1.5 }}>
+          <strong>Hinweis:</strong> Diese Marke ist eine LinkedIn Company Page. Unternehmensseiten koennen keine Vernetzungsanfragen oder Direktnachrichten automatisiert versenden — Outreach-Automatisierung ist hier nicht verfuegbar.
+        </div>
+      )}
 
       {/* Runner-Health-Leiste */}
       {health && (
@@ -442,7 +456,7 @@ export default function LinkedInAutomationNeu({ session }) {
                     {steps.map((st, i) => (
                       <div key={st.id || st._key} style={{ display: 'flex', gap: 8, alignItems: 'center', marginBottom: 8, flexWrap: 'wrap' }}>
                         <span style={{ width: 22, height: 22, borderRadius: 6, background: PRIMARY_VAR + '18', color: PRIMARY_VAR, fontSize: 11, fontWeight: 800, display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }}>{i + 1}</span>
-                        <PillSelect value={st.action} onChange={__lkv => { const patch = { action: __lkv }; const allowed = condOptionsFor(steps, i, __lkv, null).map(o => o[0]); if (!allowed.includes(st.condition)) patch.condition = firstValidCond(steps, i, __lkv); saveStep(i, patch) }} neutral disabled={seqLocked} options={(ACTIONS.includes(st.action) ? ACTIONS : [st.action, ...ACTIONS]).map((a) => ({ value: a, label: ACTION_LABELS[a] || a }))} buttonStyle={{ minWidth: 140 }} />
+                        <PillSelect value={st.action} onChange={__lkv => { const patch = { action: __lkv }; const allowed = condOptionsFor(steps, i, __lkv, null).map(o => o[0]); if (!allowed.includes(st.condition)) patch.condition = firstValidCond(steps, i, __lkv); saveStep(i, patch) }} neutral disabled={seqLocked} options={(availActions.includes(st.action) ? availActions : [st.action, ...availActions]).map((a) => ({ value: a, label: ACTION_LABELS[a] || a }))} buttonStyle={{ minWidth: 140 }} />
                         <PillSelect value={st.condition} onChange={__lkv => saveStep(i, { condition: __lkv })} neutral disabled={seqLocked || i === 0} options={condOptionsFor(steps, i, st.action, st.condition).map(([c, l]) => ({ value: c, label: l }))} buttonStyle={{ minWidth: 140 }} />
                         {i > 0 && (
                           <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: 12.5, color: 'var(--text-muted, #6B7280)' }}>
