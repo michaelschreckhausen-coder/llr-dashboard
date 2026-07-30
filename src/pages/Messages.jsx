@@ -77,7 +77,7 @@ export default function Messages() {
 
   if (!bvId) return (
     <div style={{ width: '100%', maxWidth: 1100, margin: '0 auto', padding: '28px 24px' }}>
-      <PageHeader overline="LinkedIn · Netzwerk" title="Nachrichten" subtitle="Nachrichten & Vernetzungsanfragen erstellen und dein LinkedIn-Postfach verwalten." />
+      <PageHeader overline="LinkedIn · Netzwerk" title="Kommunikation" subtitle="Vernetzungsanfragen & Nachrichten erstellen und dein LinkedIn-Postfach verwalten." />
       <div style={{ ...card, textAlign: 'center', color: 'var(--text-muted)', padding: '48px 20px' }}>
         <InboxIcon size={34} color={P} /><div style={{ marginTop: 10, fontSize: 14 }}>Bitte oben eine Marke mit verbundenem LinkedIn-Profil waehlen.</div>
       </div>
@@ -88,7 +88,7 @@ export default function Messages() {
     <div style={{ width: '100%', maxWidth: 1100, margin: '0 auto', padding: '20px 24px 40px' }}>
       <PageHeader
         overline="LinkedIn · Netzwerk"
-        title="Nachrichten"
+        title="Kommunikation"
         subtitle={`Nachrichten & Vernetzungsanfragen erstellen und das Postfach der Marke ${brandName} verwalten — direkt aus Leadesk.`}
       />
       <TabBar
@@ -109,7 +109,7 @@ export default function Messages() {
 }
 
 /* ─────────────────────────── Reiter: VERFASSEN ─────────────────────────── */
-const SRC_LABEL = { kontakte:'LinkedIn-Kontakte', netzwerk:'LinkedIn-Netzwerk', crm:'CRM-Kontakte', firmen:'CRM-Unternehmen', suche:'LinkedIn-Suche' }
+const SRC_LABEL = { kontakte:'Prospects', netzwerk:'Verbindungen', crm:'CRM-Kontakte', firmen:'CRM-Unternehmen', suche:'LinkedIn-Suche' }
 function sourcesFor(cat, canInmail) {
   // Vernetzungsanfrage: an Nicht-Verbundene -> Netzwerk (bereits verbunden) ausgeschlossen.
   if (cat.action === 'invite') return ['kontakte', 'crm', 'firmen', 'suche']

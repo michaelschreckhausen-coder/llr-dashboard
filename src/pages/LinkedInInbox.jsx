@@ -389,7 +389,7 @@ export default function LinkedInInbox() {
     setDeleteListModal(null)
     if (error) { setMsg({ text: 'Löschen fehlgeschlagen: ' + error.message }); return }
     if (listFilter === l.id) setListFilter('all')
-    setMsg({ text: `Liste „${l.name}" gelöscht — die Kontakte bleiben in deinen LinkedIn Kontakten.` })
+    setMsg({ text: `Liste „${l.name}" gelöscht — die Kontakte bleiben in deinen Kontakten.` })
   }
 
   // Zu Liste = reine Auswahl-Sammlung.
@@ -425,7 +425,7 @@ export default function LinkedInInbox() {
         <div onClick={() => !importing && setImportOpen(false)} style={{ position: 'fixed', inset: 0, background: 'rgba(15,23,42,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000, padding: 16 }}>
           <div onClick={e => e.stopPropagation()} style={{ background: card, border: `1px solid ${border}`, borderRadius: 14, width: 520, maxWidth: '94vw', padding: 24, boxShadow: '0 24px 64px rgba(15,23,42,0.25)' }}>
             <div style={{ fontSize: 17, fontWeight: 700, color: text, marginBottom: 4 }}>Sales-Navigator-Suche importieren</div>
-            <p style={{ fontSize: 13, color: muted, margin: '0 0 16px', lineHeight: 1.5 }}>Füge die URL einer Sales-Navigator-Personensuche ein — die Treffer landen in deinen LinkedIn Kontakten (optional direkt in einer Liste).</p>
+            <p style={{ fontSize: 13, color: muted, margin: '0 0 16px', lineHeight: 1.5 }}>Füge die URL einer Sales-Navigator-Personensuche ein — die Treffer landen in deinen Kontakten (optional direkt in einer Liste).</p>
 
             {okAccount === undefined ? (
               <div style={{ color: muted, fontSize: 14, padding: '12px 0' }}>Lade LinkedIn-Verbindung…</div>
@@ -465,9 +465,9 @@ export default function LinkedInInbox() {
       )}
       {/* Journal-Header (analog /messages, /automatisierung) */}
       <div style={{ marginBottom: 16 }}>
-        <div className="lk-eyebrow" style={{ fontSize:12, fontWeight:700, letterSpacing:'1.6px', textTransform:'uppercase', fontFamily:'Inter, sans-serif', color:'var(--primary, #003060)', marginBottom:6 }}>LinkedIn · {sourceTab === 'netzwerk' ? 'Netzwerk' : 'Kontakte'}</div>
+        <div className="lk-eyebrow" style={{ fontSize:12, fontWeight:700, letterSpacing:'1.6px', textTransform:'uppercase', fontFamily:'Inter, sans-serif', color:'var(--primary, #003060)', marginBottom:6 }}>LinkedIn · {sourceTab === 'netzwerk' ? 'Verbindungen' : 'Prospects'}</div>
         <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-          <h1 style={{ fontSize: 26, fontWeight: 700, margin: 0, letterSpacing: '-0.3px', lineHeight: 1.2, color: 'var(--text-primary, rgb(20,20,43))' }}>{sourceTab === 'netzwerk' ? 'Dein LinkedIn Netzwerk.' : 'Deine LinkedIn Kontakte.'}</h1>
+          <h1 style={{ fontSize: 26, fontWeight: 700, margin: 0, letterSpacing: '-0.3px', lineHeight: 1.2, color: 'var(--text-primary, rgb(20,20,43))' }}>{sourceTab === 'netzwerk' ? 'Deine Verbindungen.' : 'Deine Prospects.'}</h1>
           {!loading && <span style={{ background: 'var(--primary)', color: '#fff', borderRadius: 99, padding: '2px 10px', fontSize: 13, fontWeight: 700 }}>{counts[sourceTab]}</span>}
           {sourceTab === 'kontakte' && (
             <button className="lk-btn lk-btn-cta"
@@ -493,7 +493,7 @@ export default function LinkedInInbox() {
 
       {/* Quell-Tabs: Kontakte (Prospecting) vs Netzwerk (unipile_relations, 1.-Grad-Verbindungen) */}
       <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 18, borderBottom: `1px solid ${border}` }}>
-        {[{ key: 'kontakte', label: 'LinkedIn Kontakte' }, { key: 'netzwerk', label: 'LinkedIn Netzwerk' }].map(t => {
+        {[{ key: 'kontakte', label: 'Prospects' }, { key: 'netzwerk', label: 'Verbindungen' }].map(t => {
           const active = sourceTab === t.key
           return (
             <button key={t.key}
@@ -599,7 +599,7 @@ export default function LinkedInInbox() {
       ) : rows.length === 0 ? (
         <div style={{ textAlign: 'center', padding: '60px 20px', color: muted }}>
           <InboxIcon size={40} style={{ opacity: 0.4 }} />
-          <div style={{ fontSize: 16, fontWeight: 700, color: text, marginTop: 12 }}>{sourceTab === 'netzwerk' ? 'Noch keine Netzwerk-Verbindungen' : 'Inbox ist leer'}</div>
+          <div style={{ fontSize: 16, fontWeight: 700, color: text, marginTop: 12 }}>{sourceTab === 'netzwerk' ? 'Noch keine Verbindungen' : 'Noch keine Prospects'}</div>
           <div style={{ fontSize: 14, marginTop: 4 }}>{sourceTab === 'netzwerk' ? 'Importierte LinkedIn-Verbindungen (1. Grad) erscheinen hier.' : 'Neue LinkedIn-Importe landen hier zur Sichtung.'}</div>
         </div>
       ) : (
@@ -676,7 +676,7 @@ export default function LinkedInInbox() {
               <div style={{ fontWeight: 800, fontSize: 17, color: text }}>{deleteBulkModal.count} Kontakt(e) löschen?</div>
             </div>
             <p style={{ fontSize: 13.5, color: text, margin: '0 0 12px', lineHeight: 1.5 }}>
-              Die Kontakte werden <b>endgültig aus „LinkedIn Kontakte" gelöscht</b> — inklusive ihrer Listen-Zuordnungen. Das kann <b>nicht rückgängig</b> gemacht werden.
+              Die Kontakte werden <b>endgültig aus „Kontakte" gelöscht</b> — inklusive ihrer Listen-Zuordnungen. Das kann <b>nicht rückgängig</b> gemacht werden.
             </p>
             {deleteBulkModal.count >= 100 && (
               <div style={{ display: 'flex', gap: 8, alignItems: 'flex-start', fontSize: 12.5, color: '#B45309', background: '#FFFBEB', border: '1px solid #FDE68A', borderRadius: 8, padding: '10px 12px', marginBottom: 10 }}>
@@ -689,7 +689,7 @@ export default function LinkedInInbox() {
             ) : deleteBulkModal.refs.count > 0 && (
               <div style={{ display: 'flex', gap: 8, alignItems: 'flex-start', fontSize: 12.5, color: '#B45309', background: '#FFFBEB', border: '1px solid #FDE68A', borderRadius: 8, padding: '10px 12px', marginBottom: 12 }}>
                 <AlertTriangle size={15} style={{ flexShrink: 0, marginTop: 1 }} />
-                <span><b>{deleteBulkModal.refs.count} Kontakt(e) sind in aktiven Kampagnen</b>{deleteBulkModal.refs.campaigns.length ? ` (${deleteBulkModal.refs.campaigns.map(n => `„${n}"`).join(', ')})` : ''}. Bereits gestartete Kampagnen laufen weiter (sie haben die Kontakte schon übernommen) — hier verschwinden sie nur aus „LinkedIn Kontakte" und den Listen.</span>
+                <span><b>{deleteBulkModal.refs.count} Kontakt(e) sind in aktiven Kampagnen</b>{deleteBulkModal.refs.campaigns.length ? ` (${deleteBulkModal.refs.campaigns.map(n => `„${n}"`).join(', ')})` : ''}. Bereits gestartete Kampagnen laufen weiter (sie haben die Kontakte schon übernommen) — hier verschwinden sie nur aus „Kontakte" und den Listen.</span>
               </div>
             )}
             <div style={{ display: 'flex', gap: 10, justifyContent: 'flex-end', marginTop: 6 }}>
@@ -710,7 +710,7 @@ export default function LinkedInInbox() {
               <div style={{ fontWeight: 800, fontSize: 17, color: text }}>Liste löschen?</div>
             </div>
             <p style={{ fontSize: 13.5, color: text, margin: '0 0 12px', lineHeight: 1.5 }}>
-              „<b>{deleteListModal.list.name}</b>" wird gelöscht. Die zugeordneten <b>Kontakte bleiben</b> in deinen LinkedIn Kontakten — nur die Listen-Zuordnung geht weg.
+              „<b>{deleteListModal.list.name}</b>" wird gelöscht. Die zugeordneten <b>Kontakte bleiben</b> in deinen Kontakten — nur die Listen-Zuordnung geht weg.
             </p>
             {deleteListModal.checking ? (
               <div style={{ fontSize: 12.5, color: muted, marginBottom: 14 }}>Prüfe Verwendung…</div>

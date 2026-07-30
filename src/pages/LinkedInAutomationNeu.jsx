@@ -429,7 +429,7 @@ export default function LinkedInAutomationNeu({ session }) {
                     {selAudience.kind === 'list' && (
                       <div style={{ flex: 1, minWidth: 220 }}><label style={labelStyle}>Liste</label>
                         <PillSelect value={selAudience.query?.list_id || ''} onChange={v => saveAudience({ query: { ...(selAudience.query || {}), list_id: v || null } })} neutral options={[{ value: '', label: `— Liste wählen —` }, ...inboxLists.map((l) => ({ value: l.id, label: l.name }))]} buttonStyle={{ minWidth: 140 }} />
-                        {inboxLists.length === 0 && <div style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 4 }}>Noch keine Listen — unter „LinkedIn Kontakte" anlegen.</div>}
+                        {inboxLists.length === 0 && <div style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 4 }}>Noch keine Listen — unter „Kontakte" anlegen.</div>}
                       </div>
                     )}
                     <button className="lk-btn lk-btn-navy" onClick={runAudience}><Zap size={14} /> Audience ausführen</button>

@@ -127,13 +127,13 @@ function getNav(t) {
   ] },
   { subSection: true, label: 'Netzwerk', items: [
     { to: '/linkedin-suche',  icon: IcSearch,   label: 'Suche' },
-    { to: '/linkedin-inbox',  icon: IcInbox,    label: 'LinkedIn Kontakte' },
+    { to: '/linkedin-inbox',  icon: IcInbox,    label: 'Kontakte' },
     // AUSGEBLENDET 17.07.2026 (Julian): Michaels Netzwerk-Feature (Commit 54c9811c) ist
     // develop-only, auf Staging noch nicht lauffÃ¤hig (Migration linkedin_network fehlt) und
     // Michael arbeitet vorerst nicht weiter daran. NUR MenÃ¼punkt versteckt â Route/Seite/EF/
     // Migrationen bleiben erhalten. Zum ZurÃ¼ckholen einfach diese Zeile wieder aktivieren:
     { to: '/automatisierung-neu', icon: IcCog, label: 'Automatisierung' },
-    { to: '/messages',        icon: IcMail,     label: 'Nachrichten' },
+    { to: '/messages',        icon: IcMail,     label: 'Kommunikation' },
     { to: '/linkedin-engagement', icon: IcZap,  label: 'Engagement' },
   ] },
 
@@ -761,7 +761,7 @@ export default function Layout({ session, role, onLogout, children }) {
     '/pipeline': 'Pipeline',
     '/organizations': 'Unternehmen',
     '/reports': 'Sales Reporting', '/ssi': 'SSI Tracker',
-    '/messages': 'Nachrichten', '/getting-started': 'Erste Schritte',
+    '/messages': 'Kommunikation', '/getting-started': 'Erste Schritte',
     '/brand-voice': 'Brand Voice', '/personal-brand': 'Personal Brand', '/company-brand': 'Company Brand', '/zielgruppen': 'Zielgruppen', '/wissensdatenbank': 'Wissensdatenbank', '/profiltexte': 'Profiltexte',
     '/ki-sichtbarkeit': 'KI-Sichtbarkeit',
     '/icp': 'Zielgruppen (ICP)',
