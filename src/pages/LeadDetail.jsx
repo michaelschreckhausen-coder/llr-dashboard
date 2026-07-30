@@ -285,7 +285,7 @@ export default function LeadDetail({ lead: leadProp }) {
   const [enrichLoading, setEnrichLoading] = useState(false);
   const [enrichCompany, setEnrichCompany] = useState(null);
   const [enrichMsg, setEnrichMsg] = useState(null);
-  // In "LinkedIn Kontakte" aufnehmen (add_lead_to_inbox-RPC, dedup über linkedin_url).
+  // In "Kontakte" aufnehmen (add_lead_to_inbox-RPC, dedup über linkedin_url).
   const [addingInbox, setAddingInbox] = useState(false);
   const [inboxMsg, setInboxMsg] = useState(null); // { type:'success'|'error', text }
   // composerDraft: { channel, subject, body } — wird beim "Im Composer öffnen"-
@@ -337,7 +337,7 @@ export default function LeadDetail({ lead: leadProp }) {
         : 'Fehlgeschlagen: ' + error.message;
       setInboxMsg({ type: 'error', text: t });
     } else {
-      setInboxMsg({ type: 'success', text: data?.created ? 'In „LinkedIn Kontakte" aufgenommen.' : (data?.resurfaced ? 'Ist wieder in „LinkedIn Kontakte" sichtbar.' : 'Ist bereits in „LinkedIn Kontakte".') });
+      setInboxMsg({ type: 'success', text: data?.created ? 'In „Kontakte" aufgenommen.' : (data?.resurfaced ? 'Ist wieder in „Kontakte" sichtbar.' : 'Ist bereits in „Kontakte".') });
     }
     setTimeout(() => setInboxMsg(null), 4000);
   }, [lead?.id]);
@@ -638,8 +638,8 @@ export default function LeadDetail({ lead: leadProp }) {
             )}
             {lead.linkedin_url && (
               <button type="button" className="lk-btn lk-btn-ghost" onClick={addToInbox} disabled={addingInbox}
-                title="Diesen Kontakt in LinkedIn Kontakte aufnehmen (für Listen und Automatisierung)">
-                {addingInbox ? <Loader2 size={16} className="lk-spin" /> : <InboxIcon size={16} />} In LinkedIn Kontakte
+                title="Diesen Kontakt in Kontakte aufnehmen (für Listen und Automatisierung)">
+                {addingInbox ? <Loader2 size={16} className="lk-spin" /> : <InboxIcon size={16} />} In Kontakte
               </button>
             )}
             <button type="button" className="lk-btn lk-btn-ghost" onClick={() => setEditModalOpen(true)}

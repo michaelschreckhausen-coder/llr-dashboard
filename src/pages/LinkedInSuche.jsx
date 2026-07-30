@@ -177,7 +177,7 @@ export default function LinkedInSuche() {
     setFlash({
       type:'success',
       text: isPeople
-        ? `${data?.found ?? 0} Treffer gefunden — unten auswählen und zu den LinkedIn Kontakten hinzufügen.`
+        ? `${data?.found ?? 0} Treffer gefunden — unten auswählen und zu den Kontakten hinzufügen.`
         : `${data?.found ?? 0} Unternehmens-Treffer gefunden (nur Personen können übernommen werden).`,
     })
     setRunningId(null)
@@ -200,8 +200,8 @@ export default function LinkedInSuche() {
     const already = Math.max(0, (data?.requested ?? chosen.length) - (data?.imported ?? 0))
     setFlash({
       type:'success',
-      text: `${data?.imported ?? 0} neu zu den LinkedIn Kontakten hinzugefügt${already > 0 ? ` (${already} bereits vorhanden)` : ''}.`,
-      action: { label:'Zu den LinkedIn Kontakten', to:'/linkedin-inbox' },
+      text: `${data?.imported ?? 0} neu zu den Kontakten hinzugefügt${already > 0 ? ` (${already} bereits vorhanden)` : ''}.`,
+      action: { label:'Zu den Kontakten', to:'/linkedin-inbox' },
     })
     fetchSearches()
   }
@@ -221,7 +221,7 @@ export default function LinkedInSuche() {
         <div style={headerRowStyle}>
           <div>
             <h1 style={titleStyle}><Search size={22} color={PRIMARY_VAR} /> LinkedIn-Suche</h1>
-            <div style={subtitleStyle}>Gespeicherte Suchen anlegen und ausführen — Personen-Treffer landen in den LinkedIn Kontakten (nicht im CRM).</div>
+            <div style={subtitleStyle}>Gespeicherte Suchen anlegen und ausführen — Personen-Treffer landen in den Kontakten (nicht im CRM).</div>
           </div>
         </div>
 
@@ -264,7 +264,7 @@ export default function LinkedInSuche() {
 
             {form.category === 'company' && (
               <div style={{ fontSize:12, color:'#B45309', background:'#FFFBEB', border:'1px solid #FDE68A', borderRadius:8, padding:'8px 12px' }}>
-                Hinweis: Bei der Kategorie „Unternehmen" werden Treffer nur gezählt, aber <strong>nicht importiert</strong> — nur Personen-Treffer landen in den LinkedIn Kontakten.
+                Hinweis: Bei der Kategorie „Unternehmen" werden Treffer nur gezählt, aber <strong>nicht importiert</strong> — nur Personen-Treffer landen in den Kontakten.
               </div>
             )}
 
@@ -300,7 +300,7 @@ export default function LinkedInSuche() {
             </div>
 
             <div>
-              <label style={labelStyle}>Ziel-Liste in den LinkedIn Kontakten (optional)</label>
+              <label style={labelStyle}>Ziel-Liste in den Kontakten (optional)</label>
               <PillSelect value={form.target_list_id} onChange={v => setField('target_list_id', v)} neutral options={[{ value: '', label: `— keine (nur in die Inbox) —` }, ...inboxLists.map((l) => ({ value: l.id, label: l.name }))]} buttonStyle={{ minWidth: 140 }} />
               <div style={{ fontSize:11, color:'var(--text-muted, #6B7280)', marginTop:4 }}>
                 Personen-Treffer werden dieser Liste zugeordnet — dieselbe Liste wählst du später in der Automatisierung als Zielgruppe.
@@ -319,7 +319,7 @@ export default function LinkedInSuche() {
         {lastResult && (
           <div style={{ ...cardStyle, marginBottom:20, borderColor:'#BBF7D0', background:'#F0FDF4' }}>
             <div style={{ fontSize:13, fontWeight:700, color:'#15803D' }}>
-              Letzter Lauf: {lastResult.found ?? 0} Treffer · {lastResult.imported ?? 0} neu in den LinkedIn Kontakten
+              Letzter Lauf: {lastResult.found ?? 0} Treffer · {lastResult.imported ?? 0} neu in den Kontakten
             </div>
           </div>
         )}
@@ -378,7 +378,7 @@ export default function LinkedInSuche() {
               {results.category === 'people' && (
                 results.imported ? (
                   <button className="lk-btn lk-btn-ghost" onClick={() => navigate('/linkedin-inbox')}>
-                    <InboxIcon size={14} /> Zu den LinkedIn Kontakten
+                    <InboxIcon size={14} /> Zu den Kontakten
                   </button>
                 ) : results.items.length > 0 ? (
                   <div style={{ display:'flex', alignItems:'center', gap:8, flexWrap:'wrap' }}>
