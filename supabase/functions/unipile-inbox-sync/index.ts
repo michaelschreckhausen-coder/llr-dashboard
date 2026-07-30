@@ -33,10 +33,11 @@ Deno.serve(async (req) => {
       const lastAt = c.timestamp ? new Date(c.timestamp).toISOString() : null;
 
       const { data: existing } = await admin.from("linkedin_chats")
-        .select("id, last_message_at").eq("unipile_account_id", unipile_account_id).eq("unipile_chat_id", c.id).maybeSingle();
+        .select("id, last_message_at, attendee_avatar_url, attendee_name").eq("unipile_account_id", unipile_account_id).eq("unipile_chat_id", c.id).maybeSingle();
 
       let att: any = null;
-      if (!existing) {
+      // Attendee-Details holen bei neuen Chats ODER wenn Avatar/Name fehlt (Backfill bestehender Chats)
+      if (!existing || !existing.attendee_avatar_url || !existing.attendee_name) {
         const ar = await getChatAttendees(c.id);
         if (ar.ok) att = (ar.data.items || []).find((a: any) => !a.is_self) || null;
       }
@@ -50,10 +51,21 @@ Deno.serve(async (req) => {
         updated_at: new Date().toISOString(),
       };
       if (att) {
-        chatRow.attendee_name = att.name ?? null;
+        chatRow.attendee_name = att.name ?? existing?.attendee_name ?? null;
         chatRow.attendee_avatar_url = att.picture_url ?? null;
         chatRow.attendee_profile_url = att.profile_url ?? null;
         chatRow.attendee_headline = att.specifics?.occupation ?? att.specifics?.headline ?? null;
+      }
+      // Fallback: Avatar/Name aus linkedin_inbox (Netzwerk-Import), wenn Unipile kein Bild liefert
+      const _pid = chatRow.attendee_provider_id;
+      if (_pid && !chatRow.attendee_avatar_url) {
+        const { data: _inb } = await admin.from("linkedin_inbox")
+          .select("avatar_url, name").eq("brand_voice_id", acct.brand_voice_id).eq("provider_id", _pid)
+          .not("avatar_url", "is", null).limit(1).maybeSingle();
+        if (_inb?.avatar_url) {
+          chatRow.attendee_avatar_url = _inb.avatar_url;
+          if (!chatRow.attendee_name) chatRow.attendee_name = _inb.name ?? null;
+        }
       }
       const { data: up, error: ue } = await admin.from("linkedin_chats")
         .upsert(chatRow, { onConflict: "unipile_account_id,unipile_chat_id" }).select("id").maybeSingle();
