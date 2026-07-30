@@ -66,11 +66,23 @@ Deno.serve(async (req) => {
     const realChatId = (res.data as any)?.chat_id ?? null;
     const msgId = (res.data as any)?.message_id ?? null;
 
+    // Attendee-Metadaten fuer die Postfach-Anzeige (sonst "Unbekannt"): aus Input, sonst per getProfile.
+    let attName: string | null = input.attendee_name ? String(input.attendee_name) : null;
+    let attAvatar: string | null = input.attendee_avatar_url ? String(input.attendee_avatar_url) : null;
+    let attUrl: string | null = input.attendee_url ? String(input.attendee_url) : null;
+    if (!chatId && !attName) {
+      try {
+        const pr = await getProfile(accountId, providerId);
+        if (pr.ok) { const d: any = pr.data; attName = d?.name || d?.full_name || [d?.first_name, d?.last_name].filter(Boolean).join(" ") || null; attAvatar = attAvatar || d?.avatar_url || d?.profile_picture_url || null; attUrl = attUrl || d?.profile_url || d?.public_profile_url || null; }
+      } catch { /* best effort */ }
+    }
+
     if (!chatId) {
       const { data: up } = await sb.from("linkedin_chats").upsert({
         team_id: teamId, brand_voice_id: brandVoiceId, unipile_account_id: accountId,
         unipile_chat_id: realChatId ?? `pending:${accountId}:${providerId}`,
-        attendee_provider_id: providerId, last_message_at: nowIso, last_message_text: text, updated_at: nowIso,
+        attendee_provider_id: providerId, attendee_name: attName, attendee_avatar_url: attAvatar, attendee_profile_url: attUrl,
+        last_message_at: nowIso, last_message_text: text, updated_at: nowIso,
       }, { onConflict: "unipile_account_id,unipile_chat_id" }).select("id").maybeSingle();
       chatId = up?.id ?? null;
     } else {

@@ -1,7 +1,7 @@
 import PillSelect from '../components/PillSelect'
 import React, { useEffect, useState, useCallback, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { Check, X, Loader2, UserPlus, Building2, Inbox as InboxIcon, Plus, ListChecks, Pencil, Trash2, AlertTriangle , Share2 } from 'lucide-react'
+import { Check, X, Loader2, UserPlus, Building2, Inbox as InboxIcon, Plus, ListChecks, Pencil, Trash2, AlertTriangle , Share2, RefreshCw } from 'lucide-react'
 import { supabase } from '../lib/supabase'
 import { useTeam } from '../context/TeamContext'
 import { useBrandVoice } from '../context/BrandVoiceContext'
@@ -65,6 +65,7 @@ export default function LinkedInInbox() {
   const [busy, setBusy]         = useState(false)
   const [msg, setMsg]           = useState(null)             // { text, leadId? }
   const [uid, setUid]           = useState(null)
+  const [netSyncing, setNetSyncing] = useState(false)
 
   // Quell-Tab: 'kontakte' (Prospecting-Quellen) vs 'netzwerk' (unipile_relations).
   // counts = Gesamtzahl offener (new) Zeilen je Tab, unabhängig vom 500er-Ladefenster.
@@ -212,6 +213,18 @@ export default function LinkedInInbox() {
     setExisting(hit)
     setLoading(false)
   }, [activeTeamId, activeBrandVoice?.id, sourceTab])
+
+  async function syncNetwork() {
+    const bvId = activeBrandVoice?.id
+    if (netSyncing || !bvId) return
+    setNetSyncing(true); setMsg(null)
+    try {
+      const { data, error } = await supabase.rpc('request_network_sync', { p_brand_voice_id: bvId })
+      if (error || data?.error) { setMsg({ text: 'Abgleich fehlgeschlagen: ' + (data?.error || error?.message || '') }); setNetSyncing(false); return }
+      setMsg({ text: 'Netzwerk wird abgeglichen — deine Verbindungen erscheinen in Kürze.' })
+      setTimeout(() => { load(); setNetSyncing(false) }, 8000)
+    } catch (e) { setMsg({ text: 'Abgleich fehlgeschlagen.' }); setNetSyncing(false) }
+  }
 
   useEffect(() => { load() }, [load])
 
@@ -462,6 +475,12 @@ export default function LinkedInInbox() {
               title={canSalesNav ? undefined : 'Sales-Navigator-Sync ist in Sales oder All-in enthalten — Upgrade nötig'}
               style={{ marginLeft: 'auto', display: 'inline-flex', alignItems: 'center', gap: 6, opacity: canSalesNav ? 1 : 0.55 }}>
               <Plus size={15} /> Sales-Navigator-Suche importieren{!canSalesNav && ' 🔒'}
+            </button>
+          )}
+          {sourceTab === 'netzwerk' && (
+            <button className="lk-btn lk-btn-cta" onClick={syncNetwork} disabled={netSyncing}
+              style={{ marginLeft: 'auto', display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+              {netSyncing ? <Loader2 size={15} className="lk-spin" /> : <RefreshCw size={15} />} {netSyncing ? 'Wird abgeglichen…' : 'Netzwerk abgleichen'}
             </button>
           )}
         </div>

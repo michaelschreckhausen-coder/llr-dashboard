@@ -245,7 +245,12 @@ function Verfassen({ bvId, model, contacts, onOpenPostfach, caps }) {
     if (!target || !t || sending || overCap) return
     setSending(true); setFlash(null)
     const fn = cat.action === 'invite' ? 'unipile-invite-send' : 'unipile-message-send'
-    const attendee = target.provider_id ? { attendee_provider_id: target.provider_id } : { attendee_url: target.url }
+    const attendee = {
+      ...(target.provider_id ? { attendee_provider_id: target.provider_id } : {}),
+      ...(target.url ? { attendee_url: target.url } : {}),
+      attendee_name: target.name || null,
+      attendee_avatar_url: target.avatar_url || null,
+    }
     const body = cat.action === 'invite'
       ? { brand_voice_id: bvId, note: t, ...attendee }
       : { brand_voice_id: bvId, text: t, inmail: (inmail && canInmail), ...attendee }
