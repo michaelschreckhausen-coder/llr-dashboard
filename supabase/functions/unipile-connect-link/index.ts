@@ -36,6 +36,7 @@ Deno.serve(async (req) => {
   if (seatDenied) return seatDenied;
 
   const body = await req.json().catch(() => ({} as any));
+  const brandVoiceId = (typeof body?.brand_voice_id === "string" && body.brand_voice_id) ? body.brand_voice_id : null;
   const db = createClient(SB_URL, SB_SERVICE, { auth: { persistSession: false } });
 
   // ── Reconcile-Fallback (Webhook ist der Canonical-Pfad; das hier fängt Verzögerung/Verpasst) ──
@@ -74,8 +75,13 @@ Deno.serve(async (req) => {
     if (!tm?.team_id) return json({ error: "kein Team für User" }, 400);
     const pub = acct?.connection_params?.im?.publicIdentifier ?? null;
     const status = acct?.sources?.[0]?.status ?? "OK";
+    // Marke mitgeben (brand-scoped) + bestehende OK dieser Marke vorher collapsen (Unique-Index max. 1 OK/Marke)
+    if (brandVoiceId) {
+      await db.from("unipile_accounts").update({ status: "DISCONNECTED", last_status_update: new Date().toISOString() })
+        .eq("brand_voice_id", brandVoiceId).neq("unipile_account_id", acct.id).eq("status", "OK");
+    }
     const { error } = await db.from("unipile_accounts").upsert({
-      team_id: tm.team_id, user_id: userId, unipile_account_id: acct.id,
+      team_id: tm.team_id, user_id: userId, brand_voice_id: brandVoiceId, unipile_account_id: acct.id,
       provider_public_id: pub, status, last_status_update: new Date().toISOString(),
     }, { onConflict: "unipile_account_id" });
     if (error) return json({ error: error.message }, 500);
@@ -116,9 +122,9 @@ Deno.serve(async (req) => {
       providers: ["LINKEDIN"],
       api_url: `https://${UNIPILE_DSN}`,
       expiresOn: new Date(Date.now() + 3600_000).toISOString(),
-      name: userId,                 // kommt via notify_url zurück → Mapping
+      name: brandVoiceId || userId, // brand_voice_id → Webhook mappt die Marke (Fallback: user_id legacy)
       notify_url: notifyUrl,        // Canonical: Unipile ruft das bei CREATION_SUCCESS
-      success_redirect_url: `${appBase}/settings/linkedin?unipile=connected`,
+      success_redirect_url: `${appBase}${(typeof body?.success_path === "string" && body.success_path) ? body.success_path : "/settings/linkedin?unipile=connected"}`,
     }),
   });
   const data = await r.json().catch(() => ({}));
