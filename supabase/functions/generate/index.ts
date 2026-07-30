@@ -10,6 +10,23 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { encodeBase64 } from "https://deno.land/std@0.214.0/encoding/base64.ts";
 import { getCallerContext, checkCredits, recordUsage, estimateCredits } from "../_shared/credits.ts";
 import { getCallerTeamIds, loadBrandVoiceIfAllowed, filterOwnedStoragePaths } from "../_shared/tenant.ts";
+
+// Ambassador-Modell: Personal Brand schreibt in IHRER Stimme, Company Brand liefert nur inhaltlichen Kontext.
+function buildCompanyBrandContext(bv: any): string {
+  if (!bv) return "";
+  const lines: string[] = ["## Unternehmen (Ambassador-Kontext)"];
+  lines.push("Der Autor schreibt als Person in der oben definierten Brand Voice, aber als Ambassador fuer das folgende Unternehmen. Nutze die Unternehmensinformationen als inhaltlichen Kontext (Fakten, Angebot, Mission, Positionierung). Tonalitaet, Wortwahl und Perspektive bleiben die der PERSON — nicht die des Unternehmens.");
+  if (bv.brand_name || bv.name) lines.push(`Unternehmen: ${bv.brand_name || bv.name}`);
+  if (bv.brand_background) lines.push(`Hintergrund: ${bv.brand_background}`);
+  if (bv.mission) lines.push(`Mission: ${bv.mission}`);
+  if (bv.vision) lines.push(`Vision: ${bv.vision}`);
+  if (bv.values) lines.push(`Werte: ${bv.values}`);
+  if (bv.target_audience) lines.push(`Zielgruppe des Unternehmens: ${bv.target_audience}`);
+  if (Array.isArray(bv.vocabulary) && bv.vocabulary.length) lines.push(`Schluesselbegriffe: ${bv.vocabulary.join(", ")}`);
+  if (bv.ai_summary) lines.push(`Marken-Zusammenfassung: ${bv.ai_summary}`);
+  return lines.join("\n");
+}
+
 import { buildBrandPrompt, buildBrandCorpus, HUMAN_STYLE_GUIDE, stripEmDashes } from "../_shared/brandPrompt.ts";
 
 const ANTHROPIC_API_KEY    = Deno.env.get("ANTHROPIC_API_KEY")!;
@@ -332,6 +349,16 @@ serve(async (req) => {
     if (type !== 'brand_voice_summary' && type !== 'target_audience') {
       systemPrompt += HUMAN_STYLE_GUIDE + '\n\n';
       if (activeBV) systemPrompt += buildBrandPrompt(activeBV) + '\n\n';
+
+      // Ambassador: Personal Brand schreibt im Namen von Company Brand(s) (Kommunikation/Content-Auswahl)
+      const _companyIds = Array.isArray((body as any).company_voice_ids) ? ((body as any).company_voice_ids as any[]).filter((x) => typeof x === 'string') : [];
+      if (_companyIds.length && activeBV && activeBV.account_type !== 'company_page') {
+        for (const _cid of _companyIds.slice(0, 3)) {
+          if (_cid === activeBV.id) continue;
+          const _cbv = await loadBrandVoiceIfAllowed(supabaseAdmin, _cid, userId, callerTeamIds);
+          if (_cbv) systemPrompt += buildCompanyBrandContext(_cbv) + '\n\n';
+        }
+      }
 
       const brandVoiceId = (body.brand_voice_id as string) || null;
       if (userId && brandVoiceId) {

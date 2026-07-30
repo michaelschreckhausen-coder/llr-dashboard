@@ -12,9 +12,10 @@ import { useNavigate } from 'react-router-dom'
 import PageHeader from '../components/PageHeader'
 import TabBar from '../components/TabBar'
 import OffeneAnfragen from '../components/OffeneAnfragen'
+import CompanyMultiSelect from '../components/CompanyMultiSelect'
 import {
   MessageSquare, PenLine, Send, RefreshCw, Sparkles, Search, Loader2, Inbox as InboxIcon,
-  Handshake, Mail, Target, Reply, ExternalLink, Plus, Check, X, UserPlus,
+  Handshake, Mail, Target, Reply, ExternalLink, Plus, Check, X, UserPlus, Copy,
 } from 'lucide-react'
 
 const P = 'var(--primary, rgb(0,48,96))'
@@ -112,7 +113,7 @@ export default function Messages() {
 const SRC_LABEL = { kontakte:'Prospects', netzwerk:'Verbindungen', crm:'CRM-Kontakte', firmen:'CRM-Unternehmen', suche:'LinkedIn-Suche' }
 function sourcesFor(cat, canInmail) {
   // Vernetzungsanfrage: an Nicht-Verbundene -> Netzwerk (bereits verbunden) ausgeschlossen.
-  if (cat.action === 'invite') return ['kontakte', 'crm', 'firmen', 'suche']
+  if (cat.action === 'invite') return ['netzwerk', 'kontakte', 'crm', 'firmen', 'suche']
   // Direktnachricht: an Verbundene -> Netzwerk zuerst; ohne Premium keine Nicht-Verbundenen (Firmen/Suche).
   return canInmail ? ['netzwerk', 'kontakte', 'crm', 'firmen', 'suche'] : ['netzwerk', 'kontakte', 'crm']
 }
@@ -213,6 +214,18 @@ function Verfassen({ bvId, model, contacts, onOpenPostfach, caps }) {
   const [gen, setGen] = useState(false)
   const [sending, setSending] = useState(false)
   const [flash, setFlash] = useState(null) // {type,msg}
+  const [companies, setCompanies] = useState([])
+  const [selectedCompanyVoiceIds, setSelectedCompanyVoiceIds] = useState([])
+  const [copied, setCopied] = useState(false)
+  useEffect(() => {
+    if (isCompany) return
+    let cancel = false
+    ;(async () => {
+      const { data } = await supabase.from('brand_voices').select('id, name, brand_name').eq('account_type', 'company_page').order('name')
+      if (!cancel) setCompanies(data || [])
+    })()
+    return () => { cancel = true }
+  }, [isCompany])
   const cat = CATS.find(c => c.key === catKey)
   const overCap = cat.cap && text.length > cat.cap
 
@@ -232,7 +245,7 @@ function Verfassen({ bvId, model, contacts, onOpenPostfach, caps }) {
     parts.push('EMPFAENGER:\nName: ' + contactName(target) + (target.headline ? '\nHeadline: ' + target.headline : ''))
     if (context.trim()) parts.push('ANLASS / KONTEXT:\n' + context.trim())
     const { data, error } = await supabase.functions.invoke('generate', {
-      body: { prompt: parts.join('\n\n'), brand_voice_id: bvId, model, content_kind: cat.kind }
+      body: { prompt: parts.join('\n\n'), brand_voice_id: bvId, model, content_kind: cat.kind, company_voice_ids: selectedCompanyVoiceIds }
     })
     setGen(false)
     if (error || data?.error) { setFlash({ type: 'error', msg: data?.error || error?.message || 'Generierung fehlgeschlagen' }); return }
@@ -261,6 +274,11 @@ function Verfassen({ bvId, model, contacts, onOpenPostfach, caps }) {
     setText('')
   }
 
+  const copy = async () => {
+    const t = text.trim(); if (!t) return
+    try { await navigator.clipboard.writeText(t); setCopied(true); setTimeout(() => setCopied(false), 1500) } catch (_e) {}
+  }
+
   return (
     <div style={{ display: 'grid', gridTemplateColumns: 'minmax(320px, 420px) 1fr', gap: 18, alignItems: 'start' }}>
       {/* Komponieren */}
@@ -284,6 +302,11 @@ function Verfassen({ bvId, model, contacts, onOpenPostfach, caps }) {
 
         <div style={label}>Empfaenger</div>
         <div style={{ marginBottom: 16 }}><RecipientPicker bvId={bvId} cat={cat} canInmail={canInmail} value={target} onChange={setTarget} /></div>
+
+        {!isCompany && companies.length > 0 && (<>
+          <div style={label}>Im Namen von <span style={{ textTransform: 'none', fontWeight: 500, color: '#9CA3AF' }}>(optional)</span></div>
+          <div style={{ marginBottom: 16 }}><CompanyMultiSelect companies={companies} value={selectedCompanyVoiceIds} onChange={setSelectedCompanyVoiceIds} /></div>
+        </>)}
 
         <div style={label}>Anlass / Kontext <span style={{ textTransform: 'none', fontWeight: 500, color: '#9CA3AF' }}>(optional)</span></div>
         <textarea value={context} onChange={e => setContext(e.target.value)} rows={3} placeholder="z. B. gemeinsames Event, konkreter Aufhaenger, Angebot…"
@@ -319,7 +342,10 @@ function Verfassen({ bvId, model, contacts, onOpenPostfach, caps }) {
             <Avatar name={target.name} url={target.avatar_url} size={26} />
             <span style={{ whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>an <strong style={{ color: 'var(--text-primary)' }}>{target.name}</strong></span>
           </div>}
-          <button className="lk-btn lk-btn-cta" onClick={send} disabled={!target || !text.trim() || sending || overCap} style={{ marginLeft: target ? 0 : 'auto' }}>
+          <button className="lk-btn lk-btn-ghost" type="button" onClick={copy} disabled={!text.trim()} title="Nachricht kopieren" style={{ marginLeft: target ? 0 : 'auto' }}>
+            {copied ? <Check size={15} /> : <Copy size={15} />} {copied ? 'Kopiert' : 'Kopieren'}
+          </button>
+          <button className="lk-btn lk-btn-cta" onClick={send} disabled={!target || !text.trim() || sending || overCap}>
             {sending ? <Loader2 size={15} className="lk-spin" /> : cat.action === 'invite' ? <UserPlus size={15} /> : <Send size={15} />}
             {cat.action === 'invite' ? 'Anfrage senden' : 'Nachricht senden'}
           </button>
