@@ -284,7 +284,7 @@ function Verfassen({ bvId, model, contacts, onOpenPostfach, caps }) {
   }
 
   return (
-    <div style={{ display: 'grid', gridTemplateColumns: 'minmax(320px, 420px) 1fr', gap: 18, alignItems: 'start' }}>
+    <div style={{ display: 'grid', gridTemplateColumns: 'minmax(320px, 420px) 1fr', gap: 18, alignItems: 'stretch' }}>
       {/* Komponieren */}
       <div style={{ ...card, padding: 18 }}>
         <div className="lk-eyebrow" style={{ marginBottom: 14 }}>Komponieren</div>
@@ -307,15 +307,22 @@ function Verfassen({ bvId, model, contacts, onOpenPostfach, caps }) {
         <div style={label}>Empfaenger</div>
         <div style={{ marginBottom: 16 }}><RecipientPicker bvId={bvId} cat={cat} canInmail={canInmail} value={target} onChange={setTarget} /></div>
 
-        {!isCompany && companies.length > 0 && (<>
-          <div style={label}>Im Namen von <span style={{ textTransform: 'none', fontWeight: 500, color: '#9CA3AF' }}>(optional)</span></div>
-          <div style={{ marginBottom: 16 }}><CompanyMultiSelect companies={companies} value={selectedCompanyVoiceIds} onChange={setSelectedCompanyVoiceIds} /></div>
-        </>)}
-
-        {knowledgeBase.length > 0 && (<>
-          <div style={label}>Wissen <span style={{ textTransform: 'none', fontWeight: 500, color: '#9CA3AF' }}>(optional)</span></div>
-          <div style={{ marginBottom: 16 }}><CompanyMultiSelect companies={knowledgeBase} value={selectedKnowledgeIds} onChange={setSelectedKnowledgeIds} label="Wissen" /></div>
-        </>)}
+        {(( !isCompany && companies.length > 0) || knowledgeBase.length > 0) && (
+          <div style={{ display: 'flex', gap: 12, marginBottom: 16 }}>
+            {!isCompany && companies.length > 0 && (
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <div style={label}>Im Namen von <span style={{ textTransform: 'none', fontWeight: 500, color: '#9CA3AF' }}>(optional)</span></div>
+                <CompanyMultiSelect companies={companies} value={selectedCompanyVoiceIds} onChange={setSelectedCompanyVoiceIds} buttonStyle={{ width: '100%' }} />
+              </div>
+            )}
+            {knowledgeBase.length > 0 && (
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <div style={label}>Wissen <span style={{ textTransform: 'none', fontWeight: 500, color: '#9CA3AF' }}>(optional)</span></div>
+                <CompanyMultiSelect companies={knowledgeBase} value={selectedKnowledgeIds} onChange={setSelectedKnowledgeIds} label="Wissen" buttonStyle={{ width: '100%' }} />
+              </div>
+            )}
+          </div>
+        )}
 
         <div style={label}>Anlass / Kontext <span style={{ textTransform: 'none', fontWeight: 500, color: '#9CA3AF' }}>(optional)</span></div>
         <textarea value={context} onChange={e => setContext(e.target.value)} rows={3} placeholder="z. B. gemeinsames Event, konkreter Aufhaenger, Angebot…"
