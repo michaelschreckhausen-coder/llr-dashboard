@@ -21,17 +21,21 @@ import {
 const P = 'var(--primary, rgb(0,48,96))'
 
 const STRICT = ' WICHTIG: Antworte AUSSCHLIESSLICH mit dem reinen Nachrichtentext (kein Markdown, kein "Betreff:", kein Header, keine Meta-Kommentare, keine Anfuehrungszeichen). Nur der Text, ggf. mit Zeilenumbruechen. Auf Deutsch.'
+// Menschlichkeit: gilt fuer JEDES Format. Ziel = klingt wie ein echter Mensch, nicht wie KI/Vorlage.
+const HUMAN = ' Klinge wie ein echter Mensch, nicht wie eine KI oder eine Vorlage: natuerliche, gesprochene Sprache, variable Satzlaengen, gern auch mal ein kurzer, unvollstaendiger Satz. Keine Marketing-Floskeln und keine ausgelutschten Oeffner wie "Ich bin auf Ihr Profil gestossen", "Ich hoffe, es geht Ihnen gut" oder "Ich wollte mich kurz vorstellen". Kein Buzzword-Bingo, keine Superlative, kein uebertriebenes Lob. Sei konkret statt generisch und beziehe dich auf etwas Echtes an der Person (Rolle, Firma, Branche, ein Beitrag, ein gemeinsamer Bezug). Duze oder sieze passend zur Markenstimme. Emojis nur wenn die Markenstimme das hergibt, dann sehr sparsam. Lieber eine echte, leicht unperfekte Nachricht als eine glatte, austauschbare.'
+// Analyse-Direktive: Empfaenger + evtl. Verlauf still auswerten, nur die Nachricht ausgeben.
+const ANALYZE = ' Werte zuerst still den Empfaenger (Rolle, Firma, Branche, Info-Text, Kontext) und - falls vorhanden - den bisherigen Chatverlauf aus und leite daraus den passenden Aufhaenger, die richtige Ansprache und den Ton ab. Gib NUR die fertige Nachricht aus, niemals deine Analyse.'
 const CATS = [
   { key: 'vernetzung',    label: 'Vernetzungsanfrage', icon: Handshake, action: 'invite', kind: 'connection_msg',        cap: 300,
-    intent: 'Schreibe eine kurze, persoenliche LinkedIn-Vernetzungs-Note (geht als Notiz an die Vernetzungsanfrage, vor der Annahme). Max. 300 Zeichen, kein Pitch, einladende Eroeffnung mit optionalem Bezug zur Person.' + STRICT },
+    intent: 'Schreibe eine kurze, persoenliche LinkedIn-Vernetzungs-Note (Notiz an die Anfrage, VOR der Annahme). Ziel: hohe Annahmequote. Max. 300 Zeichen, kuerzer ist besser. Locker und menschlich, NULL Pitch, nichts verkaufen, nach keinem Termin fragen. Nenne einen echten, konkreten Anlass fuer die Vernetzung (gemeinsamer Bezug, ihre Rolle/Firma, ein Beitrag) und bleib warm und einladend. Kein leeres "Ich wuerde mich gerne mit Ihnen vernetzen" ohne Grund.' + ANALYZE + HUMAN + STRICT },
   { key: 'first_message', label: 'Erste Nachricht',    icon: Mail,      action: 'dm',     kind: 'linkedin_first_message', cap: null,
-    intent: 'Schreibe eine erste LinkedIn-Direktnachricht NACH erfolgreicher Vernetzung. 400-800 Zeichen, max. ~5 Saetze, persoenlich, kein harter Pitch. Entweder EINE konkrete Frage ODER EINEN konkreten Mehrwert.' + STRICT },
+    intent: 'Schreibe die erste LinkedIn-Direktnachricht NACH erfolgreicher Vernetzung. Ziel ist NICHT ein Termin, sondern eine Antwort - der Beginn eines echten Gespraechs. Kurz: 3-5 Saetze, moeglichst unter 400 Zeichen. Ein konkreter, personalisierter Aufhaenger (etwas Echtes an der Person) und am Ende GENAU EINE offene, niedrigschwellige Frage, die leicht zu beantworten ist. Kein Pitch, kein Angebot, kein Link. Wie eine kurze Nachricht an einen interessanten neuen Kontakt, nicht wie Vertrieb.' + ANALYZE + HUMAN + STRICT },
   { key: 'sales_pitch',   label: 'Sales-Pitch',        icon: Target,    action: 'dm',     kind: 'linkedin_sales_pitch',  cap: null,
-    intent: 'Schreibe eine LinkedIn-Direktnachricht mit konkretem Angebot. 800-1500 Zeichen: (1) persoenlicher Aufhaenger, (2) Problem das du loest, (3) klares Angebot mit einem CTA. Persoenlich, kein Marketing-Bla.' + STRICT },
+    intent: 'Schreibe eine LinkedIn-Direktnachricht, die zu einem Gespraech fuehrt - kein Hardsell. Kurz halten, ca. 400-900 Zeichen. Aufbau: (1) persoenlicher, konkreter Aufhaenger, der zeigt dass du Person und Kontext verstanden hast, (2) EIN klar benanntes Problem oder Ergebnis, das fuer ihre Rolle/Firma wirklich relevant ist - nutze das ausgewaehlte Wissen fuer Substanz und Glaubwuerdigkeit, (3) ein niedrigschwelliger CTA (kurzes Gespraech oder eine Frage), ohne Druck. Nur EIN Angebot, EIN CTA. Konkret und glaubwuerdig statt Marketing-Sprech, keine Superlative, keine leeren Versprechen.' + ANALYZE + HUMAN + STRICT },
   { key: 'nachfassen',    label: 'Nachfassen',         icon: Reply,     action: 'dm',     kind: 'linkedin_first_message', cap: null,
-    intent: 'Schreibe eine freundliche Nachfass-Nachricht, die unaufdringlich an den letzten Kontakt anknuepft und zu einer Reaktion einlaedt. Kurz, natuerlich.' + STRICT },
+    intent: 'Schreibe eine Nachfass-Nachricht in einem laufenden Dialog. WICHTIG: Der bisherige Chatverlauf ist dein Kontext - knuepfe konkret an das zuletzt Gesagte an, kein generisches "Ich wollte nur nochmal nachhaken". Liefere einen NEUEN Mehrwert oder einen echten Grund fuer die Meldung (ein passender Gedanke, eine Info, eine kleine konkrete Frage), statt blossem Reminder-Druck. Kurz, freundlich, unaufdringlich, und lass der Person einen leichten Ausweg. Wenn kein Verlauf vorliegt, knuepfe am Anlass/Kontext an.' + ANALYZE + HUMAN + STRICT },
   { key: 'frei',          label: 'Frei',               icon: PenLine,   action: 'dm',     kind: 'linkedin_first_message', cap: null,
-    intent: 'Schreibe eine passende, persoenliche LinkedIn-Direktnachricht auf Basis des angegebenen Anlasses.' + STRICT },
+    intent: 'Schreibe eine passende, persoenliche LinkedIn-Direktnachricht auf Basis des angegebenen Anlasses/Kontexts. Waehle Laenge, Ton und Aufbau frei nach dem, was Situation und Empfaenger verlangen. Falls ein Chatverlauf vorhanden ist, passe die Nachricht logisch dazu an.' + ANALYZE + HUMAN + STRICT },
 ]
 
 function initials(n) { return (n || '?').split(' ').filter(Boolean).slice(0, 2).map(w => w[0]).join('').toUpperCase() }
@@ -245,8 +249,40 @@ function Verfassen({ bvId, model, contacts, onOpenPostfach, caps }) {
   const generate = async () => {
     if (!target || gen) return
     setGen(true); setFlash(null)
-    const parts = [cat.intent]
-    parts.push('EMPFAENGER:\nName: ' + contactName(target) + (target.headline ? '\nHeadline: ' + target.headline : ''))
+
+    // Empfaenger screenen: volle gespeicherte Felder (Rolle/Firma/Ort/Info/Status) nachladen
+    let recip = null
+    if (target.provider_id) {
+      const { data: inb } = await supabase.from('linkedin_inbox')
+        .select('headline, job_title, company, location, li_about_summary, li_connection_status')
+        .eq('brand_voice_id', bvId).eq('provider_id', target.provider_id).limit(1).maybeSingle()
+      recip = inb || null
+    }
+    const rLines = ['Name: ' + contactName(target)]
+    const rHeadline = recip?.headline || target.headline
+    if (rHeadline) rLines.push('Headline: ' + rHeadline)
+    if (recip?.job_title) rLines.push('Rolle: ' + recip.job_title)
+    if (recip?.company) rLines.push('Firma: ' + recip.company)
+    if (recip?.location) rLines.push('Ort: ' + recip.location)
+    if (recip?.li_connection_status) rLines.push('Verbindungsstatus: ' + recip.li_connection_status)
+    if (recip?.li_about_summary) rLines.push('LinkedIn-Info (eigene Beschreibung):\n' + String(recip.li_about_summary).slice(0, 700))
+
+    const parts = [cat.intent, 'EMPFAENGER:\n' + rLines.join('\n')]
+
+    // Bisherigen Chatverlauf beruecksichtigen (nicht bei Vernetzungsanfrage)
+    if (cat.action !== 'invite' && target.provider_id) {
+      const { data: chat } = await supabase.from('linkedin_chats')
+        .select('id').eq('brand_voice_id', bvId).eq('attendee_provider_id', target.provider_id).limit(1).maybeSingle()
+      if (chat?.id) {
+        const { data: hist } = await supabase.from('linkedin_chat_messages')
+          .select('direction, text, sent_at').eq('chat_id', chat.id).order('sent_at', { ascending: true }).limit(500)
+        const recent = (hist || []).slice(-14)
+        const nm = contactName(target)
+        const tr = recent.map(m => (m.direction === 'outbound' ? 'Ich' : nm) + ': ' + (m.text || '').replace(/\s+/g, ' ').trim()).filter(l => l.length > 4).join('\n')
+        if (tr) parts.push('BISHERIGER CHATVERLAUF (alt zu neu), knuepfe hier logisch an:\n' + tr)
+      }
+    }
+
     if (context.trim()) parts.push('ANLASS / KONTEXT:\n' + context.trim())
     const { data, error } = await supabase.functions.invoke('generate', {
       body: { prompt: parts.join('\n\n'), brand_voice_id: bvId, model, content_kind: cat.kind, company_voice_ids: selectedCompanyVoiceIds, knowledge_ids: selectedKnowledgeIds }
