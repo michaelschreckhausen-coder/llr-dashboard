@@ -86,6 +86,11 @@ export default function LinkedInSuche() {
   const [results, setResults]     = useState(null)      // { searchId, searchName, items:[], truncated:bool, category }
   const [selected, setSelected]   = useState(() => new Set())  // Vorschau-Auswahl (Indizes)
   const [importing, setImporting] = useState(false)
+  const [liveQ, setLiveQ]         = useState('')
+  const [liveResults, setLiveResults] = useState(null)
+  const [liveLoading, setLiveLoading] = useState(false)
+  const [liveSel, setLiveSel]     = useState(() => new Set())
+  const [liveImporting, setLiveImporting] = useState(false)
 
   useEffect(() => { supabase.auth.getUser().then(({ data }) => setUid(data?.user?.id || null)) }, [])
 
@@ -212,6 +217,32 @@ export default function LinkedInSuche() {
     setSearches(s => s.filter(x => x.id !== id))
   }
 
+  // Live-Schnellsuche: direkt auf LinkedIn suchen (unipile-people-search) und Treffer sofort zu Prospects hinzufuegen.
+  useEffect(() => {
+    const q = liveQ.trim()
+    if (q.length < 2) { setLiveResults(null); setLiveLoading(false); return }
+    let cancel = false; setLiveLoading(true)
+    const t = setTimeout(async () => {
+      const { data } = await supabase.functions.invoke('unipile-people-search', { body: { brand_voice_id: activeBrandVoice?.id || null, query: q } })
+      if (cancel) return
+      setLiveResults((data && data.items) || []); setLiveSel(new Set()); setLiveLoading(false)
+    }, 450)
+    return () => { cancel = true; clearTimeout(t) }
+  }, [liveQ, activeBrandVoice?.id]) // eslint-disable-line
+
+  const addLiveToProspects = async () => {
+    if (!liveResults) return
+    const chosen = liveResults.filter((_, i) => liveSel.has(i)).map(r => ({ name: r.name, provider_id: r.provider_id || null, linkedin_url: r.url || null, headline: r.headline || null, avatar_url: r.avatar_url || null }))
+    if (!chosen.length) return
+    setLiveImporting(true); setFlash(null)
+    const { data, error } = await supabase.functions.invoke('unipile-search', { body: { mode: 'import', items: chosen, brand_voice_id: activeBrandVoice?.id || null } })
+    setLiveImporting(false)
+    if (error || data?.error) { setFlash({ type:'error', text:'Hinzufuegen fehlgeschlagen: ' + (data?.error || error?.message || '') }); return }
+    const already = Math.max(0, (data?.requested ?? chosen.length) - (data?.imported ?? 0))
+    setFlash({ type:'success', text:`${data?.imported ?? 0} zu Prospects hinzugefuegt${already>0?` (${already} bereits vorhanden)`:''}.`, action:{ label:'Zu Prospects', to:'/linkedin-inbox' } })
+    setLiveSel(new Set())
+  }
+
   const apiLabel = v => (API_OPTIONS.find(o => o.value === v)?.label || v)
   const catLabel = v => (CATEGORY_OPTIONS.find(o => o.value === v)?.label || v)
 
@@ -242,6 +273,39 @@ export default function LinkedInSuche() {
             )}
           </div>
         )}
+
+        {/* Live-Schnellsuche */}
+        <div style={{ ...cardStyle, marginBottom:20 }}>
+          <div style={sectionTitle}><Search size={14} /> Schnellsuche (Live)</div>
+          <div style={{ fontSize:12, color:'var(--text-muted, #6B7280)', margin:'0 0 12px' }}>Direkt auf LinkedIn suchen und Treffer sofort zu deinen Prospects hinzufuegen.</div>
+          <input style={inputStyle} value={liveQ} onChange={e => setLiveQ(e.target.value)} placeholder="Name oder Keyword (z. B. Marketing Berlin)…" />
+          {liveLoading && <div style={{ marginTop:12, color:'var(--text-muted, #6B7280)', fontSize:13, display:'flex', alignItems:'center', gap:8 }}><Loader2 size={15} className="lk-spin" /> Suche laeuft…</div>}
+          {liveResults && !liveLoading && (liveResults.length === 0 ? (
+            <div style={{ marginTop:12, fontSize:13, color:'var(--text-muted, #6B7280)' }}>Keine Treffer.</div>
+          ) : (
+            <>
+              <div style={{ display:'flex', alignItems:'center', gap:8, margin:'14px 0 10px', flexWrap:'wrap' }}>
+                <button className="lk-btn lk-btn-ghost" onClick={() => setLiveSel(liveSel.size === liveResults.length ? new Set() : new Set(liveResults.map((_, i) => i)))}>{liveSel.size === liveResults.length ? 'Keine' : 'Alle'} auswaehlen</button>
+                <button className="lk-btn lk-btn-navy" disabled={liveImporting || liveSel.size === 0} onClick={addLiveToProspects}>{liveImporting ? <Loader2 size={15} className="lk-spin" /> : <InboxIcon size={14} />} {liveSel.size} zu Prospects hinzufuegen</button>
+              </div>
+              <div style={{ display:'flex', flexDirection:'column', gap:8 }}>
+                {liveResults.map((it, idx) => (
+                  <div key={(it.provider_id || it.url || 'x') + idx} style={{ ...cardStyle, padding:'12px 16px', display:'flex', alignItems:'center', gap:14, flexWrap:'wrap' }}>
+                    <Avatar name={it.name} avatar_url={it.avatar_url} />
+                    <div style={{ flex:1, minWidth:200 }}>
+                      <div style={{ fontSize:14, fontWeight:700, color:'var(--text-strong, #111827)' }}>{it.name || 'Unbekannt'}</div>
+                      {it.headline && <div style={{ fontSize:12, color:'var(--text-muted, #6B7280)', marginTop:2 }}>{it.headline}</div>}
+                    </div>
+                    {it.url && <a href={it.url} target="_blank" rel="noopener noreferrer" className="lk-btn lk-btn-ghost" style={{ textDecoration:'none' }}>Profil oeffnen <ExternalLink size={13} /></a>}
+                    <label style={{ display:'inline-flex', alignItems:'center', gap:6, fontSize:12, color:'var(--text-muted, #6B7280)', cursor:'pointer', userSelect:'none' }}>
+                      <input type="checkbox" checked={liveSel.has(idx)} onChange={() => setLiveSel(prev => { const n = new Set(prev); n.has(idx) ? n.delete(idx) : n.add(idx); return n })} /> auswaehlen
+                    </label>
+                  </div>
+                ))}
+              </div>
+            </>
+          ))}
+        </div>
 
         {/* Formular: neue Suche */}
         <div style={{ ...cardStyle, marginBottom:20 }}>
