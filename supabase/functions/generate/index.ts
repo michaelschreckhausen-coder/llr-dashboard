@@ -9,7 +9,7 @@ import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { encodeBase64 } from "https://deno.land/std@0.214.0/encoding/base64.ts";
 import { getCallerContext, checkCredits, recordUsage, estimateCredits } from "../_shared/credits.ts";
-import { getCallerTeamIds, loadBrandVoiceIfAllowed, filterOwnedStoragePaths } from "../_shared/tenant.ts";
+import { getCallerTeamIds, loadBrandVoiceIfAllowed, filterOwnedStoragePaths, filterOwnedIds } from "../_shared/tenant.ts";
 
 // Ambassador-Modell: Personal Brand schreibt in IHRER Stimme, Company Brand liefert nur inhaltlichen Kontext.
 function buildCompanyBrandContext(bv: any): string {
@@ -27,7 +27,7 @@ function buildCompanyBrandContext(bv: any): string {
   return lines.join("\n");
 }
 
-import { buildBrandPrompt, buildBrandCorpus, HUMAN_STYLE_GUIDE, stripEmDashes } from "../_shared/brandPrompt.ts";
+import { buildBrandPrompt, buildBrandCorpus, HUMAN_STYLE_GUIDE, stripEmDashes, buildKnowledgePrompt } from "../_shared/brandPrompt.ts";
 
 const ANTHROPIC_API_KEY    = Deno.env.get("ANTHROPIC_API_KEY")!;
 const OPENAI_API_KEY       = Deno.env.get("OPENAI_API_KEY") || '';
@@ -357,6 +357,17 @@ serve(async (req) => {
           if (_cid === activeBV.id) continue;
           const _cbv = await loadBrandVoiceIfAllowed(supabaseAdmin, _cid, userId, callerTeamIds);
           if (_cbv) systemPrompt += buildCompanyBrandContext(_cbv) + '\n\n';
+        }
+      }
+
+      // Wissen: ausgewaehlte Wissensressourcen als faktischer Kontext (Ambassador/Content-analog)
+      const _knowIds = Array.isArray((body as any).knowledge_ids) ? ((body as any).knowledge_ids as any[]).filter((x) => typeof x === 'string') : [];
+      if (_knowIds.length) {
+        const _ownedKnow = await filterOwnedIds(supabaseAdmin, 'knowledge_base', _knowIds, userId, callerTeamIds);
+        if (_ownedKnow.length) {
+          const { data: _kb } = await supabaseAdmin.from('knowledge_base').select('name,category,description,content').in('id', _ownedKnow);
+          const _kc = buildKnowledgePrompt(_kb || []);
+          if (_kc) systemPrompt += _kc + '\n\n';
         }
       }
 

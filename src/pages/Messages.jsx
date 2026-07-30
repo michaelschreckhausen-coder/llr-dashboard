@@ -216,6 +216,8 @@ function Verfassen({ bvId, model, contacts, onOpenPostfach, caps }) {
   const [flash, setFlash] = useState(null) // {type,msg}
   const [companies, setCompanies] = useState([])
   const [selectedCompanyVoiceIds, setSelectedCompanyVoiceIds] = useState([])
+  const [knowledgeBase, setKnowledgeBase] = useState([])
+  const [selectedKnowledgeIds, setSelectedKnowledgeIds] = useState([])
   const [copied, setCopied] = useState(false)
   useEffect(() => {
     if (isCompany) return
@@ -223,6 +225,8 @@ function Verfassen({ bvId, model, contacts, onOpenPostfach, caps }) {
     ;(async () => {
       const { data } = await supabase.from('brand_voices').select('id, name, brand_name').eq('account_type', 'company_page').order('name')
       if (!cancel) setCompanies(data || [])
+      const { data: kb } = await supabase.from('knowledge_base').select('id, name').order('name')
+      if (!cancel) setKnowledgeBase(kb || [])
     })()
     return () => { cancel = true }
   }, [isCompany])
@@ -245,7 +249,7 @@ function Verfassen({ bvId, model, contacts, onOpenPostfach, caps }) {
     parts.push('EMPFAENGER:\nName: ' + contactName(target) + (target.headline ? '\nHeadline: ' + target.headline : ''))
     if (context.trim()) parts.push('ANLASS / KONTEXT:\n' + context.trim())
     const { data, error } = await supabase.functions.invoke('generate', {
-      body: { prompt: parts.join('\n\n'), brand_voice_id: bvId, model, content_kind: cat.kind, company_voice_ids: selectedCompanyVoiceIds }
+      body: { prompt: parts.join('\n\n'), brand_voice_id: bvId, model, content_kind: cat.kind, company_voice_ids: selectedCompanyVoiceIds, knowledge_ids: selectedKnowledgeIds }
     })
     setGen(false)
     if (error || data?.error) { setFlash({ type: 'error', msg: data?.error || error?.message || 'Generierung fehlgeschlagen' }); return }
@@ -306,6 +310,11 @@ function Verfassen({ bvId, model, contacts, onOpenPostfach, caps }) {
         {!isCompany && companies.length > 0 && (<>
           <div style={label}>Im Namen von <span style={{ textTransform: 'none', fontWeight: 500, color: '#9CA3AF' }}>(optional)</span></div>
           <div style={{ marginBottom: 16 }}><CompanyMultiSelect companies={companies} value={selectedCompanyVoiceIds} onChange={setSelectedCompanyVoiceIds} /></div>
+        </>)}
+
+        {knowledgeBase.length > 0 && (<>
+          <div style={label}>Wissen <span style={{ textTransform: 'none', fontWeight: 500, color: '#9CA3AF' }}>(optional)</span></div>
+          <div style={{ marginBottom: 16 }}><CompanyMultiSelect companies={knowledgeBase} value={selectedKnowledgeIds} onChange={setSelectedKnowledgeIds} label="Wissen" /></div>
         </>)}
 
         <div style={label}>Anlass / Kontext <span style={{ textTransform: 'none', fontWeight: 500, color: '#9CA3AF' }}>(optional)</span></div>
