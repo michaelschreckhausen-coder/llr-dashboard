@@ -1313,7 +1313,10 @@ export default function BrandVoice({ session, brandType = 'personal' }) {
   const [showVisibilityModal, setShowVisibilityModal] = useState(false)
   // Unipile-Connect (brand-scoped): übergibt brand_voice_id → Webhook mappt den Account an DIESE Brand.
   async function connectLinkedInUnipile(forceBvId) {
-    const bvId = forceBvId || edit?.id
+    // forceBvId nur nutzen, wenn es eine echte ID (String) ist — bei onClick={connectLinkedInUnipile}
+    // wird sonst das Klick-Event uebergeben und landet als brand_voice_id im Request-Body
+    // (→ 'Converting circular structure to JSON' beim Serialisieren des React-Events).
+    const bvId = (typeof forceBvId === 'string' ? forceBvId : null) || edit?.id
     setLiConnecting(true); setLiError('')
     try {
       if (!bvId) { setLiError('Bitte zuerst die Brand Voice speichern, dann LinkedIn verbinden.'); setLiConnecting(false); return }
