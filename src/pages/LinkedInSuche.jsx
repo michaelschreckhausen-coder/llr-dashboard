@@ -288,7 +288,7 @@ export default function LinkedInSuche() {
                 <button className="lk-btn lk-btn-ghost" onClick={() => setLiveSel(liveSel.size === liveResults.length ? new Set() : new Set(liveResults.map((_, i) => i)))}>{liveSel.size === liveResults.length ? 'Keine' : 'Alle'} auswaehlen</button>
                 <button className="lk-btn lk-btn-navy" disabled={liveImporting || liveSel.size === 0} onClick={addLiveToProspects}>{liveImporting ? <Loader2 size={15} className="lk-spin" /> : <InboxIcon size={14} />} {liveSel.size} zu Prospects hinzufuegen</button>
               </div>
-              <div style={{ display:'flex', flexDirection:'column', gap:8 }}>
+              <div style={{ display:'flex', flexDirection:'column', gap:8, maxHeight:308, overflowY:'auto', paddingRight:4 }}>
                 {liveResults.map((it, idx) => (
                   <div key={(it.provider_id || it.url || 'x') + idx} style={{ ...cardStyle, padding:'12px 16px', display:'flex', alignItems:'center', gap:14, flexWrap:'wrap' }}>
                     <Avatar name={it.name} avatar_url={it.avatar_url} />
