@@ -165,7 +165,7 @@ function RecipientPicker({ bvId, cat, canInmail, value, onChange }) {
     }, 450)
     return () => { cancel = true; clearTimeout(t) }
   }, [open, src, q, bvId])
-  const filtered = rows.filter(r => !q || (r.name || '').toLowerCase().includes(q.toLowerCase()))
+  const filtered = src === 'suche' ? rows : rows.filter(r => !q || (r.name || '').toLowerCase().includes(q.toLowerCase()))
   return (
     <div ref={ref} style={{ position: 'relative' }}>
       <button type="button" className="lk-dd-trigger" onClick={() => setOpen(o => !o)} style={{ width: '100%', justifyContent: 'flex-start', minHeight: 44 }}>

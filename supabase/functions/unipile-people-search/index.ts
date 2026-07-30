@@ -19,7 +19,7 @@ Deno.serve(async (req) => {
     if (!res.ok) return jsonResponse({ error: "LinkedIn-Suche momentan nicht moeglich — bitte Verbindung pruefen.", items: [] }, 502);
     const items = (res.data.items || []).slice(0, 15).map((p: any) => {
       const raw = p.raw || {};
-      return { provider_id: p.provider_id, url: p.profile_url, name: p.name || "Profil", headline: p.headline, avatar_url: raw.profile_picture_url || raw.avatar_url || raw.profile_picture_url_large || null, source: "suche" };
+      return { provider_id: p.provider_id || raw.id || raw.member_urn || null, url: p.profile_url || raw.public_profile_url || raw.profile_url || null, name: p.name || raw.name || "Profil", headline: p.headline || raw.headline, avatar_url: raw.profile_picture_url || raw.avatar_url || raw.profile_picture_url_large || null, source: "suche" };
     });
     return jsonResponse({ items });
   } catch (e) { return jsonResponse({ error: String(e), items: [] }, 500); }
