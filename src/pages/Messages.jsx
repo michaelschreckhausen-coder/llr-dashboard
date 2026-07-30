@@ -515,7 +515,7 @@ function Postfach({ bvId, contacts, goCompose }) {
       </div>
 
       {/* Konversation */}
-      <div style={{ display: 'flex', flexDirection: 'column', minHeight: 0 }}>
+      <div style={{ display: 'flex', flexDirection: 'column', minHeight: 0, minWidth: 0 }}>
         {!sel ? <div style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', color: '#9CA3AF', fontSize: 14, gap: 10 }}>
             <MessageSquare size={30} color="#CBD5E1" /> Waehle links eine Konversation.
           </div>
@@ -528,13 +528,13 @@ function Postfach({ bvId, contacts, goCompose }) {
               </div>
               {sel.attendee_profile_url && <a href={sel.attendee_profile_url} target="_blank" rel="noreferrer" className="lk-btn lk-btn-ghost lk-btn-sm" style={{ textDecoration: 'none' }}>Profil <ExternalLink size={13} /></a>}
             </div>
-            <div style={{ flex: 1, overflowY: 'auto', padding: 16, display: 'flex', flexDirection: 'column', gap: 8, background: 'var(--surface-muted,#F6F7FB)' }}>
+            <div style={{ flex: 1, minWidth: 0, overflowY: 'auto', padding: 16, display: 'flex', flexDirection: 'column', gap: 8, background: 'var(--surface-muted,#F6F7FB)' }}>
               {msgLoading ? <div style={{ textAlign: 'center', color: '#9CA3AF' }}><Loader2 size={18} className="lk-spin" /></div>
                 : msgs.map(m => {
                   const out = m.direction === 'outbound'
                   return (
                     <div key={m.id} style={{ alignSelf: out ? 'flex-end' : 'flex-start', maxWidth: '74%' }}>
-                      <div style={{ padding: '9px 13px', borderRadius: 14, fontSize: 13.5, lineHeight: 1.5, whiteSpace: 'pre-wrap', background: out ? P : 'var(--surface)', color: out ? '#fff' : 'var(--text-primary)', border: out ? 'none' : '1px solid var(--border)', borderBottomRightRadius: out ? 4 : 14, borderBottomLeftRadius: out ? 14 : 4 }}>{m.text}</div>
+                      <div style={{ padding: '9px 13px', borderRadius: 14, fontSize: 13.5, lineHeight: 1.5, whiteSpace: 'pre-wrap', overflowWrap: 'anywhere', background: out ? P : 'var(--surface)', color: out ? '#fff' : 'var(--text-primary)', border: out ? 'none' : '1px solid var(--border)', borderBottomRightRadius: out ? 4 : 14, borderBottomLeftRadius: out ? 14 : 4 }}>{m.text}</div>
                       <div style={{ fontSize: 10.5, color: '#9CA3AF', marginTop: 3, textAlign: out ? 'right' : 'left' }}>{fmtTime(m.sent_at)}</div>
                     </div>
                   )
