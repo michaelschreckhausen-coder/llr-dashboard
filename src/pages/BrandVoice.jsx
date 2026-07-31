@@ -1534,18 +1534,12 @@ export default function BrandVoice({ session, brandType = 'personal' }) {
   // Disconnect: revoked_at setzen + BV-Identity-Felder leeren
   async function disconnectLinkedIn() {
     if (!edit?.id) return
-    if (!window.confirm('LinkedIn-Verbindung trennen? Geplante Auto-Posts dieser Brand Voice schlagen dann fehl.')) return
+    if (!window.confirm('LinkedIn-Verbindung trennen? Die Verbindung wird auch bei Unipile vollstaendig geloescht. Geplante Auto-Posts dieser Brand Voice schlagen dann fehl.')) return
     try {
-      await supabase
-        .from('linkedin_oauth_tokens')
-        .update({ revoked_at: new Date().toISOString() })
-        .eq('brand_voice_id', edit.id)
-        .is('revoked_at', null)
-      await supabase
-        .from('brand_voices')
-        .update({ linkedin_member_id: null, linkedin_display_name: null, linkedin_avatar_url: null, linkedin_verified_at: null })
-        .eq('id', edit.id)
+      const { data, error } = await supabase.functions.invoke('unipile-disconnect', { body: { brand_voice_id: edit.id } })
+      if (error || data?.error) throw new Error(data?.error || error?.message || 'Trennen fehlgeschlagen')
       setEdit(prev => ({ ...prev, linkedin_member_id: null, linkedin_display_name: null, linkedin_avatar_url: null, linkedin_verified_at: null }))
+      setUniAccount(null)
     } catch (e) {
       setLiError('Trennen fehlgeschlagen: ' + (e?.message || 'Unbekannt'))
     }
