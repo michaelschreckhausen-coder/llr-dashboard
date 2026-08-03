@@ -139,10 +139,14 @@ function RecipientPicker({ bvId, cat, canInmail, value, onChange }) {
     ;(async () => {
       let data = []
       if (src === 'kontakte' || src === 'netzwerk') {
-        let r = supabase.from('linkedin_inbox').select('provider_id, name, first_name, last_name, headline, avatar_url').eq('brand_voice_id', bvId).not('provider_id', 'is', null)
-        r = src === 'netzwerk' ? r.eq('source', 'unipile_relations') : r.neq('source', 'unipile_relations')
+        let r = supabase.from('linkedin_inbox').select('provider_id, linkedin_url, name, first_name, last_name, headline, avatar_url').eq('brand_voice_id', bvId)
+        // Verbindungen haben immer eine provider_id. Prospects auch OHNE provider_id zeigen —
+        // die URL reicht, das Senden loest die provider_id per Unipile aus der URL auf.
+        r = src === 'netzwerk'
+          ? r.eq('source', 'unipile_relations').not('provider_id', 'is', null)
+          : r.neq('source', 'unipile_relations').or('provider_id.not.is.null,linkedin_url.not.is.null')
         const rr = await r.order('name').limit(500)
-        data = (rr.data || []).map(c => ({ provider_id: c.provider_id, name: c.name || ((c.first_name || '') + ' ' + (c.last_name || '')).trim() || 'Kontakt', headline: c.headline, avatar_url: c.avatar_url, source: src }))
+        data = (rr.data || []).map(c => ({ provider_id: c.provider_id || null, url: c.linkedin_url || null, name: c.name || ((c.first_name || '') + ' ' + (c.last_name || '')).trim() || 'Kontakt', headline: c.headline, avatar_url: c.avatar_url, source: src }))
       } else if (src === 'crm') {
         const r = await supabase.from('leads').select('name, first_name, last_name, headline, avatar_url, company, linkedin_url').not('linkedin_url', 'is', null).order('name').limit(500)
         data = (r.data || []).map(c => ({ url: c.linkedin_url, name: c.name || ((c.first_name || '') + ' ' + (c.last_name || '')).trim() || 'Kontakt', headline: c.headline || c.company, avatar_url: c.avatar_url, source: 'crm' }))

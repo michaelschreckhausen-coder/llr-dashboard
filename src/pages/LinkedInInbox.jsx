@@ -161,13 +161,14 @@ export default function LinkedInInbox() {
 
     // Aktiver Tab quellen-gefiltert laden — so verdrängt die Netzwerk-Flut die
     // Prospecting-Kontakte NICHT aus dem 500er-Fenster (jeder Tab hat sein eigenes).
-    let q = supabase
-      .from('linkedin_inbox')
-      .select('id, source, sales_nav_id, linkedin_url, name, first_name, last_name, headline, job_title, company, location, avatar_url, imported_at, promoted_lead_id')
-      .eq('brand_voice_id', bvId)
-      .eq('review_status', 'new')
-    q = sourceTab === 'netzwerk' ? q.eq('source', NETWORK_SOURCE) : q.neq('source', NETWORK_SOURCE)
-    const { data, error } = await q.order('imported_at', { ascending: false }).limit(500)
+    // Ein Server-Call statt ~5 Round-Trips: RPC liefert eigene + geteilte-Listen-Rows
+    // (quellen-gefiltert) inkl. in_crm-Flag. Ersetzt die frühere Client-Merge-Logik,
+    // die pro Laden alle geteilten Mitglieder + ein Riesen-.in() zog (langsam).
+    const { data, error } = await supabase.rpc('inbox_feed', {
+      p_brand_voice_id: bvId,
+      p_mode: sourceTab === 'netzwerk' ? 'netzwerk' : 'kontakte',
+      p_limit: 1000,
+    })
 
     // Tab-Badges: Gesamtzahl je Quelle (head-only, kein Row-Transfer).
     const countBase = () => supabase.from('linkedin_inbox')
@@ -178,39 +179,10 @@ export default function LinkedInInbox() {
     ]).then(([net, kon]) => setCounts({ kontakte: kon.count || 0, netzwerk: net.count || 0 }))
 
     if (error) { setMsg({ text: 'Laden fehlgeschlagen: ' + error.message }); setRows([]); setLoading(false); return }
-    let list = data || []
-    // Geteilte Listen: Mitglieder-Kontakte anderer Marken mitladen (RLS erlaubt via
-    // inbox_in_shared_list) — sonst zeigt eine geteilte Liste beim anderen Brand leer.
-    try {
-      const { data: sharedLists } = await supabase.from('inbox_lists').select('id').eq('is_shared', true)
-      const sharedIds = (sharedLists || []).map(l => l.id)
-      if (sharedIds.length) {
-        const { data: mem } = await supabase.from('inbox_list_members').select('inbox_id').in('list_id', sharedIds)
-        const have = new Set(list.map(r => r.id))
-        const missing = [...new Set((mem || []).map(m => m.inbox_id))].filter(id => !have.has(id))
-        if (missing.length) {
-          let sq = supabase.from('linkedin_inbox')
-            .select('id, source, sales_nav_id, linkedin_url, name, first_name, last_name, headline, job_title, company, location, avatar_url, imported_at, promoted_lead_id')
-            .in('id', missing).eq('review_status', 'new')
-          sq = sourceTab === 'netzwerk' ? sq.eq('source', NETWORK_SOURCE) : sq.neq('source', NETWORK_SOURCE)
-          const { data: extra } = await sq.limit(1000)
-          if (extra?.length) list = [...list, ...extra]
-        }
-      }
-    } catch (e) { /* geteilte-Merge best-effort — bricht das normale Laden nicht */ }
+    const list = data || []
     setRows(list)
     setSelected(new Set())
-
-    // "bereits im CRM"-Badge via sales_nav_id-Match gegen aktive leads.
-    const snIds = list.map(r => r.sales_nav_id).filter(Boolean)
-    const hit = new Set()
-    if (snIds.length) {
-      const { data: leadHits } = await supabase
-        .from('leads').select('sales_nav_id').eq('team_id', activeTeamId).eq('archived', false).in('sales_nav_id', snIds)
-      const snSet = new Set((leadHits || []).map(l => l.sales_nav_id).filter(Boolean))
-      for (const r of list) if (r.sales_nav_id && snSet.has(r.sales_nav_id)) hit.add(r.id)
-    }
-    setExisting(hit)
+    setExisting(new Set(list.filter(r => r.in_crm).map(r => r.id)))
     setLoading(false)
   }, [activeTeamId, activeBrandVoice?.id, sourceTab])
 
