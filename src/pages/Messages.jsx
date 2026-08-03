@@ -135,27 +135,39 @@ function RecipientPicker({ bvId, cat, canInmail, value, onChange }) {
   useEffect(() => { const h = e => { if (ref.current && !ref.current.contains(e.target)) setOpen(false) }; if (open) document.addEventListener('mousedown', h); return () => document.removeEventListener('mousedown', h) }, [open])
   useEffect(() => {
     if (!open || src === 'suche') return
-    let cancel = false; setLoading(true); setRows([])
-    ;(async () => {
+    let cancel = false
+    // Server-seitige Suche: sonst wuerden nur die ersten 500 (nach Name) geladen und
+    // client-seitig gefiltert -> Namen dahinter (z.B. bei tausenden Verbindungen) unauffindbar.
+    const term = q.trim().replace(/[,()*%]/g, ' ').trim()
+    const like = term.length >= 1 ? term : null
+    setRows([])
+    const run = async () => {
+      setLoading(true)
       let data = []
       if (src === 'kontakte' || src === 'netzwerk') {
         let r = supabase.from('linkedin_inbox').select('provider_id, linkedin_url, name, first_name, last_name, headline, avatar_url').eq('brand_voice_id', bvId)
         r = src === 'netzwerk'
           ? r.eq('source', 'unipile_relations').not('provider_id', 'is', null)
           : r.neq('source', 'unipile_relations').or('provider_id.not.is.null,linkedin_url.not.is.null')
-        const rr = await r.order('name').limit(500)
+        if (like) r = r.or(`name.ilike.*${like}*,first_name.ilike.*${like}*,last_name.ilike.*${like}*,headline.ilike.*${like}*`)
+        const rr = await r.order('name').limit(like ? 100 : 500)
         data = (rr.data || []).map(c => ({ provider_id: c.provider_id || null, url: c.linkedin_url || null, name: c.name || ((c.first_name || '') + ' ' + (c.last_name || '')).trim() || 'Kontakt', headline: c.headline, avatar_url: c.avatar_url, source: src }))
       } else if (src === 'crm') {
-        const r = await supabase.from('leads').select('name, first_name, last_name, headline, avatar_url, company, linkedin_url').not('linkedin_url', 'is', null).order('name').limit(500)
-        data = (r.data || []).map(c => ({ url: c.linkedin_url, name: c.name || ((c.first_name || '') + ' ' + (c.last_name || '')).trim() || 'Kontakt', headline: c.headline || c.company, avatar_url: c.avatar_url, source: 'crm' }))
+        let r = supabase.from('leads').select('name, first_name, last_name, headline, avatar_url, company, linkedin_url').not('linkedin_url', 'is', null)
+        if (like) r = r.or(`name.ilike.*${like}*,first_name.ilike.*${like}*,last_name.ilike.*${like}*,company.ilike.*${like}*`)
+        const rr = await r.order('name').limit(like ? 100 : 500)
+        data = (rr.data || []).map(c => ({ url: c.linkedin_url, name: c.name || ((c.first_name || '') + ' ' + (c.last_name || '')).trim() || 'Kontakt', headline: c.headline || c.company, avatar_url: c.avatar_url, source: 'crm' }))
       } else if (src === 'firmen') {
-        const r = await supabase.from('organizations').select('name, logo_url, linkedin_company_url').not('linkedin_company_url', 'is', null).order('name').limit(500)
-        data = (r.data || []).map(o => ({ url: o.linkedin_company_url, name: o.name || 'Unternehmen', headline: 'Unternehmen', avatar_url: o.logo_url, source: 'firmen' }))
+        let r = supabase.from('organizations').select('name, logo_url, linkedin_company_url').not('linkedin_company_url', 'is', null)
+        if (like) r = r.or(`name.ilike.*${like}*`)
+        const rr = await r.order('name').limit(like ? 100 : 500)
+        data = (rr.data || []).map(o => ({ url: o.linkedin_company_url, name: o.name || 'Unternehmen', headline: 'Unternehmen', avatar_url: o.logo_url, source: 'firmen' }))
       }
       if (!cancel) { setRows(data); setLoading(false) }
-    })()
-    return () => { cancel = true }
-  }, [open, src, bvId])
+    }
+    const t = setTimeout(run, like ? 300 : 0)
+    return () => { cancel = true; clearTimeout(t) }
+  }, [open, src, bvId, q])
   useEffect(() => {
     if (!open || src !== 'suche') return
     const query = q.trim()
@@ -172,7 +184,7 @@ function RecipientPicker({ bvId, cat, canInmail, value, onChange }) {
     }, 450)
     return () => { cancel = true; clearTimeout(t) }
   }, [open, src, q, bvId])
-  const filtered = src === 'suche' ? rows : rows.filter(r => !q || (r.name || '').toLowerCase().includes(q.toLowerCase()))
+  const filtered = rows // Filterung passiert server-seitig (auch fuer Verbindungen/Prospects/CRM/Firmen)
   return (
     <div ref={ref} style={{ position: 'relative' }}>
       <button type="button" className="lk-dd-trigger" onClick={() => setOpen(o => !o)} style={{ width: '100%', justifyContent: 'flex-start', minHeight: 44 }}>
