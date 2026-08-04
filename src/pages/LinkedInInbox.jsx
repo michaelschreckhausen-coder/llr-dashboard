@@ -122,10 +122,10 @@ export default function LinkedInInbox() {
         const name = impNewList.trim()
         if (!name) { setImportErr('Bitte einen Namen für die neue Liste eingeben.'); setImporting(false); return }
         // Dedupe: gleichnamige Liste wiederverwenden statt Duplikat anzulegen
-        const dupe = lists.find(l => (l.name || '').trim().toLowerCase() === name.toLowerCase())
+        const dupe = lists.find(l => (l.kind || 'prospect') === 'prospect' && (l.name || '').trim().toLowerCase() === name.toLowerCase())
         if (dupe) { listId = dupe.id }
         else {
-          const r = await createList(name, '#30A0D0')
+          const r = await createList(name, '#30A0D0', 'prospect')
           listId = r?.id ?? r?.data?.id ?? (Array.isArray(r?.data) ? r.data[0]?.id : null)
           if (!listId) { setImportErr('Liste anlegen fehlgeschlagen.'); setImporting(false); return }
           createdListId = listId
@@ -298,12 +298,13 @@ export default function LinkedInInbox() {
 
   // Liste anlegen ODER gleichnamige Team-Liste wiederverwenden (Dedup, case-insensitiv).
   // createList (useInboxLists) schreibt team-scoped in inbox_lists (RLS + GRANT vorhanden).
-  const createOrReuseList = async (name, color) => {
+  const listKind = sourceTab === 'netzwerk' ? 'connection' : 'prospect'
+  const createOrReuseList = async (name, color, kind = listKind) => {
     const trimmed = (name || '').trim()
     if (!trimmed) return { error: new Error('Name fehlt') }
-    const dupe = lists.find(l => (l.name || '').trim().toLowerCase() === trimmed.toLowerCase())
+    const dupe = lists.find(l => (l.kind || 'prospect') === kind && (l.name || '').trim().toLowerCase() === trimmed.toLowerCase())
     if (dupe) return { data: dupe, reused: true }
-    return await createList(trimmed, color)
+    return await createList(trimmed, color, kind)
   }
 
   // Standalone „+ Neue Liste" (ohne Kontakt-Zuweisung) aus der „Nach Liste"-Zeile.
@@ -311,7 +312,7 @@ export default function LinkedInInbox() {
     const name = newListName.trim()
     if (!name) return
     setCreatingList(true)
-    const { data, error, reused } = await createOrReuseList(name, '#30A0D0')
+    const { data, error, reused } = await createOrReuseList(name, '#30A0D0', listKind)
     setCreatingList(false)
     if (error) { setMsg({ text: 'Liste anlegen fehlgeschlagen: ' + error.message }); return }
     setShowNewList(false); setNewListName('')
@@ -479,7 +480,7 @@ export default function LinkedInInbox() {
         <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap', marginBottom: 16 }}>
           <span style={{ fontSize: 12, fontWeight: 700, color: muted, marginRight: 2 }}>Nach Liste:</span>
           <span style={chip(listFilter === 'all')} onClick={() => setListFilter('all')}>Alle</span>
-          {lists.filter(l => !l.brand_voice_id || l.brand_voice_id === activeBrandVoice?.id || l.is_shared).map(l => {
+          {lists.filter(l => (l.kind || 'prospect') === listKind).map(l => {
             const set = membersByList.get(l.id)
             const cnt = set ? rows.reduce((n, r) => n + (set.has(r.id) ? 1 : 0), 0) : 0
             if (editingListId === l.id) {
@@ -626,7 +627,7 @@ export default function LinkedInInbox() {
 
       {listOpen && (
         <ListModal
-          lists={lists}
+          lists={lists.filter(l => (l.kind || 'prospect') === listKind)}
           count={selected.size}
           busy={busy}
           onClose={() => setListOpen(false)}

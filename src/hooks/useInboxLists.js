@@ -35,9 +35,14 @@ export function useInboxLists({ activeTeamId, activeBrandVoiceId } = {}) {
     // Listen team-gescopet (expliziter Filter, Top-Fallstrick #14).
     let q = supabase
       .from('inbox_lists')
-      .select('id, name, color, user_id, team_id, brand_voice_id, is_shared, created_at, updated_at')
+      .select('id, name, color, user_id, team_id, brand_voice_id, kind, is_shared, created_at, updated_at')
       .order('created_at', { ascending: true })
-    if (activeTeamId) {
+    // Marken-gescopet: die Listen der AKTIVEN Marke laden — so kommen auch
+    // Listen einer marken-übergreifend GETEILTEN Marke mit (RLS erlaubt via
+    // has_brand_access). Plus Legacy-Listen ohne Marke im aktiven Team.
+    if (activeBrandVoiceId) {
+      q = q.or(`brand_voice_id.eq.${activeBrandVoiceId},and(brand_voice_id.is.null,team_id.eq.${activeTeamId})`)
+    } else if (activeTeamId) {
       q = q.eq('team_id', activeTeamId)
     } else {
       q = q.eq('user_id', user.id).is('team_id', null)
@@ -68,7 +73,7 @@ export function useInboxLists({ activeTeamId, activeBrandVoiceId } = {}) {
     }
     setMembersByList(m)
     setIsLoading(false)
-  }, [activeTeamId])
+  }, [activeTeamId, activeBrandVoiceId])
 
   useEffect(() => {
     mountedRef.current = true
@@ -77,7 +82,7 @@ export function useInboxLists({ activeTeamId, activeBrandVoiceId } = {}) {
   }, [fetchAll])
 
   // ─── CRUD ─────────────────────────────────────────────────────────────────
-  const createList = useCallback(async (name, color) => {
+  const createList = useCallback(async (name, color, kind) => {
     const trimmed = (name || '').trim()
     if (!trimmed) return { error: new Error('Name fehlt') }
     let ownerId = uid
@@ -88,12 +93,13 @@ export function useInboxLists({ activeTeamId, activeBrandVoiceId } = {}) {
       user_id: ownerId,
       team_id: activeTeamId || null, // NOT-NULL-Sicherheit (Multi-Tenant-Konvention)
       brand_voice_id: activeBrandVoiceId || null, // Liste gehoert der aktiven Marke (teilbar via is_shared)
+      kind: (kind === 'connection' ? 'connection' : 'prospect'), // Prospects- vs Verbindungen-Liste
       is_shared: false,
     }
     const { data, error } = await supabase
       .from('inbox_lists')
       .insert(payload)
-      .select('id, name, color, user_id, team_id, brand_voice_id, is_shared, created_at, updated_at')
+      .select('id, name, color, user_id, team_id, brand_voice_id, kind, is_shared, created_at, updated_at')
       .single()
     if (error) return { error }
     if (mountedRef.current) {
@@ -101,7 +107,7 @@ export function useInboxLists({ activeTeamId, activeBrandVoiceId } = {}) {
       setMembersByList(prev => { const n = new Map(prev); n.set(data.id, new Set()); return n })
     }
     return { data }
-  }, [uid, activeTeamId])
+  }, [uid, activeTeamId, activeBrandVoiceId])
 
   const addToList = useCallback(async (listId, inboxIds) => {
     const ids = [...new Set((inboxIds || []).filter(Boolean))]
