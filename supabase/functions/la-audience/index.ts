@@ -72,10 +72,16 @@ Deno.serve(async (req) => {
     if (inboxIds.length) {
       // Listen-Mitgliedschaft ist bereits die Autorisierung (kuratierte Kontakte).
       // KEIN Team-Filter -> team-uebergreifend nutzbar (Agentur: Kontakte + Account in versch. Teams).
-      const { data: rows } = await db.from("linkedin_inbox")
-        .select("id, provider_id, linkedin_url, name, headline, job_title, company")
-        .in("id", inboxIds);
-      for (const r of rows ?? []) {
+      // Chunked: .in() mit hunderten IDs sprengt die REST-URL (HTTP 414) -> 0 Zeilen.
+      const rows: any[] = [];
+      for (let _i = 0; _i < inboxIds.length; _i += 120) {
+        const _slice = inboxIds.slice(_i, _i + 120);
+        const { data: _part } = await db.from("linkedin_inbox")
+          .select("id, provider_id, linkedin_url, name, headline, job_title, company")
+          .in("id", _slice);
+        if (_part) rows.push(..._part);
+      }
+      for (const r of rows) {
         persons.push({
           provider_id: (r as any).provider_id ?? null,
           public_identifier: publicIdFromUrl((r as any).linkedin_url ?? null),
