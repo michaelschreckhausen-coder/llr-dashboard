@@ -74,7 +74,7 @@ export default function LinkedInInbox() {
 
   // Kampagnen-Gruppierung
   // Inbox-Listen (reine Auswahl-Sammlungen — die einzige Gruppierung auf dieser Seite)
-  const { lists, countsByList, createList, addToList, renameList, deleteList, toggleShareList } = useInboxLists({ activeTeamId, activeBrandVoiceId: activeBrandVoice?.id })
+  const { lists, membersByList, createList, addToList, renameList, deleteList, toggleShareList } = useInboxLists({ activeTeamId, activeBrandVoiceId: activeBrandVoice?.id })
   const [listOpen, setListOpen]     = useState(false)
   const [deleteBulkModal, setDeleteBulkModal] = useState(null) // { ids, count, refs:{count,campaigns}, checking }
   const [listFilter, setListFilter] = useState('all')        // 'all' | list_id
@@ -161,15 +161,11 @@ export default function LinkedInInbox() {
 
     // Aktiver Tab quellen-gefiltert laden — so verdrängt die Netzwerk-Flut die
     // Prospecting-Kontakte NICHT aus dem 500er-Fenster (jeder Tab hat sein eigenes).
-    // Aktive Liste? -> autoritativer Listeninhalt (unbegrenzt, server-seitig),
-    // sonst der quellen-gefilterte Recency-Feed der Marke.
-    const { data, error } = listFilter !== 'all'
-      ? await supabase.rpc('inbox_list_feed', { p_list_id: listFilter, p_limit: 2000 })
-      : await supabase.rpc('inbox_feed', {
-          p_brand_voice_id: bvId,
-          p_mode: sourceTab === 'netzwerk' ? 'netzwerk' : 'kontakte',
-          p_limit: 1000,
-        })
+    const { data, error } = await supabase.rpc('inbox_feed', {
+      p_brand_voice_id: bvId,
+      p_mode: sourceTab === 'netzwerk' ? 'netzwerk' : 'kontakte',
+      p_limit: 1000,
+    })
 
     // Tab-Badges: server-seitig (SECURITY DEFINER) statt zwei RLS-Count-Queries,
     // die bei >10k Verbindungen ins statement timeout liefen.
@@ -182,7 +178,7 @@ export default function LinkedInInbox() {
     setSelected(new Set())
     setExisting(new Set(list.filter(r => r.in_crm).map(r => r.id)))
     setLoading(false)
-  }, [activeTeamId, activeBrandVoice?.id, sourceTab, listFilter])
+  }, [activeTeamId, activeBrandVoice?.id, sourceTab])
 
   async function syncNetwork() {
     const bvId = activeBrandVoice?.id
@@ -198,7 +194,13 @@ export default function LinkedInInbox() {
 
   useEffect(() => { load() }, [load])
 
-  const displayed = rows
+  const displayed = rows.filter(r => {
+    if (listFilter !== 'all') {
+      const set = membersByList.get(listFilter)
+      if (!set || !set.has(r.id)) return false
+    }
+    return true
+  })
   const visible = displayed.slice(0, visibleCount)
   const hasMore = visibleCount < displayed.length
 
@@ -376,7 +378,6 @@ export default function LinkedInInbox() {
     if (error) { setMsg({ text: 'Zu Liste hinzufügen fehlgeschlagen: ' + error.message }); return }
     setSelected(new Set())
     setMsg({ text: `${ids.length} Kontakt(e) zu „${lName || 'Liste'}" hinzugefügt.` })
-    if (lid === listFilter) load()
   }
 
   const card = 'var(--surface)', border = 'var(--border)', text = 'var(--text-primary)', muted = 'var(--text-muted)', primary = 'var(--primary)'
@@ -480,7 +481,8 @@ export default function LinkedInInbox() {
           <span style={{ fontSize: 12, fontWeight: 700, color: muted, marginRight: 2 }}>Nach Liste:</span>
           <span style={chip(listFilter === 'all')} onClick={() => setListFilter('all')}>Alle</span>
           {lists.filter(l => (l.kind || 'prospect') === listKind).map(l => {
-            const cnt = countsByList.get(l.id) || 0
+            const set = membersByList.get(l.id)
+            const cnt = set ? rows.reduce((n, r) => n + (set.has(r.id) ? 1 : 0), 0) : 0
             if (editingListId === l.id) {
               return (
                 <span key={l.id} style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>

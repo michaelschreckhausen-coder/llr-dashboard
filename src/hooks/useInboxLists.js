@@ -1,67 +1,45 @@
 // src/hooks/useInboxLists.js
 //
 // Inbox-Listen — reusable Auswahl-Sammlungen von linkedin_inbox-Kontakten.
-// Getrennt von automation_campaigns (Kampagnen = Outreach).
+// Getrennt von automation_campaigns (Kampagnen = Outreach). Befüllt in
+// /linkedin-inbox, auswählbar in Automatisierung (Lead-Step) + Vernetzungen.
 //
-// Team-Scoping mit EXPLIZITEM Filter (CLAUDE.md Top-Fallstrick #14). Listen
-// zusaetzlich marken-gescopet (brand_voice_id), so kommen geteilte Marken-Listen
-// mit (RLS erlaubt via has_brand_access).
-//
-// WICHTIG (Bugfix 04.08.2026): Mitgliederzahlen kommen server-seitig via RPC
-// `inbox_list_counts` — NICHT mehr durch Laden aller inbox_list_members-Zeilen
-// (das lief in PostgRESTs 1000-Zeilen-Default und schnitt bei Marken mit >1000
-// Membern gesamt einzelne Listen ab -> "Liste nach Refresh leer"). Der
-// tatsaechliche Listeninhalt wird in LinkedInInbox via `inbox_list_feed` geladen.
+// Team-Scoping mit EXPLIZITEM Filter (CLAUDE.md Top-Fallstrick #14): RLS allein
+// reicht bei Multi-Team-Membership nicht — mit activeTeamId auf team_id filtern,
+// Solo-Fallback auf eigene team-lose Listen. useEffect-Dep auf [activeTeamId].
 //
 // API:
-//   const { lists, countsByList, isLoading,
-//           createList, addToList, removeFromList, deleteList,
-//           renameList, toggleShareList, refresh } = useInboxLists({ activeTeamId, activeBrandVoiceId })
-//   countsByList: Map<list_id, number>
+//   const { lists, membersByList, isLoading,
+//           createList, addToList, removeFromList, refresh } = useInboxLists({ activeTeamId });
+//   membersByList: Map<list_id, Set<inbox_id>>
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { supabase } from '../lib/supabase'
 
 export function useInboxLists({ activeTeamId, activeBrandVoiceId } = {}) {
   const [lists, setLists] = useState([])
-  const [countsByList, setCountsByList] = useState(() => new Map())
+  const [membersByList, setMembersByList] = useState(() => new Map())
   const [uid, setUid] = useState(null)
   const [isLoading, setIsLoading] = useState(true)
 
   const mountedRef = useRef(true)
-
-  // Echte Mitgliederzahlen fuer die gegebenen Listen server-seitig holen.
-  const loadCounts = useCallback(async (listIds) => {
-    const ids = [...new Set((listIds || []).filter(Boolean))]
-    if (!ids.length) { if (mountedRef.current) setCountsByList(new Map()); return }
-    const { data, error } = await supabase.rpc('inbox_list_counts', { p_list_ids: ids })
-    if (!mountedRef.current || error) return
-    const m = new Map()
-    for (const id of ids) m.set(id, 0)          // Listen ohne Member = 0
-    for (const r of (data || [])) m.set(r.list_id, Number(r.n) || 0)
-    if (mountedRef.current) setCountsByList(m)
-  }, [])
-
-  const refreshCount = useCallback(async (listId) => {
-    if (!listId) return
-    const { data } = await supabase.rpc('inbox_list_counts', { p_list_ids: [listId] })
-    if (!mountedRef.current) return
-    const n = Number((data || [])[0]?.n) || 0
-    setCountsByList(prev => { const nm = new Map(prev); nm.set(listId, n); return nm })
-  }, [])
 
   const fetchAll = useCallback(async () => {
     setIsLoading(true)
 
     const { data: { user } } = await supabase.auth.getUser()
     if (!mountedRef.current) return
-    if (!user) { setLists([]); setCountsByList(new Map()); setIsLoading(false); return }
+    if (!user) { setLists([]); setMembersByList(new Map()); setIsLoading(false); return }
     setUid(user.id)
 
+    // Listen team-gescopet (expliziter Filter, Top-Fallstrick #14).
     let q = supabase
       .from('inbox_lists')
       .select('id, name, color, user_id, team_id, brand_voice_id, kind, is_shared, created_at, updated_at')
       .order('created_at', { ascending: true })
+    // Marken-gescopet: die Listen der AKTIVEN Marke laden — so kommen auch
+    // Listen einer marken-übergreifend GETEILTEN Marke mit (RLS erlaubt via
+    // has_brand_access). Plus Legacy-Listen ohne Marke im aktiven Team.
     if (activeBrandVoiceId) {
       q = q.or(`brand_voice_id.eq.${activeBrandVoiceId},and(brand_voice_id.is.null,team_id.eq.${activeTeamId})`)
     } else if (activeTeamId) {
@@ -72,13 +50,30 @@ export function useInboxLists({ activeTeamId, activeBrandVoiceId } = {}) {
     const { data: listData, error: listErr } = await q
 
     if (!mountedRef.current) return
-    if (listErr) { console.warn('[useInboxLists] Laden fehlgeschlagen:', listErr.message); setLists([]); setCountsByList(new Map()); setIsLoading(false); return }
+    if (listErr) { console.warn('[useInboxLists] Laden fehlgeschlagen:', listErr.message); setLists([]); setMembersByList(new Map()); setIsLoading(false); return }
 
     const rows = listData || []
     setLists(rows)
-    await loadCounts(rows.map(l => l.id))
+
+    // Mitgliedschaften für die geladenen Listen.
+    const listIds = rows.map(l => l.id)
+    const m = new Map()
+    if (listIds.length) {
+      const { data: memData } = await supabase
+        .from('inbox_list_members')
+        .select('list_id, inbox_id')
+        .in('list_id', listIds)
+      if (!mountedRef.current) return
+      for (const r of (memData || [])) {
+        if (!r.list_id || !r.inbox_id) continue
+        let set = m.get(r.list_id)
+        if (!set) { set = new Set(); m.set(r.list_id, set) }
+        set.add(r.inbox_id)
+      }
+    }
+    setMembersByList(m)
     setIsLoading(false)
-  }, [activeTeamId, activeBrandVoiceId, loadCounts])
+  }, [activeTeamId, activeBrandVoiceId])
 
   useEffect(() => {
     mountedRef.current = true
@@ -96,9 +91,9 @@ export function useInboxLists({ activeTeamId, activeBrandVoiceId } = {}) {
       name: trimmed,
       color: color || null,
       user_id: ownerId,
-      team_id: activeTeamId || null,
-      brand_voice_id: activeBrandVoiceId || null,
-      kind: (kind === 'connection' ? 'connection' : 'prospect'),
+      team_id: activeTeamId || null, // NOT-NULL-Sicherheit (Multi-Tenant-Konvention)
+      brand_voice_id: activeBrandVoiceId || null, // Liste gehoert der aktiven Marke (teilbar via is_shared)
+      kind: (kind === 'connection' ? 'connection' : 'prospect'), // Prospects- vs Verbindungen-Liste
       is_shared: false,
     }
     const { data, error } = await supabase
@@ -109,7 +104,7 @@ export function useInboxLists({ activeTeamId, activeBrandVoiceId } = {}) {
     if (error) return { error }
     if (mountedRef.current) {
       setLists(prev => [...prev, data])
-      setCountsByList(prev => { const n = new Map(prev); n.set(data.id, 0); return n })
+      setMembersByList(prev => { const n = new Map(prev); n.set(data.id, new Set()); return n })
     }
     return { data }
   }, [uid, activeTeamId, activeBrandVoiceId])
@@ -125,10 +120,17 @@ export function useInboxLists({ activeTeamId, activeBrandVoiceId } = {}) {
       .from('inbox_list_members')
       .upsert(rows, { onConflict: 'list_id,inbox_id', ignoreDuplicates: true })
     if (error) return { error }
-    // Echte Zahl server-seitig nachziehen (Dedupe -> exakter Count).
-    refreshCount(listId)
+    if (mountedRef.current) {
+      setMembersByList(prev => {
+        const n = new Map(prev)
+        const set = new Set(n.get(listId) || [])
+        ids.forEach(i => set.add(i))
+        n.set(listId, set)
+        return n
+      })
+    }
     return { data: { added: ids.length } }
-  }, [uid, refreshCount])
+  }, [uid])
 
   const renameList = useCallback(async (listId, name) => {
     const trimmed = (name || '').trim()
@@ -137,7 +139,7 @@ export function useInboxLists({ activeTeamId, activeBrandVoiceId } = {}) {
       .from('inbox_lists')
       .update({ name: trimmed, updated_at: new Date().toISOString() })
       .eq('id', listId)
-      .select('id, name, color, user_id, team_id, brand_voice_id, kind, is_shared, created_at, updated_at')
+      .select('id, name, color, user_id, team_id, brand_voice_id, is_shared, created_at, updated_at')
       .single()
     if (error) return { error }
     if (mountedRef.current) setLists(prev => prev.map(l => (l.id === listId ? { ...l, ...data } : l)))
@@ -151,7 +153,7 @@ export function useInboxLists({ activeTeamId, activeBrandVoiceId } = {}) {
     if (error) return { error }
     if (mountedRef.current) {
       setLists(prev => prev.filter(l => l.id !== listId))
-      setCountsByList(prev => { const n = new Map(prev); n.delete(listId); return n })
+      setMembersByList(prev => { const n = new Map(prev); n.delete(listId); return n })
     }
     return { data: { deleted: listId } }
   }, [])
@@ -164,25 +166,33 @@ export function useInboxLists({ activeTeamId, activeBrandVoiceId } = {}) {
       .eq('list_id', listId)
       .eq('inbox_id', inboxId)
     if (error) return { error }
-    refreshCount(listId)
+    if (mountedRef.current) {
+      setMembersByList(prev => {
+        const n = new Map(prev)
+        const set = new Set(n.get(listId) || [])
+        set.delete(inboxId)
+        n.set(listId, set)
+        return n
+      })
+    }
     return { data: { removed: 1 } }
-  }, [refreshCount])
+  }, [])
 
   const toggleShareList = useCallback(async (listId, share) => {
     const { data, error } = await supabase
       .from('inbox_lists')
       .update({ is_shared: !!share, updated_at: new Date().toISOString() })
       .eq('id', listId)
-      .select('id, name, color, user_id, team_id, brand_voice_id, kind, is_shared, created_at, updated_at')
+      .select('id, name, color, user_id, team_id, brand_voice_id, is_shared, created_at, updated_at')
       .single()
     if (error) return { error }
-    if (mountedRef.current) setLists(prev => prev.map(l => l.id === listId ? { ...l, ...data } : l))
+    if (mountedRef.current) setLists(prev => prev.map(l => l.id === listId ? data : l))
     return { data }
   }, [])
 
   return useMemo(() => ({
     lists,
-    countsByList,
+    membersByList,
     isLoading,
     createList,
     addToList,
@@ -191,5 +201,5 @@ export function useInboxLists({ activeTeamId, activeBrandVoiceId } = {}) {
     deleteList,
     toggleShareList,
     refresh: fetchAll,
-  }), [lists, countsByList, isLoading, createList, addToList, removeFromList, renameList, deleteList, toggleShareList, fetchAll])
+  }), [lists, membersByList, isLoading, createList, addToList, removeFromList, renameList, deleteList, toggleShareList, fetchAll])
 }
