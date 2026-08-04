@@ -145,13 +145,10 @@ function RecipientPicker({ bvId, cat, canInmail, value, onChange }) {
       setLoading(true)
       let data = []
       if (src === 'kontakte' || src === 'netzwerk') {
-        let r = supabase.from('linkedin_inbox').select('provider_id, linkedin_url, name, first_name, last_name, headline, avatar_url').eq('brand_voice_id', bvId)
-        r = src === 'netzwerk'
-          ? r.eq('source', 'unipile_relations').not('provider_id', 'is', null)
-          : r.neq('source', 'unipile_relations').or('provider_id.not.is.null,linkedin_url.not.is.null')
-        if (like) r = r.or(`name.ilike.*${like}*,first_name.ilike.*${like}*,last_name.ilike.*${like}*,headline.ilike.*${like}*`)
-        const rr = await r.order('name').limit(like ? 100 : 500)
-        data = (rr.data || []).map(c => ({ provider_id: c.provider_id || null, url: c.linkedin_url || null, name: c.name || ((c.first_name || '') + ' ' + (c.last_name || '')).trim() || 'Kontakt', headline: c.headline, avatar_url: c.avatar_url, source: src }))
+        // Server-seitig (SECURITY DEFINER RPC): schnell auch bei >10k Verbindungen,
+        // da einmalige Autorisierung statt RLS-Auswertung pro Zeile.
+        const { data: rows } = await supabase.rpc('inbox_recipient_search', { p_brand_voice_id: bvId, p_src: src, p_q: like || null })
+        data = (rows || []).map(c => ({ provider_id: c.provider_id || null, url: c.linkedin_url || null, name: c.name || ((c.first_name || '') + ' ' + (c.last_name || '')).trim() || 'Kontakt', headline: c.headline, avatar_url: c.avatar_url, source: src }))
       } else if (src === 'crm') {
         let r = supabase.from('leads').select('name, first_name, last_name, headline, avatar_url, company, linkedin_url').not('linkedin_url', 'is', null)
         if (like) r = r.or(`name.ilike.*${like}*,first_name.ilike.*${like}*,last_name.ilike.*${like}*,company.ilike.*${like}*`)

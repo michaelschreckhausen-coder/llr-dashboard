@@ -167,13 +167,10 @@ export default function LinkedInInbox() {
       p_limit: 1000,
     })
 
-    // Tab-Badges: Gesamtzahl je Quelle (head-only, kein Row-Transfer).
-    const countBase = () => supabase.from('linkedin_inbox')
-      .select('id', { count: 'exact', head: true }).eq('brand_voice_id', bvId).eq('review_status', 'new')
-    Promise.all([
-      countBase().eq('source', NETWORK_SOURCE),
-      countBase().neq('source', NETWORK_SOURCE),
-    ]).then(([net, kon]) => setCounts({ kontakte: kon.count || 0, netzwerk: net.count || 0 }))
+    // Tab-Badges: server-seitig (SECURITY DEFINER) statt zwei RLS-Count-Queries,
+    // die bei >10k Verbindungen ins statement timeout liefen.
+    supabase.rpc('inbox_counts', { p_brand_voice_id: bvId })
+      .then(({ data }) => setCounts({ kontakte: data?.kontakte || 0, netzwerk: data?.netzwerk || 0 }))
 
     if (error) { setMsg({ text: 'Laden fehlgeschlagen: ' + error.message }); setRows([]); setLoading(false); return }
     const list = data || []
