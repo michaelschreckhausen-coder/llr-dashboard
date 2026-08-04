@@ -134,7 +134,9 @@ function getNav(t) {
     // Migrationen bleiben erhalten. Zum ZurÃ¼ckholen einfach diese Zeile wieder aktivieren:
     { to: '/automatisierung-neu', icon: IcCog, label: 'Automatisierung' },
     { to: '/messages',        icon: IcMail,     label: 'Kommunikation' },
-    { to: '/linkedin-engagement', icon: IcZap,  label: 'Engagement' },
+    // Engagement: auf Prod ausgeblendet (muss erst funktional fertig gemacht werden - 03.08.2026 Julian).
+    // Nur Menuepunkt versteckt; Route/Seite bleiben. Zum Zurueckholen: isStaging-Gate entfernen.
+    ...(isStaging ? [{ to: '/linkedin-engagement', icon: IcZap, label: 'Engagement' }] : []),
   ] },
 
   { subSection: true, label: 'Analyse', items: [
