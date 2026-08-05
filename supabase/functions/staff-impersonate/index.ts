@@ -38,7 +38,7 @@ async function verifyCaller(req: Request) {
     authId: String(payload.sub || ""), iss: payload.iss, aud: payload.aud,
     isAdmin: am.is_leadesk_admin === true,
     isImpersonation: am.is_impersonation === true,
-    sessionId: payload.session_id ? String(payload.session_id) : null,
+    sessionId: payload.imp_session_id ? String(payload.imp_session_id) : (payload.session_id ? String(payload.session_id) : null),
     impersonatorStaffId: am.impersonator_staff_id ? String(am.impersonator_staff_id) : null,
   };
 }
@@ -72,7 +72,7 @@ async function signToken(target: any, staffId: string, sessionId: string, iss: u
     phone: target.phone ?? "",
     app_metadata: appMeta,
     user_metadata: (target.user_metadata ?? {}) as Record<string, unknown>,
-    session_id: sessionId,
+    imp_session_id: sessionId,  // Custom-Claim statt Standard 'session_id' -> GoTrue validiert ihn nicht (sonst session_not_found bei getUser unter Impersonation)
     aal: "aal1",
     amr: [{ method: "impersonation", timestamp: iat }],
     is_anonymous: false,
