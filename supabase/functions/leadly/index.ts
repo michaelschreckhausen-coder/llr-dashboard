@@ -22,11 +22,118 @@ import { getCallerContext, checkCredits, recordUsage, estimateCredits } from "..
 
 const ANTHROPIC_API_KEY    = Deno.env.get("ANTHROPIC_API_KEY")!;
 const OPENAI_API_KEY       = Deno.env.get("OPENAI_API_KEY") || '';
+const GOOGLE_API_KEY       = Deno.env.get("GOOGLE_API_KEY") || '';
+const MISTRAL_API_KEY      = Deno.env.get("MISTRAL_API_KEY") || '';
 const SUPABASE_URL         = Deno.env.get("SUPABASE_URL")!;
 const SUPABASE_ANON_KEY    = Deno.env.get("SUPABASE_ANON_KEY")!;
 const SUPABASE_SERVICE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
 
 const DEFAULT_MODEL = "claude-sonnet-4-6";  // Aligned mit src/components/ModelSelector.jsx
+
+// ─── Freier Chat (mode:'free') ───────────────────────────────────────────────
+// Reiner Multi-Provider-Text-Chat OHNE Datenzugriff/Werkzeuge/Guardrail. Provider-
+// Routing + Fetch-Shapes gespiegelt aus supabase/functions/generate/index.ts.
+// (Der Werkzeug-Modus 'chat' bleibt bewusst Anthropic-only.)
+function getProvider(model: string): 'anthropic' | 'openai' | 'google' | 'mistral' {
+  if (model.startsWith('claude'))  return 'anthropic';
+  if (model.startsWith('gpt') || model.startsWith('o1') || model.startsWith('o3')) return 'openai';
+  if (model.startsWith('gemini')) return 'google';
+  if (model.startsWith('mistral') || model.startsWith('magistral') || model.startsWith('open-mixtral') || model.startsWith('codestral')) return 'mistral';
+  return 'anthropic';
+}
+
+type FreeResult = { content: string; input_tokens?: number; output_tokens?: number; finish: string };
+
+async function callFreeLLM(
+  model: string,
+  provider: 'anthropic' | 'openai' | 'google' | 'mistral',
+  systemPrompt: string,
+  msgs: Array<{ role: string; content: string }>,
+): Promise<FreeResult> {
+  if (provider === 'anthropic') {
+    const res = await fetch('https://api.anthropic.com/v1/messages', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'x-api-key': ANTHROPIC_API_KEY,
+        'anthropic-version': '2023-06-01',
+      },
+      body: JSON.stringify({ model, max_tokens: 2048, system: systemPrompt, messages: msgs }),
+    });
+    const d = await res.json();
+    if (!res.ok) throw new Error(d.error?.message || 'Anthropic error ' + res.status);
+    return {
+      content: (d.content || []).filter((b: { type: string }) => b.type === 'text').map((b: { text: string }) => b.text).join('') || '',
+      input_tokens: d.usage?.input_tokens,
+      output_tokens: d.usage?.output_tokens,
+      finish: d.stop_reason || 'stop',
+    };
+  }
+
+  if (provider === 'openai') {
+    if (!OPENAI_API_KEY) throw new Error('OPENAI_API_KEY nicht konfiguriert.');
+    const messages = systemPrompt ? [{ role: 'system', content: systemPrompt }, ...msgs] : msgs;
+    const res = await fetch('https://api.openai.com/v1/chat/completions', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + OPENAI_API_KEY },
+      body: JSON.stringify({ model, messages }),
+    });
+    const d = await res.json();
+    if (!res.ok) throw new Error(d.error?.message || 'OpenAI error ' + res.status);
+    return {
+      content: d.choices?.[0]?.message?.content || '',
+      input_tokens: d.usage?.prompt_tokens,
+      output_tokens: d.usage?.completion_tokens,
+      finish: d.choices?.[0]?.finish_reason || 'stop',
+    };
+  }
+
+  if (provider === 'google') {
+    if (!GOOGLE_API_KEY) throw new Error('GOOGLE_API_KEY nicht konfiguriert.');
+    // Gemini kennt keine 'assistant'-Rolle → 'model'; System als user/model-Präambel.
+    const contents: Array<{ role: string; parts: Array<{ text: string }> }> = [];
+    if (systemPrompt) {
+      contents.push({ role: 'user', parts: [{ text: systemPrompt }] });
+      contents.push({ role: 'model', parts: [{ text: 'Verstanden.' }] });
+    }
+    for (const m of msgs) {
+      contents.push({ role: m.role === 'assistant' ? 'model' : 'user', parts: [{ text: m.content }] });
+    }
+    const res = await fetch('https://generativelanguage.googleapis.com/v1beta/models/' + model + ':generateContent?key=' + GOOGLE_API_KEY, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ contents }),
+    });
+    const d = await res.json();
+    if (!res.ok) throw new Error(d.error?.message || 'Google Gemini error ' + res.status);
+    return {
+      content: d.candidates?.[0]?.content?.parts?.[0]?.text || '',
+      input_tokens: d.usageMetadata?.promptTokenCount,
+      output_tokens: d.usageMetadata?.candidatesTokenCount,
+      finish: d.candidates?.[0]?.finishReason || 'stop',
+    };
+  }
+
+  if (provider === 'mistral') {
+    if (!MISTRAL_API_KEY) throw new Error('MISTRAL_API_KEY nicht konfiguriert.');
+    const messages = systemPrompt ? [{ role: 'system', content: systemPrompt }, ...msgs] : msgs;
+    const res = await fetch('https://api.mistral.ai/v1/chat/completions', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + MISTRAL_API_KEY },
+      body: JSON.stringify({ model, messages }),
+    });
+    const d = await res.json();
+    if (!res.ok) throw new Error(d.error?.message || 'Mistral error ' + res.status);
+    return {
+      content: d.choices?.[0]?.message?.content || '',
+      input_tokens: d.usage?.prompt_tokens,
+      output_tokens: d.usage?.completion_tokens,
+      finish: d.choices?.[0]?.finish_reason || 'stop',
+    };
+  }
+
+  throw new Error('Unbekannter Provider für Modell: ' + model);
+}
 
 // ─── Guardrail: schreibende/außenwirksame Tools brauchen explizite Bestätigung ──
 // Diese Tools werden im Loop NICHT autonom ausgeführt, sondern als pending_action
@@ -1482,6 +1589,61 @@ ${JSON.stringify(context, null, 2)}`;
 
       await persistBriefing(text);
       return json({ briefing_text: text, context, briefing_date: today });
+    }
+
+    // ─── Mode: free (freier Multi-Provider-Chat) ─────────────────────
+    // Kein Datenzugriff, keine Werkzeuge, keine pending_actions. Nutzt das vom
+    // Client gewählte Modell (body.model) über alle Provider. Der Werkzeug-Modus
+    // 'chat' unten bleibt bewusst Anthropic-only.
+    if (mode === 'free') {
+      const freeModel = (typeof body.model === 'string' && body.model) ? body.model : DEFAULT_MODEL;
+      const provider = getProvider(freeModel);
+      const incomingFree = Array.isArray(body.messages) ? body.messages : [];
+      const freeMsgs = incomingFree
+        .filter((m: { role?: string; content?: unknown }) =>
+          (m.role === 'user' || m.role === 'assistant') && typeof m.content === 'string' && m.content.length > 0)
+        .map((m: { role: string; content: string }) => ({ role: m.role, content: m.content }));
+      if (!freeMsgs.length) return json({ error: 'Keine Nachricht übergeben.' }, 400);
+
+      const systemPrompt = 'Du bist Leadly, ein hilfreicher, freundlicher Assistent. Antworte klar und standardmäßig auf Deutsch, sofern der Nutzer nicht eine andere Sprache verwendet.';
+
+      // Credits-Gate (analog chat/briefing).
+      const convChars = freeMsgs.reduce((s: number, m: { content: string }) => s + String(m.content || '').length, 0);
+      const estFree = await estimateCredits(provider, freeModel, 'text_generate', {
+        input_chars: systemPrompt.length + convChars,
+        max_output_tokens: 2048,
+      }, adminForCredits);
+      const checkFree = await checkCredits(caller.account_id, estFree, adminForCredits);
+      if (!checkFree.allowed) {
+        return json({
+          error: checkFree.reason === 'monthly_budget_exceeded'
+            ? 'Monatliches Credit-Budget aufgebraucht.'
+            : checkFree.reason === 'daily_cap_exceeded'
+            ? 'Tägliches Limit erreicht.'
+            : 'Credit-Check fehlgeschlagen.',
+          code: 'credits_exhausted',
+          reason: checkFree.reason,
+          remaining: checkFree.remaining,
+          estimated: estFree,
+        }, 402);
+      }
+
+      try {
+        const out = await callFreeLLM(freeModel, provider, systemPrompt, freeMsgs);
+        await recordUsage(caller, {
+          edge_function: 'leadly',
+          operation: 'text_generate',
+          provider,
+          model: freeModel,
+          input_tokens: out.input_tokens,
+          output_tokens: out.output_tokens,
+          status: 'success',
+          extra_metadata: { mode: 'free', model: freeModel },
+        }, adminForCredits).catch(() => null);
+        return json({ reply: { content: out.content }, model: freeModel, finish_reason: out.finish, requires_confirmation: false });
+      } catch (e) {
+        return json({ error: (e as Error).message || 'Freier Chat fehlgeschlagen.' }, 500);
+      }
     }
 
     // ─── Confirmed write execution (Guardrail-Freigabe) ──────────────
