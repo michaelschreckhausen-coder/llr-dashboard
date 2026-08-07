@@ -5,6 +5,7 @@ import { Loader2, Search, Paperclip, Link2, Briefcase, FileText, Image as ImageI
 import { useTabPersistedState } from '../lib/useTabPersistedState'
 
 import { supabase } from '../lib/supabase'
+import { sanitizeFilename } from '../lib/sanitizeStorageKey'
 
 // Shared Kontext-Importer für Wissensdatenbank, Brand Voice, Zielgruppen.
 // Unterstützt 2 oder 3 Import-Arten:
@@ -87,7 +88,10 @@ function FileTab({ session, storagePrefix, current, onMetaChange, onContentExtra
     if (file.size > 10485760) { setError('Datei zu groß (max. 10 MB)'); return }
     setError(''); setUploading(true)
     try {
-      const path = `${storagePrefix || 'knowledge'}/${session.user.id}/${Date.now()}_${file.name}`
+      // Storage-Key MUSS ASCII-safe sein — die self-hosted storage-api lehnt sonst
+      // nicht-ASCII (z.B. "München") mit 400 "Invalid key" ab. Der Original-Name
+      // wird unverändert in file_name (unten) für die Anzeige gespeichert.
+      const path = `${storagePrefix || 'knowledge'}/${session.user.id}/${Date.now()}_${sanitizeFilename(file.name)}`
       const { error: upErr } = await supabase.storage.from('knowledge-files').upload(path, file)
       if (upErr) throw upErr
       const { data: urlData } = supabase.storage.from('knowledge-files').getPublicUrl(path)
