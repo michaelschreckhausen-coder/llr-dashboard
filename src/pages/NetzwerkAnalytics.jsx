@@ -257,7 +257,7 @@ export default function NetzwerkAnalytics() {
             )}
 
             <div style={{ fontSize:11, color:'var(--text-muted,#9CA3AF)', lineHeight:1.5 }}>
-              Hinweis: LinkedIn liefert nur aktuelle Werte — den Verlauf bauen wir über tägliche Snapshots auf. „Anfragen offen" = ausstehende gesendete/erhaltene Vernetzungsanfragen. „Angenommen/Ausstehend" bei Kampagnen wird durch den Automatisierungs-Runner aktualisiert.
+              Hinweis: LinkedIn liefert nur aktuelle Werte — den Verlauf bauen wir über tägliche Snapshots auf. „Anfragen offen" = ausstehende gesendete/erhaltene Vernetzungsanfragen. „Angenommen" bei Kampagnen = angenommene Vernetzungsanfragen; „Noch nicht angenommen" = Ziele − Angenommen (offene Einladungen im Detail zeigt der Automatisierungs-Funnel).
             </div>            </>)}
             {ntab==='dialog' && (<>
             {/* ── Dialog (aus dem Postfach) ── */}
@@ -373,7 +373,7 @@ export default function NetzwerkAnalytics() {
               const activeCamps = camps.filter(c => c.status === 'active').length
               const totalTargets = enr.length
               // Annahme-Signal = accepted_at (verlässlich); relation_status wird von Scan-Crons
-              // auf 'unknown' zurückgesetzt und taugt nicht. Ausstehend = Ziele - Angenommen.
+              // auf 'unknown' zurückgesetzt und taugt nicht. Noch-nicht-angenommen = Ziele - Angenommen.
               const connected = enr.filter(e => e.accepted_at).length
               const pending = totalTargets - connected
               const A = ({ icon, label, value }) => (
@@ -385,7 +385,7 @@ export default function NetzwerkAnalytics() {
                     <A icon={<Rocket size={11}/>} label="Aktive Kampagnen" value={activeCamps} />
                     <A icon={<Users size={11}/>} label="Ziele gesamt" value={totalTargets} />
                     <A icon={<UserCheck size={11}/>} label="Angenommen" value={connected} />
-                    <A icon={<Clock size={11}/>} label="Ausstehend" value={pending} />
+                    <A icon={<Clock size={11}/>} label="Noch nicht angenommen" value={pending} />
                   </div>
                   <div style={cardStyle}>
                     <div className="lk-eyebrow">Automatisierung · Kampagnen</div>
@@ -395,7 +395,7 @@ export default function NetzwerkAnalytics() {
                         <span style={{ flex:1, textAlign:'right' }}>Status</span>
                         <span style={{ flex:1, textAlign:'right' }}>Ziele</span>
                         <span style={{ flex:1, textAlign:'right' }}>Angenommen</span>
-                        <span style={{ flex:1, textAlign:'right' }}>Ausstehend</span>
+                        <span style={{ flex:1, textAlign:'right' }}>Noch nicht angenommen</span>
                       </div>
                       {camps.slice().sort((a,b)=>(byCampaign[b.id]?.length||0)-(byCampaign[a.id]?.length||0)).map(c => {
                         const list = byCampaign[c.id] || []
