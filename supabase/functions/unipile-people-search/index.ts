@@ -13,9 +13,12 @@ Deno.serve(async (req) => {
     const brandVoiceId = input.brand_voice_id ?? null;
     const query = String(input.query ?? "").trim();
     if (!brandVoiceId || query.length < 2) return jsonResponse({ items: [] });
-    const { data: acc } = await uc.from("unipile_accounts").select("unipile_account_id").eq("brand_voice_id", brandVoiceId).eq("status", "OK").maybeSingle();
+    const { data: acc } = await uc.from("unipile_accounts").select("unipile_account_id, capabilities").eq("brand_voice_id", brandVoiceId).eq("status", "OK").maybeSingle();
     if (!acc) return jsonResponse({ error: "Keine LinkedIn-Verbindung fuer diese Marke.", items: [] }, 409);
-    const res = await search(acc.unipile_account_id, { kind: "search_classic", params: { keywords: query }, limit: 15 });
+    // Auto-SN: die Live-Suche hat keinen Quelle-Picker → wenn das Konto Sales Navigator kann,
+    // dort suchen (Classic liefert für Keywords faktisch ~0); sonst Fallback classic.
+    const kind = (acc.capabilities as any)?.sales_navigator ? "search_salesnav" : "search_classic";
+    const res = await search(acc.unipile_account_id, { kind, params: { keywords: query }, limit: 15 });
     if (!res.ok) return jsonResponse({ error: "LinkedIn-Suche momentan nicht moeglich — bitte Verbindung pruefen.", items: [] }, 502);
     const items = (res.data.items || []).slice(0, 15).map((p: any) => {
       const raw = p.raw || {};
