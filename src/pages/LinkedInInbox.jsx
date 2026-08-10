@@ -1,13 +1,14 @@
 import PillSelect from '../components/PillSelect'
 import React, { useEffect, useState, useCallback, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { Check, X, Loader2, UserPlus, Building2, Inbox as InboxIcon, Plus, ListChecks, Pencil, Trash2, AlertTriangle , Share2, RefreshCw } from 'lucide-react'
+import { Check, X, Loader2, UserPlus, Building2, Inbox as InboxIcon, Plus, ListChecks, Trash2, AlertTriangle, RefreshCw } from 'lucide-react'
 import { supabase } from '../lib/supabase'
 import { useTeam } from '../context/TeamContext'
 import { useBrandVoice } from '../context/BrandVoiceContext'
 import { useEntitlements } from '../hooks/useEntitlements'
 import { mapEfError } from '../lib/efError'
 import { useInboxLists } from '../hooks/useInboxLists'
+import ListChipsBar from '../components/ListChipsBar'
 
 // ─────────────────────────────────────────────────────────────────────────────
 // LinkedIn-Import-Inbox — Triage-Queue VOR dem CRM.
@@ -78,11 +79,7 @@ export default function LinkedInInbox() {
   const [listOpen, setListOpen]     = useState(false)
   const [deleteBulkModal, setDeleteBulkModal] = useState(null) // { ids, count, refs:{count,campaigns}, checking }
   const [listFilter, setListFilter] = useState('all')        // 'all' | list_id
-  const [showNewList, setShowNewList] = useState(false)      // Inline-Create in der „Nach Liste"-Zeile
-  const [newListName, setNewListName] = useState('')
-  const [creatingList, setCreatingList] = useState(false)
-  const [editingListId, setEditingListId] = useState(null)   // Inline-Rename am Chip
-  const [editListName, setEditListName]   = useState('')
+  // Inline-Create/-Rename der „Nach Liste"-Chips lebt jetzt in <ListChipsBar/>.
   const [deleteListModal, setDeleteListModal] = useState(null) // { list, refs:[campaignName], checking }
 
   // Sales-Navigator-Import (Unipile) → Import-Inbox, optional direkt in eine Liste
@@ -307,32 +304,9 @@ export default function LinkedInInbox() {
     return await createList(trimmed, color, kind)
   }
 
-  // Standalone „+ Neue Liste" (ohne Kontakt-Zuweisung) aus der „Nach Liste"-Zeile.
-  const createStandaloneList = async () => {
-    const name = newListName.trim()
-    if (!name) return
-    setCreatingList(true)
-    const { data, error, reused } = await createOrReuseList(name, '#30A0D0', listKind)
-    setCreatingList(false)
-    if (error) { setMsg({ text: 'Liste anlegen fehlgeschlagen: ' + error.message }); return }
-    setShowNewList(false); setNewListName('')
-    setMsg({ text: reused ? `Liste „${data.name}" existiert bereits.` : `Liste „${data.name}" angelegt.` })
-  }
-
-  // Liste umbenennen (inline am Chip) — Team-Check via RLS, Dedup gegen gleichnamige Team-Liste.
-  const startRename = (l) => { setEditingListId(l.id); setEditListName(l.name || '') }
-  const saveRename = async () => {
-    const l = lists.find(x => x.id === editingListId)
-    const name = editListName.trim()
-    if (!l) { setEditingListId(null); return }
-    if (!name || name === l.name) { setEditingListId(null); return }
-    const dupe = lists.find(x => x.id !== l.id && (x.name || '').trim().toLowerCase() === name.toLowerCase())
-    if (dupe) { setMsg({ text: `Es gibt bereits eine Liste „${dupe.name}".` }); return }
-    const { error } = await renameList(l.id, name)
-    if (error) { setMsg({ text: 'Umbenennen fehlgeschlagen: ' + error.message }); return }
-    setEditingListId(null)
-    setMsg({ text: `Liste umbenannt in „${name}".` })
-  }
+  // Umbenennen/Neu-Anlegen (inline) sind in <ListChipsBar/> gekapselt; der Parent
+  // liefert nur createOrReuseList + renameList (Hook) und openDeleteList als Callbacks.
+  // createOrReuseList defaultet kind=listKind → neue Listen erben den aktiven Tab.
 
   // Löschen vorbereiten: prüfen, ob eine la_audience (kind='list') die Liste als Zielgruppe nutzt.
   const openDeleteList = async (l) => {
@@ -381,8 +355,6 @@ export default function LinkedInInbox() {
   }
 
   const card = 'var(--surface)', border = 'var(--border)', text = 'var(--text-primary)', muted = 'var(--text-muted)', primary = 'var(--primary)'
-  const chip = (active) => ({ display: 'inline-flex', alignItems: 'center', gap: 6, padding: '5px 12px', borderRadius: 99, fontSize: 13, fontWeight: 600, cursor: 'pointer', border: `1.5px solid ${active ? primary : border}`, background: active ? 'var(--primary-soft)' : card, color: active ? primary : muted })
-  const miniBtn = { background: 'none', border: 'none', padding: 2, cursor: 'pointer', display: 'inline-flex', alignItems: 'center' }
 
   return (
     <div style={{ width: '100%', maxWidth: 1100, margin: '0 auto', padding: '24px 16px 40px' }}>
@@ -477,59 +449,19 @@ export default function LinkedInInbox() {
           Immer sichtbar (auch bei leerem Tab), damit BEIDE Quell-Tabs konsistent
           Listen-Filter + „Neue Liste" haben (Michael-Wunsch 23.07.2026). */}
       {!loading && (
-        <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap', marginBottom: 16 }}>
-          <span style={{ fontSize: 12, fontWeight: 700, color: muted, marginRight: 2 }}>Nach Liste:</span>
-          <span style={chip(listFilter === 'all')} onClick={() => setListFilter('all')}>Alle</span>
-          {lists.filter(l => (l.kind || 'prospect') === listKind).map(l => {
-            const set = membersByList.get(l.id)
-            const cnt = set ? rows.reduce((n, r) => n + (set.has(r.id) ? 1 : 0), 0) : 0
-            if (editingListId === l.id) {
-              return (
-                <span key={l.id} style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
-                  <input autoFocus value={editListName} onChange={e => setEditListName(e.target.value)}
-                    onKeyDown={e => { if (e.key === 'Enter') saveRename(); if (e.key === 'Escape') setEditingListId(null) }}
-                    style={{ padding: '5px 10px', borderRadius: 99, border: `1.5px solid ${primary}`, fontSize: 13, background: card, color: text, outline: 'none', width: 140 }} />
-                  <button onClick={saveRename} title="Speichern" style={{ ...miniBtn, color: primary }}><Check size={14} /></button>
-                  <button onClick={() => setEditingListId(null)} title="Abbrechen" style={{ ...miniBtn, color: muted }}><X size={14} /></button>
-                </span>
-              )
-            }
-            const active = listFilter === l.id
-            return (
-              <span key={l.id} style={{ ...chip(active), cursor: 'default', paddingRight: 8 }}>
-                <span onClick={() => setListFilter(l.id)} style={{ display: 'inline-flex', alignItems: 'center', gap: 6, cursor: 'pointer' }}>
-                  <ListChecks size={13} /> {l.name} <b>{cnt}</b>
-                </span>
-                <button onClick={async () => { const r = await toggleShareList(l.id, !l.is_shared); if (r?.error) setMsg({ text: 'Teilen fehlgeschlagen: ' + r.error.message }) }}
-                  title={l.is_shared ? 'Team-weit geteilt — Klick: nur diese Marke' : 'Für alle Marken im Team freigeben'}
-                  style={{ ...miniBtn, color: l.is_shared ? '#059669' : (active ? primary : muted), marginLeft: 2 }}><Share2 size={12} /></button>
-                <button onClick={() => startRename(l)} title="Umbenennen" style={{ ...miniBtn, color: active ? primary : muted }}><Pencil size={12} /></button>
-                <button onClick={() => openDeleteList(l)} title="Löschen" style={{ ...miniBtn, color: active ? primary : muted }}><Trash2 size={12} /></button>
-              </span>
-            )
-          })}
-          {!showNewList ? (
-            <span style={{ ...chip(false), color: primary, borderStyle: 'dashed' }} onClick={() => setShowNewList(true)}>
-              <Plus size={13} /> Neue Liste
-            </span>
-          ) : (
-            <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
-              <input
-                autoFocus value={newListName} onChange={e => setNewListName(e.target.value)}
-                onKeyDown={e => { if (e.key === 'Enter') createStandaloneList(); if (e.key === 'Escape') { setShowNewList(false); setNewListName('') } }}
-                placeholder="Listenname" disabled={creatingList}
-                style={{ padding: '5px 10px', borderRadius: 99, border: `1.5px solid ${primary}`, fontSize: 13, background: card, color: text, outline: 'none', width: 150 }} />
-              <button className="lk-btn lk-btn-cta" onClick={createStandaloneList} disabled={creatingList || !newListName.trim()}
-                style={{ display: 'inline-flex', alignItems: 'center', gap: 4, opacity: newListName.trim() ? 1 : 0.6 }}>
-                {creatingList ? <Loader2 size={13} className="spin" /> : <Check size={13} />} Anlegen
-              </button>
-              <button onClick={() => { setShowNewList(false); setNewListName('') }} title="Abbrechen"
-                style={{ background: 'none', border: `1px solid ${border}`, borderRadius: 99, padding: 5, color: muted, cursor: 'pointer', display: 'inline-flex' }}>
-                <X size={13} />
-              </button>
-            </span>
-          )}
-        </div>
+        <ListChipsBar
+          lists={lists.filter(l => (l.kind || 'prospect') === listKind)}
+          membersByList={membersByList}
+          rows={rows}
+          listFilter={listFilter}
+          setListFilter={setListFilter}
+          allowSharing={sourceTab === 'kontakte'}
+          toggleShareList={toggleShareList}
+          renameList={renameList}
+          createOrReuseList={createOrReuseList}
+          onRequestDelete={openDeleteList}
+          onMessage={setMsg}
+        />
       )}
 
       {msg && (
