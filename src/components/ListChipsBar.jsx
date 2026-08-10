@@ -17,39 +17,70 @@ import { Users, Pencil, Trash2, Plus, Check, X, Loader2 } from 'lucide-react'
 // Neue Liste, Counts, Aktiv-State). Callbacks kommen als Props vom Parent.
 // ─────────────────────────────────────────────────────────────────────────────
 
+// Hell-Palette = freigegebenes Mockup (1:1). Dark-Overrides mappen auf die
+// App-Theme-Tokens (src/index.css, [data-theme="dark"]), damit die Leiste in
+// beiden Themes stimmt (die App ist durchgehend gethemt).
 const CSS = `
-.lcb-bar{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:16px}
-.lcb-label{font-size:11px;font-weight:700;letter-spacing:.05em;text-transform:uppercase;color:#64748b;margin-right:2px;white-space:nowrap}
+.lcb-bar{
+  --lcb-chip-bg:#fff; --lcb-chip-border:#e5e7eb; --lcb-chip-text:#334155;
+  --lcb-hover-border:#cbd5e1; --lcb-hover-bg:#fcfdff;
+  --lcb-count-bg:#f1f5f9; --lcb-count-text:#64748b;
+  --lcb-active-bg:#eff6ff; --lcb-active-border:#bfdbfe; --lcb-active-text:#1e3a8a;
+  --lcb-active-count-bg:#dbeafe; --lcb-active-count-text:#1d4ed8;
+  --lcb-label:#64748b; --lcb-line:#e2e8f0;
+  --lcb-teal:#0d9488; --lcb-teal-bg:#f0fdfa; --lcb-teal-border:#ccfbf1; --lcb-teal-on:#fff;
+  --lcb-icon:#94a3b8; --lcb-icon-hover-bg:#f1f5f9; --lcb-icon-hover-text:#475569;
+  --lcb-danger:#ef4444; --lcb-danger-bg:#fef2f2;
+  --lcb-add-border:#cbd5e1; --lcb-add-text:#475569;
+  --lcb-blue:#2563eb; --lcb-blue-bg:#eff6ff;
+  --lcb-input-bg:#fff; --lcb-input-text:#0f172a;
+  display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:16px
+}
+:root[data-theme="dark"] .lcb-bar{
+  --lcb-chip-bg:var(--surface); --lcb-chip-border:var(--border); --lcb-chip-text:var(--text-primary);
+  --lcb-hover-border:var(--border-strong); --lcb-hover-bg:var(--surface-hover);
+  --lcb-count-bg:var(--surface-muted); --lcb-count-text:var(--text-soft);
+  --lcb-active-bg:var(--primary-soft); --lcb-active-border:var(--primary); --lcb-active-text:var(--text-primary);
+  --lcb-active-count-bg:var(--primary-soft); --lcb-active-count-text:var(--primary);
+  --lcb-label:var(--text-soft); --lcb-line:var(--border);
+  --lcb-teal:var(--success); --lcb-teal-bg:rgba(111,230,168,.12); --lcb-teal-border:rgba(111,230,168,.28); --lcb-teal-on:#08312a;
+  --lcb-icon:var(--text-soft); --lcb-icon-hover-bg:var(--surface-hover); --lcb-icon-hover-text:var(--text-primary);
+  --lcb-danger:#fca5a5; --lcb-danger-bg:rgba(239,68,68,.16);
+  --lcb-add-border:var(--border-strong); --lcb-add-text:var(--text-soft);
+  --lcb-blue:var(--primary); --lcb-blue-bg:var(--primary-soft);
+  --lcb-input-bg:var(--surface); --lcb-input-text:var(--text-primary);
+}
+.lcb-label{font-size:11px;font-weight:700;letter-spacing:.05em;text-transform:uppercase;color:var(--lcb-label);margin-right:2px;white-space:nowrap}
 
-.lcb-chip{position:relative;display:inline-flex;align-items:center;gap:9px;background:#fff;border:1px solid #e5e7eb;border-radius:11px;padding:8px 12px;font-size:14px;font-weight:600;color:#334155;transition:border-color .12s, background .12s}
-.lcb-chip:hover{border-color:#cbd5e1;background:#fcfdff}
-.lcb-chip.lcb-active{background:#eff6ff;border-color:#bfdbfe;color:#1e3a8a;box-shadow:0 0 0 1px #bfdbfe inset}
+.lcb-chip{position:relative;display:inline-flex;align-items:center;gap:9px;background:var(--lcb-chip-bg);border:1px solid var(--lcb-chip-border);border-radius:11px;padding:8px 12px;font-size:14px;font-weight:600;color:var(--lcb-chip-text);transition:border-color .12s, background .12s}
+.lcb-chip:hover{border-color:var(--lcb-hover-border);background:var(--lcb-hover-bg)}
+.lcb-chip.lcb-active{background:var(--lcb-active-bg);border-color:var(--lcb-active-border);color:var(--lcb-active-text);box-shadow:0 0 0 1px var(--lcb-active-border) inset}
 .lcb-name{white-space:nowrap;background:none;border:none;padding:0;margin:0;font:inherit;color:inherit;cursor:pointer;display:inline-flex;align-items:center}
-.lcb-count{font-size:12px;font-weight:700;color:#64748b;background:#f1f5f9;border-radius:999px;padding:1px 8px;font-variant-numeric:tabular-nums}
-.lcb-chip.lcb-active .lcb-count{background:#dbeafe;color:#1d4ed8}
+.lcb-count{font-size:12px;font-weight:700;color:var(--lcb-count-text);background:var(--lcb-count-bg);border-radius:999px;padding:1px 8px;font-variant-numeric:tabular-nums}
+.lcb-chip.lcb-active .lcb-count{background:var(--lcb-active-count-bg);color:var(--lcb-active-count-text)}
 
 .lcb-plain{cursor:pointer}
 
-.lcb-shared{display:inline-flex;align-items:center;gap:4px;font-size:11px;font-weight:700;color:#0d9488;background:#f0fdfa;border:1px solid #ccfbf1;border-radius:999px;padding:1px 7px 1px 5px}
+.lcb-shared{display:inline-flex;align-items:center;gap:4px;font-size:11px;font-weight:700;color:var(--lcb-teal);background:var(--lcb-teal-bg);border:1px solid var(--lcb-teal-border);border-radius:999px;padding:1px 7px 1px 5px}
 
-.lcb-actions{display:none;align-items:center;gap:6px;margin-left:2px;padding-left:8px;border-left:1px solid #e2e8f0}
+.lcb-actions{display:none;align-items:center;gap:6px;margin-left:2px;padding-left:8px;border-left:1px solid var(--lcb-line)}
 .lcb-chip:hover .lcb-actions,.lcb-chip:focus-within .lcb-actions,.lcb-chip.lcb-active .lcb-actions{display:inline-flex}
 
-.lcb-btn-share{display:inline-flex;align-items:center;gap:5px;font-size:12.5px;font-weight:700;color:#fff;background:#0d9488;border:none;border-radius:8px;padding:4px 9px;cursor:pointer}
-.lcb-btn-share.lcb-is-shared{color:#0d9488;background:#f0fdfa;border:1px solid #ccfbf1}
+.lcb-btn-share{display:inline-flex;align-items:center;gap:5px;font-size:12.5px;font-weight:700;color:var(--lcb-teal-on);background:var(--lcb-teal);border:none;border-radius:8px;padding:4px 9px;cursor:pointer}
+.lcb-btn-share.lcb-is-shared{color:var(--lcb-teal);background:var(--lcb-teal-bg);border:1px solid var(--lcb-teal-border)}
 .lcb-btn-share:disabled{opacity:.6;cursor:default}
 
-.lcb-icon-btn{display:inline-flex;align-items:center;justify-content:center;width:26px;height:26px;border-radius:7px;border:1px solid transparent;color:#94a3b8;background:transparent;cursor:pointer}
-.lcb-icon-btn:hover{background:#f1f5f9;color:#475569}
-.lcb-icon-btn.lcb-danger:hover{background:#fef2f2;color:#ef4444}
+.lcb-icon-btn{display:inline-flex;align-items:center;justify-content:center;width:26px;height:26px;border-radius:7px;border:1px solid transparent;color:var(--lcb-icon);background:transparent;cursor:pointer}
+.lcb-icon-btn:hover{background:var(--lcb-icon-hover-bg);color:var(--lcb-icon-hover-text)}
+.lcb-icon-btn.lcb-danger:hover{background:var(--lcb-danger-bg);color:var(--lcb-danger)}
 
-.lcb-add{display:inline-flex;align-items:center;gap:6px;border:1px dashed #cbd5e1;background:#fff;border-radius:11px;padding:8px 13px;font-size:13.5px;font-weight:600;color:#475569;cursor:pointer}
-.lcb-add:hover{border-color:#2563eb;color:#2563eb;background:#eff6ff}
+.lcb-add{display:inline-flex;align-items:center;gap:6px;border:1px dashed var(--lcb-add-border);background:var(--lcb-chip-bg);border-radius:11px;padding:8px 13px;font-size:13.5px;font-weight:600;color:var(--lcb-add-text);cursor:pointer}
+.lcb-add:hover{border-color:var(--lcb-blue);color:var(--lcb-blue);background:var(--lcb-blue-bg)}
 
 .lcb-edit{display:inline-flex;align-items:center;gap:6px}
-.lcb-input{padding:7px 11px;border-radius:9px;border:1.5px solid #2563eb;font-size:13.5px;background:#fff;color:#0f172a;outline:none;width:150px}
-.lcb-mini{background:none;border:none;padding:2px;cursor:pointer;display:inline-flex;align-items:center;color:#64748b}
-.lcb-mini.lcb-ok{color:#2563eb}
+.lcb-input{padding:7px 11px;border-radius:9px;border:1.5px solid var(--lcb-blue);font-size:13.5px;background:var(--lcb-input-bg);color:var(--lcb-input-text);outline:none;width:150px}
+.lcb-mini{background:none;border:none;padding:2px;cursor:pointer;display:inline-flex;align-items:center;color:var(--lcb-count-text)}
+.lcb-mini.lcb-ok{color:var(--lcb-blue)}
 `
 
 export default function ListChipsBar({
@@ -177,7 +208,7 @@ export default function ListChipsBar({
             onKeyDown={e => { if (e.key === 'Enter') createStandalone(); if (e.key === 'Escape') { setShowNew(false); setNewName('') } }}
             placeholder="Listenname" disabled={creating} />
           <button className="lcb-btn-share" onClick={createStandalone} disabled={creating || !newName.trim()}
-            style={{ background: '#2563eb' }}>
+            style={{ background: 'var(--lcb-blue)', color: '#fff' }}>
             {creating ? <Loader2 size={13} className="spin" /> : <Check size={13} />} Anlegen
           </button>
           <button onClick={() => { setShowNew(false); setNewName('') }} title="Abbrechen" className="lcb-icon-btn">
