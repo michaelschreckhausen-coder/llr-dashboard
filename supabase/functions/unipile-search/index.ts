@@ -122,7 +122,7 @@ Deno.serve(async (req) => {
       if (!v.ok) {
         if (search) {
           await sb.from("linkedin_searches")
-            .update({ status: "failed", last_error: v.message, last_run_at: new Date().toISOString() })
+            .update({ status: "error", last_error: v.message, last_run_at: new Date().toISOString() })
             .eq("id", search.id);
         }
         return jsonResponse({ error: v.message }, 400);
@@ -238,7 +238,7 @@ Deno.serve(async (req) => {
     if (searchId) {
       try {
         await serviceClient().from("linkedin_searches")
-          .update({ status: "failed", last_error: String(e), last_run_at: new Date().toISOString() })
+          .update({ status: "error", last_error: String(e), last_run_at: new Date().toISOString() })
           .eq("id", searchId);
       } catch (_e) { /* best effort — Fehler-Response geht trotzdem raus */ }
     }
