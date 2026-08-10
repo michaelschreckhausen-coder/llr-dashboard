@@ -6,6 +6,7 @@ import PillSelect from '../../components/PillSelect'
 import { useEffect, useState, useCallback } from 'react'
 import { Ticket, Plus, Loader2, UserPlus, Check, UserX, Image as ImageIcon } from 'lucide-react'
 import { supabase } from '../../lib/supabase'
+import { sanitizeFilename } from '../../lib/sanitizeStorageKey'
 import { useTeam } from '../../context/TeamContext'
 import PageHeader from '../../components/PageHeader'
 
@@ -103,7 +104,8 @@ export default function Hospitality() {
     if (!activeTeamId || !file) return
     setUploadingId(asset.id); setError(null)
     try {
-      const path = `${activeTeamId}/${asset.id}/${Date.now()}-${file.name}`
+      // Dateiname ASCII-safe (storage-api-Guard); `${activeTeamId}/`-Prefix bleibt → RLS intakt.
+      const path = `${activeTeamId}/${asset.id}/${Date.now()}-${sanitizeFilename(file.name)}`
       const { error: upErr } = await supabase.storage.from(HOSPITALITY_BUCKET)
         .upload(path, file, { contentType: file.type, upsert: false })
       if (upErr) { setError(upErr.message); return }
