@@ -8,6 +8,7 @@ import { useBrandVoice } from '../context/BrandVoiceContext'
 import { useEntitlements } from '../hooks/useEntitlements'
 import { mapEfError } from '../lib/efError'
 import { useInboxLists } from '../hooks/useInboxLists'
+import { useListTeamShares } from '../hooks/useListTeamShares'
 import ListChipsBar from '../components/ListChipsBar'
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -53,7 +54,7 @@ function Avatar({ name, avatar_url, size = 44 }) {
 }
 
 export default function LinkedInInbox() {
-  const { activeTeamId } = useTeam()
+  const { activeTeamId, allTeams } = useTeam()
   const { activeBrandVoice } = useBrandVoice()
   const { hasPermission, loading: entLoading } = useEntitlements()
   const canSalesNav = entLoading || hasPermission('linkedin.sales_nav')   // P3: proaktives Disable (loading→nicht sperren)
@@ -75,7 +76,9 @@ export default function LinkedInInbox() {
 
   // Kampagnen-Gruppierung
   // Inbox-Listen (reine Auswahl-Sammlungen — die einzige Gruppierung auf dieser Seite)
-  const { lists, membersByList, createList, addToList, renameList, deleteList, toggleShareList } = useInboxLists({ activeTeamId, activeBrandVoiceId: activeBrandVoice?.id })
+  const { lists, membersByList, createList, addToList, renameList, deleteList } = useInboxLists({ activeTeamId, activeBrandVoiceId: activeBrandVoice?.id })
+  // Team-Freigaben (Mehrfach) für die geladenen Listen — eigene Sharing-Schicht.
+  const { sharesByList, setListTeamShares } = useListTeamShares(lists.map(l => l.id))
   const [listOpen, setListOpen]     = useState(false)
   const [deleteBulkModal, setDeleteBulkModal] = useState(null) // { ids, count, refs:{count,campaigns}, checking }
   const [listFilter, setListFilter] = useState('all')        // 'all' | list_id
@@ -460,7 +463,9 @@ export default function LinkedInInbox() {
           listFilter={listFilter}
           setListFilter={setListFilter}
           allowSharing={sourceTab === 'kontakte'}
-          toggleShareList={toggleShareList}
+          sharesByList={sharesByList}
+          allTeams={allTeams}
+          onSetShares={setListTeamShares}
           renameList={renameList}
           createOrReuseList={createOrReuseList}
           onRequestDelete={openDeleteList}
