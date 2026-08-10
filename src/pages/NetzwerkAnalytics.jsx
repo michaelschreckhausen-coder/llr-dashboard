@@ -58,7 +58,7 @@ export default function NetzwerkAnalytics() {
             .eq('brand_voice_id', bvId).order('captured_on', { ascending: true }),
           supabase.from('brand_voices').select('id, name, brand_name'),
           supabase.from('la_campaigns').select('id, name, status').eq('brand_voice_id', bvId),
-          supabase.from('la_enrollments').select('campaign_id, state, relation_status').eq('brand_voice_id', bvId),
+          supabase.from('la_enrollments').select('campaign_id, state, relation_status, accepted_at').eq('brand_voice_id', bvId),
           supabase.from('linkedin_invitations').select('status, sent_at, responded_at').eq('brand_voice_id', bvId),
           supabase.from('linkedin_messaging_metrics').select('unipile_account_id, unread_threads, unread_messages, active_7d, chats_scanned, captured_on').eq('brand_voice_id', bvId).order('captured_on', { ascending: true }),
           supabase.from('linkedin_chats').select('id, attendee_name, unread_count, last_message_at').eq('brand_voice_id', bvId).order('last_message_at', { ascending: false }),
@@ -372,8 +372,10 @@ export default function NetzwerkAnalytics() {
               for (const e of enr) { (byCampaign[e.campaign_id] ||= []).push(e) }
               const activeCamps = camps.filter(c => c.status === 'active').length
               const totalTargets = enr.length
-              const connected = enr.filter(e => e.relation_status === 'connected').length
-              const pending = enr.filter(e => e.relation_status === 'pending').length
+              // Annahme-Signal = accepted_at (verlässlich); relation_status wird von Scan-Crons
+              // auf 'unknown' zurückgesetzt und taugt nicht. Ausstehend = Ziele - Angenommen.
+              const connected = enr.filter(e => e.accepted_at).length
+              const pending = totalTargets - connected
               const A = ({ icon, label, value }) => (
                 <div style={kpiTile}><div style={kpiLabel}>{icon}{label}</div><div style={kpiValue}>{fmt(value)}</div></div>
               )
@@ -397,8 +399,8 @@ export default function NetzwerkAnalytics() {
                       </div>
                       {camps.slice().sort((a,b)=>(byCampaign[b.id]?.length||0)-(byCampaign[a.id]?.length||0)).map(c => {
                         const list = byCampaign[c.id] || []
-                        const conn = list.filter(e => e.relation_status === 'connected').length
-                        const pend = list.filter(e => e.relation_status === 'pending').length
+                        const conn = list.filter(e => e.accepted_at).length
+                        const pend = list.length - conn
                         return (
                           <div key={c.id} style={{ display:'flex', alignItems:'center', fontSize:13, padding:'8px 4px', borderTop:'1px solid var(--border-soft,#F1F5F9)' }}>
                             <span style={{ flex:2, minWidth:140, fontWeight:600, color:'var(--text-strong,#111827)', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{c.name || 'Kampagne'}</span>

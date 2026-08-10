@@ -294,7 +294,7 @@ export default function LinkedInAutomationNeu({ session }) {
   const funnelStages = [
     { k: 'enrolled', label: 'Enrolled', n: f.enrollment_total || 0 },
     { k: 'invited', label: 'Invited', n: f.done_by_action?.invite || 0 },
-    { k: 'accepted', label: 'Accepted', n: (f.enrollments?.replied || 0) + (f.done_by_action?.message || 0) },
+    { k: 'accepted', label: 'Accepted', n: f.accepted || 0 },
     { k: 'messaged', label: 'Messaged', n: f.done_by_action?.message || 0 },
     { k: 'replied', label: 'Replied', n: f.enrollments?.replied || 0 },
   ]
