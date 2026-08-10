@@ -61,8 +61,12 @@ Deno.serve(async (req) => {
       else dispatch = "new_relation:no_enrollment";
 
     } else if (/message/i.test(type)) {
-      const providerId = pick(evt, ["sender.provider_id", "from.provider_id", "sender_id", "attendee_provider_id", "provider_id"]);
-      const publicId = pick(evt, ["sender.public_identifier", "from.public_identifier", "public_identifier"]);
+      // Unipile-Shape ist sender.attendee_provider_id / sender.attendee_public_identifier
+      // (verifiziert 2026-08-10: 944/1261 message_received matchen damit, 0 mit den alten Keys →
+      //  la_reply_stop feuerte nie, state='replied' global 0). Additiv als Superset, damit
+      //  künftige Payload-Varianten nicht wieder still durchfallen.
+      const providerId = pick(evt, ["sender.attendee_provider_id", "sender.provider_id", "from.provider_id", "sender_id", "attendee_provider_id", "provider_id"]);
+      const publicId = pick(evt, ["sender.attendee_public_identifier", "sender.public_identifier", "from.public_identifier", "public_identifier"]);
       const enr = await findEnrollment(accountId, providerId, publicId);
       if (enr) { const { data: m } = await db.rpc("la_reply_stop", { p_enrollment_id: enr.id }); dispatch = { new_message: enr.id, result: m }; }
       else dispatch = "new_message:no_enrollment";
