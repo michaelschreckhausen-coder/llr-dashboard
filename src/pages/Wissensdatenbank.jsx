@@ -4,6 +4,7 @@ import { AlertTriangle, BarChart3, BookOpen, Briefcase, Building2, Download, Eye
 import { useTeam } from '../context/TeamContext'
 import { scrapeLinkedInProfile, formatLinkedInProfileAsText } from '../lib/leadeskExtension'
 import { supabase } from '../lib/supabase'
+import { sanitizeFilename } from '../lib/sanitizeStorageKey'
 import { sharedEntityIds, scopeByTeamOrShared } from '../lib/teamShares'
 import EmptyHero from '../components/EmptyHero'
 import SectionCard from '../components/SectionCard'
@@ -145,7 +146,9 @@ function FileUpload({ session, edit, onUpdate, onExtractedText }) {
     if (file.size > 10485760) { setError('Datei zu groß (max. 10 MB)'); return }
     setError(''); setUploading(true)
     try {
-      const path = `knowledge/${session.user.id}/${Date.now()}_${file.name}`
+      // ASCII-safe Storage-Key (storage-api lehnt Umlaute/Sonderzeichen mit 400 ab);
+      // Original-Name bleibt in file_name (unten) für die Anzeige.
+      const path = `knowledge/${session.user.id}/${Date.now()}_${sanitizeFilename(file.name)}`
       const { error: upErr } = await supabase.storage.from('knowledge-files').upload(path, file)
       if (upErr) throw upErr
       const { data: urlData } = supabase.storage.from('knowledge-files').getPublicUrl(path)

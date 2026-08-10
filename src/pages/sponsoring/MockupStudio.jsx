@@ -13,6 +13,7 @@ import PillSelect from '../../components/PillSelect'
 import { useEffect, useState, useCallback } from 'react'
 import { ImagePlus, Plus, Loader2, RefreshCw, Upload, Wand2, Building2, Trash2 } from 'lucide-react'
 import { supabase } from '../../lib/supabase'
+import { sanitizeFilename } from '../../lib/sanitizeStorageKey'
 import { useTeam } from '../../context/TeamContext'
 import PageHeader from '../../components/PageHeader'
 
@@ -87,7 +88,7 @@ export default function MockupStudio() {
     if (!activeTeamId || !tplForm.name.trim() || !tplFile) return
     setTplBusy(true); setError(null)
     try {
-      const path = `${activeTeamId}/${Date.now()}-${tplFile.name}`
+      const path = `${activeTeamId}/${Date.now()}-${sanitizeFilename(tplFile.name)}`
       const { error: upErr } = await supabase.storage.from(BUCKET_STADIUM)
         .upload(path, tplFile, { contentType: tplFile.type, upsert: false })
       if (upErr) { setError('Upload fehlgeschlagen: ' + upErr.message); setTplBusy(false); return }
@@ -121,7 +122,7 @@ export default function MockupStudio() {
     if (!activeTeamId || !mockForm.stadium_template_id || !logoFile) return
     setMockBusy(true); setError(null)
     try {
-      const path = `${activeTeamId}/${Date.now()}-${logoFile.name}`
+      const path = `${activeTeamId}/${Date.now()}-${sanitizeFilename(logoFile.name)}`
       const { error: upErr } = await supabase.storage.from(BUCKET_MOCKUPS)
         .upload(path, logoFile, { contentType: logoFile.type, upsert: false })
       if (upErr) { setError('Logo-Upload fehlgeschlagen: ' + upErr.message); setMockBusy(false); return }

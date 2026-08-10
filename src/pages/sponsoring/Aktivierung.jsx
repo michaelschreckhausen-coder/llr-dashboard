@@ -6,6 +6,7 @@ import PillSelect from '../../components/PillSelect'
 import { useEffect, useMemo, useState, useCallback } from 'react'
 import { Megaphone, Plus, Loader2, ListChecks, Image as ImageIcon, Trash2, Upload, Wand2 } from 'lucide-react'
 import { supabase } from '../../lib/supabase'
+import { sanitizeFilename } from '../../lib/sanitizeStorageKey'
 import { useTeam } from '../../context/TeamContext'
 import PageHeader from '../../components/PageHeader'
 
@@ -186,7 +187,9 @@ export default function Aktivierung() {
     setUploadBusy(activationId); setError(null)
     try {
       // STORAGE-REGEL: Pfad MUSS mit `${activeTeamId}/` beginnen (RLS-Gate).
-      const path = `${activeTeamId}/${Date.now()}-${file.name}`
+      // Dateiname ASCII-safe machen (storage-api lehnt Umlaute/Sonderzeichen ab);
+      // Prefix bleibt unangetastet → RLS-Gate intakt. caption behält Original.
+      const path = `${activeTeamId}/${Date.now()}-${sanitizeFilename(file.name)}`
       const { error: upErr } = await supabase.storage.from(ACTIVATION_BUCKET)
         .upload(path, file, { contentType: file.type, upsert: false })
       if (upErr) { setError('Upload fehlgeschlagen: ' + upErr.message); return }
