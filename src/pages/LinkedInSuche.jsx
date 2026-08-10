@@ -110,6 +110,20 @@ export default function LinkedInSuche() {
     setLoading(false)
   }, [activeBrandVoice?.id])
 
+  // SN-Capability der Marke → Auto-SN (Live-Suche) + Default-Quelle (nur bei unberührter Maske;
+  // bewusst gewähltes Classic wird NICHT still überschrieben).
+  const [hasSalesNav, setHasSalesNav] = useState(false)
+  useEffect(() => {
+    const bvId = activeBrandVoice?.id || null
+    if (!bvId) { setHasSalesNav(false); return }
+    supabase.from('unipile_accounts').select('capabilities').eq('brand_voice_id', bvId).eq('status', 'OK').maybeSingle()
+      .then(({ data }) => {
+        const sn = !!data?.capabilities?.sales_navigator
+        setHasSalesNav(sn)
+        if (sn) setForm(f => (f.api === 'classic' && !f.name && !f.person_name && !f.keywords && !f.search_url) ? { ...f, api: 'sales_navigator' } : f)
+      })
+  }, [activeBrandVoice?.id]) // eslint-disable-line react-hooks/exhaustive-deps
+
   const fetchInboxLists = useCallback(async () => {
     // Import-Inbox-Listen (kanonische Quelle) für das optionale Ziel-Dropdown.
     // Team-gescopet mit Solo-Fallback (Top-Fallstrick #14), analog useInboxLists.
@@ -159,7 +173,7 @@ export default function LinkedInSuche() {
     })
     if (error) { setFlash({ type:'error', text:'Speichern fehlgeschlagen: ' + error.message }); setSaving(false); return }  // Fallstrick #12
     setFlash({ type:'success', text:'Suche gespeichert.' })
-    setForm(EMPTY_FORM)
+    setForm({ ...EMPTY_FORM, api: hasSalesNav ? 'sales_navigator' : 'classic' })
     setSaving(false)
     fetchSearches()
   }
@@ -184,12 +198,20 @@ export default function LinkedInSuche() {
     const isPeople = search.category === 'people'
     // Personen-Treffer standardmäßig alle vorausgewählt (schneller Bulk-Add).
     setSelected(new Set(isPeople ? items.map((_, i) => i) : []))
-    setFlash({
-      type:'success',
-      text: isPeople
-        ? `${data?.found ?? 0} Treffer gefunden — unten auswählen und zu den Kontakten hinzufügen.`
-        : `${data?.found ?? 0} Unternehmens-Treffer gefunden (nur Personen können übernommen werden).`,
-    })
+    const found = data?.found ?? 0
+    if (isPeople && found === 0 && search.api === 'classic') {
+      // Ehrliche, handlungsleitende Meldung statt stillem 0 — Classic liefert für Keywords faktisch nichts.
+      setFlash({ type:'error', text: hasSalesNav
+        ? 'Keine Treffer — die LinkedIn-Classic-Suche liefert bei Keywords fast nie etwas. Erstelle die Suche mit Quelle „Sales Navigator" (für dein Konto verfügbar).'
+        : 'Keine Treffer — die LinkedIn-Classic-Suche liefert bei Keywords wenig bis nichts. Für zuverlässige Ergebnisse ist Sales Navigator nötig.' })
+    } else {
+      setFlash({
+        type:'success',
+        text: isPeople
+          ? `${found} Treffer gefunden — unten auswählen und zu den Kontakten hinzufügen.`
+          : `${found} Unternehmens-Treffer gefunden (nur Personen können übernommen werden).`,
+      })
+    }
     setRunningId(null)
     fetchSearches()       // aktualisierte results_imported / status / last_run_at
   }
@@ -228,8 +250,10 @@ export default function LinkedInSuche() {
     if (q.length < 2) { setLiveResults(null); setLiveLoading(false); return }
     let cancel = false; setLiveLoading(true)
     const t = setTimeout(async () => {
-      const { data } = await supabase.functions.invoke('unipile-people-search', { body: { brand_voice_id: activeBrandVoice?.id || null, query: q } })
+      const { data, error } = await supabase.functions.invoke('unipile-people-search', { body: { brand_voice_id: activeBrandVoice?.id || null, query: q } })
       if (cancel) return
+      // Fehler als Fehler sichtbar machen — NICHT als „Keine Treffer" schlucken.
+      if (error || data?.error) { setFlash({ type:'error', text: data?.error || 'Live-Suche momentan nicht möglich — bitte Verbindung prüfen.' }); setLiveResults(null); setLiveLoading(false); return }
       setLiveResults((data && data.items) || []); setLiveSel(new Set()); setLiveLoading(false)
     }, 450)
     return () => { cancel = true; clearTimeout(t) }
