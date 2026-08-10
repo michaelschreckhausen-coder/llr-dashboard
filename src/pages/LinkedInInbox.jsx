@@ -454,10 +454,9 @@ export default function LinkedInInbox() {
           Listen-Filter + „Neue Liste" haben (Michael-Wunsch 23.07.2026). */}
       {!loading && (
         <ListChipsBar
-          lists={lists}
+          lists={lists.filter(l => !l.brand_voice_id || l.brand_voice_id === activeBrandVoice?.id || l.is_shared)}
           membersByList={membersByList}
           rows={rows}
-          activeBrandVoiceId={activeBrandVoice?.id}
           listFilter={listFilter}
           setListFilter={setListFilter}
           allowSharing={sourceTab === 'kontakte'}

@@ -87,7 +87,6 @@ export default function ListChipsBar({
   lists,
   membersByList,
   rows,
-  activeBrandVoiceId,
   listFilter,
   setListFilter,
   allowSharing = false,
@@ -135,7 +134,9 @@ export default function ListChipsBar({
     if (r?.error) msg('Teilen fehlgeschlagen: ' + r.error.message)
   }
 
-  const visible = lists.filter(l => !l.brand_voice_id || l.brand_voice_id === activeBrandVoiceId || l.is_shared)
+  // Rein präsentativ: die Aufrufstelle liefert die bereits gefilterten Listen
+  // (develop: brand_voice-Sicht · main: nach l.kind/listKind pro Tab).
+  const visible = lists
 
   return (
     <div className="lcb-bar">
