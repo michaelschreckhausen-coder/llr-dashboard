@@ -81,6 +81,22 @@ const CSS = `
 .lcb-input{padding:7px 11px;border-radius:9px;border:1.5px solid var(--lcb-blue);font-size:13.5px;background:var(--lcb-input-bg);color:var(--lcb-input-text);outline:none;width:150px}
 .lcb-mini{background:none;border:none;padding:2px;cursor:pointer;display:inline-flex;align-items:center;color:var(--lcb-count-text)}
 .lcb-mini.lcb-ok{color:var(--lcb-blue)}
+
+/* Team-Freigabe-Popover */
+.lcb-pop-wrap{position:relative;display:inline-flex}
+.lcb-pop-backdrop{position:fixed;inset:0;z-index:40}
+.lcb-pop{position:absolute;top:calc(100% + 6px);left:0;z-index:50;min-width:250px;max-width:300px;background:var(--lcb-chip-bg);border:1px solid var(--lcb-chip-border);border-radius:12px;box-shadow:0 12px 32px rgba(15,23,42,.16);padding:12px;font-weight:500;text-align:left}
+.lcb-pop-title{font-size:12px;font-weight:700;color:var(--lcb-chip-text);display:flex;align-items:center;gap:6px;margin-bottom:4px}
+.lcb-pop-sub{font-size:11px;color:var(--lcb-count-text);margin-bottom:10px;line-height:1.5}
+.lcb-pop-list{display:flex;flex-direction:column;gap:2px;max-height:220px;overflow-y:auto;margin:0 -4px}
+.lcb-pop-row{display:flex;align-items:center;gap:9px;padding:6px 8px;border-radius:7px;cursor:pointer;font-size:13px;font-weight:600;color:var(--lcb-chip-text)}
+.lcb-pop-row:hover{background:var(--lcb-hover-bg)}
+.lcb-pop-row input{width:15px;height:15px;cursor:pointer;accent-color:var(--lcb-teal)}
+.lcb-pop-empty{font-size:12px;color:var(--lcb-count-text);font-style:italic;padding:6px 4px}
+.lcb-pop-foot{display:flex;justify-content:flex-end;gap:8px;margin-top:12px}
+.lcb-pop-cancel{background:none;border:1px solid var(--lcb-chip-border);border-radius:8px;padding:5px 11px;font-size:12.5px;font-weight:600;color:var(--lcb-count-text);cursor:pointer}
+.lcb-pop-save{background:var(--lcb-teal);border:none;border-radius:8px;padding:5px 12px;font-size:12.5px;font-weight:700;color:var(--lcb-teal-on);cursor:pointer;display:inline-flex;align-items:center;gap:5px}
+.lcb-pop-save:disabled{opacity:.6;cursor:default}
 `
 
 export default function ListChipsBar({
@@ -90,7 +106,9 @@ export default function ListChipsBar({
   listFilter,
   setListFilter,
   allowSharing = false,
-  toggleShareList,
+  sharesByList,      // Map<list_id, [{ team_id, team_name }]> — nur bei allowSharing
+  allTeams,          // [{ id, name }] — Teams des Users (Checkbox-Optionen)
+  onSetShares,       // async (listId, teamIds[]) => { data | error }
   renameList,
   createOrReuseList,
   onRequestDelete,
@@ -101,6 +119,9 @@ export default function ListChipsBar({
   const [showNew, setShowNew] = useState(false)
   const [newName, setNewName] = useState('')
   const [creating, setCreating] = useState(false)
+  const [shareForId, setShareForId] = useState(null)   // welche Liste hat den Team-Picker offen
+  const [draftTeams, setDraftTeams] = useState([])      // angehakte team_ids im Picker
+  const [savingShare, setSavingShare] = useState(false)
 
   const msg = (text) => onMessage && onMessage({ text })
 
@@ -129,9 +150,19 @@ export default function ListChipsBar({
     msg(reused ? `Liste „${data.name}" existiert bereits.` : `Liste „${data.name}" angelegt.`)
   }
 
-  const toggleShare = async (l) => {
-    const r = await toggleShareList(l.id, !l.is_shared)
-    if (r?.error) msg('Teilen fehlgeschlagen: ' + r.error.message)
+  // ─── Team-Freigabe-Popover ─────────────────────────────────────────────────
+  const sharesOf = (id) => (sharesByList && sharesByList.get(id)) || []
+  const openShare = (l) => { setDraftTeams(sharesOf(l.id).map(s => s.team_id)); setShareForId(l.id) }
+  const closeShare = () => { setShareForId(null); setSavingShare(false) }
+  const toggleDraft = (tid) => setDraftTeams(prev => prev.includes(tid) ? prev.filter(x => x !== tid) : [...prev, tid])
+  const saveShare = async (l) => {
+    setSavingShare(true)
+    const r = await onSetShares(l.id, draftTeams)
+    setSavingShare(false)
+    if (r?.error) { msg('Freigabe fehlgeschlagen: ' + r.error.message); return }
+    const n = (r?.data || []).length
+    closeShare()
+    msg(n === 0 ? `„${l.name}" ist nicht mehr geteilt.` : `„${l.name}" mit ${n} Team${n > 1 ? 's' : ''} geteilt.`)
   }
 
   // Rein präsentativ: die Aufrufstelle liefert die bereits gefilterten Listen
@@ -166,27 +197,63 @@ export default function ListChipsBar({
         }
 
         const active = listFilter === l.id
-        const shared = !!l.is_shared
+        const shares = allowSharing ? sharesOf(l.id) : []
+        const shared = shares.length > 0
+        const shareNames = shares.map(s => s.team_name || '—').join(', ')
+        const popOpen = shareForId === l.id
         return (
           <span key={l.id} className={'lcb-chip' + (active ? ' lcb-active' : '')}>
             <button className="lcb-name" onClick={() => setListFilter(l.id)}>{l.name}</button>
             <span className="lcb-count">{cnt}</span>
 
             {allowSharing && shared && (
-              <span className="lcb-shared" title="Für das Team freigegeben">
-                <Users size={12} /> Geteilt
+              <span className="lcb-shared"
+                title={`Freigegeben für ${shares.length === 1 ? 'das Team' : shares.length + ' Teams'}: ${shareNames}`}>
+                <Users size={12} /> {shares.length === 1 ? `Geteilt: ${shares[0].team_name || 'Team'}` : `Geteilt: ${shares.length} Teams`}
               </span>
             )}
 
             <span className="lcb-actions">
               {allowSharing && (
-                <button
-                  className={'lcb-btn-share' + (shared ? ' lcb-is-shared' : '')}
-                  onClick={() => toggleShare(l)}
-                  title={shared ? 'Freigabe verwalten — Klick: nur diese Marke' : 'Im Team teilen'}
-                  aria-label={shared ? 'Freigabe verwalten' : 'Im Team teilen'}>
-                  <Users size={13} /> {shared ? 'Freigabe' : 'Teilen'}
-                </button>
+                <span className="lcb-pop-wrap">
+                  <button
+                    className={'lcb-btn-share' + (shared ? ' lcb-is-shared' : '')}
+                    onClick={() => (popOpen ? closeShare() : openShare(l))}
+                    aria-haspopup="dialog" aria-expanded={popOpen}
+                    title={shared ? 'Freigabe verwalten' : 'Mit Teams teilen'}
+                    aria-label={shared ? 'Freigabe verwalten' : 'Mit Teams teilen'}>
+                    <Users size={13} /> {shared ? 'Freigabe' : 'Teilen'}
+                  </button>
+                  {popOpen && (
+                    <>
+                      <div className="lcb-pop-backdrop" onClick={closeShare} />
+                      <div className="lcb-pop" role="dialog" aria-label="Mit Teams teilen"
+                        onKeyDown={e => { if (e.key === 'Escape') { e.stopPropagation(); closeShare() } }}>
+                        <div className="lcb-pop-title"><Users size={13} /> Mit Teams teilen</div>
+                        <div className="lcb-pop-sub">Ausgewählte Teams sehen „{l.name}" und können die Kontakte ins CRM übernehmen. Umbenennen/Löschen bleibt bei dir.</div>
+                        {(!allTeams || allTeams.length === 0) ? (
+                          <div className="lcb-pop-empty">Du bist in keinem Team.</div>
+                        ) : (
+                          <div className="lcb-pop-list">
+                            {allTeams.map((t, i) => (
+                              <label key={t.id} className="lcb-pop-row">
+                                <input type="checkbox" checked={draftTeams.includes(t.id)} autoFocus={i === 0}
+                                  onChange={() => toggleDraft(t.id)} />
+                                <span>{t.name || t.id.slice(0, 8)}</span>
+                              </label>
+                            ))}
+                          </div>
+                        )}
+                        <div className="lcb-pop-foot">
+                          <button className="lcb-pop-cancel" onClick={closeShare}>Abbrechen</button>
+                          <button className="lcb-pop-save" onClick={() => saveShare(l)} disabled={savingShare}>
+                            {savingShare ? <Loader2 size={13} className="spin" /> : <Check size={13} />} Speichern
+                          </button>
+                        </div>
+                      </div>
+                    </>
+                  )}
+                </span>
               )}
               <button className="lcb-icon-btn" onClick={() => startRename(l)} title="Umbenennen" aria-label="Umbenennen">
                 <Pencil size={15} />
