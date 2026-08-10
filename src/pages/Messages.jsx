@@ -16,6 +16,7 @@ import CompanyMultiSelect from '../components/CompanyMultiSelect'
 import {
   MessageSquare, PenLine, Send, RefreshCw, Sparkles, Search, Loader2, Inbox as InboxIcon,
   Handshake, Mail, Target, Reply, ExternalLink, Plus, Check, X, UserPlus, Copy,
+  Megaphone, Users,
 } from 'lucide-react'
 
 const P = 'var(--primary, rgb(0,48,96))'
@@ -63,6 +64,17 @@ export default function Messages() {
   const bvId = activeBrandVoice?.id || null
   const brandName = activeBrandVoice?.brand_name || activeBrandVoice?.name || ''
   const [tab, setTab] = useState('verfassen')
+  // Handoff „Anschreiben" (Kampagnen-Tab → Verfassen mit vorbelegtem Empfänger) +
+  // session-konsistentes „angeschrieben"-Set (Verfassen meldet erfolgreichen DM-Send zurück).
+  const [composeSeed, setComposeSeed] = useState(null)
+  const [messagedIds, setMessagedIds] = useState(() => new Set())
+  const startCompose = useCallback((recipient) => {
+    setComposeSeed({ target: recipient, catKey: 'first_message' })
+    setTab('verfassen')
+  }, [])
+  const markMessaged = useCallback((pid) => {
+    if (pid) setMessagedIds((prev) => new Set(prev).add(pid))
+  }, [])
 
   // ── geteilt: Kontakte ──
   const [contacts, setContacts] = useState([])
@@ -99,13 +111,16 @@ export default function Messages() {
       <TabBar
         tabs={[
           { v: 'verfassen', label: 'Verfassen', icon: <PenLine size={16} strokeWidth={1.75} />, color: 'blue' },
+          { v: 'kampagnen', label: 'Kampagnen', icon: <Megaphone size={16} strokeWidth={1.75} />, color: 'green' },
           { v: 'postfach',  label: 'Postfach',  icon: <MessageSquare size={16} strokeWidth={1.75} />, color: 'purple' },
           { v: 'anfragen',  label: 'Anfragen',  icon: <UserPlus size={16} strokeWidth={1.75} />, color: 'amber' },
         ]}
         active={tab} onChange={setTab} style={{ marginBottom: 18 }}
       />
       {tab === 'verfassen'
-        ? <Verfassen bvId={bvId} model={selectedModel} contacts={contacts} caps={caps} onOpenPostfach={() => setTab('postfach')} />
+        ? <Verfassen bvId={bvId} model={selectedModel} contacts={contacts} caps={caps} seed={composeSeed} onSent={markMessaged} onOpenPostfach={() => setTab('postfach')} />
+        : tab === 'kampagnen'
+        ? <Kampagnen bvId={bvId} messagedIds={messagedIds} onCompose={startCompose} />
         : tab === 'anfragen'
         ? <OffeneAnfragen />
         : <Postfach bvId={bvId} brandName={brandName} contacts={contacts} reloadContacts={loadContacts} goCompose={() => setTab('verfassen')} />}
@@ -211,12 +226,119 @@ function RecipientPicker({ bvId, cat, canInmail, value, onChange }) {
   )
 }
 
-function Verfassen({ bvId, model, contacts, onOpenPostfach, caps }) {
+// ── Kampagnen: Angenommene einer Automations-Kampagne sehen & einzeln anschreiben ──
+function Kampagnen({ bvId, messagedIds, onCompose }) {
+  const [camps, setCamps] = useState([])
+  const [campId, setCampId] = useState('')
+  const [showDone, setShowDone] = useState(false)
+  const [people, setPeople] = useState([])
+  const [loading, setLoading] = useState(false)
+  const [onlyOpen, setOnlyOpen] = useState(false)
+
+  useEffect(() => {
+    if (!bvId) { setCamps([]); return }
+    supabase.from('la_campaigns').select('id, name, status').eq('brand_voice_id', bvId)
+      .order('created_at', { ascending: false })
+      .then(({ data }) => setCamps(data || []))
+  }, [bvId])
+
+  const ACTIVE = (s) => ['active', 'running', 'laufend'].includes((s || '').toLowerCase())
+  const visibleCamps = camps.filter(c => showDone || ACTIVE(c.status))
+
+  useEffect(() => {
+    if (!visibleCamps.length) { setCampId(''); return }
+    if (!campId || !visibleCamps.some(c => c.id === campId)) setCampId(visibleCamps[0].id)
+  }, [visibleCamps, campId])
+
+  const load = useCallback(async () => {
+    if (!campId) { setPeople([]); return }
+    setLoading(true)
+    const { data, error } = await supabase.rpc('la_campaign_accepted', { p_campaign_id: campId })
+    setLoading(false)
+    setPeople(!error && Array.isArray(data) ? data : [])
+  }, [campId])
+  useEffect(() => { load() }, [load])
+
+  const isMessaged = (p) => p.already_messaged || messagedIds?.has(p.provider_id)
+  const rows = people.filter(p => !onlyOpen || !isMessaged(p))
+  const openCount = people.filter(p => !isMessaged(p)).length
+
+  const daysAgo = (ts) => {
+    if (!ts) return ''
+    const d = Math.floor((Date.now() - new Date(ts).getTime()) / 86400000)
+    return d <= 0 ? 'heute' : d === 1 ? 'vor 1 Tag' : `vor ${d} Tagen`
+  }
+  const profileUrl = (p) => p.profile_url || (p.public_identifier ? `https://www.linkedin.com/in/${p.public_identifier}` : null)
+  const initials = (n) => (n || '?').split(' ').filter(Boolean).slice(0, 2).map(s => s[0]?.toUpperCase()).join('')
+  const handleWrite = (p) => onCompose({ provider_id: p.provider_id, url: profileUrl(p), name: p.name, headline: p.headline, avatar_url: null, source: 'campaign' })
+
+  const selStyle = { padding: '8px 12px', borderRadius: 10, border: '1px solid var(--border)', background: 'var(--surface)', color: 'var(--text-strong,#111827)', fontSize: 14, minWidth: 280, maxWidth: 460 }
+
+  return (
+    <div style={{ ...card, padding: 18 }}>
+      <div style={{ display: 'flex', gap: 12, alignItems: 'center', flexWrap: 'wrap', marginBottom: 14 }}>
+        <select value={campId} onChange={e => setCampId(e.target.value)} style={selStyle}>
+          {visibleCamps.length === 0 && <option value="">Keine {showDone ? '' : 'laufende '}Kampagne</option>}
+          {visibleCamps.map(c => <option key={c.id} value={c.id}>{c.name}{ACTIVE(c.status) ? '' : ` · ${c.status}`}</option>)}
+        </select>
+        <label style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 13, color: 'var(--text-muted)', cursor: 'pointer' }}>
+          <input type="checkbox" checked={showDone} onChange={e => setShowDone(e.target.checked)} /> auch abgeschlossene
+        </label>
+      </div>
+
+      {loading ? (
+        <div style={{ padding: 24, textAlign: 'center', color: '#9CA3AF' }}><Loader2 size={18} className="lk-spin" /></div>
+      ) : !campId ? (
+        <div style={{ color: 'var(--text-muted)', padding: '24px 4px', fontSize: 14 }}>Keine laufende Kampagne für diese Marke.</div>
+      ) : people.length === 0 ? (
+        <div style={{ color: 'var(--text-muted)', padding: '24px 4px', fontSize: 14 }}>Noch keine angenommenen Vernetzungsanfragen in dieser Kampagne.</div>
+      ) : (
+        <>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 10, marginBottom: 8 }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 14, fontWeight: 600 }}>
+              <Users size={16} color={P} /> {people.length} Angenommen{openCount < people.length ? ` · ${openCount} offen` : ''}
+            </div>
+            <button className={onlyOpen ? 'lk-btn lk-btn-navy lk-btn-sm' : 'lk-btn lk-btn-ghost lk-btn-sm'} onClick={() => setOnlyOpen(v => !v)}>
+              {onlyOpen ? 'Alle zeigen' : 'Nur noch nicht angeschrieben'}
+            </button>
+          </div>
+          <div style={{ display: 'flex', flexDirection: 'column' }}>
+            {rows.map(p => {
+              const messaged = isMessaged(p)
+              const url = profileUrl(p)
+              return (
+                <div key={p.provider_id || p.public_identifier} style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '10px 4px', borderTop: '1px solid var(--border-soft,#F1F5F9)' }}>
+                  <div style={{ width: 36, height: 36, borderRadius: '50%', background: 'var(--surface-2,#EEF2F7)', color: P, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 13, fontWeight: 700, flexShrink: 0 }}>{initials(p.name)}</div>
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                      <span style={{ fontWeight: 600, color: 'var(--text-strong,#111827)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{p.name || 'Kontakt'}</span>
+                      {messaged && <span style={{ display: 'inline-flex', alignItems: 'center', gap: 3, fontSize: 11, color: '#16A34A', background: '#F0FDF4', border: '1px solid #BBF7D0', borderRadius: 6, padding: '1px 6px', flexShrink: 0 }}><Check size={11} /> angeschrieben</span>}
+                    </div>
+                    <div style={{ fontSize: 12, color: 'var(--text-muted)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{[p.headline, p.accepted_at ? `angenommen ${daysAgo(p.accepted_at)}` : null].filter(Boolean).join(' · ')}</div>
+                  </div>
+                  {url && <a href={url} target="_blank" rel="noreferrer" className="lk-btn lk-btn-ghost lk-btn-sm" title="Profil öffnen"><ExternalLink size={14} /></a>}
+                  <button className="lk-btn lk-btn-navy lk-btn-sm" onClick={() => handleWrite(p)}><Send size={14} /> Anschreiben</button>
+                </div>
+              )
+            })}
+            {rows.length === 0 && <div style={{ color: 'var(--text-muted)', padding: '16px 4px', fontSize: 13 }}>Alle Angenommenen sind bereits angeschrieben.</div>}
+          </div>
+        </>
+      )}
+    </div>
+  )
+}
+
+function Verfassen({ bvId, model, contacts, onOpenPostfach, caps, seed, onSent }) {
   const isCompany = caps?.account_type === 'company_page'
   const canInmail = !!(caps?.caps?.inmail)
   const [inmail, setInmail] = useState(false)
   const [catKey, setCatKey] = useState('vernetzung')
   const [target, setTarget] = useState(null)
+  // Handoff aus dem Kampagnen-Tab: Empfänger + Kategorie vorbelegen.
+  useEffect(() => {
+    if (seed?.target) { setTarget(seed.target); if (seed.catKey) setCatKey(seed.catKey) }
+  }, [seed])
   const [context, setContext] = useState('')
   const [text, setText] = useState('')
   const [gen, setGen] = useState(false)
@@ -315,6 +437,7 @@ function Verfassen({ bvId, model, contacts, onOpenPostfach, caps }) {
     setSending(false)
     if (error || data?.error) { setFlash({ type: 'error', msg: data?.error || error?.message || 'Senden fehlgeschlagen' }); return }
     setFlash({ type: 'success', msg: cat.action === 'invite' ? 'Vernetzungsanfrage gesendet.' : 'Nachricht gesendet.', showPostfach: cat.action === 'dm' })
+    if (cat.action === 'dm' && target.provider_id) onSent?.(target.provider_id)
     setText('')
   }
 
