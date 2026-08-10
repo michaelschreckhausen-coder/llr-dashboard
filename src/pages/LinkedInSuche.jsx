@@ -66,7 +66,7 @@ const CATEGORY_OPTIONS = [
 
 const EMPTY_FORM = {
   name:'', api:'classic', category:'people',
-  person_name:'', keywords:'', location:'', company:'', industry:'',
+  person_name:'', keywords:'', position:'', location:'', company:'', industry:'',
   search_url:'', target_list_id:'',
 }
 
@@ -120,7 +120,7 @@ export default function LinkedInSuche() {
       .then(({ data }) => {
         const sn = !!data?.capabilities?.sales_navigator
         setHasSalesNav(sn)
-        if (sn) setForm(f => (f.api === 'classic' && !f.name && !f.person_name && !f.keywords && !f.search_url) ? { ...f, api: 'sales_navigator' } : f)
+        if (sn) setForm(f => (f.api === 'classic' && !f.name && !f.person_name && !f.keywords && !f.position && !f.search_url) ? { ...f, api: 'sales_navigator' } : f)
       })
   }, [activeBrandVoice?.id]) // eslint-disable-line react-hooks/exhaustive-deps
 
@@ -143,8 +143,8 @@ export default function LinkedInSuche() {
 
   const saveSearch = async () => {
     if (!form.name.trim()) { setFlash({ type:'error', text:'Bitte einen Namen für die Suche vergeben.' }); return }
-    if (!form.person_name.trim() && !form.keywords.trim() && !form.search_url.trim()) {
-      setFlash({ type:'error', text:'Bitte einen Namen, Keywords oder eine gespeicherte Such-URL angeben.' }); return
+    if (!form.person_name.trim() && !form.keywords.trim() && !form.position.trim() && !form.search_url.trim()) {
+      setFlash({ type:'error', text:'Bitte Keywords, eine Berufsposition, einen Namen oder eine gespeicherte Such-URL angeben.' }); return
     }
     // Positive Allowlist: eine hinterlegte URL muss eine echte Such-Ergebnis-URL sein
     // (kein Profil-Link). Gleiche Logik wie im EF (autoritativ) — siehe lib/linkedinSearchUrl.
@@ -156,6 +156,8 @@ export default function LinkedInSuche() {
     // LinkedIn-Classic hat keinen eigenen Namens-Filter — Name fliesst in die Keyword-Suche (kombiniert).
     const _kw = [form.person_name.trim(), form.keywords.trim()].filter(Boolean).join(' ')
     if (_kw) params.keywords = _kw
+    // Berufsposition → SN-Titel-Filter keywords_title (EF spiegelt in keywords, falls leer).
+    if (form.position.trim()) params.keywords_title = form.position.trim()
     if (form.location.trim()) params.location = form.location.trim()
     if (form.company.trim())  params.company  = form.company.trim()
     if (form.industry.trim()) params.industry = form.industry.trim()
@@ -370,6 +372,13 @@ export default function LinkedInSuche() {
                 <div>
                   <label style={labelStyle}>Name (optional)</label>
                   <input style={inputStyle} value={form.person_name} onChange={e => setField('person_name', e.target.value)} placeholder="z. B. Max Mustermann" />
+                </div>
+              )}
+              {form.category === 'people' && (
+                <div>
+                  <label style={labelStyle}>Berufsposition (optional)</label>
+                  <input style={{ ...inputStyle, ...(form.api === 'classic' ? { opacity:0.55 } : {}) }} value={form.position} onChange={e => setField('position', e.target.value)} placeholder="z. B. Geschäftsführer, CTO" />
+                  {form.api === 'classic' && <div style={{ fontSize:11, color:'#B45309', marginTop:4 }}>Titel-Filter wirkt nur mit Quelle „Sales Navigator".</div>}
                 </div>
               )}
               <div>

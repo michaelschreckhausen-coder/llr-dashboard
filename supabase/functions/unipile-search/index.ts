@@ -140,6 +140,15 @@ Deno.serve(async (req) => {
       body = { api, category };
       const kw = typeof params.keywords === "string" ? params.keywords.trim() : "";
       if (kw) body.keywords = kw;
+      // Berufsposition/Titel → Unipile-SN-Filter `keywords_title` (verifiziert 2026-08-10).
+      // Quirk: keywords_title greift nur mit gesetztem keywords → Titel in keywords spiegeln,
+      // wenn kein separates Keyword da ist (sonst liefert die SN-Suche 0). Classic ignoriert
+      // Titel weitgehend — dafür gibt's den UI-Hinweis „nur Sales Navigator".
+      const kwTitle = typeof params.keywords_title === "string" ? params.keywords_title.trim() : "";
+      if (kwTitle) {
+        body.keywords_title = kwTitle;
+        if (!body.keywords) body.keywords = kwTitle;
+      }
       // Freitext-Filter nur für Personen-Suche auflösen (Company-Kategorie: nur keywords).
       if (category === "people") {
         const filters: Array<[string, "LOCATION" | "INDUSTRY" | "COMPANY"]> = [
