@@ -25,4 +25,8 @@ CREATE POLICY inbox_lists_brand_read ON public.inbox_lists
 -- Join-Tabelle (mit ihren Policies) entfernen.
 DROP TABLE IF EXISTS public.inbox_list_team_shares;  -- CASCADE nicht noetig: nur eigene FKs
 
+-- Helfer aus dem RLS-Rekursions-Fix (20260810160000) entfernen.
+DROP FUNCTION IF EXISTS public.inbox_list_ids_shared_with_me();
+DROP FUNCTION IF EXISTS public.is_inbox_list_owner(uuid);
+
 COMMIT;
