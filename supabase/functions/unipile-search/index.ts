@@ -53,13 +53,18 @@ Deno.serve(async (req) => {
 
     if (input.search_id) {
       searchId = input.search_id;
-      const { data, error } = await sb
+      // Autorisierung via RLS (Policy linkedin_searches_brand: has_brand_access(brand_voice_id))
+      // — IDENTISCH zur Liste. Darum den User-Client (RLS-enforced) statt Service-Client +
+      // owner-Filter: jedes brand-berechtigte Team-Mitglied darf die Team-Suche ausführen
+      // (owner-only war die Anomalie — Liste zeigt team-/markenweit, Execute verlangte Ersteller).
+      // Airtight: ohne bestandenen RLS-SELECT gibt es keine Row → früher Return; kein anderer
+      // Zweig fasst die Suche ohne diesen Fetch an.
+      const { data, error } = await uc
         .from("linkedin_searches")
         .select("*")
         .eq("id", input.search_id)
-        .eq("user_id", auth.userId)
         .maybeSingle();
-      if (error || !data) return jsonResponse({ error: "Suche nicht gefunden." }, 404);
+      if (error || !data) return jsonResponse({ error: "Suche nicht gefunden oder kein Zugriff." }, 404);
       search = data;
     }
 
