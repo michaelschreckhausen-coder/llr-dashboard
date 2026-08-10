@@ -21,6 +21,7 @@ import {
   userClientFromReq,
 } from "../_shared/unipile.ts";
 import { requirePermission } from "../_shared/permissions.ts";
+import { validateSearchUrl } from "../_shared/linkedinSearchUrl.ts";
 
 const MAX_PAGES = 5;      // Schutz gegen Endlos-Pagination pro Aufruf
 const PREVIEW_CAP = 100;  // max. Treffer, die als Vorschau (items) zurückgegeben werden
@@ -29,6 +30,8 @@ Deno.serve(async (req) => {
   const pre = handlePreflight(req);
   if (pre) return pre;
 
+  // Hoisted, damit der äußere catch die Suche bei Fehler auf 'failed' setzen kann.
+  let searchId: string | null = null;
   try {
     const auth = await getAuthenticatedUser(req);
     if (!auth) return jsonResponse({ error: "unauthorized" }, 401);
@@ -49,6 +52,7 @@ Deno.serve(async (req) => {
     let search: any = null;
 
     if (input.search_id) {
+      searchId = input.search_id;
       const { data, error } = await sb
         .from("linkedin_searches")
         .select("*")
@@ -103,6 +107,21 @@ Deno.serve(async (req) => {
           .eq("id", search.id);
       }
       return jsonResponse({ ok: true, imported, requested: items.length, skipped });
+    }
+
+    // Guard: eine hinterlegte search_url MUSS eine echte Such-Ergebnis-URL sein
+    // (kein Profil-/Company-/Post-Link). Fängt den malformed_request-Roundtrip früh ab
+    // und beendet die Suche sichtbar auf 'failed' statt sie auf 'running' hängen zu lassen.
+    {
+      const v = validateSearchUrl(searchUrl);
+      if (!v.ok) {
+        if (search) {
+          await sb.from("linkedin_searches")
+            .update({ status: "failed", last_error: v.message, last_run_at: new Date().toISOString() })
+            .eq("id", search.id);
+        }
+        return jsonResponse({ error: v.message }, 400);
+      }
     }
 
     // Body für Unipile: entweder URL- oder Parameter-basierte Suche.
@@ -209,6 +228,15 @@ Deno.serve(async (req) => {
   } catch (e) {
     const rateLimited = e instanceof UnipileError && e.isRateLimited;
     console.error(`[unipile-search] ${e}`);
+    // Stuck-running-Fix: bei jedem Fehler die Suche auf 'failed' setzen (nicht ewig 'running'),
+    // mit Fehlertext — retry-fähig. Nur im gespeicherte-Suche-Pfad (searchId gesetzt).
+    if (searchId) {
+      try {
+        await serviceClient().from("linkedin_searches")
+          .update({ status: "failed", last_error: String(e), last_run_at: new Date().toISOString() })
+          .eq("id", searchId);
+      } catch (_e) { /* best effort — Fehler-Response geht trotzdem raus */ }
+    }
     return jsonResponse(
       { error: String(e), rate_limited: rateLimited },
       rateLimited ? 429 : 500,

@@ -24,6 +24,7 @@ import { supabase } from '../lib/supabase'
 import { useTeam } from '../context/TeamContext'
 import { useBrandVoice } from '../context/BrandVoiceContext'
 import { mapEfError } from '../lib/efError'
+import { validateSearchUrl } from '../lib/linkedinSearchUrl'
 
 // Avatar mit Initialen-Fallback (Muster wie LinkedInInbox.jsx).
 const initials = n => (n || '?').trim().split(/\s+/).map(w => w[0]).join('').toUpperCase().substring(0, 2)
@@ -131,6 +132,10 @@ export default function LinkedInSuche() {
     if (!form.person_name.trim() && !form.keywords.trim() && !form.search_url.trim()) {
       setFlash({ type:'error', text:'Bitte einen Namen, Keywords oder eine gespeicherte Such-URL angeben.' }); return
     }
+    // Positive Allowlist: eine hinterlegte URL muss eine echte Such-Ergebnis-URL sein
+    // (kein Profil-Link). Gleiche Logik wie im EF (autoritativ) — siehe lib/linkedinSearchUrl.
+    const _urlCheck = validateSearchUrl(form.search_url)
+    if (!_urlCheck.ok) { setFlash({ type:'error', text: _urlCheck.message }); return }
     setSaving(true)
     // params bündelt die Freitext-Filter; leere Felder weglassen.
     const params = {}
