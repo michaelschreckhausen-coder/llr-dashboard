@@ -61,7 +61,7 @@ export default function CompanyMultiSelect({
         onMouseEnter={() => setHover(true)} onMouseLeave={() => setHover(false)} onMouseDown={() => setHover(false)}
         title={iconOnly ? undefined : (count ? `Unternehmen: ${btnLabel}` : 'Optional: Du schreibst in deiner Stimme als Ambassador für ein oder mehrere Unternehmen')}
         style={iconOnly ? {
-          display:'inline-flex', alignItems:'center', justifyContent:'center', width:34, height:34, borderRadius:9, boxSizing:'border-box',
+          display:'inline-flex', alignItems:'center', justifyContent:'center', width:34, height:34, padding:0, minHeight:0, borderRadius:9, boxSizing:'border-box',
           border:'1.5px solid ' + (count ? P : 'var(--border)'),
           background: count ? 'rgba(10,111,176,0.06)' : 'var(--surface, #fff)',
           color: count ? P : 'var(--text-primary)', cursor:'pointer', fontFamily:'inherit', flexShrink:0, position:'relative', ...buttonStyle,
