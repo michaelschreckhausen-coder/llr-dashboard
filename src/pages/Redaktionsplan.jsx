@@ -733,6 +733,12 @@ function PostModal({ post, onClose, onSave, onDelete, session, activeTeamId, mem
   }
 
   const [saving, setSaving] = useState(false)
+  // Auto-Speichern (nur bestehende Posts): schützt vor Datenverlust beim versehentlichen Schließen.
+  const dirtyRef = useRef(false)
+  const savingRef = useRef(false)
+  const autoSaveTimer = useRef(null)
+  const lastSavedRef = useRef('')
+  const [autoSavedAt, setAutoSavedAt] = useState(null)
   const [improving, setImproving] = useState(false)
   const [charCount, setCharCount] = useState(form.content?.length || 0)
 
@@ -839,13 +845,32 @@ function PostModal({ post, onClose, onSave, onDelete, session, activeTeamId, mem
     })()
   }, [form.brand_voice_id, activeBrandVoice])
 
+  // Alle User MIT Zugriff auf die Post-Brand (Owner + is_shared-Team + Direkt-/Team-Shares),
+  // server-seitig via RPC. Ersetzt die reine Team-Member-Liste, damit wirklich ALLE
+  // brand-geteilten User zuordenbar sind.
+  const [brandMembers, setBrandMembers] = useState([])
+  useEffect(() => {
+    const bvId = form.brand_voice_id
+    if (!bvId) { setBrandMembers([]); return }
+    let cancelled = false
+    supabase.rpc('content_brand_members', { p_brand_voice_id: bvId }).then(({ data, error }) => {
+      if (cancelled) return
+      if (error || !Array.isArray(data)) { setBrandMembers([]); return }
+      setBrandMembers(data.map(r => ({ user_id: r.user_id, profile: { full_name: r.full_name, email: r.email, avatar_url: r.avatar_url } })))
+    })
+    return () => { cancelled = true }
+  }, [form.brand_voice_id])
+
   // Mention-Member-Liste:
   // - BV mit Team geteilt   → alle Team-Member (inkl. self)
   // - BV NICHT geteilt      → nur self (Owner kann sich selbst markieren, andere sehen
   //                            den Post wegen RLS sowieso nicht)
-  const mentionableMembers = postBVShared
-    ? (members || [])
-    : (members || []).filter(m => m.user_id === session?.user?.id)
+  // Brand-Zugriffs-User (via RPC). Fallback: mindestens man selbst. So werden ALLE
+  // User gezeigt, die die Brand im Team geteilt bekommen haben – nicht nur is_shared-Teams.
+  const _selfMember = (members || []).find(m => m.user_id === session?.user?.id)
+  const mentionableMembers = brandMembers.length
+    ? brandMembers
+    : (_selfMember ? [_selfMember] : [])
   function memberLabel(m) {
     // TeamContext liefert m.profile = { full_name, email, avatar_url }
     return m.profile?.full_name?.trim()
@@ -873,7 +898,7 @@ function PostModal({ post, onClose, onSave, onDelete, session, activeTeamId, mem
       setOriginalMentionUserIds(ids)
       // Zugehörige Labels aus members-Liste
       const list = ids.map(uid => {
-        const m = (members || []).find(x => x.user_id === uid)
+        const m = [...brandMembers, ...(members || [])].find(x => x.user_id === uid)
         return { user_id: uid, label: m ? memberLabel(m) : uid.slice(0, 8) }
       })
       setMentions(list)
@@ -882,6 +907,7 @@ function PostModal({ post, onClose, onSave, onDelete, session, activeTeamId, mem
 
   function addMention(member) {
     if (mentions.some(x => x.user_id === member.user_id)) return
+    dirtyRef.current = true
     const label = memberLabel(member)
     setMentions(prev => [...prev, { user_id: member.user_id, label }])
     // Im Textfeld @Name anfügen
@@ -891,6 +917,7 @@ function PostModal({ post, onClose, onSave, onDelete, session, activeTeamId, mem
     setMentionPickerOpen(false)
   }
   function removeMention(userId) {
+    dirtyRef.current = true
     setMentions(prev => prev.filter(x => x.user_id !== userId))
   }
 
@@ -950,16 +977,14 @@ function PostModal({ post, onClose, onSave, onDelete, session, activeTeamId, mem
     setOriginalMentionUserIds(currentIds)
   }
 
-  const upd = (k, v) => setForm(p => ({ ...p, [k]: v }))
+  const upd = (k, v) => { dirtyRef.current = true; setForm(p => ({ ...p, [k]: v })) }
   const plt = PLATFORMS[form.platform] || PLATFORMS.linkedin
 
   const CHAR_LIMITS = { linkedin: 3000 }
   const limit = CHAR_LIMITS[form.platform]
 
-  async function save() {
-    setSaving(true)
+  function buildPayload() {
     const user = session.user
-
     // Whitelist: nur Felder die tatsächlich auf content_posts existieren.
     // Verhindert Schema-Cache-Fehler bei Legacy-Feldern (z.B. lead_id) und
     // bei UI-only Embed-Feldern (publish_queue_status, bv_name etc.).
@@ -992,6 +1017,13 @@ function PostModal({ post, onClose, onSave, onDelete, session, activeTeamId, mem
     payload.company_voice_ids = Array.isArray(form.company_voice_ids) ? form.company_voice_ids : []
     payload.company_voice_id  = payload.company_voice_ids[0] || null
     payload.linkedin_mentions = (Array.isArray(ldMentions) ? ldMentions : []).filter(m => m && m.provider_id && (form.content || '').includes('@' + m.name))
+    return payload
+  }
+
+  async function save() {
+    setSaving(true)
+    const payload = buildPayload()
+
 
     // Hard-Stopps (FK NOT NULL)
     if (!payload.brand_voice_id) {
@@ -1024,6 +1056,45 @@ function PostModal({ post, onClose, onSave, onDelete, session, activeTeamId, mem
     // sonst verschwinden die Tags nach dem Speichern (handleSave überschreibt den Post ohne tag_ids).
     onSave({ ...result.data, tag_ids: [...selTagIds] })
   }
+
+  // ─── Auto-Speichern ────────────────────────────────────────────────────
+  const _autoSnapshot = JSON.stringify({
+    title: form.title, content: form.content, notes: form.notes, status: form.status,
+    topic: form.topic, hook: form.hook, scheduled_at: form.scheduled_at,
+    assignee_id: form.assignee_id, reviewer_id: form.reviewer_id,
+    target_audience_id: form.target_audience_id, company_voice_ids: form.company_voice_ids,
+    tags: form.tags, brand_voice_id: form.brand_voice_id,
+    mentions: mentions.map(m => m.user_id).slice().sort(),
+  })
+  async function autoSaveSilent() {
+    if (!post?.id || savingRef.current) return
+    if (_autoSnapshot === lastSavedRef.current) return
+    savingRef.current = true
+    try {
+      const payload = buildPayload()
+      if (!payload.brand_voice_id || !payload.team_id) return
+      const { data, error } = await supabase.from('content_posts').update(payload).eq('id', post.id).select().single()
+      if (error) { console.warn('[autosave]', error.message); return }
+      await syncMentions(post.id)
+      await syncTags(post.id)
+      await syncVisuals(post.id)
+      lastSavedRef.current = _autoSnapshot
+      setAutoSavedAt(Date.now())
+      if (onSave) onSave({ ...data, tag_ids: [...selTagIds] })
+    } catch (e) { console.warn('[autosave]', e?.message || e) }
+    finally { savingRef.current = false }
+  }
+  useEffect(() => {
+    if (!post?.id || !dirtyRef.current) return          // nur bestehende Posts, erst nach echter Nutzer-Änderung
+    if (_autoSnapshot === lastSavedRef.current) return
+    clearTimeout(autoSaveTimer.current)
+    autoSaveTimer.current = setTimeout(() => { autoSaveSilent() }, 1000)
+    return () => clearTimeout(autoSaveTimer.current)
+  }, [_autoSnapshot, post?.id])
+  // Beim Schließen letzten Stand sofort sichern (Ref hält stets die aktuellste Save-Closure).
+  const latestSaveRef = useRef(null)
+  latestSaveRef.current = autoSaveSilent
+  useEffect(() => () => { if (post?.id && dirtyRef.current) { latestSaveRef.current && latestSaveRef.current() } }, [])
 
   const pltOptions = Object.entries(PLATFORMS)
 
@@ -1361,8 +1432,8 @@ function PostModal({ post, onClose, onSave, onDelete, session, activeTeamId, mem
                   </span>
                 ))}
               </div>
-              {/* Hinweis wenn BV nicht geteilt aber Team da ist */}
-              {postBVShared === false && (
+              {/* Hinweis nur wenn wirklich niemand ausser einem selbst zuordenbar ist */}
+              {mentionableMembers.length <= 1 && (
                 <div style={{ padding:'8px 10px', marginBottom:8, borderRadius:8, background:'#FFFBEB', border:'1px solid #FCD34D', fontSize:11, color:'#92400E', lineHeight:1.5 }}>
                   🔒 Diese Brand Voice ist privat — Team-Mitglieder können den Beitrag nicht sehen.
                   Um andere zu markieren, teile die Brand Voice im Bereich <strong>Branding</strong>.
