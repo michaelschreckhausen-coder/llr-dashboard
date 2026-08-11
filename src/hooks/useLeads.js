@@ -35,6 +35,8 @@ export const LEADS_SELECT = `
   id,
   first_name,
   last_name,
+  name,
+  avatar_url,
   email,
   phone,
   company,
