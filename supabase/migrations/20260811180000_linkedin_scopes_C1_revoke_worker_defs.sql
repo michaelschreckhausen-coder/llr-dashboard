@@ -16,12 +16,23 @@
 \set ON_ERROR_STOP on
 BEGIN;
 
-REVOKE EXECUTE ON FUNCTION public.la_pending_accept_checks(integer)            FROM anon, authenticated;
-REVOKE EXECUTE ON FUNCTION public.la_mark_accepted(uuid)                       FROM anon, authenticated;
-REVOKE EXECUTE ON FUNCTION public.sales_nav_upsert_inbox(uuid, uuid, jsonb, uuid) FROM anon, authenticated;
-REVOKE EXECUTE ON FUNCTION public.trigger_la_relations_sync()                  FROM anon, authenticated;
-REVOKE EXECUTE ON FUNCTION public.set_la_enrollment_brand()                    FROM anon, authenticated;
-REVOKE EXECUTE ON FUNCTION public.set_la_job_brand()                           FROM anon, authenticated;
+-- WICHTIG: Postgres grantet Funktionen per Default an PUBLIC → anon/authenticated
+-- erben EXECUTE über PUBLIC. REVOKE FROM anon/authenticated allein ist ein No-op.
+-- Daher FROM PUBLIC (+ anon,authenticated für etwaige Direkt-Grants) und danach
+-- service_role explizit GRANTen (sonst verliert es den PUBLIC-geerbten Zugriff).
+REVOKE EXECUTE ON FUNCTION public.la_pending_accept_checks(integer)              FROM PUBLIC, anon, authenticated;
+REVOKE EXECUTE ON FUNCTION public.la_mark_accepted(uuid)                         FROM PUBLIC, anon, authenticated;
+REVOKE EXECUTE ON FUNCTION public.sales_nav_upsert_inbox(uuid, uuid, jsonb, uuid) FROM PUBLIC, anon, authenticated;
+REVOKE EXECUTE ON FUNCTION public.trigger_la_relations_sync()                    FROM PUBLIC, anon, authenticated;
+REVOKE EXECUTE ON FUNCTION public.set_la_enrollment_brand()                      FROM PUBLIC, anon, authenticated;
+REVOKE EXECUTE ON FUNCTION public.set_la_job_brand()                             FROM PUBLIC, anon, authenticated;
+
+GRANT EXECUTE ON FUNCTION public.la_pending_accept_checks(integer)              TO service_role;
+GRANT EXECUTE ON FUNCTION public.la_mark_accepted(uuid)                         TO service_role;
+GRANT EXECUTE ON FUNCTION public.sales_nav_upsert_inbox(uuid, uuid, jsonb, uuid) TO service_role;
+GRANT EXECUTE ON FUNCTION public.trigger_la_relations_sync()                    TO service_role;
+GRANT EXECUTE ON FUNCTION public.set_la_enrollment_brand()                      TO service_role;
+GRANT EXECUTE ON FUNCTION public.set_la_job_brand()                             TO service_role;
 
 COMMIT;
 
