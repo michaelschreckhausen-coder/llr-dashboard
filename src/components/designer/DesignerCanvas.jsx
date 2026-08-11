@@ -7512,7 +7512,11 @@ function AiPanelBody({
   setCropMode, setSelectedId, setAiError, segBusy, segMsg, onUndo, onRedo,
 }) {
   const [bgText, setBgText] = useState('')
-  const startMask = (mode) => { setAiMode(mode); setCropMode(false); setSelectedId(null); setAiError && setAiError('') }
+  // Beim Wählen/Wechseln einer Funktion (Bereich ändern ↔ Objekt entfernen) eine ggf.
+  // bestehende Auswahl aufheben — sonst bleibt eine alte Lasso-/Pinsel-Maske aus der
+  // anderen Funktion liegen und die neue Aktion greift auf einem verwirrenden Zustand.
+  // → Pro Funktion wird frisch markiert.
+  const startMask = (mode) => { setAiMode(mode); setCropMode(false); setSelectedId(null); setAiError && setAiError(''); onClearMask && onClearMask() }
   const CARD = { background: 'rgba(2,6,23,0.025)', borderRadius: 12, padding: 12 }
   const CTITLE = { fontSize: 12.5, fontWeight: 700, color: 'var(--text-primary)', marginBottom: 3 }
   const CHINT = { fontSize: 11.5, color: 'var(--text-muted)', marginBottom: 10, lineHeight: 1.4 }
