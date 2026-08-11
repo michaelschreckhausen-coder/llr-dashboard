@@ -66,12 +66,15 @@ function LeadAvatarBase({
   return (
     <div style={style} aria-label={ariaLabel}>
       {showImage ? (
+        // KEIN loading="lazy": in der virtualisierten Liste (react-window) feuern
+        // lazy-Images in recycelten/transformierten Zeilen spurios `error` → imgFailed
+        // latcht → Foto verschwindet als Initialen (bewiesen: new Image() ohne lazy lädt).
         <img
+          key={imageUrl}
           src={imageUrl}
           alt={ariaLabel}
           style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }}
           onError={() => setImgFailed(true)}
-          loading="lazy"
         />
       ) : (
         initials
