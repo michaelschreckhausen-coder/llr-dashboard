@@ -135,6 +135,7 @@ function LeadCardBase({ lead, owner, onClick, onToggleFavorite }) {
           firstName={lead.first_name}
           lastName={lead.last_name}
           name={name}
+          imageUrl={lead.avatar_url}
           size="sm"
         />
         <div style={nameWrapStyle}>

@@ -40,7 +40,9 @@ const LIFECYCLE_ORDER  = ['lead','marketing_qualified','sales_qualified','opport
 function Avatar({ name, avatar_url, size = 80 }) {
   const colors = ['#3B82F6','#0A6FB0','#10B981','#F59E0B','#EF4444','#0891B2','#EC4899']
   const bg = colors[(name||'?').charCodeAt(0) % colors.length]
-  if (avatar_url) return <img src={avatar_url} alt={name} style={{ width:size, height:size, borderRadius:'50%', objectFit:'cover', flexShrink:0, border:'3px solid #fff', boxShadow:'0 2px 12px rgba(0,0,0,0.12)' }}/>
+  const [imgFailed, setImgFailed] = useState(false)
+  useEffect(() => { setImgFailed(false) }, [avatar_url])
+  if (avatar_url && !imgFailed) return <img src={avatar_url} alt={name} onError={() => setImgFailed(true)} loading="lazy" style={{ width:size, height:size, borderRadius:'50%', objectFit:'cover', flexShrink:0, border:'3px solid #fff', boxShadow:'0 2px 12px rgba(0,0,0,0.12)' }}/>
   return (
     <div style={{ width:size, height:size, borderRadius:'50%', background:bg, display:'flex', alignItems:'center', justifyContent:'center', color:'#fff', fontWeight:900, fontSize:size*0.36, flexShrink:0, border:'3px solid #fff', boxShadow:'0 2px 12px rgba(0,0,0,0.12)', letterSpacing:'-0.02em' }}>
       {(name||'?').substring(0,2).toUpperCase()}

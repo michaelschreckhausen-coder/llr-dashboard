@@ -233,6 +233,7 @@ function LeadRowBase({
         firstName={lead.first_name}
         lastName={lead.last_name}
         name={name}
+        imageUrl={lead.avatar_url}
         size={isCompact ? 'sm' : 'md'}
       />
 
