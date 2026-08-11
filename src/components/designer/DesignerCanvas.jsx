@@ -3297,9 +3297,9 @@ Antworte AUSSCHLIESSLICH mit JSON: {"ok":<bool>,"issues":["..."],"operations":[.
   // Rahmen strikt in die Bildgrenzen zwingen (Position + Größe), Mindestgröße 16px.
   function clampFrameToImage(r) {
     const im = cropImageRect(); if (!im || !r) return r
-    const minS = 16
-    const w = Math.max(minS, Math.min(r.w, im.w))
-    const h = Math.max(minS, Math.min(r.h, im.h))
+    const minW = Math.min(16, im.w), minH = Math.min(16, im.h)
+    const w = Math.max(minW, Math.min(r.w, im.w))
+    const h = Math.max(minH, Math.min(r.h, im.h))
     const x = Math.max(im.x, Math.min(r.x, im.x + im.w - w))
     const y = Math.max(im.y, Math.min(r.y, im.y + im.h - h))
     return { x, y, w, h }
