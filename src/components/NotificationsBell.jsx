@@ -1,6 +1,6 @@
 import React,{useEffect,useState,useCallback}from'react'
 import{supabase}from'../lib/supabase'
-const ICONS={limit_warning:'⚠️',limit_reached:'🚫',new_feature:'✨',payment_failed:'❌',trial_ending:'⏳',lead_scored:'🔥',vernetzung_accepted:'🤝',info:'ℹ️'}
+const ICONS={limit_warning:'⚠️',limit_reached:'🚫',new_feature:'✨',payment_failed:'❌',trial_ending:'⏳',lead_scored:'🔥',vernetzung_accepted:'🤝',content_mention:'💬',info:'ℹ️'}
 export default function NotificationsBell({session}){
 const[notifs,setNotifs]=useState([])
 const[open,setOpen]=useState(false)
@@ -37,7 +37,7 @@ return(
 {notifs.length===0?(
 <div style={{padding:24,textAlign:'center',color:'#94A3B8',fontSize:13}}>Keine Benachrichtigungen</div>
 ):notifs.map(n=>(
-<div key={n.id} onClick={async()=>{if(!n.read_at){await supabase.from('notifications').update({read_at:new Date().toISOString()}).eq('id',n.id);load()}}}
+<div key={n.id} onClick={async()=>{if(!n.read_at){await supabase.from('notifications').update({read_at:new Date().toISOString()}).eq('id',n.id);load()}const pid=n.data&&n.data.post_id;if(n.type==='content_mention'&&pid){window.location.href='/redaktionsplan?open='+pid}}}
 style={{padding:'12px 16px',borderBottom:'1px solid #F8FAFC',cursor:'pointer',background:n.read_at?'#fff':'#F0F9FF',display:'flex',gap:10,alignItems:'flex-start'}}>
 <span style={{fontSize:18,flexShrink:0}}>{ICONS[n.type]||'ℹ️'}</span>
 <div style={{flex:1,minWidth:0}}>
