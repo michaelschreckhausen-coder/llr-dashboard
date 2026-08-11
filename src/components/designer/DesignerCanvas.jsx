@@ -3196,7 +3196,9 @@ Antworte AUSSCHLIESSLICH mit JSON: {"ok":<bool>,"issues":["..."],"operations":[.
       else { drawRef.current = [p]; setDrawPreview([p]) }
       return
     }
-    if (cropMode) { cropDragRef.current = { x: p.x, y: p.y }; setCropRect({ x: p.x, y: p.y, w: 0, h: 0 }); return }
+    // Crop: Rahmen + Anfasser verwalten ihre Drags selbst (kein freies Aufziehen mehr,
+    // dadurch kann nicht mehr über die Bildkante hinaus zugeschnitten werden).
+    if (cropMode) { return }
     // Klick auf leere Bühne → Marquee starten / Selektion lösen
     const onEmpty = e.target === stage || e.target.attrs?.id === '__bg__' || e.target.attrs?.id === '__bgfill__'
     if (onEmpty) {
@@ -3284,9 +3286,24 @@ Antworte AUSSCHLIESSLICH mit JSON: {"ok":<bool>,"issues":["..."],"operations":[.
     if (!ratio) { setCropRect({ x: ox, y: oy, w: ow, h: oh }); return }
     let w = ow, h = w / ratio
     if (h > oh) { h = oh; w = h * ratio }
-    setCropRect({ x: ox + (ow - w) / 2, y: oy + (oh - h) / 2, w, h })
+    setCropRect(clampFrameToImage({ x: ox + (ow - w) / 2, y: oy + (oh - h) / 2, w, h }))
   }
 
+  // Rechteck des aktiven Bild-Objekts in Bühnenkoordinaten (Grenze fürs Zuschneiden).
+  function cropImageRect() {
+    const t = activeImageObj(); if (!t) return null
+    return { x: t.x || 0, y: t.y || 0, w: t.width || 0, h: t.height || 0 }
+  }
+  // Rahmen strikt in die Bildgrenzen zwingen (Position + Größe), Mindestgröße 16px.
+  function clampFrameToImage(r) {
+    const im = cropImageRect(); if (!im || !r) return r
+    const minS = 16
+    const w = Math.max(minS, Math.min(r.w, im.w))
+    const h = Math.max(minS, Math.min(r.h, im.h))
+    const x = Math.max(im.x, Math.min(r.x, im.x + im.w - w))
+    const y = Math.max(im.y, Math.min(r.y, im.y + im.h - h))
+    return { x, y, w, h }
+  }
   function applyCrop() {
     if (!cropRect || cropRect.w < 8 || cropRect.h < 8) { setCropMode(false); setCropRect(null); return }
     const target = activeImageObj()
@@ -5752,7 +5769,7 @@ Ignoriere reine Deko/Muster ohne Text. Antworte AUSSCHLIESSLICH mit JSON, ohne E
         <ContextBar selected={selected} updateObject={updateObject}
           commitHistoryOnce={commitHistoryOnce} endInteraction={endInteraction}
           reorder={reorder} deleteSelected={deleteSelected} duplicateSelected={duplicateSelected}
-          onFlip={flipSelected} onCrop={() => { setCropMode(true); setCropRatio(null); setCropRect(null) }}
+          onFlip={flipSelected} onCrop={() => { const _t = activeImageObj(); setCropRatio(null); setCropMode(true); setCropRect(_t ? { x: _t.x || 0, y: _t.y || 0, w: _t.width || 0, h: _t.height || 0 } : null) }}
           onEditImage={() => setActiveTool('edit')} onOpenLayers={() => setActiveTool('layers')}
           onCopyStyle={startCopyStyle} copyStyleActive={copyStyleActive} onIconRecolor={recolorIcon}
           fonts={allFonts} brandFonts={brandFontFamilies} onFontLoad={handleFontLoad} selectedIds={selectedIds} brandColors={brandColors}
@@ -5934,11 +5951,69 @@ Ignoriere reine Deko/Muster ohne Text. Antworte AUSSCHLIESSLICH mit JSON, ohne E
                 {/* Weiße Artboard (Whiteboard) — IMMER als Stage-Hintergrund. */}
                 <Rect id="__bgfill__" x={0} y={0} width={stageSize.width} height={stageSize.height} {...fillKonvaProps({ fillGrad: bgGrad, fill: bgColor || '#ffffff' }, stageSize.width, stageSize.height, false)} listening />
                 {objects.map(renderObject)}
-                {/* Crop-Overlay */}
-                {cropMode && cropRect && (
-                  <Rect x={cropRect.x - off.x} y={cropRect.y - off.y} width={cropRect.w} height={cropRect.h}
-                    stroke={PRGB} strokeWidth={2 / effScale} dash={[8 / effScale, 6 / effScale]} fill="rgba(10,111,176,0.12)" listening={false} />
-                )}
+                {/* Crop-Overlay (Canva-Stil): abgedunkelter Außenbereich, verschiebbarer
+                    Rahmen + 8 Anfasser, alles strikt auf das Bild begrenzt. */}
+                {cropMode && cropRect && (() => {
+                  const im = cropImageRect() || cropRect
+                  const ix = im.x - off.x, iy = im.y - off.y, iw = im.w, ih = im.h
+                  const fx = cropRect.x - off.x, fy = cropRect.y - off.y, fw = cropRect.w, fh = cropRect.h
+                  const L = cropRect.x, R = cropRect.x + cropRect.w, T = cropRect.y, B = cropRect.y + cropRect.h
+                  const hs = 12 / effScale, sw = 2 / effScale, dim = 'rgba(0,0,0,0.45)'
+                  const handles = [
+                    ['tl', L, T], ['tc', (L + R) / 2, T], ['tr', R, T],
+                    ['ml', L, (T + B) / 2], ['mr', R, (T + B) / 2],
+                    ['bl', L, B], ['bc', (L + R) / 2, B], ['br', R, B],
+                  ]
+                  const onHandle = (pos, node) => {
+                    const mpx = node.x() + off.x, mpy = node.y() + off.y
+                    let nl = L, nr = R, nt = T, nb = B
+                    if (pos.indexOf('l') >= 0) nl = mpx
+                    if (pos.indexOf('r') >= 0) nr = mpx
+                    if (pos.indexOf('t') >= 0) nt = mpy
+                    if (pos.indexOf('b') >= 0) nb = mpy
+                    const x0 = Math.min(nl, nr), x1 = Math.max(nl, nr)
+                    const y0 = Math.min(nt, nb), y1 = Math.max(nt, nb)
+                    setCropRect(clampFrameToImage({ x: x0, y: y0, w: x1 - x0, h: y1 - y0 }))
+                  }
+                  return (
+                    <Group>
+                      {/* Abgedunkelter, weggeschnittener Bildbereich */}
+                      <Rect x={ix} y={iy} width={iw} height={Math.max(0, fy - iy)} fill={dim} listening={false} />
+                      <Rect x={ix} y={fy + fh} width={iw} height={Math.max(0, (iy + ih) - (fy + fh))} fill={dim} listening={false} />
+                      <Rect x={ix} y={fy} width={Math.max(0, fx - ix)} height={fh} fill={dim} listening={false} />
+                      <Rect x={fx + fw} y={fy} width={Math.max(0, (ix + iw) - (fx + fw))} height={fh} fill={dim} listening={false} />
+                      {/* Verschiebbarer Rahmen (Ziehen im Inneren bewegt den Ausschnitt) */}
+                      <Rect
+                        id="__cropframe__" x={fx} y={fy} width={fw} height={fh}
+                        stroke="#ffffff" strokeWidth={sw} fill="rgba(255,255,255,0.001)" draggable
+                        onDragMove={(e) => {
+                          const n = e.target
+                          const im2 = cropImageRect(); if (!im2) return
+                          let nx = n.x() + off.x, ny = n.y() + off.y
+                          nx = Math.max(im2.x, Math.min(nx, im2.x + im2.w - cropRect.w))
+                          ny = Math.max(im2.y, Math.min(ny, im2.y + im2.h - cropRect.h))
+                          n.x(nx - off.x); n.y(ny - off.y)
+                          setCropRect(r => ({ ...r, x: nx, y: ny }))
+                        }}
+                      />
+                      {/* Drittel-Linien */}
+                      <Line points={[fx + fw / 3, fy, fx + fw / 3, fy + fh]} stroke="rgba(255,255,255,0.55)" strokeWidth={1 / effScale} listening={false} />
+                      <Line points={[fx + 2 * fw / 3, fy, fx + 2 * fw / 3, fy + fh]} stroke="rgba(255,255,255,0.55)" strokeWidth={1 / effScale} listening={false} />
+                      <Line points={[fx, fy + fh / 3, fx + fw, fy + fh / 3]} stroke="rgba(255,255,255,0.55)" strokeWidth={1 / effScale} listening={false} />
+                      <Line points={[fx, fy + 2 * fh / 3, fx + fw, fy + 2 * fh / 3]} stroke="rgba(255,255,255,0.55)" strokeWidth={1 / effScale} listening={false} />
+                      {/* 8 Anfasser (Ecken + Kantenmitten) */}
+                      {handles.map(([pos, hx, hy]) => (
+                        <Rect
+                          key={pos} id={'__crophandle_' + pos + '__'}
+                          x={hx - off.x} y={hy - off.y} width={hs} height={hs}
+                          offsetX={hs / 2} offsetY={hs / 2}
+                          fill="#ffffff" stroke={PRGB} strokeWidth={1.5 / effScale} cornerRadius={2 / effScale}
+                          draggable onDragMove={(e) => onHandle(pos, e.target)}
+                        />
+                      ))}
+                    </Group>
+                  )
+                })()}
                 {/* Marquee (Rubberband) */}
                 {marquee && (marquee.w > 1 || marquee.h > 1) && (
                   <Rect x={marquee.x - off.x} y={marquee.y - off.y} width={marquee.w} height={marquee.h}
