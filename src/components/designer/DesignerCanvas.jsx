@@ -977,6 +977,8 @@ export default function DesignerCanvas({ visual, teamId, onSaved, onReplaceVisua
   const overlayRef = useRef(null)                     // sichtbares Canvas über der Stage
   const drawingRef = useRef(false)
   const lassoPtsRef = useRef([])                      // [{x,y}] in Bild-Pixeln (Lasso)
+  const winDragMoveRef = useRef(null)                 // Fenster-Listener für Masken-Drag (Photoshop-Stil)
+  const winDragUpRef = useRef(null)
   const rectStartRef = useRef(null)                   // {x,y} Start (rect-Masken-Modus)
 
   // Undo/Redo: Snapshots des kompletten Editor-Zustands
@@ -3101,6 +3103,20 @@ Antworte AUSSCHLIESSLICH mit JSON: {"ok":<bool>,"issues":["..."],"operations":[.
     } else if (maskTool === 'rect') {
       rectStartRef.current = pt
     }
+    // Photoshop-Stil: Drag über den Bild-/Bühnenrand hinaus fortsetzen. Fenster-Listener
+    // fangen Bewegung/Loslassen auch AUSSERHALB des Overlays → man kann über den Rand
+    // hinaus zeichnen; beim Rastern auf die (bildgroße) Maske wird ohnehin nur der Teil
+    // im Bild übernommen. overlayPoint() rechnet clientX/Y unabhängig von der Overlay-Box.
+    const mv = (ev) => { if (ev.cancelable && ev.touches) ev.preventDefault(); onMaskMove(ev) }
+    const up = (ev) => {
+      onMaskUp(ev)
+      window.removeEventListener('mousemove', mv); window.removeEventListener('mouseup', up)
+      window.removeEventListener('touchmove', mv); window.removeEventListener('touchend', up)
+      winDragMoveRef.current = null; winDragUpRef.current = null
+    }
+    winDragMoveRef.current = mv; winDragUpRef.current = up
+    window.addEventListener('mousemove', mv); window.addEventListener('mouseup', up)
+    window.addEventListener('touchmove', mv, { passive: false }); window.addEventListener('touchend', up)
   }
   function onMaskMove(e) {
     if (!aiMode || !drawingRef.current) return
@@ -6064,12 +6080,9 @@ Ignoriere reine Deko/Muster ohne Text. Antworte AUSSCHLIESSLICH mit JSON, ohne E
                 cursor: aiActive ? 'crosshair' : 'default', zIndex: 40,
               }}
               onMouseDown={onMaskDown}
-              onMouseMove={onMaskMove}
-              onMouseUp={onMaskUp}
-              onMouseLeave={onMaskUp}
               onTouchStart={onMaskDown}
-              onTouchMove={onMaskMove}
-              onTouchEnd={onMaskUp}
+              /* Bewegung/Loslassen laufen über Fenster-Listener (onMaskDown),
+                 damit der Lasso-/Pinsel-/Rechteck-Drag über den Bildrand hinausgehen kann. */
             />
 
             {/* Scan-Feedback über der Leinwand während der KI-Objekterkennung */}
