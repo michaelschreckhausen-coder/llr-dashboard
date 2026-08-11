@@ -14,8 +14,13 @@
 --                                           geteilter-Listen-Zweig bleibt offen (P3).
 --
 --  D-Gruppe (automation) — Sequenz-Verwaltung (la_campaigns):
---    la_campaign_accepted/funnel/delete/save_steps/set_archived :
+--    la_campaign_accepted/funnel/save_steps/set_archived :
 --       user_in_team(team) -> ( user_in_team(team) OR _scope(bv,'automation') )
+--    la_campaign_delete : OWNER-ONLY (Michael-Entscheid) — destruktives Cascade
+--       (steps/enrollments/jobs) ist andere Risikoklasse als Bearbeiten. Guard:
+--       has_brand_access_direct(bv) OR (bv IS NULL AND user_in_team(team)).
+--       -> geteiltes Automation-Team kann NICHT löschen; null-brand-Kampagnen
+--          (6/32) bleiben team-gegatet (kein Regress). KEIN automation-Scope-OR.
 --    inbox_active_campaign_refs : Kampagnen-Refs nach automation-Scope filtern.
 --
 --  BEWUSST NICHT geändert (Team-/CRM-Operationen, kein Brand-View — ein
@@ -197,7 +202,9 @@ BEGIN
   RETURN v_res;
 END $function$;
 
--- la_campaign_delete: v_brand ergänzt, Guard erweitert (share = edit inkl. delete).
+-- la_campaign_delete: OWNER-ONLY. Kein automation-Scope-OR (destruktives Cascade).
+-- has_brand_access_direct = Owner (bv.user_id=auth.uid()) OR Per-User-Share.
+-- null-brand-Kampagnen: Team-Gate wie bisher (kein Regress, 6/32 betroffen).
 CREATE OR REPLACE FUNCTION public.la_campaign_delete(p_campaign_id uuid)
  RETURNS jsonb
  LANGUAGE plpgsql
@@ -208,7 +215,8 @@ DECLARE v_team uuid; v_brand uuid; v_status text; v_enr int; v_jobs int;
 BEGIN
   SELECT team_id, brand_voice_id, status INTO v_team, v_brand, v_status FROM public.la_campaigns WHERE id = p_campaign_id;
   IF v_team IS NULL THEN RAISE EXCEPTION 'campaign_not_found'; END IF;
-  IF NOT (public.user_in_team(v_team) OR public.has_brand_linkedin_scope(v_brand, 'automation')) THEN RAISE EXCEPTION 'forbidden'; END IF;
+  IF NOT ( public.has_brand_access_direct(v_brand)
+           OR (v_brand IS NULL AND public.user_in_team(v_team)) ) THEN RAISE EXCEPTION 'forbidden'; END IF;
   IF v_status = 'active' THEN RAISE EXCEPTION 'campaign_active_stop_first'; END IF;
   SELECT count(*) INTO v_enr FROM public.la_enrollments WHERE campaign_id = p_campaign_id;
   SELECT count(*) INTO v_jobs FROM public.la_jobs j
