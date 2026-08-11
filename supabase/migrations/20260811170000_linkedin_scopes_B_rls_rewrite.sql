@@ -133,7 +133,11 @@ CREATE POLICY pc_brand ON public.profile_checks FOR ALL
   WITH CHECK (has_brand_linkedin_scope(brand_voice_id,'analytics') OR ((brand_voice_id IS NULL) AND (user_id = uid())));
 
 -- ══════════════ CONNECTION (unipile_accounts = Zugriff bei >=1 Scope) ════════
+-- Drift-robust: Prod-Policy heisst unipile_accounts_brand (has_brand_access),
+-- Staging unipile_accounts_brand_select (brand_voices-Subquery) — BEIDE droppen,
+-- sonst bleibt die leaky Alt-Policy als zweite PERMISSIVE-Policy stehen.
 DROP POLICY IF EXISTS unipile_accounts_brand ON public.unipile_accounts;
+DROP POLICY IF EXISTS unipile_accounts_brand_select ON public.unipile_accounts;
 CREATE POLICY unipile_accounts_brand ON public.unipile_accounts FOR SELECT
   USING (
     (has_brand_linkedin_scope(brand_voice_id,'inbox')

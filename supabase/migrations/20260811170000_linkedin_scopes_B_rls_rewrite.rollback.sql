@@ -100,8 +100,9 @@ CREATE POLICY pc_brand ON public.profile_checks FOR ALL
   USING (has_brand_access(brand_voice_id) OR ((brand_voice_id IS NULL) AND (user_id = uid())))
   WITH CHECK (has_brand_access(brand_voice_id) OR ((brand_voice_id IS NULL) AND (user_id = uid())));
 
--- CONNECTION
+-- CONNECTION (normalisiert auf den has_brand_access-Namen; Staging-Alt-Name mit-gedroppt)
 DROP POLICY IF EXISTS unipile_accounts_brand ON public.unipile_accounts;
+DROP POLICY IF EXISTS unipile_accounts_brand_select ON public.unipile_accounts;
 CREATE POLICY unipile_accounts_brand ON public.unipile_accounts FOR SELECT
   USING (has_brand_access(brand_voice_id) OR ((brand_voice_id IS NULL) AND user_in_team(team_id)));
 
