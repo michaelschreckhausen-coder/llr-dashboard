@@ -35,7 +35,7 @@ function Avatar({ name, avatar_url, size=44 }) {
   const bg = colors[(name||'').charCodeAt(0) % colors.length]
   const [imgFailed, setImgFailed] = useState(false)
   useEffect(() => { setImgFailed(false) }, [avatar_url])
-  if (avatar_url && !imgFailed) return <img src={avatar_url} alt={name} onError={() => setImgFailed(true)} loading="lazy" style={{ width:size, height:size, borderRadius:10, objectFit:'cover', flexShrink:0, border:'2px solid #E5E7EB' }}/>
+  if (avatar_url && !imgFailed) return <img src={avatar_url} alt={name} onError={() => setImgFailed(true)} style={{ width:size, height:size, borderRadius:10, objectFit:'cover', flexShrink:0, border:'2px solid #E5E7EB' }}/>
   return <div style={{ width:size, height:size, borderRadius:10, background:bg, display:'flex', alignItems:'center', justifyContent:'center', color:'#fff', fontWeight:700, fontSize:size*0.36, flexShrink:0 }}>
     {(name||'?').substring(0,2).toUpperCase()}
   </div>
