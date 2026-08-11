@@ -19,6 +19,18 @@ import { Eye, Lock, Users, UserPlus, Building2 } from 'lucide-react'
 
 const P = 'var(--wl-primary, #0A6FB0)'
 
+// Slice C/D: die 6 einzeln freigebbaren LinkedIn-Bereiche. Content (Beiträge,
+// Visuals, Markenstimme, Zielgruppen) ist IMMER geteilt und hat keinen Scope.
+const LINKEDIN_SCOPES = [
+  { key: 'inbox',      label: 'Postfach & Nachrichten' },
+  { key: 'network',    label: 'Prospects & Verbindungen' },
+  { key: 'search',     label: 'Suche & Sales Navigator' },
+  { key: 'automation', label: 'Sequenzen & Automatisierung' },
+  { key: 'engagement', label: 'Engagement' },
+  { key: 'analytics',  label: 'Analytics & Statistiken' },
+]
+const ALL_SCOPE_KEYS = LINKEDIN_SCOPES.map(s => s.key)
+
 // Pro-Person-Junction
 const SHARE_TABLE = {
   brand_voice:      { table: 'brand_voice_shares',     fk: 'brand_voice_id'     },
@@ -57,6 +69,10 @@ export default function SharingPicker({
   const [selectedTeamIds, setSelectedTeamIds] = useState([])   // Cross-Team-Shares
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
+  const isBrand = entityType === 'brand_voice'
+  // D: freigegebene LinkedIn-Bereiche je Team (nur brand_voice). Default alle 6 = heutiges Verhalten.
+  const [homeScopes, setHomeScopes] = useState(ALL_SCOPE_KEYS)   // Home-Team (mode==='team')
+  const [scopesByTeam, setScopesByTeam] = useState({})           // { [teamId]: string[] } je Cross-Team
 
   const otherMembers = (members || []).filter(m => m.user_id !== entityUserId)
   // andere Teams = alle Teams des Users außer dem Heimat-/aktiven Team
@@ -68,11 +84,25 @@ export default function SharingPicker({
     ;(async () => {
       const [{ data: shares }, { data: teamShares }] = await Promise.all([
         supabase.from(cfg.table).select('user_id').eq(cfg.fk, entityId),
-        supabase.from(teamCfg.table).select('team_id').eq(teamCfg.fk, entityId),
+        supabase.from(teamCfg.table).select(isBrand ? 'team_id, linkedin_scopes' : 'team_id').eq(teamCfg.fk, entityId),
       ])
       const sharedIds = (shares || []).map(s => s.user_id)
       setSelectedUserIds(sharedIds)
-      setSelectedTeamIds((teamShares || []).map(s => s.team_id))
+      const rows = teamShares || []
+      const homeId = team?.id
+      if (isBrand) {
+        // Home-Row (team_id === Heimat-Team) trägt die Home-Scopes; sie erscheint NICHT
+        // als Cross-Team-Checkbox. Cross-Rows tragen die Cross-Scopes.
+        const crossRows = rows.filter(s => s.team_id !== homeId)
+        setSelectedTeamIds(crossRows.map(s => s.team_id))
+        const homeRow = rows.find(s => s.team_id === homeId)
+        setHomeScopes(homeRow?.linkedin_scopes ?? ALL_SCOPE_KEYS)
+        const map = {}
+        crossRows.forEach(s => { map[s.team_id] = s.linkedin_scopes ?? ALL_SCOPE_KEYS })
+        setScopesByTeam(map)
+      } else {
+        setSelectedTeamIds(rows.map(s => s.team_id))
+      }
       if (initialIsShared) setMode('team')
       else if (sharedIds.length > 0) setMode('selective')
       else setMode('private')
@@ -85,6 +115,17 @@ export default function SharingPicker({
   }
   function toggleTeam(tid) {
     setSelectedTeamIds(prev => prev.includes(tid) ? prev.filter(x => x !== tid) : [...prev, tid])
+    // Neu angehaktes Team startet mit allen 6 Bereichen (= heutiges Verhalten).
+    setScopesByTeam(prev => (prev[tid] ? prev : { ...prev, [tid]: ALL_SCOPE_KEYS }))
+  }
+  function toggleHomeScope(key) {
+    setHomeScopes(prev => prev.includes(key) ? prev.filter(x => x !== key) : [...prev, key])
+  }
+  function toggleTeamScope(tid, key) {
+    setScopesByTeam(prev => {
+      const cur = prev[tid] ?? ALL_SCOPE_KEYS
+      return { ...prev, [tid]: cur.includes(key) ? cur.filter(x => x !== key) : [...cur, key] }
+    })
   }
 
   async function save() {
@@ -131,6 +172,25 @@ export default function SharingPicker({
         const rows = teamToInsert.map(tid => ({ [teamCfg.fk]: entityId, team_id: tid, shared_by: user?.id || null }))
         const { error } = await supabase.from(teamCfg.table).insert(rows)
         if (error) console.warn('[team-share-insert]', error)
+      }
+
+      // D: LinkedIn-Bereiche je Team setzen (owner-gegateter RPC upsertet die Row,
+      // inkl. HOME-Row — ohne sie fällt has_brand_linkedin_scope still auf "alles an"
+      // zurück und die Marke wäre nicht einschränkbar). Nur brand_voice.
+      if (isBrand) {
+        if (mode === 'team' && team?.id) {
+          // Ganzes Home-Team geteilt -> Home-Row mit den gewählten Bereichen upserten.
+          const { error } = await supabase.rpc('set_brand_linkedin_scopes', {
+            p_brand_voice_id: entityId, p_team_id: team.id, p_scopes: homeScopes,
+          })
+          if (error) console.warn('[brand-scope home]', error)
+        }
+        for (const tid of selectedTeamIds) {
+          const { error } = await supabase.rpc('set_brand_linkedin_scopes', {
+            p_brand_voice_id: entityId, p_team_id: tid, p_scopes: scopesByTeam[tid] ?? ALL_SCOPE_KEYS,
+          })
+          if (error) console.warn('[brand-scope team]', tid, error)
+        }
       }
 
       if (onSaved) onSaved({
@@ -181,6 +241,11 @@ export default function SharingPicker({
         )}
       </div>
 
+      {isBrand && mode === 'team' && team && (
+        <ScopePanel title={`LinkedIn-Bereiche für ${team.name || 'Team'}`}
+          scopes={homeScopes} onToggle={toggleHomeScope} />
+      )}
+
       {mode === 'selective' && (
         <div style={{ marginTop:6, marginBottom:12, padding:'10px 12px', background:'#fff', border:'1px solid var(--border)', borderRadius:9 }}>
           <div style={{ fontSize:11, fontWeight:700, color:'var(--text-muted)', textTransform:'uppercase', letterSpacing:'0.05em', marginBottom:8 }}>
@@ -226,15 +291,24 @@ export default function SharingPicker({
             {otherTeams.map(t => {
               const checked = selectedTeamIds.includes(t.id)
               return (
-                <label key={t.id}
-                  style={{ display:'flex', alignItems:'center', gap:9, padding:'6px 8px', borderRadius:7, cursor:'pointer', background: checked ? 'rgba(10,111,176,0.06)' : 'transparent' }}
-                  onMouseEnter={e => { if (!checked) e.currentTarget.style.background = 'var(--tint-cyan, #EAF8FE)' }}
-                  onMouseLeave={e => { if (!checked) e.currentTarget.style.background = 'transparent' }}>
-                  <input type="checkbox" checked={checked} onChange={() => toggleTeam(t.id)}
-                    style={{ width:14, height:14, cursor:'pointer', accentColor: P }}/>
-                  <div style={{ width:24, height:24, borderRadius:7, background:'#EAF6FC', display:'flex', alignItems:'center', justifyContent:'center', fontSize:11, fontWeight:700, color: P }}>{(t.name||'T').charAt(0).toUpperCase()}</div>
-                  <span style={{ fontSize:13, color:'var(--text-primary)' }}>{t.name || t.id.slice(0,8)}</span>
-                </label>
+                <div key={t.id}>
+                  <label
+                    style={{ display:'flex', alignItems:'center', gap:9, padding:'6px 8px', borderRadius:7, cursor:'pointer', background: checked ? 'rgba(10,111,176,0.06)' : 'transparent' }}
+                    onMouseEnter={e => { if (!checked) e.currentTarget.style.background = 'var(--tint-cyan, #EAF8FE)' }}
+                    onMouseLeave={e => { if (!checked) e.currentTarget.style.background = 'transparent' }}>
+                    <input type="checkbox" checked={checked} onChange={() => toggleTeam(t.id)}
+                      style={{ width:14, height:14, cursor:'pointer', accentColor: P }}/>
+                    <div style={{ width:24, height:24, borderRadius:7, background:'#EAF6FC', display:'flex', alignItems:'center', justifyContent:'center', fontSize:11, fontWeight:700, color: P }}>{(t.name||'T').charAt(0).toUpperCase()}</div>
+                    <span style={{ fontSize:13, color:'var(--text-primary)' }}>{t.name || t.id.slice(0,8)}</span>
+                  </label>
+                  {isBrand && checked && (
+                    <div style={{ marginLeft:20 }}>
+                      <ScopePanel title={`Bereiche für ${t.name || 'Team'}`}
+                        scopes={scopesByTeam[t.id] ?? ALL_SCOPE_KEYS}
+                        onToggle={(k) => toggleTeamScope(t.id, k)} />
+                    </div>
+                  )}
+                </div>
               )
             })}
           </div>
@@ -275,5 +349,31 @@ function OptionRow({ active, onClick, icon, title, subtitle }) {
         {active && <div style={{ width:6, height:6, borderRadius:'50%', background:'#fff' }}/>}
       </div>
     </button>
+  )
+}
+
+// D: Pro-Team-Auswahl der freigegebenen LinkedIn-Bereiche. Content ist immer geteilt.
+function ScopePanel({ title, scopes, onToggle }) {
+  return (
+    <div style={{ marginTop:8, marginBottom:8, padding:'10px 12px', background:'#fff', border:'1px solid var(--border)', borderRadius:9 }}>
+      <div style={{ fontSize:11, fontWeight:700, color:'var(--text-muted)', textTransform:'uppercase', letterSpacing:'0.05em', marginBottom:6 }}>
+        {title}
+      </div>
+      <div style={{ fontSize:11, color:'var(--text-muted)', marginBottom:8, lineHeight:1.5 }}>
+        Beiträge, Visuals, Markenstimme &amp; Zielgruppen werden <strong>immer</strong> geteilt — hier wählst du nur die LinkedIn-Bereiche.
+      </div>
+      <div style={{ display:'flex', flexDirection:'column', gap:2 }}>
+        {LINKEDIN_SCOPES.map(s => {
+          const on = (scopes || []).includes(s.key)
+          return (
+            <label key={s.key} style={{ display:'flex', alignItems:'center', gap:9, padding:'5px 6px', borderRadius:6, cursor:'pointer' }}>
+              <input type="checkbox" checked={on} onChange={() => onToggle(s.key)}
+                style={{ width:14, height:14, cursor:'pointer', accentColor: P }}/>
+              <span style={{ fontSize:12.5, color:'var(--text-primary)' }}>{s.label}</span>
+            </label>
+          )
+        })}
+      </div>
+    </div>
   )
 }
