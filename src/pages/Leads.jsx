@@ -36,6 +36,7 @@ import { EXTENSION_WEBSTORE_URL } from '../lib/leadeskExtension';
 import { LeadsList } from '../components/leads/LeadsList';
 import { LeadsBoard } from '../components/leads/LeadsBoard';
 import { LeadViewsTabs } from '../components/leads/LeadViewsTabs';
+import { LeadAvatar } from '../components/leads/LeadAvatar';
 import { InlineEditField } from '../components/leads/InlineEditField';
 import { TagEditor } from '../components/leads/TagEditor';
 import { LeadStatusMiniPath } from '../components/leads/LeadStatusMiniPath';
@@ -1958,7 +1959,7 @@ function SelectableLeadRow({ lead, selected, onToggle, onLeadClick, onOwnerAdd, 
           <Star size={isCompact ? 15 : 17} color={lead.is_favorite ? '#D97706' : '#CBD5E1'} fill={lead.is_favorite ? '#D97706' : 'none'} />
         </div>
       )}
-      <div style={avatarStyle}>{initials}</div>
+      <LeadAvatar imageUrl={lead.avatar_url} firstName={lead.first_name} lastName={lead.last_name} name={fullName} size={isCompact ? 'sm' : 'md'} />
       <div style={{ flex:1, minWidth:0 }}>
         {isCompact ? (
           // Kompakt: alles in einer Zeile — Name · Sub · Status · Tags-Count
