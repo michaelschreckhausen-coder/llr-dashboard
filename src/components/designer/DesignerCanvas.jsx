@@ -3003,8 +3003,23 @@ Antworte AUSSCHLIESSLICH mit JSON: {"ok":<bool>,"issues":["..."],"operations":[.
       const origEl = (target?.src && imgCache[target.src]) || bgImage || await loadImageEl(visual.storage_path)
       const W = origEl.naturalWidth || stageSize.width
       const H = origEl.naturalHeight || stageSize.height
-      const nx = pt.x / (stageSize.width || 1)
-      const ny = pt.y / (stageSize.height || 1)
+      // Klick in QUELL-Bild-Koordinaten des Objekts umrechnen (Position/Skalierung/Crop),
+      // damit die Auswahl auch bei eingefügten/verschobenen/skalierten Bildern das
+      // richtige Objekt trifft. Für ein bildschirmfüllendes Bild ist dies IDENTISCH zur
+      // bisherigen Rechnung (kein Qualitäts-/Verhaltens-Regress).
+      const _rot = Number(target.rotation) || 0
+      const _ox = Number(target.x) || 0, _oy = Number(target.y) || 0
+      const _ow = Number(target.width) || stageSize.width, _oh = Number(target.height) || stageSize.height
+      const _cw = Number(target.cropWidth) || W, _ch = Number(target.cropHeight) || H
+      const _ccx = Number(target.cropX) || 0, _ccy = Number(target.cropY) || 0
+      let nx, ny
+      if (_rot) { nx = pt.x / (stageSize.width || 1); ny = pt.y / (stageSize.height || 1) }
+      else {
+        const fx = Math.min(1, Math.max(0, (pt.x - _ox) / (_ow || 1)))
+        const fy = Math.min(1, Math.max(0, (pt.y - _oy) / (_oh || 1)))
+        nx = (_ccx + fx * _cw) / (W || 1)
+        ny = (_ccy + fy * _ch) / (H || 1)
+      }
       let maskEl = null, mW = W, mH = H
 
       // 1) Server-SAM (SAM-HQ, höchste Qualität) — selbst-gehostet.
@@ -3051,7 +3066,18 @@ Antworte AUSSCHLIESSLICH mit JSON: {"ok":<bool>,"issues":["..."],"operations":[.
       if (!maskEl) { setAiError('Kein Objekt erkannt — bitte direkt auf das Objekt klicken.'); return }
       const mc = maskCanvasRef.current
       if (mc) {
-        mc.getContext('2d').drawImage(maskEl, 0, 0, mW, mH, 0, 0, mc.width, mc.height)
+        if (_rot) {
+          mc.getContext('2d').drawImage(maskEl, 0, 0, mW, mH, 0, 0, mc.width, mc.height)
+        } else {
+          // Sichtbarer Quell-Ausschnitt [cropX,cropY,cropW,cropH] (in maskEl-Skala) an die
+          // Objekt-Position [x,y,w,h] auf dem Masken-Canvas legen. Full-bleed => identisch.
+          const smX = mW / (W || 1), smY = mH / (H || 1)
+          const mcx = mc.width / (stageSize.width || 1), mcy = mc.height / (stageSize.height || 1)
+          mc.getContext('2d').drawImage(
+            maskEl, _ccx * smX, _ccy * smY, _cw * smX, _ch * smY,
+            _ox * mcx, _oy * mcy, _ow * mcx, _oh * mcy,
+          )
+        }
         setHasMask(true); redrawOverlay()
       }
     } catch (e) {
@@ -3798,6 +3824,27 @@ Ignoriere reine Deko/Muster ohne Text. Antworte AUSSCHLIESSLICH mit JSON, ohne E
       }
     }
     if (maxX < 0) return null
+    // Masken-BBox (Masken-Canvas-Pixel) ins QUELL-Bild des aktiven Objekts mappen —
+    // über dessen Position/Skalierung/Crop. Für ein bildschirmfüllendes Bild ist dies
+    // IDENTISCH zur bisherigen uniformen Skalierung (kein Regress).
+    const _o = (typeof activeImageObj === 'function') ? activeImageObj() : null
+    const _rot = Number(_o?.rotation) || 0
+    if (_o && !_rot) {
+      const st = stageSize || { width: mw, height: mh }
+      const mcx = mw / (st.width || 1), mcy = mh / (st.height || 1)   // Masken-Canvas -> Stage-Koord.
+      const ox = (Number(_o.x) || 0) * mcx, oy = (Number(_o.y) || 0) * mcy
+      const ow = (Number(_o.width) || st.width) * mcx, oh = (Number(_o.height) || st.height) * mcy
+      const cw = Number(_o.cropWidth) || W, ch = Number(_o.cropHeight) || H
+      const ccx = Number(_o.cropX) || 0, ccy = Number(_o.cropY) || 0
+      const clamp = (v, lo, hi) => Math.min(hi, Math.max(lo, v))
+      const fx0 = (minX - ox) / (ow || 1), fy0 = (minY - oy) / (oh || 1)
+      const fx1 = (maxX + 1 - ox) / (ow || 1), fy1 = (maxY + 1 - oy) / (oh || 1)
+      const sx0 = clamp(ccx + fx0 * cw, 0, W), sy0 = clamp(ccy + fy0 * ch, 0, H)
+      const sx1 = clamp(ccx + fx1 * cw, 0, W), sy1 = clamp(ccy + fy1 * ch, 0, H)
+      const x = Math.floor(Math.min(sx0, sx1)), y = Math.floor(Math.min(sy0, sy1))
+      const w = Math.max(1, Math.ceil(Math.abs(sx1 - sx0))), h = Math.max(1, Math.ceil(Math.abs(sy1 - sy0)))
+      return { x, y, w, h }
+    }
     const sx = W / mw, sy = H / mh
     const x = Math.max(0, Math.floor(minX * sx))
     const y = Math.max(0, Math.floor(minY * sy))
