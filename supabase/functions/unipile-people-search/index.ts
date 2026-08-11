@@ -2,6 +2,7 @@
 // Empfaenger-Picker. User-JWT, brand-scoped. Liefert Vorschau-Treffer inkl. provider_id.
 import { handlePreflight, jsonResponse } from "../_shared/cors.ts";
 import { getAuthenticatedUser, userClientFromReq } from "../_shared/unipile.ts";
+import { requireBrandLinkedinScope } from "../_shared/permissions.ts";
 import { search } from "../_shared/unipile-client.ts";
 
 Deno.serve(async (req) => {
@@ -13,6 +14,8 @@ Deno.serve(async (req) => {
     const brandVoiceId = input.brand_voice_id ?? null;
     const query = String(input.query ?? "").trim();
     if (!brandVoiceId || query.length < 2) return jsonResponse({ items: [] });
+    // C3: Such-Scope am Aufrufer.
+    { const denied = await requireBrandLinkedinScope(uc, brandVoiceId, "search"); if (denied) return denied; }
     const { data: acc } = await uc.from("unipile_accounts").select("unipile_account_id, capabilities").eq("brand_voice_id", brandVoiceId).eq("status", "OK").maybeSingle();
     if (!acc) return jsonResponse({ error: "Keine LinkedIn-Verbindung fuer diese Marke.", items: [] }, 409);
     // Auto-SN: die Live-Suche hat keinen Quelle-Picker → wenn das Konto Sales Navigator kann,

@@ -3,6 +3,7 @@
 // Input: { chat_id, text, inmail? }  ODER  { brand_voice_id, attendee_provider_id, text, inmail? }
 import { handlePreflight, jsonResponse } from "../_shared/cors.ts";
 import { getAuthenticatedUser, serviceClient, userClientFromReq } from "../_shared/unipile.ts";
+import { requireBrandLinkedinScope } from "../_shared/permissions.ts";
 import { sendMessage, sendInMail, getProfile, publicIdentifierFromUrl } from "../_shared/unipile-client.ts";
 
 Deno.serve(async (req) => {
@@ -40,6 +41,9 @@ Deno.serve(async (req) => {
         providerId = String(pid);
       }
     }
+
+    // C3: Postfach-Scope am Aufrufer (inbox). Owner/Per-User via has_brand_access_direct.
+    if (brandVoiceId) { const denied = await requireBrandLinkedinScope(uc, brandVoiceId, "inbox"); if (denied) return denied; }
 
     const res = useInmail ? await sendInMail(accountId, providerId, text) : await sendMessage(accountId, providerId, text);
     if (!res.ok) {

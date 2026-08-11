@@ -5,12 +5,13 @@
 // URL auf (getProfile), Fix A; die URL reicht für Filter-Match + Automatisierung.
 // Import gegatet auf linkedin.sales_nav (P3; war frei bis 2026-07-07). Input: { unipile_account_id, search, max_pages? }.
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
-import { teamHasPermission } from "../_shared/permissions.ts";
+import { requireBrandLinkedinScope, teamHasPermission } from "../_shared/permissions.ts";
 
 const UNIPILE_DSN = Deno.env.get("UNIPILE_DSN")!;
 const UNIPILE_KEY = Deno.env.get("UNIPILE_API_KEY")!;
 const SB_URL = Deno.env.get("SUPABASE_URL")!;
 const SB_SERVICE = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
+const SB_ANON = Deno.env.get("SUPABASE_ANON_KEY")!;
 
 const U = `https://${UNIPILE_DSN}/api/v1`;
 const db = createClient(SB_URL, SB_SERVICE, { auth: { persistSession: false } });
@@ -60,6 +61,15 @@ Deno.serve(async (req) => {
   if (acct.status !== "OK") return json({ skipped: "account_status:" + acct.status });
   if (!acct.team_id) return json({ skipped: "no_team" });
   const brandId: string | null = (acct as any).brand_voice_id ?? null; // Import der aktiven Marke zuordnen (strict brand-scope)
+
+  // C3: Such-Scope am Aufrufer (USER-JWT-Kontext, nicht service_role). Nur wenn ein
+  // Caller da ist UND die Rows einer Marke zugeordnet werden. Service/Cron (kein Caller)
+  // handelt für den Owner -> übersprungen (wie das teamHasPermission-Split unten).
+  if (callerId && brandId) {
+    const uc = createClient(SB_URL, SB_ANON, { global: { headers: { Authorization: req.headers.get("Authorization") || "" } }, auth: { persistSession: false } });
+    const denied = await requireBrandLinkedinScope(uc, brandId, "search");
+    if (denied) return denied;
+  }
 
   // Ziel-Team/-User für die Inbox-Rows = Caller/Liste (User-Kontext), NICHT das Unipile-Account-Team.
   // Fallback acct nur wenn kein Caller/kein aktives Team (z.B. service-role-Aufruf ohne Kontext).

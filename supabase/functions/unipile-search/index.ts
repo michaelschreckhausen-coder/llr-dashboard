@@ -20,7 +20,7 @@ import {
   UnipileError,
   userClientFromReq,
 } from "../_shared/unipile.ts";
-import { requirePermission } from "../_shared/permissions.ts";
+import { requirePermission, requireBrandLinkedinScope } from "../_shared/permissions.ts";
 import { validateSearchUrl } from "../_shared/linkedinSearchUrl.ts";
 
 const MAX_PAGES = 5;      // Schutz gegen Endlos-Pagination pro Aufruf
@@ -49,6 +49,9 @@ Deno.serve(async (req) => {
 
     const input = await req.json().catch(() => ({}));
     const brandVoiceId: string | null = input.brand_voice_id ?? null; // aktive Marke -> Treffer sichtbar in brand-scoped LinkedIn Kontakte
+    // C3: Wenn die Treffer einer Marke zugeordnet werden (Import in deren Inbox),
+    // Such-Scope am Aufrufer prüfen. Ohne Marke (brand null) -> Team-eigene Inbox, kein Brand-Gate.
+    if (brandVoiceId) { const denied = await requireBrandLinkedinScope(uc, brandVoiceId, "search"); if (denied) return denied; }
     let search: any = null;
 
     if (input.search_id) {

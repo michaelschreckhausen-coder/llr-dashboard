@@ -2,6 +2,7 @@
 // ueber Unipile. User-JWT, brand-scoped (Konto der aktiven Marke via RLS).
 import { handlePreflight, jsonResponse } from "../_shared/cors.ts";
 import { getAuthenticatedUser, serviceClient, userClientFromReq } from "../_shared/unipile.ts";
+import { requireBrandLinkedinScope } from "../_shared/permissions.ts";
 import { sendInvitation, getProfile, publicIdentifierFromUrl } from "../_shared/unipile-client.ts";
 
 Deno.serve(async (req) => {
@@ -18,6 +19,8 @@ Deno.serve(async (req) => {
     const attendeeUrl = input.attendee_url ? String(input.attendee_url) : "";
     const note = input.note ? String(input.note).slice(0, 300) : undefined;
     if (!brandVoiceId || (!providerId && !attendeeUrl)) return jsonResponse({ error: "brand_and_attendee_required" }, 400);
+    // C3: Netzwerk-Scope am Aufrufer (Vernetzungsanfrage).
+    { const denied = await requireBrandLinkedinScope(uc, brandVoiceId, "network"); if (denied) return denied; }
 
     const { data: acc } = await uc.from("unipile_accounts")
       .select("unipile_account_id, team_id").eq("brand_voice_id", brandVoiceId).eq("status", "OK").maybeSingle();

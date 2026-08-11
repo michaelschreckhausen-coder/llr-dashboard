@@ -7,7 +7,8 @@
 // Auth: eingeloggter User; Brand muss zu einem Team des Users gehören.
 // =====================================================================
 import { handlePreflight, jsonResponse } from "../_shared/cors.ts";
-import { getAuthenticatedUser, serviceClient } from "../_shared/unipile.ts";
+import { getAuthenticatedUser, serviceClient, userClientFromReq } from "../_shared/unipile.ts";
+import { requireBrandLinkedinScope } from "../_shared/permissions.ts";
 
 const UNIPILE_DSN = Deno.env.get("UNIPILE_DSN")!;
 const UNIPILE_KEY = Deno.env.get("UNIPILE_API_KEY")!;
@@ -30,10 +31,17 @@ Deno.serve(async (req) => {
     if (!bv || bv.account_type !== "company_page") return jsonResponse({ error: "keine Company Page" }, 400);
     if (!bv.linkedin_org_id || !bv.linkedin_acting_account_id) return jsonResponse({ error: "not_connected", message: "Company Page nicht verbunden" }, 409);
 
-    // Autorisierung: User im Team der Brand?
+    // Autorisierung: Home-Team-Mitglied (unverändert) ODER — bei einer geteilten
+    // Marke — analytics-Scope am Aufrufer (C3). Kein Regress fürs eigene Team;
+    // fremd-geteilte Teams brauchen den Bereich 'analytics'. Owner via has_brand_access_direct.
     const { data: member } = await sb.from("team_members").select("team_id")
       .eq("user_id", auth.userId).eq("team_id", bv.team_id).maybeSingle();
-    if (!member) return jsonResponse({ error: "forbidden" }, 403);
+    if (!member) {
+      const uc = userClientFromReq(req);
+      if (!uc) return jsonResponse({ error: "unauthorized" }, 401);
+      const denied = await requireBrandLinkedinScope(uc, brandId, "analytics");
+      if (denied) return denied;
+    }
 
     // Login-Account (muss OK sein)
     const { data: acc } = await sb.from("unipile_accounts")

@@ -92,6 +92,30 @@ export async function teamHasPermission(
  * aktiver Member auf 0 → heute verhaltensneutral, beißt nur bei revoked Seat.
  * @returns null wenn erlaubt; sonst 403 need_active_plan / need_seat.
  */
+/**
+ * C3 — granulare LinkedIn-Freigabe. USER-getriggerte, BRAND-scoped action-EFs
+ * (message-send=inbox, search/people-search/import-salesnav=search, invite-send=
+ * network, company-stats=analytics). Prueft den Bereich-Scope AM AUFRUFER
+ * (has_brand_linkedin_scope laeuft SECURITY DEFINER, liest auth.uid()/get_my_team_ids()
+ * -> MUSS mit einem User-JWT-Client aufgerufen werden, NICHT service_role, sonst
+ * ist der Check wirkungslos). Owner/Per-User sehen alles via has_brand_access_direct
+ * im Helper. brand null -> hier nicht aufrufen (kein Brand -> Team-Kontext).
+ * @returns null wenn erlaubt; sonst 403 need_scope zum direkten `return`.
+ */
+export async function requireBrandLinkedinScope(
+  userClient: { rpc: (fn: string, args?: Record<string, unknown>) => PromiseLike<{ data: unknown; error: unknown }> },
+  brandVoiceId: string,
+  scope: string,
+): Promise<Response | null> {
+  if (!brandVoiceId) return deny(400, { error: "brand_voice_id_required" });
+  const { data, error } = await userClient.rpc("has_brand_linkedin_scope", { bv_id: brandVoiceId, scope });
+  if (error) {
+    console.warn(`[require_brand_scope] rpc error bv=${brandVoiceId} scope=${scope}:`, error);
+    return deny(403, { error: "need_scope", scope });
+  }
+  return data === true ? null : deny(403, { error: "need_scope", scope });
+}
+
 export async function requireSeat(
   userClient: { rpc: (fn: string, args?: Record<string, unknown>) => PromiseLike<{ data: unknown; error: unknown }> },
 ): Promise<Response | null> {
