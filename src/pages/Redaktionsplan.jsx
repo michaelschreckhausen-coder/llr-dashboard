@@ -1921,14 +1921,8 @@ function PostModal({ post, onClose, onSave, onDelete, session, activeTeamId, mem
             style={{ opacity: saving ? 0.7 : 1, display:'inline-flex', alignItems:'center', gap:5 }}>
             {saving ? <span style={{display:'inline-flex',alignItems:'center',gap:6}}><Loader2 size={12} className='lk-spin'/>Speichere…</span> : isNew ? <span style={{display:'inline-flex',alignItems:'center',gap:6}}><Plus size={12}/>Erstellen</span> : <span style={{display:'inline-flex',alignItems:'center',gap:6}}><Save size={12}/>Speichern</span>}
           </button>
-          {/* P3 Schritt 4: Fremdteam-Post (geteilte Brand Voice) — Publish nur im Eigen-Team */}
-          {isPersonalPost && !isOwnTeamPost && form.platform !== 'instagram' && form.content && form.status !== 'published' && (
-            <div style={{ fontSize:12, color:'var(--text-muted, #6B7280)', display:'inline-flex', alignItems:'center', gap:6 }}>
-              ℹ️ Dieser Beitrag gehört einem anderen Team (geteilte Brand Voice) — Veröffentlichen nur im Eigen-Team.
-            </div>
-          )}
           {/* Phase 2a: Unipile-Route-Schalter (nur Person-Posts) — schaltet Monitoring frei */}
-          {isPersonalPost && isOwnTeamPost && form.platform !== 'instagram' && form.content && form.status !== 'published' && (
+          {isPersonalPost && form.platform !== 'instagram' && form.content && form.status !== 'published' && (
             <label
               title="Veröffentlicht über die Unipile-Server-Automation statt der nativen LinkedIn-API — ermöglicht Reichweiten-Monitoring (Impressions, Reaktionen, Kommentare). Erfordert einen verbundenen Unipile-LinkedIn-Account."
               style={{ display:'inline-flex', alignItems:'center', gap:6, fontSize:12, fontWeight:600, color:'var(--text-muted, #6B7280)', cursor:'pointer', userSelect:'none' }}>
@@ -1937,7 +1931,7 @@ function PostModal({ post, onClose, onSave, onDelete, session, activeTeamId, mem
               Über Unipile posten (Monitoring)
             </label>
           )}
-          {isPersonalPost && isOwnTeamPost && form.platform !== 'instagram' && form.content && form.status !== 'published' && (() => {
+          {isPersonalPost && form.platform !== 'instagram' && form.content && form.status !== 'published' && (() => {
             const hasSchedule = !!form.scheduled_at
             const future = hasSchedule && new Date(form.scheduled_at) > new Date()
             return (
