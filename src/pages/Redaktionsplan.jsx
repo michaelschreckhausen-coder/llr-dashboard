@@ -853,7 +853,7 @@ function PostModal({ post, onClose, onSave, onDelete, session, activeTeamId, mem
     const bvId = form.brand_voice_id
     if (!bvId) { setBrandMembers([]); return }
     let cancelled = false
-    supabase.rpc('content_brand_members', { p_brand_voice_id: bvId, p_team_id: form.team_id || activeTeamId }).then(({ data, error }) => {
+    supabase.rpc('content_brand_members', { p_brand_voice_id: bvId, p_team_id: activeTeamId }).then(({ data, error }) => {
       if (cancelled) return
       if (error || !Array.isArray(data)) { setBrandMembers([]); return }
       setBrandMembers(data.map(r => ({ user_id: r.user_id, profile: { full_name: r.full_name, email: r.email, avatar_url: r.avatar_url } })))
