@@ -16,7 +16,7 @@ import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { createClient } from "npm:@supabase/supabase-js@2";
 import { getCallerContext, checkCredits, recordUsage, estimateCredits } from "../_shared/credits.ts";
 import { getCallerTeamIds, loadBrandVoiceIfAllowed, filterOwnedStoragePaths } from "../_shared/tenant.ts";
-import { coverCropToSize } from "./imageCropDeno.ts";
+import { coverCropToSize, trimUniformBorder } from "./imageCropDeno.ts";
 
 const CORS = {
   "Access-Control-Allow-Origin": "*",
@@ -480,8 +480,13 @@ Deno.serve(async (req) => {
     const binary = Uint8Array.from(atob(imgResult.base64), c => c.charCodeAt(0));
     let uploadBytes = binary;
     let uploadMime = imgResult.mimeType;
+    if (parentVisualId) {
+      const trimmed = await trimUniformBorder(uploadBytes);
+      uploadBytes = trimmed.bytes;
+      uploadMime = trimmed.mimeType;
+    }
     if (targetWidth && targetHeight) {
-      const cropped = await coverCropToSize(binary, targetWidth, targetHeight);
+      const cropped = await coverCropToSize(uploadBytes, targetWidth, targetHeight);
       uploadBytes = cropped.bytes;
       uploadMime = cropped.mimeType;   // 'image/png'
     }
