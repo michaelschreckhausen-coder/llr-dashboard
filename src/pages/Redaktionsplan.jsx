@@ -910,11 +910,9 @@ function PostModal({ post, onClose, onSave, onDelete, session, activeTeamId, mem
     if (mentions.some(x => x.user_id === member.user_id)) return
     dirtyRef.current = true
     const label = memberLabel(member)
+    // Mitglied zuordnen = Aufgabe für dieses Team-Mitglied (content_post_mentions),
+    // NICHT als @ in den Beitragstext. @-Tagging im Text ist nur für LinkedIn-Profile.
     setMentions(prev => [...prev, { user_id: member.user_id, label }])
-    // Im Textfeld @Name anfügen
-    const insert = '@' + label.replace(/\s+/g, '')
-    const sep = (form.content || '').endsWith(' ') || !form.content ? '' : ' '
-    upd('content', (form.content || '') + sep + insert + ' ')
     setMentionPickerOpen(false)
   }
   function removeMention(userId) {
