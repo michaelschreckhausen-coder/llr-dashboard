@@ -55,7 +55,7 @@ import { listBrandFonts, loadBrandFonts } from '../../lib/brandFonts'
 import { loadGoogleFont, isGoogleFont, isFontLoaded, GOOGLE_FONTS, fontsInCategory } from '../../lib/googleFonts'
 import FontPicker from './FontPicker'
 import { ColorPopover, toHex, gradientCss } from './ColorPicker'
-import { searchIcons, searchGraphics, iconSvgUrl, iconToDataUrl, searchPhotos, photoToDataUrl } from '../../lib/stockMedia'
+import { searchIcons, searchGraphics, iconSvgUrl, iconToDataUrl, iconToGradientDataUrl, searchPhotos, photoToDataUrl } from '../../lib/stockMedia'
 import {
   Palette, Sparkles, Plus as PlusIcon, Image as ImagePlus,
 } from 'lucide-react'
@@ -2505,7 +2505,21 @@ Antworte AUSSCHLIESSLICH mit JSON: {"ok":<bool>,"issues":["..."],"operations":[.
       const img = new window.Image()
       img.onload = () => {
         setImgCache(prev => ({ ...prev, [url]: img }))
-        commitHistoryOnce(); updateObject(obj.id, { src: url, iconColor: hex }, false); endInteraction()
+        commitHistoryOnce(); updateObject(obj.id, { src: url, iconColor: hex, iconGrad: null }, false); endInteraction()
+      }
+      img.src = url
+    } catch (_e) {}
+  }
+  // Icon mit Farbverlauf einfärben (SVG linearGradient) — oder zurück auf solide (grad=null).
+  async function recolorIconGradient(obj, grad) {
+    if (!obj?.iconId) return
+    try {
+      const url = grad ? await iconToGradientDataUrl(obj.iconId, grad) : await iconToDataUrl(obj.iconId, obj.iconColor || '#1f2937')
+      if (!url) return
+      const img = new window.Image()
+      img.onload = () => {
+        setImgCache(prev => ({ ...prev, [url]: img }))
+        commitHistoryOnce(); updateObject(obj.id, { src: url, iconGrad: grad || null }, false); endInteraction()
       }
       img.src = url
     } catch (_e) {}
@@ -2834,8 +2848,10 @@ Antworte AUSSCHLIESSLICH mit JSON: {"ok":<bool>,"issues":["..."],"operations":[.
     const rot = obj.rotation || 0
     return {
       position: 'absolute',
-      top: (obj.y - offY) * effScale,
-      left: (obj.x - offX) * effScale,
+      // CANVAS_PAD: das Textarea-Overlay ist Kind des äußeren Containers (mit CANVAS_PAD-Rand);
+      // ohne diesen Offset sprang das Feld beim Doppelklick um CANVAS_PAD nach oben-links.
+      top: CANVAS_PAD + (obj.y - offY) * effScale,
+      left: CANVAS_PAD + (obj.x - offX) * effScale,
       width: (obj.width || 360) * effScale * (obj.scaleX || 1),
       // B1: Rotation des Objekts berücksichtigen, damit Text beim Edit nicht springt.
       transformOrigin: 'top left',
@@ -5480,7 +5496,7 @@ Ignoriere reine Deko/Muster ohne Text. Antworte AUSSCHLIESSLICH mit JSON, ohne E
       case 'arrow':
         return <Arrow key={o.id} {...base} points={o.points} stroke={o.stroke} fill={o.fill} strokeWidth={o.strokeWidth || 6} pointerLength={o.pointerLength || 18} pointerWidth={o.pointerWidth || 18} scaleX={(o.flipX ? -1 : 1) * (o.scaleX || 1)} scaleY={(o.flipY ? -1 : 1) * (o.scaleY || 1)} />
       case 'sticker':
-        return <Path key={o.id} {...base} data={o.d} fill={o.fill} stroke={o.stroke} strokeWidth={o.strokeWidth || 0} scaleX={(o.flipX ? -1 : 1) * (o.scaleX || 1)} scaleY={(o.flipY ? -1 : 1) * (o.scaleY || 1)} />
+        return <Path key={o.id} {...base} data={o.d} {...fillKonvaProps(o, 100, 100, false)} stroke={o.stroke} strokeWidth={o.strokeWidth || 0} scaleX={(o.flipX ? -1 : 1) * (o.scaleX || 1)} scaleY={(o.flipY ? -1 : 1) * (o.scaleY || 1)} />
       case 'image': {
         const el = imgCache[o.src]
         if (!el) return null   // wird nachgeladen (Effekt), dann re-render
@@ -5787,7 +5803,7 @@ Ignoriere reine Deko/Muster ohne Text. Antworte AUSSCHLIESSLICH mit JSON, ohne E
           reorder={reorder} deleteSelected={deleteSelected} duplicateSelected={duplicateSelected}
           onFlip={flipSelected} onCrop={() => { const _t = activeImageObj(); setCropRatio(null); setCropMode(true); setCropRect(_t ? { x: _t.x || 0, y: _t.y || 0, w: _t.width || 0, h: _t.height || 0 } : null) }}
           onEditImage={() => setActiveTool('edit')} onOpenLayers={() => setActiveTool('layers')}
-          onCopyStyle={startCopyStyle} copyStyleActive={copyStyleActive} onIconRecolor={recolorIcon}
+          onCopyStyle={startCopyStyle} copyStyleActive={copyStyleActive} onIconRecolor={recolorIcon} onIconGradient={recolorIconGradient}
           fonts={allFonts} brandFonts={brandFontFamilies} onFontLoad={handleFontLoad} selectedIds={selectedIds} brandColors={brandColors}
           alignObjects={alignObjects} distributeObjects={distributeObjects} />
       )}
@@ -6510,7 +6526,7 @@ function BarMenuItem({ icon, label, active, onClick }) {
 function ContextBar({
   selected, updateObject, reorder, deleteSelected, duplicateSelected,
   commitHistoryOnce, endInteraction, fonts, onFlip, onCrop, onEditImage, onOpenLayers,
-  onCopyStyle, copyStyleActive = false, onIconRecolor,
+  onCopyStyle, copyStyleActive = false, onIconRecolor, onIconGradient,
   selectedIds, alignObjects, distributeObjects, brandColors = [], brandFonts = [], onFontLoad,
 }) {
   const FONT_LIST = (fonts && fonts.length) ? fonts : FONTS
@@ -6649,7 +6665,7 @@ function ContextBar({
 
       {/* ── FORMEN: Füllung (Swatch) + Stil-Menü ── */}
       {!isText && hasFill && (
-        <ColorPopover value={o.fill} gradient={o.fillGrad || null} allowGradient={o.type === 'rect' || o.type === 'ellipse'} brandColors={brandColors} title="Füllfarbe" round allowNone onStart={startEdit} onChange={(hex) => liveEdit({ fill: hex, fillGrad: null })} onGradient={(g) => liveEdit(g ? { fillGrad: g, fill: (g.stops[0] && g.stops[0][1]) || o.fill } : { fillGrad: null })} onEnd={endInteraction} size={30} />
+        <ColorPopover value={o.fill} gradient={o.fillGrad || null} allowGradient={o.type === 'rect' || o.type === 'ellipse' || o.type === 'sticker'} brandColors={brandColors} title="Füllfarbe" round allowNone onStart={startEdit} onChange={(hex) => liveEdit({ fill: hex, fillGrad: null })} onGradient={(g) => liveEdit(g ? { fillGrad: g, fill: (g.stops[0] && g.stops[0][1]) || o.fill } : { fillGrad: null })} onEnd={endInteraction} size={30} />
       )}
       {!isText && (hasStroke || isRect || hasFill) && (hasStroke || isRect) && (
         <BarMenu title="Stil" width={210} closeOnClick={false} trigger={<Sliders size={15} strokeWidth={2} />}>
@@ -6674,7 +6690,7 @@ function ContextBar({
       {isImage && o.isIcon && onIconRecolor && (
         <div style={{ display: 'inline-flex', alignItems: 'center', gap: 7 }}>
           <span style={{ fontSize: 12.5, fontWeight: 600, color: 'var(--text-primary)' }}>Farbe</span>
-          <ColorPopover value={o.iconColor || '#1f2937'} brandColors={brandColors} title="Icon-Farbe" round onChange={(hex) => onIconRecolor(o, hex)} size={30} />
+          <ColorPopover value={o.iconColor || '#1f2937'} gradient={o.iconGrad || null} allowGradient brandColors={brandColors} title="Icon-Farbe" round onChange={(hex) => onIconRecolor(o, hex)} onGradient={(g) => onIconGradient && onIconGradient(o, g)} size={30} />
         </div>
       )}
       {isImage && !o.isIcon && onEditImage && (

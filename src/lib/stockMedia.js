@@ -191,6 +191,47 @@ export async function iconToDataUrl(id, color) {
   }
 }
 
+// ─── Icon → DataURL mit Farbverlauf (SVG linearGradient injiziert) ───────────
+// grad = { type:'linear', angle:<Grad, 0=Osten>, stops:[[offset0..1, color], ...] }
+// Iconify-Icons nutzen i.d.R. currentColor → wird durch url(#grad) ersetzt; als
+// Fallback wird die Verlaufs-Füllung zusätzlich auf das <svg>-Wurzelelement gesetzt.
+export async function iconToGradientDataUrl(id, grad) {
+  try {
+    if (!grad || !Array.isArray(grad.stops) || grad.stops.length < 2) return null
+    const url = iconSvgUrl(id) // ohne Farbe → currentColor
+    if (!url) return null
+    const resp = await fetch(url)
+    if (!resp.ok) return null
+    let svg = await resp.text()
+    if (!svg || !svg.includes('<svg')) return null
+    const gid = 'lg' + Math.random().toString(36).slice(2, 9)
+    const a = ((grad.angle || 0) * Math.PI) / 180
+    const dx = Math.cos(a), dy = Math.sin(a)
+    const x1 = (0.5 - dx / 2).toFixed(4), y1 = (0.5 - dy / 2).toFixed(4)
+    const x2 = (0.5 + dx / 2).toFixed(4), y2 = (0.5 + dy / 2).toFixed(4)
+    const stops = grad.stops
+      .map(st => `<stop offset="${Math.round((st[0] || 0) * 100)}%" stop-color="${st[1]}"/>`) 
+      .join('')
+    const defs = `<defs><linearGradient id="${gid}" x1="${x1}" y1="${y1}" x2="${x2}" y2="${y2}">${stops}</linearGradient></defs>`
+    // currentColor → Verlauf
+    let out = svg.replace(/currentColor/g, `url(#${gid})`)
+    const hadGrad = out.includes(`url(#${gid})`)
+    // defs einfügen + ggf. Wurzel-Fill als Fallback
+    out = out.replace(/<svg([^>]*)>/i, (m, attrs) => {
+      let a2 = attrs
+      if (!hadGrad) {
+        if (/fill\s*=/.test(a2)) a2 = a2.replace(/fill\s*=\s*["'][^"']*["']/, `fill="url(#${gid})"`)
+        else a2 = a2 + ` fill="url(#${gid})"`
+      }
+      return `<svg${a2}>${defs}`
+    })
+    const base64 = btoa(unescape(encodeURIComponent(out)))
+    return `data:image/svg+xml;base64,${base64}`
+  } catch (_e) {
+    return null
+  }
+}
+
 // ─── Foto-Suche (Pexels via Edge Function) ───────────────────────────────────
 // Rückgabe: { photos, total, page, missingKey?, error? }
 export async function searchPhotos({ query, page = 1, perPage = 30, orientation } = {}) {
