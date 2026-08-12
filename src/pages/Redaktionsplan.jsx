@@ -404,6 +404,7 @@ function PostModal({ post, onClose, onSave, onDelete, session, activeTeamId, mem
     workspace: workspace,
     team_id: activeTeamId,
     ...post,
+    ai_disclosure: post?.ai_disclosure || 'none',
     tags: Array.isArray(post?.tags) ? post.tags.join(', ') : (post?.tags || ''),
     scheduled_at: _toLocalDTInput(post?.scheduled_at),
   })
@@ -963,7 +964,7 @@ function PostModal({ post, onClose, onSave, onDelete, session, activeTeamId, mem
       'user_id','team_id','workspace','brand_voice_id','target_audience_id','company_voice_id','company_voice_ids',
       'assignee_id','reviewer_id','parent_idea_id','visual_id',
       'title','content','notes','platform','status','topic','hook',
-      'scheduled_at','published_at','linkedin_post_url','tags',
+      'scheduled_at','published_at','linkedin_post_url','tags','ai_disclosure',
     ]
     const payload = {}
     for (const k of ALLOWED_FIELDS) {
@@ -1341,6 +1342,21 @@ function PostModal({ post, onClose, onSave, onDelete, session, activeTeamId, mem
               <TagPicker tags={tags} selTagIds={selTagIds} onToggle={toggleTag} onRename={renameTagLocal} onPersist={persistTag} onAddTag={addTag} />
             </div>
             </div>
+
+            {/* KI-Kennzeichnung (EU-KI-VO Art. 50) — nur LinkedIn/Personal-Posts */}
+            {isPersonalPost && (
+            <div style={{ marginTop:14 }}>
+              <label style={{ fontSize:11, fontWeight:700, color:'var(--text-muted)', textTransform:'uppercase', letterSpacing:'0.05em', display:'block', marginBottom:8 }}>KI-Kennzeichnung</label>
+              <PillSelect value={form.ai_disclosure || 'none'} onChange={v => upd('ai_disclosure', v)} neutral buttonStyle={{ minWidth: 190 }} options={[
+                { value:'none',         label:'Keine Kennzeichnung' },
+                { value:'ai_generated', label:'Mit KI erstellt' },
+                { value:'ai_modified',  label:'Mit KI verändert' },
+              ]} />
+              <div style={{ fontSize:11, color:'var(--text-muted)', marginTop:6, lineHeight:1.5 }}>
+                Nötig, wenn der Beitrag KI-erzeugte, real wirkende Bilder enthält oder ein KI-Text zu einem Thema von öffentlichem Interesse ist. Ein von dir geprüfter, redaktionell verantworteter Beitrag braucht i. d. R. keine Kennzeichnung. Ist eine Kennzeichnung gewählt, wird beim Veröffentlichen ein Hinweis oben im Beitrag ergänzt.
+              </div>
+            </div>
+            )}
 
             {/* Zugeordnete Team-Mitglieder */}
             <div>
@@ -1882,7 +1898,7 @@ function PostModal({ post, onClose, onSave, onDelete, session, activeTeamId, mem
                     upd('status', 'scheduled')
                     if (updated && onSave) onSave(updated)
                   } else {
-                    if (!window.confirm('Jetzt auf LinkedIn posten?\n\nMit Reichweiten-Monitoring (Impressions/Reaktionen/Kommentare).')) { setSaving(false); return }
+                    if (!window.confirm('Jetzt auf LinkedIn posten?\n\nDu veroeffentlichst als verantwortliche Person. Enthaelt der Beitrag KI-Bilder, die real wirken, oder KI-Text zu einem Thema von oeffentlichem Interesse? Dann oben "KI-Kennzeichnung" setzen.\n\nMit Reichweiten-Monitoring (Impressions/Reaktionen/Kommentare).')) { setSaving(false); return }
                     const { data, error } = await supabase.functions.invoke('unipile-post-publish', { body: { post_id: post.id } })
                     if (error) {
                       let body = null; try { body = await error.context?.json?.() } catch { /* */ }
