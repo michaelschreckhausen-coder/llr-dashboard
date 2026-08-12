@@ -239,6 +239,10 @@ const DocumentEditorPane = forwardRef(function DocumentEditorPane({
     setSaveState('saving'); clearTimeout(saveTimer.current); saveTimer.current = setTimeout(doSave, SAVE_DEBOUNCE)
   }, [doSave])
 
+  // Immer die aktuellste doSave-Closure fuer Unmount-Flush greifbar halten.
+  const doSaveRef = useRef(doSave)
+  doSaveRef.current = doSave
+
   useEffect(() => {
     if (!editor) return
     if (docId && docId === currentDocId.current && loadedRef.current) return
@@ -273,7 +277,10 @@ const DocumentEditorPane = forwardRef(function DocumentEditorPane({
     }
   }, [editor, docId, initialText])
 
-  useEffect(() => () => clearTimeout(saveTimer.current), [])
+  // Beim Verlassen (Navigation/Unmount) den ausstehenden Save NICHT verwerfen,
+  // sondern noch ausfuehren — sonst geht ein frisch im Chat angelegtes Dokument
+  // verloren (kein content_documents-Row, keine Chat-Zuordnung, nicht in Bibliothek).
+  useEffect(() => () => { try { doSaveRef.current && doSaveRef.current() } catch (_e) {} clearTimeout(saveTimer.current) }, [])
 
   // Auto-Fokus: neues/leeres Dokument bei offenem Editor → Cursor direkt bereit
   useEffect(() => {
@@ -308,10 +315,15 @@ const DocumentEditorPane = forwardRef(function DocumentEditorPane({
     setTitle(''); titleRef.current = ''
     setIsEmpty(editor.isEmpty); setWordCount(countWords(editor.getText()))
     setSaveState('idle'); loadedRef.current = true
-    scheduleSave()
+    // Sofort persistieren + dem aktiven Chat zuordnen (wie Designs) — nicht erst
+    // nach dem 900ms-Debounce, sonst geht das Dokument verloren, wenn der Nutzer
+    // direkt „In Beitrag" klickt oder ueber die Navigation weggeht.
+    clearTimeout(saveTimer.current); doSave()
   }
   useImperativeHandle(ref, () => ({
     insertText, newDocument, loadNewDocWithText, getText: () => (editor ? editor.getText() : ''),
+    // Ausstehenden Save sofort ausfuehren (vor Navigation, z.B. „In Beitrag").
+    flushSave: async () => { clearTimeout(saveTimer.current); await doSave() },
     // Tour-Demo: Text laden OHNE Save (setContent emitUpdate=false → kein scheduleSave).
     demoLoadText: (text) => {
       if (!editor) return
@@ -331,7 +343,7 @@ const DocumentEditorPane = forwardRef(function DocumentEditorPane({
         updateBubble(editor)
       } catch (_) {}
     },
-  }), [editor, scheduleSave, onDocCreated])
+  }), [editor, scheduleSave, doSave, onDocCreated])
 
   // ── KI-Aufruf gegen generate (BV-Kontext via brand_voice_id) ──────────────
   async function callAi(promptText) {

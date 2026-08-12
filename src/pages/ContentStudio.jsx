@@ -1355,6 +1355,10 @@ Neue Anfrage: "${p}"` },
 
   // ─── Beitragstext → Beitrag attachen ──────────────────────────────────────
   async function attachToPost(beitragstext, postId) {
+    // Ausstehende Dokument-Speicherung erst abschliessen, damit das Dokument
+    // (content_documents-Row + Chat-Zuordnung) sicher existiert, bevor wir zum
+    // Redaktionsplan navigieren — sonst geht der Editor-Stand verloren.
+    try { await editorRef.current?.flushSave?.() } catch (_e) {}
     const forceNew = postId === '__new__'
     const targetId = forceNew ? null : (postId || linkedPost?.id || activeChat?.post_id)
     if (!targetId) {
