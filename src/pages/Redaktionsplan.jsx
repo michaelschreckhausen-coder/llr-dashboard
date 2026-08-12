@@ -749,10 +749,14 @@ function PostModal({ post, onClose, onSave, onSilentSave, onDelete, session, act
   async function searchMentions(query) {
     const reqId = ++mentionReqRef.current
     setMentionMenu({ query, results: [], loading: true })
+    // Whitespace-robust: Query-Woerter mit % verbinden, damit einfache/doppelte/
+    // Sonder-Leerzeichen im gespeicherten Namen egal sind (LinkedIn-Sync liefert
+    // teils "Michael  Schreck" mit doppeltem Space → "%michael%schreck%" matcht).
+    const pattern = '%' + query.trim().split(/\s+/).filter(Boolean).join('%') + '%'
     let q = supabase.from('linkedin_inbox')
       .select('provider_id, name, first_name, last_name, linkedin_url')
       .not('provider_id', 'is', null)
-      .ilike('name', `%${query}%`)
+      .ilike('name', pattern)
       .limit(6)
     if (activeTeamId) q = q.eq('team_id', activeTeamId)
     const { data } = await q
