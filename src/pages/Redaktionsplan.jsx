@@ -413,7 +413,6 @@ function PostModal({ post, onClose, onSave, onDelete, session, activeTeamId, mem
   const [showAdvanced, setShowAdvanced] = useState(false)
   // Phase 2a: Person-Posts optional über Unipile veröffentlichen (statt Julians nativer
   // LinkedIn-OAuth-Route) — schaltet Reichweiten-Monitoring frei. Default AUS.
-  const [viaUnipile, setViaUnipile] = useState(false)
   const [generatingVisual, setGeneratingVisual] = useState(false)
   // Multi-Visual: Array statt Singular. Jedes Element: { id (visual_id), signed_url, prompt, position }
   const [postVisuals, setPostVisuals] = useState([])
@@ -813,8 +812,10 @@ function PostModal({ post, onClose, onSave, onDelete, session, activeTeamId, mem
   useEffect(() => {
     if (!form.brand_voice_id) { setLiConnected(false); return }
     let cancelled = false
-    supabase.rpc('bv_linkedin_connected', { bv_id: form.brand_voice_id })
-      .then(({ data }) => { if (!cancelled) setLiConnected(!!data) })
+    // Unipile-only: Verbindungsstatus über den zentralen Caps-RPC (Unipile-Konto der Marke),
+    // NICHT mehr über die native OAuth-Token-Prüfung bv_linkedin_connected.
+    supabase.rpc('get_brand_connection_caps', { p_brand_voice_id: form.brand_voice_id })
+      .then(({ data }) => { if (!cancelled) setLiConnected(!!(data && data.connected)) })
       .catch(() => { if (!cancelled) setLiConnected(false) })
     return () => { cancelled = true }
   }, [form.brand_voice_id])
@@ -1921,131 +1922,63 @@ function PostModal({ post, onClose, onSave, onDelete, session, activeTeamId, mem
             style={{ opacity: saving ? 0.7 : 1, display:'inline-flex', alignItems:'center', gap:5 }}>
             {saving ? <span style={{display:'inline-flex',alignItems:'center',gap:6}}><Loader2 size={12} className='lk-spin'/>Speichere…</span> : isNew ? <span style={{display:'inline-flex',alignItems:'center',gap:6}}><Plus size={12}/>Erstellen</span> : <span style={{display:'inline-flex',alignItems:'center',gap:6}}><Save size={12}/>Speichern</span>}
           </button>
-          {/* Phase 2a: Unipile-Route-Schalter (nur Person-Posts) — schaltet Monitoring frei */}
-          {isPersonalPost && form.platform !== 'instagram' && form.content && form.status !== 'published' && (
-            <label
-              title="Veröffentlicht über die Unipile-Server-Automation statt der nativen LinkedIn-API — ermöglicht Reichweiten-Monitoring (Impressions, Reaktionen, Kommentare). Erfordert einen verbundenen Unipile-LinkedIn-Account."
-              style={{ display:'inline-flex', alignItems:'center', gap:6, fontSize:12, fontWeight:600, color:'var(--text-muted, #6B7280)', cursor:'pointer', userSelect:'none' }}>
-              <input type="checkbox" checked={viaUnipile} onChange={e => setViaUnipile(e.target.checked)}
-                style={{ accentColor:'var(--wl-primary, #0A6FB0)', cursor:'pointer' }} />
-              Über Unipile posten (Monitoring)
-            </label>
-          )}
+          {/* LinkedIn-Veröffentlichung — ausschließlich über Unipile (native LinkedIn-API abgelöst). */}
           {isPersonalPost && form.platform !== 'instagram' && form.content && form.status !== 'published' && (() => {
             const hasSchedule = !!form.scheduled_at
             const future = hasSchedule && new Date(form.scheduled_at) > new Date()
             return (
               <button className="lk-btn lk-btn-cta" onClick={async () => {
-                // ── Phase 2a: Unipile-Route (mit Monitoring) ──
-                if (viaUnipile) {
-                  if (!post?.id) { alert('Bitte zuerst speichern.'); return }
-                  setSaving(true)
-                  try {
-                    // publish_channel='unipile' SEPARAT setzen (CHECK-Constraint, Fallstrick #1)
-                    const { error: chErr } = await supabase.from('content_posts')
-                      .update({ publish_channel: 'unipile' }).eq('id', post.id)
-                    if (chErr) throw chErr
-                    if (future) {
-                      if (!window.confirm(`Auto-Publish über Unipile einplanen für ${new Date(form.scheduled_at).toLocaleString('de-DE')}? Der Dispatcher postet dann automatisch.`)) { setSaving(false); return }
-                      await supabase.from('post_publish_queue').delete().eq('post_id', post.id).eq('status', 'pending')
-                      const { error: qErr } = await supabase.from('post_publish_queue').insert({
-                        post_id: post.id, team_id: activeTeamId,
-                        scheduled_for: new Date(form.scheduled_at).toISOString(), status: 'pending',
-                      })
-                      if (qErr) throw qErr
-                      const scheduledIso = new Date(form.scheduled_at).toISOString()
-                      const { data: updated, error: upErr } = await supabase.from('content_posts')
-                        .update({ status: 'scheduled', scheduled_at: scheduledIso }).eq('id', post.id).select().single()
-                      if (upErr) throw upErr
-                      upd('status', 'scheduled')
-                      if (updated && onSave) onSave(updated)
-                    } else {
-                      if (!window.confirm('Jetzt sofort über Unipile auf LinkedIn posten?\n\nMit Reichweiten-Monitoring (Impressions/Reaktionen/Kommentare).')) { setSaving(false); return }
-                      const { data, error } = await supabase.functions.invoke('unipile-post-publish', { body: { post_id: post.id } })
-                      if (error) {
-                        let body = null; try { body = await error.context?.json?.() } catch { /* Body evtl. schon konsumiert */ }
-                        if (error.context?.status === 409) throw new Error('Kein aktiver Unipile-LinkedIn-Account verbunden. Bitte unter Einstellungen → LinkedIn verbinden.')
-                        throw new Error(body?.error || error.message)
-                      }
-                      if (data?.error) throw new Error(data.error)
-                      if (data?.success) {
-                        upd('status', 'published')
-                        upd('published_at', new Date().toISOString())
-                        if (data.published_url) upd('linkedin_post_url', data.published_url)
-                        const { data: fresh } = await supabase.from('content_posts').select('*').eq('id', post.id).maybeSingle()
-                        if (fresh && onSave) onSave(fresh)
-                        alert('Live auf LinkedIn (über Unipile)!')
-                      } else {
-                        alert('Posten fehlgeschlagen: ' + (data?.error || 'Unbekannte Antwort'))
-                      }
-                    }
-                  } catch (e) {
-                    alert('Unipile-Publishing fehlgeschlagen: ' + (e.message || 'Unbekannt'))
-                  } finally { setSaving(false) }
-                  return
-                }
                 if (!liConnected) {
                   if (activeBrandVoice?.noBrand || !form.brand_voice_id) {
-                    alert('Auf LinkedIn posten oder planen geht nur im Redaktionsplan einer Marke. Wechsle oben von „Ohne Brand" zu einer Brand (mit verknüpftem LinkedIn-Profil), um diesen Beitrag zu veröffentlichen.')
+                    alert('Auf LinkedIn posten oder planen geht nur im Redaktionsplan einer Marke. Wechsle oben von „Ohne Brand“ zu einer Brand mit verbundenem LinkedIn-Profil.')
                   } else {
-                    alert('Um auf LinkedIn zu posten oder zu planen, verknüpfe zuerst ein LinkedIn-Profil in dieser Brand (Branding → Personal Brand → LinkedIn verbinden).')
+                    alert('Um auf LinkedIn zu posten oder zu planen, verbinde zuerst ein LinkedIn-Profil in dieser Brand (Branding → Personal Brand → Mit LinkedIn verbinden).')
                   }
                   return
                 }
                 if (!post?.id) { alert('Bitte zuerst speichern.'); return }
-                if (future) {
-                  if (!window.confirm(`Auto-Publish einplanen für ${new Date(form.scheduled_at).toLocaleString('de-DE')}? Der Worker postet dann automatisch.`)) return
-                  setSaving(true)
-                  try {
-                    await supabase.from('post_publish_queue').delete().eq('post_id', post.id).eq('status', 'pending')
-                    const { error: qErr } = await supabase.from('post_publish_queue').insert({
-                      post_id: post.id,
-                      team_id: activeTeamId,
-                      scheduled_for: new Date(form.scheduled_at).toISOString(),
-                      status: 'pending',
-                    })
-                    if (qErr) throw qErr
-                    // Status DIREKT auf content_posts updaten — kein Closure-Roundtrip via save()
-                    // (vorheriger Bug: upd() ist async + setTimeout(save) hatte alte form-Closure)
-                    const scheduledIso = new Date(form.scheduled_at).toISOString()
-                    const { data: updated, error: upErr } = await supabase.from('content_posts')
-                      .update({ status: 'scheduled', scheduled_at: scheduledIso })
-                      .eq('id', post.id)
-                      .select()
-                      .single()
-                    if (upErr) throw upErr
-                    upd('status', 'scheduled')
-                    if (updated && onSave) onSave(updated)  // damit Board-Karte sofort wandert
-                  } catch (e) {
-                    alert('Einplanen fehlgeschlagen: ' + (e.message || 'Unbekannt'))
-                  } finally { setSaving(false) }
-                  return
-                }
-                if (!window.confirm('Jetzt sofort auf LinkedIn posten?\n\nText wird über die offizielle LinkedIn-Posts-API veröffentlicht.')) return
                 setSaving(true)
                 try {
-                  const { data, error } = await supabase.functions.invoke('linkedin-publish-post', { body: { post_id: post.id } })
-                  if (error) throw error
-                  if (data?.error) throw new Error(data.error)
-                  if (data?.success && data?.linkedin_post_url) {
-                    // Edge-Function setzt status='published' selbst, hier nur State syncen
-                    upd('status', 'published')
-                    upd('published_at', new Date().toISOString())
-                    upd('linkedin_post_url', data.linkedin_post_url)
-                    // Frische Row vom Server holen (Edge-Function-Updates inklusive)
-                    const { data: fresh } = await supabase.from('content_posts').select('*').eq('id', post.id).maybeSingle()
-                    if (fresh && onSave) onSave(fresh)
-                    alert('Live auf LinkedIn!')
+                  // Immer über Unipile veröffentlichen. publish_channel SEPARAT setzen (CHECK-Constraint).
+                  const { error: chErr } = await supabase.from('content_posts').update({ publish_channel: 'unipile' }).eq('id', post.id)
+                  if (chErr) throw chErr
+                  if (future) {
+                    if (!window.confirm(`Auto-Publish einplanen für ${new Date(form.scheduled_at).toLocaleString('de-DE')}? Leadesk postet dann automatisch (mit Reichweiten-Monitoring).`)) { setSaving(false); return }
+                    await supabase.from('post_publish_queue').delete().eq('post_id', post.id).eq('status', 'pending')
+                    const { error: qErr } = await supabase.from('post_publish_queue').insert({ post_id: post.id, team_id: activeTeamId, scheduled_for: new Date(form.scheduled_at).toISOString(), status: 'pending' })
+                    if (qErr) throw qErr
+                    const scheduledIso = new Date(form.scheduled_at).toISOString()
+                    const { data: updated, error: upErr } = await supabase.from('content_posts').update({ status: 'scheduled', scheduled_at: scheduledIso }).eq('id', post.id).select().single()
+                    if (upErr) throw upErr
+                    upd('status', 'scheduled')
+                    if (updated && onSave) onSave(updated)
                   } else {
-                    alert('Posten fehlgeschlagen: ' + (data?.error || 'Unbekannte Antwort'))
+                    if (!window.confirm('Jetzt auf LinkedIn posten?\n\nMit Reichweiten-Monitoring (Impressions/Reaktionen/Kommentare).')) { setSaving(false); return }
+                    const { data, error } = await supabase.functions.invoke('unipile-post-publish', { body: { post_id: post.id } })
+                    if (error) {
+                      let body = null; try { body = await error.context?.json?.() } catch { /* Body evtl. schon konsumiert */ }
+                      if (error.context?.status === 409) throw new Error('Kein aktiver LinkedIn-Account verbunden. Bitte unter Branding → Personal Brand verbinden.')
+                      throw new Error(body?.error || error.message)
+                    }
+                    if (data?.error) throw new Error(data.error)
+                    if (data?.success) {
+                      upd('status', 'published')
+                      upd('published_at', new Date().toISOString())
+                      if (data.published_url) upd('linkedin_post_url', data.published_url)
+                      const { data: fresh } = await supabase.from('content_posts').select('*').eq('id', post.id).maybeSingle()
+                      if (fresh && onSave) onSave(fresh)
+                      alert('Live auf LinkedIn!')
+                    } else {
+                      alert('Posten fehlgeschlagen: ' + (data?.error || 'Unbekannte Antwort'))
+                    }
                   }
                 } catch (e) {
-                  alert('Posten fehlgeschlagen: ' + (e.message || 'Unbekannt'))
+                  alert('Publishing fehlgeschlagen: ' + (e.message || 'Unbekannt'))
                 } finally { setSaving(false) }
-              }} disabled={saving} title={(!liConnected && !viaUnipile) ? ((activeBrandVoice?.noBrand || !form.brand_voice_id) ? 'Nur im Redaktionsplan einer Marke möglich' : 'Kein LinkedIn-Profil mit dieser Brand verknüpft — erst verbinden') : undefined} style={{ display:'flex', alignItems:'center', gap:5, opacity: (!liConnected && !viaUnipile) ? 0.9 : 1 }}>
+              }} disabled={saving} title={!liConnected ? ((activeBrandVoice?.noBrand || !form.brand_voice_id) ? 'Nur im Redaktionsplan einer Marke möglich' : 'Kein LinkedIn-Profil mit dieser Brand verbunden — erst verbinden') : undefined} style={{ display:'flex', alignItems:'center', gap:5, opacity: !liConnected ? 0.9 : 1 }}>
                 {future
-                  ? <span style={{display:'inline-flex',alignItems:'center',gap:6}}><Calendar size={13}/>{viaUnipile ? 'Über Unipile einplanen' : 'Auto-Publish einplanen'}</span>
-                  : <span style={{display:'inline-flex',alignItems:'center',gap:6}}><Rocket size={13}/>{viaUnipile ? 'Jetzt über Unipile posten' : 'Jetzt auf LinkedIn posten'}</span>}
+                  ? <span style={{display:'inline-flex',alignItems:'center',gap:6}}><Calendar size={13}/>Einplanen</span>
+                  : <span style={{display:'inline-flex',alignItems:'center',gap:6}}><Rocket size={13}/>Jetzt auf LinkedIn posten</span>}
               </button>
             )
           })()}
