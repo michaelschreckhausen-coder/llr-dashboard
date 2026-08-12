@@ -1343,21 +1343,6 @@ function PostModal({ post, onClose, onSave, onDelete, session, activeTeamId, mem
             </div>
             </div>
 
-            {/* KI-Kennzeichnung (EU-KI-VO Art. 50) — nur LinkedIn/Personal-Posts */}
-            {isPersonalPost && (
-            <div style={{ marginTop:14 }}>
-              <label style={{ fontSize:11, fontWeight:700, color:'var(--text-muted)', textTransform:'uppercase', letterSpacing:'0.05em', display:'block', marginBottom:8 }}>KI-Kennzeichnung</label>
-              <PillSelect value={form.ai_disclosure || 'none'} onChange={v => upd('ai_disclosure', v)} neutral buttonStyle={{ minWidth: 190 }} options={[
-                { value:'none',         label:'Keine Kennzeichnung' },
-                { value:'ai_generated', label:'Mit KI erstellt' },
-                { value:'ai_modified',  label:'Mit KI verändert' },
-              ]} />
-              <div style={{ fontSize:11, color:'var(--text-muted)', marginTop:6, lineHeight:1.5 }}>
-                Nötig, wenn der Beitrag KI-erzeugte, real wirkende Bilder enthält oder ein KI-Text zu einem Thema von öffentlichem Interesse ist. Ein von dir geprüfter, redaktionell verantworteter Beitrag braucht i. d. R. keine Kennzeichnung. Ist eine Kennzeichnung gewählt, wird beim Veröffentlichen ein Hinweis oben im Beitrag ergänzt.
-              </div>
-            </div>
-            )}
-
             {/* Zugeordnete Team-Mitglieder */}
             <div>
               <label style={{ fontSize:11, fontWeight:700, color:'var(--text-muted)', textTransform:'uppercase', letterSpacing:'0.05em', display:'block', marginBottom:6 }}>Zugeordnete Team-Mitglieder</label>
@@ -1810,8 +1795,25 @@ function PostModal({ post, onClose, onSave, onDelete, session, activeTeamId, mem
           </div>
         )}
 
-{/* Footer */}
+{/* KI-Kennzeichnungs-Hinweis (kompakt, direkt über der Leiste) */}
+        {isPersonalPost && (
+          <div style={{ padding:'0 24px', marginTop:2, fontSize:11, color:'var(--text-muted)', lineHeight:1.45 }}>
+            KI-Kennzeichnung nur nötig bei KI-erzeugten, real wirkenden Bildern oder KI-Text zu einem Thema von öffentlichem Interesse. Geprüfte, redaktionell verantwortete Beiträge brauchen i. d. R. keine — die gewählte Kennzeichnung wird beim Veröffentlichen oben im Beitrag ergänzt.
+          </div>
+        )}
+        {/* Footer */}
         <div style={{ padding:'16px 24px', borderTop:'1px solid #F1F5F9', display:'flex', gap:10, alignItems:'center', flexWrap:'wrap' }}>
+          {/* KI-Kennzeichnung (EU-KI-VO Art. 50) — kompakt in der Leiste */}
+          {isPersonalPost && (
+            <div style={{ display:'inline-flex', alignItems:'center', gap:6, marginRight:2 }}>
+              <span style={{ fontSize:11, fontWeight:700, color:'var(--text-muted)', textTransform:'uppercase', letterSpacing:'0.04em' }}>KI</span>
+              <PillSelect value={form.ai_disclosure || 'none'} onChange={v => upd('ai_disclosure', v)} neutral buttonStyle={{ minWidth: 150 }} options={[
+                { value:'none',         label:'Keine Kennzeichnung' },
+                { value:'ai_generated', label:'Mit KI erstellt' },
+                { value:'ai_modified',  label:'Mit KI verändert' },
+              ]} />
+            </div>
+          )}
           {/* LINKS: Löschen · Abbrechen · Duplizieren — alle als neutrale Ghost-Buttons */}
           {(() => {
             const ghost = { display:'inline-flex', alignItems:'center', gap:6, padding:'9px 16px', borderRadius:10, border:'1px solid var(--border, #E5E7EB)', background:'#fff', color:'var(--text-primary, rgb(20,20,43))', fontSize:13, fontWeight:600, cursor:'pointer' }
@@ -1898,7 +1900,7 @@ function PostModal({ post, onClose, onSave, onDelete, session, activeTeamId, mem
                     upd('status', 'scheduled')
                     if (updated && onSave) onSave(updated)
                   } else {
-                    if (!window.confirm('Jetzt auf LinkedIn posten?\n\nDu veroeffentlichst als verantwortliche Person. Enthaelt der Beitrag KI-Bilder, die real wirken, oder KI-Text zu einem Thema von oeffentlichem Interesse? Dann oben "KI-Kennzeichnung" setzen.\n\nMit Reichweiten-Monitoring (Impressions/Reaktionen/Kommentare).')) { setSaving(false); return }
+                    if (!window.confirm('Jetzt auf LinkedIn posten?\n\nDu veroeffentlichst als verantwortliche Person. Enthaelt der Beitrag KI-Bilder, die real wirken, oder KI-Text zu einem Thema von oeffentlichem Interesse? Dann unten in der Leiste die KI-Kennzeichnung setzen.\n\nMit Reichweiten-Monitoring (Impressions/Reaktionen/Kommentare).')) { setSaving(false); return }
                     const { data, error } = await supabase.functions.invoke('unipile-post-publish', { body: { post_id: post.id } })
                     if (error) {
                       let body = null; try { body = await error.context?.json?.() } catch { /* */ }
