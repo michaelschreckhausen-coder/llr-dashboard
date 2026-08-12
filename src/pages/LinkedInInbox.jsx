@@ -98,6 +98,7 @@ export default function LinkedInInbox() {
   const PAGE_SIZE = 25
   const [visibleCount, setVisibleCount] = useState(PAGE_SIZE)
   const sentinelRef = useRef(null)
+  const reqRef = useRef(0)   // Stale-Response-Guard: nur die neueste Ladeanfrage darf rows/counts setzen
 
   useEffect(() => { supabase.auth.getUser().then(({ data }) => setUid(data?.user?.id || null)) }, [])
 
@@ -157,6 +158,10 @@ export default function LinkedInInbox() {
     // Brand-scoped: LinkedIn-Kontakte gehören dem Profil der aktiven Marke.
     const bvId = activeBrandVoice?.id || null
     if (!activeTeamId || !bvId) { setRows([]); setCounts({ kontakte: 0, netzwerk: 0 }); setLoading(false); return }
+    // Stale-Response-Guard: jede Ladung bekommt eine Nummer; nur die NEUESTE darf schreiben.
+    // Verhindert, dass eine langsame Antwort der vorher gewählten Marke die frische (evtl. 0)
+    // überschreibt (Race beim Marken-/Team-/Tab-Wechsel → sonst „fremde/alte Profile").
+    const myReq = ++reqRef.current
     setLoading(true)
 
     // Aktiver Tab quellen-gefiltert laden — so verdrängt die Netzwerk-Flut die
@@ -166,11 +171,13 @@ export default function LinkedInInbox() {
       p_mode: sourceTab === 'netzwerk' ? 'netzwerk' : 'kontakte',
       p_limit: 1000,
     })
+    if (myReq !== reqRef.current) return   // eine neuere Ladung hat übernommen → diese (alte) Antwort verwerfen
 
     // Tab-Badges: server-seitig (SECURITY DEFINER) statt zwei RLS-Count-Queries,
-    // die bei >10k Verbindungen ins statement timeout liefen.
+    // die bei >10k Verbindungen ins statement timeout liefen. Stale-Guard: nur die
+    // neueste Ladung darf die Zähler setzen (Race beim Marken-/Team-Wechsel).
     supabase.rpc('inbox_counts', { p_brand_voice_id: bvId })
-      .then(({ data }) => setCounts({ kontakte: data?.kontakte || 0, netzwerk: data?.netzwerk || 0 }))
+      .then(({ data }) => { if (myReq === reqRef.current) setCounts({ kontakte: data?.kontakte || 0, netzwerk: data?.netzwerk || 0 }) })
 
     if (error) { setMsg({ text: 'Laden fehlgeschlagen: ' + error.message }); setRows([]); setLoading(false); return }
     const list = data || []
@@ -193,6 +200,13 @@ export default function LinkedInInbox() {
   }
 
   useEffect(() => { load() }, [load])
+
+  // Stale-List-Fix: bei Marken-/Team-Wechsel die Liste SOFORT leeren, damit nie die Zeilen
+  // der vorher betrachteten Marke stehen bleiben, während der (brand-gescopte) Refetch läuft.
+  // Zusammen mit dem reqRef-Guard oben kann auch keine verspätete Alt-Antwort sie wieder füllen.
+  useEffect(() => {
+    setRows([]); setSelected(new Set()); setExisting(new Set()); setVisibleCount(PAGE_SIZE)
+  }, [activeBrandVoice?.id, activeTeamId])
 
   const displayed = rows.filter(r => {
     if (listFilter !== 'all') {
