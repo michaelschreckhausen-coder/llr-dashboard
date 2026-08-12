@@ -209,11 +209,12 @@ export default function LinkedInInbox() {
   }, [activeBrandVoice?.id, activeTeamId])
 
   const displayed = rows.filter(r => {
-    if (listFilter !== 'all') {
-      const set = membersByList.get(listFilter)
-      if (!set || !set.has(r.id)) return false
-    }
-    return true
+    // Default („alle"): nur eigene Marken-Rows (own_brand) — Shared-List-Rows werden
+    // NICHT in „Deine Prospects/Verbindungen" gemischt (Feed==Counts). Sie erscheinen
+    // nur bei expliziter Auswahl der geteilten Liste (dann über membersByList).
+    if (listFilter === 'all') return r.own_brand === true
+    const set = membersByList.get(listFilter)
+    return !!(set && set.has(r.id))
   })
   const visible = displayed.slice(0, visibleCount)
   const hasMore = visibleCount < displayed.length
