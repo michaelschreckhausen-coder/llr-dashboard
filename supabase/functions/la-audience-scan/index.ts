@@ -33,7 +33,7 @@ Deno.serve(async (req) => {
   if (!campaignId) return json({ error: "campaign_id_required" }, 400);
   const cap = Number.isInteger(body?.max_unipile) ? body.max_unipile : DEFAULT_CAP;
 
-  const { data: camp } = await db.from("la_campaigns").select("id, team_id, account_id, audience_id").eq("id", campaignId).maybeSingle();
+  const { data: camp } = await db.from("la_campaigns").select("id, team_id, account_id, audience_id, brand_voice_id").eq("id", campaignId).maybeSingle();
   if (!camp) return json({ error: "campaign_not_found" }, 404);
   const teamId: string = camp.team_id;
 
@@ -44,7 +44,12 @@ Deno.serve(async (req) => {
     const { data: { user } } = await uc.auth.getUser();
     if (!user) return json({ error: "unauthorized" }, 401);
     const { data: mem } = await db.from("team_members").select("team_id").eq("user_id", user.id).eq("team_id", teamId).maybeSingle();
-    if (!mem) return json({ error: "forbidden" }, 403);
+    if (!mem) {
+      // C2/C3-Konsistenz: ein cross-geteiltes Team mit automation-Scope darf ebenfalls scannen.
+      // Scope-Check im USER-JWT-Kontext (uc), NICHT service_role. brand null / kein Scope -> false -> 403.
+      const { data: granted } = await uc.rpc("has_brand_linkedin_scope", { bv_id: camp.brand_voice_id, scope: "automation" });
+      if (granted !== true) return json({ error: "forbidden" }, 403);
+    }
   }
 
   // Kontext: Audience-Kind + verbundene Unipile-Session (für Live-Lookup).

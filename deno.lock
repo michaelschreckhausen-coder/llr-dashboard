@@ -1,0 +1,42 @@
+{
+  "version": "5",
+  "redirects": {
+    "https://esm.sh/@supabase/supabase-js@2": "https://esm.sh/@supabase/supabase-js@2.108.2"
+  },
+  "remote": {
+    "https://esm.sh/@supabase/supabase-js@2.108.2": "7fbe17c4ef67b80d388cef1f0a0c7ecb28b2b1c3c4110875925a4bc82ff28e13"
+  },
+  "workspace": {
+    "packageJson": {
+      "dependencies": [
+        "npm:@huggingface/transformers@^3.8.1",
+        "npm:@sentry/react@^10.57.0",
+        "npm:@supabase/supabase-js@^2.39.0",
+        "npm:@tiptap/extension-highlight@3.26.0",
+        "npm:@tiptap/extension-placeholder@^3.26.0",
+        "npm:@tiptap/pm@^3.26.0",
+        "npm:@tiptap/react@^3.26.0",
+        "npm:@tiptap/starter-kit@^3.26.0",
+        "npm:@types/react-dom@^18.2.0",
+        "npm:@types/react@^18.2.0",
+        "npm:@vitejs/plugin-react@^4.2.0",
+        "npm:heic2any@^0.0.4",
+        "npm:i18next@^26.0.5",
+        "npm:jspdf@^4.2.1",
+        "npm:jszip@^3.10.1",
+        "npm:konva@^9.3.22",
+        "npm:lucide-react@^1.14.0",
+        "npm:microsoft-cognitiveservices-speech-sdk@^1.50.0",
+        "npm:react-dom@^18.2.0",
+        "npm:react-i18next@^17.0.3",
+        "npm:react-konva@^18.2.16",
+        "npm:react-router-dom@^6.21.0",
+        "npm:react-window@^1.8.11",
+        "npm:react@^18.2.0",
+        "npm:recharts@^2.10.0",
+        "npm:three@~0.160.1",
+        "npm:vite@5"
+      ]
+    }
+  }
+}
