@@ -1887,7 +1887,7 @@ function PostModal({ post, onClose, onSave, onDelete, session, activeTeamId, mem
                 if (!post?.id) { alert('Bitte zuerst speichern.'); return }
                 setSaving(true)
                 try {
-                  const { error: chErr } = await supabase.from('content_posts').update({ publish_channel: 'unipile' }).eq('id', post.id)
+                  const { error: chErr } = await supabase.from('content_posts').update({ publish_channel: 'unipile', ai_disclosure: form.ai_disclosure || 'none' }).eq('id', post.id)
                   if (chErr) throw chErr
                   if (future) {
                     if (!window.confirm(`Auto-Publish einplanen für ${new Date(form.scheduled_at).toLocaleString('de-DE')}? Leadesk postet dann automatisch (mit Reichweiten-Monitoring).`)) { setSaving(false); return }
