@@ -366,7 +366,7 @@ function PostCard({ post, onClick, compact, showBVBadge, tagMap = {} }) {
 }
 
 // ─── PostModal ────────────────────────────────────────────────────────────────
-function PostModal({ post, onClose, onSave, onDelete, session, activeTeamId, members, workspace, selectedModel, activeBrandVoice, navigate, teamTags = [], onTagsChanged = () => {} }) {
+function PostModal({ post, onClose, onSave, onSilentSave, onDelete, session, activeTeamId, members, workspace, selectedModel, activeBrandVoice, navigate, teamTags = [], onTagsChanged = () => {} }) {
   const { isMobile } = useResponsive()
   const { brandVoices: __allBVs } = useBrandVoice()
   const companyVoices = (__allBVs || []).filter(v => v.account_type === 'company_page')
@@ -1079,7 +1079,11 @@ function PostModal({ post, onClose, onSave, onDelete, session, activeTeamId, mem
       await syncVisuals(post.id)
       lastSavedRef.current = _autoSnapshot
       setAutoSavedAt(Date.now())
-      if (onSave) onSave({ ...data, tag_ids: [...selTagIds] })
+      // WICHTIG: stilles Auto-Speichern darf das Popup NICHT schliessen.
+      // onSave() schliesst das Modal (Board-Refresh + closeModal) — hier nur die
+      // Liste aktualisieren via onSilentSave, damit der Beitrag offen bleibt.
+      if (onSilentSave) onSilentSave({ ...data, tag_ids: [...selTagIds] })
+      else if (onSave) onSave({ ...data, tag_ids: [...selTagIds] })
     } catch (e) { console.warn('[autosave]', e?.message || e) }
     finally { savingRef.current = false }
   }
@@ -2328,6 +2332,17 @@ Danke für den Austausch! 🤝`,
     closeModal()
   }
 
+  // Stilles Speichern (Auto-Save): Board-Liste aktualisieren, aber das
+  // Popup NICHT schliessen. Verhindert, dass sich Beitraege mitten in der
+  // Bearbeitung schliessen, sobald ein Feld (z.B. Mitglied zuordnen) geaendert wird.
+  function handleSilentSave(saved) {
+    setPosts(prev => {
+      const idx = prev.findIndex(p => p.id === saved.id)
+      if (idx >= 0) { const next = [...prev]; next[idx] = saved; return next }
+      return [saved, ...prev]
+    })
+  }
+
   async function handleDelete(id) {
     await supabase.from('content_posts').delete().eq('id', id)
     setPosts(prev => prev.filter(p => p.id !== id))
@@ -2768,7 +2783,7 @@ Danke für den Austausch! 🤝`,
 
       {/* Modal */}
       {modal !== null && (
-        <PostModal post={modal} onClose={closeModal} onSave={handleSave} onDelete={handleDelete} session={session} activeTeamId={activeTeamId} members={members} workspace={workspace} selectedModel={selectedModel} activeBrandVoice={activeBrandVoice} navigate={navigate} teamTags={teamTags} onTagsChanged={loadTeamTags} />
+        <PostModal post={modal} onClose={closeModal} onSave={handleSave} onSilentSave={handleSilentSave} onDelete={handleDelete} session={session} activeTeamId={activeTeamId} members={members} workspace={workspace} selectedModel={selectedModel} activeBrandVoice={activeBrandVoice} navigate={navigate} teamTags={teamTags} onTagsChanged={loadTeamTags} />
       )}
 
       {/* ── BRAINSTORM-MODAL ── */}
