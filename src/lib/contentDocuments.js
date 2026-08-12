@@ -1,5 +1,17 @@
 import { supabase } from './supabase'
 
+// PostgREST/Postgres lehnt unpaarige UTF-16-Surrogate mit „PGRST102: Empty or
+// invalid json" ab. Die entstehen z.B., wenn ein Auto-Titel per .slice(0,80)
+// mitten durch ein Emoji (Surrogatpaar, z.B. \uD83C\uDF93 = 🎓) geschnitten
+// wird. Diese kaputten Einzel-Surrogate hier entfernen, sonst schlaegt der
+// Insert fehl und das Dokument wird nie gespeichert.
+function stripLoneSurrogates(v) {
+  if (typeof v !== 'string') return v
+  return v
+    .replace(/[\uD800-\uDBFF](?![\uDC00-\uDFFF])/g, '')      // High ohne folgendes Low
+    .replace(/(^|[^\uD800-\uDBFF])([\uDC00-\uDFFF])/g, '$1')  // Low ohne vorheriges High
+}
+
 // ─────────────────────────────────────────────────────────────────────────────
 // CRUD für content_documents (Dokumenten-Editor / Text-Werkstatt).
 // team_id wird vom Caller (aktives Team aus TeamContext) übergeben — RLS verlangt
@@ -24,9 +36,9 @@ export async function createDocument({
     .insert({
       team_id: teamId,
       user_id: user?.id ?? null,
-      title,
+      title: stripLoneSurrogates(title),
       content_json: contentJson,
-      content_text: contentText,
+      content_text: stripLoneSurrogates(contentText),
       source_chat_id: sourceChatId,
       brand_voice_id: noBrand ? null : brandVoiceId,
       no_brand: noBrand,
@@ -87,9 +99,12 @@ export async function listDocuments(teamId, brandVoiceId = null, opts = {}) {
 
 // patch: { title?, content_json?, content_text?, status?, brand_voice_id? }
 export async function updateDocument(id, patch) {
+  const clean = { ...patch }
+  if ('title' in clean) clean.title = stripLoneSurrogates(clean.title)
+  if ('content_text' in clean) clean.content_text = stripLoneSurrogates(clean.content_text)
   return supabase
     .from('content_documents')
-    .update({ ...patch, updated_at: new Date().toISOString() })
+    .update({ ...clean, updated_at: new Date().toISOString() })
     .eq('id', id)
     .select()
     .single()
