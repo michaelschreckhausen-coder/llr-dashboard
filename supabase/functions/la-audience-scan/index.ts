@@ -14,6 +14,7 @@ const db = createClient(SB_URL, SB_SERVICE, { auth: { persistSession: false } })
 
 const FRESH_DAYS = 7;              // prior_scan gilt als frisch
 const DEFAULT_CAP = 200;          // max Unipile-Live-Lookups pro Run
+const TIME_BUDGET_MS = 18000;     // Wall-Clock-Guard: Teilergebnis statt Timeout
 const nowIso = () => new Date().toISOString();
 const json = (o: unknown, s = 200) => new Response(JSON.stringify(o), { status: s, headers: { "content-type": "application/json" } });
 const chunk = <T>(a: T[], n: number): T[][] => { const r: T[][] = []; for (let i = 0; i < a.length; i += n) r.push(a.slice(i, i + n)); return r; };
@@ -118,8 +119,10 @@ Deno.serve(async (req) => {
 
   // (5) unipile: verbleibende Unbekannte live prüfen, gedrosselt via Cap; Ergebnisse laufend schreiben.
   if (accountId) {
+    const _t0 = Date.now();
     for (const e of remaining) {
       if (used >= cap) break;
+      if (Date.now() - _t0 > TIME_BUDGET_MS) break;   // Zeitbudget: sauberer Teil-Scan statt Timeout
       const ident = e.provider_id || e.public_identifier;
       if (!ident) continue;
       used++;
