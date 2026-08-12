@@ -884,10 +884,6 @@ function PostModal({ post, onClose, onSave, onDelete, session, activeTeamId, mem
     if (mentions.some(x => x.user_id === member.user_id)) return
     const label = memberLabel(member)
     setMentions(prev => [...prev, { user_id: member.user_id, label }])
-    // Im Textfeld @Name anfügen
-    const insert = '@' + label.replace(/\s+/g, '')
-    const sep = (form.content || '').endsWith(' ') || !form.content ? '' : ' '
-    upd('content', (form.content || '') + sep + insert + ' ')
     setMentionPickerOpen(false)
   }
   function removeMention(userId) {

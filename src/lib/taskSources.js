@@ -196,10 +196,10 @@ export async function loadContentPostTasks({ uid, activeTeamId }) {
   const VISIBLE_STATUSES = ['idee', 'draft', 'in_review', 'approved'];
   let q = supabase
     .from('content_posts')
-    .select('id, title, status, scheduled_at, notes, assignee_id, reviewer_id, workspace, team_id, user_id, created_at')
-    // PostgREST .or() mit and() für composite condition:
-    // assignee_id=uid  OR  (assignee_id IS NULL AND user_id=uid)
-    .or(`assignee_id.eq.${uid},and(assignee_id.is.null,user_id.eq.${uid})`)
+    .select('id, title, status, scheduled_at, notes, assignee_id, reviewer_id, workspace, team_id, user_id, created_at, content_post_mentions(user_id)')
+    // Sichtbarkeit: alle Team-Posts holen; Aufgabe erscheint aber nur bei
+    // zugeordneten Mitgliedern (content_post_mentions) — Fallback: Ersteller
+    // wenn niemand zugeordnet ist. Kein assignee_id-Filter mehr.
     .in('status', VISIBLE_STATUSES);
   if (activeTeamId) {
     q = q.eq('team_id', activeTeamId);
@@ -215,7 +215,13 @@ export async function loadContentPostTasks({ uid, activeTeamId }) {
     in_review: 'Im Review',
     approved:  'Freigegeben — einplanen',
   };
-  return (data || []).map((p) => ({
+  const filtered = (data || []).filter((p) => {
+    const memberIds = (p.content_post_mentions || []).map((m) => m.user_id);
+    if (memberIds.includes(uid)) return true;         // ich bin zugeordnet
+    if (memberIds.length === 0 && p.user_id === uid) return true; // niemand zugeordnet → Ersteller
+    return false;
+  });
+  return filtered.map((p) => ({
     id: `content_post:${p.id}`,
     source: 'content_post',
     title: p.title || '(ohne Titel)',
@@ -224,8 +230,8 @@ export async function loadContentPostTasks({ uid, activeTeamId }) {
     due_date: p.scheduled_at ? p.scheduled_at.split('T')[0] : null,
     status: 'open',
     isVirtual: true,
-    // Display-Fallback analog UI: assignee_id wenn gesetzt, sonst Creator
-    assigned_to: p.assignee_id || p.user_id,
+    // Zugeordnet = aktueller User (er sieht die Aufgabe nur, weil er zugeordnet ist)
+    assigned_to: uid,
     created_by: p.user_id,
     rawId: p.id,
     href: `/redaktionsplan?open=${p.id}`,
