@@ -1838,13 +1838,23 @@ export default function DesignerCanvas({ visual, teamId, onSaved, onReplaceVisua
       if (o.type === 'image' && o.src && imgCache[o.src]) {
         try {
           const el = imgCache[o.src]
-          const cw = el.naturalWidth || el.width || o.width || 100
-          const ch = el.naturalHeight || el.height || o.height || 100
+          const natW = el.naturalWidth || el.width || 0
+          const natH = el.naturalHeight || el.height || 0
+          const dispW = o.width || natW || 100
+          const dispH = o.height || natH || 100
+          // Ziel-Auflösung: native Größe, aber MINDESTENS ~3x der Anzeigegröße (gedeckelt),
+          // damit vektorbasierte Icons/Grafiken (winzige SVG-Eigengröße, z.B. 24px) beim
+          // Spiegeln scharf bleiben statt in ihrer Eigengröße gerastert + hochskaliert zu
+          // werden. Fotos (große native Auflösung) bleiben unverändert (nat >= disp*3).
+          const CAP = 4096
+          const cw = Math.min(CAP, Math.max(natW, Math.round(dispW * 3)))
+          const ch = Math.min(CAP, Math.max(natH, Math.round(dispH * 3)))
           const c = document.createElement('canvas'); c.width = cw; c.height = ch
           const ctx = c.getContext('2d')
+          ctx.imageSmoothingEnabled = true; ctx.imageSmoothingQuality = 'high'
           ctx.translate(axis === 'x' ? cw : 0, axis === 'y' ? ch : 0)
           ctx.scale(axis === 'x' ? -1 : 1, axis === 'y' ? -1 : 1)
-          ctx.drawImage(el, 0, 0)
+          ctx.drawImage(el, 0, 0, cw, ch)
           const url = c.toDataURL('image/png')
           const img = new window.Image()
           img.onload = () => setImgCache(prev => ({ ...prev, [url]: img }))
