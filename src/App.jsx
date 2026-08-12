@@ -354,22 +354,22 @@ export default function App() {
                 <Route path="/projekte/:id" element={<ProjektDetail session={session} />} />
                 <Route path="/zeiten" element={<Zeiterfassung session={session} />} />
             <Route path="/ssi" element={<CompanyBrandGate feature="ssi"><LinkedInConnectionGate><SSI session={session} /></LinkedInConnectionGate></CompanyBrandGate>} />
-            <Route path="/messages" element={<CompanyBrandGate feature="nachrichten"><LinkedInConnectionGate><Messages session={session} /></LinkedInConnectionGate></CompanyBrandGate>} />
+            <Route path="/messages" element={<CompanyBrandGate feature="nachrichten"><LinkedInConnectionGate area="inbox"><Messages session={session} /></LinkedInConnectionGate></CompanyBrandGate>} />
             <Route path="/leads" element={<Leads session={session} />} />
             <Route path="/leads-v2" element={<Navigate to="/leads" replace />} />
             <Route path="/leads-v2/:id" element={<LeadV2DetailRedirect />} />
             <Route path="/comments" element={<ComingSoon title="Kommentare" />} />
             <Route path="/profil-checker" element={<ModuleGuard module="linkedin"><ProfilChecker session={session} /></ModuleGuard>} />
-            <Route path="/linkedin-inbox" element={<ModuleGuard module="linkedin"><LinkedInConnectionGate><LinkedInInbox session={session} /></LinkedInConnectionGate></ModuleGuard>} />
-            <Route path="/linkedin-suche" element={<ModuleGuard module="linkedin"><LinkedInConnectionGate><LinkedInSuche session={session} /></LinkedInConnectionGate></ModuleGuard>} />
-            <Route path="/linkedin-analytics" element={<ModuleGuard module="linkedin"><LinkedInConnectionGate><LinkedInAnalytics session={session} /></LinkedInConnectionGate></ModuleGuard>} />
+            <Route path="/linkedin-inbox" element={<ModuleGuard module="linkedin"><LinkedInConnectionGate area="network"><LinkedInInbox session={session} /></LinkedInConnectionGate></ModuleGuard>} />
+            <Route path="/linkedin-suche" element={<ModuleGuard module="linkedin"><LinkedInConnectionGate area="search"><LinkedInSuche session={session} /></LinkedInConnectionGate></ModuleGuard>} />
+            <Route path="/linkedin-analytics" element={<ModuleGuard module="linkedin"><LinkedInConnectionGate area="analytics"><LinkedInAnalytics session={session} /></LinkedInConnectionGate></ModuleGuard>} />
             <Route path="/wachstum" element={<ModuleGuard module="linkedin"><LinkedInConnectionGate><Wachstum /></LinkedInConnectionGate></ModuleGuard>} />
             <Route path="/netzwerk-analytics" element={<ModuleGuard module="linkedin"><LinkedInConnectionGate><NetzwerkAnalytics /></LinkedInConnectionGate></ModuleGuard>} />
             <Route path="/profil-analyse" element={<ModuleGuard module="linkedin"><LinkedInConnectionGate><ProfilAnalyse session={session} /></LinkedInConnectionGate></ModuleGuard>} />
-            <Route path="/linkedin-engagement" element={<ModuleGuard module="linkedin"><LinkedInConnectionGate><LinkedInEngagement session={session} /></LinkedInConnectionGate></ModuleGuard>} />
+            <Route path="/linkedin-engagement" element={<ModuleGuard module="linkedin"><LinkedInConnectionGate area="engagement"><LinkedInEngagement session={session} /></LinkedInConnectionGate></ModuleGuard>} />
             {/* 3c-Flip: V2 (la_*) ist Default für alle. Not-Aus per User: localStorage lk_features.linkedinAutomationV2Disabled=true */}
             {(!isFlagEnabled('linkedinAutomationV2Disabled')) && (
-              <Route path="/automatisierung-neu" element={<ModuleGuard module="linkedin"><LinkedInConnectionGate><LinkedInAutomationNeu session={session} /></LinkedInConnectionGate></ModuleGuard>} />
+              <Route path="/automatisierung-neu" element={<ModuleGuard module="linkedin"><LinkedInConnectionGate area="automation"><LinkedInAutomationNeu session={session} /></LinkedInConnectionGate></ModuleGuard>} />
             )}
             <Route path="/pipeline" element={<Navigate to="/deals?view=pipeline" replace />} />
             <Route path="/brand-voice" element={<Navigate to="/personal-brand" replace />} />
