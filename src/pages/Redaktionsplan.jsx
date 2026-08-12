@@ -404,6 +404,7 @@ function PostModal({ post, onClose, onSave, onSilentSave, onDelete, session, act
     workspace: workspace,
     team_id: activeTeamId,
     ...post,
+    ai_disclosure: post?.ai_disclosure || 'none',
     tags: Array.isArray(post?.tags) ? post.tags.join(', ') : (post?.tags || ''),
     scheduled_at: _toLocalDTInput(post?.scheduled_at),
   })
@@ -995,7 +996,7 @@ function PostModal({ post, onClose, onSave, onSilentSave, onDelete, session, act
       'user_id','team_id','workspace','brand_voice_id','target_audience_id','company_voice_id','company_voice_ids',
       'assignee_id','reviewer_id','parent_idea_id','visual_id',
       'title','content','notes','platform','status','topic','hook',
-      'scheduled_at','published_at','linkedin_post_url','tags',
+      'scheduled_at','published_at','linkedin_post_url','tags','ai_disclosure',
     ]
     const payload = {}
     for (const k of ALLOWED_FIELDS) {
@@ -1066,7 +1067,7 @@ function PostModal({ post, onClose, onSave, onSilentSave, onDelete, session, act
     topic: form.topic, hook: form.hook, scheduled_at: form.scheduled_at,
     assignee_id: form.assignee_id, reviewer_id: form.reviewer_id,
     target_audience_id: form.target_audience_id, company_voice_ids: form.company_voice_ids,
-    tags: form.tags, brand_voice_id: form.brand_voice_id,
+    tags: form.tags, brand_voice_id: form.brand_voice_id, ai_disclosure: form.ai_disclosure,
     mentions: mentions.map(m => m.user_id).slice().sort(),
   })
   async function autoSaveSilent() {
@@ -1876,8 +1877,25 @@ function PostModal({ post, onClose, onSave, onSilentSave, onDelete, session, act
           </div>
         )}
 
-{/* Footer */}
+{/* KI-Kennzeichnungs-Hinweis (kompakt, direkt über der Leiste) */}
+        {isPersonalPost && (
+          <div style={{ padding:'0 24px', marginTop:2, fontSize:11, color:'var(--text-muted)', lineHeight:1.45 }}>
+            KI-Kennzeichnung nur nötig bei KI-erzeugten, real wirkenden Bildern oder KI-Text zu einem Thema von öffentlichem Interesse. Geprüfte, redaktionell verantwortete Beiträge brauchen i. d. R. keine — die gewählte Kennzeichnung wird beim Veröffentlichen oben im Beitrag ergänzt.
+          </div>
+        )}
+        {/* Footer */}
         <div style={{ padding:'16px 24px', borderTop:'1px solid #F1F5F9', display:'flex', gap:10, alignItems:'center', flexWrap:'wrap' }}>
+          {/* KI-Kennzeichnung (EU-KI-VO Art. 50) — kompakt in der Leiste */}
+          {isPersonalPost && (
+            <div style={{ display:'inline-flex', alignItems:'center', gap:6, marginRight:2 }}>
+              <span style={{ fontSize:11, fontWeight:700, color:'var(--text-muted)', textTransform:'uppercase', letterSpacing:'0.04em' }}>KI</span>
+              <PillSelect value={form.ai_disclosure || 'none'} onChange={v => upd('ai_disclosure', v)} neutral buttonStyle={{ minWidth: 150 }} options={[
+                { value:'none',         label:'Keine Kennzeichnung' },
+                { value:'ai_generated', label:'Mit KI erstellt' },
+                { value:'ai_modified',  label:'Mit KI verändert' },
+              ]} />
+            </div>
+          )}
           {/* LINKS: Löschen · Abbrechen · Duplizieren — alle als neutrale Ghost-Buttons */}
           {(() => {
             const ghost = { display:'inline-flex', alignItems:'center', gap:6, padding:'9px 16px', borderRadius:10, border:'1px solid var(--border, #E5E7EB)', background:'#fff', color:'var(--text-primary, rgb(20,20,43))', fontSize:13, fontWeight:600, cursor:'pointer' }
@@ -1946,7 +1964,7 @@ function PostModal({ post, onClose, onSave, onSilentSave, onDelete, session, act
                 setSaving(true)
                 try {
                   // Immer über Unipile veröffentlichen. publish_channel SEPARAT setzen (CHECK-Constraint).
-                  const { error: chErr } = await supabase.from('content_posts').update({ publish_channel: 'unipile' }).eq('id', post.id)
+                  const { error: chErr } = await supabase.from('content_posts').update({ publish_channel: 'unipile', ai_disclosure: form.ai_disclosure || 'none' }).eq('id', post.id)
                   if (chErr) throw chErr
                   if (future) {
                     if (!window.confirm(`Auto-Publish einplanen für ${new Date(form.scheduled_at).toLocaleString('de-DE')}? Leadesk postet dann automatisch (mit Reichweiten-Monitoring).`)) { setSaving(false); return }
@@ -1959,7 +1977,7 @@ function PostModal({ post, onClose, onSave, onSilentSave, onDelete, session, act
                     upd('status', 'scheduled')
                     if (updated && onSave) onSave(updated)
                   } else {
-                    if (!window.confirm('Jetzt auf LinkedIn posten?\n\nMit Reichweiten-Monitoring (Impressions/Reaktionen/Kommentare).')) { setSaving(false); return }
+                    if (!window.confirm('Jetzt auf LinkedIn posten?\n\nDu veroeffentlichst als verantwortliche Person. Enthaelt der Beitrag KI-Bilder, die real wirken, oder KI-Text zu einem Thema von oeffentlichem Interesse? Dann unten in der Leiste die KI-Kennzeichnung setzen.\n\nMit Reichweiten-Monitoring (Impressions/Reaktionen/Kommentare).')) { setSaving(false); return }
                     const { data, error } = await supabase.functions.invoke('unipile-post-publish', { body: { post_id: post.id } })
                     if (error) {
                       let body = null; try { body = await error.context?.json?.() } catch { /* Body evtl. schon konsumiert */ }
