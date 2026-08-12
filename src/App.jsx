@@ -353,7 +353,7 @@ export default function App() {
                 <Route path="/projekte" element={<Projektmanagement session={session} />} />
                 <Route path="/projekte/:id" element={<ProjektDetail session={session} />} />
                 <Route path="/zeiten" element={<Zeiterfassung session={session} />} />
-            <Route path="/ssi" element={<CompanyBrandGate feature="ssi"><LinkedInConnectionGate><SSI session={session} /></LinkedInConnectionGate></CompanyBrandGate>} />
+            <Route path="/ssi" element={<CompanyBrandGate feature="ssi"><LinkedInConnectionGate area="analytics"><SSI session={session} /></LinkedInConnectionGate></CompanyBrandGate>} />
             <Route path="/messages" element={<CompanyBrandGate feature="nachrichten"><LinkedInConnectionGate area="inbox"><Messages session={session} /></LinkedInConnectionGate></CompanyBrandGate>} />
             <Route path="/leads" element={<Leads session={session} />} />
             <Route path="/leads-v2" element={<Navigate to="/leads" replace />} />
@@ -363,9 +363,9 @@ export default function App() {
             <Route path="/linkedin-inbox" element={<ModuleGuard module="linkedin"><LinkedInConnectionGate area="network"><LinkedInInbox session={session} /></LinkedInConnectionGate></ModuleGuard>} />
             <Route path="/linkedin-suche" element={<ModuleGuard module="linkedin"><LinkedInConnectionGate area="search"><LinkedInSuche session={session} /></LinkedInConnectionGate></ModuleGuard>} />
             <Route path="/linkedin-analytics" element={<ModuleGuard module="linkedin"><LinkedInConnectionGate area="analytics"><LinkedInAnalytics session={session} /></LinkedInConnectionGate></ModuleGuard>} />
-            <Route path="/wachstum" element={<ModuleGuard module="linkedin"><LinkedInConnectionGate><Wachstum /></LinkedInConnectionGate></ModuleGuard>} />
-            <Route path="/netzwerk-analytics" element={<ModuleGuard module="linkedin"><LinkedInConnectionGate><NetzwerkAnalytics /></LinkedInConnectionGate></ModuleGuard>} />
-            <Route path="/profil-analyse" element={<ModuleGuard module="linkedin"><LinkedInConnectionGate><ProfilAnalyse session={session} /></LinkedInConnectionGate></ModuleGuard>} />
+            <Route path="/wachstum" element={<ModuleGuard module="linkedin"><LinkedInConnectionGate area="analytics"><Wachstum /></LinkedInConnectionGate></ModuleGuard>} />
+            <Route path="/netzwerk-analytics" element={<ModuleGuard module="linkedin"><LinkedInConnectionGate area="analytics"><NetzwerkAnalytics /></LinkedInConnectionGate></ModuleGuard>} />
+            <Route path="/profil-analyse" element={<ModuleGuard module="linkedin"><LinkedInConnectionGate area="analytics"><ProfilAnalyse session={session} /></LinkedInConnectionGate></ModuleGuard>} />
             <Route path="/linkedin-engagement" element={<ModuleGuard module="linkedin"><LinkedInConnectionGate area="engagement"><LinkedInEngagement session={session} /></LinkedInConnectionGate></ModuleGuard>} />
             {/* 3c-Flip: V2 (la_*) ist Default für alle. Not-Aus per User: localStorage lk_features.linkedinAutomationV2Disabled=true */}
             {(!isFlagEnabled('linkedinAutomationV2Disabled')) && (
