@@ -102,6 +102,37 @@ const quoteBlockStyle = { background: COLORS.surfaceMuted, borderRadius: RADIUS.
 const inputStyle = { height:36, padding:'0 10px', fontSize:13, border:`0.5px solid ${COLORS.borderSubtle}`, borderRadius: RADIUS.md, background: COLORS.surface, outline:'none', color: COLORS.textPrimary, width:'100%', boxSizing:'border-box' };
 const textareaStyle = { ...inputStyle, height:'auto', padding:'10px', resize:'vertical', minHeight:80, fontFamily:'inherit' };
 
+// ─── Cockpit-Layout (Scheibe 2) ─────────────────────────────────────────────
+const bandWrapStyle = { padding:'16px 28px 0' };
+const statusBandStyle = { display:'grid', gridTemplateColumns:'repeat(5, minmax(0,1fr))', gap:1, background: COLORS.borderSubtle, border:'1px solid var(--border)', borderRadius:16, overflow:'hidden', boxShadow:'var(--shadow-card)' };
+const kpiCellStyle = { background: COLORS.surface, padding:'14px 16px', display:'flex', flexDirection:'column', gap:6, minWidth:0, minHeight:78, justifyContent:'flex-start' };
+const kpiLabelStyle = { fontSize:11, color: COLORS.textTertiary, textTransform:'uppercase', letterSpacing:'0.04em', display:'flex', alignItems:'center', gap:5 };
+const kpiValueStyle = { fontSize:18, fontWeight:600, color: COLORS.textPrimary, lineHeight:1.15, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' };
+const kpiSubStyle = { fontSize:12, color: COLORS.textSecondary, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' };
+const kpiEmptyStyle = { fontSize:13, color: COLORS.textTertiary };
+const kpiLinkStyle = { background:'none', border:'none', padding:0, color:'var(--wl-primary, #0A6FB0)', cursor:'pointer', fontSize:13, fontWeight:500, textAlign:'left' };
+const cockpitColStyle = { display:'grid', gridTemplateColumns:'320px minmax(0,1fr)', gap:16, padding:'16px 28px 48px', alignItems:'start', flex:1 };
+const dealBannerStyle = { display:'flex', alignItems:'center', gap:16, padding:'14px 18px', borderRadius:14, border:'1px solid var(--border)', background: COLORS.surface, boxShadow:'var(--shadow-card)', marginBottom:18 };
+const fieldRowStyle = { display:'flex', alignItems:'center', gap:8, fontSize:13, minWidth:0 };
+const fieldLabelStyle = { color: COLORS.textTertiary, minWidth:66, flexShrink:0 };
+const inlineLinkStyle = { background:'none', border:'none', padding:0, color:'var(--wl-primary, #0A6FB0)', cursor:'pointer', fontSize:13 };
+const stemDividerStyle = { height:'0.5px', background: COLORS.borderSubtle, margin:'14px 0' };
+const filterChipStyle = { fontSize:12, padding:'4px 12px', borderRadius:999, border:`0.5px solid ${COLORS.borderSubtle}`, background: COLORS.surface, color: COLORS.textSecondary, cursor:'pointer' };
+const filterChipActiveStyle = { ...filterChipStyle, background: COLORS.primarySoft, color: COLORS.primarySoftFg, borderColor:'transparent', fontWeight:500 };
+
+const ACTIVITY_FILTERS = [
+  { id:'all', label:'Alle' },
+  { id:'messages', label:'Nachrichten' },
+  { id:'activities', label:'Aktivitäten' },
+  { id:'system', label:'System' },
+];
+function activityCategory(item) {
+  if (item?.source === 'field_history') return 'system';
+  const t = item?.type || '';
+  if (['message', 'email', 'linkedin_message'].includes(t)) return 'messages';
+  return 'activities';
+}
+
 // Activity-Type → Icon + Farben
 const ACTIVITY_VARIANTS = {
   meeting:          { bg:'#EAF3DE', fg:'#3B6D11', Icon: CalendarCheck, label:'Meeting' },
@@ -309,6 +340,30 @@ export default function LeadDetail({ lead: leadProp }) {
   const { profilesById } = useProfiles(ownerIds);
   const owner = lead?.owner || (lead?.owner_id ? profilesById.get(lead.owner_id) : null) || null;
 
+  // Status-Band-Daten (Scheibe 2): Deals (Wert + Phase + Banner), letzter echter
+  // Kontakt (Feed ohne field_history), nächste offene Aufgabe. Ein Fetch, keyed
+  // auf lead.id + railRefresh — löst die früheren Rail-Einzelfetches ab.
+  const [bandData, setBandData] = useState({ deals: [], lastContact: null, nextTask: null });
+  useEffect(() => {
+    const id = lead?.id;
+    if (!id || isMock) { setBandData({ deals: [], lastContact: null, nextTask: null }); return; }
+    let cancelled = false;
+    (async () => {
+      const [dRes, aRes, tRes] = await Promise.all([
+        supabase.from('deals').select('id, title, value, currency, stage, expected_close_date, created_at').eq('lead_id', id).order('created_at', { ascending: false }),
+        supabase.from('lead_activity_feed').select('timestamp').eq('lead_id', id).neq('source', 'field_history').order('timestamp', { ascending: false }).limit(1),
+        supabase.from('lead_tasks').select('id, title, due_date').eq('lead_id', id).eq('status', 'open').order('due_date', { ascending: true, nullsFirst: false }).limit(1),
+      ]);
+      if (cancelled) return;
+      setBandData({
+        deals: dRes.error ? [] : (dRes.data || []),
+        lastContact: aRes.error ? null : (aRes.data?.[0]?.timestamp || null),
+        nextTask: tRes.error ? null : (tRes.data?.[0] || null),
+      });
+    })();
+    return () => { cancelled = true; };
+  }, [lead?.id, isMock, railRefresh]);
+
   // Mock-Mode: no-op updater, damit die Rails im Demo-Pfad nicht crashen.
   const safeUpdateLead = useCallback(async (patch) => {
     if (isMock || !updateLead) return { data: null };
@@ -508,6 +563,15 @@ export default function LeadDetail({ lead: leadProp }) {
   const displayName = getDisplayName(lead);
   const isFav = !!lead.is_favorite;
 
+  // Status-Band-KPIs. Deal-Wert: Summe der deals-Rows, sonst Legacy-Fallback
+  // leads.deal_value (schützt Altbestände ohne deals-Row — vgl. Scheibe 1).
+  const bandAnalysis = analysisDismissed ? null : currentAnalysis;
+  const bandScore = bandAnalysis?.score?.value ?? null;
+  const bandDealValue = bandData.deals.length
+    ? bandData.deals.reduce((s, d) => s + (Number(d.value) || 0), 0)
+    : (lead.deal_value != null ? Number(lead.deal_value) : null);
+  const bandPhase = bandData.deals.find((d) => d.stage)?.stage || lead.deal_stage || null;
+
   return (
     <div style={pageStyle}>
       {/* Breadcrumb */}
@@ -671,37 +735,42 @@ export default function LeadDetail({ lead: leadProp }) {
         )}
       </div>
 
-      {/* 3-Spalten-Layout: links Summary, Mitte Tabs/Timeline, rechts verknuepfte Datensaetze.
-          <1100px (isSmall) → einspaltig gestapelt (Summary → Tabs → Related). */}
-      <div style={isSmall ? { ...threeColStyle, gridTemplateColumns: '1fr', padding: '16px 16px 40px' } : threeColStyle}>
+      {/* Status-Band — 5 KPIs (KI-Score-Gauge · Deal-Wert · Letzter Kontakt · Phase · Nächste Aktion) */}
+      <StatusBand
+        isSmall={isSmall}
+        score={bandScore}
+        intent={lead.ai_buying_intent}
+        dealValue={bandDealValue}
+        lastContact={bandData.lastContact}
+        phase={bandPhase}
+        nextTask={bandData.nextTask}
+        analyzeLoading={analyzeLoading}
+        onAnalyze={handleAnalyze}
+        onOpenTab={handleTabChange}
+      />
+
+      {/* Cockpit-2-Spalten: links Steckbrief (+ KI-Analyse), rechts Deal-Banner + Tabs + Verlauf.
+          <1100px (isSmall) → einspaltig gestapelt. */}
+      <div style={isSmall ? { ...cockpitColStyle, gridTemplateColumns: '1fr', padding: '16px 16px 40px' } : cockpitColStyle}>
         <aside style={railColStyle}>
-          <SummaryRail
+          <Steckbrief
             lead={lead}
             owner={owner}
             navigate={navigate}
             onOpenOwnerPicker={() => setOwnerPickerOpen(true)}
+            onEdit={() => setEditModalOpen(true)}
             updateLead={safeUpdateLead}
           />
-          <RelatedRail
-            lead={lead}
-            navigate={navigate}
-            refreshKey={railRefresh}
+          <AnalysisCard
             analysis={analysisDismissed ? null : currentAnalysis}
             analyzeLoading={analyzeLoading}
-            onAnalyze={handleAnalyze}
             onReanalyze={handleReanalyze}
             onUseOutreach={handleUseOutreach}
-            onJumpTab={handleTabChange}
-            onEnrich={runEnrich}
-            enrichLoading={enrichLoading}
-            enrichCompany={enrichCompany}
-            enrichMsg={enrichMsg}
-            canEnrich={!!lead.linkedin_url}
-            enrichedAt={lead.enriched_at}
           />
         </aside>
 
         <main style={centerColStyle}>
+          <DealBanner deals={bandData.deals} navigate={navigate} />
           <div style={{ ...tabsRowStyle, marginBottom: 18 }}>
             {TABS.map((tab) => {
               const count = tab.countKey ? lead[tab.countKey] : null;
@@ -749,268 +818,225 @@ export default function LeadDetail({ lead: leadProp }) {
   );
 }
 
-// ─── SummaryRail (linke Spalte) ─────────────────────────────────────────────
-// Properties + Owner + Tags + Kennzahlen, single-column fuer die schmale Spalte.
-function SummaryRail({ lead, owner, navigate, onOpenOwnerPicker, updateLead }) {
-  const setTags = (next) => updateLead({ tags: Array.isArray(next) ? next : [] });
-  const dealValueDisplay = lead.deal_value != null
-    ? `${Number(lead.deal_value).toLocaleString('de-DE')} €` : null;
-  const ownerName = owner ? (`${owner.first_name || ''} ${owner.last_name || ''}`.trim() || '—') : null;
-
-  // Deal-Wert-Entdopplung: existiert eine moderne deals-Row, zeigt das Deals-Rail
-  // (RelatedRail) den Wert — die Legacy-KPI hier wird dann ausgeblendet. Nur-Existenz-
-  // Check (limit 1), kein Wert-Fetch. leads.deal_value bleibt Fallback für Altbestände.
-  const [hasDeal, setHasDeal] = useState(false);
-  useEffect(() => {
-    if (!lead.id) return;
-    let cancelled = false;
-    (async () => {
-      const { data, error } = await supabase.from('deals').select('id').eq('lead_id', lead.id).limit(1);
-      if (!cancelled && !error) setHasDeal((data || []).length > 0);
-    })();
-    return () => { cancelled = true; };
-  }, [lead.id]);
+// ─── ScoreGauge (KI-Score-Donut) ────────────────────────
+function ScoreGauge({ value, size = 52 }) {
+  const v = Math.max(0, Math.min(100, Math.round(Number(value) || 0)));
+  const stroke = 6, r = (size - stroke) / 2, c = 2 * Math.PI * r;
+  const off = c * (1 - v / 100);
+  const col = v >= 66 ? '#059669' : v >= 33 ? '#D97706' : '#B91C1C';
   return (
-    <>
-      <div style={railCardStyle}>
-        <div style={railHeadStyle}><span style={railTitleStyle}>Über diesen Kontakt</span></div>
-        <div style={{ display:'flex', flexDirection:'column', gap:10 }}>
-          <ContactRow icon={Mail} label="E-Mail" value={lead.email} href={lead.email ? `mailto:${lead.email}` : null} truncate />
-          <ContactRow icon={Phone} label="Telefon" value={lead.phone} href={lead.phone ? `tel:${(lead.phone||'').replace(/\s/g,'')}` : null} truncate />
-          <ContactRow icon={IcLinkedin} label="LinkedIn" value={lead.linkedin_url}
-            href={lead.linkedin_url ? (/^https?:\/\//i.test(lead.linkedin_url) ? lead.linkedin_url : `https://${lead.linkedin_url}`) : null}
-            linkText="Profil öffnen" />
-          <ContactRow icon={MapPin} label="Ort" value={lead.location} />
-          <ContactRow icon={Workflow} label="Quelle" value={lead.source} />
-        </div>
-        <div onClick={onOpenOwnerPicker} role="button" tabIndex={0}
-          onKeyDown={(e) => { if (e.key === 'Enter') onOpenOwnerPicker(); }}
-          title="Owner ändern"
-          style={{ display:'flex', alignItems:'center', gap:10, marginTop:14, paddingTop:14, borderTop:`0.5px solid ${COLORS.borderSubtle}`, cursor:'pointer' }}>
-          {owner
-            ? <LeadAvatar firstName={owner.first_name} lastName={owner.last_name} imageUrl={owner.avatar_url} size="md" />
-            : <div style={emptyOwnerCircleStyle}><Plus size={14} /></div>}
-          <div>
-            <div style={{ fontSize:11, color: COLORS.textTertiary }}>Owner</div>
-            <div style={{ fontSize:13, color: COLORS.textPrimary }}>{ownerName || 'Zuweisen'}</div>
-          </div>
-        </div>
-        <div style={{ marginTop:14 }}>
-          <TagEditor tags={lead.tags || []} onSave={setTags} />
-        </div>
-      </div>
-
-      <div style={railCardStyle}>
-        <div style={railHeadStyle}><span style={railTitleStyle}>Kennzahlen</span></div>
-        <div style={propLabelStyle}>Nächste Aktion</div>
-        <div style={{ ...propValueStyle, color: lead.next_followup ? '#854F0B' : COLORS.textTertiary }}>
-          {lead.next_followup ? formatRelativeDate(lead.next_followup) : '—'}
-        </div>
-        {/* Deal-Wert nur als Legacy-Fallback: sobald eine moderne deals-Row existiert,
-            zeigt das Deals-Rail (rechts) den Wert — hier ausblenden, sonst doppelt.
-            Ohne deals-Row bleibt leads.deal_value (Altbestand) die einzige Quelle. */}
-        {!hasDeal && (
-          <>
-            <div style={propLabelStyle}>Deal-Wert</div>
-            <div style={propValueStyle}>{dealValueDisplay || '—'}</div>
-          </>
-        )}
-      </div>
-
-      {(lead.industry || lead.company_size || lead.company_website || lead.company_address) && (
-        <div style={railCardStyle}>
-          <CompanyInfoBlock
-            industry={lead.industry}
-            companySize={lead.company_size}
-            companyWebsite={lead.company_website}
-            companyAddress={lead.company_address}
-          />
-        </div>
-      )}
-    </>
+    <svg width={size} height={size} viewBox={`0 0 ${size} ${size}`} style={{ flexShrink:0 }}>
+      <circle cx={size/2} cy={size/2} r={r} fill="none" strokeWidth={stroke} style={{ stroke: COLORS.borderSubtle }} />
+      <circle cx={size/2} cy={size/2} r={r} fill="none" strokeWidth={stroke}
+        strokeDasharray={c} strokeDashoffset={off} strokeLinecap="round"
+        transform={`rotate(-90 ${size/2} ${size/2})`} style={{ stroke: col }} />
+      <text x="50%" y="50%" dominantBaseline="central" textAnchor="middle"
+        style={{ fill: COLORS.textPrimary, fontSize: Math.round(size*0.3), fontWeight:700 }}>{v}</text>
+    </svg>
   );
 }
 
-// ─── RelatedRail (rechte Spalte) ────────────────────────────────────────────
-// Verknuepfte Datensaetze: Unternehmen, Deals, Aufgaben, KI-Analyse-Kurzfassung.
-function RelatedRail({ lead, navigate, refreshKey, analysis, analyzeLoading, onAnalyze, onReanalyze, onUseOutreach, onJumpTab, onEnrich, enrichLoading, enrichCompany, enrichMsg, canEnrich, enrichedAt }) {
-  const railAddBtn = { background:'none', border:'none', cursor:'pointer', color: COLORS.textTertiary, padding:0, display:'inline-flex' };
-  const miniCardStyle = { padding:'10px 12px', borderRadius: 10, border:'1px solid var(--border)', marginTop:8, cursor:'pointer', background:'var(--surface)' };
-  const [deals, setDeals] = useState([]);
-  const [openTasks, setOpenTasks] = useState([]);
+// ─── StatusBand (5 KPIs) ───────────────────────────────
+function StatusBand({ isSmall, score, intent, dealValue, lastContact, phase, nextTask, analyzeLoading, onAnalyze, onOpenTab }) {
+  const bandStyle = isSmall ? { ...statusBandStyle, gridTemplateColumns:'repeat(2, minmax(0,1fr))' } : statusBandStyle;
+  const dealDisplay = dealValue != null ? `${Number(dealValue).toLocaleString('de-DE')} €` : null;
+  return (
+    <div style={bandWrapStyle}>
+      <div style={bandStyle}>
+        {/* KI-Score */}
+        <div style={kpiCellStyle}>
+          <div style={kpiLabelStyle}><Sparkles size={12} /> KI-Score</div>
+          {score != null ? (
+            <div style={{ display:'flex', alignItems:'center', gap:10, minWidth:0 }}>
+              <ScoreGauge value={score} />
+              <div style={kpiSubStyle}>{intent ? `Kaufabsicht: ${intent}` : 'von 100'}</div>
+            </div>
+          ) : (
+            <button type="button" onClick={onAnalyze} disabled={analyzeLoading} style={{ ...kpiLinkStyle, opacity: analyzeLoading ? 0.6 : 1 }}>
+              {analyzeLoading ? 'Analysiere…' : 'Analysieren'}
+            </button>
+          )}
+        </div>
+        {/* Deal-Wert */}
+        <div style={kpiCellStyle}>
+          <div style={kpiLabelStyle}><Banknote size={12} /> Deal-Wert</div>
+          {dealDisplay
+            ? <div style={kpiValueStyle}>{dealDisplay}</div>
+            : <button type="button" onClick={() => onOpenTab('deals')} style={kpiLinkStyle}>+ Deal anlegen</button>}
+        </div>
+        {/* Letzter Kontakt */}
+        <div style={kpiCellStyle}>
+          <div style={kpiLabelStyle}><Clock size={12} /> Letzter Kontakt</div>
+          {lastContact
+            ? <div style={kpiValueStyle}>{formatRelativeDate(lastContact)}</div>
+            : <div style={kpiEmptyStyle}>noch kein Kontakt</div>}
+        </div>
+        {/* Phase */}
+        <div style={kpiCellStyle}>
+          <div style={kpiLabelStyle}><Workflow size={12} /> Phase</div>
+          {phase ? (
+            <div style={{ display:'flex', alignItems:'center', gap:6, minWidth:0 }}>
+              <span style={{ width:8, height:8, borderRadius:'50%', background: DEAL_STAGE_COLORS[phase] || '#94A3B8', flexShrink:0 }} />
+              <span style={kpiValueStyle}>{DEAL_STAGE_LABELS[phase] || phase}</span>
+            </div>
+          ) : <div style={kpiEmptyStyle}>nicht hinterlegt</div>}
+        </div>
+        {/* Nächste Aktion */}
+        <div style={kpiCellStyle}>
+          <div style={kpiLabelStyle}><CalendarCheck size={12} /> Nächste Aktion</div>
+          {nextTask ? (
+            <>
+              <div style={kpiValueStyle} title={nextTask.title}>{nextTask.title}</div>
+              {nextTask.due_date && <div style={kpiSubStyle}>{formatRelativeDate(nextTask.due_date)}</div>}
+            </>
+          ) : (
+            <button type="button" onClick={() => onOpenTab('tasks')} style={kpiLinkStyle}>+ Follow-up planen</button>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
 
-  useEffect(() => {
-    if (!lead.id) return;
-    let cancelled = false;
-    (async () => {
-      const [dRes, tRes] = await Promise.all([
-        supabase.from('deals').select('id, title, value, stage').eq('lead_id', lead.id).order('created_at', { ascending:false }).limit(5),
-        supabase.from('lead_tasks').select('id, title, due_date, task_type').eq('lead_id', lead.id).eq('status', 'open').order('due_date', { ascending:true, nullsFirst:false }).limit(5),
-      ]);
-      if (cancelled) return;
-      if (!dRes.error) setDeals(dRes.data || []);
-      if (!tRes.error) setOpenTasks(tRes.data || []);
-    })();
-    return () => { cancelled = true; };
-  }, [lead.id, refreshKey]);
+// ─── DealBanner (rechte Spalte, über den Tabs) ───────────────────
+function DealBanner({ deals, navigate }) {
+  if (!deals || deals.length === 0) return null;   // Leerzustand: Banner aus
+  const primary = deals[0];
+  const stageCol = DEAL_STAGE_COLORS[primary.stage] || '#94A3B8';
+  const val = primary.value != null ? `${Number(primary.value).toLocaleString('de-DE')} ${primary.currency || '€'}` : null;
+  return (
+    <div style={dealBannerStyle}>
+      <span style={{ width:38, height:38, borderRadius:10, background:'rgba(10,111,176,0.10)', color: COLORS.primary, display:'grid', placeItems:'center', flexShrink:0 }}>
+        <Banknote size={18} />
+      </span>
+      <div style={{ flex:1, minWidth:0 }}>
+        <div style={{ fontSize:14, fontWeight:600, color: COLORS.textPrimary, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{primary.title || 'Deal'}</div>
+        <div style={{ display:'flex', alignItems:'center', gap:8, marginTop:3, flexWrap:'wrap' }}>
+          <span style={{ fontSize:12, fontWeight:600, color: stageCol }}>{DEAL_STAGE_LABELS[primary.stage] || primary.stage || '—'}</span>
+          {val && <><span style={{ color: COLORS.textTertiary }}>·</span><span style={{ fontSize:12, color: COLORS.textSecondary }}>{val}</span></>}
+          {primary.expected_close_date && <><span style={{ color: COLORS.textTertiary }}>·</span><span style={{ fontSize:12, color: COLORS.textTertiary }}>Abschluss {formatRelativeDate(primary.expected_close_date)}</span></>}
+        </div>
+      </div>
+      <button type="button" className="lk-btn lk-btn-ghost" onClick={() => navigate(`/deals?open=${primary.id}`)}>
+        Öffnen{deals.length > 1 ? ` · +${deals.length - 1}` : ''}
+      </button>
+    </div>
+  );
+}
 
-  const score = analysis?.score?.value;
+// ─── FieldRow (Steckbrief-Zeile mit Leerzustand „nicht hinterlegt · + hinzufügen“) ─
+function FieldRow({ icon: Icon, label, value, href, linkText, onAdd }) {
+  return (
+    <div style={fieldRowStyle}>
+      <Icon size={15} color={COLORS.textTertiary} style={{ flexShrink:0 }} />
+      <span style={fieldLabelStyle}>{label}</span>
+      {value ? (
+        href ? (
+          <a href={href} target={/^https?:/i.test(href) ? '_blank' : undefined} rel="noopener noreferrer"
+            style={{ color:'var(--wl-primary, #0A6FB0)', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{linkText || value}</a>
+        ) : (
+          <span style={{ color: COLORS.textPrimary, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{value}</span>
+        )
+      ) : (
+        <span style={{ color: COLORS.textTertiary }}>nicht hinterlegt · <button type="button" onClick={onAdd} style={inlineLinkStyle}>+ hinzufügen</button></span>
+      )}
+    </div>
+  );
+}
+
+// ─── Steckbrief (linke Spalte, konsolidiert) ───────────────────
+function Steckbrief({ lead, owner, onOpenOwnerPicker, onEdit, updateLead }) {
+  const setTags = (next) => updateLead({ tags: Array.isArray(next) ? next : [] });
+  const ownerName = owner ? (`${owner.first_name || ''} ${owner.last_name || ''}`.trim() || null) : null;
+  const liHref = lead.linkedin_url ? (/^https?:\/\//i.test(lead.linkedin_url) ? lead.linkedin_url : `https://${lead.linkedin_url}`) : null;
+  const hasCompanyInfo = lead.industry || lead.company_size || lead.company_website || lead.company_address;
+  return (
+    <div style={railCardStyle}>
+      <div style={railHeadStyle}>
+        <span style={railTitleStyle}>Steckbrief</span>
+        <button type="button" onClick={onEdit} className="lk-btn lk-btn-ghost" style={{ height:26, padding:'0 8px', fontSize:12 }}><Pencil size={12} /> Bearbeiten</button>
+      </div>
+      <div style={{ display:'flex', flexDirection:'column', gap:11 }}>
+        <FieldRow icon={Mail} label="E-Mail" value={lead.email} href={lead.email ? `mailto:${lead.email}` : null} onAdd={onEdit} />
+        <FieldRow icon={Phone} label="Telefon" value={lead.phone} href={lead.phone ? `tel:${(lead.phone||'').replace(/\s/g,'')}` : null} onAdd={onEdit} />
+        <FieldRow icon={IcLinkedin} label="LinkedIn" value={lead.linkedin_url} href={liHref} linkText="Profil öffnen" onAdd={onEdit} />
+        <FieldRow icon={MapPin} label="Ort" value={lead.location} onAdd={onEdit} />
+        <FieldRow icon={Workflow} label="Quelle" value={lead.source} onAdd={onEdit} />
+      </div>
+
+      <div style={stemDividerStyle} />
+      <div onClick={onOpenOwnerPicker} role="button" tabIndex={0}
+        onKeyDown={(e) => { if (e.key === 'Enter') onOpenOwnerPicker(); }} title="Owner ändern"
+        style={{ display:'flex', alignItems:'center', gap:10, cursor:'pointer' }}>
+        {owner
+          ? <LeadAvatar firstName={owner.first_name} lastName={owner.last_name} imageUrl={owner.avatar_url} size="md" />
+          : <div style={emptyOwnerCircleStyle}><Plus size={14} /></div>}
+        <div>
+          <div style={{ fontSize:11, color: COLORS.textTertiary }}>Owner</div>
+          <div style={{ fontSize:13, color: ownerName ? COLORS.textPrimary : COLORS.textTertiary }}>{ownerName || 'Zuweisen'}</div>
+        </div>
+      </div>
+
+      <div style={stemDividerStyle} />
+      <div>
+        <div style={{ fontSize:11, color: COLORS.textTertiary, marginBottom:6 }}>Tags</div>
+        <TagEditor tags={lead.tags || []} onSave={setTags} />
+      </div>
+
+      {hasCompanyInfo && (
+        <>
+          <div style={stemDividerStyle} />
+          <CompanyInfoBlock industry={lead.industry} companySize={lead.company_size} companyWebsite={lead.company_website} companyAddress={lead.company_address} />
+        </>
+      )}
+
+      {/* Anreicherung — nur lesend. Der „↻ Aktualisieren“-Button ist bewusst draußen
+          (Enrichment ist ein separater Neubau-Task, nicht Teil des Cockpit-Umbaus). */}
+      <div style={stemDividerStyle} />
+      <div style={{ display:'flex', alignItems:'center', gap:8, fontSize:12, color: COLORS.textTertiary }}>
+        <IcLinkedin size={14} color={COLORS.textTertiary} />
+        {lead.enriched_at
+          ? <span>Angereichert {new Date(lead.enriched_at).toLocaleDateString('de-DE', { day:'numeric', month:'short', year:'numeric' })}{lead.enrichment_source ? ` · ${lead.enrichment_source}` : ''}</span>
+          : <span>Nicht angereichert</span>}
+      </div>
+    </div>
+  );
+}
+
+// ─── AnalysisCard (KI-Analyse-Detail, unter dem Steckbrief) ──────────
+// Score + Buying-Intent stehen bereits als Gauge im Status-Band — diese Karte
+// zeigt nur die qualitative Analyse (Empfehlung + Begründung) + Aktionen.
+function AnalysisCard({ analysis, analyzeLoading, onReanalyze, onUseOutreach }) {
+  if (!analysis) return null;   // ohne Analyse: Status-Band-KPI übernimmt den „Analysieren“-CTA
   const nextAction = typeof analysis?.next_best_action === 'string'
     ? analysis.next_best_action
     : (analysis?.next_best_action?.text || analysis?.next_best_action?.action || null);
+  const reasoning = Array.isArray(analysis?.score?.reasoning) ? analysis.score.reasoning.slice(0, 3) : [];
   const hasOutreach = !!(analysis?.outreach_draft || analysis?.outreach);
-
   return (
-    <>
-      <div style={railCardStyle}>
-        <div style={railHeadStyle}><Building2 size={14} color={COLORS.textTertiary} /><span style={railTitleStyle}>Unternehmen</span></div>
-        {lead.organization?.id ? (
-          <div style={{ fontSize:13, color:'var(--wl-primary, #0A6FB0)', cursor:'pointer' }}
-            onClick={() => navigate(`/organizations/${lead.organization.id}`)}>{lead.organization.name}</div>
-        ) : lead.company ? (
-          <div style={{ fontSize:13, color: COLORS.textPrimary }}>{lead.company}</div>
-        ) : (
-          <div style={{ fontSize:13, color: COLORS.textTertiary }}>Nicht verknüpft</div>
-        )}
-      </div>
-
-      <div style={railCardStyle}>
-        <div style={railHeadStyle}>
-          <Banknote size={14} color={COLORS.textTertiary} />
-          <span style={railTitleStyle}>Deals{deals.length ? ` (${deals.length})` : ''}</span>
-          <button type="button" style={railAddBtn} onClick={() => onJumpTab('deals')} title="Deals öffnen"><Plus size={14} /></button>
-        </div>
-        {deals.length === 0 ? (
-          <div style={{ fontSize:13, color: COLORS.textTertiary }}>Keine Deals</div>
-        ) : deals.map(d => {
-          const sc = DEAL_STAGE_COLORS[d.stage] || '#94A3B8';
-          return (
-            <div key={d.id} style={miniCardStyle} onClick={() => navigate(`/deals?open=${d.id}`)} title="Deal öffnen">
-              <div style={{ fontSize:12, fontWeight:500, color: COLORS.textPrimary, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{d.title || 'Deal'}</div>
-              <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginTop:3, gap:6 }}>
-                <span style={{ fontSize:11, fontWeight:600, color: sc }}>{DEAL_STAGE_LABELS[d.stage] || d.stage || '—'}</span>
-                {d.value != null && <span style={{ fontSize:11, color: COLORS.textSecondary }}>{Number(d.value).toLocaleString('de-DE')} €</span>}
-              </div>
-            </div>
-          );
-        })}
-      </div>
-
-      <div style={railCardStyle}>
-        <div style={railHeadStyle}>
-          <CalendarCheck size={14} color={COLORS.textTertiary} />
-          <span style={railTitleStyle}>Offene Aufgaben{openTasks.length ? ` (${openTasks.length})` : ''}</span>
-          <button type="button" style={railAddBtn} onClick={() => onJumpTab('tasks')} title="Aufgaben öffnen"><Plus size={14} /></button>
-        </div>
-        {openTasks.length === 0 ? (
-          <div style={{ fontSize:13, color: COLORS.textTertiary }}>Keine offenen Aufgaben</div>
-        ) : openTasks.map(t => {
-          const tt = TASK_TYPE_CFG[t.task_type] || TASK_TYPE_CFG.aufgabe;
-          return (
-            <div key={t.id} style={{ ...miniCardStyle, display:'flex', alignItems:'center', gap:8 }} onClick={() => onJumpTab('tasks')}>
-              <span style={{ flexShrink:0 }}>{tt.icon}</span>
-              <div style={{ flex:1, minWidth:0 }}>
-                <div style={{ fontSize:12, color: COLORS.textPrimary, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{t.title}</div>
-                {t.due_date && <div style={{ fontSize:11, color: COLORS.textTertiary }}>{formatRelativeDate(t.due_date)}</div>}
-              </div>
-            </div>
-          );
-        })}
-      </div>
-
-      <div style={railCardStyle}>
-        <div style={railHeadStyle}><Sparkles size={14} color={COLORS.textTertiary} /><span style={railTitleStyle}>KI-Analyse</span></div>
-        {analysis ? (
-          <>
-            {score != null && (<><div style={propLabelStyle}>Score</div><div style={propValueStyle}>{score} / 100</div></>)}
-            {lead.ai_buying_intent && (<><div style={propLabelStyle}>Buying-Intent</div><div style={propValueStyle}>{lead.ai_buying_intent}</div></>)}
-            {nextAction && (<><div style={propLabelStyle}>Nächste Aktion</div><div style={propValueStyle}>{nextAction}</div></>)}
-            <div style={{ display:'flex', gap:6, marginTop:12 }}>
-              <button type="button" onClick={onReanalyze} disabled={analyzeLoading}
-                className="lk-btn lk-btn-ghost" style={{ flex:1, justifyContent:'center', opacity: analyzeLoading ? 0.6 : 1 }}>
-                <Sparkles size={13} /> {analyzeLoading ? '…' : 'Neu'}
-              </button>
-              {hasOutreach && onUseOutreach && (
-                <button type="button" onClick={onUseOutreach}
-                  className="lk-btn lk-btn-ghost" style={{ flex:1, justifyContent:'center' }}>
-                  <Send size={13} /> Entwurf
-                </button>
-              )}
-            </div>
-          </>
-        ) : (
-          <button type="button" onClick={onAnalyze} disabled={analyzeLoading}
-            className="lk-btn lk-btn-ghost" style={{ width:'100%', justifyContent:'center', opacity: analyzeLoading ? 0.6 : 1 }}>
-            <Sparkles size={14} /> {analyzeLoading ? 'Analysiere…' : 'Analysieren'}
+    <div style={railCardStyle}>
+      <div style={railHeadStyle}><Sparkles size={14} color={COLORS.textTertiary} /><span style={railTitleStyle}>KI-Analyse</span></div>
+      {nextAction && (<><div style={propLabelStyle}>Empfehlung</div><div style={propValueStyle}>{nextAction}</div></>)}
+      {reasoning.length > 0 && (
+        <>
+          <div style={propLabelStyle}>Begründung</div>
+          <ul style={{ margin:'2px 0 0', paddingLeft:16, fontSize:13, color: COLORS.textSecondary, lineHeight:1.5 }}>
+            {reasoning.map((rz, i) => <li key={i}>{rz}</li>)}
+          </ul>
+        </>
+      )}
+      <div style={{ display:'flex', gap:6, marginTop:12 }}>
+        <button type="button" onClick={onReanalyze} disabled={analyzeLoading}
+          className="lk-btn lk-btn-ghost" style={{ flex:1, justifyContent:'center', opacity: analyzeLoading ? 0.6 : 1 }}>
+          <Sparkles size={13} /> {analyzeLoading ? '…' : 'Neu'}
+        </button>
+        {hasOutreach && onUseOutreach && (
+          <button type="button" onClick={onUseOutreach} className="lk-btn lk-btn-ghost" style={{ flex:1, justifyContent:'center' }}>
+            <Send size={13} /> Entwurf
           </button>
         )}
       </div>
-
-      {/* ─── F6 LinkedIn-Anreicherung ─────────────────────────────────── */}
-      <div style={railCardStyle}>
-        <div style={railHeadStyle}><IcLinkedin size={14} color={COLORS.textTertiary} /><span style={railTitleStyle}>LinkedIn-Anreicherung</span></div>
-
-        {enrichedAt && (
-          <div style={{ fontSize:11, color: COLORS.textTertiary, marginBottom:10 }}>
-            zuletzt angereichert: {new Date(enrichedAt).toLocaleString('de-DE')}
-          </div>
-        )}
-
-        {enrichMsg && (
-          <div style={{
-            display:'flex', alignItems:'center', gap:8, marginBottom:10, padding:'8px 10px', borderRadius: RADIUS.md, fontSize:12, fontWeight:500,
-            background: enrichMsg.type === 'error' ? '#FEF2F2' : '#F0FDF4',
-            color:      enrichMsg.type === 'error' ? '#B91C1C' : '#15803D',
-            border: `0.5px solid ${enrichMsg.type === 'error' ? '#FECACA' : '#BBF7D0'}`,
-          }}>
-            {enrichMsg.type === 'error' ? <AlertCircle size={14} /> : <CheckCircle2 size={14} />}
-            <span style={{ flex:1 }}>{enrichMsg.text}</span>
-            {enrichMsg.action && (
-              <button type="button" onClick={() => navigate(enrichMsg.action.to)}
-                className="lk-btn lk-btn-ghost" style={{ height:24, padding:'0 8px', fontSize:11 }}>
-                {enrichMsg.action.label}
-              </button>
-            )}
-          </div>
-        )}
-
-        {canEnrich ? (
-          <button type="button" onClick={onEnrich} disabled={enrichLoading}
-            className="lk-btn lk-btn-ghost" style={{ width:'100%', justifyContent:'center', opacity: enrichLoading ? 0.6 : 1 }}>
-            {enrichLoading ? <Loader2 size={14} className="lk-spin" /> : <IcLinkedin size={14} />}
-            {enrichLoading ? 'Reichere an…' : 'Mit LinkedIn anreichern'}
-          </button>
-        ) : (
-          <div style={{ fontSize:12, color: COLORS.textTertiary }}>Keine LinkedIn-URL hinterlegt.</div>
-        )}
-
-        {enrichCompany && (
-          <div style={{ marginTop:12, paddingTop:12, borderTop:`0.5px solid ${COLORS.borderSubtle}` }}>
-            <div style={{ fontSize:12, fontWeight:600, color: COLORS.textPrimary, marginBottom:2 }}>
-              {enrichCompany.name || 'Unternehmen'}
-            </div>
-            {enrichCompany.industry && (<><div style={propLabelStyle}>Branche</div><div style={propValueStyle}>{enrichCompany.industry}</div></>)}
-            {enrichCompany.employee_count != null && (<><div style={propLabelStyle}>Mitarbeiter</div><div style={propValueStyle}>{Number(enrichCompany.employee_count).toLocaleString('de-DE')}</div></>)}
-            {(enrichCompany.hq_location || enrichCompany.headquarters) && (<><div style={propLabelStyle}>Hauptsitz</div><div style={propValueStyle}>{enrichCompany.hq_location || enrichCompany.headquarters}</div></>)}
-            {enrichCompany.website && (
-              <>
-                <div style={propLabelStyle}>Website</div>
-                <div style={propValueStyle}>
-                  <a href={enrichCompany.website} target="_blank" rel="noopener noreferrer"
-                    style={{ color:'var(--wl-primary, rgb(49,90,231))', display:'inline-flex', alignItems:'center', gap:4 }}>
-                    {enrichCompany.website} <ExternalLink size={12} />
-                  </a>
-                </div>
-              </>
-            )}
-            {enrichCompany.description && (<><div style={propLabelStyle}>Über</div><div style={propValueStyle}>{enrichCompany.description}</div></>)}
-            <div style={{ fontSize:11, color: COLORS.textTertiary, marginTop:10 }}>
-              Hinweis: Mitarbeiterzahl und Hauptsitz werden nur hier angezeigt und nach einem Reload nicht gespeichert.
-            </div>
-          </div>
-        )}
-      </div>
-    </>
+    </div>
   );
 }
 
@@ -1025,6 +1051,7 @@ function ActivityTab({ leadId, leadTeamId, lead, initialDraft, onDraftConsumed }
   const { items, profilesById, isLoading, error: feedError, refetch } = useLeadActivities(leadId);
   const [adding, setAdding] = useState(false);
   const [newType, setNewType] = useState('note');
+  const [filter, setFilter] = useState('all');
   const [newSubject, setNewSubject] = useState('');
   const [localErr, setLocalErr] = useState(null);
 
@@ -1066,7 +1093,11 @@ function ActivityTab({ leadId, leadTeamId, lead, initialDraft, onDraftConsumed }
   };
 
   const err = localErr || (feedError ? feedError.message : null);
-  const grouped = useMemo(() => groupByDay(items, 'timestamp'), [items]);
+  const filteredItems = useMemo(
+    () => (filter === 'all' ? items : items.filter((it) => activityCategory(it) === filter)),
+    [items, filter],
+  );
+  const grouped = useMemo(() => groupByDay(filteredItems, 'timestamp'), [filteredItems]);
 
   const submit = async () => {
     if (!newSubject.trim()) return;
@@ -1146,6 +1177,20 @@ function ActivityTab({ leadId, leadTeamId, lead, initialDraft, onDraftConsumed }
       {!isLoading && items.length === 0 && (
         <div style={{ padding:'32px 0', textAlign:'center', color: COLORS.textTertiary, fontSize:13 }}>
           Noch keine Aktivitäten. Häng oben eine an.
+        </div>
+      )}
+
+      {items.length > 0 && (
+        <div style={{ display:'flex', gap:8, marginBottom:14, flexWrap:'wrap' }}>
+          {ACTIVITY_FILTERS.map((f) => (
+            <button key={f.id} type="button" onClick={() => setFilter(f.id)}
+              style={filter === f.id ? filterChipActiveStyle : filterChipStyle}>{f.label}</button>
+          ))}
+        </div>
+      )}
+      {items.length > 0 && grouped.length === 0 && (
+        <div style={{ padding:'20px 0', textAlign:'center', color: COLORS.textTertiary, fontSize:13 }}>
+          Keine Einträge in dieser Kategorie.
         </div>
       )}
 
