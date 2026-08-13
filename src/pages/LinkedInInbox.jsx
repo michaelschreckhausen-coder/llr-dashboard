@@ -115,10 +115,38 @@ export default function LinkedInInbox() {
     setImportErr(null)
     if (!okAccount) { setImportErr('Für die aktive Marke ist kein LinkedIn-Profil verbunden — oben Marke wählen bzw. verbinden.'); return }
     if (!impUrl.trim()) { setImportErr('Bitte eine Sales-Navigator-Such-URL eingeben.'); return }
+    const url = impUrl.trim()
     setImporting(true)
-    let listId = null
-    let createdListId = null   // nur die HIER neu angelegte Liste → bei Fehler zurückrollen
+    // Gemeinsame EF-Fehlerbehandlung (Preview + Import): Permission/Session → zentraler Mapper, sonst friendly.
+    const handleEfError = async (data, error) => {
+      let body = data?.error ? data : null
+      if (!body && error) { try { body = await error.context?.json?.() } catch { /* konsumiert / kein JSON */ } }
+      if (error && (error.context?.status === 401 || error.context?.status === 403 || body?.error === 'need_permission')) {
+        const m = await mapEfError(error); setImportErr(m.text)
+      } else { setImportErr(friendlyImportError(body, error)) }
+    }
     try {
+      // D2 — Preview: Trefferzahl OHNE Schreiben holen. Fängt 35-vs-1000, BEVOR irgendetwas geschrieben wird.
+      const { data: prev, error: prevErr } = await supabase.functions.invoke('import-unipile-salesnav', {
+        body: { unipile_account_id: okAccount, search: { url }, mode: 'preview' },
+      })
+      if (prevErr || prev?.error) { await handleEfError(prev, prevErr); setImporting(false); return }
+      const count = prev?.count || 0
+      const moreAvail = !!prev?.more_available
+      if (count === 0) { setImportErr('Diese Suche liefert keine Treffer — Filter/URL prüfen.'); setImporting(false); return }
+      // Guard-Schwelle: legitime kleine Importe laufen ohne Nachfrage; ab ~200 oder „mehr verfügbar" bestätigen.
+      const CONFIRM_THRESHOLD = 200
+      if (count >= CONFIRM_THRESHOLD || moreAvail) {
+        const label = moreAvail ? `mindestens ${count}` : `${count}`
+        const ok = window.confirm(
+          `Diese Suche liefert ${label} Treffer${moreAvail ? ' (mehr verfügbar)' : ''}. Wirklich importieren?` +
+          (moreAvail ? '\n\nHinweis: sehr breit — es werden höchstens 500 importiert. Verfeinere ggf. Position/Firmengröße in der Sales-Navigator-Suche.' : '')
+        )
+        if (!ok) { setImporting(false); return }
+      }
+      // Ziel-Liste erst NACH der Bestätigung anlegen (keine leere Liste bei Abbruch).
+      let listId = null
+      let createdListId = null   // nur die HIER neu angelegte Liste → bei Fehler zurückrollen
       if (impListMode === 'new') {
         const name = impNewList.trim()
         if (!name) { setImportErr('Bitte einen Namen für die neue Liste eingeben.'); setImporting(false); return }
@@ -135,21 +163,16 @@ export default function LinkedInInbox() {
         listId = impListMode
       }
       const { data, error } = await supabase.functions.invoke('import-unipile-salesnav', {
-        body: { unipile_account_id: okAccount, search: { url: impUrl.trim() }, ...(listId ? { inbox_list_id: listId } : {}) },
+        body: { unipile_account_id: okAccount, search: { url }, ...(listId ? { inbox_list_id: listId } : {}) },
       })
       if (error || data?.error) {
         if (createdListId) { await supabase.from('inbox_lists').delete().eq('id', createdListId) } // leere Liste zurückrollen
-        let body = data?.error ? data : null
-        if (!body && error) { try { body = await error.context?.json?.() } catch { /* konsumiert / kein JSON */ } }
-        // P3: Permission-/Session-Gate über den zentralen Mapper (reaktives Netz zum proaktiven Disable).
-        if (error && (error.context?.status === 401 || error.context?.status === 403 || body?.error === 'need_permission')) {
-          const m = await mapEfError(error); setImportErr(m.text); setImporting(false); return
-        }
-        setImportErr(friendlyImportError(body, error)); setImporting(false); return
+        await handleEfError(data, error); setImporting(false); return
       }
       const n = (data?.inserted || 0) + (data?.updated || 0)
+      const trunc = data?.truncated ? ` (auf ${n} begrenzt — mehr verfügbar, Suche verfeinern)` : ''
       setImporting(false); setImportOpen(false); setImpUrl(''); setImpListMode('none'); setImpNewList('')
-      setMsg({ text: `${n} Kontakt${n === 1 ? '' : 'e'} importiert${listId ? ' + der Liste zugeordnet' : ''}.` })
+      setMsg({ text: `${n} Kontakt${n === 1 ? '' : 'e'} importiert${listId ? ' + der Liste zugeordnet' : ''}${trunc}.` })
       load()
     } catch (e) { setImportErr('Import fehlgeschlagen: ' + (e?.message || e)); setImporting(false) }
   }
