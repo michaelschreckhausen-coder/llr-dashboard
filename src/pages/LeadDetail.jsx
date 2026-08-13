@@ -133,6 +133,18 @@ function activityCategory(item) {
   return 'activities';
 }
 
+// Scheibe 3: RLS-/Permission-Fehler beim Schreiben in eine klare Meldung übersetzen,
+// statt den rohen Postgres-String zu zeigen. Häufigster Fall: team-loser Solo-Lead →
+// crm_is_team_member(NULL) false → activities/contact_notes-INSERT geblockt.
+function friendlyWriteError(error) {
+  if (!error) return null;
+  const msg = error.message || '';
+  if (error.code === '42501' || /row-level security|permission denied|violates row-level/i.test(msg)) {
+    return 'Nicht möglich für diesen Kontakt — er ist keinem Team zugeordnet, in dem du schreiben darfst.';
+  }
+  return msg;
+}
+
 // Activity-Type → Icon + Farben
 const ACTIVITY_VARIANTS = {
   meeting:          { bg:'#EAF3DE', fg:'#3B6D11', Icon: CalendarCheck, label:'Meeting' },
@@ -352,13 +364,17 @@ export default function LeadDetail({ lead: leadProp }) {
     (async () => {
       const [dRes, aRes, tRes] = await Promise.all([
         supabase.from('deals').select('id, title, value, currency, stage, expected_close_date, created_at').eq('lead_id', id).order('created_at', { ascending: false }),
-        supabase.from('lead_activity_feed').select('timestamp').eq('lead_id', id).neq('source', 'field_history').order('timestamp', { ascending: false }).limit(1),
+        supabase.from('lead_activity_feed').select('source, type, timestamp').eq('lead_id', id).neq('source', 'field_history').neq('source', 'task').order('timestamp', { ascending: false }).limit(10),
         supabase.from('lead_tasks').select('id, title, due_date').eq('lead_id', id).eq('status', 'open').order('due_date', { ascending: true, nullsFirst: false }).limit(1),
       ]);
       if (cancelled) return;
+      // „Letzter Kontakt" = neueste ECHTE Kommunikation. task-/field_history-Events und
+      // interne Notizen zählen nicht (ein Follow-up planen ist kein Kontakt mit dem Lead).
+      const lastContact = aRes.error ? null
+        : ((aRes.data || []).find((r) => r.source !== 'field_history' && r.source !== 'task' && r.type !== 'note')?.timestamp || null);
       setBandData({
         deals: dRes.error ? [] : (dRes.data || []),
-        lastContact: aRes.error ? null : (aRes.data?.[0]?.timestamp || null),
+        lastContact,
         nextTask: tRes.error ? null : (tRes.data?.[0] || null),
       });
     })();
@@ -1154,7 +1170,7 @@ function ActivityTab({ leadId, leadTeamId, lead, initialDraft, onDraftConsumed }
       ...(leadTeamId ? { team_id: leadTeamId } : {}),
     });
     setComposing(false);
-    if (sendErr) { setLocalErr(sendErr.message); return; }
+    if (sendErr) { setLocalErr(friendlyWriteError(sendErr)); return; }
     setMsgBody('');
     refetch();
   };
@@ -1190,7 +1206,7 @@ function ActivityTab({ leadId, leadTeamId, lead, initialDraft, onDraftConsumed }
       ...(leadTeamId ? { team_id: leadTeamId } : {}),
     });
     setAdding(false);
-    if (insertError) { setLocalErr(insertError.message); return; }
+    if (insertError) { setLocalErr(friendlyWriteError(insertError)); return; }
     setNewSubject('');
     refetch();
   };
@@ -1401,7 +1417,7 @@ function NotesTab({ leadId, leadTeamId }) {
     };
     const { error } = await supabase.from('contact_notes').insert(payload);
     setAdding(false);
-    if (error) { setErr(error.message); return; }
+    if (error) { setErr(friendlyWriteError(error)); return; }
     setBody('');
     setIsPrivate(false);
     load();
