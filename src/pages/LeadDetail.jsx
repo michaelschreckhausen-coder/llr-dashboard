@@ -577,7 +577,7 @@ export default function LeadDetail({ lead: leadProp }) {
       <div style={heroStyle}>
         <div style={heroFlexStyle}>
           <div style={{ display:'flex', alignItems:'center', gap:14, flex:1, minWidth:0 }}>
-            <LeadAvatar firstName={lead.first_name} lastName={lead.last_name} size="xl" />
+            <LeadAvatar firstName={lead.first_name} lastName={lead.last_name} imageUrl={lead.avatar_url} size="xl" />
             <div style={{ minWidth: 0, flex: 1 }}>
               {/* Read-only Display — Edit erfolgt jetzt über LeadEditModal (Click auf 'Bearbeiten').
                   Status ist ein Dropdown (LeadStatusPill + StatusPicker) direkt neben dem Namen,
@@ -756,6 +756,20 @@ function SummaryRail({ lead, owner, navigate, onOpenOwnerPicker, updateLead }) {
   const dealValueDisplay = lead.deal_value != null
     ? `${Number(lead.deal_value).toLocaleString('de-DE')} €` : null;
   const ownerName = owner ? (`${owner.first_name || ''} ${owner.last_name || ''}`.trim() || '—') : null;
+
+  // Deal-Wert-Entdopplung: existiert eine moderne deals-Row, zeigt das Deals-Rail
+  // (RelatedRail) den Wert — die Legacy-KPI hier wird dann ausgeblendet. Nur-Existenz-
+  // Check (limit 1), kein Wert-Fetch. leads.deal_value bleibt Fallback für Altbestände.
+  const [hasDeal, setHasDeal] = useState(false);
+  useEffect(() => {
+    if (!lead.id) return;
+    let cancelled = false;
+    (async () => {
+      const { data, error } = await supabase.from('deals').select('id').eq('lead_id', lead.id).limit(1);
+      if (!cancelled && !error) setHasDeal((data || []).length > 0);
+    })();
+    return () => { cancelled = true; };
+  }, [lead.id]);
   return (
     <>
       <div style={railCardStyle}>
@@ -788,14 +802,19 @@ function SummaryRail({ lead, owner, navigate, onOpenOwnerPicker, updateLead }) {
 
       <div style={railCardStyle}>
         <div style={railHeadStyle}><span style={railTitleStyle}>Kennzahlen</span></div>
-        <div style={propLabelStyle}>Score (KI)</div>
-        <div style={propValueStyle}>{lead.lead_score != null && lead.lead_score !== '' ? lead.lead_score : '—'}</div>
         <div style={propLabelStyle}>Nächste Aktion</div>
         <div style={{ ...propValueStyle, color: lead.next_followup ? '#854F0B' : COLORS.textTertiary }}>
           {lead.next_followup ? formatRelativeDate(lead.next_followup) : '—'}
         </div>
-        <div style={propLabelStyle}>Deal-Wert</div>
-        <div style={propValueStyle}>{dealValueDisplay || '—'}</div>
+        {/* Deal-Wert nur als Legacy-Fallback: sobald eine moderne deals-Row existiert,
+            zeigt das Deals-Rail (rechts) den Wert — hier ausblenden, sonst doppelt.
+            Ohne deals-Row bleibt leads.deal_value (Altbestand) die einzige Quelle. */}
+        {!hasDeal && (
+          <>
+            <div style={propLabelStyle}>Deal-Wert</div>
+            <div style={propValueStyle}>{dealValueDisplay || '—'}</div>
+          </>
+        )}
       </div>
 
       {(lead.industry || lead.company_size || lead.company_website || lead.company_address) && (
