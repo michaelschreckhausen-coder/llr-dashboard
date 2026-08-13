@@ -7,6 +7,7 @@
 // user_id kommt aus dem JWT (Härtung).
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { requireSeat } from "../_shared/permissions.ts";
+import * as jose from "https://esm.sh/jose@5.9.6";
 
 const UNIPILE_DSN = Deno.env.get("UNIPILE_DSN")!;
 const UNIPILE_KEY = Deno.env.get("UNIPILE_API_KEY")!;
@@ -14,6 +15,7 @@ const WEBHOOK_SECRET = Deno.env.get("UNIPILE_WEBHOOK_SECRET")!;
 const SB_URL = Deno.env.get("SUPABASE_URL")!;
 const SB_ANON = Deno.env.get("SUPABASE_ANON_KEY")!;
 const SB_SERVICE = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
+const JWT_SECRET = Deno.env.get("JWT_SECRET")!;
 const SB_PUBLIC = Deno.env.get("SUPABASE_PUBLIC_URL") || "https://supabase-staging.leadesk.de";
 const U = `https://${UNIPILE_DSN}/api/v1`;
 const uHeaders = { "X-API-KEY": UNIPILE_KEY, "accept": "application/json", "content-type": "application/json" };
@@ -27,9 +29,19 @@ Deno.serve(async (req) => {
 
   const authHeader = req.headers.get("Authorization") ?? "";
   const userClient = createClient(SB_URL, SB_ANON, { global: { headers: { Authorization: authHeader } }, auth: { persistSession: false } });
+  // Normale User: GoTrue getUser. Support-Impersonation: GoTrue lehnt das self-signed
+  // Token ab (session_id -> session_not_found), daher lokale JWT-Verifikation als Fallback.
+  let userId: string | null = null;
   const { data: { user } } = await userClient.auth.getUser();
-  if (!user) return json({ error: "unauthorized" }, 401);
-  const userId = user.id;
+  if (user) userId = user.id;
+  else {
+    try {
+      const tok = authHeader.startsWith("Bearer ") ? authHeader.slice(7) : "";
+      const { payload } = await jose.jwtVerify(tok, new TextEncoder().encode(JWT_SECRET));
+      if ((payload.app_metadata as any)?.is_impersonation === true && payload.sub) userId = String(payload.sub);
+    } catch { /* invalid token */ }
+  }
+  if (!userId) return json({ error: "unauthorized" }, 401);
 
   // P3 #1: Connect = Seat-Besitz (member-basiert, B1). GANZ OBEN → deckt auch den reconcile-Branch. Kill-Switch via gate_open('connect').
   const seatDenied = await requireSeat(userClient);
@@ -107,7 +119,7 @@ Deno.serve(async (req) => {
     }
     const canAdd = (Number(connected ?? 0) < included) || addonActive;
     if (!canAdd) {
-      return json({ blocked: true, reason: "allowance", message: "Verknüpfungs-Limit deiner Lizenz erreicht — bitte im Marketplace eine weitere Account-Verknüpfung (Automatisierung) zubuchen." }, 402);
+      return json({ blocked: true, reason: "allowance", message: "Verknüpfungs-Limit deiner Lizenz erreicht — bitte im Marketplace eine weitere Account-Verknüpfung (Automatisierung) zubuchen." }, 200); // 200 statt 402: FE zeigt Limit-Modal statt rohem non-2xx-Fehler
     }
   }
 
