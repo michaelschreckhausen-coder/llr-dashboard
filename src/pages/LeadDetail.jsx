@@ -10,6 +10,7 @@
 //   deals         (id, title, value, currency, stage, lead_id, created_at, ...)
 
 import PillSelect from '../components/PillSelect'
+import { useBrandVoice } from '../context/BrandVoiceContext'
 import { useState, useCallback, useMemo, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import {
@@ -262,6 +263,7 @@ export default function LeadDetail({ lead: leadProp }) {
   const params = useParams();
   const navigate = useNavigate();
   const { isSmall } = useResponsive(); // <1100px → Spalten stapeln
+  const { activeBrandVoice } = useBrandVoice();
   const [activeTab, setActiveTab] = useState('activity');
   // Bump-Signal: Center-Tabs (Tasks/Deals) melden Mutationen, damit die rechte
   // RelatedRail live refetcht (statt manuellem Reload).
@@ -451,7 +453,7 @@ export default function LeadDetail({ lead: leadProp }) {
     setEnrichMsg(null);
     try {
       const { data, error: invokeErr } = await supabase.functions.invoke('unipile-enrich', {
-        body: { lead_id: lead.id },
+        body: { lead_id: lead.id, brand_voice_id: activeBrandVoice?.id || null },
       });
       if (invokeErr) {
         // P3 Schritt 4: zentraler EF-Status→Mensch-Mapper (403→Upgrade, 401→Sitzung, 409→keine
