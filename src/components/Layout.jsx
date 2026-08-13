@@ -123,18 +123,18 @@ function getNav(t) {
   { divider: true, label: 'LinkedIn', tourId: 'nav-linkedin' },
   // LinkedIn: Profil & Netzwerk als Ueber-Pfade aufgeloest -> Seiten direkt unter LinkedIn.
   // Profil-Checker in Analyse verschoben. Nur Analyse bleibt Unter-Dropdown (2. Ebene).
-  { to: '/profiltexte',         icon: IcLinkedIn, label: t('nav.profiltexte') },
   { to: '/linkedin-suche',      icon: IcSearch,   label: 'Suche' },
   { to: '/linkedin-inbox',      icon: IcInbox,    label: 'Kontakte' },
   { to: '/automatisierung-neu', icon: IcCog,      label: 'Automatisierung' },
   { to: '/messages',            icon: IcMail,     label: 'Kommunikation' },
   { to: '/linkedin-engagement', icon: IcZap,      label: 'Engagement' },
 
-  { subSection: true, label: 'Analyse', items: [
+  { subSection: true, label: 'Analyse & Optimierung', items: [
     { to: '/linkedin-analytics',    icon: IcBarChart,    label: 'Content' },
     { to: '/profil-analyse',        icon: IcTarget,      label: 'Profil & SSI' },
     { to: '/netzwerk-analytics',    icon: IcUsers,       label: 'Netzwerk & Dialog' },
     { to: '/profil-checker',        icon: IcCheckCircle, label: 'Profil-Checker' },
+    { to: '/profiltexte',           icon: IcLinkedIn,     label: t('nav.profiltexte') },
   ] },
 
   // Instagram + Sponsoring: nur Staging (auf Prod noch nicht fertig â 22.07.2026 Julian)
