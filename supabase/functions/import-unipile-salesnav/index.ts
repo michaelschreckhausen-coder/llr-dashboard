@@ -3,7 +3,14 @@
 // (=linkedin_url) INLINE → sales_nav_upsert_inbox(source='unipile_salesnav'). Löst die Sales-Nav-URL-Lücke
 // am Ursprung (der Auslöser des Sprints). provider_id (ACoAA) kommt hier NICHT mit — Runner löst über die
 // URL auf (getProfile), Fix A; die URL reicht für Filter-Match + Automatisierung.
-// Import gegatet auf linkedin.sales_nav (P3; war frei bis 2026-07-07). Input: { unipile_account_id, search, max_pages? }.
+// Import gegatet auf linkedin.sales_nav (P3; war frei bis 2026-07-07). Input: { unipile_account_id, search, max_pages?, inbox_list_id?, mode? }.
+//
+// HÄRTUNG (Overfetch-Fix 2026-08-13): das Sicherheits-Gerüst des job-basierten sales-nav-import
+// in den Unipile-Pfad gezogen — ein Mechanismus, aber nicht mehr cap-/blind:
+//   - mode:'preview' → Trefferzahl OHNE Schreiben (D2: Frontend fragt „N Treffer — importieren?").
+//   - Job-Row (sales_nav_import_jobs) mit source_url = gepastete URL → Observability + persistiert die
+//     URL (schließt den Diagnose-Blindfleck) + erscheint im bestehenden Job-Monitor. team/brand aus JWT.
+//   - Harter Cap IMPORT_MAX_PAGES (500 statt 1000) + truncated:true bei Ceiling-Hit (D1) → ehrlich statt still.
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { requireBrandLinkedinScope, teamHasPermission } from "../_shared/permissions.ts";
 
@@ -17,17 +24,25 @@ const U = `https://${UNIPILE_DSN}/api/v1`;
 const db = createClient(SB_URL, SB_SERVICE, { auth: { persistSession: false } });
 
 const PAGE = 50;
-const DEFAULT_MAX_PAGES = 20; // gezielte Suche → weniger Seiten als Relations
+const IMPORT_MAX_PAGES = 10; // harte Obergrenze 500 (vorher 20 = 1000) — Overfetch-Guard (D1)
+const PREVIEW_MAX_PAGES = 6; // Preview zählt bis 300, dann „mehr verfügbar" (D2), ohne zu schreiben
 
 function json(o: unknown, status = 200) {
   return new Response(JSON.stringify(o), { status, headers: { "content-type": "application/json" } });
 }
 
+const UNIPILE_HEADERS = { "X-API-KEY": UNIPILE_KEY, "accept": "application/json", "content-type": "application/json" };
+function searchUrl(accountId: string, cursor: string | null): string {
+  return `${U}/linkedin/search?account_id=${encodeURIComponent(accountId)}&limit=${PAGE}`
+    + (cursor ? `&cursor=${encodeURIComponent(cursor)}` : "");
+}
+
 Deno.serve(async (req) => {
-  const { unipile_account_id, search, max_pages, inbox_list_id } = await req.json().catch(() => ({} as any));
+  const { unipile_account_id, search, max_pages, inbox_list_id, mode } = await req.json().catch(() => ({} as any));
   if (!unipile_account_id) return json({ error: "unipile_account_id required" }, 400);
   if (!search || typeof search !== "object") return json({ error: "search (sales_navigator params) required" }, 400);
-  const maxPages = Math.min(Number(max_pages) || DEFAULT_MAX_PAGES, DEFAULT_MAX_PAGES);
+  const isPreview = mode === "preview";
+  const maxPages = isPreview ? PREVIEW_MAX_PAGES : Math.min(Number(max_pages) || IMPORT_MAX_PAGES, IMPORT_MAX_PAGES);
 
   // Caller aus dem JWT ableiten (IMMER) — er bestimmt das Ziel-Team des User-initiierten Imports,
   // NICHT acct.team_id (das Unipile-Account-Team kann ein anderes sein → cross-team-Orphan).
@@ -83,22 +98,54 @@ Deno.serve(async (req) => {
   }
 
   const searchBody = { ...search, api: "sales_navigator" };
+
+  // ── PREVIEW (D2): Trefferzahl OHNE Schreiben/Job-Row, geboundet auf PREVIEW_MAX_PAGES.
+  // Läuft NACH allen Auth-/Scope-/Permission-Checks (man darf nur previewen, was man importieren dürfte).
+  if (isPreview) {
+    let cursor: string | null = null, pages = 0, count = 0;
+    do {
+      const r: Response = await fetch(searchUrl(unipile_account_id, cursor), { method: "POST", headers: UNIPILE_HEADERS, body: JSON.stringify(searchBody) });
+      if (!r.ok) {
+        const txt = await r.text();
+        let unipile_type: string | null = null;
+        try { unipile_type = JSON.parse(txt)?.type ?? null; } catch { /* nicht-JSON */ }
+        return json({ error: "unipile_search_failed", unipile_status: r.status, unipile_type, detail: txt.slice(0, 200) }, 502);
+      }
+      const body: any = await r.json();
+      count += (body.items ?? []).length;
+      cursor = body.cursor ?? null;
+      pages++;
+    } while (cursor && pages < PREVIEW_MAX_PAGES);
+    // exhausted=true → count ist exakt; sonst „mindestens count, mehr verfügbar" (Frontend triggert Confirm).
+    return json({ preview: true, count, exhausted: !cursor, more_available: !!cursor });
+  }
+
+  // ── IMPORT: Job-Row anlegen (Observability + persistiert source_url für künftige Diagnose).
+  // team_id/user_id/brand_voice_id aus dem JWT-Kontext (oben aufgelöst), NICHT geraten → keine Fremd-Zuordnung.
+  const { data: jobRow } = await db.from("sales_nav_import_jobs").insert({
+    team_id: teamId, user_id: userId, brand_voice_id: brandId,
+    source_type: "unipile_salesnav",
+    source_url: (typeof (search as any).url === "string" ? (search as any).url : null),
+    status: "running", total_leads: 0,
+  }).select("id").maybeSingle();
+  const jobId: string | null = jobRow?.id ?? null;
+
   let cursor: string | null = null;
   let pages = 0, inserted = 0, updated = 0, failed = 0, seen = 0;
   const importedIds: string[] = []; // inbox-Row-ids der importierten Kontakte (für Teil 2: Listen-Zuordnung)
   do {
-    const url: string = `${U}/linkedin/search?account_id=${encodeURIComponent(unipile_account_id)}&limit=${PAGE}`
-      + (cursor ? `&cursor=${encodeURIComponent(cursor)}` : "");
-    const r: Response = await fetch(url, {
-      method: "POST",
-      headers: { "X-API-KEY": UNIPILE_KEY, "accept": "application/json", "content-type": "application/json" },
-      body: JSON.stringify(searchBody),
-    });
+    const r: Response = await fetch(searchUrl(unipile_account_id, cursor), { method: "POST", headers: UNIPILE_HEADERS, body: JSON.stringify(searchBody) });
     if (!r.ok) {
       const txt = await r.text();
       let unipile_type: string | null = null;
       try { unipile_type = JSON.parse(txt)?.type ?? null; } catch { /* nicht-JSON */ }
-      return json({ error: "unipile_search_failed", unipile_status: r.status, unipile_type, detail: txt.slice(0, 200), pages, inserted, updated, failed }, 502);
+      if (jobId) {
+        await db.from("sales_nav_import_jobs").update({
+          status: "error", error_message: `unipile ${r.status}: ${txt.slice(0, 120)}`,
+          processed_leads: inserted + updated, failed_leads: failed, current_offset: seen, updated_at: new Date().toISOString(),
+        }).eq("id", jobId);
+      }
+      return json({ error: "unipile_search_failed", unipile_status: r.status, unipile_type, detail: txt.slice(0, 200), pages, inserted, updated, failed, job_id: jobId }, 502);
     }
     const body: any = await r.json();
     const items: any[] = body.items ?? [];
@@ -127,11 +174,24 @@ Deno.serve(async (req) => {
         p_team_id: teamId, p_user_id: userId, p_lead: lead, p_brand_voice_id: brandId,
       });
       if (uerr) { failed++; continue; }
-      const res = ins as any; // RPC gibt jetzt jsonb {id, inserted}
+      const res = ins as any; // RPC gibt jsonb {id, inserted} — dedupliziert per (team_id, sales_nav_id/provider_id/url)
       res?.inserted ? inserted++ : updated++;
       if (res?.id) importedIds.push(res.id);
     }
   } while (cursor && pages < maxPages);
+
+  // Ceiling-Hit: cursor am Cap noch da → es gäbe mehr Treffer, wurde gedeckelt. Ehrlich melden statt still.
+  const truncated = !!cursor;
+
+  // Job-Row finalisieren (vor der Listen-Zuordnung, damit der Import-Zustand robust festliegt).
+  if (jobId) {
+    await db.from("sales_nav_import_jobs").update({
+      status: "done", total_leads: seen, processed_leads: inserted + updated, failed_leads: failed,
+      current_offset: seen, truncated,
+      error_message: truncated ? `Ergebnis auf ${seen} begrenzt — mehr verfügbar, Suche verfeinern.` : null,
+      updated_at: new Date().toISOString(),
+    }).eq("id", jobId);
+  }
 
   // Listen-Zuordnung — idempotent via Unique (list_id, inbox_id) → ON CONFLICT DO NOTHING (ignoreDuplicates).
   let list_linked = 0;
@@ -140,7 +200,7 @@ Deno.serve(async (req) => {
     const { error: mErr } = await db.from("inbox_list_members")
       .upsert(rows, { onConflict: "list_id,inbox_id", ignoreDuplicates: true });
     if (mErr) {
-      return json({ unipile_account_id, team_id: teamId, pages, seen, inserted, updated, failed, inbox_list_id, list_error: mErr.message });
+      return json({ unipile_account_id, team_id: teamId, pages, seen, inserted, updated, failed, inbox_list_id, list_error: mErr.message, truncated, job_id: jobId });
     }
     list_linked = rows.length; // versuchte Zuordnungen (Duplikate werden idempotent übersprungen)
   }
@@ -149,6 +209,6 @@ Deno.serve(async (req) => {
     unipile_account_id, team_id: teamId,
     pages, seen, inserted, updated, failed,
     inbox_list_id: inbox_list_id ?? null, list_linked,
-    more_available: !!cursor && pages >= maxPages,
+    truncated, more_available: truncated, job_id: jobId,
   });
 });
