@@ -21,6 +21,7 @@
 // weiter) — Diff im PATCH-README.
 
 import PillSelect from '../components/PillSelect'
+import { useBrandVoice } from '../context/BrandVoiceContext'
 import { useState, useCallback, useMemo, useRef, useEffect } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import {
@@ -206,6 +207,7 @@ export default function Leads() {
   const navigate = useNavigate();
   const { isMobile } = useResponsive();
   const { activeTeamId } = useTeam() || {};
+  const { activeBrandVoice } = useBrandVoice();
   const [searchParams, setSearchParams] = useSearchParams();
   const showArchived = searchParams.get('archived') === '1';
   const { leads, isLoading, updateLeadStatus, refetch } = useLeads({ showArchived });
@@ -692,7 +694,7 @@ export default function Leads() {
     for (const l of candidates) {
       let attempt = 0, ok = false, reason = 'Fehler';
       while (attempt < 2 && !ok) {
-        const { data, error } = await supabase.functions.invoke('unipile-enrich', { body: { lead_id: l.id } });
+        const { data, error } = await supabase.functions.invoke('unipile-enrich', { body: { lead_id: l.id, brand_voice_id: activeBrandVoice?.id || null } });
         if (error) {  // Fallstrick #12
           const status = error.context?.status;
           let body = null; try { body = await error.context?.json?.(); } catch { /* egal */ }
