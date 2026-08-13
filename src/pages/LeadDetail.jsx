@@ -327,6 +327,7 @@ export default function LeadDetail({ lead: leadProp }) {
   const [composerDraft, setComposerDraft] = useState(null);
   // Lead bearbeiten — zentrales Modal (Backlog 'Edit-Modal' 2026-05-26)
   const [editModalOpen, setEditModalOpen] = useState(false);
+  const [dealAutoCreate, setDealAutoCreate] = useState(false);
 
   const isMock = params.id === 'mock' || params.id === 'demo';
   const { lead: fetchedLead, isLoading, error, updateLead, refetch } = useLead(leadProp || isMock ? null : params.id);
@@ -412,6 +413,40 @@ export default function LeadDetail({ lead: leadProp }) {
     if ((userId || null) === (lead.owner_id || null)) return;
     await safeUpdateLead({ owner_id: userId });
   }, [lead, safeUpdateLead]);
+
+  // Scheibe 3: Status-Band-CTA „+ Follow-up planen" → echte lead_tasks-Mutation im
+  // User-JWT (RLS lead_tasks_team_insert: (team_id NULL ∧ created_by=uid) ∨ team_id∈meine
+  // → funktioniert auch bei team-losen Solo-Leads). Graceful: Fehler/RLS-Block → Toast,
+  // KEIN stiller False-Success; Erfolg → Aufgaben-Tab + Rail-Refresh (Band zeigt dann die Aufgabe).
+  const planFollowup = useCallback(async () => {
+    if (!lead?.id) return;
+    const { data: sess } = await supabase.auth.getSession();
+    const uid = sess?.session?.user?.id;
+    if (!uid) { setInboxMsg({ type: 'error', text: 'Nicht angemeldet.' }); setTimeout(() => setInboxMsg(null), 4000); return; }
+    const due = new Date(); due.setDate(due.getDate() + 3);
+    const dueStr = `${due.getFullYear()}-${String(due.getMonth() + 1).padStart(2, '0')}-${String(due.getDate()).padStart(2, '0')}`;
+    const { error: taskErr } = await supabase.from('lead_tasks').insert({
+      lead_id: lead.id, created_by: uid, title: 'Follow-up', task_type: 'notiz',
+      priority: 'normal', status: 'open', due_date: dueStr,
+      ...(lead.team_id ? { team_id: lead.team_id } : {}),
+    });
+    if (taskErr) {
+      setInboxMsg({ type: 'error', text: `Follow-up konnte nicht angelegt werden: ${taskErr.message}` });
+      setTimeout(() => setInboxMsg(null), 5000);
+      return;
+    }
+    setInboxMsg({ type: 'success', text: 'Follow-up (in 3 Tagen) angelegt.' });
+    setTimeout(() => setInboxMsg(null), 4000);
+    setActiveTab('tasks');
+    bumpRail();
+  }, [lead?.id, lead?.team_id, bumpRail]);
+
+  // „+ Deal anlegen" → Deals-Tab öffnen + dessen bestehendes DealModal auto-öffnen
+  // (echter deals-Insert-Pfad, DealModal handhabt eigene Fehler graceful).
+  const createDeal = useCallback(() => {
+    setActiveTab('deals');
+    setDealAutoCreate(true);
+  }, []);
 
   // ─── Action-Menü-Handlers (Archivieren / Duplizieren / Löschen) ─────────
   // Confirm-Dialogs via window.confirm — schützt vor versehentlichem Klick.
@@ -746,7 +781,8 @@ export default function LeadDetail({ lead: leadProp }) {
         nextTask={bandData.nextTask}
         analyzeLoading={analyzeLoading}
         onAnalyze={handleAnalyze}
-        onOpenTab={handleTabChange}
+        onCreateDeal={createDeal}
+        onPlanFollowup={planFollowup}
       />
 
       {/* Cockpit-2-Spalten: links Steckbrief (+ KI-Analyse), rechts Deal-Banner + Tabs + Verlauf.
@@ -796,7 +832,7 @@ export default function LeadDetail({ lead: leadProp }) {
           )}
           {activeTab === 'notes' && <NotesTab leadId={lead.id} leadTeamId={lead.team_id} />}
           {activeTab === 'tasks' && <TasksTab leadId={lead.id} leadTeamId={lead.team_id} onMutated={bumpRail} />}
-          {activeTab === 'deals' && <DealsTab lead={lead} leadId={lead.id} navigate={navigate} onMutated={bumpRail} />}
+          {activeTab === 'deals' && <DealsTab lead={lead} leadId={lead.id} navigate={navigate} onMutated={bumpRail} autoCreate={dealAutoCreate} onAutoCreateConsumed={() => setDealAutoCreate(false)} />}
         </main>
       </div>
 
@@ -837,7 +873,7 @@ function ScoreGauge({ value, size = 52 }) {
 }
 
 // ─── StatusBand (5 KPIs) ───────────────────────────────
-function StatusBand({ isSmall, score, intent, dealValue, lastContact, phase, nextTask, analyzeLoading, onAnalyze, onOpenTab }) {
+function StatusBand({ isSmall, score, intent, dealValue, lastContact, phase, nextTask, analyzeLoading, onAnalyze, onCreateDeal, onPlanFollowup }) {
   const bandStyle = isSmall ? { ...statusBandStyle, gridTemplateColumns:'repeat(2, minmax(0,1fr))' } : statusBandStyle;
   const dealDisplay = dealValue != null ? `${Number(dealValue).toLocaleString('de-DE')} €` : null;
   return (
@@ -862,7 +898,7 @@ function StatusBand({ isSmall, score, intent, dealValue, lastContact, phase, nex
           <div style={kpiLabelStyle}><Banknote size={12} /> Deal-Wert</div>
           {dealDisplay
             ? <div style={kpiValueStyle}>{dealDisplay}</div>
-            : <button type="button" onClick={() => onOpenTab('deals')} style={kpiLinkStyle}>+ Deal anlegen</button>}
+            : <button type="button" onClick={onCreateDeal} style={kpiLinkStyle}>+ Deal anlegen</button>}
         </div>
         {/* Letzter Kontakt */}
         <div style={kpiCellStyle}>
@@ -890,7 +926,7 @@ function StatusBand({ isSmall, score, intent, dealValue, lastContact, phase, nex
               {nextTask.due_date && <div style={kpiSubStyle}>{formatRelativeDate(nextTask.due_date)}</div>}
             </>
           ) : (
-            <button type="button" onClick={() => onOpenTab('tasks')} style={kpiLinkStyle}>+ Follow-up planen</button>
+            <button type="button" onClick={onPlanFollowup} style={kpiLinkStyle}>+ Follow-up planen</button>
           )}
         </div>
       </div>
@@ -924,21 +960,51 @@ function DealBanner({ deals, navigate }) {
   );
 }
 
-// ─── FieldRow (Steckbrief-Zeile mit Leerzustand „nicht hinterlegt · + hinzufügen“) ─
-function FieldRow({ icon: Icon, label, value, href, linkText, onAdd }) {
+// ─── FieldRow (Steckbrief-Zeile: Anzeige + echter Inline-Edit) ─────────────
+// Scheibe 3: gefüllte Werte behalten ihren Link (mailto/tel/Profil) + Hover-Pencil;
+// leere zeigen „nicht hinterlegt · + hinzufügen“. Beides öffnet einen Inline-Input,
+// der genau EIN leads-Feld über onSave(field, value) schreibt (safeUpdateLead →
+// optimistisch + Rollback-via-Refetch bei Fehler; Einzelfeld ⇒ kein Fallstrick #1).
+function FieldRow({ icon: Icon, label, value, href, linkText, field, onSave }) {
+  const [editing, setEditing] = useState(false);
+  const [draft, setDraft] = useState(value || '');
+  useEffect(() => { setDraft(value || ''); }, [value]);
+  const commit = async () => {
+    setEditing(false);
+    const v = draft.trim();
+    if ((v || '') === (value || '')) return;   // no-op
+    await onSave(field, v || null);
+  };
+  const cancel = () => { setDraft(value || ''); setEditing(false); };
+  if (editing) {
+    return (
+      <div style={fieldRowStyle}>
+        <Icon size={15} color={COLORS.textTertiary} style={{ flexShrink:0 }} />
+        <span style={fieldLabelStyle}>{label}</span>
+        <input autoFocus style={{ ...inputStyle, height:28, flex:1 }} value={draft}
+          onChange={(e) => setDraft(e.target.value)}
+          onBlur={commit}
+          onKeyDown={(e) => { if (e.key === 'Enter') commit(); if (e.key === 'Escape') cancel(); }} />
+      </div>
+    );
+  }
   return (
     <div style={fieldRowStyle}>
       <Icon size={15} color={COLORS.textTertiary} style={{ flexShrink:0 }} />
       <span style={fieldLabelStyle}>{label}</span>
       {value ? (
-        href ? (
-          <a href={href} target={/^https?:/i.test(href) ? '_blank' : undefined} rel="noopener noreferrer"
-            style={{ color:'var(--wl-primary, #0A6FB0)', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{linkText || value}</a>
-        ) : (
-          <span style={{ color: COLORS.textPrimary, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{value}</span>
-        )
+        <span style={{ display:'inline-flex', alignItems:'center', gap:6, minWidth:0 }}>
+          {href ? (
+            <a href={href} target={/^https?:/i.test(href) ? '_blank' : undefined} rel="noopener noreferrer"
+              style={{ color:'var(--wl-primary, #0A6FB0)', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{linkText || value}</a>
+          ) : (
+            <span style={{ color: COLORS.textPrimary, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{value}</span>
+          )}
+          <button type="button" onClick={() => setEditing(true)} title="Bearbeiten"
+            style={{ background:'none', border:'none', padding:0, cursor:'pointer', color: COLORS.textTertiary, flexShrink:0, display:'inline-flex' }}><Pencil size={12} /></button>
+        </span>
       ) : (
-        <span style={{ color: COLORS.textTertiary }}>nicht hinterlegt · <button type="button" onClick={onAdd} style={inlineLinkStyle}>+ hinzufügen</button></span>
+        <span style={{ color: COLORS.textTertiary }}>nicht hinterlegt · <button type="button" onClick={() => setEditing(true)} style={inlineLinkStyle}>+ hinzufügen</button></span>
       )}
     </div>
   );
@@ -947,6 +1013,7 @@ function FieldRow({ icon: Icon, label, value, href, linkText, onAdd }) {
 // ─── Steckbrief (linke Spalte, konsolidiert) ───────────────────
 function Steckbrief({ lead, owner, onOpenOwnerPicker, onEdit, updateLead }) {
   const setTags = (next) => updateLead({ tags: Array.isArray(next) ? next : [] });
+  const saveField = (f, v) => updateLead({ [f]: v });   // Einzelfeld → optimistisch + Rollback
   const ownerName = owner ? (`${owner.first_name || ''} ${owner.last_name || ''}`.trim() || null) : null;
   const liHref = lead.linkedin_url ? (/^https?:\/\//i.test(lead.linkedin_url) ? lead.linkedin_url : `https://${lead.linkedin_url}`) : null;
   const hasCompanyInfo = lead.industry || lead.company_size || lead.company_website || lead.company_address;
@@ -957,11 +1024,11 @@ function Steckbrief({ lead, owner, onOpenOwnerPicker, onEdit, updateLead }) {
         <button type="button" onClick={onEdit} className="lk-btn lk-btn-ghost" style={{ height:26, padding:'0 8px', fontSize:12 }}><Pencil size={12} /> Bearbeiten</button>
       </div>
       <div style={{ display:'flex', flexDirection:'column', gap:11 }}>
-        <FieldRow icon={Mail} label="E-Mail" value={lead.email} href={lead.email ? `mailto:${lead.email}` : null} onAdd={onEdit} />
-        <FieldRow icon={Phone} label="Telefon" value={lead.phone} href={lead.phone ? `tel:${(lead.phone||'').replace(/\s/g,'')}` : null} onAdd={onEdit} />
-        <FieldRow icon={IcLinkedin} label="LinkedIn" value={lead.linkedin_url} href={liHref} linkText="Profil öffnen" onAdd={onEdit} />
-        <FieldRow icon={MapPin} label="Ort" value={lead.location} onAdd={onEdit} />
-        <FieldRow icon={Workflow} label="Quelle" value={lead.source} onAdd={onEdit} />
+        <FieldRow icon={Mail} label="E-Mail" value={lead.email} href={lead.email ? `mailto:${lead.email}` : null} field="email" onSave={saveField} />
+        <FieldRow icon={Phone} label="Telefon" value={lead.phone} href={lead.phone ? `tel:${(lead.phone||'').replace(/\s/g,'')}` : null} field="phone" onSave={saveField} />
+        <FieldRow icon={IcLinkedin} label="LinkedIn" value={lead.linkedin_url} href={liHref} linkText="Profil öffnen" field="linkedin_url" onSave={saveField} />
+        <FieldRow icon={MapPin} label="Ort" value={lead.location} field="location" onSave={saveField} />
+        <FieldRow icon={Workflow} label="Quelle" value={lead.source} field="source" onSave={saveField} />
       </div>
 
       <div style={stemDividerStyle} />
@@ -1099,6 +1166,18 @@ function ActivityTab({ leadId, leadTeamId, lead, initialDraft, onDraftConsumed }
   );
   const grouped = useMemo(() => groupByDay(filteredItems, 'timestamp'), [filteredItems]);
 
+  // Anrede-Abgleich (Scheibe 3, rein client-seitig, kein Datenpfad): erkennt
+  // „Hallo/Hi/Hey/Guten Tag <Name>“ am Nachrichtenanfang und warnt, wenn der
+  // getippte Name vom Vornamen des Leads abweicht (Copy-Paste-Falle bei Outreach).
+  const anredeHint = useMemo(() => {
+    const m = /^(Hallo|Hi|Hey|Guten Tag)\s+([A-ZÄÖÜ][\wäöüß-]+)/.exec((msgBody || '').trim());
+    if (!m) return null;
+    const typed = m[2];
+    const fn = (lead?.first_name || '').trim();
+    if (!fn || typed.toLowerCase() === fn.toLowerCase()) return null;
+    return { typed, fn };
+  }, [msgBody, lead?.first_name]);
+
   const submit = async () => {
     if (!newSubject.trim()) return;
     setAdding(true); setLocalErr(null);
@@ -1162,6 +1241,11 @@ function ActivityTab({ leadId, leadTeamId, lead, initialDraft, onDraftConsumed }
         <textarea style={textareaStyle}
           placeholder={lead && (lead.first_name || lead.last_name) ? `Nachricht an ${[lead.first_name, lead.last_name].filter(Boolean).join(' ')}…` : 'Nachricht eingeben…'}
           value={msgBody} onChange={e => setMsgBody(e.target.value)} rows={4} />
+        {anredeHint && (
+          <div style={{ display:'flex', alignItems:'center', gap:6, marginTop:8, fontSize:12, color:'#854F0B', background:'#FAEEDA', border:'0.5px solid #F5D79A', borderRadius:8, padding:'6px 10px' }}>
+            <AlertCircle size={13} /> Anrede „{anredeHint.typed}“ weicht vom Vornamen „{anredeHint.fn}“ ab.
+          </div>
+        )}
         <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', gap:8, marginTop:10 }}>
           <span style={{ fontSize:11, color: COLORS.textTertiary }}>
             Wird im Activity-Log protokolliert. Versand separat über LinkedIn / E-Mail-Client.
@@ -1716,7 +1800,7 @@ const DEAL_STAGE_COLORS = {
   verhandlung: '#003060', gewonnen: '#059669', verloren: '#B91C1C', kein_deal: '#94A3B8',
 };
 
-function DealsTab({ lead, leadId, navigate, onMutated }) {
+function DealsTab({ lead, leadId, navigate, onMutated, autoCreate, onAutoCreateConsumed }) {
   const { activeTeamId } = useTeam() || {};
   const [items, setItems] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -1724,6 +1808,12 @@ function DealsTab({ lead, leadId, navigate, onMutated }) {
   const [open, setOpen] = useState(false);
   const [uid, setUid] = useState(null);
   const [teamMembers, setTeamMembers] = useState([]);
+
+  // Scheibe 3: „+ Deal anlegen" aus dem Status-Band öffnet dieses Modal direkt beim
+  // Tab-Wechsel. Consumed-Callback räumt das Parent-Flag, damit es nicht re-öffnet.
+  useEffect(() => {
+    if (autoCreate) { setOpen(true); onAutoCreateConsumed?.(); }
+  }, [autoCreate, onAutoCreateConsumed]);
 
   // uid + Team-Members fuer das geteilte DealModal (Owner-Picker, created_by).
   useEffect(() => {
