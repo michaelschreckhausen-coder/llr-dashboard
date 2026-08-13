@@ -738,6 +738,9 @@ function PostModal({ post, onClose, onSave, onSilentSave, onDelete, session, act
   const savingRef = useRef(false)
   const autoSaveTimer = useRef(null)
   const lastSavedRef = useRef('')
+  // Backdrop-Close nur bei echtem Klick auf den Hintergrund — NICHT wenn eine
+  // Textauswahl im Editor startet und der Mouseup zufällig über dem Overlay endet.
+  const backdropDownRef = useRef(false)
   const [autoSavedAt, setAutoSavedAt] = useState(null)
   const [improving, setImproving] = useState(false)
   const [charCount, setCharCount] = useState(form.content?.length || 0)
@@ -1108,7 +1111,8 @@ function PostModal({ post, onClose, onSave, onSilentSave, onDelete, session, act
 
   return (
     <div style={{ position:'fixed', inset:0, background:'rgba(0,0,0,0.45)', zIndex:1000, display:'flex', alignItems:'center', justifyContent:'center', padding:20 }}
-      onClick={e => e.target === e.currentTarget && onClose()}>
+      onMouseDown={e => { backdropDownRef.current = (e.target === e.currentTarget) }}
+      onClick={e => { if (e.target === e.currentTarget && backdropDownRef.current) onClose(); backdropDownRef.current = false }}>
       <div style={{ background:'var(--surface)', borderRadius:20, width:'100%', maxWidth:920, maxHeight:'90vh', overflow:'hidden', display:'flex', flexDirection:'column', boxShadow:'0 20px 60px rgba(0,0,0,0.2)' }}>
 
         {/* Header */}
@@ -2098,6 +2102,7 @@ export default function Redaktionsplan({ session }) {
   const [loading, setLoading]     = useState(true)
   const [view, setView]           = useState('kanban')  // kanban | kalender | liste
   const [modal, setModal]         = useState(null)      // null | {} | post
+  const bsBackdropDownRef = useRef(false)               // Backdrop-Close-Guard (Brainstorm)
   const [workspace, setWorkspace] = useState('personal') // personal | company | team_support
   const [calDate, setCalDate]     = useState(new Date())
   const [search, setSearch]       = useState('')
@@ -2811,7 +2816,8 @@ Danke für den Austausch! 🤝`,
       {/* ── BRAINSTORM-MODAL ── */}
       {showBrainstorm && (
         <div style={{ position:'fixed', inset:0, background:'rgba(0,0,0,0.55)', zIndex:1000, display:'flex', alignItems:'center', justifyContent:'center', padding:20 }}
-          onClick={e => e.target === e.currentTarget && setShowBrainstorm(false)}>
+          onMouseDown={e => { bsBackdropDownRef.current = (e.target === e.currentTarget) }}
+          onClick={e => { if (e.target === e.currentTarget && bsBackdropDownRef.current) setShowBrainstorm(false); bsBackdropDownRef.current = false }}>
           <div style={{ background:'var(--surface)', borderRadius:18, width:'100%', maxWidth:780, maxHeight:'90vh', display:'flex', flexDirection:'column', overflow:'hidden', boxShadow:'0 20px 60px rgba(0,0,0,0.25)' }}>
             <div style={{ padding:'18px 22px 14px', background:'linear-gradient(135deg, rgba(10,111,176,.08), rgba(0,48,96,.06))' }}>
               <div style={{ fontSize:11, color:'var(--wl-primary, #0A6FB0)', fontWeight:700, textTransform:'uppercase', letterSpacing:'0.08em', marginBottom:6, display:'inline-flex', alignItems:'center', gap:6 }}><Brain size={12} strokeWidth={1.75}/>Brainstorming-Session</div>
