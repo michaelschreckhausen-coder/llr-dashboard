@@ -1,0 +1,137 @@
+// ============================================================================
+// P3 · Schritt 2 — zentraler Permission-/Seat-Guard fuer Edge Functions
+// ============================================================================
+// EIN Guard-Punkt statt verstreuter i_have_addon-Checks. Member-basiert (B1):
+// kein Seat-Zwang (Seats werden erst in P4 load-bearing).
+//
+// INERT bis Schritt 3: noch keine EF importiert diese Helfer. Erst beim Gate-Bau
+// (EF #1-#8) werden sie an den jeweiligen Guard-Punkt gehaengt.
+//
+// Beide Pfade leiten aus derselben Wahrheit ab wie das Frontend:
+//   requirePermission(user, key)          -> RPC i_have_permission   (== get_my_entitlements)
+//   requirePermissionForAccount(svc, a,k) -> RPC account_has_permission
+//   requireSeat(user)                     -> RPC get_my_entitlements .is_active
+// -> "FE zeigt an, EF verweigert" (oder umgekehrt) ist strukturell ausgeschlossen.
+// ============================================================================
+
+function deny(status: number, body: Record<string, unknown>): Response {
+  return new Response(JSON.stringify(body), {
+    status,
+    headers: { "Content-Type": "application/json" },
+  });
+}
+
+/**
+ * USER-getriggerte EFs (#2 publish, #6 sales-nav-import, #7 search/enrich).
+ * @returns null wenn erlaubt; sonst eine 403-Response (Body: need_permission + key)
+ *          zum direkten `return`. Das FE zeigt daran den Upgrade-CTA.
+ */
+export async function requirePermission(
+  userClient: { rpc: (fn: string, args?: Record<string, unknown>) => PromiseLike<{ data: unknown; error: unknown }> },
+  key: string,
+): Promise<Response | null> {
+  const { data, error } = await userClient.rpc("i_have_permission", { p_key: key });
+  if (error) {
+    console.warn(`[require_permission] rpc error for key=${key}:`, error);
+    return deny(403, { error: "need_permission", key });
+  }
+  return data === true ? null : deny(403, { error: "need_permission", key });
+}
+
+/**
+ * CRON/SERVICE-EFs (#3 monitor, #4 engagement, #5 invitations, #7 la-runner,
+ * #8 relations). Kein auth.uid() — prueft das Entitlement des ACCOUNT-Plans.
+ * @returns true wenn der Account den Key hat. Cron SKIPPT den Account/Job bei
+ *          false (kein 403 — Server-Kontext).
+ */
+export async function accountHasPermission(
+  serviceClient: { rpc: (fn: string, args?: Record<string, unknown>) => PromiseLike<{ data: unknown; error: unknown }> },
+  accountId: string,
+  key: string,
+): Promise<boolean> {
+  const { data, error } = await serviceClient.rpc("account_has_permission", {
+    p_account_id: accountId,
+    p_key: key,
+  });
+  if (error) {
+    console.warn(`[account_has_permission] rpc error acct=${accountId} key=${key}:`, error);
+    return false; // fail-closed im Cron
+  }
+  return data === true;
+}
+
+/**
+ * CRON/SERVICE, team-keyed — der ergonomische Cron-Guard: alle EF-Tabellen tragen
+ * team_id (nicht account_id); team_has_permission macht den teams->accounts->plans-
+ * Join + Kill-Switch server-seitig.
+ * @returns true wenn der Account des Teams den Key hat. Cron SKIPPT bei false.
+ */
+export async function teamHasPermission(
+  serviceClient: { rpc: (fn: string, args?: Record<string, unknown>) => PromiseLike<{ data: unknown; error: unknown }> },
+  teamId: string,
+  key: string,
+): Promise<boolean> {
+  const { data, error } = await serviceClient.rpc("team_has_permission", {
+    p_team_id: teamId,
+    p_key: key,
+  });
+  if (error) {
+    console.warn(`[team_has_permission] rpc error team=${teamId} key=${key}:`, error);
+    return false; // fail-closed im Cron
+  }
+  return data === true;
+}
+
+/**
+ * Connect (#1) — P4b SEAT-STRIKT: der User muss (a) aktives Mitglied eines
+ * nutzbaren Accounts sein (get_my_entitlements.is_active) UND (b) einen aktiven
+ * Seat halten (has_license). Der Seat trägt die Unipile-Verbindung. Kill-Switch
+ * gate_open('connect') ganz vorne → der scharfe Pfad liegt dahinter (<1s-Rollback
+ * via admin_set_gate(true, ARRAY['connect'])). has_license ist SECURITY DEFINER
+ * (RLS-unabhängig, EF-only). P1+P4a+P4b-Auto-Provision halten die Menge seat-loser
+ * aktiver Member auf 0 → heute verhaltensneutral, beißt nur bei revoked Seat.
+ * @returns null wenn erlaubt; sonst 403 need_active_plan / need_seat.
+ */
+/**
+ * C3 — granulare LinkedIn-Freigabe. USER-getriggerte, BRAND-scoped action-EFs
+ * (message-send=inbox, search/people-search/import-salesnav=search, invite-send=
+ * network, company-stats=analytics). Prueft den Bereich-Scope AM AUFRUFER
+ * (has_brand_linkedin_scope laeuft SECURITY DEFINER, liest auth.uid()/get_my_team_ids()
+ * -> MUSS mit einem User-JWT-Client aufgerufen werden, NICHT service_role, sonst
+ * ist der Check wirkungslos). Owner/Per-User sehen alles via has_brand_access_direct
+ * im Helper. brand null -> hier nicht aufrufen (kein Brand -> Team-Kontext).
+ * @returns null wenn erlaubt; sonst 403 need_scope zum direkten `return`.
+ */
+export async function requireBrandLinkedinScope(
+  userClient: { rpc: (fn: string, args?: Record<string, unknown>) => PromiseLike<{ data: unknown; error: unknown }> },
+  brandVoiceId: string,
+  scope: string,
+): Promise<Response | null> {
+  if (!brandVoiceId) return deny(400, { error: "brand_voice_id_required" });
+  const { data, error } = await userClient.rpc("has_brand_linkedin_scope", { bv_id: brandVoiceId, scope });
+  if (error) {
+    console.warn(`[require_brand_scope] rpc error bv=${brandVoiceId} scope=${scope}:`, error);
+    return deny(403, { error: "need_scope", scope });
+  }
+  return data === true ? null : deny(403, { error: "need_scope", scope });
+}
+
+export async function requireSeat(
+  userClient: { rpc: (fn: string, args?: Record<string, unknown>) => PromiseLike<{ data: unknown; error: unknown }> },
+): Promise<Response | null> {
+  const { data: open } = await userClient.rpc("gate_open", { p_key: "connect" });  // Kill-Switch deckt Connect mit
+  if (open === true) return null;
+  const { data, error } = await userClient.rpc("get_my_entitlements", {});
+  if (error || !data) {
+    console.warn(`[require_seat] entitlements error:`, error);
+    return deny(403, { error: "need_active_plan" });
+  }
+  if ((data as { is_active?: boolean }).is_active !== true) return deny(403, { error: "need_active_plan" });
+  // P4b: Seat-Beweis. has_license = aktives license_assignment (SECURITY DEFINER).
+  const { data: hasSeat, error: seatErr } = await userClient.rpc("has_license", {});
+  if (seatErr) {
+    console.warn(`[require_seat] has_license error:`, seatErr);
+    return deny(403, { error: "need_seat" });
+  }
+  return hasSeat === true ? null : deny(403, { error: "need_seat" });
+}
