@@ -81,7 +81,7 @@ export default function LinkedInEngagement() {
   const [trackers, setTrackers]       = useState([])
   const [lists, setLists]             = useState([])
   const [showTrackerDialog, setShowTrackerDialog] = useState(false)
-  const [trackerForm, setTrackerForm] = useState({ list_id:'', name:'', auto_mode:'review' })
+  const [trackerForm, setTrackerForm] = useState({ kind:'list', list_id:'', name:'', keywords:'', auto_mode:'review' })
   const [regenId, setRegenId]         = useState(null)
 
   useEffect(() => { supabase.auth.getUser().then(({ data }) => setUid(data?.user?.id || null)) }, [])
@@ -208,15 +208,18 @@ export default function LinkedInEngagement() {
     setRegenId(null)
   }
   const createTracker = async () => {
-    if (!trackerForm.list_id) { setFlash({ type:'error', text:'Bitte eine Liste wählen.' }); return }
     if (!activeBrandVoice?.id) { setFlash({ type:'error', text:'Keine aktive Marke gewählt.' }); return }
-    const listName = lists.find(l => l.id === trackerForm.list_id)?.name || 'Liste'
+    const isKw = trackerForm.kind === 'keyword'
+    if (isKw && !(trackerForm.keywords || '').trim()) { setFlash({ type:'error', text:'Bitte Keywords eingeben.' }); return }
+    if (!isKw && !trackerForm.list_id) { setFlash({ type:'error', text:'Bitte eine Liste wählen.' }); return }
+    const defName = isKw ? (trackerForm.keywords || '').trim() : (lists.find(l => l.id === trackerForm.list_id)?.name || 'Liste')
     const { error } = await supabase.from('engagement_trackers').insert({
       team_id: activeTeamId, user_id: uid, brand_voice_id: activeBrandVoice.id,
-      list_id: trackerForm.list_id, name: (trackerForm.name || '').trim() || listName, auto_mode: trackerForm.auto_mode, active: true,
+      kind: trackerForm.kind, list_id: isKw ? null : trackerForm.list_id, keywords: isKw ? trackerForm.keywords.trim() : null,
+      name: (trackerForm.name || '').trim() || defName, auto_mode: trackerForm.auto_mode, active: true,
     })
     if (error) { setFlash({ type:'error', text:'Tracker anlegen fehlgeschlagen: ' + error.message }); return }
-    setShowTrackerDialog(false); setTrackerForm({ list_id:'', name:'', auto_mode:'review' })
+    setShowTrackerDialog(false); setTrackerForm({ kind:'list', list_id:'', name:'', keywords:'', auto_mode:'review' })
     setFlash({ type:'success', text:'Tracker angelegt — neue Posts erscheinen im Feed.' }); loadTrackers()
   }
   const toggleTracker = async (t) => { await supabase.from('engagement_trackers').update({ active: !t.active }).eq('id', t.id); loadTrackers() }
@@ -411,7 +414,7 @@ authorLine + 'Beitrag:\n"""\n' + (read.text || '').slice(0, 1800) + '\n"""\n\n' 
         {/* ── Getrackte Listen (Weg 2) ── */}
         <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:10 }}>
           <div className="lk-eyebrow" style={{ margin:0 }}>Getrackte Listen</div>
-          <button className="lk-btn lk-btn-ghost" onClick={() => { setTrackerForm({ list_id:'', name:'', auto_mode:'review' }); setShowTrackerDialog(true) }}><Plus size={14} /> Neuer Tracker</button>
+          <button className="lk-btn lk-btn-ghost" onClick={() => { setTrackerForm({ kind:'list', list_id:'', name:'', keywords:'', auto_mode:'review' }); setShowTrackerDialog(true) }}><Plus size={14} /> Neuer Tracker</button>
         </div>
         {trackers.length === 0 ? (
           <div style={{ ...cardStyle, textAlign:'center', color:'var(--text-muted, #6B7280)', fontSize:13, padding:'20px', marginBottom:26 }}>
@@ -423,11 +426,11 @@ authorLine + 'Beitrag:\n"""\n' + (read.text || '').slice(0, 1800) + '\n"""\n\n' 
               const AUTO = { review:'Nur Vorschlag', react:'Auto-Reaktion', full:'Voll-Automatik' }
               return (
                 <div key={t.id} style={{ ...cardStyle, padding:'12px 16px', display:'flex', alignItems:'center', gap:12, flexWrap:'wrap', opacity: t.active ? 1 : 0.6 }}>
-                  <div style={{ width:34, height:34, borderRadius:9, background:'#EEF4FE', display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0 }}><Users size={16} color={PRIMARY_VAR} /></div>
+                  <div style={{ width:34, height:34, borderRadius:9, background:'#EEF4FE', display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0 }}>{t.kind === 'keyword' ? <Sparkles size={16} color={PRIMARY_VAR} /> : <Users size={16} color={PRIMARY_VAR} />}</div>
                   <div style={{ flex:1, minWidth:180 }}>
                     <div style={{ fontSize:13.5, fontWeight:700, color:'var(--text-strong, #111827)' }}>{t.name}</div>
                     <div style={{ fontSize:11.5, color:'var(--text-muted, #6B7280)', marginTop:2 }}>
-                      Liste: {(lists.find(l => l.id === t.list_id)?.name) || '—'} · {AUTO[t.auto_mode] || t.auto_mode}{t.last_polled_at ? ` · zuletzt geprüft ${new Date(t.last_polled_at).toLocaleString('de-DE')}` : ' · noch nicht geprüft'}
+                      {t.kind === 'keyword' ? `Keywords: ${t.keywords || '—'}` : `Liste: ${(lists.find(l => l.id === t.list_id)?.name) || '—'}`} · {AUTO[t.auto_mode] || t.auto_mode}{t.last_polled_at ? ` · zuletzt geprüft ${new Date(t.last_polled_at).toLocaleString('de-DE')}` : ' · noch nicht geprüft'}
                     </div>
                   </div>
                   <button onClick={() => toggleTracker(t)} style={ghostBtnStyle}>{t.active ? 'Aktiv' : 'Pausiert'}</button>
@@ -494,12 +497,30 @@ authorLine + 'Beitrag:\n"""\n' + (read.text || '').slice(0, 1800) + '\n"""\n\n' 
             </div>
             <div style={{ display:'flex', flexDirection:'column', gap:14 }}>
               <div>
-                <label style={labelStyle}>Liste (Netzwerk / Prospects)</label>
-                <select style={inputStyle} value={trackerForm.list_id} onChange={e => setTrackerForm(f => ({ ...f, list_id: e.target.value }))}>
-                  <option value="">— Liste wählen —</option>
-                  {lists.map(l => <option key={l.id} value={l.id}>{l.name}{l.kind ? ` (${l.kind})` : ''}</option>)}
-                </select>
+                <label style={labelStyle}>Quelle</label>
+                <div style={{ display:'inline-flex', background:'#F3F4F6', borderRadius:10, padding:3, gap:2 }}>
+                  {[{ v:'list', l:'Liste' }, { v:'keyword', l:'Keywords' }].map(o => (
+                    <button key={o.v} type="button" onClick={() => setTrackerForm(f => ({ ...f, kind:o.v }))}
+                      style={{ height:32, padding:'0 14px', fontSize:13, border:'none', borderRadius:8, cursor:'pointer', fontWeight:600,
+                        background: trackerForm.kind === o.v ? 'var(--surface)' : 'transparent', color: trackerForm.kind === o.v ? '#111827' : '#6B7280', boxShadow: trackerForm.kind === o.v ? '0 1px 2px rgba(0,0,0,0.05)' : 'none' }}>{o.l}</button>
+                  ))}
+                </div>
               </div>
+              {trackerForm.kind === 'keyword' ? (
+                <div>
+                  <label style={labelStyle}>Keywords / Thema</label>
+                  <input style={inputStyle} value={trackerForm.keywords} onChange={e => setTrackerForm(f => ({ ...f, keywords: e.target.value }))} placeholder="z. B. Leadgenerierung LinkedIn" />
+                  <div style={{ fontSize:11, color:'var(--text-muted, #6B7280)', marginTop:4 }}>Findet frische Beiträge (letzte Woche) zu diesen Begriffen — auch von Menschen, die du noch nicht kennst.</div>
+                </div>
+              ) : (
+                <div>
+                  <label style={labelStyle}>Liste (Netzwerk / Prospects)</label>
+                  <select style={inputStyle} value={trackerForm.list_id} onChange={e => setTrackerForm(f => ({ ...f, list_id: e.target.value }))}>
+                    <option value="">— Liste wählen —</option>
+                    {lists.map(l => <option key={l.id} value={l.id}>{l.name}{l.kind ? ` (${l.kind})` : ''}</option>)}
+                  </select>
+                </div>
+              )}
               <div>
                 <label style={labelStyle}>Name (optional)</label>
                 <input style={inputStyle} value={trackerForm.name} onChange={e => setTrackerForm(f => ({ ...f, name: e.target.value }))} placeholder="z. B. Ziel-Accounts Q3" />
