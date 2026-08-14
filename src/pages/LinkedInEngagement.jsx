@@ -12,7 +12,7 @@ import React, { useState, useEffect, useCallback } from 'react'
 import { useNavigate } from 'react-router-dom'
 import {
   Zap, Plus, Play, Trash2, MessageSquare, Heart, Clock, Send,
-  ExternalLink, AlertCircle, CheckCircle2, Loader2, X, Info, Sparkles,
+  ExternalLink, AlertCircle, CheckCircle2, Loader2, X, Info, Sparkles, Users,
 } from 'lucide-react'
 import { supabase } from '../lib/supabase'
 import PageHeader from '../components/PageHeader'
@@ -76,6 +76,13 @@ export default function LinkedInEngagement() {
   const [suggesting, setSuggesting]   = useState(false)
   const [suggestions, setSuggestions] = useState([])
   const [suggestReaction, setSuggestReaction] = useState(null)
+  const [opps, setOpps]               = useState([])
+  const [oppsLoading, setOppsLoading] = useState(true)
+  const [trackers, setTrackers]       = useState([])
+  const [lists, setLists]             = useState([])
+  const [showTrackerDialog, setShowTrackerDialog] = useState(false)
+  const [trackerForm, setTrackerForm] = useState({ list_id:'', name:'', auto_mode:'review' })
+  const [regenId, setRegenId]         = useState(null)
 
   useEffect(() => { supabase.auth.getUser().then(({ data }) => setUid(data?.user?.id || null)) }, [])
 
@@ -121,11 +128,99 @@ export default function LinkedInEngagement() {
     setOwnPosts(data || [])
   }, [activeTeamId, activeBrandVoice?.id])
 
+  const loadOpps = useCallback(async () => {
+    const bvId = activeBrandVoice?.id || null
+    if (!activeTeamId || !bvId) { setOpps([]); setOppsLoading(false); return }
+    setOppsLoading(true)
+    const { data, error } = await supabase.from('engagement_opportunities')
+      .select('*').eq('brand_voice_id', bvId).eq('status', 'new').order('created_at', { ascending:false }).limit(50)
+    if (error) { console.warn('[engagement] opps:', error.message); setOpps([]); setOppsLoading(false); return }
+    setOpps(data || []); setOppsLoading(false)
+  }, [activeTeamId, activeBrandVoice?.id])
+
+  const loadTrackers = useCallback(async () => {
+    const bvId = activeBrandVoice?.id || null
+    if (!bvId) { setTrackers([]); return }
+    const { data, error } = await supabase.from('engagement_trackers')
+      .select('*').eq('brand_voice_id', bvId).order('created_at', { ascending:false })
+    if (error) { console.warn('[engagement] trackers:', error.message); setTrackers([]); return }
+    setTrackers(data || [])
+  }, [activeBrandVoice?.id])
+
+  const loadLists = useCallback(async () => {
+    if (!activeTeamId) { setLists([]); return }
+    const { data, error } = await supabase.from('inbox_lists')
+      .select('id, name, kind').eq('team_id', activeTeamId).order('name', { ascending:true })
+    if (error) { console.warn('[engagement] lists:', error.message); setLists([]); return }
+    setLists(data || [])
+  }, [activeTeamId])
+
+  useEffect(() => { loadOpps() }, [loadOpps])
+  useEffect(() => { loadTrackers() }, [loadTrackers])
+  useEffect(() => { loadLists() }, [loadLists])
+
   useEffect(() => { load() }, [load])
   useEffect(() => { loadSaved() }, [loadSaved])
   useEffect(() => { loadOwnPosts() }, [loadOwnPosts])
 
   const setField = (k, v) => setForm(f => ({ ...f, [k]: v }))
+
+  // ── Weg 2: Engagement-Feed-Aktionen ──
+  const engageComment = async (o, text) => {
+    const { error } = await supabase.from('linkedin_engagement_jobs').insert({
+      user_id: uid, team_id: activeTeamId, brand_voice_id: activeBrandVoice?.id || null,
+      kind:'comment', comment_text: text, post_social_id: o.post_social_id, status:'pending', scheduled_at: new Date().toISOString(),
+    })
+    if (error) { setFlash({ type:'error', text:'Kommentar planen fehlgeschlagen: ' + error.message }); return }
+    await supabase.from('engagement_opportunities').update({ status:'done', acted_at: new Date().toISOString() }).eq('id', o.id)
+    setOpps(prev => prev.filter(x => x.id !== o.id))
+    setFlash({ type:'success', text:'Kommentar eingeplant.' }); load()
+  }
+  const engageReaction = async (o) => {
+    const { error } = await supabase.from('linkedin_engagement_jobs').insert({
+      user_id: uid, team_id: activeTeamId, brand_voice_id: activeBrandVoice?.id || null,
+      kind:'reaction', reaction_type: o.suggested_reaction || 'like', post_social_id: o.post_social_id, status:'pending', scheduled_at: new Date().toISOString(),
+    })
+    if (error) { setFlash({ type:'error', text:'Reaktion planen fehlgeschlagen: ' + error.message }); return }
+    setFlash({ type:'success', text:'Reaktion eingeplant.' }); load()
+  }
+  const dismissOpp = async (o) => {
+    await supabase.from('engagement_opportunities').update({ status:'dismissed' }).eq('id', o.id)
+    setOpps(prev => prev.filter(x => x.id !== o.id))
+  }
+  const regenerateOpp = async (o) => {
+    if (!activeBrandVoice?.id) { setFlash({ type:'error', text:'Keine aktive Marke.' }); return }
+    setRegenId(o.id)
+    try {
+      const prompt =
+'Du kommentierst als die oben definierte Person auf einen FREMDEN LinkedIn-Beitrag. Konkret, mit Mehrwert, in der Brand Voice, kein generisches Lob.\n\nBeitrag:\n"""\n' + (o.post_text || '').slice(0, 1800) + '\n"""\n\n' +
+'Schreibe 3 kurze Kommentar-Varianten (je 1-3 Sätze, Deutsch) und schlage eine Reaktion vor (like|celebrate|support|love|insightful|funny). Antworte NUR mit JSON: {"reaction":"like","comments":["…","…","…"]}'
+      const { data: gen, error: genErr } = await supabase.functions.invoke('generate', {
+        body: { type:'engagement_comment', prompt, brand_voice_id: activeBrandVoice.id, model: selectedModel, userId: uid }
+      })
+      if (genErr) { const m = await mapEfError(genErr); setFlash({ type:'error', text:m.text, action:m.action }); setRegenId(null); return }
+      const rawTxt = gen?.text || gen?.result || ''
+      let parsed=null; try { const mm=rawTxt.replace(/```json|```/g,'').match(/\{[\s\S]*\}/); parsed=JSON.parse(mm?mm[0]:rawTxt) } catch(_e){}
+      const comments = Array.isArray(parsed?.comments) ? parsed.comments.map(c=>(c||'').toString().trim()).filter(Boolean).slice(0,3) : []
+      await supabase.from('engagement_opportunities').update({ suggested_comments: comments, suggested_reaction: parsed?.reaction || null }).eq('id', o.id)
+      setOpps(prev => prev.map(x => x.id===o.id ? { ...x, suggested_comments: comments, suggested_reaction: parsed?.reaction || null } : x))
+    } catch (e) { setFlash({ type:'error', text:'Generierung fehlgeschlagen: ' + (e?.message||e) }) }
+    setRegenId(null)
+  }
+  const createTracker = async () => {
+    if (!trackerForm.list_id) { setFlash({ type:'error', text:'Bitte eine Liste wählen.' }); return }
+    if (!activeBrandVoice?.id) { setFlash({ type:'error', text:'Keine aktive Marke gewählt.' }); return }
+    const listName = lists.find(l => l.id === trackerForm.list_id)?.name || 'Liste'
+    const { error } = await supabase.from('engagement_trackers').insert({
+      team_id: activeTeamId, user_id: uid, brand_voice_id: activeBrandVoice.id,
+      list_id: trackerForm.list_id, name: (trackerForm.name || '').trim() || listName, auto_mode: trackerForm.auto_mode, active: true,
+    })
+    if (error) { setFlash({ type:'error', text:'Tracker anlegen fehlgeschlagen: ' + error.message }); return }
+    setShowTrackerDialog(false); setTrackerForm({ list_id:'', name:'', auto_mode:'review' })
+    setFlash({ type:'success', text:'Tracker angelegt — neue Posts erscheinen im Feed.' }); loadTrackers()
+  }
+  const toggleTracker = async (t) => { await supabase.from('engagement_trackers').update({ active: !t.active }).eq('id', t.id); loadTrackers() }
+  const deleteTracker = async (t) => { await supabase.from('engagement_trackers').delete().eq('id', t.id); loadTrackers() }
 
   const createJob = async () => {
     if (!form.post.trim()) { setFlash({ type:'error', text:'Bitte Post-URL oder activity-URN angeben.' }); return }
@@ -265,6 +360,84 @@ authorLine + 'Beitrag:\n"""\n' + (read.text || '').slice(0, 1800) + '\n"""\n\n' 
           </div>
         )}
 
+        {/* ── Engagement-Feed (Weg 2) ── */}
+        <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:10 }}>
+          <div className="lk-eyebrow" style={{ margin:0 }}>Engagement-Feed</div>
+          <span style={{ fontSize:11.5, color:'var(--text-muted, #6B7280)' }}>{opps.length} offen</span>
+        </div>
+        {oppsLoading ? (
+          <div style={{ ...cardStyle, textAlign:'center', color:'var(--text-muted, #6B7280)', marginBottom:22 }}><Loader2 size={16} className="lk-spin" /> Lädt…</div>
+        ) : opps.length === 0 ? (
+          <div style={{ ...cardStyle, textAlign:'center', color:'var(--text-muted, #6B7280)', fontSize:13, padding:'24px 20px', marginBottom:22 }}>
+            Noch keine Engagement-Chancen. Lege unten einen Tracker aus einer Liste an — sobald eine getrackte Person postet, erscheint hier ein Vorschlag.
+          </div>
+        ) : (
+          <div style={{ display:'flex', flexDirection:'column', gap:10, marginBottom:26 }}>
+            {opps.map(o => (
+              <div key={o.id} style={{ ...cardStyle, padding:'14px 16px' }}>
+                <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', gap:10, marginBottom:8 }}>
+                  <div style={{ fontSize:13.5, fontWeight:700, color:'var(--text-strong, #111827)' }}>{o.actor_name || 'Profil'}</div>
+                  <div style={{ display:'flex', alignItems:'center', gap:10 }}>
+                    {o.post_url && <a href={o.post_url} target="_blank" rel="noreferrer" style={{ fontSize:11.5, color:PRIMARY_VAR, display:'inline-flex', alignItems:'center', gap:3, textDecoration:'none' }}>Post ansehen <ExternalLink size={12} /></a>}
+                    <span style={{ fontSize:11, color:'var(--text-muted, #6B7280)' }}>{o.post_at ? new Date(o.post_at).toLocaleDateString('de-DE') : ''}</span>
+                  </div>
+                </div>
+                {o.post_text && <div style={{ fontSize:12.5, color:'var(--text-soft, #4B5563)', lineHeight:1.45, marginBottom:10 }}>{o.post_text.slice(0, 240)}{o.post_text.length > 240 ? '…' : ''}</div>}
+                {(Array.isArray(o.suggested_comments) && o.suggested_comments.length > 0) ? (
+                  <div style={{ display:'flex', flexDirection:'column', gap:6, marginBottom:8 }}>
+                    <div style={{ fontSize:11, color:'var(--text-muted, #6B7280)' }}>Kommentar-Vorschläge — klicken zum Einplanen:</div>
+                    {o.suggested_comments.map((c, i) => (
+                      <button key={i} type="button" onClick={() => engageComment(o, c)}
+                        style={{ textAlign:'left', padding:'8px 10px', borderRadius:8, border:'1px solid #E4E7EC', background:'#F8FAFC', cursor:'pointer', fontSize:12.5, color:'#374151', lineHeight:1.45, fontFamily:'inherit' }}
+                        title="Diesen Kommentar einplanen">{c}</button>
+                    ))}
+                  </div>
+                ) : (
+                  <button type="button" onClick={() => regenerateOpp(o)} disabled={regenId === o.id} style={{ ...ghostBtnStyle, marginBottom:8 }}>
+                    {regenId === o.id ? <Loader2 size={13} className="lk-spin" /> : <Sparkles size={13} />} Vorschläge generieren
+                  </button>
+                )}
+                <div style={{ display:'flex', alignItems:'center', gap:8, flexWrap:'wrap' }}>
+                  <button onClick={() => engageReaction(o)} style={ghostBtnStyle} title="Reaktion einplanen">
+                    <Heart size={13} /> Reaktion{o.suggested_reaction ? ` (${(REACTION_OPTIONS.find(r => r.value === o.suggested_reaction)?.label) || o.suggested_reaction})` : ''}
+                  </button>
+                  <button onClick={() => dismissOpp(o)} style={{ ...ghostBtnStyle, color:'#B91C1C', borderColor:'#FECACA' }} title="Verwerfen"><X size={13} /> Verwerfen</button>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+
+        {/* ── Getrackte Listen (Weg 2) ── */}
+        <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:10 }}>
+          <div className="lk-eyebrow" style={{ margin:0 }}>Getrackte Listen</div>
+          <button className="lk-btn lk-btn-ghost" onClick={() => { setTrackerForm({ list_id:'', name:'', auto_mode:'review' }); setShowTrackerDialog(true) }}><Plus size={14} /> Neuer Tracker</button>
+        </div>
+        {trackers.length === 0 ? (
+          <div style={{ ...cardStyle, textAlign:'center', color:'var(--text-muted, #6B7280)', fontSize:13, padding:'20px', marginBottom:26 }}>
+            Kein Tracker aktiv. Wähle eine Liste aus Netzwerk/Prospects — Leadly beobachtet die Profile und schlägt Engagement vor, sobald sie posten.
+          </div>
+        ) : (
+          <div style={{ display:'flex', flexDirection:'column', gap:8, marginBottom:26 }}>
+            {trackers.map(t => {
+              const AUTO = { review:'Nur Vorschlag', react:'Auto-Reaktion', full:'Voll-Automatik' }
+              return (
+                <div key={t.id} style={{ ...cardStyle, padding:'12px 16px', display:'flex', alignItems:'center', gap:12, flexWrap:'wrap', opacity: t.active ? 1 : 0.6 }}>
+                  <div style={{ width:34, height:34, borderRadius:9, background:'#EEF4FE', display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0 }}><Users size={16} color={PRIMARY_VAR} /></div>
+                  <div style={{ flex:1, minWidth:180 }}>
+                    <div style={{ fontSize:13.5, fontWeight:700, color:'var(--text-strong, #111827)' }}>{t.name}</div>
+                    <div style={{ fontSize:11.5, color:'var(--text-muted, #6B7280)', marginTop:2 }}>
+                      Liste: {(lists.find(l => l.id === t.list_id)?.name) || '—'} · {AUTO[t.auto_mode] || t.auto_mode}{t.last_polled_at ? ` · zuletzt geprüft ${new Date(t.last_polled_at).toLocaleString('de-DE')}` : ' · noch nicht geprüft'}
+                    </div>
+                  </div>
+                  <button onClick={() => toggleTracker(t)} style={ghostBtnStyle}>{t.active ? 'Aktiv' : 'Pausiert'}</button>
+                  <button onClick={() => deleteTracker(t)} style={{ ...ghostBtnStyle, color:'#B91C1C', borderColor:'#FECACA' }} title="Löschen"><Trash2 size={14} /></button>
+                </div>
+              )
+            })}
+          </div>
+        )}
+
         {/* Job-Liste */}
         <div className="lk-eyebrow">Geplante & ausgeführte Jobs</div>
         {loading ? (
@@ -310,6 +483,44 @@ authorLine + 'Beitrag:\n"""\n' + (read.text || '').slice(0, 1800) + '\n"""\n\n' 
           </div>
         )}
       </div>
+
+      {/* Tracker-Dialog (Weg 2) */}
+      {showTrackerDialog && (
+        <div onClick={() => setShowTrackerDialog(false)} style={{ position:'fixed', inset:0, background:'rgba(15,23,42,0.45)', display:'flex', alignItems:'center', justifyContent:'center', zIndex:1000, padding:16 }}>
+          <div onClick={e => e.stopPropagation()} style={{ ...cardStyle, width:'100%', maxWidth:480 }}>
+            <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:14 }}>
+              <div style={{ fontSize:16, fontWeight:800, color:'var(--text-strong, #111827)' }}>Neuer Tracker</div>
+              <button onClick={() => setShowTrackerDialog(false)} style={{ background:'none', border:'none', cursor:'pointer', color:'#6B7280' }}><X size={18} /></button>
+            </div>
+            <div style={{ display:'flex', flexDirection:'column', gap:14 }}>
+              <div>
+                <label style={labelStyle}>Liste (Netzwerk / Prospects)</label>
+                <select style={inputStyle} value={trackerForm.list_id} onChange={e => setTrackerForm(f => ({ ...f, list_id: e.target.value }))}>
+                  <option value="">— Liste wählen —</option>
+                  {lists.map(l => <option key={l.id} value={l.id}>{l.name}{l.kind ? ` (${l.kind})` : ''}</option>)}
+                </select>
+              </div>
+              <div>
+                <label style={labelStyle}>Name (optional)</label>
+                <input style={inputStyle} value={trackerForm.name} onChange={e => setTrackerForm(f => ({ ...f, name: e.target.value }))} placeholder="z. B. Ziel-Accounts Q3" />
+              </div>
+              <div>
+                <label style={labelStyle}>Modus</label>
+                <select style={inputStyle} value={trackerForm.auto_mode} onChange={e => setTrackerForm(f => ({ ...f, auto_mode: e.target.value }))}>
+                  <option value="review">Nur Vorschlag (du bestätigst)</option>
+                  <option value="react">Auto-Reaktion + Kommentarvorschlag</option>
+                  <option value="full">Voll-Automatik (Reaktion + Kommentar)</option>
+                </select>
+                <div style={{ fontSize:11, color:'var(--text-muted, #6B7280)', marginTop:4 }}>Empfohlen: „Nur Vorschlag". Automatik nutzt die Tageslimits und ist gegenüber LinkedIn sensibler.</div>
+              </div>
+              <div style={{ display:'flex', justifyContent:'flex-end', gap:10 }}>
+                <button style={ghostBtnStyle} onClick={() => setShowTrackerDialog(false)}>Abbrechen</button>
+                <button style={primaryBtnStyle} onClick={createTracker}><Send size={15} /> Tracker anlegen</button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Job-Erstellungs-Dialog */}
       {showDialog && (
