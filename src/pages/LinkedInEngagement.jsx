@@ -192,18 +192,13 @@ export default function LinkedInEngagement() {
     if (!activeBrandVoice?.id) { setFlash({ type:'error', text:'Keine aktive Marke.' }); return }
     setRegenId(o.id)
     try {
-      const prompt =
-'Du kommentierst als die oben definierte Person auf einen FREMDEN LinkedIn-Beitrag. Konkret, mit Mehrwert, in der Brand Voice, kein generisches Lob.\n\nBeitrag:\n"""\n' + (o.post_text || '').slice(0, 1800) + '\n"""\n\n' +
-'Schreibe 3 kurze Kommentar-Varianten (je 1-3 Sätze, Deutsch) und schlage eine Reaktion vor (like|celebrate|support|love|insightful|funny). Antworte NUR mit JSON: {"reaction":"like","comments":["…","…","…"]}'
-      const { data: gen, error: genErr } = await supabase.functions.invoke('generate', {
-        body: { type:'engagement_comment', prompt, brand_voice_id: activeBrandVoice.id, model: selectedModel, userId: uid }
+      const { data, error } = await supabase.functions.invoke('unipile-engagement-suggest', {
+        body: { post_text: o.post_text, author_name: o.actor_name, brand_voice_id: activeBrandVoice.id }
       })
-      if (genErr) { const m = await mapEfError(genErr); setFlash({ type:'error', text:m.text, action:m.action }); setRegenId(null); return }
-      const rawTxt = gen?.text || gen?.result || ''
-      let parsed=null; try { const mm=rawTxt.replace(/```json|```/g,'').match(/\{[\s\S]*\}/); parsed=JSON.parse(mm?mm[0]:rawTxt) } catch(_e){}
-      const comments = Array.isArray(parsed?.comments) ? parsed.comments.map(c=>(c||'').toString().trim()).filter(Boolean).slice(0,3) : []
-      await supabase.from('engagement_opportunities').update({ suggested_comments: comments, suggested_reaction: parsed?.reaction || null }).eq('id', o.id)
-      setOpps(prev => prev.map(x => x.id===o.id ? { ...x, suggested_comments: comments, suggested_reaction: parsed?.reaction || null } : x))
+      if (error) { const m = await mapEfError(error); setFlash({ type:'error', text:m.text, action:m.action }); setRegenId(null); return }
+      const comments = Array.isArray(data?.comments) ? data.comments : []
+      await supabase.from('engagement_opportunities').update({ suggested_comments: comments, suggested_reaction: data?.reaction || null }).eq('id', o.id)
+      setOpps(prev => prev.map(x => x.id===o.id ? { ...x, suggested_comments: comments, suggested_reaction: data?.reaction || null } : x))
     } catch (e) { setFlash({ type:'error', text:'Generierung fehlgeschlagen: ' + (e?.message||e) }) }
     setRegenId(null)
   }
@@ -276,34 +271,15 @@ export default function LinkedInEngagement() {
     if (!activeBrandVoice?.id) { setFlash({ type:'error', text:'Keine aktive Marke gewählt (oben rechts).' }); return }
     setSuggesting(true); setFlash(null); setSuggestions([]); setSuggestReaction(null)
     try {
-      const { data: read, error: readErr } = await supabase.functions.invoke('unipile-engagement-read', {
+      const { data, error } = await supabase.functions.invoke('unipile-engagement-suggest', {
         body: { post: form.post.trim(), brand_voice_id: activeBrandVoice.id }
       })
-      if (readErr) { const m = await mapEfError(readErr); setFlash({ type:'error', text: m.text, action: m.action }); setSuggesting(false); return }
-      if (!read?.ok || !(read.text || '').trim()) { setFlash({ type:'error', text:'Post konnte nicht gelesen werden (leer oder nicht zugänglich).' }); setSuggesting(false); return }
-      const authorLine = read.author_name ? ('Autor: ' + read.author_name + (read.is_company ? ' (Unternehmen)' : '') + '\n') : ''
-      const prompt =
-'Du kommentierst als die oben definierte Person auf einen FREMDEN LinkedIn-Beitrag. Ziel: sichtbar, sympathisch und fachlich anschlussfähig sein — echtes Engagement, kein generisches Lob.\n\n' +
-authorLine + 'Beitrag:\n"""\n' + (read.text || '').slice(0, 1800) + '\n"""\n\n' +
-'Schreibe 3 kurze, unterschiedliche Kommentar-Varianten (je 1-3 Sätze, Deutsch):\n' +
-'- konkret auf einen Inhalt des Beitrags eingehen (ein Detail aufgreifen), niemals nur "Toller Beitrag".\n' +
-'- Mehrwert bieten: eigene Erfahrung, eine präzise Frage, eine ergänzende Perspektive oder klare Zustimmung mit Begründung.\n' +
-'- natürlich und menschlich in der Brand Voice; keine Hashtags, keine Emoji-Flut, kein Verkaufspitch.\n' +
-'Schlage außerdem eine passende Reaktion vor (einer von: like, celebrate, support, love, insightful, funny).\n\n' +
-'Antworte NUR mit JSON (kein Markdown):\n{"reaction":"like","comments":["…","…","…"]}'
-      const { data: gen, error: genErr } = await supabase.functions.invoke('generate', {
-        body: { type:'engagement_comment', prompt, brand_voice_id: activeBrandVoice.id, model: selectedModel, userId: uid }
-      })
-      if (genErr) { const m = await mapEfError(genErr); setFlash({ type:'error', text: m.text, action: m.action }); setSuggesting(false); return }
-      const rawTxt = gen?.text || gen?.result || ''
-      let parsed = null
-      try { const mm = rawTxt.replace(/```json|```/g, '').match(/\{[\s\S]*\}/); parsed = JSON.parse(mm ? mm[0] : rawTxt) } catch (_e) { /* Parse-Fallback unten */ }
-      const comments = Array.isArray(parsed?.comments) ? parsed.comments.map(c => (c || '').toString().trim()).filter(Boolean).slice(0, 3) : []
+      if (error) { const m = await mapEfError(error); setFlash({ type:'error', text: m.text, action: m.action }); setSuggesting(false); return }
+      const comments = Array.isArray(data?.comments) ? data.comments : []
       if (!comments.length) { setFlash({ type:'error', text:'Keine verwertbaren Vorschläge — bitte erneut versuchen.' }); setSuggesting(false); return }
       setSuggestions(comments)
-      if (parsed?.reaction) setSuggestReaction(parsed.reaction)
-      // robuste social_id gleich übernehmen (falls URL eingegeben wurde)
-      if (read.social_id && !form.post.trim().startsWith('urn:')) setField('post', read.social_id)
+      if (data?.reaction) setSuggestReaction(data.reaction)
+      if (data?.social_id && !form.post.trim().startsWith('urn:')) setField('post', data.social_id)
     } catch (e) {
       setFlash({ type:'error', text:'Vorschläge fehlgeschlagen: ' + (e?.message || e) })
     }
