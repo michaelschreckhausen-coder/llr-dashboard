@@ -12,12 +12,13 @@ import React, { useState, useEffect, useCallback } from 'react'
 import { useNavigate } from 'react-router-dom'
 import {
   Zap, Plus, Play, Trash2, MessageSquare, Heart, Clock, Send,
-  ExternalLink, AlertCircle, CheckCircle2, Loader2, X, Info,
+  ExternalLink, AlertCircle, CheckCircle2, Loader2, X, Info, Sparkles,
 } from 'lucide-react'
 import { supabase } from '../lib/supabase'
 import PageHeader from '../components/PageHeader'
 import { useTeam } from '../context/TeamContext'
 import { useBrandVoice } from '../context/BrandVoiceContext'
+import { useModel } from '../context/ModelContext'
 import { mapEfError } from '../lib/efError'
 
 const PRIMARY = 'rgb(49,90,231)'
@@ -59,6 +60,7 @@ const EMPTY_FORM = { kind:'comment', post:'', comment_text:'', saved_comment_id:
 export default function LinkedInEngagement() {
   const { activeTeamId } = useTeam()
   const { activeBrandVoice } = useBrandVoice()
+  const { model: selectedModel } = useModel()
   const navigate = useNavigate()
 
   const [uid, setUid]                 = useState(null)
@@ -71,6 +73,9 @@ export default function LinkedInEngagement() {
   const [form, setForm]               = useState(EMPTY_FORM)
   const [saving, setSaving]           = useState(false)
   const [flash, setFlash]             = useState(null)
+  const [suggesting, setSuggesting]   = useState(false)
+  const [suggestions, setSuggestions] = useState([])
+  const [suggestReaction, setSuggestReaction] = useState(null)
 
   useEffect(() => { supabase.auth.getUser().then(({ data }) => setUid(data?.user?.id || null)) }, [])
 
@@ -167,6 +172,46 @@ export default function LinkedInEngagement() {
     load()
   }
 
+  // KI-Kommentarvorschläge (Weg 1): Post via Unipile lesen -> generate (Markenstimme + gewähltes Modell).
+  const suggestComments = async () => {
+    if (!form.post.trim()) { setFlash({ type:'error', text:'Bitte zuerst die Post-URL angeben.' }); return }
+    if (!activeBrandVoice?.id) { setFlash({ type:'error', text:'Keine aktive Marke gewählt (oben rechts).' }); return }
+    setSuggesting(true); setFlash(null); setSuggestions([]); setSuggestReaction(null)
+    try {
+      const { data: read, error: readErr } = await supabase.functions.invoke('unipile-engagement-read', {
+        body: { post: form.post.trim(), brand_voice_id: activeBrandVoice.id }
+      })
+      if (readErr) { const m = await mapEfError(readErr); setFlash({ type:'error', text: m.text, action: m.action }); setSuggesting(false); return }
+      if (!read?.ok || !(read.text || '').trim()) { setFlash({ type:'error', text:'Post konnte nicht gelesen werden (leer oder nicht zugänglich).' }); setSuggesting(false); return }
+      const authorLine = read.author_name ? ('Autor: ' + read.author_name + (read.is_company ? ' (Unternehmen)' : '') + '\n') : ''
+      const prompt =
+'Du kommentierst als die oben definierte Person auf einen FREMDEN LinkedIn-Beitrag. Ziel: sichtbar, sympathisch und fachlich anschlussfähig sein — echtes Engagement, kein generisches Lob.\n\n' +
+authorLine + 'Beitrag:\n"""\n' + (read.text || '').slice(0, 1800) + '\n"""\n\n' +
+'Schreibe 3 kurze, unterschiedliche Kommentar-Varianten (je 1-3 Sätze, Deutsch):\n' +
+'- konkret auf einen Inhalt des Beitrags eingehen (ein Detail aufgreifen), niemals nur "Toller Beitrag".\n' +
+'- Mehrwert bieten: eigene Erfahrung, eine präzise Frage, eine ergänzende Perspektive oder klare Zustimmung mit Begründung.\n' +
+'- natürlich und menschlich in der Brand Voice; keine Hashtags, keine Emoji-Flut, kein Verkaufspitch.\n' +
+'Schlage außerdem eine passende Reaktion vor (einer von: like, celebrate, support, love, insightful, funny).\n\n' +
+'Antworte NUR mit JSON (kein Markdown):\n{"reaction":"like","comments":["…","…","…"]}'
+      const { data: gen, error: genErr } = await supabase.functions.invoke('generate', {
+        body: { type:'engagement_comment', prompt, brand_voice_id: activeBrandVoice.id, model: selectedModel, userId: uid }
+      })
+      if (genErr) { const m = await mapEfError(genErr); setFlash({ type:'error', text: m.text, action: m.action }); setSuggesting(false); return }
+      const rawTxt = gen?.text || gen?.result || ''
+      let parsed = null
+      try { const mm = rawTxt.replace(/```json|```/g, '').match(/\{[\s\S]*\}/); parsed = JSON.parse(mm ? mm[0] : rawTxt) } catch (_e) { /* Parse-Fallback unten */ }
+      const comments = Array.isArray(parsed?.comments) ? parsed.comments.map(c => (c || '').toString().trim()).filter(Boolean).slice(0, 3) : []
+      if (!comments.length) { setFlash({ type:'error', text:'Keine verwertbaren Vorschläge — bitte erneut versuchen.' }); setSuggesting(false); return }
+      setSuggestions(comments)
+      if (parsed?.reaction) setSuggestReaction(parsed.reaction)
+      // robuste social_id gleich übernehmen (falls URL eingegeben wurde)
+      if (read.social_id && !form.post.trim().startsWith('urn:')) setField('post', read.social_id)
+    } catch (e) {
+      setFlash({ type:'error', text:'Vorschläge fehlgeschlagen: ' + (e?.message || e) })
+    }
+    setSuggesting(false)
+  }
+
   const cancelJob = async (id) => {
     const { error } = await supabase.from('linkedin_engagement_jobs').delete().eq('id', id)
     if (error) { setFlash({ type:'error', text:'Abbrechen fehlgeschlagen: ' + error.message }); return }
@@ -185,7 +230,7 @@ export default function LinkedInEngagement() {
               <button className="lk-btn lk-btn-ghost" style={{ opacity: running ? 0.6 : 1 }} disabled={running} onClick={runNow}>
                 {running ? <Loader2 size={15} className="lk-spin" /> : <Play size={15} />} Jetzt ausführen
               </button>
-              <button className="lk-btn lk-btn-navy" onClick={() => { setForm(EMPTY_FORM); setShowDialog(true) }}>
+              <button className="lk-btn lk-btn-navy" onClick={() => { setForm(EMPTY_FORM); setSuggestions([]); setSuggestReaction(null); setShowDialog(true) }}>
                 <Plus size={15} /> Neuer Job
               </button>
             </div>
@@ -310,8 +355,31 @@ export default function LinkedInEngagement() {
               {form.kind === 'comment' ? (
                 <>
                   <div>
-                    <label style={labelStyle}>Kommentartext</label>
-                    <textarea style={{ ...inputStyle, minHeight:80, resize:'vertical' }} value={form.comment_text} onChange={e => setField('comment_text', e.target.value)} placeholder="Dein Kommentar…" />
+                    <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:5 }}>
+                      <label style={{ ...labelStyle, marginBottom:0 }}>Kommentartext</label>
+                      <button type="button" onClick={suggestComments} disabled={suggesting || !form.post.trim()}
+                        style={{ ...ghostBtnStyle, padding:'5px 10px', opacity: (suggesting || !form.post.trim()) ? 0.55 : 1 }}
+                        title={!form.post.trim() ? 'Zuerst Post-URL eingeben' : 'Leadly liest den Post und schlägt Kommentare vor'}>
+                        {suggesting ? <Loader2 size={13} className="lk-spin" /> : <Sparkles size={13} />} Mit Leadly vorschlagen
+                      </button>
+                    </div>
+                    <textarea style={{ ...inputStyle, minHeight:80, resize:'vertical' }} value={form.comment_text} onChange={e => setField('comment_text', e.target.value)} placeholder="Dein Kommentar… oder oben mit Leadly vorschlagen lassen" />
+                    {suggestions.length > 0 && (
+                      <div style={{ marginTop:8, display:'flex', flexDirection:'column', gap:6 }}>
+                        <div style={{ fontSize:11, color:'var(--text-muted, #6B7280)' }}>Vorschläge — klicken zum Übernehmen:</div>
+                        {suggestions.map((c, i) => (
+                          <button key={i} type="button" onClick={() => { setField('comment_text', c); setField('saved_comment_id', '') }}
+                            style={{ textAlign:'left', padding:'8px 10px', borderRadius:8, border:`1px solid ${form.comment_text === c ? PRIMARY_VAR : '#E4E7EC'}`, background: form.comment_text === c ? '#EEF4FE' : '#F8FAFC', cursor:'pointer', fontSize:12.5, color:'#374151', lineHeight:1.45, fontFamily:'inherit' }}>
+                            {c}
+                          </button>
+                        ))}
+                        {suggestReaction && (
+                          <div style={{ fontSize:11.5, color:'var(--text-muted, #6B7280)' }}>
+                            Vorgeschlagene Reaktion: <strong>{(REACTION_OPTIONS.find(o => o.value === suggestReaction)?.label) || suggestReaction}</strong>
+                          </div>
+                        )}
+                      </div>
+                    )}
                   </div>
                   {savedComments.length > 0 && (
                     <div>
