@@ -132,12 +132,13 @@ Deno.serve(async (req) => {
 
   // ── IMPORT: Job-Row anlegen (Observability + persistiert source_url für künftige Diagnose).
   // team_id/user_id/brand_voice_id aus dem JWT-Kontext (oben aufgelöst), NICHT geraten → keine Fremd-Zuordnung.
-  const { data: jobRow } = await db.from("sales_nav_import_jobs").insert({
+  const { data: jobRow, error: jobErr } = await db.from("sales_nav_import_jobs").insert({
     team_id: teamId, user_id: userId, brand_voice_id: brandId,
-    source_type: "unipile_salesnav",
+    source_type: "saved_search", // CHECK erlaubt nur single/saved_search/list — die URL-Suche = saved_search
     source_url: (typeof (search as any).url === "string" ? (search as any).url : null),
     status: "running", total_leads: 0,
   }).select("id").maybeSingle();
+  if (jobErr) console.warn(`[import-unipile-salesnav] job-row insert failed: ${jobErr.message}`); // Fallstrick #12: nicht still schlucken
   const jobId: string | null = jobRow?.id ?? null;
 
   let inserted = 0, updated = 0, failed = 0, seen = 0;
