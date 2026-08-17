@@ -10,6 +10,39 @@ const SB_SERVICE = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
 const admin = createClient(SB_URL, SB_SERVICE);
 const json = (o: unknown, status = 200) => new Response(JSON.stringify(o), { status, headers: { "content-type": "application/json" } });
 
+// ── Reply-Cockpit: eingehende Antwort einem Kampagnen-Kontakt zuordnen ──────
+// Ordnet die neueste Inbound-Nachricht eines Chats einem aktiven/beantworteten
+// la_enrollments-Kontakt zu (Profil-Identität provider_id + Marke). Setzt Status
+// 'replied', chat_id (Deep-Link) und last_reply_*, und reiht die Enrollment für die
+// KI-Sentiment-Klassifikation ein. Idempotent über last_reply_msg_id (kein Status-
+// Flip / keine Doppel-Klassifikation), manuelles Sentiment wird nie überschrieben.
+async function detectReply(
+  brandId: string | null, providerId: string | null, chatId: string,
+  msgId: string, msgText: string | null, msgTs: number, queue: string[],
+): Promise<void> {
+  if (!brandId || !providerId || !msgId) return;
+  // Prefilter: nur wenn der Absender überhaupt ein Kampagnen-Kontakt dieser Marke ist.
+  const { data: enrs } = await admin.from("la_enrollments")
+    .select("id, state, last_reply_msg_id, sentiment_source")
+    .eq("brand_voice_id", brandId).eq("provider_id", providerId)
+    .in("state", ["active", "replied"]);
+  if (!enrs || !enrs.length) return; // kein Kampagnen-Kontakt → keine Arbeit, keine KI
+  const at = msgTs ? new Date(msgTs).toISOString() : new Date().toISOString();
+  const excerpt = ((msgText || "").trim().slice(0, 240)) || null;
+  for (const e of enrs) {
+    if (e.last_reply_msg_id === msgId) continue; // Idempotenz: diese Antwort schon verarbeitet
+    const patch: Record<string, unknown> = {
+      state: e.state === "active" ? "replied" : e.state,
+      chat_id: chatId, last_reply_at: at, last_reply_excerpt: excerpt,
+      last_reply_msg_id: msgId, updated_at: new Date().toISOString(),
+    };
+    const { error } = await admin.from("la_enrollments").update(patch).eq("id", e.id);
+    if (error) { console.warn("[inbox-sync] reply-detect:", error.message); continue; }
+    // KI-Sentiment nur, wenn nicht manuell gesetzt (bei neuer Antwort neu bewerten).
+    if (e.sentiment_source !== "manuell" && excerpt) queue.push(e.id);
+  }
+}
+
 Deno.serve(async (req) => {
   if (req.headers.get("Authorization") !== `Bearer ${SB_SERVICE}`) return json({ error: "unauthorized" }, 401);
   const { unipile_account_id, max_chats } = await req.json().catch(() => ({} as any));
@@ -22,6 +55,7 @@ Deno.serve(async (req) => {
 
   const cap = Math.min(Math.max(Number(max_chats) || 50, 1), 200);
   let scanned = 0, upChats = 0, upMsgs = 0, cursor: string | null = null;
+  const sentimentQueue: string[] = []; // Reply-Cockpit: neu erkannte Antworten → KI-Sentiment
 
   outer:
   for (let page = 0; page < 5; page++) {
@@ -79,14 +113,17 @@ Deno.serve(async (req) => {
         const mr = await getChatMessages(c.id, null, 30);
         if (mr.ok) {
           let newestText: string | null = null, newestTs = 0;
+          let newInId: string | null = null, newInText: string | null = null, newInTs = 0;
           for (const m of mr.data.items) {
             if (!m.id) continue;
             const ts = m.timestamp ? new Date(m.timestamp).getTime() : 0;
+            const outbound = (m.is_sender === 1 || m.is_sender === true);
             if (ts > newestTs) { newestTs = ts; newestText = m.text ?? null; }
+            if (!outbound && ts >= newInTs) { newInTs = ts; newInId = m.id; newInText = m.text ?? null; }
             const row = {
               team_id: acct.team_id, chat_id: chatId,
               unipile_message_id: m.id,
-              direction: (m.is_sender === 1 || m.is_sender === true) ? "outbound" : "inbound",
+              direction: outbound ? "outbound" : "inbound",
               sender_provider_id: m.sender_id ?? null,
               text: m.text ?? null,
               seen: (m.seen === 1 || m.seen === true),
@@ -97,11 +134,25 @@ Deno.serve(async (req) => {
             if (!me) upMsgs++;
           }
           if (newestText !== null) await admin.from("linkedin_chats").update({ last_message_text: newestText }).eq("id", chatId);
+          // Reply-Cockpit: neueste Inbound-Antwort einem Kampagnen-Kontakt zuordnen (+ Sentiment einreihen).
+          if (newInId && _pid) await detectReply(acct.brand_voice_id, _pid, chatId, newInId, newInText, newInTs, sentimentQueue);
         }
       }
     }
     cursor = cr.data.cursor;
     if (!cursor || cr.data.items.length === 0) break;
   }
-  return json({ ok: true, unipile_account_id, scanned, chats: upChats, messages: upMsgs });
+  // Reply-Cockpit: KI-Sentiment für neu erkannte Antworten anstoßen (best effort).
+  const uniq = [...new Set(sentimentQueue)];
+  if (uniq.length) {
+    await Promise.allSettled(uniq.map((id) =>
+      fetch(`${SB_URL}/functions/v1/classify-reply-sentiment`, {
+        method: "POST",
+        headers: { "content-type": "application/json", "Authorization": `Bearer ${SB_SERVICE}` },
+        body: JSON.stringify({ enrollment_id: id }),
+      }).catch((e) => console.warn("[inbox-sync] sentiment trigger:", String((e as any)?.message || e)))
+    ));
+  }
+
+  return json({ ok: true, unipile_account_id, scanned, chats: upChats, messages: upMsgs, replies_detected: uniq.length });
 });
