@@ -147,6 +147,37 @@ export async function getUnipileConnection(
   };
 }
 
+// Brand-only Verbindungsauflösung (Prod/Staging-Hotfix 13.08., hier nach develop nachgezogen).
+// Verbindungen hängen ausschließlich an der Marke — nie am User. Identitäts-Guard gegen
+// Fremd-Konto-Mapping. Rückgabe UnipileConn (dsn:null → call() löst DSN aus dem Env auf).
+export async function getBrandUnipileConn(
+  sb: SupabaseClient,
+  brandVoiceId: string | null | undefined,
+): Promise<UnipileConn | null> {
+  if (!brandVoiceId) return null;
+  const { data: rows, error } = await sb
+    .from("unipile_accounts")
+    .select("id, unipile_account_id, team_id, user_id, status, last_status_update, provider_public_id")
+    .eq("brand_voice_id", brandVoiceId)
+    .eq("status", "OK")
+    .not("unipile_account_id", "is", null)
+    .order("last_status_update", { ascending: false });
+  if (error) { console.warn("[unipile] getBrandUnipileConn: " + error.message); return null; }
+  const pick = (rows || [])[0];
+  if (!pick) return null;
+  try {
+    const { data: bv } = await sb.from("brand_voices").select("linkedin_url").eq("id", brandVoiceId).maybeSingle();
+    const raw = ((bv as any)?.linkedin_url || "").match(/\/in\/([^/?#]+)/)?.[1] || "";
+    let brandSlug = ""; try { brandSlug = decodeURIComponent(raw).toLowerCase(); } catch { brandSlug = String(raw).toLowerCase(); }
+    const acctSlug = String((pick as any).provider_public_id || "").toLowerCase();
+    if (brandSlug && acctSlug && brandSlug !== acctSlug) {
+      console.warn("[unipile] getBrandUnipileConn IDENTITAETS-MISMATCH brand=" + brandVoiceId + " erwartet='" + brandSlug + "' konto='" + acctSlug + "' -> Abbruch");
+      return null;
+    }
+  } catch (_e) { /* Guard best-effort */ }
+  return { accountId: pick.unipile_account_id as string, dsn: null, connectionId: pick.id as string, teamId: pick.team_id as string, userId: pick.user_id as string };
+}
+
 // ---------------------------------------------------------------------
 // Low-level Request-Helfer
 // ---------------------------------------------------------------------
