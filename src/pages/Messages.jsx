@@ -255,6 +255,10 @@ function Kampagnen({ bvId, onCompose, onOpenChat }) {
   const [loading, setLoading] = useState(false)
   const [filter, setFilter] = useState('all')
   const [syncing, setSyncing] = useState(false)
+  // Kampagnentyp: hat die Kampagne einen Erstnachricht-Step? Vernetzungskampagnen (nur
+  // 'invite') haben KEINE Erstnachricht → „Angeschrieben" wäre falsch (nur die Anfrage
+  // wurde angenommen). la_steps ist per RLS lesbar (gleiche brand/team-Logik wie das Cockpit).
+  const [isMsgCampaign, setIsMsgCampaign] = useState(false)
 
   useEffect(() => {
     if (!bvId) { setCamps([]); return }
@@ -262,6 +266,14 @@ function Kampagnen({ bvId, onCompose, onOpenChat }) {
       .order('created_at', { ascending: false })
       .then(({ data }) => setCamps(data || []))
   }, [bvId])
+
+  useEffect(() => {
+    if (!campId) { setIsMsgCampaign(false); return }
+    let alive = true
+    supabase.from('la_steps').select('action').eq('campaign_id', campId)
+      .then(({ data }) => { if (alive) setIsMsgCampaign(Array.isArray(data) && data.some(s => s.action === 'message')) })
+    return () => { alive = false }
+  }, [campId])
 
   const ACTIVE = (s) => ['active', 'running', 'laufend'].includes((s || '').toLowerCase())
   const visibleCamps = camps.filter(c => showDone || ACTIVE(c.status))
@@ -322,9 +334,14 @@ function Kampagnen({ bvId, onCompose, onOpenChat }) {
   const write = (p) => onCompose({ provider_id: p.provider_id, url: profileUrl(p), name: p.name, headline: p.headline, avatar_url: p.avatar_url || null, source: 'campaign' })
 
   const selStyle = { padding: '8px 12px', borderRadius: 10, border: '1px solid var(--border)', background: 'var(--surface)', color: 'var(--text-strong,#111827)', fontSize: 14, minWidth: 280, maxWidth: 460 }
+  const pct = c.all ? Math.round(c.rep / c.all * 100) : 0
   const FUNNEL = [
-    { f: 'all', l: 'Angeschrieben', v: c.all, x: 'gesamt' },
-    { f: 'rep', l: 'Geantwortet', v: c.rep, x: c.all ? `Reply-Rate ${Math.round(c.rep / c.all * 100)}%` : 'Reply-Rate' },
+    // Basiskachel + Reply-Rate-Untertitel kampagnentyp-abhängig: Vernetzungskampagne
+    // → „Vernetzt" (nur Anfrage angenommen), Nachrichten-Kampagne → „Angeschrieben".
+    isMsgCampaign
+      ? { f: 'all', l: 'Angeschrieben', v: c.all, x: 'gesamt' }
+      : { f: 'all', l: 'Vernetzt', v: c.all, x: 'Anfrage angenommen' },
+    { f: 'rep', l: 'Geantwortet', v: c.rep, x: c.all ? (isMsgCampaign ? `Reply-Rate ${pct}%` : `${pct}% nach Vernetzung`) : (isMsgCampaign ? 'Reply-Rate' : 'nach Vernetzung') },
     { f: 'pos', l: '🟢 Positiv', v: c.pos, x: 'heiße Leads' },
     { f: 'neu', l: '🟡 Neutral', v: c.neu, x: 'nachfassen' },
     { f: 'neg', l: '🔴 Negativ', v: c.neg, x: 'kein Interesse' },
@@ -354,7 +371,7 @@ function Kampagnen({ bvId, onCompose, onOpenChat }) {
       ) : !campId ? (
         <div style={{ color: 'var(--text-muted)', padding: '24px 4px', fontSize: 14 }}>Keine laufende Kampagne für diese Marke.</div>
       ) : people.length === 0 ? (
-        <div style={{ color: 'var(--text-muted)', padding: '24px 4px', fontSize: 14 }}>Noch keine angeschriebenen Kontakte in dieser Kampagne.</div>
+        <div style={{ color: 'var(--text-muted)', padding: '24px 4px', fontSize: 14 }}>{isMsgCampaign ? 'Noch keine angeschriebenen Kontakte in dieser Kampagne.' : 'Noch keine angenommenen Vernetzungen in dieser Kampagne.'}</div>
       ) : (
         <>
           {/* FUNNEL */}
@@ -406,7 +423,7 @@ function Kampagnen({ bvId, onCompose, onOpenChat }) {
                   <div style={{ width: 124, flexShrink: 0 }}>
                     {p.replied
                       ? <span style={{ fontSize: 11.5, fontWeight: 700, padding: '3px 9px', borderRadius: 999, background: '#EAF0FD', color: '#1E40AF' }}>✓ Geantwortet</span>
-                      : <span style={{ fontSize: 11.5, fontWeight: 700, padding: '3px 9px', borderRadius: 999, background: 'var(--surface-2,#F7F9FB)', color: 'var(--text-muted)', border: '1px solid var(--border)' }}>✉️ Angeschrieben</span>}
+                      : <span style={{ fontSize: 11.5, fontWeight: 700, padding: '3px 9px', borderRadius: 999, background: 'var(--surface-2,#F7F9FB)', color: 'var(--text-muted)', border: '1px solid var(--border)' }}>{isMsgCampaign ? '✉️ Angeschrieben' : '🔗 Vernetzt'}</span>}
                     <div style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 3 }}>{p.replied ? agoLabel(p.last_reply_at) : (p.accepted_at ? `angenommen ${agoLabel(p.accepted_at)}` : '')}</div>
                   </div>
 
