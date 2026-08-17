@@ -146,6 +146,11 @@ export default function LinkedInSuche() {
     if (!form.person_name.trim() && !form.keywords.trim() && !form.position.trim() && !form.search_url.trim()) {
       setFlash({ type:'error', text:'Bitte Keywords, eine Berufsposition, einen Namen oder eine gespeicherte Such-URL angeben.' }); return
     }
+    // Sales Navigator nimmt keine Freitext-Keyword-Filter (die brauchen URN-IDs aus einer URL).
+    // → für SN eine Such-URL verlangen; Keyword-Felder laufen über die Quelle „LinkedIn" (Classic).
+    if (form.api === 'sales_navigator' && !form.search_url.trim()) {
+      setFlash({ type:'error', text:'Für Sales Navigator bitte eine Such-URL angeben — die Keyword-Felder nutzen die Quelle „LinkedIn“ (Classic).' }); return
+    }
     // Positive Allowlist: eine hinterlegte URL muss eine echte Such-Ergebnis-URL sein
     // (kein Profil-Link). Gleiche Logik wie im EF (autoritativ) — siehe lib/linkedinSearchUrl.
     const _urlCheck = validateSearchUrl(form.search_url)
@@ -363,6 +368,12 @@ export default function LinkedInSuche() {
               </div>
             )}
 
+            {form.api === 'sales_navigator' && (
+              <div style={{ fontSize:12, color:'#B45309', background:'#FFFBEB', border:'1px solid #FDE68A', borderRadius:8, padding:'8px 12px' }}>
+                Sales Navigator: bitte unten eine <strong>Such-URL</strong> angeben — die Keyword-Felder (Keywords, Berufsposition, Ort …) funktionieren mit der Quelle „LinkedIn" (Classic).
+              </div>
+            )}
+
             <div style={gridStyle}>
               <div>
                 <label style={labelStyle}>Keywords</label>
@@ -377,8 +388,8 @@ export default function LinkedInSuche() {
               {form.category === 'people' && (
                 <div>
                   <label style={labelStyle}>Berufsposition (optional)</label>
-                  <input style={{ ...inputStyle, ...(form.api === 'classic' ? { opacity:0.55 } : {}) }} value={form.position} onChange={e => setField('position', e.target.value)} placeholder="z. B. Geschäftsführer, CTO" />
-                  {form.api === 'classic' && <div style={{ fontSize:11, color:'#B45309', marginTop:4 }}>Titel-Filter wirkt nur mit Quelle „Sales Navigator".</div>}
+                  <input style={inputStyle} value={form.position} onChange={e => setField('position', e.target.value)} placeholder="z. B. Geschäftsführer, CTO" />
+                  <div style={{ fontSize:11, color:'var(--text-tertiary,#8a8a85)', marginTop:4 }}>Fließt in die Keyword-Suche ein — mehrere Titel mit Komma trennen (z. B. „CMO, Geschäftsführer").</div>
                 </div>
               )}
               <div>
