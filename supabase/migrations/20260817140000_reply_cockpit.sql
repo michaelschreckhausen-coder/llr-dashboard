@@ -70,7 +70,9 @@ BEGIN
       WHERE m.chat_id = ch.id AND m.direction = 'inbound'
       ORDER BY m.sent_at DESC NULLS LAST LIMIT 1
     ) li ON true
-    WHERE e.campaign_id = p_campaign_id AND e.accepted_at IS NOT NULL
+    -- Population = kontaktiert (hat Postfach-Thread) ODER als Verbindung angenommen.
+    -- accepted_at allein greift zu eng (Antworter ohne accepted_at-Reconcile fielen sonst raus).
+    WHERE e.campaign_id = p_campaign_id AND (e.accepted_at IS NOT NULL OR ch.id IS NOT NULL)
     ORDER BY (e.last_reply_at IS NOT NULL OR li.sent_at IS NOT NULL) DESC,
              COALESCE(e.last_reply_at, li.sent_at) DESC NULLS LAST,
              e.accepted_at DESC;

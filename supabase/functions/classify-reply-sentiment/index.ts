@@ -79,8 +79,11 @@ Deno.serve(async (req) => {
   // sentiment_ai IMMER; sentiment (effektiv) nur wenn confident. Race-Guard: nie manuell überschreiben.
   const patch: Record<string, unknown> = { sentiment_ai: suggestion, updated_at: new Date().toISOString() };
   if (confident) { patch.sentiment = suggestion; patch.sentiment_source = "ki"; }
+  // Race-Guard: nie einen manuell gesetzten Wert überschreiben. sentiment_source IS NULL
+  // ist der Normalfall (noch nicht klassifiziert) — .not.eq würde NULL fälschlich ausschließen
+  // (NULL != 'manuell' ist NULL, nicht TRUE), daher explizit is.null ODER neq.manuell.
   const { error: ue } = await admin.from("la_enrollments")
-    .update(patch).eq("id", enrollment_id).not("sentiment_source", "eq", "manuell");
+    .update(patch).eq("id", enrollment_id).or("sentiment_source.is.null,sentiment_source.neq.manuell");
   if (ue) console.warn("[classify-reply-sentiment] update:", ue.message);
 
   // Kosten-Log (best effort, kein Gate — automatische Hintergrund-Aktion).
