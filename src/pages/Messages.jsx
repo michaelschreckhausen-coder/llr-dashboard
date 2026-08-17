@@ -75,6 +75,9 @@ export default function Messages() {
   const markMessaged = useCallback((pid) => {
     if (pid) setMessagedIds((prev) => new Set(prev).add(pid))
   }, [])
+  // Deep-Link „Zum Gespräch" (Kampagnen-Cockpit → Postfach-Thread der Person).
+  const [postfachChatId, setPostfachChatId] = useState(null)
+  const openChat = useCallback((chatId) => { setPostfachChatId(chatId); setTab('postfach') }, [])
 
   // ── geteilt: Kontakte ──
   const [contacts, setContacts] = useState([])
@@ -120,10 +123,10 @@ export default function Messages() {
       {tab === 'verfassen'
         ? <Verfassen bvId={bvId} model={selectedModel} contacts={contacts} caps={caps} seed={composeSeed} onSent={markMessaged} onOpenPostfach={() => setTab('postfach')} />
         : tab === 'kampagnen'
-        ? <Kampagnen bvId={bvId} messagedIds={messagedIds} onCompose={startCompose} />
+        ? <Kampagnen bvId={bvId} onCompose={startCompose} onOpenChat={openChat} />
         : tab === 'anfragen'
         ? <OffeneAnfragen />
-        : <Postfach bvId={bvId} brandName={brandName} contacts={contacts} reloadContacts={loadContacts} goCompose={() => setTab('verfassen')} />}
+        : <Postfach bvId={bvId} brandName={brandName} contacts={contacts} reloadContacts={loadContacts} goCompose={() => setTab('verfassen')} initialChatId={postfachChatId} onConsumeInitial={() => setPostfachChatId(null)} />}
     </div>
   )
 }
@@ -227,13 +230,31 @@ function RecipientPicker({ bvId, cat, canInmail, value, onChange }) {
 }
 
 // ── Kampagnen: Angenommene einer Automations-Kampagne sehen & einzeln anschreiben ──
-function Kampagnen({ bvId, messagedIds, onCompose }) {
+// Reply-Cockpit — Sentiment-Codes (DB 'positiv'/'neutral'/'negativ' ↔ UI-Kürzel).
+const SENT_META = {
+  pos: { label: 'Positiv', dot: '#16A34A', bg: '#E7F6EC', bd: '#BFE6CC', em: '🟢' },
+  neu: { label: 'Neutral', dot: '#B45309', bg: '#FDF1DD', bd: '#F3D9A8', em: '🟡' },
+  neg: { label: 'Negativ', dot: '#B42318', bg: '#FDECEA', bd: '#F5C6C0', em: '🔴' },
+}
+const toCode = (s) => (s === 'positiv' ? 'pos' : s === 'neutral' ? 'neu' : s === 'negativ' ? 'neg' : null)
+const CODE_SENT = { pos: 'positiv', neu: 'neutral', neg: 'negativ' }
+function agoLabel(ts) {
+  if (!ts) return ''
+  const mins = Math.floor((Date.now() - new Date(ts).getTime()) / 60000)
+  if (mins < 1) return 'gerade eben'
+  if (mins < 60) return `vor ${mins} Min`
+  const h = Math.floor(mins / 60); if (h < 24) return `vor ${h} Std`
+  const d = Math.floor(h / 24); return d === 1 ? 'gestern' : `vor ${d} Tagen`
+}
+
+function Kampagnen({ bvId, onCompose, onOpenChat }) {
   const [camps, setCamps] = useState([])
   const [campId, setCampId] = useState('')
   const [showDone, setShowDone] = useState(false)
   const [people, setPeople] = useState([])
   const [loading, setLoading] = useState(false)
-  const [onlyOpen, setOnlyOpen] = useState(false)
+  const [filter, setFilter] = useState('all')
+  const [syncing, setSyncing] = useState(false)
 
   useEffect(() => {
     if (!bvId) { setCamps([]); return }
@@ -244,7 +265,6 @@ function Kampagnen({ bvId, messagedIds, onCompose }) {
 
   const ACTIVE = (s) => ['active', 'running', 'laufend'].includes((s || '').toLowerCase())
   const visibleCamps = camps.filter(c => showDone || ACTIVE(c.status))
-
   useEffect(() => {
     if (!visibleCamps.length) { setCampId(''); return }
     if (!campId || !visibleCamps.some(c => c.id === campId)) setCampId(visibleCamps[0].id)
@@ -253,26 +273,68 @@ function Kampagnen({ bvId, messagedIds, onCompose }) {
   const load = useCallback(async () => {
     if (!campId) { setPeople([]); return }
     setLoading(true)
-    const { data, error } = await supabase.rpc('la_campaign_accepted', { p_campaign_id: campId })
-    setLoading(false)
+    const { data, error } = await supabase.rpc('la_campaign_cockpit', { p_campaign_id: campId })
     setPeople(!error && Array.isArray(data) ? data : [])
+    setLoading(false)
   }, [campId])
   useEffect(() => { load() }, [load])
 
-  const isMessaged = (p) => p.already_messaged || messagedIds?.has(p.provider_id)
-  const rows = people.filter(p => !onlyOpen || !isMessaged(p))
-  const openCount = people.filter(p => !isMessaged(p)).length
+  // Frische: beim Kampagnen-Wechsel Inbox-Sync anstoßen (fire-and-forget via RPC),
+  // dann nach kurzer Wartezeit neu laden — Reply-Detection + Sentiment laufen im Sync.
+  useEffect(() => {
+    if (!bvId || !campId) return
+    let alive = true
+    setSyncing(true)
+    supabase.rpc('request_inbox_sync', { p_brand_voice_id: bvId })
+      .then(() => setTimeout(async () => { if (alive) { await load(); if (alive) setSyncing(false) } }, 5000))
+      .catch(() => { if (alive) setSyncing(false) })
+    return () => { alive = false }
+  }, [bvId, campId, load])
 
-  const daysAgo = (ts) => {
-    if (!ts) return ''
-    const d = Math.floor((Date.now() - new Date(ts).getTime()) / 86400000)
-    return d <= 0 ? 'heute' : d === 1 ? 'vor 1 Tag' : `vor ${d} Tagen`
+  const c = {
+    all: people.length,
+    rep: people.filter(p => p.replied).length,
+    pos: people.filter(p => toCode(p.sentiment) === 'pos').length,
+    neu: people.filter(p => toCode(p.sentiment) === 'neu').length,
+    neg: people.filter(p => toCode(p.sentiment) === 'neg').length,
+    wait: people.filter(p => p.replied && !p.handled).length,
+    sentonly: people.filter(p => !p.replied).length,
+  }
+  const match = (p) => {
+    if (filter === 'all') return true
+    if (filter === 'wait') return p.replied && !p.handled
+    if (filter === 'sent') return !p.replied
+    return toCode(p.sentiment) === filter
+  }
+  const rows = people.filter(match)
+
+  const setSent = async (p, code) => {
+    const sentiment = CODE_SENT[code]
+    setPeople(prev => prev.map(x => x.enrollment_id === p.enrollment_id ? { ...x, sentiment, sentiment_source: 'manuell' } : x))
+    await supabase.rpc('la_set_reply_sentiment', { p_enrollment_id: p.enrollment_id, p_sentiment: sentiment })
+  }
+  const setHandled = async (p, val) => {
+    setPeople(prev => prev.map(x => x.enrollment_id === p.enrollment_id ? { ...x, handled: val } : x))
+    await supabase.rpc('la_set_reply_handled', { p_enrollment_id: p.enrollment_id, p_handled: val })
   }
   const profileUrl = (p) => p.profile_url || (p.public_identifier ? `https://www.linkedin.com/in/${p.public_identifier}` : null)
   const initials = (n) => (n || '?').split(' ').filter(Boolean).slice(0, 2).map(s => s[0]?.toUpperCase()).join('')
-  const handleWrite = (p) => onCompose({ provider_id: p.provider_id, url: profileUrl(p), name: p.name, headline: p.headline, avatar_url: null, source: 'campaign' })
+  const write = (p) => onCompose({ provider_id: p.provider_id, url: profileUrl(p), name: p.name, headline: p.headline, avatar_url: p.avatar_url || null, source: 'campaign' })
 
   const selStyle = { padding: '8px 12px', borderRadius: 10, border: '1px solid var(--border)', background: 'var(--surface)', color: 'var(--text-strong,#111827)', fontSize: 14, minWidth: 280, maxWidth: 460 }
+  const FUNNEL = [
+    { f: 'all', l: 'Angeschrieben', v: c.all, x: 'gesamt' },
+    { f: 'rep', l: 'Geantwortet', v: c.rep, x: c.all ? `Reply-Rate ${Math.round(c.rep / c.all * 100)}%` : 'Reply-Rate' },
+    { f: 'pos', l: '🟢 Positiv', v: c.pos, x: 'heiße Leads' },
+    { f: 'neu', l: '🟡 Neutral', v: c.neu, x: 'nachfassen' },
+    { f: 'neg', l: '🔴 Negativ', v: c.neg, x: 'kein Interesse' },
+    { f: 'wait', l: '⏳ Wartet auf dich', v: c.wait, x: 'unbearbeitet' },
+  ]
+  const CHIPS = [
+    { f: 'all', l: 'Alle', n: c.all }, { f: 'wait', l: '⏳ Wartet auf dich', n: c.wait },
+    { f: 'pos', l: '🟢 Positiv', n: c.pos }, { f: 'neu', l: '🟡 Neutral', n: c.neu },
+    { f: 'neg', l: '🔴 Negativ', n: c.neg }, { f: 'sent', l: '✉️ Noch keine Antwort', n: c.sentonly },
+  ]
 
   return (
     <div style={{ ...card, padding: 18 }}>
@@ -284,6 +346,7 @@ function Kampagnen({ bvId, messagedIds, onCompose }) {
         <label style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 13, color: 'var(--text-muted)', cursor: 'pointer' }}>
           <input type="checkbox" checked={showDone} onChange={e => setShowDone(e.target.checked)} /> auch abgeschlossene
         </label>
+        {syncing && <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: 12, color: 'var(--text-muted)' }}><Loader2 size={13} className="lk-spin" /> Postfach wird synchronisiert…</span>}
       </div>
 
       {loading ? (
@@ -291,37 +354,93 @@ function Kampagnen({ bvId, messagedIds, onCompose }) {
       ) : !campId ? (
         <div style={{ color: 'var(--text-muted)', padding: '24px 4px', fontSize: 14 }}>Keine laufende Kampagne für diese Marke.</div>
       ) : people.length === 0 ? (
-        <div style={{ color: 'var(--text-muted)', padding: '24px 4px', fontSize: 14 }}>Noch keine angenommenen Vernetzungsanfragen in dieser Kampagne.</div>
+        <div style={{ color: 'var(--text-muted)', padding: '24px 4px', fontSize: 14 }}>Noch keine angeschriebenen Kontakte in dieser Kampagne.</div>
       ) : (
         <>
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 10, marginBottom: 8 }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 14, fontWeight: 600 }}>
-              <Users size={16} color={P} /> {people.length} Angenommen{openCount < people.length ? ` · ${openCount} offen` : ''}
-            </div>
-            <button className={onlyOpen ? 'lk-btn lk-btn-navy lk-btn-sm' : 'lk-btn lk-btn-ghost lk-btn-sm'} onClick={() => setOnlyOpen(v => !v)}>
-              {onlyOpen ? 'Alle zeigen' : 'Nur noch nicht angeschrieben'}
-            </button>
-          </div>
-          <div style={{ display: 'flex', flexDirection: 'column' }}>
-            {rows.map(p => {
-              const messaged = isMessaged(p)
-              const url = profileUrl(p)
+          {/* FUNNEL */}
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(6, 1fr)', gap: 1, background: 'var(--border)', border: '1px solid var(--border)', borderRadius: 12, overflow: 'hidden', marginBottom: 14 }}>
+            {FUNNEL.map(cell => {
+              const on = filter === cell.f
               return (
-                <div key={p.provider_id || p.public_identifier} style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '10px 4px', borderTop: '1px solid var(--border-soft,#F1F5F9)' }}>
-                  <div style={{ width: 36, height: 36, borderRadius: '50%', background: 'var(--surface-2,#EEF2F7)', color: P, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 13, fontWeight: 700, flexShrink: 0 }}>{initials(p.name)}</div>
-                  <div style={{ flex: 1, minWidth: 0 }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                      <span style={{ fontWeight: 600, color: 'var(--text-strong,#111827)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{p.name || 'Kontakt'}</span>
-                      {messaged && <span style={{ display: 'inline-flex', alignItems: 'center', gap: 3, fontSize: 11, color: '#16A34A', background: '#F0FDF4', border: '1px solid #BBF7D0', borderRadius: 6, padding: '1px 6px', flexShrink: 0 }}><Check size={11} /> angeschrieben</span>}
-                    </div>
-                    <div style={{ fontSize: 12, color: 'var(--text-muted)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{[p.headline, p.accepted_at ? `angenommen ${daysAgo(p.accepted_at)}` : null].filter(Boolean).join(' · ')}</div>
-                  </div>
-                  {url && <a href={url} target="_blank" rel="noreferrer" className="lk-btn lk-btn-ghost lk-btn-sm" title="Profil öffnen"><ExternalLink size={14} /></a>}
-                  <button className="lk-btn lk-btn-navy lk-btn-sm" onClick={() => handleWrite(p)}><Send size={14} /> Anschreiben</button>
+                <div key={cell.f} onClick={() => setFilter(cell.f === 'rep' ? 'all' : cell.f)} style={{ background: on ? '#F0F6FF' : 'var(--surface)', padding: '11px 13px', cursor: 'pointer', boxShadow: on ? 'inset 0 -3px 0 var(--primary,#1D4ED8)' : 'none' }}>
+                  <div style={{ fontSize: 10.5, textTransform: 'uppercase', letterSpacing: '.04em', color: 'var(--text-muted)', fontWeight: 700 }}>{cell.l}</div>
+                  <div style={{ fontSize: 21, fontWeight: 800, marginTop: 3 }}>{cell.v}</div>
+                  <div style={{ fontSize: 11, color: 'var(--text-muted)' }}>{cell.x}</div>
                 </div>
               )
             })}
-            {rows.length === 0 && <div style={{ color: 'var(--text-muted)', padding: '16px 4px', fontSize: 13 }}>Alle Angenommenen sind bereits angeschrieben.</div>}
+          </div>
+
+          {/* FILTER-CHIPS */}
+          <div style={{ display: 'flex', gap: 7, flexWrap: 'wrap', alignItems: 'center', marginBottom: 10 }}>
+            <span style={{ fontSize: 11, color: 'var(--text-muted)', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '.04em' }}>Filter</span>
+            {CHIPS.map(ch => {
+              const on = filter === ch.f
+              return (
+                <span key={ch.f} onClick={() => setFilter(ch.f)} style={{ fontSize: 12.5, cursor: 'pointer', userSelect: 'none', padding: '5px 11px', borderRadius: 999, border: '1px solid ' + (on ? 'var(--text-strong,#111827)' : 'var(--border)'), background: on ? 'var(--text-strong,#111827)' : 'var(--surface)', color: on ? '#fff' : 'var(--text-muted)' }}>
+                  {ch.l} <span style={{ opacity: .6, fontSize: 11 }}>{ch.n}</span>
+                </span>
+              )
+            })}
+          </div>
+
+          {/* LISTE */}
+          <div style={{ display: 'flex', flexDirection: 'column' }}>
+            {rows.map(p => {
+              const code = toCode(p.sentiment)
+              const url = profileUrl(p)
+              return (
+                <div key={p.enrollment_id} style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '11px 4px', borderTop: '1px solid var(--border-soft,#F1F5F9)', opacity: p.handled ? .62 : 1 }}>
+                  {p.avatar_url
+                    ? <img src={p.avatar_url} alt="" style={{ width: 38, height: 38, borderRadius: 10, objectFit: 'cover', flexShrink: 0 }} />
+                    : <div style={{ width: 38, height: 38, borderRadius: 10, background: 'var(--surface-2,#EEF2F7)', color: P, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 13, fontWeight: 700, flexShrink: 0 }}>{initials(p.name)}</div>}
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <div style={{ fontWeight: 600, color: 'var(--text-strong,#111827)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{p.name || 'Kontakt'}</div>
+                    <div style={{ fontSize: 12, color: 'var(--text-muted)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{p.headline || ''}</div>
+                    {p.last_reply_excerpt && (
+                      <div style={{ fontSize: 12.5, color: 'var(--text-strong,#111827)', background: 'var(--surface-2,#F7F9FB)', border: '1px solid var(--border)', borderLeft: '3px solid ' + (code ? SENT_META[code].dot : 'var(--border-strong,#D3D9E2)'), borderRadius: 8, padding: '4px 9px', marginTop: 4, maxWidth: 520, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>„{p.last_reply_excerpt}"</div>
+                    )}
+                  </div>
+
+                  {/* Status + Zeit */}
+                  <div style={{ width: 124, flexShrink: 0 }}>
+                    {p.replied
+                      ? <span style={{ fontSize: 11.5, fontWeight: 700, padding: '3px 9px', borderRadius: 999, background: '#EAF0FD', color: '#1E40AF' }}>✓ Geantwortet</span>
+                      : <span style={{ fontSize: 11.5, fontWeight: 700, padding: '3px 9px', borderRadius: 999, background: 'var(--surface-2,#F7F9FB)', color: 'var(--text-muted)', border: '1px solid var(--border)' }}>✉️ Angeschrieben</span>}
+                    <div style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 3 }}>{p.replied ? agoLabel(p.last_reply_at) : (p.accepted_at ? `angenommen ${agoLabel(p.accepted_at)}` : '')}</div>
+                  </div>
+
+                  {/* Ampel */}
+                  {p.replied && (
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 5, width: 158, flexShrink: 0 }}>
+                      {['pos', 'neu', 'neg'].map(k => {
+                        const on = code === k
+                        return (
+                          <button key={k} onClick={() => setSent(p, k)} title={SENT_META[k].label}
+                            style={{ width: 26, height: 26, borderRadius: 8, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 12, border: '1px solid ' + (on ? SENT_META[k].dot : 'var(--border)'), background: on ? SENT_META[k].bg : 'var(--surface)', opacity: on ? 1 : .5 }}>{SENT_META[k].em}</button>
+                        )
+                      })}
+                      <span style={{ fontSize: 10, color: 'var(--text-muted)', marginLeft: 2, whiteSpace: 'nowrap' }}>
+                        {p.sentiment ? (p.sentiment_source === 'manuell' ? 'manuell' : <b style={{ color: 'var(--brand-ink,#0B5A54)' }}>KI</b>) : (p.sentiment_ai ? `KI: ${SENT_META[toCode(p.sentiment_ai)]?.label || '?'}?` : '')}
+                      </span>
+                    </div>
+                  )}
+
+                  {/* Aktionen */}
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexShrink: 0 }}>
+                    {url && <a href={url} target="_blank" rel="noreferrer" className="lk-btn lk-btn-ghost lk-btn-sm" title="Profil öffnen"><ExternalLink size={14} /></a>}
+                    {p.replied
+                      ? <button className="lk-btn lk-btn-navy lk-btn-sm" onClick={() => (p.chat_id ? onOpenChat(p.chat_id) : write(p))}><MessageSquare size={14} /> Zum Gespräch</button>
+                      : <button className="lk-btn lk-btn-ghost lk-btn-sm" onClick={() => write(p)}><Send size={14} /> Anschreiben</button>}
+                    {p.replied && (
+                      <button onClick={() => setHandled(p, !p.handled)} title="Als erledigt markieren"
+                        style={{ width: 24, height: 24, borderRadius: 7, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff', fontSize: 13, border: '2px solid ' + (p.handled ? '#16A34A' : 'var(--border-strong,#D3D9E2)'), background: p.handled ? '#16A34A' : 'transparent' }}>{p.handled ? '✓' : ''}</button>
+                    )}
+                  </div>
+                </div>
+              )
+            })}
+            {rows.length === 0 && <div style={{ color: 'var(--text-muted)', padding: '16px 4px', fontSize: 13 }}>Keine Kontakte in diesem Filter.</div>}
           </div>
         </>
       )}
@@ -542,7 +661,7 @@ function Verfassen({ bvId, model, contacts, onOpenPostfach, caps, seed, onSent }
 }
 
 /* ─────────────────────────── Reiter: POSTFACH ─────────────────────────── */
-function Postfach({ bvId, contacts, goCompose }) {
+function Postfach({ bvId, contacts, goCompose, initialChatId, onConsumeInitial }) {
   const [chats, setChats] = useState([])
   const [loading, setLoading] = useState(true)
   const [selId, setSelId] = useState(null)
@@ -573,6 +692,15 @@ function Postfach({ bvId, contacts, goCompose }) {
     setTimeout(() => bottomRef.current?.scrollIntoView({ behavior: 'auto' }), 60)
   }, [])
   const selChat = c => { setSelId(c.id); setErr(''); loadMsgs(c.id) }
+
+  // Deep-Link aus dem Reply-Cockpit: gewünschten Thread einmalig öffnen, sobald geladen.
+  const consumedRef = useRef(null)
+  useEffect(() => {
+    if (!initialChatId || loading || consumedRef.current === initialChatId) return
+    consumedRef.current = initialChatId
+    setSelId(initialChatId); setErr(''); loadMsgs(initialChatId)
+    onConsumeInitial?.()
+  }, [initialChatId, loading, loadMsgs, onConsumeInitial])
 
   const doSend = async () => {
     const t = text.trim(); if (!t || !selId || sending) return
