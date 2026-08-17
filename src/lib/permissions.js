@@ -61,6 +61,7 @@ export const PERMISSIONS_REGISTRY = {
     permissions: {
       studio:   { label: 'Content-Studio',  description: 'KI-Content-Generation' },
       calendar: { label: 'Redaktionsplan',  description: 'Content-Kalender (Premium)' },
+      plus:     { label: 'Content Plus',    description: 'Blog-, SEO-, Web-, E-Mail- und Social-Texte' },
     },
   },
   delivery: {
@@ -117,7 +118,7 @@ export const PERMISSION_MODULES_ORDER = [
 // Sanity-Check: total = 25 (Initial-Matrix-Soll).
 // Wirft beim Modul-Import wenn die Konstanten nicht zur Migration matchen.
 if (typeof process === 'undefined' || process.env?.NODE_ENV !== 'test') {
-  if (ALL_PERMISSION_KEYS.length !== 29) {
+  if (ALL_PERMISSION_KEYS.length !== 30) {
     // eslint-disable-next-line no-console
     console.warn(
       `[permissions.js] expected 29 keys, got ${ALL_PERMISSION_KEYS.length}. ` +
