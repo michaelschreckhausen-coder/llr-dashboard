@@ -26,6 +26,20 @@ import { validateSearchUrl } from "../_shared/linkedinSearchUrl.ts";
 const MAX_PAGES = 5;      // Schutz gegen Endlos-Pagination pro Aufruf
 const PREVIEW_CAP = 100;  // max. Treffer, die als Vorschau (items) zurückgegeben werden
 
+// Berufsposition/Titel in den keywords-String falten — fein dosiert als OR-Gruppe der
+// (kommagetrennten) Titel-Terme, damit sie NICHT auf AND verengen. Classic hat kein
+// eigenes Titel-Feld; die LinkedIn-native Keyword-Suche (boolean-fähig) deckt den Titel damit ab.
+// Bsp.: keywords="Marketing", title="Geschäftsführer, CMO" → Marketing ("Geschäftsführer" OR "CMO")
+function foldKeywords(keywords: unknown, title: unknown): string {
+  const kw = typeof keywords === "string" ? keywords.trim() : "";
+  const raw = typeof title === "string" ? title.trim() : "";
+  if (!raw) return kw;
+  const terms = raw.split(",").map((t) => t.trim()).filter(Boolean);
+  if (!terms.length) return kw;
+  const group = terms.length === 1 ? `"${terms[0]}"` : "(" + terms.map((t) => `"${t}"`).join(" OR ") + ")";
+  return kw ? `${kw} ${group}` : group;
+}
+
 Deno.serve(async (req) => {
   const pre = handlePreflight(req);
   if (pre) return pre;
@@ -140,18 +154,26 @@ Deno.serve(async (req) => {
     if (searchUrl) {
       body = { url: searchUrl };
     } else {
-      body = { api, category };
-      const kw = typeof params.keywords === "string" ? params.keywords.trim() : "";
-      if (kw) body.keywords = kw;
-      // Berufsposition/Titel → Unipile-SN-Filter `keywords_title` (verifiziert 2026-08-10).
-      // Quirk: keywords_title greift nur mit gesetztem keywords → Titel in keywords spiegeln,
-      // wenn kein separates Keyword da ist (sonst liefert die SN-Suche 0). Classic ignoriert
-      // Titel weitgehend — dafür gibt's den UI-Hinweis „nur Sales Navigator".
-      const kwTitle = typeof params.keywords_title === "string" ? params.keywords_title.trim() : "";
-      if (kwTitle) {
-        body.keywords_title = kwTitle;
-        if (!body.keywords) body.keywords = kwTitle;
+      // Param-/Keyword-Suche: NUR Classic. Der Sales-Navigator-Zweig verlangt für
+      // location/industry/company ein `object` (URN-basiert), nicht das array<string>,
+      // das aus Freitext auflösbar ist → SN param-basiert erzeugt einen ungültigen Payload
+      // (400, anyOf-Mismatch, verifiziert 2026-08-17). SN-Präzisionsfilter kommen deshalb
+      // ausschließlich über eine Such-URL. Freitext-Felder laufen über Classic (8/8 verlässlich).
+      if (api === "sales_navigator") {
+        const msg = "Für Sales Navigator bitte eine Such-URL angeben — die Keyword-Felder funktionieren mit der Quelle „LinkedIn“ (Classic).";
+        if (search) {
+          await sb.from("linkedin_searches")
+            .update({ status: "error", last_error: msg, last_run_at: new Date().toISOString() })
+            .eq("id", search.id);
+        }
+        return jsonResponse({ error: msg, code: "sn_needs_url" }, 400);
       }
+      body = { api: "classic", category };
+      // Berufsposition/Titel hat KEIN eigenes Classic-Feld (steht in keinem anyOf-Zweig →
+      // wurde bisher komplett ignoriert). Deshalb in keywords falten — fein dosiert als
+      // OR-Gruppe der Titel-Terme (verengt NICHT auf AND). Präzises Titel-Filtern = SN-URL.
+      const kw = foldKeywords(params.keywords, params.keywords_title);
+      if (kw) body.keywords = kw;
       // Freitext-Filter nur für Personen-Suche auflösen (Company-Kategorie: nur keywords).
       if (category === "people") {
         const filters: Array<[string, "LOCATION" | "INDUSTRY" | "COMPANY"]> = [
@@ -254,8 +276,14 @@ Deno.serve(async (req) => {
           .eq("id", searchId);
       } catch (_e) { /* best effort — Fehler-Response geht trotzdem raus */ }
     }
+    // Nie den rohen Unipile-/500-String zeigen — der bleibt oben im last_error-Log.
+    const userMsg = rateLimited
+      ? "LinkedIn-Rate-Limit erreicht — bitte später erneut versuchen."
+      : (e instanceof UnipileError
+          ? "Diese Suche wird von LinkedIn nicht unterstützt — bitte Keywords/Berufsposition anpassen oder (für Sales Navigator) eine Such-URL angeben."
+          : "Suche fehlgeschlagen — bitte später erneut versuchen.");
     return jsonResponse(
-      { error: String(e), rate_limited: rateLimited },
+      { error: userMsg, rate_limited: rateLimited },
       rateLimited ? 429 : 500,
     );
   }
