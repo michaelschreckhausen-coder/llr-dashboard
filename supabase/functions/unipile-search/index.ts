@@ -10,6 +10,7 @@
 // in der RPC. Sales-Nav-Treffer: it.id = sales_nav_id (ACwAA); Classic: it.id = provider_id.
 // =====================================================================
 import { handlePreflight, jsonResponse } from "../_shared/cors.ts";
+import { getBrandUnipileConn } from "../_shared/unipile.ts";
 import {
   getAuthenticatedUser,
   getUnipileConnection,
@@ -56,13 +57,12 @@ Deno.serve(async (req) => {
     { const denied = await requirePermission(uc, "linkedin.automation"); if (denied) return denied; }
 
     const sb = serviceClient();
-    const conn = await getUnipileConnection(sb, auth.userId);
-    if (!conn) {
-      return jsonResponse({ error: "Kein aktiver Unipile-LinkedIn-Account verbunden." }, 409);
-    }
-
     const input = await req.json().catch(() => ({}));
-    const brandVoiceId: string | null = input.brand_voice_id ?? null; // aktive Marke -> Treffer sichtbar in brand-scoped LinkedIn Kontakte
+    const brandVoiceId: string | null = input.brand_voice_id ?? null; // aktive Marke (brand-only Aufloesung)
+    const conn = await getBrandUnipileConn(sb, brandVoiceId);
+    if (!conn) {
+      return jsonResponse({ error: "Keine mit einer Marke verbundene LinkedIn-Verbindung." }, 409);
+    }
     // C3: Wenn die Treffer einer Marke zugeordnet werden (Import in deren Inbox),
     // Such-Scope am Aufrufer prüfen. Ohne Marke (brand null) -> Team-eigene Inbox, kein Brand-Gate.
     if (brandVoiceId) { const denied = await requireBrandLinkedinScope(uc, brandVoiceId, "search"); if (denied) return denied; }
