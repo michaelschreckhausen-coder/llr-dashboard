@@ -85,7 +85,7 @@ GRANT EXECUTE ON FUNCTION public.la_campaign_cockpit(uuid) TO service_role;
 COMMIT;
 
 \echo '--- Verify: la_jobs-Zweig muss WEG sein, Signatur unveraendert ---'
-SELECT pg_get_functiondef(p.oid) LIKE '%public.la_jobs j%' AS hat_jobs_zweig,
+SELECT pg_get_functiondef(p.oid) LIKE '%FROM public.la_jobs j%' AS hat_jobs_zweig,
        pg_get_function_result(p.oid) LIKE '%messaged boolean%' AS hat_messaged
   FROM pg_proc p JOIN pg_namespace n ON n.oid = p.pronamespace
  WHERE n.nspname = 'public' AND p.proname = 'la_campaign_cockpit';

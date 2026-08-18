@@ -153,7 +153,7 @@ SELECT pg_get_function_result(p.oid) AS result_type, p.prosecdef, pg_get_userbyi
   FROM pg_proc p JOIN pg_namespace n ON n.oid = p.pronamespace
  WHERE n.nspname = 'public' AND p.proname = 'la_campaign_cockpit';
 \echo '--- Verify: la_jobs-Zweig im Body angekommen ---'
-SELECT pg_get_functiondef(p.oid) LIKE '%public.la_jobs j%'      AS hat_jobs_zweig,
+SELECT pg_get_functiondef(p.oid) LIKE '%FROM public.la_jobs j%'      AS hat_jobs_zweig,
        pg_get_functiondef(p.oid) LIKE '%GREATEST(lo.sent_at%'   AS hat_greatest,
        pg_get_functiondef(p.oid) LIKE '%''invite''%'            AS invite_im_body_MUSS_F_SEIN
   FROM pg_proc p JOIN pg_namespace n ON n.oid = p.pronamespace
