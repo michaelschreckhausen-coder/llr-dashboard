@@ -8,6 +8,16 @@
 // reicht bei Multi-Team-Membership nicht — mit activeTeamId auf team_id filtern,
 // Solo-Fallback auf eigene team-lose Listen. useEffect-Dep auf [activeTeamId].
 //
+// 2026-08-18 (Bug FSV Frankfurt 1899, gemeldet auf /linkedin-inbox): der
+// Marken-Filter unten hat mit MIR GETEILTE Listen verschluckt. Eine Freigabe
+// laeuft seit 20260810150000 ueber inbox_list_team_shares; die Liste behaelt
+// dabei die brand_voice_id + team_id des TEILERS. Bei aktiver Marke „Thomas
+// Sarkadi" fiel die Liste „Local Hero >51 Umkreis Arena" (Marke Markus Klepzig,
+// gleiches Team) aus beiden OR-Zweigen — kein Chip, obwohl die RLS-Policy
+// inbox_lists_brand_read sie ueber inbox_list_ids_shared_with_me() durchlaesst
+// und inbox_feed die 23 Rows mit own_brand=false schon liefert. Deshalb jetzt
+// ein dritter Zweig aus inbox_list_team_shares. Reines Frontend, kein DDL.
+//
 // API:
 //   const { lists, membersByList, isLoading,
 //           createList, addToList, removeFromList, refresh } = useInboxLists({ activeTeamId });
@@ -32,18 +42,47 @@ export function useInboxLists({ activeTeamId, activeBrandVoiceId } = {}) {
     if (!user) { setLists([]); setMembersByList(new Map()); setIsLoading(false); return }
     setUid(user.id)
 
+    // Mit dem AKTIVEN Team geteilte Listen zuerst holen — deren IDs sind der dritte
+    // Sichtbarkeits-Zweig unten.
+    // Der Filter auf team_id ist NICHT Doppelarbeit zur RLS (Top-Fallstrick #14):
+    // ilts_select laesst alle Teams des Users durch, also erschienen im FSV-Kontext
+    // zusaetzlich die Chips fremder Teams („LinkedIn Insights Wue" aus Vogel,
+    // „Testliste zum Ueben" aus Taubitz) und der Team-Switch wirkte nicht mehr.
+    // Ohne aktives Team gibt es nichts zu holen — eine Freigabe zielt immer auf ein Team.
+    // Fehler ist nicht fatal: dann fehlt nur der Zweig.
+    let sharedIds = []
+    if (activeTeamId) {
+      const { data: shareRows, error: shareErr } = await supabase
+        .from('inbox_list_team_shares')
+        .select('inbox_list_id')
+        .eq('team_id', activeTeamId)
+      if (shareErr) console.warn('[useInboxLists] Freigaben laden fehlgeschlagen:', shareErr.message)
+      else sharedIds = [...new Set((shareRows || []).map(r => r.inbox_list_id).filter(Boolean))]
+    }
+
     // Listen team-gescopet (expliziter Filter, Top-Fallstrick #14).
+    // select('*') statt Spaltenliste: es gibt kein Migrations-Ledger, und
+    // inbox_lists.kind existiert auf Prod ohne Migration im Repo. Eine harte
+    // Spaltenliste 400t auf jeder Umgebung, der eine Spalte fehlt — und dann
+    // sind ALLE Chips weg, nicht nur einer.
     let q = supabase
       .from('inbox_lists')
-      .select('id, name, color, user_id, team_id, brand_voice_id, kind, is_shared, created_at, updated_at')
+      .select('*')
       .order('created_at', { ascending: true })
     // Marken-gescopet: die Listen der AKTIVEN Marke laden — so kommen auch
     // Listen einer marken-übergreifend GETEILTEN Marke mit (RLS erlaubt via
-    // has_brand_access). Plus Legacy-Listen ohne Marke im aktiven Team.
+    // has_brand_access). Plus Legacy-Listen ohne Marke im aktiven Team. Plus
+    // die mit meinem Team geteilten Listen fremder Marken (siehe Header).
+    const sharedOr = sharedIds.length ? `id.in.(${sharedIds.join(',')})` : null
     if (activeBrandVoiceId) {
-      q = q.or(`brand_voice_id.eq.${activeBrandVoiceId},and(brand_voice_id.is.null,team_id.eq.${activeTeamId})`)
+      const parts = [`brand_voice_id.eq.${activeBrandVoiceId}`]
+      if (activeTeamId) parts.push(`and(brand_voice_id.is.null,team_id.eq.${activeTeamId})`)
+      if (sharedOr) parts.push(sharedOr)
+      q = q.or(parts.join(','))
     } else if (activeTeamId) {
-      q = q.eq('team_id', activeTeamId)
+      q = sharedOr ? q.or(`team_id.eq.${activeTeamId},${sharedOr}`) : q.eq('team_id', activeTeamId)
+    } else if (sharedOr) {
+      q = q.or(`and(user_id.eq.${user.id},team_id.is.null),${sharedOr}`)
     } else {
       q = q.eq('user_id', user.id).is('team_id', null)
     }
@@ -99,7 +138,7 @@ export function useInboxLists({ activeTeamId, activeBrandVoiceId } = {}) {
     const { data, error } = await supabase
       .from('inbox_lists')
       .insert(payload)
-      .select('id, name, color, user_id, team_id, brand_voice_id, kind, is_shared, created_at, updated_at')
+      .select('*')
       .single()
     if (error) return { error }
     if (mountedRef.current) {
@@ -139,7 +178,7 @@ export function useInboxLists({ activeTeamId, activeBrandVoiceId } = {}) {
       .from('inbox_lists')
       .update({ name: trimmed, updated_at: new Date().toISOString() })
       .eq('id', listId)
-      .select('id, name, color, user_id, team_id, brand_voice_id, is_shared, created_at, updated_at')
+      .select('*')
       .single()
     if (error) return { error }
     if (mountedRef.current) setLists(prev => prev.map(l => (l.id === listId ? { ...l, ...data } : l)))
@@ -183,7 +222,7 @@ export function useInboxLists({ activeTeamId, activeBrandVoiceId } = {}) {
       .from('inbox_lists')
       .update({ is_shared: !!share, updated_at: new Date().toISOString() })
       .eq('id', listId)
-      .select('id, name, color, user_id, team_id, brand_voice_id, is_shared, created_at, updated_at')
+      .select('*')
       .single()
     if (error) return { error }
     if (mountedRef.current) setLists(prev => prev.map(l => l.id === listId ? data : l))
