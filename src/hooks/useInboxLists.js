@@ -42,16 +42,23 @@ export function useInboxLists({ activeTeamId, activeBrandVoiceId } = {}) {
     if (!user) { setLists([]); setMembersByList(new Map()); setIsLoading(false); return }
     setUid(user.id)
 
-    // Mit meinen Teams geteilte Listen zuerst holen — deren IDs sind der dritte
-    // Sichtbarkeits-Zweig unten. RLS (ilts_select) begrenzt die Zeilen schon auf
-    // get_my_team_ids() bzw. auf Listen, die mir gehoeren; ein eigener Filter
-    // waere Doppelarbeit. Fehler ist nicht fatal: dann fehlt nur der Zweig.
+    // Mit dem AKTIVEN Team geteilte Listen zuerst holen — deren IDs sind der dritte
+    // Sichtbarkeits-Zweig unten.
+    // Der Filter auf team_id ist NICHT Doppelarbeit zur RLS (Top-Fallstrick #14):
+    // ilts_select laesst alle Teams des Users durch, also erschienen im FSV-Kontext
+    // zusaetzlich die Chips fremder Teams („LinkedIn Insights Wue" aus Vogel,
+    // „Testliste zum Ueben" aus Taubitz) und der Team-Switch wirkte nicht mehr.
+    // Ohne aktives Team gibt es nichts zu holen — eine Freigabe zielt immer auf ein Team.
+    // Fehler ist nicht fatal: dann fehlt nur der Zweig.
     let sharedIds = []
-    const { data: shareRows, error: shareErr } = await supabase
-      .from('inbox_list_team_shares')
-      .select('inbox_list_id')
-    if (shareErr) console.warn('[useInboxLists] Freigaben laden fehlgeschlagen:', shareErr.message)
-    else sharedIds = [...new Set((shareRows || []).map(r => r.inbox_list_id).filter(Boolean))]
+    if (activeTeamId) {
+      const { data: shareRows, error: shareErr } = await supabase
+        .from('inbox_list_team_shares')
+        .select('inbox_list_id')
+        .eq('team_id', activeTeamId)
+      if (shareErr) console.warn('[useInboxLists] Freigaben laden fehlgeschlagen:', shareErr.message)
+      else sharedIds = [...new Set((shareRows || []).map(r => r.inbox_list_id).filter(Boolean))]
+    }
 
     // Listen team-gescopet (expliziter Filter, Top-Fallstrick #14).
     // select('*') statt Spaltenliste: es gibt kein Migrations-Ledger, und
