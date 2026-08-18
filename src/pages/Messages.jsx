@@ -364,15 +364,19 @@ function Kampagnen({ bvId, onCompose, onOpenChat }) {
   const write = (p, catKey) => onCompose({ provider_id: p.provider_id, url: profileUrl(p), name: p.name, headline: p.headline, avatar_url: p.avatar_url || null, source: 'campaign' }, catKey)
 
   const selStyle = { padding: '8px 12px', borderRadius: 10, border: '1px solid var(--border)', background: 'var(--surface)', color: 'var(--text-strong,#111827)', fontSize: 14, minWidth: 280, maxWidth: 460 }
-  // Reply-Rate bezieht sich auf die Angeschriebenen; ist noch niemand angeschrieben,
-  // auf die Angenommenen. Auf 100 klemmen — vereinzelt antwortet jemand ohne unsere
-  // Nachricht (dann ist rep > msg).
-  const repBase = c.msg || c.all
-  const pct = repBase ? Math.min(100, Math.round(c.rep / repBase * 100)) : 0
+  // Reply-Rate-Basis: die Angeschriebenen — aber nur solange die Zahl sie auch trägt.
+  // Mehr Antworten als Angeschriebene ist real und kein Artefakt: eine Vernetzungs-Note
+  // ist keine Chat-Nachricht, und Leute schreiben auch von selbst zuerst (Staging
+  // 2026-08-18: 8 von 27). Der frühere Math.min(100, …)-Clamp hat daraus ein
+  // irreführendes „Reply-Rate 100 %" gemacht und genau diesen Fall verdeckt. Jetzt
+  // kippt die Basis in dem Fall auf die Angenommenen und das Label sagt es dazu.
+  const msgBase  = c.msg > 0 && c.rep <= c.msg
+  const rateBase = msgBase ? c.msg : c.all
+  const pct = rateBase ? Math.round(c.rep / rateBase * 100) : 0
   const FUNNEL = [
     { f: 'all', l: 'Vernetzt', v: c.all, x: 'Anfrage angenommen' },
     { f: 'msg', l: 'Angeschrieben', v: c.msg, x: 'Nachricht raus' },
-    { f: 'rep', l: 'Geantwortet', v: c.rep, x: repBase ? (c.msg ? `Reply-Rate ${pct}%` : `${pct}% nach Vernetzung`) : 'Reply-Rate' },
+    { f: 'rep', l: 'Geantwortet', v: c.rep, x: rateBase ? (msgBase ? `Reply-Rate ${pct}%` : `${pct}% nach Vernetzung`) : 'Reply-Rate' },
     { f: 'pos', l: '🟢 Positiv', v: c.pos, x: 'heiße Leads' },
     { f: 'neu', l: '🟡 Neutral', v: c.neu, x: 'nachfassen' },
     { f: 'neg', l: '🔴 Negativ', v: c.neg, x: 'kein Interesse' },
