@@ -68,8 +68,8 @@ export default function Messages() {
   // session-konsistentes „angeschrieben"-Set (Verfassen meldet erfolgreichen DM-Send zurück).
   const [composeSeed, setComposeSeed] = useState(null)
   const [messagedIds, setMessagedIds] = useState(() => new Set())
-  const startCompose = useCallback((recipient) => {
-    setComposeSeed({ target: recipient, catKey: 'first_message' })
+  const startCompose = useCallback((recipient, catKey = 'first_message') => {
+    setComposeSeed({ target: recipient, catKey })
     setTab('verfassen')
   }, [])
   const markMessaged = useCallback((pid) => {
@@ -254,6 +254,20 @@ function agoLabel(ts) {
   const d = Math.floor(h / 24); return d === 1 ? 'gestern' : `vor ${d} Tagen`
 }
 
+// 2026-08-18 — „Angeschrieben" war schlicht falsch.
+// Ursache: la_campaign_cockpit (20260817140000_reply_cockpit.sql) selektiert
+//   WHERE e.campaign_id = ... AND (e.accepted_at IS NOT NULL OR ch.id IS NOT NULL)
+// — also „Vernetzung angenommen ODER Postfach-Thread da", nie „Nachricht ist raus".
+// Die Population sind Angenommene; Funnel-Kachel und Row-Badge behaupteten trotzdem
+// „Angeschrieben" (z. B. VfL-Kampagne: reine Vernetzung, nie eine Nachricht gelaufen).
+// Verworfen: Kampagnentyp aus la_steps ableiten (2078e609). Zu grob — sagt nur, ob die
+// Sequenz einen message-Step HAT, nicht ob die Person eine Nachricht BEKAM; deckt weder
+// den manuellen Anschreiben-Button noch direkt auf LinkedIn Geschriebenes ab.
+// Gewählt: Wahrheit pro Person aus einer echten Outbound-Zeile im gespiegelten Chat
+// (linkedin_chat_messages, direction='outbound', chat_id = COALESCE(e.chat_id, ch.id)).
+// Deckt alle drei Versandwege ab: Anschreiben-Button (unipile-message-send),
+// Automations-Step (la-runner, message/follow_up) und manuell auf LinkedIn.
+// Reine Anzeige-Ebene: keine RPC-Änderung, keine neue Spalte, keine Migration.
 function Kampagnen({ bvId, onCompose, onOpenChat }) {
   const [camps, setCamps] = useState([])
   const [campId, setCampId] = useState('')
@@ -262,10 +276,8 @@ function Kampagnen({ bvId, onCompose, onOpenChat }) {
   const [loading, setLoading] = useState(false)
   const [filter, setFilter] = useState('all')
   const [syncing, setSyncing] = useState(false)
-  // Kampagnentyp: hat die Kampagne einen Erstnachricht-Step? Vernetzungskampagnen (nur
-  // 'invite') haben KEINE Erstnachricht → „Angeschrieben" wäre falsch (nur die Anfrage
-  // wurde angenommen). la_steps ist per RLS lesbar (gleiche brand/team-Logik wie das Cockpit).
-  const [isMsgCampaign, setIsMsgCampaign] = useState(false)
+  // chat_id → letztes Outbound-sent_at. Key vorhanden = wirklich angeschrieben.
+  const [sentMap, setSentMap] = useState(() => new Map())
 
   useEffect(() => {
     if (!bvId) { setCamps([]); return }
@@ -273,14 +285,6 @@ function Kampagnen({ bvId, onCompose, onOpenChat }) {
       .order('created_at', { ascending: false })
       .then(({ data }) => setCamps(data || []))
   }, [bvId])
-
-  useEffect(() => {
-    if (!campId) { setIsMsgCampaign(false); return }
-    let alive = true
-    supabase.from('la_steps').select('action').eq('campaign_id', campId)
-      .then(({ data }) => { if (alive) setIsMsgCampaign(Array.isArray(data) && data.some(s => s.action === 'message')) })
-    return () => { alive = false }
-  }, [campId])
 
   const ACTIVE = (s) => ['active', 'running', 'laufend'].includes((s || '').toLowerCase())
   const visibleCamps = camps.filter(c => showDone || ACTIVE(c.status))
@@ -310,6 +314,39 @@ function Kampagnen({ bvId, onCompose, onOpenChat }) {
     return () => { alive = false }
   }, [bvId, campId, load])
 
+  // Dependency ist der chat_id-String, NICHT people: setPeople bei Ampel-/Erledigt-Klick
+  // ändert die Array-Identität und wuerde die Abfrage sonst jedes Mal neu feuern.
+  const chatIdsKey = people.map(p => p.chat_id).filter(Boolean).sort().join(',')
+  useEffect(() => {
+    const ids = chatIdsKey ? chatIdsKey.split(',') : []
+    if (!ids.length) { setSentMap(new Map()); return }
+    let alive = true
+    ;(async () => {
+      const next = new Map()
+      // Blöcke von 60: PostgREST kappt Requests server-seitig (db-max-rows) — ein zu
+      // großer Block wuerde stumm Zeilen abschneiden. PostgREST kennt kein DISTINCT,
+      // also client-seitig auf chat_id ⇒ max(sent_at) verdichten.
+      for (let i = 0; i < ids.length; i += 60) {
+        const { data } = await supabase.from('linkedin_chat_messages')
+          .select('chat_id, sent_at')
+          .in('chat_id', ids.slice(i, i + 60))
+          .eq('direction', 'outbound')
+          .order('sent_at', { ascending: false })
+          .limit(1000)
+        if (!alive) return
+        for (const m of (data || [])) {
+          if (!m.chat_id) continue
+          const cur = next.get(m.chat_id)
+          if (cur === undefined || (m.sent_at && (!cur || new Date(m.sent_at) > new Date(cur)))) next.set(m.chat_id, m.sent_at || null)
+        }
+      }
+      if (alive) setSentMap(next)
+    })()
+    return () => { alive = false }
+  }, [chatIdsKey])
+
+  const isSent = (p) => !!(p?.chat_id && sentMap.has(p.chat_id))
+
   const c = {
     all: people.length,
     rep: people.filter(p => p.replied).length,
@@ -317,12 +354,16 @@ function Kampagnen({ bvId, onCompose, onOpenChat }) {
     neu: people.filter(p => toCode(p.sentiment) === 'neu').length,
     neg: people.filter(p => toCode(p.sentiment) === 'neg').length,
     wait: people.filter(p => p.replied && !p.handled).length,
-    sentonly: people.filter(p => !p.replied).length,
+    msg: people.filter(p => isSent(p)).length,
+    sentonly: people.filter(p => !p.replied && isSent(p)).length,
+    notsent: people.filter(p => !p.replied && !isSent(p)).length,
   }
   const match = (p) => {
     if (filter === 'all') return true
     if (filter === 'wait') return p.replied && !p.handled
-    if (filter === 'sent') return !p.replied
+    if (filter === 'msg') return isSent(p)
+    if (filter === 'sent') return !p.replied && isSent(p)
+    if (filter === 'notsent') return !p.replied && !isSent(p)
     return toCode(p.sentiment) === filter
   }
   const rows = people.filter(match)
@@ -338,17 +379,18 @@ function Kampagnen({ bvId, onCompose, onOpenChat }) {
   }
   const profileUrl = (p) => p.profile_url || (p.public_identifier ? `https://www.linkedin.com/in/${p.public_identifier}` : null)
   const initials = (n) => (n || '?').split(' ').filter(Boolean).slice(0, 2).map(s => s[0]?.toUpperCase()).join('')
-  const write = (p) => onCompose({ provider_id: p.provider_id, url: profileUrl(p), name: p.name, headline: p.headline, avatar_url: p.avatar_url || null, source: 'campaign' })
+  const write = (p, catKey) => onCompose({ provider_id: p.provider_id, url: profileUrl(p), name: p.name, headline: p.headline, avatar_url: p.avatar_url || null, source: 'campaign' }, catKey)
 
   const selStyle = { padding: '8px 12px', borderRadius: 10, border: '1px solid var(--border)', background: 'var(--surface)', color: 'var(--text-strong,#111827)', fontSize: 14, minWidth: 280, maxWidth: 460 }
-  const pct = c.all ? Math.round(c.rep / c.all * 100) : 0
+  // Reply-Rate bezieht sich auf die Angeschriebenen; ist noch niemand angeschrieben,
+  // auf die Angenommenen. Auf 100 klemmen — vereinzelt antwortet jemand ohne unsere
+  // Nachricht (dann ist rep > msg).
+  const repBase = c.msg || c.all
+  const pct = repBase ? Math.min(100, Math.round(c.rep / repBase * 100)) : 0
   const FUNNEL = [
-    // Basiskachel + Reply-Rate-Untertitel kampagnentyp-abhängig: Vernetzungskampagne
-    // → „Vernetzt" (nur Anfrage angenommen), Nachrichten-Kampagne → „Angeschrieben".
-    isMsgCampaign
-      ? { f: 'all', l: 'Angeschrieben', v: c.all, x: 'gesamt' }
-      : { f: 'all', l: 'Vernetzt', v: c.all, x: 'Anfrage angenommen' },
-    { f: 'rep', l: 'Geantwortet', v: c.rep, x: c.all ? (isMsgCampaign ? `Reply-Rate ${pct}%` : `${pct}% nach Vernetzung`) : (isMsgCampaign ? 'Reply-Rate' : 'nach Vernetzung') },
+    { f: 'all', l: 'Vernetzt', v: c.all, x: 'Anfrage angenommen' },
+    { f: 'msg', l: 'Angeschrieben', v: c.msg, x: 'Nachricht raus' },
+    { f: 'rep', l: 'Geantwortet', v: c.rep, x: repBase ? (c.msg ? `Reply-Rate ${pct}%` : `${pct}% nach Vernetzung`) : 'Reply-Rate' },
     { f: 'pos', l: '🟢 Positiv', v: c.pos, x: 'heiße Leads' },
     { f: 'neu', l: '🟡 Neutral', v: c.neu, x: 'nachfassen' },
     { f: 'neg', l: '🔴 Negativ', v: c.neg, x: 'kein Interesse' },
@@ -357,7 +399,9 @@ function Kampagnen({ bvId, onCompose, onOpenChat }) {
   const CHIPS = [
     { f: 'all', l: 'Alle', n: c.all }, { f: 'wait', l: '⏳ Wartet auf dich', n: c.wait },
     { f: 'pos', l: '🟢 Positiv', n: c.pos }, { f: 'neu', l: '🟡 Neutral', n: c.neu },
-    { f: 'neg', l: '🔴 Negativ', n: c.neg }, { f: 'sent', l: '✉️ Noch keine Antwort', n: c.sentonly },
+    { f: 'neg', l: '🔴 Negativ', n: c.neg },
+    { f: 'sent', l: '✉️ Angeschrieben, keine Antwort', n: c.sentonly },
+    { f: 'notsent', l: '🔗 Noch nicht angeschrieben', n: c.notsent },
   ]
 
   return (
@@ -378,11 +422,11 @@ function Kampagnen({ bvId, onCompose, onOpenChat }) {
       ) : !campId ? (
         <div style={{ color: 'var(--text-muted)', padding: '24px 4px', fontSize: 14 }}>Keine laufende Kampagne für diese Marke.</div>
       ) : people.length === 0 ? (
-        <div style={{ color: 'var(--text-muted)', padding: '24px 4px', fontSize: 14 }}>{isMsgCampaign ? 'Noch keine angeschriebenen Kontakte in dieser Kampagne.' : 'Noch keine angenommenen Vernetzungen in dieser Kampagne.'}</div>
+        <div style={{ color: 'var(--text-muted)', padding: '24px 4px', fontSize: 14 }}>Noch keine angenommenen Vernetzungen in dieser Kampagne.</div>
       ) : (
         <>
           {/* FUNNEL */}
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(6, 1fr)', gap: 1, background: 'var(--border)', border: '1px solid var(--border)', borderRadius: 12, overflow: 'hidden', marginBottom: 14 }}>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(132px, 1fr))', gap: 1, background: 'var(--border)', border: '1px solid var(--border)', borderRadius: 12, overflow: 'hidden', marginBottom: 14 }}>
             {FUNNEL.map(cell => {
               const on = filter === cell.f
               return (
@@ -430,8 +474,12 @@ function Kampagnen({ bvId, onCompose, onOpenChat }) {
                   <div style={{ width: 124, flexShrink: 0 }}>
                     {p.replied
                       ? <span style={{ fontSize: 11.5, fontWeight: 700, padding: '3px 9px', borderRadius: 999, background: '#EAF0FD', color: '#1E40AF' }}>✓ Geantwortet</span>
-                      : <span style={{ fontSize: 11.5, fontWeight: 700, padding: '3px 9px', borderRadius: 999, background: 'var(--surface-2,#F7F9FB)', color: 'var(--text-muted)', border: '1px solid var(--border)' }}>{isMsgCampaign ? '✉️ Angeschrieben' : '🔗 Vernetzt'}</span>}
-                    <div style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 3 }}>{p.replied ? agoLabel(p.last_reply_at) : (p.accepted_at ? `angenommen ${agoLabel(p.accepted_at)}` : '')}</div>
+                      : <span style={{ fontSize: 11.5, fontWeight: 700, padding: '3px 9px', borderRadius: 999, background: 'var(--surface-2,#F7F9FB)', color: 'var(--text-muted)', border: '1px solid var(--border)' }}>{isSent(p) ? '✉️ Angeschrieben' : '🔗 Vernetzt'}</span>}
+                    <div style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 3 }}>{
+                      p.replied ? agoLabel(p.last_reply_at)
+                        : isSent(p) ? (agoLabel(sentMap.get(p.chat_id)) ? `angeschrieben ${agoLabel(sentMap.get(p.chat_id))}` : 'angeschrieben')
+                        : (p.accepted_at ? `angenommen ${agoLabel(p.accepted_at)}` : '')
+                    }</div>
                   </div>
 
                   {/* Ampel */}
@@ -455,7 +503,9 @@ function Kampagnen({ bvId, onCompose, onOpenChat }) {
                     {url && <a href={url} target="_blank" rel="noreferrer" className="lk-btn lk-btn-ghost lk-btn-sm" title="Profil öffnen"><ExternalLink size={14} /></a>}
                     {p.replied
                       ? <button className="lk-btn lk-btn-navy lk-btn-sm" onClick={() => (p.chat_id ? onOpenChat(p.chat_id) : write(p))}><MessageSquare size={14} /> Zum Gespräch</button>
-                      : <button className="lk-btn lk-btn-ghost lk-btn-sm" onClick={() => write(p)}><Send size={14} /> Anschreiben</button>}
+                      : isSent(p)
+                        ? <button className="lk-btn lk-btn-ghost lk-btn-sm" onClick={() => write(p, 'nachfassen')}><Reply size={14} /> Nachfassen</button>
+                        : <button className="lk-btn lk-btn-ghost lk-btn-sm" onClick={() => write(p, 'first_message')}><Send size={14} /> Anschreiben</button>}
                     {p.replied && (
                       <button onClick={() => setHandled(p, !p.handled)} title="Als erledigt markieren"
                         style={{ width: 24, height: 24, borderRadius: 7, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff', fontSize: 13, border: '2px solid ' + (p.handled ? '#16A34A' : 'var(--border-strong,#D3D9E2)'), background: p.handled ? '#16A34A' : 'transparent' }}>{p.handled ? '✓' : ''}</button>
