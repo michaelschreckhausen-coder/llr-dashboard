@@ -68,8 +68,8 @@ export default function Messages() {
   // session-konsistentes „angeschrieben"-Set (Verfassen meldet erfolgreichen DM-Send zurück).
   const [composeSeed, setComposeSeed] = useState(null)
   const [messagedIds, setMessagedIds] = useState(() => new Set())
-  const startCompose = useCallback((recipient) => {
-    setComposeSeed({ target: recipient, catKey: 'first_message' })
+  const startCompose = useCallback((recipient, catKey = 'first_message') => {
+    setComposeSeed({ target: recipient, catKey })
     setTab('verfassen')
   }, [])
   const markMessaged = useCallback((pid) => {
@@ -254,6 +254,33 @@ function agoLabel(ts) {
   const d = Math.floor(h / 24); return d === 1 ? 'gestern' : `vor ${d} Tagen`
 }
 
+// 2026-08-18 — „Angeschrieben" war schlicht falsch.
+// Ursache: la_campaign_cockpit (20260817140000_reply_cockpit.sql) selektiert
+//   WHERE e.campaign_id = ... AND (e.accepted_at IS NOT NULL OR ch.id IS NOT NULL)
+// — also „Vernetzung angenommen ODER Postfach-Thread da", nie „Nachricht ist raus".
+// Die Population sind Angenommene; Funnel-Kachel und Row-Badge behaupteten trotzdem
+// „Angeschrieben" (z. B. VfL-Kampagne: reine Vernetzung, nie eine Nachricht gelaufen).
+// Verworfen: Kampagnentyp aus la_steps ableiten (2078e609). Zu grob — sagt nur, ob die
+// Sequenz einen message-Step HAT, nicht ob die Person eine Nachricht BEKAM; deckt weder
+// den manuellen Anschreiben-Button noch direkt auf LinkedIn Geschriebenes ab.
+// Gewählt: Wahrheit pro Person aus einer echten Outbound-Zeile im gespiegelten Chat
+// (linkedin_chat_messages, direction='outbound', chat_id = COALESCE(e.chat_id, ch.id)).
+// Deckt alle drei Versandwege ab: Anschreiben-Button (unipile-message-send),
+// Automations-Step (la-runner, message/follow_up) und manuell auf LinkedIn.
+//
+// 2026-08-18, zweiter Schritt — dieselbe Wahrheit, jetzt SERVER-seitig: die RPC liefert
+// messaged + last_outbound_at mit (Migration 20260818113000_reply_cockpit_messaged.sql).
+// Das client-seitige Nachladen aus linkedin_chat_messages ist damit ersatzlos raus. Es
+// trug aus drei Gründen nicht — dokumentiert, weil der Weg naheliegt und trotzdem falsch ist:
+//   1. Scope-Asymmetrie: linkedin_chat_messages hängt per RLS am 'inbox'-Scope, das
+//      Cockpit läuft über 'automation'. Ein Team mit automation-ohne-inbox las 0 Zeilen
+//      → stumm überall „Vernetzt". Die RPC ist SECURITY DEFINER und autorisiert selbst.
+//   2. Round-Trip-Flackern: die Wahrheit kam einen Request nach der Liste, bis dahin
+//      zeigte die Kachel 0 und die Badge „Vernetzt".
+//   3. Block-LIMIT: 60 chat_ids pro Request mit LIMIT 1000 (sent_at DESC über den ganzen
+//      Block) konnte einen Chat mit nur alten Nachrichten aus dem Fenster fallen lassen.
+// Reine Anzeige-Ebene: keine neue Spalte, kein Index, kein Trigger — messaged wird in der
+// RPC abgeleitet, nicht gespeichert.
 function Kampagnen({ bvId, onCompose, onOpenChat }) {
   const [camps, setCamps] = useState([])
   const [campId, setCampId] = useState('')
@@ -298,6 +325,10 @@ function Kampagnen({ bvId, onCompose, onOpenChat }) {
     return () => { alive = false }
   }, [bvId, campId, load])
 
+  // Strikt === true: läge die Migration in einer Umgebung noch nicht an, kommt undefined —
+  // dann ist „🔗 Vernetzt" das kleinere Übel gegenüber einem falschen „✉️ Angeschrieben".
+  const isSent = (p) => p?.messaged === true
+
   const c = {
     all: people.length,
     rep: people.filter(p => p.replied).length,
@@ -305,12 +336,16 @@ function Kampagnen({ bvId, onCompose, onOpenChat }) {
     neu: people.filter(p => toCode(p.sentiment) === 'neu').length,
     neg: people.filter(p => toCode(p.sentiment) === 'neg').length,
     wait: people.filter(p => p.replied && !p.handled).length,
-    sentonly: people.filter(p => !p.replied).length,
+    msg: people.filter(p => isSent(p)).length,
+    sentonly: people.filter(p => !p.replied && isSent(p)).length,
+    notsent: people.filter(p => !p.replied && !isSent(p)).length,
   }
   const match = (p) => {
     if (filter === 'all') return true
     if (filter === 'wait') return p.replied && !p.handled
-    if (filter === 'sent') return !p.replied
+    if (filter === 'msg') return isSent(p)
+    if (filter === 'sent') return !p.replied && isSent(p)
+    if (filter === 'notsent') return !p.replied && !isSent(p)
     return toCode(p.sentiment) === filter
   }
   const rows = people.filter(match)
@@ -326,12 +361,22 @@ function Kampagnen({ bvId, onCompose, onOpenChat }) {
   }
   const profileUrl = (p) => p.profile_url || (p.public_identifier ? `https://www.linkedin.com/in/${p.public_identifier}` : null)
   const initials = (n) => (n || '?').split(' ').filter(Boolean).slice(0, 2).map(s => s[0]?.toUpperCase()).join('')
-  const write = (p) => onCompose({ provider_id: p.provider_id, url: profileUrl(p), name: p.name, headline: p.headline, avatar_url: p.avatar_url || null, source: 'campaign' })
+  const write = (p, catKey) => onCompose({ provider_id: p.provider_id, url: profileUrl(p), name: p.name, headline: p.headline, avatar_url: p.avatar_url || null, source: 'campaign' }, catKey)
 
   const selStyle = { padding: '8px 12px', borderRadius: 10, border: '1px solid var(--border)', background: 'var(--surface)', color: 'var(--text-strong,#111827)', fontSize: 14, minWidth: 280, maxWidth: 460 }
+  // Reply-Rate-Basis: die Angeschriebenen — aber nur solange die Zahl sie auch trägt.
+  // Mehr Antworten als Angeschriebene ist real und kein Artefakt: eine Vernetzungs-Note
+  // ist keine Chat-Nachricht, und Leute schreiben auch von selbst zuerst (Staging
+  // 2026-08-18: 8 von 27). Der frühere Math.min(100, …)-Clamp hat daraus ein
+  // irreführendes „Reply-Rate 100 %" gemacht und genau diesen Fall verdeckt. Jetzt
+  // kippt die Basis in dem Fall auf die Angenommenen und das Label sagt es dazu.
+  const msgBase  = c.msg > 0 && c.rep <= c.msg
+  const rateBase = msgBase ? c.msg : c.all
+  const pct = rateBase ? Math.round(c.rep / rateBase * 100) : 0
   const FUNNEL = [
-    { f: 'all', l: 'Angeschrieben', v: c.all, x: 'gesamt' },
-    { f: 'rep', l: 'Geantwortet', v: c.rep, x: c.all ? `Reply-Rate ${Math.round(c.rep / c.all * 100)}%` : 'Reply-Rate' },
+    { f: 'all', l: 'Vernetzt', v: c.all, x: 'Anfrage angenommen' },
+    { f: 'msg', l: 'Angeschrieben', v: c.msg, x: 'Nachricht raus' },
+    { f: 'rep', l: 'Geantwortet', v: c.rep, x: rateBase ? (msgBase ? `Reply-Rate ${pct}%` : `${pct}% nach Vernetzung`) : 'Reply-Rate' },
     { f: 'pos', l: '🟢 Positiv', v: c.pos, x: 'heiße Leads' },
     { f: 'neu', l: '🟡 Neutral', v: c.neu, x: 'nachfassen' },
     { f: 'neg', l: '🔴 Negativ', v: c.neg, x: 'kein Interesse' },
@@ -340,7 +385,9 @@ function Kampagnen({ bvId, onCompose, onOpenChat }) {
   const CHIPS = [
     { f: 'all', l: 'Alle', n: c.all }, { f: 'wait', l: '⏳ Wartet auf dich', n: c.wait },
     { f: 'pos', l: '🟢 Positiv', n: c.pos }, { f: 'neu', l: '🟡 Neutral', n: c.neu },
-    { f: 'neg', l: '🔴 Negativ', n: c.neg }, { f: 'sent', l: '✉️ Noch keine Antwort', n: c.sentonly },
+    { f: 'neg', l: '🔴 Negativ', n: c.neg },
+    { f: 'sent', l: '✉️ Angeschrieben, keine Antwort', n: c.sentonly },
+    { f: 'notsent', l: '🔗 Noch nicht angeschrieben', n: c.notsent },
   ]
 
   return (
@@ -361,11 +408,11 @@ function Kampagnen({ bvId, onCompose, onOpenChat }) {
       ) : !campId ? (
         <div style={{ color: 'var(--text-muted)', padding: '24px 4px', fontSize: 14 }}>Keine laufende Kampagne für diese Marke.</div>
       ) : people.length === 0 ? (
-        <div style={{ color: 'var(--text-muted)', padding: '24px 4px', fontSize: 14 }}>Noch keine angeschriebenen Kontakte in dieser Kampagne.</div>
+        <div style={{ color: 'var(--text-muted)', padding: '24px 4px', fontSize: 14 }}>Noch keine angenommenen Vernetzungen in dieser Kampagne.</div>
       ) : (
         <>
           {/* FUNNEL */}
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(6, 1fr)', gap: 1, background: 'var(--border)', border: '1px solid var(--border)', borderRadius: 12, overflow: 'hidden', marginBottom: 14 }}>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(132px, 1fr))', gap: 1, background: 'var(--border)', border: '1px solid var(--border)', borderRadius: 12, overflow: 'hidden', marginBottom: 14 }}>
             {FUNNEL.map(cell => {
               const on = filter === cell.f
               return (
@@ -396,6 +443,7 @@ function Kampagnen({ bvId, onCompose, onOpenChat }) {
             {rows.map(p => {
               const code = toCode(p.sentiment)
               const url = profileUrl(p)
+              const sentAt = agoLabel(p.last_outbound_at)
               return (
                 <div key={p.enrollment_id} style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '11px 4px', borderTop: '1px solid var(--border-soft,#F1F5F9)', opacity: p.handled ? .62 : 1 }}>
                   {p.avatar_url
@@ -413,8 +461,12 @@ function Kampagnen({ bvId, onCompose, onOpenChat }) {
                   <div style={{ width: 124, flexShrink: 0 }}>
                     {p.replied
                       ? <span style={{ fontSize: 11.5, fontWeight: 700, padding: '3px 9px', borderRadius: 999, background: '#EAF0FD', color: '#1E40AF' }}>✓ Geantwortet</span>
-                      : <span style={{ fontSize: 11.5, fontWeight: 700, padding: '3px 9px', borderRadius: 999, background: 'var(--surface-2,#F7F9FB)', color: 'var(--text-muted)', border: '1px solid var(--border)' }}>✉️ Angeschrieben</span>}
-                    <div style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 3 }}>{p.replied ? agoLabel(p.last_reply_at) : (p.accepted_at ? `angenommen ${agoLabel(p.accepted_at)}` : '')}</div>
+                      : <span style={{ fontSize: 11.5, fontWeight: 700, padding: '3px 9px', borderRadius: 999, background: 'var(--surface-2,#F7F9FB)', color: 'var(--text-muted)', border: '1px solid var(--border)' }}>{isSent(p) ? '✉️ Angeschrieben' : '🔗 Vernetzt'}</span>}
+                    <div style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 3 }}>{
+                      p.replied ? agoLabel(p.last_reply_at)
+                        : isSent(p) ? (sentAt ? `angeschrieben ${sentAt}` : 'angeschrieben')
+                        : (p.accepted_at ? `angenommen ${agoLabel(p.accepted_at)}` : '')
+                    }</div>
                   </div>
 
                   {/* Ampel */}
@@ -438,7 +490,9 @@ function Kampagnen({ bvId, onCompose, onOpenChat }) {
                     {url && <a href={url} target="_blank" rel="noreferrer" className="lk-btn lk-btn-ghost lk-btn-sm" title="Profil öffnen"><ExternalLink size={14} /></a>}
                     {p.replied
                       ? <button className="lk-btn lk-btn-navy lk-btn-sm" onClick={() => (p.chat_id ? onOpenChat(p.chat_id) : write(p))}><MessageSquare size={14} /> Zum Gespräch</button>
-                      : <button className="lk-btn lk-btn-ghost lk-btn-sm" onClick={() => write(p)}><Send size={14} /> Anschreiben</button>}
+                      : isSent(p)
+                        ? <button className="lk-btn lk-btn-ghost lk-btn-sm" onClick={() => write(p, 'nachfassen')}><Reply size={14} /> Nachfassen</button>
+                        : <button className="lk-btn lk-btn-ghost lk-btn-sm" onClick={() => write(p, 'first_message')}><Send size={14} /> Anschreiben</button>}
                     {p.replied && (
                       <button onClick={() => setHandled(p, !p.handled)} title="Als erledigt markieren"
                         style={{ width: 24, height: 24, borderRadius: 7, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff', fontSize: 13, border: '2px solid ' + (p.handled ? '#16A34A' : 'var(--border-strong,#D3D9E2)'), background: p.handled ? '#16A34A' : 'transparent' }}>{p.handled ? '✓' : ''}</button>
