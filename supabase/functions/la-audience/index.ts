@@ -72,10 +72,35 @@ Deno.serve(async (req) => {
     if (inboxIds.length) {
       // Listen-Mitgliedschaft ist bereits die Autorisierung (kuratierte Kontakte).
       // KEIN Team-Filter -> team-uebergreifend nutzbar (Agentur: Kontakte + Account in versch. Teams).
-      const { data: rows } = await db.from("linkedin_inbox")
-        .select("id, provider_id, linkedin_url, name, headline, job_title, company")
-        .in("id", inboxIds);
-      for (const r of rows ?? []) {
+      // Chunked: .in() mit hunderten IDs sprengt die REST-URL (HTTP 414) -> 0 Zeilen.
+      //
+      // 2026-08-18: aussortierte Kontakte fliegen aus der Zielgruppe. Gemessen an der Liste
+      // „Local Hero >51 Umkreis Arena" (2bfa9972-3584-47f8-aa05-af3d01554602, FSV Frankfurt
+      // 1899): 35 inbox_list_members = 23 'new' + 4 'promoted' + 8 'dismissed'. /linkedin-inbox
+      // zeigt 23, weil inbox_feed auf review_status='new' filtert — die Automatisierung loeste
+      // aber ueber ALLE 35 Mitglieder auf und haette die 8 bewusst Aussortierten angeschrieben.
+      // 'promoted' bleibt drin: ein Kontakt, der zum CRM-Lead wurde, ist ein legitimes
+      // Outreach-Ziel. Nur 'dismissed' faellt raus.
+      //
+      // Die Mitgliedschaft selbst ueberlebt die Sichtung absichtlich: wer einen Kontakt
+      // promotet oder verwirft, arbeitet die Liste ab — sie soll dabei nicht schrumpfen,
+      // sonst waere hinterher nicht mehr nachvollziehbar, was urspruenglich drin war. Deshalb
+      // filtert die Zielgruppen-Aufloesung, nicht die Mitgliedschaft.
+      //
+      // review_status ist text NOT NULL DEFAULT 'new' (gegen beide laufenden DBs geprueft,
+      // nicht nur gegen 20260703100000_linkedin_inbox.sql) -> .neq() verschluckt keine
+      // NULL-Zeilen. Der Filter MUSS in jeder Chunk-Iteration stehen: PostgREST wertet ihn
+      // pro Request aus, ein Filter nur am ersten Slice liesse alle weiteren ungefiltert.
+      const rows: any[] = [];
+      for (let _i = 0; _i < inboxIds.length; _i += 120) {
+        const _slice = inboxIds.slice(_i, _i + 120);
+        const { data: _part } = await db.from("linkedin_inbox")
+          .select("id, provider_id, linkedin_url, name, headline, job_title, company")
+          .in("id", _slice)
+          .neq("review_status", "dismissed");
+        if (_part) rows.push(..._part);
+      }
+      for (const r of rows) {
         persons.push({
           provider_id: (r as any).provider_id ?? null,
           public_identifier: publicIdFromUrl((r as any).linkedin_url ?? null),
