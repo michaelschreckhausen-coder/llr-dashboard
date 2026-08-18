@@ -267,7 +267,20 @@ function agoLabel(ts) {
 // (linkedin_chat_messages, direction='outbound', chat_id = COALESCE(e.chat_id, ch.id)).
 // Deckt alle drei Versandwege ab: Anschreiben-Button (unipile-message-send),
 // Automations-Step (la-runner, message/follow_up) und manuell auf LinkedIn.
-// Reine Anzeige-Ebene: keine RPC-Änderung, keine neue Spalte, keine Migration.
+//
+// 2026-08-18, zweiter Schritt — dieselbe Wahrheit, jetzt SERVER-seitig: die RPC liefert
+// messaged + last_outbound_at mit (Migration 20260818113000_reply_cockpit_messaged.sql).
+// Das client-seitige Nachladen aus linkedin_chat_messages ist damit ersatzlos raus. Es
+// trug aus drei Gründen nicht — dokumentiert, weil der Weg naheliegt und trotzdem falsch ist:
+//   1. Scope-Asymmetrie: linkedin_chat_messages hängt per RLS am 'inbox'-Scope, das
+//      Cockpit läuft über 'automation'. Ein Team mit automation-ohne-inbox las 0 Zeilen
+//      → stumm überall „Vernetzt". Die RPC ist SECURITY DEFINER und autorisiert selbst.
+//   2. Round-Trip-Flackern: die Wahrheit kam einen Request nach der Liste, bis dahin
+//      zeigte die Kachel 0 und die Badge „Vernetzt".
+//   3. Block-LIMIT: 60 chat_ids pro Request mit LIMIT 1000 (sent_at DESC über den ganzen
+//      Block) konnte einen Chat mit nur alten Nachrichten aus dem Fenster fallen lassen.
+// Reine Anzeige-Ebene: keine neue Spalte, kein Index, kein Trigger — messaged wird in der
+// RPC abgeleitet, nicht gespeichert.
 function Kampagnen({ bvId, onCompose, onOpenChat }) {
   const [camps, setCamps] = useState([])
   const [campId, setCampId] = useState('')
@@ -276,8 +289,6 @@ function Kampagnen({ bvId, onCompose, onOpenChat }) {
   const [loading, setLoading] = useState(false)
   const [filter, setFilter] = useState('all')
   const [syncing, setSyncing] = useState(false)
-  // chat_id → letztes Outbound-sent_at. Key vorhanden = wirklich angeschrieben.
-  const [sentMap, setSentMap] = useState(() => new Map())
 
   useEffect(() => {
     if (!bvId) { setCamps([]); return }
@@ -314,38 +325,9 @@ function Kampagnen({ bvId, onCompose, onOpenChat }) {
     return () => { alive = false }
   }, [bvId, campId, load])
 
-  // Dependency ist der chat_id-String, NICHT people: setPeople bei Ampel-/Erledigt-Klick
-  // ändert die Array-Identität und wuerde die Abfrage sonst jedes Mal neu feuern.
-  const chatIdsKey = people.map(p => p.chat_id).filter(Boolean).sort().join(',')
-  useEffect(() => {
-    const ids = chatIdsKey ? chatIdsKey.split(',') : []
-    if (!ids.length) { setSentMap(new Map()); return }
-    let alive = true
-    ;(async () => {
-      const next = new Map()
-      // Blöcke von 60: PostgREST kappt Requests server-seitig (db-max-rows) — ein zu
-      // großer Block wuerde stumm Zeilen abschneiden. PostgREST kennt kein DISTINCT,
-      // also client-seitig auf chat_id ⇒ max(sent_at) verdichten.
-      for (let i = 0; i < ids.length; i += 60) {
-        const { data } = await supabase.from('linkedin_chat_messages')
-          .select('chat_id, sent_at')
-          .in('chat_id', ids.slice(i, i + 60))
-          .eq('direction', 'outbound')
-          .order('sent_at', { ascending: false })
-          .limit(1000)
-        if (!alive) return
-        for (const m of (data || [])) {
-          if (!m.chat_id) continue
-          const cur = next.get(m.chat_id)
-          if (cur === undefined || (m.sent_at && (!cur || new Date(m.sent_at) > new Date(cur)))) next.set(m.chat_id, m.sent_at || null)
-        }
-      }
-      if (alive) setSentMap(next)
-    })()
-    return () => { alive = false }
-  }, [chatIdsKey])
-
-  const isSent = (p) => !!(p?.chat_id && sentMap.has(p.chat_id))
+  // Strikt === true: läge die Migration in einer Umgebung noch nicht an, kommt undefined —
+  // dann ist „🔗 Vernetzt" das kleinere Übel gegenüber einem falschen „✉️ Angeschrieben".
+  const isSent = (p) => p?.messaged === true
 
   const c = {
     all: people.length,
@@ -457,6 +439,7 @@ function Kampagnen({ bvId, onCompose, onOpenChat }) {
             {rows.map(p => {
               const code = toCode(p.sentiment)
               const url = profileUrl(p)
+              const sentAt = agoLabel(p.last_outbound_at)
               return (
                 <div key={p.enrollment_id} style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '11px 4px', borderTop: '1px solid var(--border-soft,#F1F5F9)', opacity: p.handled ? .62 : 1 }}>
                   {p.avatar_url
@@ -477,7 +460,7 @@ function Kampagnen({ bvId, onCompose, onOpenChat }) {
                       : <span style={{ fontSize: 11.5, fontWeight: 700, padding: '3px 9px', borderRadius: 999, background: 'var(--surface-2,#F7F9FB)', color: 'var(--text-muted)', border: '1px solid var(--border)' }}>{isSent(p) ? '✉️ Angeschrieben' : '🔗 Vernetzt'}</span>}
                     <div style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 3 }}>{
                       p.replied ? agoLabel(p.last_reply_at)
-                        : isSent(p) ? (agoLabel(sentMap.get(p.chat_id)) ? `angeschrieben ${agoLabel(sentMap.get(p.chat_id))}` : 'angeschrieben')
+                        : isSent(p) ? (sentAt ? `angeschrieben ${sentAt}` : 'angeschrieben')
                         : (p.accepted_at ? `angenommen ${agoLabel(p.accepted_at)}` : '')
                     }</div>
                   </div>
