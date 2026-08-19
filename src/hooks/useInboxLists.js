@@ -188,8 +188,19 @@ export function useInboxLists({ activeTeamId, activeBrandVoiceId } = {}) {
   const deleteList = useCallback(async (listId) => {
     if (!listId) return { error: new Error('Liste fehlt') }
     // inbox_list_members cascadet via FK (ON DELETE CASCADE) — linkedin_inbox bleibt.
-    const { error } = await supabase.from('inbox_lists').delete().eq('id', listId)
+    //
+    // .select('id') ist hier nicht Kosmetik: DELETE darf nur der Ersteller (Policy
+    // inbox_lists_own) und seit 20260819120000 der Team-Owner. Gelesen werden darf viel
+    // mehr (inbox_lists_brand_read). Bei einer fremden Liste trifft das DELETE also NULL
+    // Zeilen — und PostgREST meldet dafuer KEINEN Fehler. Ohne .select() sah der Hook
+    // Erfolg, entfernte die Liste optimistisch aus dem State, und beim naechsten Laden
+    // war sie wieder da (2026-08-19 gemeldet). Jetzt entscheidet die zurueckgegebene
+    // Zeilenzahl, nicht das Fehlen eines Fehlers.
+    const { data, error } = await supabase.from('inbox_lists').delete().eq('id', listId).select('id')
     if (error) return { error }
+    if (!data || data.length === 0) {
+      return { error: new Error('Diese Liste kann nur ihr Ersteller oder der Team-Owner löschen.') }
+    }
     if (mountedRef.current) {
       setLists(prev => prev.filter(l => l.id !== listId))
       setMembersByList(prev => { const n = new Map(prev); n.delete(listId); return n })
@@ -199,12 +210,20 @@ export function useInboxLists({ activeTeamId, activeBrandVoiceId } = {}) {
 
   const removeFromList = useCallback(async (listId, inboxId) => {
     if (!listId || !inboxId) return { error: new Error('Liste oder Kontakt fehlt') }
-    const { error } = await supabase
+    // Gleiche Bauform wie deleteList, gleicher stiller Nulltreffer: ohne .select() waere
+    // ein RLS-Fehlschlag (oder ein gar nicht vorhandener Eintrag) von Erfolg nicht zu
+    // unterscheiden. Die Policy inbox_list_members_via_list ist breiter als die auf
+    // inbox_lists, der Fall ist also seltener — unehrlich war er trotzdem.
+    const { data, error } = await supabase
       .from('inbox_list_members')
       .delete()
       .eq('list_id', listId)
       .eq('inbox_id', inboxId)
+      .select('inbox_id')
     if (error) return { error }
+    if (!data || data.length === 0) {
+      return { error: new Error('Kontakt konnte nicht aus der Liste entfernt werden — fehlende Berechtigung oder schon entfernt.') }
+    }
     if (mountedRef.current) {
       setMembersByList(prev => {
         const n = new Map(prev)
