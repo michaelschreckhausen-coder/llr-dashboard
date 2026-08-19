@@ -330,7 +330,7 @@ export default function LeadDetail({ lead: leadProp }) {
   const [enrichLoading, setEnrichLoading] = useState(false);
   const [enrichCompany, setEnrichCompany] = useState(null);
   const [enrichMsg, setEnrichMsg] = useState(null);
-  // In "Kontakte" aufnehmen (add_lead_to_inbox-RPC, dedup über linkedin_url).
+  // In "Kontakte" aufnehmen (add_leads_to_inbox-RPC, dedup über linkedin_url, setzt die Marke).
   const [addingInbox, setAddingInbox] = useState(false);
   const [inboxMsg, setInboxMsg] = useState(null); // { type:'success'|'error', text }
   // composerDraft: { channel, subject, body } — wird beim "Im Composer öffnen"-
@@ -400,21 +400,42 @@ export default function LeadDetail({ lead: leadProp }) {
     window.open(url, '_blank', 'noopener,noreferrer');
   }, [lead?.linkedin_url]);
 
+  // 2026-08-19: laeuft ueber dieselbe RPC wie der Bulk-Weg auf /leads
+  // (add_leads_to_inbox mit einer einelementigen Liste). Ein Code-Pfad, ein Verhalten —
+  // sonst setzt der eine Weg die Marke und der andere nicht. add_lead_to_inbox bleibt
+  // in der DB bestehen, wird von hier aber nicht mehr gerufen: sie setzte kein
+  // brand_voice_id, und die Kontakte-Ansicht filtert strikt auf die aktive Marke.
   const addToInbox = useCallback(async () => {
     if (!lead?.id) return;
+    if (!activeBrandVoice?.id) {
+      setInboxMsg({ type: 'error', text: 'Bitte oben eine Marke wählen.' });
+      setTimeout(() => setInboxMsg(null), 4000);
+      return;
+    }
     setAddingInbox(true);
-    const { data, error } = await supabase.rpc('add_lead_to_inbox', { p_lead_id: lead.id });
+    const { data, error } = await supabase.rpc('add_leads_to_inbox', {
+      p_brand_voice_id: activeBrandVoice.id,
+      p_lead_ids: [lead.id],
+    });
     setAddingInbox(false);
     if (error) {
-      const t = /no_linkedin_url/.test(error.message) ? 'Dieser Kontakt hat keine LinkedIn-URL.'
-        : /forbidden|no_team/.test(error.message) ? 'Keine Berechtigung.'
+      const t = /forbidden/.test(error.message) ? 'Keine Berechtigung für diese Marke.'
+        : /brand_voice_id_required/.test(error.message) ? 'Bitte oben eine Marke wählen.'
         : 'Fehlgeschlagen: ' + error.message;
       setInboxMsg({ type: 'error', text: t });
+    } else if ((data?.skipped_no_url || 0) > 0) {
+      setInboxMsg({ type: 'error', text: 'Dieser Kontakt hat keine LinkedIn-URL.' });
+    } else if ((data?.already_other_brand || 0) > 0) {
+      setInboxMsg({ type: 'success', text: 'Liegt bereits unter einer anderen Marke — unverändert gelassen.' });
     } else {
-      setInboxMsg({ type: 'success', text: data?.created ? 'In „Kontakte" aufgenommen.' : (data?.resurfaced ? 'Ist wieder in „Kontakte" sichtbar.' : 'Ist bereits in „Kontakte".') });
+      const t = (data?.created || 0) > 0 ? 'In „Kontakte" aufgenommen.'
+        : (data?.brand_backfilled || 0) > 0 ? 'In „Kontakte" dieser Marke sichtbar gemacht.'
+        : (data?.resurfaced || 0) > 0 ? 'Ist wieder in „Kontakte" sichtbar.'
+        : 'Ist bereits in „Kontakte".';
+      setInboxMsg({ type: 'success', text: t });
     }
     setTimeout(() => setInboxMsg(null), 4000);
-  }, [lead?.id]);
+  }, [lead?.id, activeBrandVoice?.id]);
 
   const pickStatus = useCallback(async (next) => {
     setStatusOpen(false);
