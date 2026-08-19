@@ -22,10 +22,15 @@
 -- SECURITY-DEFINER-Helfern (get_my_team_ids, is_team_member, is_inbox_list_owner);
 -- einen Owner-Helfer gab es noch nicht.
 --
--- ── is_active ist Pflicht, nicht Kosmetik ────────────────────────────────────
--- team_members.is_active existiert und wird im Seats-Pfad ausgewertet; get_my_team_ids()
--- filtert ebenfalls darauf. Ohne diese Bedingung duerfte ein DEAKTIVIERTER Owner weiter
--- fremde Listen loeschen. Der Helfer prueft sie.
+-- ── is_active ist Pflicht, nicht Kosmetik — in BEIDEN Zweigen ────────────────
+-- team_members.is_active existiert und wird im Seats-Pfad ausgewertet; user_in_team() und
+-- get_my_team_ids() filtern beide darauf. Ohne diesen Filter entstuende „Loeschen ohne
+-- Lesen": ein deaktivierter Owner kommt ueber get_my_team_ids() nicht mehr an die Liste
+-- heran (inbox_lists_brand_read), duerfte sie aber loeschen. Ein solches Recht gibt es
+-- sonst nirgends im Schema. Deshalb verlangt der Helfer eine AKTIVE Mitgliedschaft —
+-- auch im owner_id-Zweig, nicht nur bei role='owner'.
+-- Konkret betroffen auf Prod: Team „Linkedin Consulting", dessen teams.owner_id auf eine
+-- Person mit is_active=false zeigt.
 --
 -- „Team-Owner" am laufenden Schema geprueft, nicht geraten:
 --   * Enum user_role: admin | team_member | user | member | owner
@@ -48,14 +53,17 @@ LANGUAGE sql
 STABLE SECURITY DEFINER
 SET search_path TO 'public'
 AS $function$
-  SELECT p_team_id IS NOT NULL AND auth.uid() IS NOT NULL AND (
-    EXISTS (SELECT 1 FROM public.teams t
-             WHERE t.id = p_team_id AND t.owner_id = auth.uid())
-    OR EXISTS (SELECT 1 FROM public.team_members tm
-                WHERE tm.team_id = p_team_id
-                  AND tm.user_id = auth.uid()
-                  AND tm.is_active = true
-                  AND tm.role::text = 'owner')
+  -- Eine AKTIVE Mitgliedschaft im Team ist die gemeinsame Vorbedingung beider Wege.
+  -- Darin dann: role='owner' ODER die Person, auf die teams.owner_id zeigt.
+  SELECT p_team_id IS NOT NULL AND auth.uid() IS NOT NULL AND EXISTS (
+    SELECT 1
+      FROM public.team_members tm
+     WHERE tm.team_id = p_team_id
+       AND tm.user_id = auth.uid()
+       AND tm.is_active = true
+       AND ( tm.role::text = 'owner'
+             OR EXISTS (SELECT 1 FROM public.teams t
+                         WHERE t.id = p_team_id AND t.owner_id = auth.uid()) )
   );
 $function$;
 
