@@ -330,7 +330,7 @@ export default function LeadDetail({ lead: leadProp }) {
   const [enrichLoading, setEnrichLoading] = useState(false);
   const [enrichCompany, setEnrichCompany] = useState(null);
   const [enrichMsg, setEnrichMsg] = useState(null);
-  // In "Kontakte" aufnehmen (add_lead_to_inbox-RPC, dedup über linkedin_url).
+  // In "Kontakte" aufnehmen (add_leads_to_inbox-RPC, dedup über linkedin_url, setzt die Marke).
   const [addingInbox, setAddingInbox] = useState(false);
   const [inboxMsg, setInboxMsg] = useState(null); // { type:'success'|'error', text }
   // composerDraft: { channel, subject, body } — wird beim "Im Composer öffnen"-
