@@ -85,9 +85,15 @@ BEGIN
   -- Kandidaten EINMAL bestimmen. DISTINCT ON (team_id, url): zwei Leads mit derselben
   -- URL wuerden sonst im selben Statement zweimal auf dieselbe Konfliktzeile treffen
   -- ("cannot affect row a second time").
+  -- DROP davor: ON COMMIT DROP raeumt erst beim Commit auf, ein zweiter Aufruf in
+  -- DERSELBEN Transaktion waere sonst „relation _cand already exists". Gleiches Muster
+  -- wie la_campaign_save_steps (_la_remat). Im Frontend sind Dry-Run und Schreiblauf
+  -- getrennte Requests, im psql-Test aber nicht — und ein Aufrufer darf das duerfen.
+  DROP TABLE IF EXISTS _cand;
+  DROP TABLE IF EXISTS _pre;
   CREATE TEMP TABLE _cand ON COMMIT DROP AS
   SELECT DISTINCT ON (l.team_id, nullif(btrim(l.linkedin_url), ''))
-         l.id, l.team_id, l.user_id, l.first_name, l.last_name, l.company,
+         l.id, l.team_id, l.user_id, l.first_name, l.last_name, l.company, l.name AS lead_name,
          nullif(btrim(l.linkedin_url), '') AS url
     FROM public.leads l
    WHERE l.archived = false
@@ -143,7 +149,11 @@ BEGIN
     INSERT INTO public.linkedin_inbox
            (team_id, user_id, brand_voice_id, source, name, first_name, last_name, company, linkedin_url)
     SELECT c.team_id, c.user_id, p_brand_voice_id, 'crm_lead',
-           COALESCE(NULLIF(btrim(coalesce(c.first_name,'') || ' ' || coalesce(c.last_name,'')), ''), 'Unbekannt'),
+           -- Name: erst Vor+Nachname, dann leads.name, erst dann 'Unbekannt'. Die alte
+           -- Funktion kannte nur first/last und schrieb fuer Leads, die ihren Namen nur in
+           -- leads.name tragen, sichtbar „Unbekannt" in die Kontakte-Liste.
+           COALESCE(NULLIF(btrim(coalesce(c.first_name,'') || ' ' || coalesce(c.last_name,'')), ''),
+                    NULLIF(btrim(coalesce(c.lead_name,'')), ''), 'Unbekannt'),
            NULLIF(c.first_name, ''), NULLIF(c.last_name, ''), NULLIF(c.company, ''), c.url
       FROM _cand c
       JOIN _pre p ON p.lead_id = c.id
