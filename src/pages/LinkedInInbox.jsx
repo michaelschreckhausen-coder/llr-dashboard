@@ -76,7 +76,7 @@ export default function LinkedInInbox() {
 
   // Kampagnen-Gruppierung
   // Inbox-Listen (reine Auswahl-Sammlungen — die einzige Gruppierung auf dieser Seite)
-  const { lists, membersByList, createList, addToList, renameList, deleteList } = useInboxLists({ activeTeamId, activeBrandVoiceId: activeBrandVoice?.id })
+  const { lists, membersByList, countsByList, createList, addToList, renameList, deleteList } = useInboxLists({ activeTeamId, activeBrandVoiceId: activeBrandVoice?.id })
   // Team-Freigaben (Mehrfach) für die geladenen Listen — eigene Sharing-Schicht.
   const { sharesByList, setListTeamShares } = useListTeamShares(lists.map(l => l.id))
   const [listOpen, setListOpen]     = useState(false)
@@ -302,8 +302,12 @@ export default function LinkedInInbox() {
     if (error) { setMsg({ text: 'Bulk-Übernehmen fehlgeschlagen: ' + error.message }); return }
     const okIds = (data || []).filter(r => r.ok).map(r => r.inbox_id)
     const failed = (data || []).filter(r => !r.ok).length
+    // Uebersprungene ausdruecklich nennen: seit inbox_feed auch promoted-Zeilen liefert,
+    // enthaelt eine Auswahl haeufiger Kontakte, die schon im CRM sind. Sie stillschweigend
+    // zu ueberspringen sieht aus, als waere die Auswahl kleiner gewesen als sie war.
+    const skipped = selected.size - ids.length
     removeRows(okIds.length ? okIds : ids)
-    setMsg({ text: `${okIds.length} Kontakt(e) übernommen${failed ? `, ${failed} fehlgeschlagen` : ''}.` })
+    setMsg({ text: `${okIds.length} Kontakt(e) übernommen${failed ? `, ${failed} fehlgeschlagen` : ''}${skipped ? `, ${skipped} bereits im CRM (übersprungen)` : ''}.` })
   }
 
   const dismiss = async (row) => {
@@ -494,6 +498,7 @@ export default function LinkedInInbox() {
           Listen-Filter + „Neue Liste" haben (Michael-Wunsch 23.07.2026). */}
       {!loading && (
         <ListChipsBar
+          countsByList={countsByList}
           lists={lists.filter(l => !l.brand_voice_id || l.brand_voice_id === activeBrandVoice?.id || l.is_shared)}
           membersByList={membersByList}
           rows={rows}
