@@ -151,10 +151,10 @@ export default function LinkedInInbox() {
         const name = impNewList.trim()
         if (!name) { setImportErr('Bitte einen Namen für die neue Liste eingeben.'); setImporting(false); return }
         // Dedupe: gleichnamige Liste wiederverwenden statt Duplikat anzulegen
-        const dupe = lists.find(l => (l.name || '').trim().toLowerCase() === name.toLowerCase())
+        const dupe = lists.find(l => (l.kind || 'prospect') === 'prospect' && (l.name || '').trim().toLowerCase() === name.toLowerCase())
         if (dupe) { listId = dupe.id }
         else {
-          const r = await createList(name, '#30A0D0')
+          const r = await createList(name, '#30A0D0', 'prospect')
           listId = r?.id ?? r?.data?.id ?? (Array.isArray(r?.data) ? r.data[0]?.id : null)
           if (!listId) { setImportErr('Liste anlegen fehlgeschlagen.'); setImporting(false); return }
           createdListId = listId
@@ -189,9 +189,6 @@ export default function LinkedInInbox() {
 
     // Aktiver Tab quellen-gefiltert laden — so verdrängt die Netzwerk-Flut die
     // Prospecting-Kontakte NICHT aus dem 500er-Fenster (jeder Tab hat sein eigenes).
-    // Ein Server-Call statt ~5 Round-Trips: RPC liefert eigene + geteilte-Listen-Rows
-    // (quellen-gefiltert) inkl. in_crm-Flag. Ersetzt die frühere Client-Merge-Logik,
-    // die pro Laden alle geteilten Mitglieder + ein Riesen-.in() zog (langsam).
     const { data, error } = await supabase.rpc('inbox_feed', {
       p_brand_voice_id: bvId,
       p_mode: sourceTab === 'netzwerk' ? 'netzwerk' : 'kontakte',
@@ -199,13 +196,11 @@ export default function LinkedInInbox() {
     })
     if (myReq !== reqRef.current) return   // eine neuere Ladung hat übernommen → diese (alte) Antwort verwerfen
 
-    // Tab-Badges: Gesamtzahl je Quelle (head-only, kein Row-Transfer).
-    const countBase = () => supabase.from('linkedin_inbox')
-      .select('id', { count: 'exact', head: true }).eq('brand_voice_id', bvId).eq('review_status', 'new')
-    Promise.all([
-      countBase().eq('source', NETWORK_SOURCE),
-      countBase().neq('source', NETWORK_SOURCE),
-    ]).then(([net, kon]) => { if (myReq === reqRef.current) setCounts({ kontakte: kon.count || 0, netzwerk: net.count || 0 }) })
+    // Tab-Badges: server-seitig (SECURITY DEFINER) statt zwei RLS-Count-Queries,
+    // die bei >10k Verbindungen ins statement timeout liefen. Stale-Guard: nur die
+    // neueste Ladung darf die Zähler setzen (Race beim Marken-/Team-Wechsel).
+    supabase.rpc('inbox_counts', { p_brand_voice_id: bvId })
+      .then(({ data }) => { if (myReq === reqRef.current) setCounts({ kontakte: data?.kontakte || 0, netzwerk: data?.netzwerk || 0 }) })
 
     if (error) { setMsg({ text: 'Laden fehlgeschlagen: ' + error.message }); setRows([]); setLoading(false); return }
     const list = data || []
@@ -345,16 +340,18 @@ export default function LinkedInInbox() {
 
   // Liste anlegen ODER gleichnamige Team-Liste wiederverwenden (Dedup, case-insensitiv).
   // createList (useInboxLists) schreibt team-scoped in inbox_lists (RLS + GRANT vorhanden).
-  const createOrReuseList = async (name, color) => {
+  const listKind = sourceTab === 'netzwerk' ? 'connection' : 'prospect'
+  const createOrReuseList = async (name, color, kind = listKind) => {
     const trimmed = (name || '').trim()
     if (!trimmed) return { error: new Error('Name fehlt') }
-    const dupe = lists.find(l => (l.name || '').trim().toLowerCase() === trimmed.toLowerCase())
+    const dupe = lists.find(l => (l.kind || 'prospect') === kind && (l.name || '').trim().toLowerCase() === trimmed.toLowerCase())
     if (dupe) return { data: dupe, reused: true }
-    return await createList(trimmed, color)
+    return await createList(trimmed, color, kind)
   }
 
   // Umbenennen/Neu-Anlegen (inline) sind in <ListChipsBar/> gekapselt; der Parent
   // liefert nur createOrReuseList + renameList (Hook) und openDeleteList als Callbacks.
+  // createOrReuseList defaultet kind=listKind → neue Listen erben den aktiven Tab.
 
   // Löschen vorbereiten: prüfen, ob eine la_audience (kind='list') die Liste als Zielgruppe nutzt.
   const openDeleteList = async (l) => {
@@ -499,7 +496,7 @@ export default function LinkedInInbox() {
       {!loading && (
         <ListChipsBar
           countsByList={countsByList}
-          lists={lists.filter(l => !l.brand_voice_id || l.brand_voice_id === activeBrandVoice?.id || l.is_shared)}
+          lists={lists.filter(l => (l.kind || 'prospect') === listKind)}
           membersByList={membersByList}
           rows={rows}
           listFilter={listFilter}
@@ -610,7 +607,7 @@ export default function LinkedInInbox() {
 
       {listOpen && (
         <ListModal
-          lists={lists}
+          lists={lists.filter(l => (l.kind || 'prospect') === listKind)}
           count={selected.size}
           busy={busy}
           onClose={() => setListOpen(false)}
