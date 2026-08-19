@@ -285,6 +285,11 @@ export default function Leads() {
   const [enrichProgress, setEnrichProgress] = useState(null); // { done, total }
   const [enrichResult,   setEnrichResult]   = useState(null); // { done, capped, rateLimited, skipped:[{name,reason}], failed:[{name,reason}] }
   const [enrichConfirm,  setEnrichConfirm]  = useState(null); // { candidates:[{id,name}], skipped, capped } — In-App-Bestätigung vor dem Feuern
+  // Bulk „In LinkedIn-Kontakte" (add_leads_to_inbox). Zahlen im Dialog kommen aus einem
+  // Dry-Run derselben RPC — keine zweite Query, keine geschaetzten Zahlen.
+  const [inboxBusy,      setInboxBusy]      = useState(false);
+  const [inboxConfirm,   setInboxConfirm]   = useState(null); // { selection:{…}, all:{…}, selCount }
+  const [inboxResult,    setInboxResult]    = useState(null); // Zaehler der RPC + scope
   // Dashboard-Block (KPIs + Grafiken) ein-/ausblendbar — persistiert in localStorage
   const [showDash, setShowDash] = useState(() => { try { return localStorage.getItem('leadesk_leads_dashboard') !== '0'; } catch { return true; } });
   const toggleDash = () => setShowDash(v => { const n = !v; try { localStorage.setItem('leadesk_leads_dashboard', n ? '1' : '0'); } catch {} return n; });
@@ -723,6 +728,45 @@ export default function Leads() {
     await refetch?.();
     setEnrichResult({ done, capped, rateLimited, skipped, failed });
   }, [refetch]);
+
+  // ── Bulk „In LinkedIn-Kontakte" ──────────────────────────────────────────
+  // Zwei Bedeutungen von „alle", deshalb zwei explizite Optionen im Dialog:
+  //   Auswahl  → p_lead_ids = markierte Zeilen
+  //   Alle     → p_lead_ids = NULL, die RPC bestimmt die Menge server-seitig ueber
+  //              ALLE nicht-archivierten Team-Leads mit LinkedIn-URL. Das ist bewusst
+  //              unabhaengig von Tabellen-Filtern UND davon, was useLeads geladen hat
+  //              (PostgREST kappt serverseitig, „alles auswaehlen" ist nicht alles).
+  const bulkToInbox = useCallback(async () => {
+    if (inboxBusy) return;
+    if (!activeBrandVoice?.id) return;
+    const ids = Array.from(selectedIds);
+    setInboxResult(null);
+    setInboxBusy(true);
+    const [sel, all] = await Promise.all([
+      ids.length
+        ? supabase.rpc('add_leads_to_inbox', { p_brand_voice_id: activeBrandVoice.id, p_lead_ids: ids, p_dry_run: true })
+        : Promise.resolve({ data: null, error: null }),
+      supabase.rpc('add_leads_to_inbox', { p_brand_voice_id: activeBrandVoice.id, p_lead_ids: null, p_dry_run: true }),
+    ]);
+    setInboxBusy(false);
+    if (sel.error || all.error) {
+      setInboxResult({ error: (sel.error || all.error).message });
+      return;
+    }
+    setInboxConfirm({ selection: sel.data, all: all.data, selCount: ids.length });
+  }, [selectedIds, activeBrandVoice?.id, inboxBusy]);
+
+  const runBulkToInbox = useCallback(async (scope) => {
+    const ids = Array.from(selectedIds);
+    setInboxConfirm(null);
+    setInboxBusy(true);
+    const { data, error } = await supabase.rpc('add_leads_to_inbox', {
+      p_brand_voice_id: activeBrandVoice?.id || null,
+      p_lead_ids: scope === 'selection' ? ids : null,
+    });
+    setInboxBusy(false);
+    setInboxResult(error ? { error: error.message } : { ...data, scope });
+  }, [selectedIds, activeBrandVoice?.id]);
 
   // Sprint C/2 · Generic Bulk-Edit Apply-Handler
   // payload kommt aus BulkEditModal in einer von zwei Formen:
@@ -1312,6 +1356,9 @@ export default function Leads() {
             onEnrich={bulkEnrich}
             enrichBusy={enrichBusy}
             enrichProgress={enrichProgress}
+            onToInbox={bulkToInbox}
+            toInboxBusy={inboxBusy}
+            toInboxDisabled={!activeBrandVoice?.id}
           />
         )}
 
@@ -1370,6 +1417,73 @@ export default function Leads() {
                 <button type="button" onClick={() => runBulkEnrich(enrichConfirm)} className="lk-btn lk-btn-cta">
                   <IcLinkedin size={14} /> Anreichern
                 </button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Bulk „In LinkedIn-Kontakte" · Inline-Ergebnis (kein alert, wie bei der Anreicherung) */}
+        {inboxResult && (
+          <div style={{ margin:'0 0 12px', padding:'12px 16px', borderRadius:10, border:`0.5px solid ${COLORS.borderSubtle}`, background: COLORS.surface, fontSize:13, display:'flex', flexDirection:'column', gap:8 }}>
+            <div style={{ display:'flex', alignItems:'center', gap:10, flexWrap:'wrap' }}>
+              <IcLinkedin size={16} />
+              <strong>{inboxResult.error ? 'Übernahme fehlgeschlagen' : 'In LinkedIn-Kontakte übernommen'}</strong>
+              {!inboxResult.error && <span style={{ color:'#15803D' }}>{inboxResult.created} neu angelegt</span>}
+              {!inboxResult.error && inboxResult.brand_backfilled > 0 && <span style={{ color: COLORS.textSecondary }}>· {inboxResult.brand_backfilled} Marke nachgetragen</span>}
+              {!inboxResult.error && inboxResult.resurfaced > 0 && <span style={{ color: COLORS.textSecondary }}>· {inboxResult.resurfaced} wieder sichtbar</span>}
+              <div style={{ flex:1 }} />
+              <button type="button" onClick={() => setInboxResult(null)} style={{ background:'none', border:'none', cursor:'pointer', color: COLORS.textTertiary, padding:2 }} aria-label="Schließen"><X size={16} /></button>
+            </div>
+            {inboxResult.error
+              ? <div style={{ color:'#B91C1C' }}>{inboxResult.error}</div>
+              : (
+                <div style={{ color: COLORS.textTertiary }}>
+                  {inboxResult.already_same_brand > 0 && <>{inboxResult.already_same_brand} lagen bereits unter dieser Marke. </>}
+                  {inboxResult.already_other_brand > 0 && <>{inboxResult.already_other_brand} liegen unter einer anderen Marke und wurden nicht verändert. </>}
+                  {inboxResult.skipped_no_url > 0 && <>{inboxResult.skipped_no_url} ohne LinkedIn-Profil übersprungen. </>}
+                  {inboxResult.duplicate_url_in_batch > 0 && <>{inboxResult.duplicate_url_in_batch} doppelte Profil-Links zusammengefasst.</>}
+                </div>
+              )}
+          </div>
+        )}
+
+        {/* Bulk „In LinkedIn-Kontakte" · Bestätigung mit zwei ausdrücklichen Reichweiten */}
+        {inboxConfirm && (
+          <div onClick={() => setInboxConfirm(null)} style={{ position:'fixed', inset:0, background:'rgba(0,0,0,0.4)', display:'flex', alignItems:'center', justifyContent:'center', zIndex:1000 }}>
+            <div onClick={e => e.stopPropagation()} style={{ background: COLORS.surface, borderRadius:12, padding:'20px 22px', width:'min(520px, 94vw)', boxShadow:'0 8px 30px rgba(0,0,0,0.18)', display:'flex', flexDirection:'column', gap:14 }}>
+              <div style={{ display:'flex', alignItems:'center', gap:10 }}>
+                <IcLinkedin size={18} />
+                <strong style={{ fontSize:15 }}>In LinkedIn-Kontakte übernehmen</strong>
+              </div>
+              <div style={{ fontSize:12.5, color: COLORS.textTertiary, lineHeight:1.5 }}>
+                Zielmarke: <strong style={{ color:'var(--wl-primary, #0A6FB0)' }}>{activeBrandVoice?.brand_name || activeBrandVoice?.name || 'aktive Marke'}</strong>. Übernommen wird jeder Lead mit LinkedIn-Profil.
+              </div>
+              {[
+                { key:'selection', titel:`Auswahl — ${inboxConfirm.selCount} markierte Zeile(n)`, z: inboxConfirm.selection, hinweis:'nur die markierten Zeilen' },
+                { key:'all',       titel:`Alle mit LinkedIn-Profil — ${inboxConfirm.all?.total_candidates ?? 0} Leads`, z: inboxConfirm.all, hinweis:'jeder nicht archivierte Lead des Teams, unabhängig von Filtern und davon, was geladen ist' },
+              ].map(opt => (
+                <div key={opt.key} style={{ border:`0.5px solid ${COLORS.borderSubtle}`, borderRadius:10, padding:'10px 12px', display:'flex', flexDirection:'column', gap:6 }}>
+                  <div style={{ fontWeight:600, fontSize:13.5 }}>{opt.titel}</div>
+                  <div style={{ fontSize:12, color: COLORS.textTertiary }}>{opt.hinweis}</div>
+                  {opt.z ? (
+                    <div style={{ fontSize:12.5, color: COLORS.textSecondary }}>
+                      <strong>{opt.z.created}</strong> werden neu angelegt · <strong>{opt.z.brand_backfilled}</strong> bekommen die Marke nachgetragen · <strong>{opt.z.already_other_brand}</strong> liegen bereits unter einer anderen Marke · <strong>{opt.z.skipped_no_url}</strong> ohne LinkedIn-Profil
+                    </div>
+                  ) : (
+                    <div style={{ fontSize:12.5, color: COLORS.textTertiary }}>Keine Zeilen markiert.</div>
+                  )}
+                  <div>
+                    <button type="button" disabled={!opt.z || (opt.z.created + opt.z.brand_backfilled + opt.z.resurfaced) === 0}
+                      onClick={() => runBulkToInbox(opt.key)}
+                      className="lk-btn lk-btn-cta"
+                      style={{ opacity: (!opt.z || (opt.z.created + opt.z.brand_backfilled + opt.z.resurfaced) === 0) ? 0.5 : 1 }}>
+                      <IcLinkedin size={14} /> Übernehmen
+                    </button>
+                  </div>
+                </div>
+              ))}
+              <div style={{ display:'flex', justifyContent:'flex-end' }}>
+                <button type="button" onClick={() => setInboxConfirm(null)} className="lk-btn lk-btn-ghost">Abbrechen</button>
               </div>
             </div>
           </div>
@@ -1808,7 +1922,7 @@ function DeleteLeadsModal({ ids, leads, onClose, onDone }) {
 }
 
 // ─── BulkBar ─────────────────────────────────────────────────────────────
-function BulkBar({ count, onStage, onOwner, onList, onArchive, onExport, onEdit, onClear, onEnrich, enrichBusy, enrichProgress, onDelete }) {
+function BulkBar({ count, onStage, onOwner, onList, onArchive, onExport, onEdit, onClear, onEnrich, enrichBusy, enrichProgress, onDelete, onToInbox, toInboxBusy, toInboxDisabled }) {
   const barStyle = {
     padding:'10px 28px', background: COLORS.primarySoft, color: COLORS.primarySoftFg,
     display:'flex', alignItems:'center', gap:12, borderBottom:`0.5px solid ${COLORS.borderSubtle}`,
@@ -1832,6 +1946,12 @@ function BulkBar({ count, onStage, onOwner, onList, onArchive, onExport, onEdit,
         {enrichBusy
           ? <><Loader2 size={14} className="lk-spin" /> Reichere an{enrichProgress ? ` ${enrichProgress.done}/${enrichProgress.total}` : ''}…</>
           : <><IcLinkedin size={14} /> Anreichern</>}
+      </button>
+      <button type="button" style={{ ...actionBtn, opacity: (toInboxBusy || toInboxDisabled) ? 0.6 : 1 }} onClick={onToInbox} disabled={toInboxBusy || toInboxDisabled}
+        title={toInboxDisabled ? 'Bitte oben eine Marke wählen' : 'Leads mit LinkedIn-Profil als Kontakte der aktiven Marke übernehmen'}>
+        {toInboxBusy
+          ? <><Loader2 size={14} className="lk-spin" /> Übernehme…</>
+          : <><IcLinkedin size={14} /> In LinkedIn-Kontakte</>}
       </button>
       <button type="button" style={actionBtn} onClick={onExport}><Download size={14} /> Export</button>
       <button type="button" style={{ ...actionBtn, color:'#B91C1C' }} onClick={onArchive}>
