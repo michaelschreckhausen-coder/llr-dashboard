@@ -29,6 +29,14 @@ import { supabase } from '../lib/supabase'
 export function useInboxLists({ activeTeamId, activeBrandVoiceId } = {}) {
   const [lists, setLists] = useState([])
   const [membersByList, setMembersByList] = useState(() => new Map())
+  // Status-Aufschluesselung je Liste (Mitglieder / fuer Kampagnen / aussortiert).
+  // Kommt aus der SECURITY-DEFINER-RPC inbox_list_status_counts: eine Abfrage fuer ALLE
+  // Listen (kein N+1), und sie zaehlt ohne Zeilen-RLS. Eine Zaehlung unter RLS haette bei
+  // einer eigenen, nicht geteilten Liste in einer Marke ohne network-Scope zu wenig
+  // gezaehlt — und damit genau das naechste „drei Zahlen, eine Liste" gebaut, das der
+  // Tooltip aufloesen soll. la-audience liest mit service_role, hier muss dieselbe Menge
+  // herauskommen.
+  const [countsByList, setCountsByList] = useState(() => new Map())
   const [uid, setUid] = useState(null)
   const [isLoading, setIsLoading] = useState(true)
 
@@ -111,6 +119,18 @@ export function useInboxLists({ activeTeamId, activeBrandVoiceId } = {}) {
       }
     }
     setMembersByList(m)
+
+    // listIds ist oben bereits aus den geladenen Listen gebildet — nicht neu deklarieren.
+    if (listIds.length) {
+      const { data: cnt, error: cntErr } = await supabase.rpc('inbox_list_status_counts', { p_list_ids: listIds })
+      if (cntErr) console.warn('[useInboxLists] Status-Zaehler:', cntErr.message)
+      else if (mountedRef.current) {
+        const cm = new Map()
+        for (const r of (cnt || [])) cm.set(r.list_id, { mitglieder: r.mitglieder, fuerKampagnen: r.fuer_kampagnen, aussortiert: r.aussortiert })
+        setCountsByList(cm)
+      }
+    } else setCountsByList(new Map())
+
     setIsLoading(false)
   }, [activeTeamId, activeBrandVoiceId])
 
@@ -251,6 +271,7 @@ export function useInboxLists({ activeTeamId, activeBrandVoiceId } = {}) {
   return useMemo(() => ({
     lists,
     membersByList,
+    countsByList,
     isLoading,
     createList,
     addToList,
@@ -259,5 +280,5 @@ export function useInboxLists({ activeTeamId, activeBrandVoiceId } = {}) {
     deleteList,
     toggleShareList,
     refresh: fetchAll,
-  }), [lists, membersByList, isLoading, createList, addToList, removeFromList, renameList, deleteList, toggleShareList, fetchAll])
+  }), [lists, membersByList, countsByList, isLoading, createList, addToList, removeFromList, renameList, deleteList, toggleShareList, fetchAll])
 }

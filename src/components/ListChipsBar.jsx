@@ -102,6 +102,7 @@ const CSS = `
 export default function ListChipsBar({
   lists,
   membersByList,
+  countsByList,
   rows,
   listFilter,
   setListFilter,
@@ -184,6 +185,13 @@ export default function ListChipsBar({
       {visible.map(l => {
         const set = membersByList.get(l.id)
         const cnt = set ? rows.reduce((n, r) => n + (set.has(r.id) ? 1 : 0), 0) : 0
+        // Die Chip-Zahl sagt „so viele sind hier sichtbar", nicht „so viele hat die Liste".
+        // Der Titel legt alle drei Zahlen offen, damit die Differenz zur Zielgruppen-Zahl
+        // in der Automatisierung nicht raetselhaft bleibt. Ohne Zaehler kein erfundener Text.
+        const st = countsByList?.get(l.id)
+        const chipTitle = st
+          ? `${st.mitglieder} in der Liste · ${st.fuerKampagnen} für Kampagnen · ${st.aussortiert} aussortiert`
+          : undefined
 
         if (editingId === l.id) {
           return (
@@ -202,7 +210,7 @@ export default function ListChipsBar({
         const shareNames = shares.map(s => s.team_name || '—').join(', ')
         const popOpen = shareForId === l.id
         return (
-          <span key={l.id} className={'lcb-chip' + (active ? ' lcb-active' : '')}>
+          <span key={l.id} className={'lcb-chip' + (active ? ' lcb-active' : '')} title={chipTitle}>
             <button className="lcb-name" onClick={() => setListFilter(l.id)}>{l.name}</button>
             <span className="lcb-count">{cnt}</span>
 
