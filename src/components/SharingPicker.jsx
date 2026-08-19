@@ -374,6 +374,18 @@ function ScopePanel({ title, scopes, onToggle }) {
           )
         })}
       </div>
+      {/* 2026-08-19: „Suche & Sales Navigator" ohne „Prospects & Verbindungen" ist die
+          Falle, die bei FSV Frankfurt 1899 zugeschlagen hat — 24 per Sales Navigator
+          importierte Kontakte lagen korrekt in der DB und waren fuer das ganze Team
+          unsichtbar, weil inbox_feed den Marken-Zweig auf den network-Scope gatet. Wer
+          hier nur die Suche freigibt, meint genau das, was er anklickt; dass die
+          ERGEBNISSE dieser Suche unter einem anderen Haekchen sichtbar werden, sagt ihm
+          sonst niemand. */}
+      {(scopes || []).includes('search') && !(scopes || []).includes('network') && (
+        <div style={{ marginTop:8, padding:'7px 9px', borderRadius:7, background:'#FFFBEB', border:'1px solid #FDE68A', fontSize:11.5, color:'#92400E', lineHeight:1.5 }}>
+          Treffer aus „Suche &amp; Sales Navigator" landen unter <strong>„Prospects &amp; Verbindungen"</strong> — ohne dieses Häkchen bleiben importierte Kontakte für das Team unsichtbar.
+        </div>
+      )}
     </div>
   )
 }
